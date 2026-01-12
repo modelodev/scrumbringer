@@ -1,0 +1,8 @@
+AGENTS.md
+opencode.jsonc
+web-bundles/
+.claude
+
+# BMAD (local only)
+.bmad-core/
+.bmad-*/
