@@ -6,6 +6,7 @@ import gleam/result
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
+import scrumbringer_server/http/capabilities
 import scrumbringer_server/http/org_invites
 import scrumbringer_server/http/projects
 import wisp
@@ -90,6 +91,10 @@ fn handle_request(req: wisp.Request, app: App) -> wisp.Response {
       projects.handle_members(req, auth_ctx(app), project_id)
     ["api", "v1", "projects", project_id, "members", user_id] ->
       projects.handle_member_remove(req, auth_ctx(app), project_id, user_id)
+    ["api", "v1", "capabilities"] ->
+      capabilities.handle_capabilities(req, auth_ctx(app))
+    ["api", "v1", "me", "capabilities"] ->
+      capabilities.handle_me_capabilities(req, auth_ctx(app))
     ["api", "v1", "health"] -> api.ok(json.object([#("ok", json.bool(True))]))
     _ -> wisp.not_found()
   }

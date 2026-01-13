@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: ["master", "main"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: scrumbringer
+          POSTGRES_PASSWORD: scrumbringer
+          POSTGRES_DB: scrumbringer_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U scrumbringer -d scrumbringer_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://scrumbringer:scrumbringer@localhost:5432/scrumbringer_test?sslmode=disable
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Erlang
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27"
+
+      - name: Setup Gleam
+        uses: gleam-lang/setup-gleam@v1
+        with:
+          gleam-version: "1.14.0"
+
+      - name: Install dbmate
+        run: |
+          DBMATE_VERSION="v2.19.0"
+          curl -fsSL "https://github.com/amacneil/dbmate/releases/download/${DBMATE_VERSION}/dbmate-linux-amd64" -o /usr/local/bin/dbmate
+          chmod +x /usr/local/bin/dbmate
+          dbmate --version
+
+      - name: Apply migrations
+        run: DBMATE_DATABASE_URL="$DATABASE_URL" dbmate up
+
+      - name: Test (apps/server)
+        run: |
+          cd apps/server
+          gleam test
+
+      - name: Test (packages/domain)
+        run: |
+          cd packages/domain
+          gleam test
+
+      - name: Test (packages/birl)
+        run: |
+          cd packages/birl
+          gleam test

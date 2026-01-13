@@ -7,6 +7,133 @@
 import gleam/dynamic/decode
 import pog
 
+/// A row you get from running the `capabilities_create` query
+/// defined in `./src/scrumbringer_server/sql/capabilities_create.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type CapabilitiesCreateRow {
+  CapabilitiesCreateRow(id: Int, org_id: Int, name: String, created_at: String)
+}
+
+/// name: create_capability
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn capabilities_create(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: String,
+) -> Result(pog.Returned(CapabilitiesCreateRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use org_id <- decode.field(1, decode.int)
+    use name <- decode.field(2, decode.string)
+    use created_at <- decode.field(3, decode.string)
+    decode.success(CapabilitiesCreateRow(id:, org_id:, name:, created_at:))
+  }
+
+  "-- name: create_capability
+insert into capabilities (org_id, name)
+values ($1, $2)
+returning
+  id,
+  org_id,
+  name,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `capabilities_is_in_org` query
+/// defined in `./src/scrumbringer_server/sql/capabilities_is_in_org.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type CapabilitiesIsInOrgRow {
+  CapabilitiesIsInOrgRow(ok: Bool)
+}
+
+/// name: capability_is_in_org
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn capabilities_is_in_org(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(CapabilitiesIsInOrgRow), pog.QueryError) {
+  let decoder = {
+    use ok <- decode.field(0, decode.bool)
+    decode.success(CapabilitiesIsInOrgRow(ok:))
+  }
+
+  "-- name: capability_is_in_org
+select exists(
+  select 1
+  from capabilities
+  where id = $1
+    and org_id = $2
+) as ok;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `capabilities_list` query
+/// defined in `./src/scrumbringer_server/sql/capabilities_list.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type CapabilitiesListRow {
+  CapabilitiesListRow(id: Int, org_id: Int, name: String, created_at: String)
+}
+
+/// name: list_capabilities_for_org
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn capabilities_list(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(CapabilitiesListRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use org_id <- decode.field(1, decode.int)
+    use name <- decode.field(2, decode.string)
+    use created_at <- decode.field(3, decode.string)
+    decode.success(CapabilitiesListRow(id:, org_id:, name:, created_at:))
+  }
+
+  "-- name: list_capabilities_for_org
+select
+  id,
+  org_id,
+  name,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+from capabilities
+where org_id = $1
+order by name asc;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `org_invites` query
 /// defined in `./src/scrumbringer_server/sql/org_invites.sql`.
 ///
@@ -70,7 +197,9 @@ pub type PingRow {
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn ping(db: pog.Connection) -> Result(pog.Returned(PingRow), pog.QueryError) {
+pub fn ping(
+  db: pog.Connection,
+) -> Result(pog.Returned(PingRow), pog.QueryError) {
   let decoder = {
     use ok <- decode.field(0, decode.int)
     decode.success(PingRow(ok:))
@@ -448,6 +577,120 @@ where id = $1;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `user_capabilities_delete_all` query
+/// defined in `./src/scrumbringer_server/sql/user_capabilities_delete_all.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type UserCapabilitiesDeleteAllRow {
+  UserCapabilitiesDeleteAllRow(user_id: Int)
+}
+
+/// name: delete_user_capabilities_for_user
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn user_capabilities_delete_all(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(UserCapabilitiesDeleteAllRow), pog.QueryError) {
+  let decoder = {
+    use user_id <- decode.field(0, decode.int)
+    decode.success(UserCapabilitiesDeleteAllRow(user_id:))
+  }
+
+  "-- name: delete_user_capabilities_for_user
+delete from user_capabilities
+where user_id = $1
+returning user_id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `user_capabilities_insert` query
+/// defined in `./src/scrumbringer_server/sql/user_capabilities_insert.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type UserCapabilitiesInsertRow {
+  UserCapabilitiesInsertRow(user_id: Int, capability_id: Int)
+}
+
+/// name: insert_user_capability
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn user_capabilities_insert(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(UserCapabilitiesInsertRow), pog.QueryError) {
+  let decoder = {
+    use user_id <- decode.field(0, decode.int)
+    use capability_id <- decode.field(1, decode.int)
+    decode.success(UserCapabilitiesInsertRow(user_id:, capability_id:))
+  }
+
+  "-- name: insert_user_capability
+insert into user_capabilities (user_id, capability_id)
+values ($1, $2)
+returning user_id, capability_id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `user_capabilities_list` query
+/// defined in `./src/scrumbringer_server/sql/user_capabilities_list.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type UserCapabilitiesListRow {
+  UserCapabilitiesListRow(capability_id: Int)
+}
+
+/// name: list_user_capability_ids
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn user_capabilities_list(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(UserCapabilitiesListRow), pog.QueryError) {
+  let decoder = {
+    use capability_id <- decode.field(0, decode.int)
+    decode.success(UserCapabilitiesListRow(capability_id:))
+  }
+
+  "-- name: list_user_capability_ids
+select
+  uc.capability_id
+from user_capabilities uc
+join capabilities c on c.id = uc.capability_id
+where uc.user_id = $1
+  and c.org_id = $2
+order by uc.capability_id asc;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
