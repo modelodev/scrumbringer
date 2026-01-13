@@ -1,0 +1,83 @@
+export function read_cookie(name) {
+  if (typeof document === "undefined") return undefined
+  const all = document.cookie || ""
+  const parts = all.split(";")
+  for (const part of parts) {
+    const trimmed = part.trim()
+    if (!trimmed) continue
+    const eq = trimmed.indexOf("=")
+    if (eq === -1) continue
+    const k = trimmed.slice(0, eq)
+    if (k !== name) continue
+    const v = trimmed.slice(eq + 1)
+    try {
+      return decodeURIComponent(v)
+    } catch {
+      return v
+    }
+  }
+  return undefined
+}
+
+export function send(method, url, headers, body, callback) {
+  const init = {
+    method,
+    headers: Object.fromEntries(headers),
+    credentials: "same-origin",
+  }
+
+  if (body !== undefined) {
+    init.body = body
+  }
+
+  fetch(url, init)
+    .then(async (res) => {
+      const text = await res.text()
+      callback([res.status, text])
+    })
+    .catch((err) => {
+      callback([
+        0,
+        JSON.stringify({
+          error: { code: "NETWORK_ERROR", message: String(err), details: {} },
+        }),
+      ])
+    })
+}
+
+export function copy_to_clipboard(text, callback) {
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    navigator.clipboard
+      .writeText(text)
+      .then(() => callback(true))
+      .catch(() => callback(false))
+    return
+  }
+
+  try {
+    const textarea = document.createElement("textarea")
+    textarea.value = text
+    textarea.style.position = "fixed"
+    textarea.style.opacity = "0"
+    document.body.appendChild(textarea)
+    textarea.focus()
+    textarea.select()
+    const ok = document.execCommand("copy")
+    document.body.removeChild(textarea)
+    callback(Boolean(ok))
+  } catch {
+    callback(false)
+  }
+}
+
+export function set_timeout(ms, callback) {
+  return setTimeout(() => callback(undefined), ms)
+}
+
+export function clear_timeout(id) {
+  clearTimeout(id)
+}
+
+export function encode_uri_component(value) {
+  return encodeURIComponent(value)
+}

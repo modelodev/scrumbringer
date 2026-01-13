@@ -1,0 +1,13 @@
+name = "scrumbringer_client"
+version = "0.1.0"
+target = "javascript"
+
+[dependencies]
+gleam_stdlib = "~> 0.68"
+gleam_json = "~> 3.0"
+lustre = "~> 5.0"
+scrumbringer_domain = { path = "../../packages/domain" }
+
+[dev-dependencies]
+gleeunit = "~> 1.0"
+lustre_dev_tools = "~> 2.0"
