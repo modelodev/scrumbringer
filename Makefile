@@ -2,7 +2,8 @@
 
 DATABASE_URL ?= postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable
 
-GLEAN_BIN := $(shell if [ -x .tools/gleam-1.14.0/gleam ]; then echo .tools/gleam-1.14.0/gleam; else echo gleam; fi)
+ROOT := $(abspath $(CURDIR))
+GLEAN_BIN := $(shell if [ -x "$(ROOT)/.tools/gleam-1.14.0/gleam" ]; then echo "$(ROOT)/.tools/gleam-1.14.0/gleam"; else echo gleam; fi)
 
 help:
 	@echo "Targets:"

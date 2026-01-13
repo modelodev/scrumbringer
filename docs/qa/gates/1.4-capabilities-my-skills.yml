@@ -2,18 +2,19 @@ schema: 1
 story: '1.4'
 story_title: 'Capabilities + My Skills'
 gate: PASS
-status_reason: 'Capabilities CRUD (admin-only) and user skill selection endpoints enforce org scoping, uniqueness, CSRF, and replace semantics; tests are green.'
+status_reason: 'Previous repo-level test automation concerns are resolved; `make test` and package-level `gleam test` now complete successfully.'
 reviewer: 'Quinn (Test Architect)'
-updated: '2026-01-13T10:59:12Z'
+updated: '2026-01-13T11:57:32Z'
+
 top_issues: []
 waiver: { active: false }
-quality_score: 95
+quality_score: 100
 
 evidence:
   tests_reviewed:
     count: 21
   commands:
-    - 'apps/server: DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable ../../.tools/gleam-1.14.0/gleam test'
+    - 'make test'
 
 nfr_validation:
   _assessed: [security, reliability, maintainability]
@@ -21,13 +22,14 @@ nfr_validation:
     status: PASS
     notes: 'Mutations enforce double-submit CSRF; org-admin check on creation; org scoping validated on reads and writes.'
   reliability:
-    status: CONCERNS
-    notes: 'DB availability is a runtime dependency; maintain consistent migration application in dev/test via dbmate.'
+    status: PASS
+    notes: 'Repo-level verification runs end-to-end via `make test` (including DB-backed server tests).'
   maintainability:
     status: PASS
-    notes: 'DB logic isolated in service modules; Squirrel SQL committed; tests cover uniqueness, replace semantics, and cross-org rejection.'
+    notes: 'Makefile Gleam path is fixed and `packages/birl` no longer has a Gleam module/native name clash, keeping local/CI verification frictionless.'
 
 recommendations:
+  immediate: []
   future:
-    - action: 'Prefer running dbmate migrations in test setup rather than ad-hoc SQL to ensure schema is always derived from migrations'
+    - action: 'Prefer running dbmate migrations in test setup rather than ad-hoc SQL to ensure schema is always derived from migrations.'
       refs: ['db/migrations/20260113120000_create_capabilities.sql', 'apps/server/test/capabilities_http_test.gleam']
