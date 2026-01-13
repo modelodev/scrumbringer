@@ -1,0 +1,35 @@
+schema: 1
+story: '1.3'
+story_title: 'Projects + Membership Management'
+gate: PASS
+status_reason: 'Projects and membership endpoints enforce required authz/CSRF rules and constraints; Postgres-backed persistence via Squirrel is covered by tests.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-01-13T10:30:08Z'
+top_issues: []
+waiver: { active: false }
+quality_score: 95
+
+evidence:
+  tests_reviewed:
+    count: 16
+  commands:
+    - 'apps/server: DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable ../../.tools/gleam-1.14.0/gleam test'
+
+nfr_validation:
+  _assessed: [security, reliability, maintainability]
+  security:
+    status: PASS
+    notes: 'Mutations require CSRF; org admin/project admin checks enforced; same-org constraint enforced for member adds.'
+  reliability:
+    status: CONCERNS
+    notes: 'Runtime depends on DB availability and pool lifecycle is in-process; consider supervised pool when adding a full supervision tree.'
+  maintainability:
+    status: PASS
+    notes: 'DB operations isolated in `projects_db` with Squirrel queries; tests cover core constraints including last-admin removal.'
+
+recommendations:
+  future:
+    - action: 'Align error codes/messages with API contract where it becomes strict (e.g. distinguish NOT_FOUND vs VALIDATION_ERROR consistently)'
+      refs: ['apps/server/src/scrumbringer_server/http/projects.gleam']
+    - action: 'Move DB pool to supervision tree for long-running service'
+      refs: ['apps/server/src/scrumbringer_server.gleam']
