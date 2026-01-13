@@ -9,6 +9,7 @@ import scrumbringer_server/http/auth
 import scrumbringer_server/http/capabilities
 import scrumbringer_server/http/org_invites
 import scrumbringer_server/http/projects
+import scrumbringer_server/http/tasks
 import wisp
 
 pub type StartupError {
@@ -91,6 +92,18 @@ fn handle_request(req: wisp.Request, app: App) -> wisp.Response {
       projects.handle_members(req, auth_ctx(app), project_id)
     ["api", "v1", "projects", project_id, "members", user_id] ->
       projects.handle_member_remove(req, auth_ctx(app), project_id, user_id)
+    ["api", "v1", "projects", project_id, "task-types"] ->
+      tasks.handle_task_types(req, auth_ctx(app), project_id)
+    ["api", "v1", "projects", project_id, "tasks"] ->
+      tasks.handle_project_tasks(req, auth_ctx(app), project_id)
+    ["api", "v1", "tasks", task_id, "claim"] ->
+      tasks.handle_claim(req, auth_ctx(app), task_id)
+    ["api", "v1", "tasks", task_id, "release"] ->
+      tasks.handle_release(req, auth_ctx(app), task_id)
+    ["api", "v1", "tasks", task_id, "complete"] ->
+      tasks.handle_complete(req, auth_ctx(app), task_id)
+    ["api", "v1", "tasks", task_id] ->
+      tasks.handle_task(req, auth_ctx(app), task_id)
     ["api", "v1", "capabilities"] ->
       capabilities.handle_capabilities(req, auth_ctx(app))
     ["api", "v1", "me", "capabilities"] ->

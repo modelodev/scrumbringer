@@ -310,6 +310,46 @@ select exists(
   |> pog.execute(db)
 }
 
+/// A row you get from running the `project_members_is_member` query
+/// defined in `./src/scrumbringer_server/sql/project_members_is_member.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type ProjectMembersIsMemberRow {
+  ProjectMembersIsMemberRow(is_member: Bool)
+}
+
+/// name: is_project_member
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn project_members_is_member(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(ProjectMembersIsMemberRow), pog.QueryError) {
+  let decoder = {
+    use is_member <- decode.field(0, decode.bool)
+    decode.success(ProjectMembersIsMemberRow(is_member:))
+  }
+
+  "-- name: is_project_member
+select exists(
+  select 1
+  from project_members
+  where project_id = $1
+    and user_id = $2
+) as is_member;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `project_members_list` query
 /// defined in `./src/scrumbringer_server/sql/project_members_list.sql`.
 ///
@@ -577,6 +617,887 @@ where id = $1;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `task_types_create` query
+/// defined in `./src/scrumbringer_server/sql/task_types_create.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskTypesCreateRow {
+  TaskTypesCreateRow(
+    id: Int,
+    project_id: Int,
+    name: String,
+    icon: String,
+    capability_id: Int,
+  )
+}
+
+/// name: create_task_type
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_types_create(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: String,
+  arg_3: String,
+  arg_4: Int,
+) -> Result(pog.Returned(TaskTypesCreateRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use project_id <- decode.field(1, decode.int)
+    use name <- decode.field(2, decode.string)
+    use icon <- decode.field(3, decode.string)
+    use capability_id <- decode.field(4, decode.int)
+    decode.success(TaskTypesCreateRow(
+      id:,
+      project_id:,
+      name:,
+      icon:,
+      capability_id:,
+    ))
+  }
+
+  "-- name: create_task_type
+insert into task_types (project_id, name, icon, capability_id)
+values ($1, $2, $3, nullif($4, 0))
+returning
+  id,
+  project_id,
+  name,
+  icon,
+  coalesce(capability_id, 0) as capability_id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.parameter(pog.text(arg_3))
+  |> pog.parameter(pog.int(arg_4))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `task_types_is_in_project` query
+/// defined in `./src/scrumbringer_server/sql/task_types_is_in_project.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskTypesIsInProjectRow {
+  TaskTypesIsInProjectRow(ok: Bool)
+}
+
+/// name: task_type_is_in_project
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_types_is_in_project(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(TaskTypesIsInProjectRow), pog.QueryError) {
+  let decoder = {
+    use ok <- decode.field(0, decode.bool)
+    decode.success(TaskTypesIsInProjectRow(ok:))
+  }
+
+  "-- name: task_type_is_in_project
+select exists(
+  select 1
+  from task_types
+  where id = $1
+    and project_id = $2
+) as ok;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `task_types_list` query
+/// defined in `./src/scrumbringer_server/sql/task_types_list.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskTypesListRow {
+  TaskTypesListRow(
+    id: Int,
+    project_id: Int,
+    name: String,
+    icon: String,
+    capability_id: Int,
+  )
+}
+
+/// name: list_task_types_for_project
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_types_list(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(TaskTypesListRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use project_id <- decode.field(1, decode.int)
+    use name <- decode.field(2, decode.string)
+    use icon <- decode.field(3, decode.string)
+    use capability_id <- decode.field(4, decode.int)
+    decode.success(TaskTypesListRow(
+      id:,
+      project_id:,
+      name:,
+      icon:,
+      capability_id:,
+    ))
+  }
+
+  "-- name: list_task_types_for_project
+select
+  id,
+  project_id,
+  name,
+  icon,
+  coalesce(capability_id, 0) as capability_id
+from task_types
+where project_id = $1
+order by name asc;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `tasks_claim` query
+/// defined in `./src/scrumbringer_server/sql/tasks_claim.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TasksClaimRow {
+  TasksClaimRow(
+    id: Int,
+    project_id: Int,
+    type_id: Int,
+    title: String,
+    description: String,
+    priority: Int,
+    status: String,
+    created_by: Int,
+    claimed_by: Int,
+    claimed_at: String,
+    completed_at: String,
+    created_at: String,
+    version: Int,
+  )
+}
+
+/// name: claim_task
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn tasks_claim(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Int,
+) -> Result(pog.Returned(TasksClaimRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use project_id <- decode.field(1, decode.int)
+    use type_id <- decode.field(2, decode.int)
+    use title <- decode.field(3, decode.string)
+    use description <- decode.field(4, decode.string)
+    use priority <- decode.field(5, decode.int)
+    use status <- decode.field(6, decode.string)
+    use created_by <- decode.field(7, decode.int)
+    use claimed_by <- decode.field(8, decode.int)
+    use claimed_at <- decode.field(9, decode.string)
+    use completed_at <- decode.field(10, decode.string)
+    use created_at <- decode.field(11, decode.string)
+    use version <- decode.field(12, decode.int)
+    decode.success(TasksClaimRow(
+      id:,
+      project_id:,
+      type_id:,
+      title:,
+      description:,
+      priority:,
+      status:,
+      created_by:,
+      claimed_by:,
+      claimed_at:,
+      completed_at:,
+      created_at:,
+      version:,
+    ))
+  }
+
+  "-- name: claim_task
+update tasks
+set
+  claimed_by = $2,
+  claimed_at = now(),
+  status = 'claimed',
+  version = version + 1
+where id = $1
+  and status = 'available'
+  and version = $3
+returning
+  id,
+  project_id,
+  type_id,
+  title,
+  coalesce(description, '') as description,
+  priority,
+  status,
+  created_by,
+  coalesce(claimed_by, 0) as claimed_by,
+  coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
+  coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  version;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `tasks_complete` query
+/// defined in `./src/scrumbringer_server/sql/tasks_complete.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TasksCompleteRow {
+  TasksCompleteRow(
+    id: Int,
+    project_id: Int,
+    type_id: Int,
+    title: String,
+    description: String,
+    priority: Int,
+    status: String,
+    created_by: Int,
+    claimed_by: Int,
+    claimed_at: String,
+    completed_at: String,
+    created_at: String,
+    version: Int,
+  )
+}
+
+/// name: complete_task
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn tasks_complete(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Int,
+) -> Result(pog.Returned(TasksCompleteRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use project_id <- decode.field(1, decode.int)
+    use type_id <- decode.field(2, decode.int)
+    use title <- decode.field(3, decode.string)
+    use description <- decode.field(4, decode.string)
+    use priority <- decode.field(5, decode.int)
+    use status <- decode.field(6, decode.string)
+    use created_by <- decode.field(7, decode.int)
+    use claimed_by <- decode.field(8, decode.int)
+    use claimed_at <- decode.field(9, decode.string)
+    use completed_at <- decode.field(10, decode.string)
+    use created_at <- decode.field(11, decode.string)
+    use version <- decode.field(12, decode.int)
+    decode.success(TasksCompleteRow(
+      id:,
+      project_id:,
+      type_id:,
+      title:,
+      description:,
+      priority:,
+      status:,
+      created_by:,
+      claimed_by:,
+      claimed_at:,
+      completed_at:,
+      created_at:,
+      version:,
+    ))
+  }
+
+  "-- name: complete_task
+update tasks
+set
+  status = 'completed',
+  completed_at = now(),
+  version = version + 1
+where id = $1
+  and status = 'claimed'
+  and claimed_by = $2
+  and version = $3
+returning
+  id,
+  project_id,
+  type_id,
+  title,
+  coalesce(description, '') as description,
+  priority,
+  status,
+  created_by,
+  coalesce(claimed_by, 0) as claimed_by,
+  coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
+  coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  version;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `tasks_create` query
+/// defined in `./src/scrumbringer_server/sql/tasks_create.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TasksCreateRow {
+  TasksCreateRow(
+    id: Int,
+    project_id: Int,
+    type_id: Int,
+    title: String,
+    description: String,
+    priority: Int,
+    status: String,
+    created_by: Int,
+    claimed_by: Int,
+    claimed_at: String,
+    completed_at: String,
+    created_at: String,
+    version: Int,
+  )
+}
+
+/// name: create_task
+/// Create a new task in a project, ensuring the task type belongs to the project.
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn tasks_create(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: String,
+  arg_4: String,
+  arg_5: Int,
+  arg_6: Int,
+) -> Result(pog.Returned(TasksCreateRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use project_id <- decode.field(1, decode.int)
+    use type_id <- decode.field(2, decode.int)
+    use title <- decode.field(3, decode.string)
+    use description <- decode.field(4, decode.string)
+    use priority <- decode.field(5, decode.int)
+    use status <- decode.field(6, decode.string)
+    use created_by <- decode.field(7, decode.int)
+    use claimed_by <- decode.field(8, decode.int)
+    use claimed_at <- decode.field(9, decode.string)
+    use completed_at <- decode.field(10, decode.string)
+    use created_at <- decode.field(11, decode.string)
+    use version <- decode.field(12, decode.int)
+    decode.success(TasksCreateRow(
+      id:,
+      project_id:,
+      type_id:,
+      title:,
+      description:,
+      priority:,
+      status:,
+      created_by:,
+      claimed_by:,
+      claimed_at:,
+      completed_at:,
+      created_at:,
+      version:,
+    ))
+  }
+
+  "-- name: create_task
+-- Create a new task in a project, ensuring the task type belongs to the project.
+with type_ok as (
+  select id
+  from task_types
+  where id = $1
+    and project_id = $2
+)
+insert into tasks (project_id, type_id, title, description, priority, created_by)
+select
+  $2,
+  type_ok.id,
+  $3,
+  nullif($4, ''),
+  $5,
+  $6
+from type_ok
+returning
+  id,
+  project_id,
+  type_id,
+  title,
+  coalesce(description, '') as description,
+  priority,
+  status,
+  created_by,
+  coalesce(claimed_by, 0) as claimed_by,
+  coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
+  coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  version;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.text(arg_3))
+  |> pog.parameter(pog.text(arg_4))
+  |> pog.parameter(pog.int(arg_5))
+  |> pog.parameter(pog.int(arg_6))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `tasks_get_for_user` query
+/// defined in `./src/scrumbringer_server/sql/tasks_get_for_user.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TasksGetForUserRow {
+  TasksGetForUserRow(
+    id: Int,
+    project_id: Int,
+    type_id: Int,
+    title: String,
+    description: String,
+    priority: Int,
+    status: String,
+    created_by: Int,
+    claimed_by: Int,
+    claimed_at: String,
+    completed_at: String,
+    created_at: String,
+    version: Int,
+  )
+}
+
+/// name: get_task_for_user
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn tasks_get_for_user(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(TasksGetForUserRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use project_id <- decode.field(1, decode.int)
+    use type_id <- decode.field(2, decode.int)
+    use title <- decode.field(3, decode.string)
+    use description <- decode.field(4, decode.string)
+    use priority <- decode.field(5, decode.int)
+    use status <- decode.field(6, decode.string)
+    use created_by <- decode.field(7, decode.int)
+    use claimed_by <- decode.field(8, decode.int)
+    use claimed_at <- decode.field(9, decode.string)
+    use completed_at <- decode.field(10, decode.string)
+    use created_at <- decode.field(11, decode.string)
+    use version <- decode.field(12, decode.int)
+    decode.success(TasksGetForUserRow(
+      id:,
+      project_id:,
+      type_id:,
+      title:,
+      description:,
+      priority:,
+      status:,
+      created_by:,
+      claimed_by:,
+      claimed_at:,
+      completed_at:,
+      created_at:,
+      version:,
+    ))
+  }
+
+  "-- name: get_task_for_user
+select
+  t.id,
+  t.project_id,
+  t.type_id,
+  t.title,
+  coalesce(t.description, '') as description,
+  t.priority,
+  t.status,
+  t.created_by,
+  coalesce(t.claimed_by, 0) as claimed_by,
+  coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
+  coalesce(to_char(t.completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+  to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  t.version
+from tasks t
+where t.id = $1
+  and exists(
+    select 1
+    from project_members pm
+    where pm.project_id = t.project_id
+      and pm.user_id = $2
+  );
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `tasks_list` query
+/// defined in `./src/scrumbringer_server/sql/tasks_list.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TasksListRow {
+  TasksListRow(
+    id: Int,
+    project_id: Int,
+    type_id: Int,
+    title: String,
+    description: String,
+    priority: Int,
+    status: String,
+    created_by: Int,
+    claimed_by: Int,
+    claimed_at: String,
+    completed_at: String,
+    created_at: String,
+    version: Int,
+  )
+}
+
+/// name: list_tasks_for_project
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn tasks_list(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: String,
+  arg_3: Int,
+  arg_4: Int,
+  arg_5: String,
+) -> Result(pog.Returned(TasksListRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use project_id <- decode.field(1, decode.int)
+    use type_id <- decode.field(2, decode.int)
+    use title <- decode.field(3, decode.string)
+    use description <- decode.field(4, decode.string)
+    use priority <- decode.field(5, decode.int)
+    use status <- decode.field(6, decode.string)
+    use created_by <- decode.field(7, decode.int)
+    use claimed_by <- decode.field(8, decode.int)
+    use claimed_at <- decode.field(9, decode.string)
+    use completed_at <- decode.field(10, decode.string)
+    use created_at <- decode.field(11, decode.string)
+    use version <- decode.field(12, decode.int)
+    decode.success(TasksListRow(
+      id:,
+      project_id:,
+      type_id:,
+      title:,
+      description:,
+      priority:,
+      status:,
+      created_by:,
+      claimed_by:,
+      claimed_at:,
+      completed_at:,
+      created_at:,
+      version:,
+    ))
+  }
+
+  "-- name: list_tasks_for_project
+select
+  t.id,
+  t.project_id,
+  t.type_id,
+  t.title,
+  coalesce(t.description, '') as description,
+  t.priority,
+  t.status,
+  t.created_by,
+  coalesce(t.claimed_by, 0) as claimed_by,
+  coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
+  coalesce(to_char(t.completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+  to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  t.version
+from tasks t
+join task_types tt on tt.id = t.type_id
+where t.project_id = $1
+  and ($2 = '' or t.status = $2)
+  and ($3 = 0 or t.type_id = $3)
+  and ($4 = 0 or tt.capability_id = $4)
+  and (
+    $5 = ''
+    or t.title ilike ('%' || $5 || '%')
+    or t.description ilike ('%' || $5 || '%')
+  )
+order by t.created_at desc;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.parameter(pog.int(arg_4))
+  |> pog.parameter(pog.text(arg_5))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `tasks_release` query
+/// defined in `./src/scrumbringer_server/sql/tasks_release.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TasksReleaseRow {
+  TasksReleaseRow(
+    id: Int,
+    project_id: Int,
+    type_id: Int,
+    title: String,
+    description: String,
+    priority: Int,
+    status: String,
+    created_by: Int,
+    claimed_by: Int,
+    claimed_at: String,
+    completed_at: String,
+    created_at: String,
+    version: Int,
+  )
+}
+
+/// name: release_task
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn tasks_release(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Int,
+) -> Result(pog.Returned(TasksReleaseRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use project_id <- decode.field(1, decode.int)
+    use type_id <- decode.field(2, decode.int)
+    use title <- decode.field(3, decode.string)
+    use description <- decode.field(4, decode.string)
+    use priority <- decode.field(5, decode.int)
+    use status <- decode.field(6, decode.string)
+    use created_by <- decode.field(7, decode.int)
+    use claimed_by <- decode.field(8, decode.int)
+    use claimed_at <- decode.field(9, decode.string)
+    use completed_at <- decode.field(10, decode.string)
+    use created_at <- decode.field(11, decode.string)
+    use version <- decode.field(12, decode.int)
+    decode.success(TasksReleaseRow(
+      id:,
+      project_id:,
+      type_id:,
+      title:,
+      description:,
+      priority:,
+      status:,
+      created_by:,
+      claimed_by:,
+      claimed_at:,
+      completed_at:,
+      created_at:,
+      version:,
+    ))
+  }
+
+  "-- name: release_task
+update tasks
+set
+  claimed_by = null,
+  claimed_at = null,
+  status = 'available',
+  version = version + 1
+where id = $1
+  and status = 'claimed'
+  and claimed_by = $2
+  and version = $3
+returning
+  id,
+  project_id,
+  type_id,
+  title,
+  coalesce(description, '') as description,
+  priority,
+  status,
+  created_by,
+  coalesce(claimed_by, 0) as claimed_by,
+  coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
+  coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  version;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `tasks_update` query
+/// defined in `./src/scrumbringer_server/sql/tasks_update.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TasksUpdateRow {
+  TasksUpdateRow(
+    id: Int,
+    project_id: Int,
+    type_id: Int,
+    title: String,
+    description: String,
+    priority: Int,
+    status: String,
+    created_by: Int,
+    claimed_by: Int,
+    claimed_at: String,
+    completed_at: String,
+    created_at: String,
+    version: Int,
+  )
+}
+
+/// name: update_task_claimed_by_user
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn tasks_update(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: String,
+  arg_4: String,
+  arg_5: Int,
+  arg_6: Int,
+  arg_7: Int,
+) -> Result(pog.Returned(TasksUpdateRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use project_id <- decode.field(1, decode.int)
+    use type_id <- decode.field(2, decode.int)
+    use title <- decode.field(3, decode.string)
+    use description <- decode.field(4, decode.string)
+    use priority <- decode.field(5, decode.int)
+    use status <- decode.field(6, decode.string)
+    use created_by <- decode.field(7, decode.int)
+    use claimed_by <- decode.field(8, decode.int)
+    use claimed_at <- decode.field(9, decode.string)
+    use completed_at <- decode.field(10, decode.string)
+    use created_at <- decode.field(11, decode.string)
+    use version <- decode.field(12, decode.int)
+    decode.success(TasksUpdateRow(
+      id:,
+      project_id:,
+      type_id:,
+      title:,
+      description:,
+      priority:,
+      status:,
+      created_by:,
+      claimed_by:,
+      claimed_at:,
+      completed_at:,
+      created_at:,
+      version:,
+    ))
+  }
+
+  "-- name: update_task_claimed_by_user
+update tasks
+set
+  title = case when $3 = '__unset__' then title else $3 end,
+  description = case when $4 = '__unset__' then description else nullif($4, '') end,
+  priority = case when $5 = -1 then priority else $5 end,
+  type_id = case when $6 = -1 then type_id else $6 end,
+  version = version + 1
+where id = $1
+  and claimed_by = $2
+  and status = 'claimed'
+  and version = $7
+returning
+  id,
+  project_id,
+  type_id,
+  title,
+  coalesce(description, '') as description,
+  priority,
+  status,
+  created_by,
+  coalesce(claimed_by, 0) as claimed_by,
+  coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
+  coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  version;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.text(arg_3))
+  |> pog.parameter(pog.text(arg_4))
+  |> pog.parameter(pog.int(arg_5))
+  |> pog.parameter(pog.int(arg_6))
+  |> pog.parameter(pog.int(arg_7))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

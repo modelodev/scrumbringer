@@ -1,0 +1,49 @@
+schema: 1
+story: '1.5'
+story_title: 'Pool + Tasks Core (Create/List/Claim/Release/Complete)'
+gate: PASS
+status_reason: 'Previous coverage gaps for membership enforcement, task-list filter matrix, and negative “no direct assignment” enforcement are now covered by tests; full suite passes (apps/server: 29 passed).'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-01-13T12:47:52Z'
+
+quality_score: 100
+expires: '2026-01-27T12:47:52Z'
+
+top_issues:
+  - id: 'MNT-001'
+    severity: low
+    finding: 'PATCH uses a sentinel string (__unset__) for optional fields; clients cannot set title/description to that literal value.'
+    suggested_action: 'Document this limitation or consider an alternative decoding strategy if it becomes user-facing.'
+    suggested_owner: 'dev'
+
+waiver:
+  active: false
+
+evidence:
+  tests_reviewed: 8
+  risks_identified: 1
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    ac_gaps: []
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'All mutating endpoints require auth + double-submit CSRF (X-CSRF header matches sb_csrf cookie); membership/admin checks enforced server-side.'
+  performance:
+    status: PASS
+    notes: 'SQL filters and ordering are pushed to DB (ORDER BY created_at DESC; task_types ORDER BY name ASC).'
+  reliability:
+    status: PASS
+    notes: 'Optimistic concurrency enforced via version; conflict codes CONFLICT_VERSION/CONFLICT_CLAIMED used consistently.'
+  maintainability:
+    status: PASS
+    notes: 'Previously missing AC coverage is now asserted in HTTP tests (membership checks, status/type_id filters + invalid values, claimed_by ignored on PATCH, non-claimer forbidden).'
+
+recommendations:
+  immediate: []
+  future:
+    - action: 'Consider avoiding sentinel string for optional PATCH fields if it becomes problematic.'
+      refs:
+        - 'apps/server/src/scrumbringer_server/http/tasks.gleam'
+        - 'apps/server/src/scrumbringer_server/sql/tasks_update.sql'
