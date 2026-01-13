@@ -1,0 +1,75 @@
+import gleam/dict
+import gleam/option.{type Option, None}
+import scrumbringer_domain/org_role.{type OrgRole}
+
+pub type Organization {
+  Organization(id: Int, name: String, created_at: String)
+}
+
+pub type Project {
+  Project(id: Int, org_id: Int, name: String, created_at: String)
+}
+
+pub type ProjectRole {
+  Admin
+  Member
+}
+
+pub type ProjectMember {
+  ProjectMember(
+    project_id: Int,
+    user_id: Int,
+    role: ProjectRole,
+    created_at: String,
+  )
+}
+
+pub type OrgInvite {
+  OrgInvite(
+    code: String,
+    org_id: Int,
+    created_at_unix: Int,
+    expires_at_unix: Option(Int),
+    used_at_unix: Option(Int),
+    used_by: Option(Int),
+  )
+}
+
+pub type StoredUser {
+  StoredUser(
+    id: Int,
+    email: String,
+    password_hash: String,
+    org_id: Int,
+    org_role: OrgRole,
+    created_at: String,
+  )
+}
+
+pub type State {
+  State(
+    org: Option(Organization),
+    next_org_id: Int,
+    next_project_id: Int,
+    next_user_id: Int,
+    users_by_id: dict.Dict(Int, StoredUser),
+    user_id_by_email: dict.Dict(String, Int),
+    projects_by_id: dict.Dict(Int, Project),
+    project_members: dict.Dict(#(Int, Int), ProjectMember),
+    invites_by_code: dict.Dict(String, OrgInvite),
+  )
+}
+
+pub fn initial() -> State {
+  State(
+    org: None,
+    next_org_id: 1,
+    next_project_id: 1,
+    next_user_id: 1,
+    users_by_id: dict.new(),
+    user_id_by_email: dict.new(),
+    projects_by_id: dict.new(),
+    project_members: dict.new(),
+    invites_by_code: dict.new(),
+  )
+}

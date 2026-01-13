@@ -6,3 +6,12 @@ web-bundles/
 # BMAD (local only)
 .bmad-core/
 .bmad-*/
+
+# Local dev / build artifacts
+.ai/
+.tools/
+erl_crash.dump
+
+# Gleam build output (generated)
+apps/**/build/
+packages/**/build/

@@ -1,0 +1,27 @@
+schema: 1
+story: '1.1'
+story_title: 'Bootstrap + Auth'
+gate: PASS
+status_reason: 'Auth bootstrap/invite flows, cookies, CSRF, and endpoints are implemented and tests pass.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-01-12T19:29:55Z'
+top_issues: []
+waiver: { active: false }
+quality_score: 100
+
+evidence:
+  tests_reviewed:
+    count: 7
+  notes: 'Ran apps/server: ../../.tools/gleam-1.14.0/gleam test'
+
+nfr_validation:
+  _assessed: [security, reliability, maintainability]
+  security:
+    status: PASS
+    notes: 'Argon2 password hashing; HttpOnly session cookie; CSRF double-submit enforced for authenticated mutation (logout).'
+  reliability:
+    status: PASS
+    notes: 'JWT signature verified with secure compare; missing/invalid session returns AUTH_REQUIRED.'
+  maintainability:
+    status: PASS
+    notes: 'Tests cover bootstrap/invite + cookie flags; minor Gleam warnings removed.'

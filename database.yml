@@ -1,0 +1,7 @@
+development:
+  url: postgres://scrumbringer:scrumbringer@localhost:5432/scrumbringer_dev?sslmode=disable
+  migrations_dir: db/migrations
+
+test:
+  url: postgres://scrumbringer:scrumbringer@localhost:5432/scrumbringer_test?sslmode=disable
+  migrations_dir: db/migrations

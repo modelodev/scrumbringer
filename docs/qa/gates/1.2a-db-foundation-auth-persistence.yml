@@ -1,0 +1,37 @@
+schema: 1
+story: '1.2a'
+story_title: 'DB Foundation + Auth Persistence (Postgres + dbmate + pog + squirrel)'
+gate: PASS
+status_reason: 'DB foundation, schema migrations, DB-wired server startup, Squirrel generation, and DB-backed auth/bootstrap tests are in place and passing.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-01-13T09:03:30Z'
+top_issues: []
+waiver: { active: false }
+quality_score: 95
+
+evidence:
+  tests_reviewed:
+    count: 7
+  commands:
+    - 'apps/server: DATABASE_URL=postgresql://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test ../../.tools/gleam-1.14.0/gleam test'
+  notes: 'Tests require DATABASE_URL and a reachable Postgres; local docker-compose config is provided.'
+
+nfr_validation:
+  _assessed: [security, reliability, maintainability]
+  security:
+    status: PASS
+    notes: 'Auth cookies/CSRF behaviors preserved; DB credentials sourced from env.'
+  reliability:
+    status: CONCERNS
+    notes: 'Runtime now depends on DB availability; startup includes retries but no explicit migrations-at-start or health endpoint for DB state.'
+  maintainability:
+    status: PASS
+    notes: 'Squirrel generation committed; migrations are explicit and versioned; DB-backed tests cover bootstrap/login/invite enforcement.'
+
+recommendations:
+  immediate:
+    - action: 'Add a small README/dev doc for DB setup and dbmate + squirrel commands'
+      refs: ['docker-compose.yml', 'database.yml', 'db/migrations']
+  future:
+    - action: 'Consider a dedicated DB health check endpoint/metric and clearer startup error propagation'
+      refs: ['apps/server/src/scrumbringer_server.gleam', 'apps/server/src/main.gleam']

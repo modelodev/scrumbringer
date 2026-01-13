@@ -1,0 +1,33 @@
+schema: 1
+story: '1.2'
+story_title: 'Org Invites (Invite-only Registration)'
+gate: PASS
+status_reason: 'Org invites endpoint enforces admin authz and CSRF, persists invites via Postgres/Squirrel, and invite consumption rules are validated by tests.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-01-13T09:28:13Z'
+top_issues: []
+waiver: { active: false }
+quality_score: 95
+
+evidence:
+  tests_reviewed:
+    count: 11
+  commands:
+    - 'apps/server: DATABASE_URL=postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable ../../.tools/gleam-1.14.0/gleam test'
+
+nfr_validation:
+  _assessed: [security, reliability, maintainability]
+  security:
+    status: PASS
+    notes: 'Endpoint requires JWT + org admin role and double-submit CSRF; invite tokens are high-entropy base64url.'
+  reliability:
+    status: CONCERNS
+    notes: 'DB pool startup behavior is in-process and relies on DB availability; consider a supervised pool in a supervisor tree for long-running service.'
+  maintainability:
+    status: PASS
+    notes: 'Invite insert implemented via Squirrel SQL with committed generated module; tests cover authz/CSRF/default expiry/single-use.'
+
+recommendations:
+  future:
+    - action: 'Replace per-request pool startup with supervised pool wiring when introducing a full app supervision tree'
+      refs: ['apps/server/src/scrumbringer_server.gleam']
