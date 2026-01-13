@@ -8,6 +8,7 @@ import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/capabilities
 import scrumbringer_server/http/org_invites
+import scrumbringer_server/http/org_users
 import scrumbringer_server/http/projects
 import scrumbringer_server/http/task_notes
 import scrumbringer_server/http/task_positions
@@ -89,6 +90,8 @@ fn handle_request(req: wisp.Request, app: App) -> wisp.Response {
     ["api", "v1", "auth", "logout"] -> auth.handle_logout(req, auth_ctx(app))
     ["api", "v1", "org", "invites"] ->
       org_invites.handle_create(req, auth_ctx(app))
+    ["api", "v1", "org", "users"] ->
+      org_users.handle_org_users(req, auth_ctx(app))
     ["api", "v1", "projects"] -> projects.handle_projects(req, auth_ctx(app))
     ["api", "v1", "projects", project_id, "members"] ->
       projects.handle_members(req, auth_ctx(app), project_id)

@@ -182,6 +182,52 @@ returning
   |> pog.execute(db)
 }
 
+/// A row you get from running the `org_users_list` query
+/// defined in `./src/scrumbringer_server/sql/org_users_list.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type OrgUsersListRow {
+  OrgUsersListRow(id: Int, email: String, org_role: String, created_at: String)
+}
+
+/// name: list_org_users
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn org_users_list(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: String,
+) -> Result(pog.Returned(OrgUsersListRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use email <- decode.field(1, decode.string)
+    use org_role <- decode.field(2, decode.string)
+    use created_at <- decode.field(3, decode.string)
+    decode.success(OrgUsersListRow(id:, email:, org_role:, created_at:))
+  }
+
+  "-- name: list_org_users
+select
+  id,
+  email,
+  org_role,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+from users
+where org_id = $1
+  and ($2 = '' or email ilike ('%' || $2 || '%'))
+order by email asc;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `ping` query
 /// defined in `./src/scrumbringer_server/sql/ping.sql`.
 ///
@@ -301,6 +347,48 @@ select exists(
   where project_id = $1
     and user_id = $2
     and role = 'admin'
+) as is_admin;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `project_members_is_any_admin_in_org` query
+/// defined in `./src/scrumbringer_server/sql/project_members_is_any_admin_in_org.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type ProjectMembersIsAnyAdminInOrgRow {
+  ProjectMembersIsAnyAdminInOrgRow(is_admin: Bool)
+}
+
+/// name: is_any_project_admin_in_org
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn project_members_is_any_admin_in_org(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(ProjectMembersIsAnyAdminInOrgRow), pog.QueryError) {
+  let decoder = {
+    use is_admin <- decode.field(0, decode.bool)
+    decode.success(ProjectMembersIsAnyAdminInOrgRow(is_admin:))
+  }
+
+  "-- name: is_any_project_admin_in_org
+select exists(
+  select 1
+  from project_members pm
+  join projects p on p.id = pm.project_id
+  where pm.user_id = $1
+    and pm.role = 'admin'
+    and p.org_id = $2
 ) as is_admin;
 "
   |> pog.query

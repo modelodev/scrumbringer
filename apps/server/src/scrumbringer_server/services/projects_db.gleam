@@ -112,6 +112,23 @@ pub fn is_project_member(
   }
 }
 
+pub fn is_any_project_admin_in_org(
+  db: pog.Connection,
+  user_id: Int,
+  org_id: Int,
+) -> Result(Bool, pog.QueryError) {
+  use returned <- result.try(sql.project_members_is_any_admin_in_org(
+    db,
+    user_id,
+    org_id,
+  ))
+
+  case returned.rows {
+    [row, ..] -> Ok(row.is_admin)
+    [] -> Ok(False)
+  }
+}
+
 pub fn list_members(
   db: pog.Connection,
   project_id: Int,

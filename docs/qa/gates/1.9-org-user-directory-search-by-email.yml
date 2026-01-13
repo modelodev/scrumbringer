@@ -1,0 +1,44 @@
+schema: 1
+story: '1.9'
+story_title: 'Org User Directory (Search by Email)'
+gate: PASS
+status_reason: 'Endpoint behavior matches AC1-AC8 with org scoping, email-only search, and role-based authorization; test suite covers the primary behaviors.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-01-13T14:56:28Z'
+
+top_issues: []
+waiver: { active: false }
+
+quality_score: 100
+expires: '2026-01-27T14:56:28Z'
+
+evidence:
+  tests_reviewed:
+    count: 3
+  risks_identified: 0
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8]
+    ac_gaps: []
+
+nfr_validation:
+  _assessed: [security, performance, reliability, maintainability]
+  security:
+    status: PASS
+    notes: 'Auth required; org admins allowed; project admins allowed via is_any_project_admin_in_org; unauthorized users get 403.'
+  performance:
+    status: PASS
+    notes: 'Single org-scoped query with ORDER BY email; MVP explicitly has no pagination.'
+  reliability:
+    status: PASS
+    notes: 'Returns 500 on DB errors; returns 200 with empty list for no matches.'
+  maintainability:
+    status: PASS
+    notes: 'HTTP handler delegates DB work; SQL is parameterized and isolated in sql/*.sql; tests cover main flows.'
+
+recommendations:
+  immediate: []
+  future:
+    - action: 'Add a test asserting each returned user includes id/org_role/created_at (AC6), not just email'
+      refs: ['apps/server/test/org_users_http_test.gleam']
+    - action: 'Optional: add an unauthenticated request test asserting 401 AUTH_REQUIRED for missing session'
+      refs: ['apps/server/test/org_users_http_test.gleam', 'apps/server/src/scrumbringer_server/http/org_users.gleam']
