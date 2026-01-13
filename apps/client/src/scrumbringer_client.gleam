@@ -1,4 +1,6 @@
+import gleam/dict
 import gleam/dynamic/decode
+import gleam/float
 import gleam/int
 import gleam/list
 import gleam/option as opt
@@ -15,9 +17,11 @@ import lustre/element/html.{
 }
 import lustre/event
 
+import scrumbringer_domain/org_role
 import scrumbringer_domain/user.{type User}
 
 import scrumbringer_client/api
+import scrumbringer_client/member_visuals
 import scrumbringer_client/permissions
 
 pub fn main() -> lustre.App(Nil, Model, Msg) {
@@ -34,6 +38,7 @@ type Remote(a) {
 type Page {
   Login
   Admin
+  Member
 }
 
 type IconPreview {
@@ -41,6 +46,16 @@ type IconPreview {
   IconLoading
   IconOk
   IconError
+}
+
+pub type MemberSection {
+  Pool
+  MyBar
+  MySkills
+}
+
+type MemberDrag {
+  MemberDrag(task_id: Int, offset_x: Int, offset_y: Int)
 }
 
 pub opaque type Model {
@@ -86,6 +101,42 @@ pub opaque type Model {
     task_types_create_in_flight: Bool,
     task_types_create_error: opt.Option(String),
     task_types_icon_preview: IconPreview,
+    member_section: MemberSection,
+    member_tasks: Remote(List(api.Task)),
+    member_tasks_pending: Int,
+    member_tasks_by_project: dict.Dict(Int, List(api.Task)),
+    member_task_types: Remote(List(api.TaskType)),
+    member_task_mutation_in_flight: Bool,
+    member_filters_status: String,
+    member_filters_type_id: String,
+    member_filters_capability_id: String,
+    member_filters_q: String,
+    member_quick_my_caps: Bool,
+    member_create_dialog_open: Bool,
+    member_create_title: String,
+    member_create_description: String,
+    member_create_priority: String,
+    member_create_type_id: String,
+    member_create_in_flight: Bool,
+    member_create_error: opt.Option(String),
+    member_my_capability_ids: Remote(List(Int)),
+    member_my_capability_ids_edit: dict.Dict(Int, Bool),
+    member_my_capabilities_in_flight: Bool,
+    member_my_capabilities_error: opt.Option(String),
+    member_positions_by_task: dict.Dict(Int, #(Int, Int)),
+    member_drag: opt.Option(MemberDrag),
+    member_canvas_left: Int,
+    member_canvas_top: Int,
+    member_position_edit_task: opt.Option(Int),
+    member_position_edit_x: String,
+    member_position_edit_y: String,
+    member_position_edit_in_flight: Bool,
+    member_position_edit_error: opt.Option(String),
+    member_notes_task_id: opt.Option(Int),
+    member_notes: Remote(List(api.TaskNote)),
+    member_note_content: String,
+    member_note_in_flight: Bool,
+    member_note_error: opt.Option(String),
   )
 }
 
@@ -148,6 +199,61 @@ pub type Msg {
   TaskTypeCreateCapabilityChanged(String)
   TaskTypeCreateSubmitted
   TaskTypeCreated(api.ApiResult(api.TaskType))
+
+  SwitchToAdmin
+  SwitchToMember
+
+  MemberNavSelected(MemberSection)
+  MemberPoolStatusChanged(String)
+  MemberPoolTypeChanged(String)
+  MemberPoolCapabilityChanged(String)
+  MemberPoolSearchChanged(String)
+  MemberPoolSearchDebounced(String)
+  MemberToggleMyCapabilitiesQuick
+
+  MemberProjectTasksFetched(Int, api.ApiResult(List(api.Task)))
+  MemberTaskTypesFetched(api.ApiResult(List(api.TaskType)))
+
+  MemberCanvasRectFetched(Int, Int)
+  MemberDragStarted(Int, Int, Int)
+  MemberDragMoved(Int, Int)
+  MemberDragEnded
+
+  MemberCreateDialogOpened
+  MemberCreateDialogClosed
+  MemberCreateTitleChanged(String)
+  MemberCreateDescriptionChanged(String)
+  MemberCreatePriorityChanged(String)
+  MemberCreateTypeIdChanged(String)
+  MemberCreateSubmitted
+  MemberTaskCreated(api.ApiResult(api.Task))
+
+  MemberClaimClicked(Int, Int)
+  MemberReleaseClicked(Int, Int)
+  MemberCompleteClicked(Int, Int)
+  MemberTaskClaimed(api.ApiResult(api.Task))
+  MemberTaskReleased(api.ApiResult(api.Task))
+  MemberTaskCompleted(api.ApiResult(api.Task))
+
+  MemberMyCapabilityIdsFetched(api.ApiResult(List(Int)))
+  MemberToggleCapability(Int)
+  MemberSaveCapabilitiesClicked
+  MemberMyCapabilityIdsSaved(api.ApiResult(List(Int)))
+
+  MemberPositionsFetched(api.ApiResult(List(api.TaskPosition)))
+  MemberPositionEditOpened(Int)
+  MemberPositionEditClosed
+  MemberPositionEditXChanged(String)
+  MemberPositionEditYChanged(String)
+  MemberPositionEditSubmitted
+  MemberPositionSaved(api.ApiResult(api.TaskPosition))
+
+  MemberTaskDetailsOpened(Int)
+  MemberTaskDetailsClosed
+  MemberNotesFetched(api.ApiResult(List(api.TaskNote)))
+  MemberNoteContentChanged(String)
+  MemberNoteSubmitted
+  MemberNoteAdded(api.ApiResult(api.TaskNote))
 }
 
 fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
@@ -194,6 +300,42 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       task_types_create_in_flight: False,
       task_types_create_error: opt.None,
       task_types_icon_preview: IconIdle,
+      member_section: Pool,
+      member_tasks: NotAsked,
+      member_tasks_pending: 0,
+      member_tasks_by_project: dict.new(),
+      member_task_types: NotAsked,
+      member_task_mutation_in_flight: False,
+      member_filters_status: "",
+      member_filters_type_id: "",
+      member_filters_capability_id: "",
+      member_filters_q: "",
+      member_quick_my_caps: False,
+      member_create_dialog_open: False,
+      member_create_title: "",
+      member_create_description: "",
+      member_create_priority: "3",
+      member_create_type_id: "",
+      member_create_in_flight: False,
+      member_create_error: opt.None,
+      member_my_capability_ids: NotAsked,
+      member_my_capability_ids_edit: dict.new(),
+      member_my_capabilities_in_flight: False,
+      member_my_capabilities_error: opt.None,
+      member_positions_by_task: dict.new(),
+      member_drag: opt.None,
+      member_canvas_left: 0,
+      member_canvas_top: 0,
+      member_position_edit_task: opt.None,
+      member_position_edit_x: "",
+      member_position_edit_y: "",
+      member_position_edit_in_flight: False,
+      member_position_edit_error: opt.None,
+      member_notes_task_id: opt.None,
+      member_notes: NotAsked,
+      member_note_content: "",
+      member_note_in_flight: False,
+      member_note_error: opt.None,
     )
 
   #(model, api.fetch_me(MeFetched))
@@ -202,7 +344,12 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     MeFetched(Ok(user)) -> {
-      let model = Model(..model, page: Admin, user: opt.Some(user))
+      let page = case user.org_role {
+        org_role.Admin -> Admin
+        _ -> Member
+      }
+
+      let model = Model(..model, page: page, user: opt.Some(user))
       let #(model, effect) = bootstrap_admin(model)
       #(model, effect)
     }
@@ -252,10 +399,15 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     LoginFinished(Ok(user)) -> {
+      let page = case user.org_role {
+        org_role.Admin -> Admin
+        _ -> Member
+      }
+
       let model =
         Model(
           ..model,
-          page: Admin,
+          page: page,
           user: opt.Some(user),
           login_in_flight: False,
           login_password: "",
@@ -306,27 +458,26 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     ProjectSelected(project_id) -> {
-      case string.trim(project_id) == "" {
-        True ->
-          refresh_section(
-            Model(..model, selected_project_id: opt.None, toast: opt.None),
+      let selected = case int.parse(project_id) {
+        Ok(id) -> opt.Some(id)
+        Error(_) -> opt.None
+      }
+
+      let model = case selected {
+        opt.None ->
+          Model(
+            ..model,
+            selected_project_id: selected,
+            toast: opt.None,
+            member_filters_type_id: "",
+            member_task_types: NotAsked,
           )
-        False -> {
-          case int.parse(project_id) {
-            Ok(id) ->
-              refresh_section(
-                Model(
-                  ..model,
-                  selected_project_id: opt.Some(id),
-                  toast: opt.None,
-                ),
-              )
-            Error(_) -> #(
-              Model(..model, selected_project_id: opt.None),
-              effect.none(),
-            )
-          }
-        }
+        _ -> Model(..model, selected_project_id: selected, toast: opt.None)
+      }
+
+      case model.page {
+        Member -> member_refresh(model)
+        _ -> refresh_section(model)
       }
     }
 
@@ -342,7 +493,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
       let model = ensure_default_section(model)
 
-      #(model, effect.none())
+      case model.page {
+        Member -> member_refresh(model)
+        _ -> #(model, effect.none())
+      }
     }
 
     ProjectsFetched(Error(err)) -> {
@@ -1029,6 +1183,689 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         )
       }
     }
+
+    SwitchToAdmin -> #(Model(..model, page: Admin), effect.none())
+
+    SwitchToMember -> {
+      let model = Model(..model, page: Member)
+      member_refresh(model)
+    }
+
+    MemberNavSelected(section) -> {
+      let model = Model(..model, member_section: section)
+      member_refresh(model)
+    }
+
+    MemberPoolStatusChanged(v) -> {
+      let model = Model(..model, member_filters_status: v)
+      member_refresh(model)
+    }
+
+    MemberPoolTypeChanged(v) -> {
+      let model = Model(..model, member_filters_type_id: v)
+      member_refresh(model)
+    }
+
+    MemberPoolCapabilityChanged(v) -> {
+      let model = Model(..model, member_filters_capability_id: v)
+      member_refresh(model)
+    }
+
+    MemberToggleMyCapabilitiesQuick -> #(
+      Model(..model, member_quick_my_caps: !model.member_quick_my_caps),
+      effect.none(),
+    )
+
+    MemberPoolSearchChanged(v) -> #(
+      Model(..model, member_filters_q: v),
+      effect.none(),
+    )
+
+    MemberPoolSearchDebounced(v) -> {
+      let model = Model(..model, member_filters_q: v)
+      member_refresh(model)
+    }
+
+    MemberProjectTasksFetched(project_id, Ok(tasks)) -> {
+      let tasks_by_project =
+        dict.insert(model.member_tasks_by_project, project_id, tasks)
+      let pending = model.member_tasks_pending - 1
+
+      let model =
+        Model(
+          ..model,
+          member_tasks_by_project: tasks_by_project,
+          member_tasks_pending: pending,
+        )
+
+      case pending <= 0 {
+        True -> #(
+          Model(..model, member_tasks: Loaded(flatten_tasks(tasks_by_project))),
+          effect.none(),
+        )
+        False -> #(model, effect.none())
+      }
+    }
+
+    MemberProjectTasksFetched(_project_id, Error(err)) -> {
+      case err.status {
+        401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        _ -> #(
+          Model(..model, member_tasks: Failed(err), member_tasks_pending: 0),
+          effect.none(),
+        )
+      }
+    }
+
+    MemberTaskTypesFetched(Ok(task_types)) -> #(
+      Model(..model, member_task_types: Loaded(task_types)),
+      effect.none(),
+    )
+
+    MemberTaskTypesFetched(Error(err)) -> #(
+      Model(..model, member_task_types: Failed(err)),
+      effect.none(),
+    )
+
+    MemberCanvasRectFetched(left, top) -> #(
+      Model(..model, member_canvas_left: left, member_canvas_top: top),
+      effect.none(),
+    )
+
+    MemberDragStarted(task_id, offset_x, offset_y) -> {
+      let model =
+        Model(
+          ..model,
+          member_drag: opt.Some(MemberDrag(
+            task_id: task_id,
+            offset_x: offset_x,
+            offset_y: offset_y,
+          )),
+        )
+
+      #(
+        model,
+        effect.from(fn(dispatch) {
+          let #(left, top) = element_client_offset_ffi("member-canvas")
+          dispatch(MemberCanvasRectFetched(left, top))
+        }),
+      )
+    }
+
+    MemberDragMoved(client_x, client_y) -> {
+      case model.member_drag {
+        opt.None -> #(model, effect.none())
+
+        opt.Some(drag) -> {
+          let MemberDrag(task_id: task_id, offset_x: ox, offset_y: oy) = drag
+
+          let x = client_x - model.member_canvas_left - ox
+          let y = client_y - model.member_canvas_top - oy
+
+          #(
+            Model(
+              ..model,
+              member_positions_by_task: dict.insert(
+                model.member_positions_by_task,
+                task_id,
+                #(x, y),
+              ),
+            ),
+            effect.none(),
+          )
+        }
+      }
+    }
+
+    MemberDragEnded -> {
+      case model.member_drag {
+        opt.None -> #(model, effect.none())
+
+        opt.Some(drag) -> {
+          let MemberDrag(task_id: task_id, ..) = drag
+
+          let #(x, y) = case dict.get(model.member_positions_by_task, task_id) {
+            Ok(xy) -> xy
+            Error(_) -> #(0, 0)
+          }
+
+          #(
+            Model(..model, member_drag: opt.None),
+            api.upsert_me_task_position(task_id, x, y, MemberPositionSaved),
+          )
+        }
+      }
+    }
+
+    MemberCreateDialogOpened -> #(
+      Model(
+        ..model,
+        member_create_dialog_open: True,
+        member_create_error: opt.None,
+      ),
+      effect.none(),
+    )
+
+    MemberCreateDialogClosed -> #(
+      Model(
+        ..model,
+        member_create_dialog_open: False,
+        member_create_error: opt.None,
+      ),
+      effect.none(),
+    )
+
+    MemberCreateTitleChanged(v) -> #(
+      Model(..model, member_create_title: v),
+      effect.none(),
+    )
+    MemberCreateDescriptionChanged(v) -> #(
+      Model(..model, member_create_description: v),
+      effect.none(),
+    )
+    MemberCreatePriorityChanged(v) -> #(
+      Model(..model, member_create_priority: v),
+      effect.none(),
+    )
+    MemberCreateTypeIdChanged(v) -> #(
+      Model(..model, member_create_type_id: v),
+      effect.none(),
+    )
+
+    MemberCreateSubmitted -> {
+      case model.member_create_in_flight {
+        True -> #(model, effect.none())
+        False ->
+          case model.selected_project_id {
+            opt.None -> #(
+              Model(
+                ..model,
+                member_create_error: opt.Some("Select a project first"),
+              ),
+              effect.none(),
+            )
+
+            opt.Some(project_id) -> {
+              let title = string.trim(model.member_create_title)
+
+              case title == "" {
+                True -> #(
+                  Model(
+                    ..model,
+                    member_create_error: opt.Some("Title is required"),
+                  ),
+                  effect.none(),
+                )
+
+                False ->
+                  case int.parse(model.member_create_type_id) {
+                    Error(_) -> #(
+                      Model(
+                        ..model,
+                        member_create_error: opt.Some("Type is required"),
+                      ),
+                      effect.none(),
+                    )
+
+                    Ok(type_id) -> {
+                      case int.parse(model.member_create_priority) {
+                        Ok(priority) if priority >= 1 && priority <= 5 -> {
+                          let desc =
+                            string.trim(model.member_create_description)
+                          let description = case desc == "" {
+                            True -> opt.None
+                            False -> opt.Some(desc)
+                          }
+
+                          let model =
+                            Model(
+                              ..model,
+                              member_create_in_flight: True,
+                              member_create_error: opt.None,
+                            )
+
+                          #(
+                            model,
+                            api.create_task(
+                              project_id,
+                              title,
+                              description,
+                              priority,
+                              type_id,
+                              MemberTaskCreated,
+                            ),
+                          )
+                        }
+
+                        _ -> #(
+                          Model(
+                            ..model,
+                            member_create_error: opt.Some(
+                              "Priority must be 1-5",
+                            ),
+                          ),
+                          effect.none(),
+                        )
+                      }
+                    }
+                  }
+              }
+            }
+          }
+      }
+    }
+
+    MemberTaskCreated(Ok(_)) -> {
+      let model =
+        Model(
+          ..model,
+          member_create_in_flight: False,
+          member_create_dialog_open: False,
+          member_create_title: "",
+          member_create_description: "",
+          member_create_priority: "3",
+          member_create_type_id: "",
+          toast: opt.Some("Task created"),
+        )
+      member_refresh(model)
+    }
+
+    MemberTaskCreated(Error(err)) -> {
+      case err.status {
+        401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        _ -> #(
+          Model(
+            ..model,
+            member_create_in_flight: False,
+            member_create_error: opt.Some(err.message),
+          ),
+          effect.none(),
+        )
+      }
+    }
+
+    MemberClaimClicked(task_id, version) -> {
+      case model.member_task_mutation_in_flight {
+        True -> #(model, effect.none())
+        False -> #(
+          Model(..model, member_task_mutation_in_flight: True),
+          api.claim_task(task_id, version, MemberTaskClaimed),
+        )
+      }
+    }
+
+    MemberReleaseClicked(task_id, version) -> {
+      case model.member_task_mutation_in_flight {
+        True -> #(model, effect.none())
+        False -> #(
+          Model(..model, member_task_mutation_in_flight: True),
+          api.release_task(task_id, version, MemberTaskReleased),
+        )
+      }
+    }
+
+    MemberCompleteClicked(task_id, version) -> {
+      case model.member_task_mutation_in_flight {
+        True -> #(model, effect.none())
+        False -> #(
+          Model(..model, member_task_mutation_in_flight: True),
+          api.complete_task(task_id, version, MemberTaskCompleted),
+        )
+      }
+    }
+
+    MemberTaskClaimed(Ok(_)) ->
+      member_refresh(
+        Model(
+          ..model,
+          member_task_mutation_in_flight: False,
+          toast: opt.Some("Task claimed"),
+        ),
+      )
+    MemberTaskReleased(Ok(_)) ->
+      member_refresh(
+        Model(
+          ..model,
+          member_task_mutation_in_flight: False,
+          toast: opt.Some("Task released"),
+        ),
+      )
+    MemberTaskCompleted(Ok(_)) ->
+      member_refresh(
+        Model(
+          ..model,
+          member_task_mutation_in_flight: False,
+          toast: opt.Some("Task completed"),
+        ),
+      )
+
+    MemberTaskClaimed(Error(err)) ->
+      member_handle_task_mutation_error(
+        Model(..model, member_task_mutation_in_flight: False),
+        err,
+      )
+    MemberTaskReleased(Error(err)) ->
+      member_handle_task_mutation_error(
+        Model(..model, member_task_mutation_in_flight: False),
+        err,
+      )
+    MemberTaskCompleted(Error(err)) ->
+      member_handle_task_mutation_error(
+        Model(..model, member_task_mutation_in_flight: False),
+        err,
+      )
+
+    MemberMyCapabilityIdsFetched(Ok(ids)) -> #(
+      Model(
+        ..model,
+        member_my_capability_ids: Loaded(ids),
+        member_my_capability_ids_edit: ids_to_bool_dict(ids),
+      ),
+      effect.none(),
+    )
+
+    MemberMyCapabilityIdsFetched(Error(err)) -> {
+      case err.status {
+        401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        _ -> #(
+          Model(..model, member_my_capability_ids: Failed(err)),
+          effect.none(),
+        )
+      }
+    }
+
+    MemberToggleCapability(id) -> {
+      let next = case dict.get(model.member_my_capability_ids_edit, id) {
+        Ok(v) -> !v
+        Error(_) -> True
+      }
+
+      #(
+        Model(
+          ..model,
+          member_my_capability_ids_edit: dict.insert(
+            model.member_my_capability_ids_edit,
+            id,
+            next,
+          ),
+        ),
+        effect.none(),
+      )
+    }
+
+    MemberSaveCapabilitiesClicked -> {
+      case model.member_my_capabilities_in_flight {
+        True -> #(model, effect.none())
+        False -> {
+          let ids = bool_dict_to_ids(model.member_my_capability_ids_edit)
+          let model =
+            Model(
+              ..model,
+              member_my_capabilities_in_flight: True,
+              member_my_capabilities_error: opt.None,
+            )
+          #(model, api.put_me_capability_ids(ids, MemberMyCapabilityIdsSaved))
+        }
+      }
+    }
+
+    MemberMyCapabilityIdsSaved(Ok(ids)) -> #(
+      Model(
+        ..model,
+        member_my_capabilities_in_flight: False,
+        member_my_capability_ids: Loaded(ids),
+        member_my_capability_ids_edit: ids_to_bool_dict(ids),
+        toast: opt.Some("Skills saved"),
+      ),
+      effect.none(),
+    )
+
+    MemberMyCapabilityIdsSaved(Error(err)) -> {
+      case err.status {
+        401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        _ -> #(
+          Model(
+            ..model,
+            member_my_capabilities_in_flight: False,
+            member_my_capabilities_error: opt.Some(err.message),
+            toast: opt.Some(err.message),
+          ),
+          api.get_me_capability_ids(MemberMyCapabilityIdsFetched),
+        )
+      }
+    }
+
+    MemberPositionsFetched(Ok(positions)) -> #(
+      Model(..model, member_positions_by_task: positions_to_dict(positions)),
+      effect.none(),
+    )
+
+    MemberPositionsFetched(Error(err)) -> {
+      case err.status {
+        401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        _ -> #(model, effect.none())
+      }
+    }
+
+    MemberPositionEditOpened(task_id) -> {
+      let #(x, y) = case dict.get(model.member_positions_by_task, task_id) {
+        Ok(xy) -> xy
+        Error(_) -> #(0, 0)
+      }
+
+      #(
+        Model(
+          ..model,
+          member_position_edit_task: opt.Some(task_id),
+          member_position_edit_x: int.to_string(x),
+          member_position_edit_y: int.to_string(y),
+          member_position_edit_error: opt.None,
+        ),
+        effect.none(),
+      )
+    }
+
+    MemberPositionEditClosed -> #(
+      Model(
+        ..model,
+        member_position_edit_task: opt.None,
+        member_position_edit_error: opt.None,
+      ),
+      effect.none(),
+    )
+
+    MemberPositionEditXChanged(v) -> #(
+      Model(..model, member_position_edit_x: v),
+      effect.none(),
+    )
+    MemberPositionEditYChanged(v) -> #(
+      Model(..model, member_position_edit_y: v),
+      effect.none(),
+    )
+
+    MemberPositionEditSubmitted -> {
+      case model.member_position_edit_in_flight {
+        True -> #(model, effect.none())
+        False ->
+          case model.member_position_edit_task {
+            opt.None -> #(model, effect.none())
+            opt.Some(task_id) ->
+              case
+                int.parse(model.member_position_edit_x),
+                int.parse(model.member_position_edit_y)
+              {
+                Ok(x), Ok(y) -> {
+                  let model =
+                    Model(
+                      ..model,
+                      member_position_edit_in_flight: True,
+                      member_position_edit_error: opt.None,
+                    )
+                  #(
+                    model,
+                    api.upsert_me_task_position(
+                      task_id,
+                      x,
+                      y,
+                      MemberPositionSaved,
+                    ),
+                  )
+                }
+                _, _ -> #(
+                  Model(
+                    ..model,
+                    member_position_edit_error: opt.Some("Invalid x/y"),
+                  ),
+                  effect.none(),
+                )
+              }
+          }
+      }
+    }
+
+    MemberPositionSaved(Ok(pos)) -> {
+      let api.TaskPosition(task_id: task_id, x: x, y: y, ..) = pos
+
+      #(
+        Model(
+          ..model,
+          member_position_edit_in_flight: False,
+          member_position_edit_task: opt.None,
+          member_positions_by_task: dict.insert(
+            model.member_positions_by_task,
+            task_id,
+            #(x, y),
+          ),
+        ),
+        effect.none(),
+      )
+    }
+
+    MemberPositionSaved(Error(err)) -> {
+      case err.status {
+        401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        _ -> #(
+          Model(
+            ..model,
+            member_position_edit_in_flight: False,
+            member_position_edit_error: opt.Some(err.message),
+            toast: opt.Some(err.message),
+          ),
+          api.list_me_task_positions(
+            model.selected_project_id,
+            MemberPositionsFetched,
+          ),
+        )
+      }
+    }
+
+    MemberTaskDetailsOpened(task_id) -> #(
+      Model(
+        ..model,
+        member_notes_task_id: opt.Some(task_id),
+        member_notes: Loading,
+        member_note_error: opt.None,
+      ),
+      api.list_task_notes(task_id, MemberNotesFetched),
+    )
+
+    MemberTaskDetailsClosed -> #(
+      Model(
+        ..model,
+        member_notes_task_id: opt.None,
+        member_notes: NotAsked,
+        member_note_content: "",
+        member_note_error: opt.None,
+      ),
+      effect.none(),
+    )
+
+    MemberNotesFetched(Ok(notes)) -> #(
+      Model(..model, member_notes: Loaded(notes)),
+      effect.none(),
+    )
+    MemberNotesFetched(Error(err)) -> {
+      case err.status {
+        401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        _ -> #(Model(..model, member_notes: Failed(err)), effect.none())
+      }
+    }
+
+    MemberNoteContentChanged(v) -> #(
+      Model(..model, member_note_content: v),
+      effect.none(),
+    )
+
+    MemberNoteSubmitted -> {
+      case model.member_note_in_flight {
+        True -> #(model, effect.none())
+        False ->
+          case model.member_notes_task_id {
+            opt.None -> #(model, effect.none())
+            opt.Some(task_id) -> {
+              let content = string.trim(model.member_note_content)
+              case content == "" {
+                True -> #(
+                  Model(
+                    ..model,
+                    member_note_error: opt.Some("Content required"),
+                  ),
+                  effect.none(),
+                )
+                False -> {
+                  let model =
+                    Model(
+                      ..model,
+                      member_note_in_flight: True,
+                      member_note_error: opt.None,
+                    )
+                  #(model, api.add_task_note(task_id, content, MemberNoteAdded))
+                }
+              }
+            }
+          }
+      }
+    }
+
+    MemberNoteAdded(Ok(note)) -> {
+      let updated = case model.member_notes {
+        Loaded(notes) -> [note, ..notes]
+        _ -> [note]
+      }
+
+      #(
+        Model(
+          ..model,
+          member_note_in_flight: False,
+          member_note_content: "",
+          member_notes: Loaded(updated),
+          toast: opt.Some("Note added"),
+        ),
+        effect.none(),
+      )
+    }
+
+    MemberNoteAdded(Error(err)) -> {
+      case err.status {
+        401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        _ -> {
+          let model =
+            Model(
+              ..model,
+              member_note_in_flight: False,
+              member_note_error: opt.Some(err.message),
+            )
+
+          case model.member_notes_task_id {
+            opt.Some(task_id) -> #(
+              model,
+              api.list_task_notes(task_id, MemberNotesFetched),
+            )
+            opt.None -> #(model, effect.none())
+          }
+        }
+      }
+    }
   }
 }
 
@@ -1040,6 +1877,7 @@ fn bootstrap_admin(model: Model) -> #(Model, Effect(Msg)) {
     effect.batch([
       api.list_projects(ProjectsFetched),
       api.list_capabilities(CapabilitiesFetched),
+      api.get_me_capability_ids(MemberMyCapabilityIdsFetched),
     ]),
   )
 }
@@ -1152,6 +1990,16 @@ fn copy_to_clipboard_ffi(_text: String, _cb: fn(Bool) -> Nil) -> Nil {
   Nil
 }
 
+@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "days_since_iso")
+fn days_since_iso_ffi(_iso: String) -> Int {
+  0
+}
+
+@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "element_client_offset")
+fn element_client_offset_ffi(_id: String) -> #(Int, Int) {
+  #(0, 0)
+}
+
 fn copy_to_clipboard(text: String, msg: fn(Bool) -> Msg) -> Effect(Msg) {
   effect.from(fn(dispatch) {
     copy_to_clipboard_ffi(text, fn(ok) { dispatch(msg(ok)) })
@@ -1193,6 +2041,7 @@ fn view(model: Model) -> Element(Msg) {
     case model.page {
       Login -> view_login(model)
       Admin -> view_admin(model)
+      Member -> view_member(model)
     },
   ])
 }
@@ -1288,6 +2137,7 @@ fn view_topbar(model: Model, user: User) -> Element(Msg) {
     },
     div([attribute.class("topbar-actions")], [
       span([attribute.class("user")], [text(user.email)]),
+      button([event.on_click(SwitchToMember)], [text("App")]),
       button([event.on_click(LogoutClicked)], [text("Logout")]),
     ]),
   ])
@@ -1301,6 +2151,11 @@ fn view_project_selector(model: Model) -> Element(Msg) {
     opt.None -> ""
   }
 
+  let empty_label = case model.page {
+    Member -> "All projects"
+    _ -> "Select project"
+  }
+
   div([attribute.class("project-selector")], [
     label([], [text("Project")]),
     select(
@@ -1309,7 +2164,7 @@ fn view_project_selector(model: Model) -> Element(Msg) {
         event.on_input(ProjectSelected),
       ],
       [
-        option([attribute.value("")], "Select project"),
+        option([attribute.value("")], empty_label),
         ..list.map(projects, fn(p) {
           option([attribute.value(int.to_string(p.id))], p.name)
         })
@@ -1944,6 +2799,829 @@ fn view_task_types_list(task_types: Remote(List(api.TaskType))) -> Element(Msg) 
               }),
             ),
           ])
+      }
+  }
+}
+
+// --- Member UI (Story 1.8) ---
+
+fn view_member(model: Model) -> Element(Msg) {
+  case model.user {
+    opt.None -> view_login(model)
+
+    opt.Some(user) ->
+      div([attribute.class("member")], [
+        view_member_topbar(model, user),
+        div([attribute.class("body")], [
+          view_member_nav(model),
+          div([attribute.class("content")], [view_member_section(model, user)]),
+        ]),
+      ])
+  }
+}
+
+fn view_member_topbar(model: Model, user: User) -> Element(Msg) {
+  div([attribute.class("topbar")], [
+    div([attribute.class("topbar-title")], [
+      text(case model.member_section {
+        Pool -> "Pool"
+        MyBar -> "My Bar"
+        MySkills -> "My Skills"
+      }),
+    ]),
+    view_project_selector(model),
+    div([attribute.class("topbar-actions")], [
+      case user.org_role {
+        org_role.Admin ->
+          button([event.on_click(SwitchToAdmin)], [text("Admin")])
+        _ -> div([], [])
+      },
+      span([attribute.class("user")], [text(user.email)]),
+      button([event.on_click(LogoutClicked)], [text("Logout")]),
+    ]),
+  ])
+}
+
+fn view_member_nav(model: Model) -> Element(Msg) {
+  div([attribute.class("nav")], [
+    h3([], [text("App")]),
+    div([], [
+      view_member_nav_button(model, Pool, "Pool"),
+      view_member_nav_button(model, MyBar, "My Bar"),
+      view_member_nav_button(model, MySkills, "My Skills"),
+    ]),
+  ])
+}
+
+fn view_member_nav_button(
+  model: Model,
+  section: MemberSection,
+  label: String,
+) -> Element(Msg) {
+  let classes = case section == model.member_section {
+    True -> "nav-item active"
+    False -> "nav-item"
+  }
+
+  button(
+    [attribute.class(classes), event.on_click(MemberNavSelected(section))],
+    [text(label)],
+  )
+}
+
+fn view_member_section(model: Model, user: User) -> Element(Msg) {
+  case model.member_section {
+    Pool -> view_member_pool(model)
+    MyBar -> view_member_bar(model, user)
+    MySkills -> view_member_skills(model)
+  }
+}
+
+fn view_member_pool(model: Model) -> Element(Msg) {
+  case active_projects(model) {
+    [] ->
+      div([attribute.class("empty")], [
+        text("You are not in any project yet. Ask an admin to add you."),
+      ])
+
+    _ ->
+      div([attribute.class("section")], [
+        view_member_filters(model),
+        button([event.on_click(MemberCreateDialogOpened)], [text("New task")]),
+        case model.member_create_dialog_open {
+          True -> view_member_create_dialog(model)
+          False -> div([], [])
+        },
+        view_member_tasks(model),
+        case model.member_notes_task_id {
+          opt.Some(task_id) -> view_member_task_details(model, task_id)
+          opt.None -> div([], [])
+        },
+        case model.member_position_edit_task {
+          opt.Some(task_id) -> view_member_position_edit(model, task_id)
+          opt.None -> div([], [])
+        },
+      ])
+  }
+}
+
+fn view_member_filters(model: Model) -> Element(Msg) {
+  let project_selected = case model.selected_project_id {
+    opt.Some(_) -> True
+    opt.None -> False
+  }
+
+  let type_options = case model.member_task_types, project_selected {
+    Loaded(task_types), True -> [
+      option([attribute.value("")], "All"),
+      ..list.map(task_types, fn(tt) {
+        option([attribute.value(int.to_string(tt.id))], tt.name)
+      })
+    ]
+    _, _ -> [option([attribute.value("")], "All")]
+  }
+
+  let capability_options = case model.capabilities {
+    Loaded(caps) -> [
+      option([attribute.value("")], "All"),
+      ..list.map(caps, fn(c) {
+        option([attribute.value(int.to_string(c.id))], c.name)
+      })
+    ]
+    _ -> [option([attribute.value("")], "All")]
+  }
+
+  div([attribute.class("filters")], [
+    div([attribute.class("field")], [
+      label([], [text("Status")]),
+      select(
+        [
+          attribute.value(model.member_filters_status),
+          event.on_input(MemberPoolStatusChanged),
+        ],
+        [
+          option([attribute.value("")], "All"),
+          option([attribute.value("available")], "Available"),
+          option([attribute.value("claimed")], "Claimed"),
+          option([attribute.value("completed")], "Completed"),
+        ],
+      ),
+    ]),
+    div([attribute.class("field")], [
+      label([], [text("Type")]),
+      select(
+        [
+          attribute.value(model.member_filters_type_id),
+          event.on_input(MemberPoolTypeChanged),
+          attribute.disabled(!project_selected),
+        ],
+        type_options,
+      ),
+    ]),
+    div([attribute.class("field")], [
+      label([], [text("Capability")]),
+      select(
+        [
+          attribute.value(model.member_filters_capability_id),
+          event.on_input(MemberPoolCapabilityChanged),
+        ],
+        capability_options,
+      ),
+      button([event.on_click(MemberToggleMyCapabilitiesQuick)], [
+        text(case model.member_quick_my_caps {
+          True -> "My capabilities: ON"
+          False -> "My capabilities: OFF"
+        }),
+      ]),
+    ]),
+    div([attribute.class("field")], [
+      label([], [text("Search")]),
+      input([
+        attribute.type_("text"),
+        attribute.value(model.member_filters_q),
+        event.on_input(MemberPoolSearchChanged),
+        event.debounce(event.on_input(MemberPoolSearchDebounced), 350),
+        attribute.placeholder("q..."),
+      ]),
+    ]),
+  ])
+}
+
+fn view_member_tasks(model: Model) -> Element(Msg) {
+  case model.member_tasks {
+    NotAsked | Loading -> div([attribute.class("empty")], [text("Loading...")])
+    Failed(err) -> div([attribute.class("error")], [text(err.message)])
+
+    Loaded(tasks) ->
+      case tasks {
+        [] ->
+          div([attribute.class("empty")], [text("No tasks match your filters")])
+
+        _ ->
+          div(
+            [
+              attribute.attribute("id", "member-canvas"),
+              attribute.attribute(
+                "style",
+                "position: relative; min-height: 600px; touch-action: none;",
+              ),
+              event.on("mousemove", {
+                use x <- decode.field("clientX", decode.int)
+                use y <- decode.field("clientY", decode.int)
+                decode.success(MemberDragMoved(x, y))
+              }),
+              event.on("mouseup", decode.success(MemberDragEnded)),
+              event.on("mouseleave", decode.success(MemberDragEnded)),
+            ],
+            list.map(tasks, fn(task) { view_member_task_card(model, task) }),
+          )
+      }
+  }
+}
+
+fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
+  let api.Task(
+    id: id,
+    type_id: type_id,
+    title: title,
+    priority: priority,
+    status: status,
+    claimed_by: claimed_by,
+    created_at: created_at,
+    version: version,
+    ..,
+  ) = task
+
+  let current_user_id = case model.user {
+    opt.Some(u) -> u.id
+    opt.None -> 0
+  }
+
+  let is_mine = claimed_by == opt.Some(current_user_id)
+
+  let task_type = member_task_type_by_id(model.member_task_types, type_id)
+
+  let type_label = case task_type {
+    opt.Some(tt) -> tt.name <> " (" <> tt.icon <> ")"
+    opt.None -> "Type #" <> int.to_string(type_id)
+  }
+
+  let highlight = member_should_highlight_task(model, task_type)
+
+  let #(x, y) = case dict.get(model.member_positions_by_task, id) {
+    Ok(xy) -> xy
+    Error(_) -> #(0, 0)
+  }
+
+  let size = member_visuals.priority_to_px(priority)
+
+  let age_days = age_in_days(created_at)
+
+  let #(opacity, saturation) = decay_to_visuals(age_days)
+
+  let border = case highlight {
+    True -> "2px solid #0f766e"
+    False -> "1px solid #ddd"
+  }
+
+  let style =
+    "position:absolute; left:"
+    <> int.to_string(x)
+    <> "px; top:"
+    <> int.to_string(y)
+    <> "px; width:"
+    <> int.to_string(size)
+    <> "px; height:"
+    <> int.to_string(size)
+    <> "px; border:"
+    <> border
+    <> "; padding:8px; background:#fff; overflow:hidden; opacity:"
+    <> float.to_string(opacity)
+    <> "; filter:saturate("
+    <> float.to_string(saturation)
+    <> ");"
+
+  let disable_actions = model.member_task_mutation_in_flight
+
+  div([attribute.attribute("style", style)], [
+    div(
+      [
+        attribute.attribute(
+          "style",
+          "display:flex; justify-content:space-between; align-items:flex-start; gap:8px;",
+        ),
+      ],
+      [
+        h3([], [text(title)]),
+        div(
+          [
+            attribute.attribute(
+              "style",
+              "cursor:grab; user-select:none; padding:2px 6px; border:1px solid #ddd;",
+            ),
+            event.on("mousedown", {
+              use ox <- decode.field("offsetX", decode.int)
+              use oy <- decode.field("offsetY", decode.int)
+              decode.success(MemberDragStarted(id, ox, oy))
+            }),
+          ],
+          [text("Drag")],
+        ),
+      ],
+    ),
+    p([], [text("type: " <> type_label)]),
+    p([], [text("age: " <> int.to_string(age_days) <> "d")]),
+    p([], [text("status: " <> status)]),
+    div([attribute.class("actions")], [
+      case status, is_mine {
+        "available", _ ->
+          button(
+            [
+              event.on_click(MemberClaimClicked(id, version)),
+              attribute.disabled(disable_actions),
+            ],
+            [text("Claim")],
+          )
+
+        "claimed", True ->
+          div([], [
+            button(
+              [
+                event.on_click(MemberReleaseClicked(id, version)),
+                attribute.disabled(disable_actions),
+              ],
+              [text("Release")],
+            ),
+            button(
+              [
+                event.on_click(MemberCompleteClicked(id, version)),
+                attribute.disabled(disable_actions),
+              ],
+              [text("Complete")],
+            ),
+          ])
+
+        _, _ -> div([], [])
+      },
+      button(
+        [
+          event.on_click(MemberTaskDetailsOpened(id)),
+          attribute.disabled(disable_actions),
+        ],
+        [text("Notes")],
+      ),
+      button(
+        [
+          event.on_click(MemberPositionEditOpened(id)),
+          attribute.disabled(disable_actions),
+        ],
+        [text("Position")],
+      ),
+    ]),
+  ])
+}
+
+fn view_member_create_dialog(model: Model) -> Element(Msg) {
+  div([attribute.class("modal")], [
+    div([attribute.class("modal-content")], [
+      h3([], [text("New task")]),
+      case model.member_create_error {
+        opt.Some(err) -> div([attribute.class("error")], [text(err)])
+        opt.None -> div([], [])
+      },
+      div([attribute.class("field")], [
+        label([], [text("Title")]),
+        input([
+          attribute.type_("text"),
+          attribute.value(model.member_create_title),
+          event.on_input(MemberCreateTitleChanged),
+        ]),
+      ]),
+      div([attribute.class("field")], [
+        label([], [text("Description")]),
+        input([
+          attribute.type_("text"),
+          attribute.value(model.member_create_description),
+          event.on_input(MemberCreateDescriptionChanged),
+        ]),
+      ]),
+      div([attribute.class("field")], [
+        label([], [text("Priority")]),
+        input([
+          attribute.type_("number"),
+          attribute.value(model.member_create_priority),
+          event.on_input(MemberCreatePriorityChanged),
+        ]),
+      ]),
+      div([attribute.class("field")], [
+        label([], [text("Type")]),
+        select(
+          [
+            attribute.value(model.member_create_type_id),
+            event.on_input(MemberCreateTypeIdChanged),
+          ],
+          case model.member_task_types {
+            Loaded(task_types) -> [
+              option([attribute.value("")], "Select type"),
+              ..list.map(task_types, fn(tt) {
+                option([attribute.value(int.to_string(tt.id))], tt.name)
+              })
+            ]
+            _ -> [option([attribute.value("")], "Loading...")]
+          },
+        ),
+      ]),
+      div([attribute.class("actions")], [
+        button([event.on_click(MemberCreateDialogClosed)], [text("Cancel")]),
+        button(
+          [
+            event.on_click(MemberCreateSubmitted),
+            attribute.disabled(model.member_create_in_flight),
+          ],
+          [
+            text(case model.member_create_in_flight {
+              True -> "Creating..."
+              False -> "Create"
+            }),
+          ],
+        ),
+      ]),
+    ]),
+  ])
+}
+
+fn view_member_bar(model: Model, user: User) -> Element(Msg) {
+  case active_projects(model) {
+    [] ->
+      div([attribute.class("empty")], [
+        text("You are not in any project yet. Ask an admin to add you."),
+      ])
+
+    _ -> {
+      let tasks = case model.member_tasks {
+        Loaded(tasks) -> tasks
+        _ -> []
+      }
+
+      let mine =
+        tasks
+        |> list.filter(fn(t) {
+          let api.Task(claimed_by: claimed_by, ..) = t
+          claimed_by == opt.Some(user.id)
+        })
+
+      div([attribute.class("section")], [
+        case mine {
+          [] -> div([attribute.class("empty")], [text("No claimed tasks yet")])
+          _ ->
+            div([], list.map(mine, fn(t) { view_member_task_card(model, t) }))
+        },
+      ])
+    }
+  }
+}
+
+fn view_member_skills(model: Model) -> Element(Msg) {
+  div([attribute.class("section")], [
+    h2([], [text("My Skills")]),
+    case model.member_my_capabilities_error {
+      opt.Some(err) -> div([attribute.class("error")], [text(err)])
+      opt.None -> div([], [])
+    },
+    view_member_skills_list(model),
+    button(
+      [
+        event.on_click(MemberSaveCapabilitiesClicked),
+        attribute.disabled(model.member_my_capabilities_in_flight),
+      ],
+      [
+        text(case model.member_my_capabilities_in_flight {
+          True -> "Saving..."
+          False -> "Save"
+        }),
+      ],
+    ),
+  ])
+}
+
+fn view_member_skills_list(model: Model) -> Element(Msg) {
+  case model.capabilities {
+    Loaded(capabilities) ->
+      div(
+        [],
+        list.map(capabilities, fn(c) {
+          let selected = case
+            dict.get(model.member_my_capability_ids_edit, c.id)
+          {
+            Ok(v) -> v
+            Error(_) -> False
+          }
+
+          div([attribute.class("field")], [
+            label([], [text(c.name)]),
+            input([
+              attribute.type_("checkbox"),
+              attribute.attribute("checked", case selected {
+                True -> "true"
+                False -> "false"
+              }),
+              event.on_click(MemberToggleCapability(c.id)),
+            ]),
+          ])
+        }),
+      )
+
+    _ -> div([attribute.class("empty")], [text("Loading...")])
+  }
+}
+
+fn view_member_position_edit(model: Model, _task_id: Int) -> Element(Msg) {
+  div([attribute.class("modal")], [
+    div([attribute.class("modal-content")], [
+      h3([], [text("Edit position")]),
+      case model.member_position_edit_error {
+        opt.Some(err) -> div([attribute.class("error")], [text(err)])
+        opt.None -> div([], [])
+      },
+      div([attribute.class("field")], [
+        label([], [text("x")]),
+        input([
+          attribute.type_("number"),
+          attribute.value(model.member_position_edit_x),
+          event.on_input(MemberPositionEditXChanged),
+        ]),
+      ]),
+      div([attribute.class("field")], [
+        label([], [text("y")]),
+        input([
+          attribute.type_("number"),
+          attribute.value(model.member_position_edit_y),
+          event.on_input(MemberPositionEditYChanged),
+        ]),
+      ]),
+      div([attribute.class("actions")], [
+        button([event.on_click(MemberPositionEditClosed)], [text("Cancel")]),
+        button(
+          [
+            event.on_click(MemberPositionEditSubmitted),
+            attribute.disabled(model.member_position_edit_in_flight),
+          ],
+          [
+            text(case model.member_position_edit_in_flight {
+              True -> "Saving..."
+              False -> "Save"
+            }),
+          ],
+        ),
+      ]),
+    ]),
+  ])
+}
+
+fn view_member_task_details(model: Model, task_id: Int) -> Element(Msg) {
+  div([attribute.class("modal")], [
+    div([attribute.class("modal-content")], [
+      h3([], [text("Notes")]),
+      button([event.on_click(MemberTaskDetailsClosed)], [text("Close")]),
+      view_member_notes(model, task_id),
+    ]),
+  ])
+}
+
+fn view_member_notes(model: Model, _task_id: Int) -> Element(Msg) {
+  let current_user_id = case model.user {
+    opt.Some(u) -> u.id
+    opt.None -> 0
+  }
+
+  div([], [
+    case model.member_notes {
+      NotAsked | Loading ->
+        div([attribute.class("empty")], [text("Loading...")])
+      Failed(err) -> div([attribute.class("error")], [text(err.message)])
+      Loaded(notes) ->
+        div(
+          [],
+          list.map(notes, fn(n) {
+            let api.TaskNote(
+              user_id: user_id,
+              content: content,
+              created_at: created_at,
+              ..,
+            ) = n
+            let author = case user_id == current_user_id {
+              True -> "You"
+              False -> "User #" <> int.to_string(user_id)
+            }
+
+            div([attribute.class("note")], [
+              p([], [text(author <> " @ " <> created_at)]),
+              p([], [text(content)]),
+            ])
+          }),
+        )
+    },
+    case model.member_note_error {
+      opt.Some(err) -> div([attribute.class("error")], [text(err)])
+      opt.None -> div([], [])
+    },
+    div([attribute.class("field")], [
+      label([], [text("Add note")]),
+      input([
+        attribute.type_("text"),
+        attribute.value(model.member_note_content),
+        event.on_input(MemberNoteContentChanged),
+      ]),
+    ]),
+    button(
+      [
+        event.on_click(MemberNoteSubmitted),
+        attribute.disabled(model.member_note_in_flight),
+      ],
+      [
+        text(case model.member_note_in_flight {
+          True -> "Adding..."
+          False -> "Add"
+        }),
+      ],
+    ),
+  ])
+}
+
+fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
+  case model.member_section {
+    MySkills -> #(model, effect.none())
+
+    _ -> {
+      let projects = active_projects(model)
+
+      let project_ids = case model.selected_project_id {
+        opt.Some(project_id) -> [project_id]
+        opt.None -> projects |> list.map(fn(p) { p.id })
+      }
+
+      case project_ids {
+        [] -> #(
+          Model(
+            ..model,
+            member_tasks: NotAsked,
+            member_tasks_pending: 0,
+            member_tasks_by_project: dict.new(),
+            member_task_types: NotAsked,
+          ),
+          effect.none(),
+        )
+
+        _ -> {
+          let filters = case model.member_section {
+            MyBar ->
+              api.TaskFilters(
+                status: opt.Some("claimed"),
+                type_id: opt.None,
+                capability_id: opt.None,
+                q: opt.None,
+              )
+
+            _ ->
+              api.TaskFilters(
+                status: empty_to_opt(model.member_filters_status),
+                type_id: empty_to_int_opt(model.member_filters_type_id),
+                capability_id: empty_to_int_opt(
+                  model.member_filters_capability_id,
+                ),
+                q: empty_to_opt(model.member_filters_q),
+              )
+          }
+
+          let task_types_effect = case model.selected_project_id {
+            opt.Some(project_id) ->
+              api.list_task_types(project_id, MemberTaskTypesFetched)
+            opt.None -> effect.none()
+          }
+
+          let positions_effect =
+            api.list_me_task_positions(
+              model.selected_project_id,
+              MemberPositionsFetched,
+            )
+
+          let task_effects =
+            list.map(project_ids, fn(project_id) {
+              api.list_project_tasks(project_id, filters, fn(result) {
+                MemberProjectTasksFetched(project_id, result)
+              })
+            })
+
+          let effects =
+            list.append(task_effects, [positions_effect, task_types_effect])
+
+          let model =
+            Model(
+              ..model,
+              member_tasks: Loading,
+              member_tasks_pending: list.length(project_ids),
+              member_tasks_by_project: dict.new(),
+              member_task_types: case model.selected_project_id {
+                opt.Some(_) -> Loading
+                opt.None -> NotAsked
+              },
+            )
+
+          #(model, effect.batch(effects))
+        }
+      }
+    }
+  }
+}
+
+fn member_handle_task_mutation_error(
+  model: Model,
+  err: api.ApiError,
+) -> #(Model, Effect(Msg)) {
+  case err.status {
+    401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
+    _ -> member_refresh(Model(..model, toast: opt.Some(err.message)))
+  }
+}
+
+fn empty_to_opt(value: String) -> opt.Option(String) {
+  case string.trim(value) == "" {
+    True -> opt.None
+    False -> opt.Some(value)
+  }
+}
+
+fn empty_to_int_opt(value: String) -> opt.Option(Int) {
+  let trimmed = string.trim(value)
+
+  case trimmed == "" {
+    True -> opt.None
+    False ->
+      case int.parse(trimmed) {
+        Ok(i) -> opt.Some(i)
+        Error(_) -> opt.None
+      }
+  }
+}
+
+fn ids_to_bool_dict(ids: List(Int)) -> dict.Dict(Int, Bool) {
+  ids |> list.fold(dict.new(), fn(acc, id) { dict.insert(acc, id, True) })
+}
+
+fn bool_dict_to_ids(values: dict.Dict(Int, Bool)) -> List(Int) {
+  values
+  |> dict.to_list
+  |> list.filter_map(fn(pair) {
+    let #(id, selected) = pair
+    case selected {
+      True -> Ok(id)
+      False -> Error(Nil)
+    }
+  })
+}
+
+fn positions_to_dict(
+  positions: List(api.TaskPosition),
+) -> dict.Dict(Int, #(Int, Int)) {
+  positions
+  |> list.fold(dict.new(), fn(acc, pos) {
+    let api.TaskPosition(task_id: task_id, x: x, y: y, ..) = pos
+    dict.insert(acc, task_id, #(x, y))
+  })
+}
+
+fn flatten_tasks(
+  tasks_by_project: dict.Dict(Int, List(api.Task)),
+) -> List(api.Task) {
+  tasks_by_project
+  |> dict.to_list
+  |> list.fold([], fn(acc, pair) {
+    let #(_project_id, tasks) = pair
+    list.append(acc, tasks)
+  })
+}
+
+fn age_in_days(created_at: String) -> Int {
+  days_since_iso_ffi(created_at)
+}
+
+fn decay_to_visuals(age_days: Int) -> #(Float, Float) {
+  case age_days {
+    d if d < 9 -> #(1.0, 1.0)
+    d if d < 18 -> #(0.95, 0.85)
+    d if d < 27 -> #(0.85, 0.65)
+    _ -> #(0.8, 0.55)
+  }
+}
+
+fn member_task_type_by_id(
+  task_types: Remote(List(api.TaskType)),
+  type_id: Int,
+) -> opt.Option(api.TaskType) {
+  case task_types {
+    Loaded(task_types) ->
+      case list.find(task_types, fn(tt) { tt.id == type_id }) {
+        Ok(tt) -> opt.Some(tt)
+        Error(_) -> opt.None
+      }
+    _ -> opt.None
+  }
+}
+
+fn member_should_highlight_task(
+  model: Model,
+  task_type: opt.Option(api.TaskType),
+) -> Bool {
+  case model.member_quick_my_caps {
+    False -> False
+    True ->
+      case model.member_my_capability_ids, task_type {
+        Loaded(my_ids), opt.Some(tt) ->
+          case tt.capability_id {
+            opt.Some(cap_id) -> list.any(my_ids, fn(id) { id == cap_id })
+            opt.None -> False
+          }
+        _, _ -> False
       }
   }
 }

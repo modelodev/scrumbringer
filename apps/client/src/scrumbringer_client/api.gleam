@@ -47,6 +47,38 @@ pub type OrgUser {
   OrgUser(id: Int, email: String, org_role: String, created_at: String)
 }
 
+pub type Task {
+  Task(
+    id: Int,
+    project_id: Int,
+    type_id: Int,
+    title: String,
+    description: option.Option(String),
+    priority: Int,
+    status: String,
+    created_by: Int,
+    claimed_by: option.Option(Int),
+    claimed_at: option.Option(String),
+    completed_at: option.Option(String),
+    created_at: String,
+    version: Int,
+  )
+}
+
+pub type TaskNote {
+  TaskNote(
+    id: Int,
+    task_id: Int,
+    user_id: Int,
+    content: String,
+    created_at: String,
+  )
+}
+
+pub type TaskPosition {
+  TaskPosition(task_id: Int, user_id: Int, x: Int, y: Int, updated_at: String)
+}
+
 pub fn should_attach_csrf(method: String) -> Bool {
   case string.uppercase(method) {
     "POST" | "PUT" | "PATCH" | "DELETE" -> True
@@ -302,6 +334,92 @@ fn org_user_decoder() -> decode.Decoder(OrgUser) {
   ))
 }
 
+fn task_decoder() -> decode.Decoder(Task) {
+  use id <- decode.field("id", decode.int)
+  use project_id <- decode.field("project_id", decode.int)
+  use type_id <- decode.field("type_id", decode.int)
+  use title <- decode.field("title", decode.string)
+
+  use description <- decode.optional_field(
+    "description",
+    option.None,
+    decode.optional(decode.string),
+  )
+
+  use priority <- decode.field("priority", decode.int)
+  use status <- decode.field("status", decode.string)
+  use created_by <- decode.field("created_by", decode.int)
+
+  use claimed_by <- decode.optional_field(
+    "claimed_by",
+    option.None,
+    decode.optional(decode.int),
+  )
+
+  use claimed_at <- decode.optional_field(
+    "claimed_at",
+    option.None,
+    decode.optional(decode.string),
+  )
+
+  use completed_at <- decode.optional_field(
+    "completed_at",
+    option.None,
+    decode.optional(decode.string),
+  )
+
+  use created_at <- decode.field("created_at", decode.string)
+  use version <- decode.field("version", decode.int)
+
+  decode.success(Task(
+    id: id,
+    project_id: project_id,
+    type_id: type_id,
+    title: title,
+    description: description,
+    priority: priority,
+    status: status,
+    created_by: created_by,
+    claimed_by: claimed_by,
+    claimed_at: claimed_at,
+    completed_at: completed_at,
+    created_at: created_at,
+    version: version,
+  ))
+}
+
+fn note_decoder() -> decode.Decoder(TaskNote) {
+  use id <- decode.field("id", decode.int)
+  use task_id <- decode.field("task_id", decode.int)
+  use user_id <- decode.field("user_id", decode.int)
+  use content <- decode.field("content", decode.string)
+  use created_at <- decode.field("created_at", decode.string)
+
+  decode.success(TaskNote(
+    id: id,
+    task_id: task_id,
+    user_id: user_id,
+    content: content,
+    created_at: created_at,
+  ))
+}
+
+fn position_decoder() -> decode.Decoder(TaskPosition) {
+  use task_id <- decode.field("task_id", decode.int)
+  use user_id <- decode.field("user_id", decode.int)
+  use x <- decode.field("x", decode.int)
+  use y <- decode.field("y", decode.int)
+  use updated_at <- decode.field("updated_at", decode.string)
+
+  decode.success(TaskPosition(
+    task_id: task_id,
+    user_id: user_id,
+    x: x,
+    y: y,
+    updated_at: updated_at,
+  ))
+}
+
 pub fn fetch_me(to_msg: fn(ApiResult(User)) -> msg) -> Effect(msg) {
   request("GET", "/api/v1/auth/me", option.None, user_decoder(), to_msg)
 }
@@ -461,6 +579,245 @@ pub fn list_task_types(
     decoder,
     to_msg,
   )
+}
+
+pub type TaskFilters {
+  TaskFilters(
+    status: option.Option(String),
+    type_id: option.Option(Int),
+    capability_id: option.Option(Int),
+    q: option.Option(String),
+  )
+}
+
+pub fn project_tasks_url(project_id: Int, filters: TaskFilters) -> String {
+  let TaskFilters(
+    status: status,
+    type_id: type_id,
+    capability_id: capability_id,
+    q: q,
+  ) = filters
+
+  let params =
+    ""
+    |> add_param_string("status", status)
+    |> add_param_int("type_id", type_id)
+    |> add_param_int("capability_id", capability_id)
+    |> add_param_string("q", q)
+
+  "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks" <> params
+}
+
+pub fn list_project_tasks(
+  project_id: Int,
+  filters: TaskFilters,
+  to_msg: fn(ApiResult(List(Task))) -> msg,
+) -> Effect(msg) {
+  let url = project_tasks_url(project_id, filters)
+
+  let decoder =
+    decode.field("tasks", decode.list(task_decoder()), decode.success)
+
+  request("GET", url, option.None, decoder, to_msg)
+}
+
+pub fn create_task(
+  project_id: Int,
+  title: String,
+  description: option.Option(String),
+  priority: Int,
+  type_id: Int,
+  to_msg: fn(ApiResult(Task)) -> msg,
+) -> Effect(msg) {
+  let entries = [
+    #("title", json.string(title)),
+    #("priority", json.int(priority)),
+    #("type_id", json.int(type_id)),
+  ]
+
+  let entries = case description {
+    option.Some(desc) ->
+      list.append(entries, [#("description", json.string(desc))])
+    option.None -> entries
+  }
+
+  let body = json.object(entries)
+  let decoder = decode.field("task", task_decoder(), decode.success)
+
+  request(
+    "POST",
+    "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
+    option.Some(body),
+    decoder,
+    to_msg,
+  )
+}
+
+pub fn claim_task(
+  task_id: Int,
+  version: Int,
+  to_msg: fn(ApiResult(Task)) -> msg,
+) -> Effect(msg) {
+  let body = json.object([#("version", json.int(version))])
+  let decoder = decode.field("task", task_decoder(), decode.success)
+  request(
+    "POST",
+    "/api/v1/tasks/" <> int.to_string(task_id) <> "/claim",
+    option.Some(body),
+    decoder,
+    to_msg,
+  )
+}
+
+pub fn release_task(
+  task_id: Int,
+  version: Int,
+  to_msg: fn(ApiResult(Task)) -> msg,
+) -> Effect(msg) {
+  let body = json.object([#("version", json.int(version))])
+  let decoder = decode.field("task", task_decoder(), decode.success)
+  request(
+    "POST",
+    "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
+    option.Some(body),
+    decoder,
+    to_msg,
+  )
+}
+
+pub fn complete_task(
+  task_id: Int,
+  version: Int,
+  to_msg: fn(ApiResult(Task)) -> msg,
+) -> Effect(msg) {
+  let body = json.object([#("version", json.int(version))])
+  let decoder = decode.field("task", task_decoder(), decode.success)
+  request(
+    "POST",
+    "/api/v1/tasks/" <> int.to_string(task_id) <> "/complete",
+    option.Some(body),
+    decoder,
+    to_msg,
+  )
+}
+
+pub fn list_task_notes(
+  task_id: Int,
+  to_msg: fn(ApiResult(List(TaskNote))) -> msg,
+) -> Effect(msg) {
+  let decoder =
+    decode.field("notes", decode.list(note_decoder()), decode.success)
+  request(
+    "GET",
+    "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
+    option.None,
+    decoder,
+    to_msg,
+  )
+}
+
+pub fn add_task_note(
+  task_id: Int,
+  content: String,
+  to_msg: fn(ApiResult(TaskNote)) -> msg,
+) -> Effect(msg) {
+  let body = json.object([#("content", json.string(content))])
+  let decoder = decode.field("note", note_decoder(), decode.success)
+
+  request(
+    "POST",
+    "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
+    option.Some(body),
+    decoder,
+    to_msg,
+  )
+}
+
+pub fn list_me_task_positions(
+  project_id: option.Option(Int),
+  to_msg: fn(ApiResult(List(TaskPosition))) -> msg,
+) -> Effect(msg) {
+  let url = case project_id {
+    option.None -> "/api/v1/me/task-positions"
+    option.Some(id) ->
+      "/api/v1/me/task-positions?project_id=" <> int.to_string(id)
+  }
+
+  let decoder =
+    decode.field("positions", decode.list(position_decoder()), decode.success)
+
+  request("GET", url, option.None, decoder, to_msg)
+}
+
+pub fn upsert_me_task_position(
+  task_id: Int,
+  x: Int,
+  y: Int,
+  to_msg: fn(ApiResult(TaskPosition)) -> msg,
+) -> Effect(msg) {
+  let body = json.object([#("x", json.int(x)), #("y", json.int(y))])
+  let decoder = decode.field("position", position_decoder(), decode.success)
+
+  request(
+    "PUT",
+    "/api/v1/me/task-positions/" <> int.to_string(task_id),
+    option.Some(body),
+    decoder,
+    to_msg,
+  )
+}
+
+pub fn get_me_capability_ids(
+  to_msg: fn(ApiResult(List(Int))) -> msg,
+) -> Effect(msg) {
+  let decoder =
+    decode.field("capability_ids", decode.list(decode.int), decode.success)
+  request("GET", "/api/v1/me/capabilities", option.None, decoder, to_msg)
+}
+
+pub fn put_me_capability_ids(
+  ids: List(Int),
+  to_msg: fn(ApiResult(List(Int))) -> msg,
+) -> Effect(msg) {
+  let body = json.object([#("capability_ids", json.array(ids, of: json.int))])
+  let decoder =
+    decode.field("capability_ids", decode.list(decode.int), decode.success)
+  request("PUT", "/api/v1/me/capabilities", option.Some(body), decoder, to_msg)
+}
+
+fn add_param_string(
+  existing: String,
+  key: String,
+  value: option.Option(String),
+) -> String {
+  case value {
+    option.None -> existing
+    option.Some(v) ->
+      existing
+      <> append_query(existing)
+      <> key
+      <> "="
+      <> encode_uri_component(v)
+  }
+}
+
+fn add_param_int(
+  existing: String,
+  key: String,
+  value: option.Option(Int),
+) -> String {
+  case value {
+    option.None -> existing
+    option.Some(v) ->
+      existing <> append_query(existing) <> key <> "=" <> int.to_string(v)
+  }
+}
+
+fn append_query(existing: String) -> String {
+  case string.contains(existing, "?") {
+    True -> "&"
+    False -> "?"
+  }
 }
 
 pub fn create_task_type(

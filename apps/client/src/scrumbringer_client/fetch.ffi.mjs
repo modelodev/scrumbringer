@@ -81,3 +81,19 @@ export function clear_timeout(id) {
 export function encode_uri_component(value) {
   return encodeURIComponent(value)
 }
+
+export function days_since_iso(iso) {
+  const parsed = Date.parse(iso)
+  if (!Number.isFinite(parsed)) return 0
+  const diffMs = Date.now() - parsed
+  if (!Number.isFinite(diffMs)) return 0
+  return Math.max(0, Math.floor(diffMs / 86400000))
+}
+
+export function element_client_offset(id) {
+  if (typeof document === "undefined") return [0, 0]
+  const el = document.getElementById(id)
+  if (!el) return [0, 0]
+  const rect = el.getBoundingClientRect()
+  return [Math.round(rect.left), Math.round(rect.top)]
+}
