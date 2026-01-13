@@ -1,35 +1,24 @@
 schema: 1
 story: '1.7'
 story_title: 'Admin UI (Invites, Projects, Members, Capabilities, Task Types)'
-gate: CONCERNS
-status_reason: 'Functional scope appears implemented with baseline tests, but repo hygiene (untracked app) and a few permission/error-state edge cases should be addressed before calling this fully PASS.'
+gate: PASS
+status_reason: 'All prior concerns have been resolved: the client app is tracked in git, forbidden UX is normalized for mutations, and member removal confirmation is resilient when cached user details are missing. Client tests pass.'
 reviewer: 'Quinn (Test Architect)'
-updated: '2026-01-13T16:20:09Z'
+updated: '2026-01-13T16:40:39Z'
 
-top_issues:
-  - id: 'MNT-001'
-    severity: medium
-    finding: '`apps/client/` is untracked by git, which risks losing shipped UI + tests and makes review/audit reproducibility difficult.'
-    suggested_action: 'Add `apps/client/` to git (preferred) or explicitly document/justify ignoring it in `.gitignore` with a follow-up ticket.'
-    suggested_owner: dev
-  - id: 'UX-001'
-    severity: medium
-    finding: 'Some 403 handling is "best effort" (lists show "Not permitted", but mutation failures surface raw server messages; remove-member confirm depends on org user cache for email resolution).' 
-    suggested_action: 'Normalize forbidden handling for mutations (render a clear "Not permitted" + disable controls) and ensure member removal still works if email resolution fails.'
-    suggested_owner: dev
+top_issues: []
 
 waiver:
   active: false
 
-quality_score: 80
-expires: '2026-01-27T16:20:14Z'
+quality_score: 100
+expires: '2026-01-27T16:40:39Z'
 
 evidence:
-  tests_reviewed: 2
+  tests_reviewed: 1
   notes:
-    - 'UI implementation reviewed in `apps/client/src/scrumbringer_client.gleam`.'
-    - 'CSRF attachment reviewed in `apps/client/src/scrumbringer_client/api.gleam` and validated by `apps/client/test/api_csrf_test.gleam`.'
-    - 'Role/section gating reviewed in `apps/client/src/scrumbringer_client/permissions.gleam` and validated by `apps/client/test/permissions_test.gleam`.'
+    - 'Client tests executed: `apps/client/../../.tools/gleam-1.14.0/gleam test` (apps/client: all passed).'
+    - 'Re-review confirms `apps/client/` is now tracked in git, mutation-side 403 UX is normalized ("Not permitted"), and member removal confirmation has a fallback when email resolution/cache is missing.'
 
 trace:
   ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
@@ -37,24 +26,20 @@ trace:
 
 nfr_validation:
   security:
-    status: CONCERNS
-    notes: 'CSRF double-submit implemented; recommend tightening forbidden UX for mutation endpoints (consistent "Not permitted" messaging / disabled controls).' 
+    status: PASS
+    notes: 'CSRF double-submit is implemented; forbidden handling for mutations now surfaces a consistent "Not permitted" UX instead of raw server messages.'
   reliability:
-    status: CONCERNS
-    notes: 'Member removal UX currently depends on org user cache for email display; ensure removal remains usable when cache is missing/failed.'
+    status: PASS
+    notes: 'Member removal confirmation remains usable even when org user cache/email resolution is missing (fallback behavior present).' 
   maintainability:
-    status: CONCERNS
-    notes: 'Repo hygiene issue: `apps/client/` untracked by git. Add to version control to keep tests and UI reviewable.'
+    status: PASS
+    notes: '`apps/client/` is tracked in git; implementation and tests are reviewable and reproducible.'
   performance:
     status: PASS
-    notes: 'MVP lists intentionally unpaginated; no obvious client-side hot loops observed in reviewed code.'
+    notes: 'MVP lists intentionally unpaginated; no performance regressions identified in re-review.'
 
 recommendations:
-  immediate:
-    - action: 'Track `apps/client/` in git to preserve the implemented UI + tests.'
-      refs: ['apps/client/']
-    - action: 'Harden 403 UX for mutation actions and ensure member removal works even if user email cannot be resolved.'
-      refs: ['apps/client/src/scrumbringer_client.gleam']
+  immediate: []
   future:
-    - action: 'Consider adding a lightweight test around section denial rendering ("Not permitted") if the project has a view-testing pattern for Lustre.'
+    - action: 'Consider adding a lightweight view-level test around section denial rendering ("Not permitted") if/when a stable Lustre view-testing pattern is established in the repo.'
       refs: ['apps/client/src/scrumbringer_client.gleam']
