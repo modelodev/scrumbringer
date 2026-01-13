@@ -621,6 +621,256 @@ where id = $1;
   |> pog.execute(db)
 }
 
+/// A row you get from running the `task_notes_create` query
+/// defined in `./src/scrumbringer_server/sql/task_notes_create.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskNotesCreateRow {
+  TaskNotesCreateRow(
+    id: Int,
+    task_id: Int,
+    user_id: Int,
+    content: String,
+    created_at: String,
+  )
+}
+
+/// name: task_notes_create
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_notes_create(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: String,
+) -> Result(pog.Returned(TaskNotesCreateRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use task_id <- decode.field(1, decode.int)
+    use user_id <- decode.field(2, decode.int)
+    use content <- decode.field(3, decode.string)
+    use created_at <- decode.field(4, decode.string)
+    decode.success(TaskNotesCreateRow(
+      id:,
+      task_id:,
+      user_id:,
+      content:,
+      created_at:,
+    ))
+  }
+
+  "-- name: task_notes_create
+insert into task_notes (task_id, user_id, content)
+values ($1, $2, $3)
+returning
+  id,
+  task_id,
+  user_id,
+  content,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.text(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `task_notes_list` query
+/// defined in `./src/scrumbringer_server/sql/task_notes_list.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskNotesListRow {
+  TaskNotesListRow(
+    id: Int,
+    task_id: Int,
+    user_id: Int,
+    content: String,
+    created_at: String,
+  )
+}
+
+/// name: task_notes_list
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_notes_list(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(TaskNotesListRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use task_id <- decode.field(1, decode.int)
+    use user_id <- decode.field(2, decode.int)
+    use content <- decode.field(3, decode.string)
+    use created_at <- decode.field(4, decode.string)
+    decode.success(TaskNotesListRow(
+      id:,
+      task_id:,
+      user_id:,
+      content:,
+      created_at:,
+    ))
+  }
+
+  "-- name: task_notes_list
+select
+  n.id,
+  n.task_id,
+  n.user_id,
+  n.content,
+  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+from task_notes n
+where n.task_id = $1
+order by n.created_at asc, n.id asc;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `task_positions_list_for_user` query
+/// defined in `./src/scrumbringer_server/sql/task_positions_list_for_user.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskPositionsListForUserRow {
+  TaskPositionsListForUserRow(
+    task_id: Int,
+    user_id: Int,
+    x: Int,
+    y: Int,
+    updated_at: String,
+  )
+}
+
+/// name: task_positions_list_for_user
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_positions_list_for_user(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(TaskPositionsListForUserRow), pog.QueryError) {
+  let decoder = {
+    use task_id <- decode.field(0, decode.int)
+    use user_id <- decode.field(1, decode.int)
+    use x <- decode.field(2, decode.int)
+    use y <- decode.field(3, decode.int)
+    use updated_at <- decode.field(4, decode.string)
+    decode.success(TaskPositionsListForUserRow(
+      task_id:,
+      user_id:,
+      x:,
+      y:,
+      updated_at:,
+    ))
+  }
+
+  "-- name: task_positions_list_for_user
+select
+  tp.task_id,
+  tp.user_id,
+  tp.x,
+  tp.y,
+  to_char(tp.updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at
+from task_positions tp
+join tasks t on t.id = tp.task_id
+where tp.user_id = $1
+  and ($2 = 0 or t.project_id = $2)
+  and exists(
+    select 1
+    from project_members pm
+    where pm.project_id = t.project_id
+      and pm.user_id = $1
+  )
+order by tp.task_id asc;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `task_positions_upsert` query
+/// defined in `./src/scrumbringer_server/sql/task_positions_upsert.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskPositionsUpsertRow {
+  TaskPositionsUpsertRow(
+    task_id: Int,
+    user_id: Int,
+    x: Int,
+    y: Int,
+    updated_at: String,
+  )
+}
+
+/// name: task_positions_upsert
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_positions_upsert(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Int,
+  arg_4: Int,
+) -> Result(pog.Returned(TaskPositionsUpsertRow), pog.QueryError) {
+  let decoder = {
+    use task_id <- decode.field(0, decode.int)
+    use user_id <- decode.field(1, decode.int)
+    use x <- decode.field(2, decode.int)
+    use y <- decode.field(3, decode.int)
+    use updated_at <- decode.field(4, decode.string)
+    decode.success(TaskPositionsUpsertRow(
+      task_id:,
+      user_id:,
+      x:,
+      y:,
+      updated_at:,
+    ))
+  }
+
+  "-- name: task_positions_upsert
+insert into task_positions (task_id, user_id, x, y, updated_at)
+values ($1, $2, $3, $4, now())
+on conflict (task_id, user_id) do update
+set x = $3,
+    y = $4,
+    updated_at = now()
+returning
+  task_id,
+  user_id,
+  x,
+  y,
+  to_char(updated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as updated_at;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.parameter(pog.int(arg_4))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `task_types_create` query
 /// defined in `./src/scrumbringer_server/sql/task_types_create.sql`.
 ///

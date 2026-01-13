@@ -9,6 +9,8 @@ import scrumbringer_server/http/auth
 import scrumbringer_server/http/capabilities
 import scrumbringer_server/http/org_invites
 import scrumbringer_server/http/projects
+import scrumbringer_server/http/task_notes
+import scrumbringer_server/http/task_positions
 import scrumbringer_server/http/tasks
 import wisp
 
@@ -102,12 +104,18 @@ fn handle_request(req: wisp.Request, app: App) -> wisp.Response {
       tasks.handle_release(req, auth_ctx(app), task_id)
     ["api", "v1", "tasks", task_id, "complete"] ->
       tasks.handle_complete(req, auth_ctx(app), task_id)
+    ["api", "v1", "tasks", task_id, "notes"] ->
+      task_notes.handle_task_notes(req, auth_ctx(app), task_id)
     ["api", "v1", "tasks", task_id] ->
       tasks.handle_task(req, auth_ctx(app), task_id)
     ["api", "v1", "capabilities"] ->
       capabilities.handle_capabilities(req, auth_ctx(app))
     ["api", "v1", "me", "capabilities"] ->
       capabilities.handle_me_capabilities(req, auth_ctx(app))
+    ["api", "v1", "me", "task-positions"] ->
+      task_positions.handle_me_task_positions(req, auth_ctx(app))
+    ["api", "v1", "me", "task-positions", task_id] ->
+      task_positions.handle_me_task_position(req, auth_ctx(app), task_id)
     ["api", "v1", "health"] -> api.ok(json.object([#("ok", json.bool(True))]))
     _ -> wisp.not_found()
   }
