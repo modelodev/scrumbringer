@@ -106,6 +106,8 @@ pub opaque type Model {
     member_tasks_pending: Int,
     member_tasks_by_project: dict.Dict(Int, List(api.Task)),
     member_task_types: Remote(List(api.TaskType)),
+    member_task_types_pending: Int,
+    member_task_types_by_project: dict.Dict(Int, List(api.TaskType)),
     member_task_mutation_in_flight: Bool,
     member_filters_status: String,
     member_filters_type_id: String,
@@ -212,7 +214,7 @@ pub type Msg {
   MemberToggleMyCapabilitiesQuick
 
   MemberProjectTasksFetched(Int, api.ApiResult(List(api.Task)))
-  MemberTaskTypesFetched(api.ApiResult(List(api.TaskType)))
+  MemberTaskTypesFetched(Int, api.ApiResult(List(api.TaskType)))
 
   MemberCanvasRectFetched(Int, Int)
   MemberDragStarted(Int, Int, Int)
@@ -305,6 +307,8 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       member_tasks_pending: 0,
       member_tasks_by_project: dict.new(),
       member_task_types: NotAsked,
+      member_task_types_pending: 0,
+      member_task_types_by_project: dict.new(),
       member_task_mutation_in_flight: False,
       member_filters_status: "",
       member_filters_type_id: "",
@@ -1257,15 +1261,43 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
     }
 
-    MemberTaskTypesFetched(Ok(task_types)) -> #(
-      Model(..model, member_task_types: Loaded(task_types)),
-      effect.none(),
-    )
+    MemberTaskTypesFetched(project_id, Ok(task_types)) -> {
+      let task_types_by_project =
+        dict.insert(model.member_task_types_by_project, project_id, task_types)
+      let pending = model.member_task_types_pending - 1
 
-    MemberTaskTypesFetched(Error(err)) -> #(
-      Model(..model, member_task_types: Failed(err)),
-      effect.none(),
-    )
+      let model =
+        Model(
+          ..model,
+          member_task_types_by_project: task_types_by_project,
+          member_task_types_pending: pending,
+        )
+
+      case pending <= 0 {
+        True -> #(
+          Model(
+            ..model,
+            member_task_types: Loaded(flatten_task_types(task_types_by_project)),
+          ),
+          effect.none(),
+        )
+        False -> #(model, effect.none())
+      }
+    }
+
+    MemberTaskTypesFetched(_project_id, Error(err)) -> {
+      case err.status {
+        401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        _ -> #(
+          Model(
+            ..model,
+            member_task_types: Failed(err),
+            member_task_types_pending: 0,
+          ),
+          effect.none(),
+        )
+      }
+    }
 
     MemberCanvasRectFetched(left, top) -> #(
       Model(..model, member_canvas_left: left, member_canvas_top: top),
@@ -2906,19 +2938,14 @@ fn view_member_pool(model: Model) -> Element(Msg) {
 }
 
 fn view_member_filters(model: Model) -> Element(Msg) {
-  let project_selected = case model.selected_project_id {
-    opt.Some(_) -> True
-    opt.None -> False
-  }
-
-  let type_options = case model.member_task_types, project_selected {
-    Loaded(task_types), True -> [
+  let type_options = case model.member_task_types {
+    Loaded(task_types) -> [
       option([attribute.value("")], "All"),
       ..list.map(task_types, fn(tt) {
         option([attribute.value(int.to_string(tt.id))], tt.name)
       })
     ]
-    _, _ -> [option([attribute.value("")], "All")]
+    _ -> [option([attribute.value("")], "All")]
   }
 
   let capability_options = case model.capabilities {
@@ -2953,7 +2980,10 @@ fn view_member_filters(model: Model) -> Element(Msg) {
         [
           attribute.value(model.member_filters_type_id),
           event.on_input(MemberPoolTypeChanged),
-          attribute.disabled(!project_selected),
+          attribute.disabled(case model.member_task_types {
+            Loaded(_) -> False
+            _ -> True
+          }),
         ],
         type_options,
       ),
@@ -3448,6 +3478,8 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
             member_tasks_pending: 0,
             member_tasks_by_project: dict.new(),
             member_task_types: NotAsked,
+            member_task_types_pending: 0,
+            member_task_types_by_project: dict.new(),
           ),
           effect.none(),
         )
@@ -3473,12 +3505,6 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
               )
           }
 
-          let task_types_effect = case model.selected_project_id {
-            opt.Some(project_id) ->
-              api.list_task_types(project_id, MemberTaskTypesFetched)
-            opt.None -> effect.none()
-          }
-
           let positions_effect =
             api.list_me_task_positions(
               model.selected_project_id,
@@ -3492,8 +3518,18 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
               })
             })
 
+          let task_type_effects =
+            list.map(project_ids, fn(project_id) {
+              api.list_task_types(project_id, fn(result) {
+                MemberTaskTypesFetched(project_id, result)
+              })
+            })
+
           let effects =
-            list.append(task_effects, [positions_effect, task_types_effect])
+            list.append(
+              task_effects,
+              list.append(task_type_effects, [positions_effect]),
+            )
 
           let model =
             Model(
@@ -3501,10 +3537,9 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
               member_tasks: Loading,
               member_tasks_pending: list.length(project_ids),
               member_tasks_by_project: dict.new(),
-              member_task_types: case model.selected_project_id {
-                opt.Some(_) -> Loading
-                opt.None -> NotAsked
-              },
+              member_task_types: Loading,
+              member_task_types_pending: list.length(project_ids),
+              member_task_types_by_project: dict.new(),
             )
 
           #(model, effect.batch(effects))
@@ -3578,6 +3613,17 @@ fn flatten_tasks(
   |> list.fold([], fn(acc, pair) {
     let #(_project_id, tasks) = pair
     list.append(acc, tasks)
+  })
+}
+
+fn flatten_task_types(
+  task_types_by_project: dict.Dict(Int, List(api.TaskType)),
+) -> List(api.TaskType) {
+  task_types_by_project
+  |> dict.to_list
+  |> list.fold([], fn(acc, pair) {
+    let #(_project_id, task_types) = pair
+    list.append(acc, task_types)
   })
 }
 

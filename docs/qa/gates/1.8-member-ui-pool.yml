@@ -1,0 +1,45 @@
+schema: 1
+story: '1.8'
+story_title: 'Member UI (Pool, Filters, My Bar, Priority/Decay, Positions, Notes)'
+gate: PASS
+status_reason: 'Member UI meets acceptance criteria: pool + filters, my bar, skills, notes, and per-user positions behave correctly with CSRF protection and state reconciliation. Client tests pass.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-01-13T18:02:05Z'
+
+top_issues: []
+
+waiver:
+  active: false
+
+quality_score: 100
+expires: '2026-01-27T18:02:05Z'
+
+evidence:
+  tests_reviewed: 1
+  notes:
+    - 'Client tests executed: `apps/client: gleam test` (8 passed).'
+    - 'Verified CSRF double-submit header injection for mutations via `scrumbringer_client/api.gleam::build_csrf_headers` test coverage.'
+
+trace:
+  ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+  ac_gaps: []
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'CSRF double-submit implemented for all mutations; UI avoids leaking assignee identifiers.'
+  reliability:
+    status: PASS
+    notes: '409/422/other mutation errors surface toast + refetch to reconcile state; 401 redirects to login.'
+  maintainability:
+    status: PASS
+    notes: 'Added unit tests for URL building and member visuals; client code formatted.'
+  performance:
+    status: PASS
+    notes: 'MVP lists are unpaginated by design; no obvious hot paths or tight loops introduced.'
+
+recommendations:
+  immediate: []
+  future:
+    - action: 'Consider adding touch/pointer event support for drag on mobile devices; numeric position edit fallback already exists.'
+      refs: ['apps/client/src/scrumbringer_client.gleam']
