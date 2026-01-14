@@ -24,6 +24,7 @@ import scrumbringer_client/api
 import scrumbringer_client/member_visuals
 import scrumbringer_client/permissions
 import scrumbringer_client/reset_password
+import scrumbringer_client/styles
 import scrumbringer_client/theme
 
 pub fn app() -> lustre.App(Nil, Model, Msg) {
@@ -2651,7 +2652,7 @@ fn view(model: Model) -> Element(Msg) {
       attribute.attribute("style", theme.css_vars(model.theme)),
     ],
     [
-      style([], theme.base_css()),
+      style([], styles.base_css()),
       view_toast(model.toast),
       case model.page {
         Login -> view_login(model)
@@ -4240,20 +4241,6 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
 
         _, _ -> div([], [])
       },
-      button(
-        [
-          event.on_click(MemberTaskDetailsOpened(id)),
-          attribute.disabled(disable_actions),
-        ],
-        [text("Notes")],
-      ),
-      button(
-        [
-          event.on_click(MemberPositionEditOpened(id)),
-          attribute.disabled(disable_actions),
-        ],
-        [text("Position")],
-      ),
     ]),
   ])
 }
