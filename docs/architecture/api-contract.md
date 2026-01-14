@@ -302,6 +302,10 @@ Legend:
   - body: `{ email }`
   - 200: `{ data: { reset: { token, url_path } } }`
   - `url_path` is a relative path (no scheme/host) intended for client-side composition
+  - notes:
+    - token TTL: 24h
+    - single active token per email (creating a new token invalidates the previous active token)
+    - unknown emails do not leak (still returns 200; token is not persisted and will validate/consume as `RESET_TOKEN_INVALID`)
 
 - `GET /api/v1/auth/password-resets/:token`
   - 200: `{ data: { email } }`

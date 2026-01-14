@@ -10,6 +10,7 @@ import scrumbringer_server/http/capabilities
 import scrumbringer_server/http/org_invite_links
 import scrumbringer_server/http/org_invites
 import scrumbringer_server/http/org_users
+import scrumbringer_server/http/password_resets
 import scrumbringer_server/http/projects
 import scrumbringer_server/http/task_notes
 import scrumbringer_server/http/task_positions
@@ -88,6 +89,16 @@ fn handle_request(req: wisp.Request, app: App) -> wisp.Response {
       auth.handle_register(req, auth_ctx(app))
     ["api", "v1", "auth", "invite-links", token] ->
       auth.handle_invite_link_validate(req, auth_ctx(app), token)
+    ["api", "v1", "auth", "password-resets"] ->
+      password_resets.handle_password_resets(req, password_resets_ctx(app))
+    ["api", "v1", "auth", "password-resets", "consume"] ->
+      password_resets.handle_consume(req, password_resets_ctx(app))
+    ["api", "v1", "auth", "password-resets", token] ->
+      password_resets.handle_password_reset_token(
+        req,
+        password_resets_ctx(app),
+        token,
+      )
     ["api", "v1", "auth", "login"] -> auth.handle_login(req, auth_ctx(app))
     ["api", "v1", "auth", "me"] -> auth.handle_me(req, auth_ctx(app))
     ["api", "v1", "auth", "logout"] -> auth.handle_logout(req, auth_ctx(app))
@@ -136,6 +147,11 @@ fn handle_request(req: wisp.Request, app: App) -> wisp.Response {
 fn auth_ctx(app: App) -> auth.Ctx {
   let App(db: db, jwt_secret: jwt_secret) = app
   auth.Ctx(db: db, jwt_secret: jwt_secret)
+}
+
+fn password_resets_ctx(app: App) -> password_resets.Ctx {
+  let App(db: db, ..) = app
+  password_resets.Ctx(db: db)
 }
 
 @external(erlang, "application", "ensure_all_started")

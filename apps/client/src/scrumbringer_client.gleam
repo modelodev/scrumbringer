@@ -23,6 +23,7 @@ import scrumbringer_client/accept_invite
 import scrumbringer_client/api
 import scrumbringer_client/member_visuals
 import scrumbringer_client/permissions
+import scrumbringer_client/reset_password
 
 pub fn app() -> lustre.App(Nil, Model, Msg) {
   lustre.application(init, update, view)
@@ -45,6 +46,7 @@ type Remote(a) {
 type Page {
   Login
   AcceptInvite
+  ResetPassword
   Admin
   Member
 }
@@ -76,7 +78,14 @@ pub opaque type Model {
     login_password: String,
     login_error: opt.Option(String),
     login_in_flight: Bool,
+    forgot_password_open: Bool,
+    forgot_password_email: String,
+    forgot_password_in_flight: Bool,
+    forgot_password_result: opt.Option(api.PasswordReset),
+    forgot_password_error: opt.Option(String),
+    forgot_password_copy_status: opt.Option(String),
     accept_invite: accept_invite.Model,
+    reset_password: reset_password.Model,
     projects: Remote(List(api.Project)),
     selected_project_id: opt.Option(Int),
     invite_links: Remote(List(api.InviteLink)),
@@ -160,11 +169,20 @@ pub opaque type Model {
 pub type Msg {
   MeFetched(api.ApiResult(User))
   AcceptInviteMsg(accept_invite.Msg)
+  ResetPasswordMsg(reset_password.Msg)
 
   LoginEmailChanged(String)
   LoginPasswordChanged(String)
   LoginSubmitted
   LoginFinished(api.ApiResult(User))
+
+  ForgotPasswordClicked
+  ForgotPasswordEmailChanged(String)
+  ForgotPasswordSubmitted
+  ForgotPasswordFinished(api.ApiResult(api.PasswordReset))
+  ForgotPasswordCopyClicked
+  ForgotPasswordCopyFinished(Bool)
+  ForgotPasswordDismissed
 
   LogoutClicked
   LogoutFinished(api.ApiResult(Nil))
@@ -284,17 +302,25 @@ pub type Msg {
 fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
   let pathname = location_pathname_ffi()
   let is_accept_invite = pathname == "/accept-invite"
+  let is_reset_password = pathname == "/reset-password"
 
-  let token = case is_accept_invite {
+  let accept_token = case is_accept_invite {
     True -> location_query_param_ffi("token")
     False -> ""
   }
 
-  let #(accept_model, accept_action) = accept_invite.init(token)
+  let reset_token = case is_reset_password {
+    True -> location_query_param_ffi("token")
+    False -> ""
+  }
 
-  let page = case is_accept_invite {
-    True -> AcceptInvite
-    False -> Login
+  let #(accept_model, accept_action) = accept_invite.init(accept_token)
+  let #(reset_model, reset_action) = reset_password.init(reset_token)
+
+  let page = case is_reset_password, is_accept_invite {
+    True, _ -> ResetPassword
+    _, True -> AcceptInvite
+    _, _ -> Login
   }
 
   let model =
@@ -307,7 +333,14 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       login_password: "",
       login_error: opt.None,
       login_in_flight: False,
+      forgot_password_open: False,
+      forgot_password_email: "",
+      forgot_password_in_flight: False,
+      forgot_password_result: opt.None,
+      forgot_password_error: opt.None,
+      forgot_password_copy_status: opt.None,
       accept_invite: accept_model,
+      reset_password: reset_model,
       projects: NotAsked,
       selected_project_id: opt.None,
       invite_links: NotAsked,
@@ -387,9 +420,10 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       member_note_error: opt.None,
     )
 
-  let effect = case is_accept_invite {
-    True -> accept_invite_effect(accept_action)
-    False -> api.fetch_me(MeFetched)
+  let effect = case page {
+    AcceptInvite -> accept_invite_effect(accept_action)
+    ResetPassword -> reset_password_effect(reset_action)
+    _ -> api.fetch_me(MeFetched)
   }
 
   #(model, effect)
@@ -400,6 +434,17 @@ fn accept_invite_effect(action: accept_invite.Action) -> Effect(Msg) {
     accept_invite.ValidateToken(token) ->
       api.validate_invite_link_token(token, fn(result) {
         AcceptInviteMsg(accept_invite.TokenValidated(result))
+      })
+
+    _ -> effect.none()
+  }
+}
+
+fn reset_password_effect(action: reset_password.Action) -> Effect(Msg) {
+  case action {
+    reset_password.ValidateToken(token) ->
+      api.validate_password_reset_token(token, fn(result) {
+        ResetPasswordMsg(reset_password.TokenValidated(result))
       })
 
     _ -> effect.none()
@@ -471,6 +516,40 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
     }
 
+    ResetPasswordMsg(inner) -> {
+      let #(next_reset, action) =
+        reset_password.update(model.reset_password, inner)
+
+      let model = Model(..model, reset_password: next_reset, toast: opt.None)
+
+      case action {
+        reset_password.NoOp -> #(model, effect.none())
+
+        reset_password.ValidateToken(_) -> #(
+          model,
+          reset_password_effect(action),
+        )
+
+        reset_password.Consume(token: token, password: password) -> #(
+          model,
+          api.consume_password_reset_token(token, password, fn(result) {
+            ResetPasswordMsg(reset_password.Consumed(result))
+          }),
+        )
+
+        reset_password.GoToLogin -> #(
+          Model(
+            ..model,
+            page: Login,
+            toast: opt.Some("Password updated"),
+            login_password: "",
+            login_error: opt.None,
+          ),
+          effect.none(),
+        )
+      }
+    }
+
     LoginEmailChanged(email) -> #(
       Model(..model, login_email: email),
       effect.none(),
@@ -531,6 +610,127 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         effect.none(),
       )
     }
+
+    ForgotPasswordClicked -> {
+      let open = !model.forgot_password_open
+
+      #(
+        Model(
+          ..model,
+          forgot_password_open: open,
+          forgot_password_in_flight: False,
+          forgot_password_result: opt.None,
+          forgot_password_error: opt.None,
+          forgot_password_copy_status: opt.None,
+          toast: opt.None,
+        ),
+        effect.none(),
+      )
+    }
+
+    ForgotPasswordEmailChanged(email) -> #(
+      Model(
+        ..model,
+        forgot_password_email: email,
+        forgot_password_error: opt.None,
+        forgot_password_copy_status: opt.None,
+      ),
+      effect.none(),
+    )
+
+    ForgotPasswordSubmitted -> {
+      case model.forgot_password_in_flight {
+        True -> #(model, effect.none())
+
+        False -> {
+          let email = string.trim(model.forgot_password_email)
+
+          case email == "" {
+            True -> #(
+              Model(
+                ..model,
+                forgot_password_error: opt.Some("Email is required"),
+              ),
+              effect.none(),
+            )
+
+            False -> {
+              let model =
+                Model(
+                  ..model,
+                  forgot_password_in_flight: True,
+                  forgot_password_error: opt.None,
+                  forgot_password_result: opt.None,
+                  forgot_password_copy_status: opt.None,
+                )
+
+              #(
+                model,
+                api.request_password_reset(email, ForgotPasswordFinished),
+              )
+            }
+          }
+        }
+      }
+    }
+
+    ForgotPasswordFinished(Ok(reset)) -> #(
+      Model(
+        ..model,
+        forgot_password_in_flight: False,
+        forgot_password_result: opt.Some(reset),
+        forgot_password_error: opt.None,
+        forgot_password_copy_status: opt.None,
+      ),
+      effect.none(),
+    )
+
+    ForgotPasswordFinished(Error(err)) -> #(
+      Model(
+        ..model,
+        forgot_password_in_flight: False,
+        forgot_password_error: opt.Some(err.message),
+      ),
+      effect.none(),
+    )
+
+    ForgotPasswordCopyClicked -> {
+      case model.forgot_password_result {
+        opt.None -> #(model, effect.none())
+
+        opt.Some(reset) -> {
+          let origin = location_origin_ffi()
+          let text = origin <> reset.url_path
+
+          #(
+            Model(..model, forgot_password_copy_status: opt.Some("Copying…")),
+            copy_to_clipboard(text, ForgotPasswordCopyFinished),
+          )
+        }
+      }
+    }
+
+    ForgotPasswordCopyFinished(ok) -> {
+      let message = case ok {
+        True -> "Copied"
+        False -> "Copy failed"
+      }
+
+      #(
+        Model(..model, forgot_password_copy_status: opt.Some(message)),
+        effect.none(),
+      )
+    }
+
+    ForgotPasswordDismissed -> #(
+      Model(
+        ..model,
+        forgot_password_error: opt.None,
+        forgot_password_copy_status: opt.None,
+        forgot_password_result: opt.None,
+      ),
+      effect.none(),
+    )
 
     LogoutClicked -> #(
       Model(..model, toast: opt.None),
@@ -2430,6 +2630,7 @@ fn view(model: Model) -> Element(Msg) {
     case model.page {
       Login -> view_login(model)
       AcceptInvite -> view_accept_invite(model)
+      ResetPassword -> view_reset_password(model)
       Admin -> view_admin(model)
       Member -> view_member(model)
     },
@@ -2535,6 +2736,163 @@ fn view_accept_invite_form(
   ])
 }
 
+fn view_reset_password(model: Model) -> Element(Msg) {
+  let reset_password.Model(
+    state: state,
+    password: password,
+    password_error: password_error,
+    submit_error: submit_error,
+    ..,
+  ) = model.reset_password
+
+  let content = case state {
+    reset_password.NoToken ->
+      div([attribute.class("error")], [text("Missing reset token")])
+
+    reset_password.Validating ->
+      div([attribute.class("loading")], [text("Validating reset token…")])
+
+    reset_password.Invalid(code: _, message: message) ->
+      div([attribute.class("error")], [text(message)])
+
+    reset_password.Ready(email) ->
+      view_reset_password_form(email, password, False, password_error)
+
+    reset_password.Consuming(email) ->
+      view_reset_password_form(email, password, True, password_error)
+
+    reset_password.Done ->
+      div([attribute.class("loading")], [text("Password updated")])
+  }
+
+  div([attribute.class("page")], [
+    h1([], [text("ScrumBringer")]),
+    h2([], [text("Reset password")]),
+    case submit_error {
+      opt.Some(err) ->
+        div([attribute.class("error")], [
+          span([], [text(err)]),
+          button(
+            [event.on_click(ResetPasswordMsg(reset_password.ErrorDismissed))],
+            [text("Dismiss")],
+          ),
+        ])
+      opt.None -> div([], [])
+    },
+    content,
+  ])
+}
+
+fn view_reset_password_form(
+  email: String,
+  password: String,
+  in_flight: Bool,
+  password_error: opt.Option(String),
+) -> Element(Msg) {
+  let submit_label = case in_flight {
+    True -> "Saving…"
+    False -> "Save new password"
+  }
+
+  form([event.on_submit(fn(_) { ResetPasswordMsg(reset_password.Submitted) })], [
+    div([attribute.class("field")], [
+      label([], [text("Email")]),
+      input([
+        attribute.type_("email"),
+        attribute.value(email),
+        attribute.disabled(True),
+      ]),
+    ]),
+    div([attribute.class("field")], [
+      label([], [text("New password")]),
+      input([
+        attribute.type_("password"),
+        attribute.value(password),
+        event.on_input(fn(value) {
+          ResetPasswordMsg(reset_password.PasswordChanged(value))
+        }),
+        attribute.required(True),
+      ]),
+      case password_error {
+        opt.Some(err) -> div([attribute.class("error")], [text(err)])
+        opt.None -> div([], [])
+      },
+      p([], [text("Minimum 12 characters")]),
+    ]),
+    button([attribute.type_("submit"), attribute.disabled(in_flight)], [
+      text(submit_label),
+    ]),
+  ])
+}
+
+fn view_forgot_password(model: Model) -> Element(Msg) {
+  let submit_label = case model.forgot_password_in_flight {
+    True -> "Working..."
+    False -> "Generate reset link"
+  }
+
+  let origin = location_origin_ffi()
+
+  let link = case model.forgot_password_result {
+    opt.Some(reset) -> origin <> reset.url_path
+    opt.None -> ""
+  }
+
+  div([attribute.class("section")], [
+    p([], [
+      text(
+        "No email integration in MVP. This generates a reset link you can copy/paste.",
+      ),
+    ]),
+    case model.forgot_password_error {
+      opt.Some(err) ->
+        div([attribute.class("error")], [
+          span([], [text(err)]),
+          button([event.on_click(ForgotPasswordDismissed)], [text("Dismiss")]),
+        ])
+      opt.None -> div([], [])
+    },
+    form([event.on_submit(fn(_) { ForgotPasswordSubmitted })], [
+      div([attribute.class("field")], [
+        label([], [text("Email")]),
+        input([
+          attribute.type_("email"),
+          attribute.value(model.forgot_password_email),
+          event.on_input(ForgotPasswordEmailChanged),
+          attribute.required(True),
+        ]),
+      ]),
+      button(
+        [
+          attribute.type_("submit"),
+          attribute.disabled(model.forgot_password_in_flight),
+        ],
+        [text(submit_label)],
+      ),
+    ]),
+    case link == "" {
+      True -> div([], [])
+
+      False ->
+        div([attribute.class("field")], [
+          label([], [text("Reset link")]),
+          div([attribute.class("copy")], [
+            input([
+              attribute.type_("text"),
+              attribute.value(link),
+              attribute.readonly(True),
+            ]),
+            button([event.on_click(ForgotPasswordCopyClicked)], [text("Copy")]),
+          ]),
+          case model.forgot_password_copy_status {
+            opt.Some(msg) -> div([attribute.class("hint")], [text(msg)])
+            opt.None -> div([], [])
+          },
+        ])
+    },
+  ])
+}
+
 fn view_login(model: Model) -> Element(Msg) {
   let submit_label = case model.login_in_flight {
     True -> "Logging in..."
@@ -2575,6 +2933,11 @@ fn view_login(model: Model) -> Element(Msg) {
         [text(submit_label)],
       ),
     ]),
+    button([event.on_click(ForgotPasswordClicked)], [text("Forgot password?")]),
+    case model.forgot_password_open {
+      True -> view_forgot_password(model)
+      False -> div([], [])
+    },
   ])
 }
 

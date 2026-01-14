@@ -524,6 +524,67 @@ pub fn register_with_invite_link(
   )
 }
 
+pub type PasswordReset {
+  PasswordReset(token: String, url_path: String)
+}
+
+pub fn request_password_reset(
+  email: String,
+  to_msg: fn(ApiResult(PasswordReset)) -> msg,
+) -> Effect(msg) {
+  let body = json.object([#("email", json.string(string.trim(email)))])
+
+  let decoder = {
+    use token <- decode.field("token", decode.string)
+    use url_path <- decode.field("url_path", decode.string)
+    decode.success(PasswordReset(token: token, url_path: url_path))
+  }
+
+  let envelope_decoder = decode.field("reset", decoder, decode.success)
+
+  request(
+    "POST",
+    "/api/v1/auth/password-resets",
+    option.Some(body),
+    envelope_decoder,
+    to_msg,
+  )
+}
+
+pub fn validate_password_reset_token(
+  token: String,
+  to_msg: fn(ApiResult(String)) -> msg,
+) -> Effect(msg) {
+  let decoder = decode.field("email", decode.string, decode.success)
+
+  request(
+    "GET",
+    "/api/v1/auth/password-resets/" <> encode_uri_component(token),
+    option.None,
+    decoder,
+    to_msg,
+  )
+}
+
+pub fn consume_password_reset_token(
+  token: String,
+  password: String,
+  to_msg: fn(ApiResult(Nil)) -> msg,
+) -> Effect(msg) {
+  let body =
+    json.object([
+      #("token", json.string(token)),
+      #("password", json.string(password)),
+    ])
+
+  request_nil(
+    "POST",
+    "/api/v1/auth/password-resets/consume",
+    option.Some(body),
+    to_msg,
+  )
+}
+
 pub fn login(
   email: String,
   password: String,
