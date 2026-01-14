@@ -12,6 +12,18 @@ web-bundles/
 .tools/
 erl_crash.dump
 
+# Local env files
+.env
+apps/**/.env
+
+# Lustre dev tools
+apps/**/.lustre/
+apps/**/dist/
+
+# Local reverse proxy config
+caddyfile
+Caddyfile
+
 # Gleam build output (generated)
 apps/**/build/
 packages/**/build/
