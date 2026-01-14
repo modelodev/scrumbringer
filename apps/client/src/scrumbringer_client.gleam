@@ -12,7 +12,7 @@ import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html.{
   button, div, form, h1, h2, h3, hr, img, input, label, option, p, select, span,
-  table, tbody, td, text, th, thead, tr,
+  style, table, tbody, td, text, th, thead, tr,
 }
 import lustre/event
 
@@ -24,6 +24,7 @@ import scrumbringer_client/api
 import scrumbringer_client/member_visuals
 import scrumbringer_client/permissions
 import scrumbringer_client/reset_password
+import scrumbringer_client/theme
 
 pub fn app() -> lustre.App(Nil, Model, Msg) {
   lustre.application(init, update, view)
@@ -74,6 +75,7 @@ pub opaque type Model {
     user: opt.Option(User),
     active_section: permissions.AdminSection,
     toast: opt.Option(String),
+    theme: theme.Theme,
     login_email: String,
     login_password: String,
     login_error: opt.Option(String),
@@ -188,6 +190,8 @@ pub type Msg {
   LogoutFinished(api.ApiResult(Nil))
 
   ToastDismissed
+
+  ThemeSelected(String)
 
   NavSelected(permissions.AdminSection)
   ProjectSelected(String)
@@ -323,12 +327,15 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
     _, _ -> Login
   }
 
+  let active_theme = theme.load_from_storage()
+
   let model =
     Model(
       page: page,
       user: opt.None,
       active_section: permissions.Invites,
       toast: opt.None,
+      theme: active_theme,
       login_email: "",
       login_password: "",
       login_error: opt.None,
@@ -753,6 +760,19 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     ToastDismissed -> #(Model(..model, toast: opt.None), effect.none())
+
+    ThemeSelected(value) -> {
+      let next_theme = theme.deserialize(value)
+
+      case next_theme == model.theme {
+        True -> #(model, effect.none())
+
+        False -> #(
+          Model(..model, theme: next_theme),
+          effect.from(fn(_dispatch) { theme.save_to_storage(next_theme) }),
+        )
+      }
+    }
 
     NavSelected(section) -> {
       let model = Model(..model, active_section: section, toast: opt.None)
@@ -2625,16 +2645,23 @@ fn selected_project(model: Model) -> opt.Option(api.Project) {
 }
 
 fn view(model: Model) -> Element(Msg) {
-  div([attribute.class("app")], [
-    view_toast(model.toast),
-    case model.page {
-      Login -> view_login(model)
-      AcceptInvite -> view_accept_invite(model)
-      ResetPassword -> view_reset_password(model)
-      Admin -> view_admin(model)
-      Member -> view_member(model)
-    },
-  ])
+  div(
+    [
+      attribute.class("app"),
+      attribute.attribute("style", theme.css_vars(model.theme)),
+    ],
+    [
+      style([], theme.base_css()),
+      view_toast(model.toast),
+      case model.page {
+        Login -> view_login(model)
+        AcceptInvite -> view_accept_invite(model)
+        ResetPassword -> view_reset_password(model)
+        Admin -> view_admin(model)
+        Member -> view_member(model)
+      },
+    ],
+  )
 }
 
 fn view_toast(toast: opt.Option(String)) -> Element(Msg) {
@@ -2963,6 +2990,18 @@ fn view_admin(model: Model) -> Element(Msg) {
   }
 }
 
+fn view_theme_switch(model: Model) -> Element(Msg) {
+  let current = theme.serialize(model.theme)
+
+  label([attribute.class("theme-switch")], [
+    text("Theme"),
+    select([attribute.value(current), event.on_input(ThemeSelected)], [
+      option([attribute.value("default")], "Default"),
+      option([attribute.value("dark")], "Dark"),
+    ]),
+  ])
+}
+
 fn view_topbar(model: Model, user: User) -> Element(Msg) {
   let show_project_selector =
     model.active_section == permissions.Members
@@ -2977,6 +3016,7 @@ fn view_topbar(model: Model, user: User) -> Element(Msg) {
       False -> div([], [])
     },
     div([attribute.class("topbar-actions")], [
+      view_theme_switch(model),
       span([attribute.class("user")], [text(user.email)]),
       button([event.on_click(SwitchToMember)], [text("App")]),
       button([event.on_click(LogoutClicked)], [text("Logout")]),
@@ -3868,6 +3908,7 @@ fn view_member_topbar(model: Model, user: User) -> Element(Msg) {
           button([event.on_click(SwitchToAdmin)], [text("Admin")])
         _ -> div([], [])
       },
+      view_theme_switch(model),
       span([attribute.class("user")], [text(user.email)]),
       button([event.on_click(LogoutClicked)], [text("Logout")]),
     ]),
@@ -4118,9 +4159,9 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
 
   let #(opacity, saturation) = decay_to_visuals(age_days)
 
-  let border = case highlight {
-    True -> "2px solid #0f766e"
-    False -> "1px solid #ddd"
+  let card_classes = case highlight {
+    True -> "task-card highlight"
+    False -> "task-card"
   }
 
   let style =
@@ -4132,9 +4173,7 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
     <> int.to_string(size)
     <> "px; height:"
     <> int.to_string(size)
-    <> "px; border:"
-    <> border
-    <> "; padding:8px; background:#fff; overflow:hidden; opacity:"
+    <> "px; padding:8px; overflow:hidden; opacity:"
     <> float.to_string(opacity)
     <> "; filter:saturate("
     <> float.to_string(saturation)
@@ -4142,7 +4181,7 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
 
   let disable_actions = model.member_task_mutation_in_flight
 
-  div([attribute.attribute("style", style)], [
+  div([attribute.class(card_classes), attribute.attribute("style", style)], [
     div(
       [
         attribute.attribute(
@@ -4154,10 +4193,7 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
         h3([], [text(title)]),
         div(
           [
-            attribute.attribute(
-              "style",
-              "cursor:grab; user-select:none; padding:2px 6px; border:1px solid #ddd;",
-            ),
+            attribute.class("drag-handle"),
             attribute.attribute("title", "Drag to move"),
             attribute.attribute("aria-label", "Drag to move"),
             event.on("mousedown", {

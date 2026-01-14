@@ -135,3 +135,22 @@ export function location_query_param(name) {
     return ""
   }
 }
+
+export function local_storage_get(key) {
+  if (typeof window === "undefined") return ""
+  try {
+    return window.localStorage?.getItem(String(key)) || ""
+  } catch {
+    return ""
+  }
+}
+
+export function local_storage_set(key, value) {
+  if (typeof window === "undefined") return undefined
+  try {
+    window.localStorage?.setItem(String(key), String(value))
+  } catch {
+    // ignore
+  }
+  return undefined
+}
