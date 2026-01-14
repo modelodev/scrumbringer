@@ -1,0 +1,22 @@
+http://localhost:8080 {
+  encode zstd gzip
+
+  # API backend (mock or real)
+  @api path /api/v1/*
+  handle @api {
+    reverse_proxy 127.0.0.1:{$SB_PORT}
+  }
+
+  # Smoke harness pages
+  handle_path /__smoke/* {
+    root * scripts/smoke
+    file_server
+  }
+
+  # Static assets + SPA fallback
+  root * apps/client/dist
+  handle {
+    try_files {path} {path}/ /index.html
+    file_server
+  }
+}
