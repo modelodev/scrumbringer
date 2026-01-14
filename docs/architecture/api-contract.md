@@ -120,6 +120,8 @@ Task rules:
 - `INVITE_INVALID` (403)
 - `INVITE_EXPIRED` (403)
 - `INVITE_USED` (403)
+- `RESET_TOKEN_INVALID` (403)
+- `RESET_TOKEN_USED` (403)
 
 ---
 
@@ -238,7 +240,14 @@ Legend:
 | `/api/v1/auth/logout` | POST | OA/PA/M | Clears session |
 | `/api/v1/auth/me` | GET | OA/PA/M | |
 | `/api/v1/org/users` | GET | OA/PA | Lists org users (email search) |
-| `/api/v1/org/invites` | POST | OA | Creates invite code |
+| `/api/v1/org/invites` | POST | OA | Creates invite token |
+| `/api/v1/org/invite-links` | POST | OA | Creates invite link for email |
+| `/api/v1/org/invite-links` | GET | OA | Lists invite links |
+| `/api/v1/org/invite-links/regenerate` | POST | OA | Regenerates invite link token |
+| `/api/v1/auth/invite-links/:token` | GET | Public | Validates invite-link token |
+| `/api/v1/auth/password-resets` | POST | Public | Creates password reset token |
+| `/api/v1/auth/password-resets/:token` | GET | Public | Validates reset token |
+| `/api/v1/auth/password-resets/consume` | POST | Public | Consumes reset token (set new password) |
 | `/api/v1/projects` | GET | OA/PA/M | Returns only projects user belongs to; includes `my_role` |
 | `/api/v1/projects` | POST | OA | Creates project |
 | `/api/v1/projects/:project_id/members` | GET | PA | Membership list |
@@ -278,9 +287,27 @@ Legend:
 
 - `POST /api/v1/auth/register`
   - body (bootstrap when no org exists yet): `{ email, password, org_name }`
-  - body (normal registration): `{ email, password, invite_code }`
+  - body (normal registration): `{ email, password, invite_token }`
   - errors: `INVITE_REQUIRED` | `INVITE_INVALID` | `INVITE_EXPIRED` | `INVITE_USED`
   - 200: `{ data: { user } }` + sets cookies (`sb_session`, `sb_csrf`)
+
+- `GET /api/v1/auth/invite-links/:token`
+  - 200: `{ data: { email } }`
+  - 403: `INVITE_INVALID` | `INVITE_USED`
+
+- `POST /api/v1/auth/password-resets`
+  - body: `{ email }`
+  - 200: `{ data: { reset: { token, url_path } } }`
+  - `url_path` is a relative path (no scheme/host) intended for client-side composition
+
+- `GET /api/v1/auth/password-resets/:token`
+  - 200: `{ data: { email } }`
+  - 403: `RESET_TOKEN_INVALID` | `RESET_TOKEN_USED`
+
+- `POST /api/v1/auth/password-resets/consume`
+  - body: `{ token, password }`
+  - 204
+  - 403: `RESET_TOKEN_INVALID` | `RESET_TOKEN_USED`
 
 - `POST /api/v1/auth/login`
   - body: `{ email, password }`
@@ -314,17 +341,57 @@ Invite resource:
 
 ```json
 {
-  "code": "inv_2cQ8m9bCk0m1m9q0cPZ5vFh1lZ8pUe8o",
+  "token": "inv_2cQ8m9bCk0m1m9q0cPZ5vFh1lZ8pUe8o",
+  "url_path": "/accept-invite?token=inv_2cQ8m9bCk0m1m9q0cPZ5vFh1lZ8pUe8o",
   "created_at": "...",
   "expires_at": "..."
 }
 ```
 
 Notes (de facto):
-- Treat `invite_code` as an **opaque, URL-safe random token** (not a human-memorable code).
+- Treat `token` as an **opaque, URL-safe random token**.
+- `url_path` is a **relative path** (no scheme/host) intended for client-side composition.
 - Token shape recommendation: **base64url/URL-safe alphabet**, ~**128 bits**+ of entropy (e.g. 16+ random bytes), optionally prefixed (`inv_`).
-- Code is **single-use** in MVP.
+- Token is **single-use** in MVP.
 - Default expiration when omitted: **168h (7 days)**.
+
+#### Invite Links (email-bound)
+
+- `POST /api/v1/org/invite-links`
+  - auth: org admin
+  - csrf: required (double-submit)
+  - body: `{ email }`
+  - 200: `{ data: { invite_link } }`
+
+- `GET /api/v1/org/invite-links`
+  - auth: org admin
+  - sort: `email ASC`
+  - 200: `{ data: { invite_links: InviteLink[] } }`
+
+- `POST /api/v1/org/invite-links/regenerate`
+  - auth: org admin
+  - csrf: required (double-submit)
+  - body: `{ email }`
+  - 200: `{ data: { invite_link } }`
+
+InviteLink resource:
+
+```json
+{
+  "email": "user@team.com",
+  "token": "il_2cQ8m9bCk0m1m9q0cPZ5vFh1lZ8pUe8o",
+  "url_path": "/accept-invite?token=il_2cQ8m9bCk0m1m9q0cPZ5vFh1lZ8pUe8o",
+  "state": "active",
+  "created_at": "...",
+  "used_at": null,
+  "invalidated_at": null
+}
+```
+
+Notes:
+- Single active token per email (create/regenerate invalidates the previous active token).
+- No time expiry (token lifecycle is `active | used | invalidated`).
+- API returns `token` and `url_path` (no absolute URL); server does not send emails.
 ---
 
 ### Projects
