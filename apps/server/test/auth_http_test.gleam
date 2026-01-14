@@ -104,6 +104,28 @@ pub fn register_after_bootstrap_requires_invite_test() {
   |> should.be_true
 }
 
+pub fn register_rejects_short_password_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  insert_invite_link_active(db, "il_short", "short@example.com")
+
+  let req =
+    simulate.request(http.Post, "/api/v1/auth/register")
+    |> simulate.json_body(
+      json.object([
+        #("password", json.string("short")),
+        #("invite_token", json.string("il_short")),
+      ]),
+    )
+
+  let res = handler(req)
+  res.status |> should.equal(422)
+  string.contains(simulate.read_body(res), "VALIDATION_ERROR")
+  |> should.be_true
+}
+
 pub fn validate_invite_link_returns_email_when_active_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app

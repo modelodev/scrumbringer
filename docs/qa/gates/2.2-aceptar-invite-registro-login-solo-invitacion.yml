@@ -1,0 +1,42 @@
+schema: 1
+story: '2.2'
+story_title: 'Aceptar invite + registro + login (solo invitación)'
+gate: PASS
+status_reason: 'Se cerraron los CONCERNS del gate anterior: rate limiting best-effort y test server-side para password mínimo; suite de tests pasa.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-01-14T12:24:33Z'
+
+top_issues: []
+
+waiver:
+  active: false
+
+quality_score: 100
+expires: '2026-01-28T12:24:33Z'
+
+evidence:
+  tests_reviewed: 4
+  risks_identified: 3
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    ac_gaps: []
+
+nfr_validation:
+  _assessed: [security, performance, reliability, maintainability]
+  security:
+    status: PASS
+    notes: 'Rate limiting best-effort added for token endpoints; ensure correct IP headers in production.'
+  performance:
+    status: PASS
+    notes: 'DB operations + ETS limiter are lightweight for MVP.'
+  reliability:
+    status: PASS
+    notes: 'Token consumption transactional; consistent errors.'
+  maintainability:
+    status: PASS
+    notes: 'Client state machine isolated and tested; server logic split cleanly.'
+
+trace_refs:
+  risk_profile: 'docs/qa/assessments/2.2-risk-20260114.md'
+  nfr_assessment: 'docs/qa/assessments/2.2-nfr-20260114.md'
+  trace_matrix: 'docs/qa/assessments/2.2-trace-20260114.md'

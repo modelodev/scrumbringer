@@ -5,7 +5,7 @@ import gleam/http
 import gleam/http/request
 import gleam/json
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option as opt
 import gleam/result
 import gleam/string
 import pog
@@ -16,6 +16,7 @@ import scrumbringer_server/services/auth_db
 import scrumbringer_server/services/auth_logic
 import scrumbringer_server/services/jwt
 import scrumbringer_server/services/org_invite_links_db
+import scrumbringer_server/services/rate_limit
 import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/time
 import wisp
@@ -24,68 +25,130 @@ pub type Ctx {
   Ctx(db: pog.Connection, jwt_secret: BitArray)
 }
 
-pub fn handle_register(req: wisp.Request, ctx: Ctx) -> wisp.Response {
-  use <- wisp.require_method(req, http.Post)
-  use data <- wisp.require_json(req)
+const invite_rate_limit_window_seconds = 60
 
-  let decoder = {
-    use email <- decode.optional_field("email", "", decode.string)
-    use password <- decode.field("password", decode.string)
-    use org_name <- decode.optional_field("org_name", "", decode.string)
-    use invite_token <- decode.optional_field("invite_token", "", decode.string)
-    decode.success(#(email, password, org_name, invite_token))
+const invite_rate_limit_limit = 30
+
+fn client_ip(req: wisp.Request) -> opt.Option(String) {
+  let xff =
+    request.get_header(req, "x-forwarded-for")
+    |> result.unwrap("")
+
+  let x_real = request.get_header(req, "x-real-ip") |> result.unwrap("")
+
+  let raw = case xff {
+    "" -> x_real
+    _ -> xff
   }
 
-  case decode.run(data, decoder) {
-    Ok(#(email_raw, password, org_name_raw, invite_token_raw)) -> {
-      case string.length(password) < 12 {
-        True ->
-          api.error(
-            422,
-            "VALIDATION_ERROR",
-            "Password must be at least 12 characters",
-          )
+  raw
+  |> string.split(",")
+  |> list.first
+  |> result.unwrap("")
+  |> string.trim
+  |> fn(value) {
+    case value {
+      "" -> opt.None
+      _ -> opt.Some(value)
+    }
+  }
+}
 
-        False -> {
-          let org_name = case org_name_raw {
-            "" -> None
-            other -> Some(other)
-          }
+fn invite_rate_limit_key(
+  prefix: String,
+  req: wisp.Request,
+) -> opt.Option(String) {
+  client_ip(req)
+  |> opt.map(fn(ip) { prefix <> ":" <> ip })
+}
 
-          let email = case email_raw {
-            "" -> None
-            other -> Some(other)
-          }
+fn invite_rate_limit_ok(prefix: String, req: wisp.Request) -> Bool {
+  case invite_rate_limit_key(prefix, req) {
+    opt.None -> True
 
-          let invite_token = case invite_token_raw {
-            "" -> None
-            other -> Some(other)
-          }
+    opt.Some(key) ->
+      rate_limit.allow(
+        key,
+        invite_rate_limit_limit,
+        invite_rate_limit_window_seconds,
+        time.now_unix_seconds(),
+      )
+  }
+}
 
-          let now_iso = time.now_iso8601()
-          let now_unix = time.now_unix_seconds()
+pub fn handle_register(req: wisp.Request, ctx: Ctx) -> wisp.Response {
+  use <- wisp.require_method(req, http.Post)
 
-          let Ctx(db: db, jwt_secret: jwt_secret) = ctx
+  case invite_rate_limit_ok("register_invite", req) {
+    False -> api.error(429, "RATE_LIMITED", "Too many attempts")
 
-          case
-            auth_db.register(
-              db,
-              email,
-              password,
-              org_name,
-              invite_token,
-              now_iso,
-              now_unix,
-            )
-          {
-            Ok(user) -> ok_with_auth(user, jwt_secret)
-            Error(error) -> auth_error_response(error)
+    True -> {
+      use data <- wisp.require_json(req)
+
+      let decoder = {
+        use email <- decode.optional_field("email", "", decode.string)
+        use password <- decode.field("password", decode.string)
+        use org_name <- decode.optional_field("org_name", "", decode.string)
+        use invite_token <- decode.optional_field(
+          "invite_token",
+          "",
+          decode.string,
+        )
+        decode.success(#(email, password, org_name, invite_token))
+      }
+
+      case decode.run(data, decoder) {
+        Ok(#(email_raw, password, org_name_raw, invite_token_raw)) -> {
+          case string.length(password) < 12 {
+            True ->
+              api.error(
+                422,
+                "VALIDATION_ERROR",
+                "Password must be at least 12 characters",
+              )
+
+            False -> {
+              let org_name = case org_name_raw {
+                "" -> opt.None
+                other -> opt.Some(other)
+              }
+
+              let email = case email_raw {
+                "" -> opt.None
+                other -> opt.Some(other)
+              }
+
+              let invite_token = case invite_token_raw {
+                "" -> opt.None
+                other -> opt.Some(other)
+              }
+
+              let now_iso = time.now_iso8601()
+              let now_unix = time.now_unix_seconds()
+
+              let Ctx(db: db, jwt_secret: jwt_secret) = ctx
+
+              case
+                auth_db.register(
+                  db,
+                  email,
+                  password,
+                  org_name,
+                  invite_token,
+                  now_iso,
+                  now_unix,
+                )
+              {
+                Ok(user) -> ok_with_auth(user, jwt_secret)
+                Error(error) -> auth_error_response(error)
+              }
+            }
           }
         }
+
+        Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
       }
     }
-
-    Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
   }
 }
 
@@ -96,22 +159,28 @@ pub fn handle_invite_link_validate(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
-  let Ctx(db: db, ..) = ctx
+  case invite_rate_limit_ok("invite_links", req) {
+    False -> api.error(429, "RATE_LIMITED", "Too many attempts")
 
-  case org_invite_links_db.token_status(db, token) {
-    Error(_) -> api.error(500, "INTERNAL", "Database error")
+    True -> {
+      let Ctx(db: db, ..) = ctx
 
-    Ok(org_invite_links_db.TokenMissing) ->
-      api.error(403, "INVITE_INVALID", "Invite token invalid")
+      case org_invite_links_db.token_status(db, token) {
+        Error(_) -> api.error(500, "INTERNAL", "Database error")
 
-    Ok(org_invite_links_db.TokenInvalidated) ->
-      api.error(403, "INVITE_INVALID", "Invite token invalid")
+        Ok(org_invite_links_db.TokenMissing) ->
+          api.error(403, "INVITE_INVALID", "Invite token invalid")
 
-    Ok(org_invite_links_db.TokenUsed) ->
-      api.error(403, "INVITE_USED", "Invite token already used")
+        Ok(org_invite_links_db.TokenInvalidated) ->
+          api.error(403, "INVITE_INVALID", "Invite token invalid")
 
-    Ok(org_invite_links_db.TokenActive(email: email, ..)) ->
-      api.ok(json.object([#("email", json.string(email))]))
+        Ok(org_invite_links_db.TokenUsed) ->
+          api.error(403, "INVITE_USED", "Invite token already used")
+
+        Ok(org_invite_links_db.TokenActive(email: email, ..)) ->
+          api.ok(json.object([#("email", json.string(email))]))
+      }
+    }
   }
 }
 
