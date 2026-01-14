@@ -393,17 +393,6 @@ fn reset_db(db: pog.Connection) {
   Nil
 }
 
-fn insert_invite_valid(db: pog.Connection, code: String) {
-  let assert Ok(_) =
-    pog.query(
-      "insert into org_invites (code, org_id, created_by, expires_at) values ($1, 1, 1, timestamptz '2999-01-01T00:00:00Z')",
-    )
-    |> pog.parameter(pog.text(code))
-    |> pog.execute(db)
-
-  Nil
-}
-
 fn insert_invite_link_active(db: pog.Connection, token: String, email: String) {
   let assert Ok(_) =
     pog.query(

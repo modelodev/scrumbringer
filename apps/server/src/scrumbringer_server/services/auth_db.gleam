@@ -219,59 +219,6 @@ fn invite_register(
   |> result.map_error(transaction_error_to_auth_error)
 }
 
-type InviteStatus {
-  InviteMissing
-  InviteUsed
-  InviteExpired
-  InviteOk(Int)
-}
-
-type InviteRow {
-  InviteRow(org_id: Int, used: Bool, expired: Bool)
-}
-
-fn get_invite_status(
-  db: pog.Connection,
-  code: String,
-) -> Result(InviteStatus, pog.QueryError) {
-  let decoder = {
-    use org_id <- decode.field(0, decode.int)
-    use used <- decode.field(1, decode.bool)
-    use expired <- decode.field(2, decode.bool)
-    decode.success(InviteRow(org_id:, used:, expired:))
-  }
-
-  use returned <- result.try(
-    pog.query(
-      "\nselect\n  org_id,\n  (used_at is not null) as used,\n  (expires_at is not null and expires_at < now()) as expired\nfrom\n  org_invites\nwhere\n  code = $1\nfor update\n",
-    )
-    |> pog.parameter(pog.text(code))
-    |> pog.returning(decoder)
-    |> pog.execute(db),
-  )
-
-  case returned.rows {
-    [] -> Ok(InviteMissing)
-    [InviteRow(used: True, ..), ..] -> Ok(InviteUsed)
-    [InviteRow(expired: True, ..), ..] -> Ok(InviteExpired)
-    [InviteRow(org_id: org_id, ..), ..] -> Ok(InviteOk(org_id))
-  }
-}
-
-fn mark_invite_used(
-  db: pog.Connection,
-  code: String,
-  used_by: Int,
-) -> Result(Nil, pog.QueryError) {
-  pog.query(
-    "update org_invites set used_at = now(), used_by = $2 where code = $1",
-  )
-  |> pog.parameter(pog.text(code))
-  |> pog.parameter(pog.int(used_by))
-  |> pog.execute(db)
-  |> result.map(fn(_) { Nil })
-}
-
 fn organization_exists(db: pog.Connection) -> Result(Bool, pog.QueryError) {
   let decoder = {
     use exists <- decode.field(0, decode.bool)
