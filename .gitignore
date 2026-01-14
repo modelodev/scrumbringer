@@ -24,6 +24,9 @@ apps/**/dist/
 caddyfile
 Caddyfile
 
+# Local DB dumps
+db/schema.sql
+
 # Gleam build output (generated)
 apps/**/build/
 packages/**/build/
