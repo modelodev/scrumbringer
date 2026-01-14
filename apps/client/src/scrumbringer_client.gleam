@@ -24,8 +24,15 @@ import scrumbringer_client/api
 import scrumbringer_client/member_visuals
 import scrumbringer_client/permissions
 
-pub fn main() -> lustre.App(Nil, Model, Msg) {
+pub fn app() -> lustre.App(Nil, Model, Msg) {
   lustre.application(init, update, view)
+}
+
+pub fn main() {
+  case lustre.start(app(), "#app", Nil) {
+    Ok(_) -> Nil
+    Error(_) -> Nil
+  }
 }
 
 type Remote(a) {
@@ -2185,7 +2192,14 @@ fn view_project_selector(model: Model) -> Element(Msg) {
 
   let empty_label = case model.page {
     Member -> "All projects"
-    _ -> "Select project"
+    _ -> "Select a project to manage settings…"
+  }
+
+  let helper = case model.page, model.selected_project_id {
+    Member, opt.None -> "Showing tasks from all projects"
+    Member, _ -> ""
+    _, opt.None -> "Select a project to manage members or task types"
+    _, _ -> ""
   }
 
   div([attribute.class("project-selector")], [
@@ -2202,6 +2216,10 @@ fn view_project_selector(model: Model) -> Element(Msg) {
         })
       ],
     ),
+    case helper == "" {
+      True -> div([], [])
+      False -> div([attribute.class("hint")], [text(helper)])
+    },
   ])
 }
 
@@ -2222,9 +2240,16 @@ fn view_nav(
               False -> "nav-item"
             }
 
+            let needs_project =
+              section == permissions.Members || section == permissions.TaskTypes
+
+            let disabled =
+              needs_project && model.selected_project_id == opt.None
+
             button(
               [
                 attribute.class(classes),
+                attribute.disabled(disabled),
                 event.on_click(NavSelected(section)),
               ],
               [text(page_title(section))],
@@ -2805,7 +2830,18 @@ fn view_task_types_list(task_types: Remote(List(api.TaskType))) -> Element(Msg) 
 
     Loaded(task_types) ->
       case task_types {
-        [] -> div([attribute.class("empty")], [text("No task types yet")])
+        [] ->
+          div([attribute.class("empty")], [
+            h2([], [text("No task types yet")]),
+            p([], [
+              text(
+                "Task types define what cards people can create (e.g., Bug, Feature).",
+              ),
+            ]),
+            p([], [
+              text("Create the first task type below to start using the Pool."),
+            ]),
+          ])
         _ ->
           table([attribute.class("table")], [
             thead([], [
@@ -2913,12 +2949,18 @@ fn view_member_pool(model: Model) -> Element(Msg) {
   case active_projects(model) {
     [] ->
       div([attribute.class("empty")], [
-        text("You are not in any project yet. Ask an admin to add you."),
+        h2([], [text("No projects yet")]),
+        p([], [
+          text("Ask an admin to add you to a project."),
+        ]),
       ])
 
     _ ->
       div([attribute.class("section")], [
         view_member_filters(model),
+        p([], [
+          text("Tip: use the ≡ handle on a card to drag it."),
+        ]),
         button([event.on_click(MemberCreateDialogOpened)], [text("New task")]),
         case model.member_create_dialog_open {
           True -> view_member_create_dialog(model)
@@ -3024,8 +3066,31 @@ fn view_member_tasks(model: Model) -> Element(Msg) {
 
     Loaded(tasks) ->
       case tasks {
-        [] ->
-          div([attribute.class("empty")], [text("No tasks match your filters")])
+        [] -> {
+          let no_filters =
+            string.trim(model.member_filters_status) == ""
+            && string.trim(model.member_filters_type_id) == ""
+            && string.trim(model.member_filters_capability_id) == ""
+            && string.trim(model.member_filters_q) == ""
+
+          case no_filters {
+            True ->
+              div([attribute.class("empty")], [
+                h2([], [text("No tasks here yet")]),
+                p([], [
+                  text("Create your first task to start using the Pool."),
+                ]),
+                button([event.on_click(MemberCreateDialogOpened)], [
+                  text("New task"),
+                ]),
+              ])
+
+            False ->
+              div([attribute.class("empty")], [
+                text("No tasks match your filters"),
+              ])
+          }
+        }
 
         _ ->
           div(
@@ -3129,13 +3194,15 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
               "style",
               "cursor:grab; user-select:none; padding:2px 6px; border:1px solid #ddd;",
             ),
+            attribute.attribute("title", "Drag to move"),
+            attribute.attribute("aria-label", "Drag to move"),
             event.on("mousedown", {
               use ox <- decode.field("offsetX", decode.int)
               use oy <- decode.field("offsetY", decode.int)
               decode.success(MemberDragStarted(id, ox, oy))
             }),
           ],
-          [text("Drag")],
+          [text("≡")],
         ),
       ],
     ),

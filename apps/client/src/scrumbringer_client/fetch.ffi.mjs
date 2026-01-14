@@ -1,5 +1,5 @@
 export function read_cookie(name) {
-  if (typeof document === "undefined") return undefined
+  if (typeof document === "undefined") return ""
   const all = document.cookie || ""
   const parts = all.split(";")
   for (const part of parts) {
@@ -16,7 +16,20 @@ export function read_cookie(name) {
       return v
     }
   }
-  return undefined
+  return ""
+}
+
+function unwrap_option(value) {
+  if (value === undefined || value === null) return undefined
+
+  // Gleam option values are `Some(value)` / `None()` custom types.
+  if (typeof value === "object") {
+    const name = value.constructor?.name
+    if (name === "None") return undefined
+    if (name === "Some") return value[0]
+  }
+
+  return value
 }
 
 export function send(method, url, headers, body, callback) {
@@ -26,8 +39,12 @@ export function send(method, url, headers, body, callback) {
     credentials: "same-origin",
   }
 
-  if (body !== undefined) {
-    init.body = body
+  const m = String(method || "").toUpperCase()
+  const unwrappedBody = unwrap_option(body)
+
+  // Fetch forbids a body for GET/HEAD.
+  if (unwrappedBody !== undefined && m !== "GET" && m !== "HEAD") {
+    init.body = unwrappedBody
   }
 
   fetch(url, init)

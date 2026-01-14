@@ -97,8 +97,15 @@ pub fn build_csrf_headers(
 }
 
 @external(javascript, "./fetch.ffi.mjs", "read_cookie")
-fn read_cookie(_name: String) -> option.Option(String) {
-  option.None
+fn read_cookie_ffi(_name: String) -> String {
+  ""
+}
+
+fn read_cookie(name: String) -> option.Option(String) {
+  case read_cookie_ffi(name) {
+    "" -> option.None
+    value -> option.Some(value)
+  }
 }
 
 @external(javascript, "./fetch.ffi.mjs", "send")
@@ -267,6 +274,10 @@ fn user_decoder() -> decode.Decoder(User) {
   }
 }
 
+pub fn user_payload_decoder() -> decode.Decoder(User) {
+  decode.field("user", user_decoder(), decode.success)
+}
+
 fn project_decoder() -> decode.Decoder(Project) {
   use id <- decode.field("id", decode.int)
   use name <- decode.field("name", decode.string)
@@ -421,7 +432,7 @@ fn position_decoder() -> decode.Decoder(TaskPosition) {
 }
 
 pub fn fetch_me(to_msg: fn(ApiResult(User)) -> msg) -> Effect(msg) {
-  request("GET", "/api/v1/auth/me", option.None, user_decoder(), to_msg)
+  request("GET", "/api/v1/auth/me", option.None, user_payload_decoder(), to_msg)
 }
 
 pub fn login(
@@ -438,7 +449,7 @@ pub fn login(
     "POST",
     "/api/v1/auth/login",
     option.Some(body),
-    user_decoder(),
+    user_payload_decoder(),
     to_msg,
   )
 }
