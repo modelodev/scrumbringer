@@ -110,6 +110,16 @@ Los equipos usan herramientas con modelo "push" (asignación directa) que genera
 - En las tarjetas del Pool, los affordances críticos son siempre visibles y usables (aunque la tarjeta sea pequeña):
   - Acción de Claim/Release/Complete (según estado) y el handle de drag.
 
+### Estado Personal: "Now Working" (Servidor)
+
+- El usuario puede tener **0 o 1** tarea **activa** (global, no por proyecto).
+- Este estado es **personal** (no cambia `tasks.status`), sirve para que el usuario sepa con qué está y cuánto tiempo lleva.
+- La información se **persiste en servidor** para que sea consistente entre dispositivos (desktop/mobile).
+- Acciones personales soportadas (mínimo): `start/resume`, `pause`.
+- Regla: hacer `start` en una nueva tarea **pausa automáticamente** la anterior (si existía).
+- Acciones globales relacionadas (ya existentes en tareas claimed): `complete`, `release`.
+- **Mobile** requiere UX específica: no se muestra el Pool; solo My Bar + acciones rápidas (start/pause/complete/release) y el cronómetro.
+
 ### Acceptance Criteria: No Asignación Directa
 
 - **AC1:** No existe campo "Assignee" en UI
