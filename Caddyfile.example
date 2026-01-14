@@ -1,0 +1,17 @@
+https://localhost:8443 {
+  tls internal
+  encode zstd gzip
+
+  # API backend (Gleam server)
+  @api path /api/v1/*
+  handle @api {
+    reverse_proxy 127.0.0.1:{$SB_PORT}
+  }
+
+  # Static assets + SPA fallback
+  root * apps/client/dist
+  handle {
+    try_files {path} {path}/ /index.html
+    file_server
+  }
+}

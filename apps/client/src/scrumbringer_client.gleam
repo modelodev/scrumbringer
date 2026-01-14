@@ -21,9 +21,12 @@ import scrumbringer_domain/user.{type User}
 
 import scrumbringer_client/accept_invite
 import scrumbringer_client/api
+import scrumbringer_client/hydration
+import scrumbringer_client/member_section
 import scrumbringer_client/member_visuals
 import scrumbringer_client/permissions
 import scrumbringer_client/reset_password
+import scrumbringer_client/router
 import scrumbringer_client/styles
 import scrumbringer_client/theme
 
@@ -60,12 +63,6 @@ type IconPreview {
   IconError
 }
 
-pub type MemberSection {
-  Pool
-  MyBar
-  MySkills
-}
-
 type MemberDrag {
   MemberDrag(task_id: Int, offset_x: Int, offset_y: Int)
 }
@@ -74,6 +71,7 @@ pub opaque type Model {
   Model(
     page: Page,
     user: opt.Option(User),
+    auth_checked: Bool,
     active_section: permissions.AdminSection,
     toast: opt.Option(String),
     theme: theme.Theme,
@@ -105,6 +103,7 @@ pub opaque type Model {
     capabilities_create_in_flight: Bool,
     capabilities_create_error: opt.Option(String),
     members: Remote(List(api.ProjectMember)),
+    members_project_id: opt.Option(Int),
     org_users_cache: Remote(List(api.OrgUser)),
     org_settings_users: Remote(List(api.OrgUser)),
     org_settings_role_drafts: dict.Dict(Int, String),
@@ -122,13 +121,14 @@ pub opaque type Model {
     org_users_search_query: String,
     org_users_search_results: Remote(List(api.OrgUser)),
     task_types: Remote(List(api.TaskType)),
+    task_types_project_id: opt.Option(Int),
     task_types_create_name: String,
     task_types_create_icon: String,
     task_types_create_capability_id: opt.Option(String),
     task_types_create_in_flight: Bool,
     task_types_create_error: opt.Option(String),
     task_types_icon_preview: IconPreview,
-    member_section: MemberSection,
+    member_section: member_section.MemberSection,
     member_tasks: Remote(List(api.Task)),
     member_tasks_pending: Int,
     member_tasks_by_project: dict.Dict(Int, List(api.Task)),
@@ -169,7 +169,15 @@ pub opaque type Model {
   )
 }
 
+pub type NavMode {
+  Push
+  Replace
+}
+
 pub type Msg {
+  UrlChanged
+  NavigateTo(router.Route, NavMode)
+
   MeFetched(api.ApiResult(User))
   AcceptInviteMsg(accept_invite.Msg)
   ResetPasswordMsg(reset_password.Msg)
@@ -194,7 +202,6 @@ pub type Msg {
 
   ThemeSelected(String)
 
-  NavSelected(permissions.AdminSection)
   ProjectSelected(String)
 
   ProjectsFetched(api.ApiResult(List(api.Project)))
@@ -248,10 +255,6 @@ pub type Msg {
   TaskTypeCreateSubmitted
   TaskTypeCreated(api.ApiResult(api.TaskType))
 
-  SwitchToAdmin
-  SwitchToMember
-
-  MemberNavSelected(MemberSection)
   MemberPoolStatusChanged(String)
   MemberPoolTypeChanged(String)
   MemberPoolCapabilityChanged(String)
@@ -306,27 +309,51 @@ pub type Msg {
 
 fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
   let pathname = location_pathname_ffi()
-  let is_accept_invite = pathname == "/accept-invite"
-  let is_reset_password = pathname == "/reset-password"
+  let search = location_search_ffi()
+  let hash = location_hash_ffi()
 
-  let accept_token = case is_accept_invite {
-    True -> location_query_param_ffi("token")
-    False -> ""
+  let parsed = router.parse(pathname, search, hash)
+
+  let route = case parsed {
+    router.Parsed(route) -> route
+    router.Redirect(route) -> route
   }
 
-  let reset_token = case is_reset_password {
-    True -> location_query_param_ffi("token")
-    False -> ""
+  let accept_token = case route {
+    router.AcceptInvite(token) -> token
+    _ -> ""
+  }
+
+  let reset_token = case route {
+    router.ResetPassword(token) -> token
+    _ -> ""
+  }
+
+  let page = case route {
+    router.Login -> Login
+    router.AcceptInvite(_) -> AcceptInvite
+    router.ResetPassword(_) -> ResetPassword
+    router.Admin(_, _) -> Admin
+    router.Member(_, _) -> Member
+  }
+
+  let active_section = case route {
+    router.Admin(section, _) -> section
+    _ -> permissions.Invites
+  }
+
+  let member_section = case route {
+    router.Member(section, _) -> section
+    _ -> member_section.Pool
+  }
+
+  let selected_project_id = case route {
+    router.Admin(_, project_id) | router.Member(_, project_id) -> project_id
+    _ -> opt.None
   }
 
   let #(accept_model, accept_action) = accept_invite.init(accept_token)
   let #(reset_model, reset_action) = reset_password.init(reset_token)
-
-  let page = case is_reset_password, is_accept_invite {
-    True, _ -> ResetPassword
-    _, True -> AcceptInvite
-    _, _ -> Login
-  }
 
   let active_theme = theme.load_from_storage()
 
@@ -334,7 +361,8 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
     Model(
       page: page,
       user: opt.None,
-      active_section: permissions.Invites,
+      auth_checked: False,
+      active_section: active_section,
       toast: opt.None,
       theme: active_theme,
       login_email: "",
@@ -350,7 +378,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       accept_invite: accept_model,
       reset_password: reset_model,
       projects: NotAsked,
-      selected_project_id: opt.None,
+      selected_project_id: selected_project_id,
       invite_links: NotAsked,
       invite_link_email: "",
       invite_link_in_flight: False,
@@ -365,6 +393,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       capabilities_create_in_flight: False,
       capabilities_create_error: opt.None,
       members: NotAsked,
+      members_project_id: opt.None,
       org_users_cache: NotAsked,
       org_settings_users: NotAsked,
       org_settings_role_drafts: dict.new(),
@@ -382,13 +411,14 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       org_users_search_query: "",
       org_users_search_results: NotAsked,
       task_types: NotAsked,
+      task_types_project_id: opt.None,
       task_types_create_name: "",
       task_types_create_icon: "",
       task_types_create_capability_id: opt.None,
       task_types_create_in_flight: False,
       task_types_create_error: opt.None,
       task_types_icon_preview: IconIdle,
-      member_section: Pool,
+      member_section: member_section,
       member_tasks: NotAsked,
       member_tasks_pending: 0,
       member_tasks_by_project: dict.new(),
@@ -428,13 +458,64 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       member_note_error: opt.None,
     )
 
-  let effect = case page {
+  let base_effect = case page {
     AcceptInvite -> accept_invite_effect(accept_action)
     ResetPassword -> reset_password_effect(reset_action)
     _ -> api.fetch_me(MeFetched)
   }
 
-  #(model, effect)
+  let redirect_fx = case parsed {
+    router.Redirect(_) -> write_url(Replace, route)
+    router.Parsed(_) -> effect.none()
+  }
+
+  #(
+    model,
+    effect.batch([
+      register_popstate_effect(),
+      redirect_fx,
+      base_effect,
+    ]),
+  )
+}
+
+fn current_route(model: Model) -> router.Route {
+  case model.page {
+    Login -> router.Login
+
+    AcceptInvite -> {
+      let accept_invite.Model(token: token, ..) = model.accept_invite
+      router.AcceptInvite(token)
+    }
+
+    ResetPassword -> {
+      let reset_password.Model(token: token, ..) = model.reset_password
+      router.ResetPassword(token)
+    }
+
+    Admin -> router.Admin(model.active_section, model.selected_project_id)
+
+    Member -> router.Member(model.member_section, model.selected_project_id)
+  }
+}
+
+fn url_for_model(model: Model) -> String {
+  router.format(current_route(model))
+}
+
+@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "history_push_state")
+fn history_push_state_ffi(_path: String) -> Nil {
+  Nil
+}
+
+@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "history_replace_state")
+fn history_replace_state_ffi(_path: String) -> Nil {
+  Nil
+}
+
+fn replace_url(model: Model) -> Effect(Msg) {
+  let path = url_for_model(model)
+  effect.from(fn(_dispatch) { history_replace_state_ffi(path) })
 }
 
 fn accept_invite_effect(action: accept_invite.Action) -> Effect(Msg) {
@@ -459,31 +540,430 @@ fn reset_password_effect(action: reset_password.Action) -> Effect(Msg) {
   }
 }
 
+@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "register_popstate")
+fn register_popstate_ffi(_cb: fn(Nil) -> Nil) -> Nil {
+  Nil
+}
+
+fn register_popstate_effect() -> Effect(Msg) {
+  effect.from(fn(dispatch) {
+    register_popstate_ffi(fn(_) { dispatch(UrlChanged) })
+  })
+}
+
+fn write_url(mode: NavMode, route: router.Route) -> Effect(Msg) {
+  let url = router.format(route)
+
+  effect.from(fn(_dispatch) {
+    case mode {
+      Push -> history_push_state_ffi(url)
+      Replace -> history_replace_state_ffi(url)
+    }
+  })
+}
+
+fn apply_route_fields(
+  model: Model,
+  route: router.Route,
+) -> #(Model, Effect(Msg)) {
+  let model = Model(..model, toast: opt.None)
+
+  case route {
+    router.Login -> {
+      #(
+        Model(..model, page: Login, selected_project_id: opt.None),
+        effect.none(),
+      )
+    }
+
+    router.AcceptInvite(token) -> {
+      let #(accept_model, action) = accept_invite.init(token)
+      let model =
+        Model(
+          ..model,
+          page: AcceptInvite,
+          accept_invite: accept_model,
+          selected_project_id: opt.None,
+        )
+
+      #(model, accept_invite_effect(action))
+    }
+
+    router.ResetPassword(token) -> {
+      let #(reset_model, action) = reset_password.init(token)
+      let model =
+        Model(
+          ..model,
+          page: ResetPassword,
+          reset_password: reset_model,
+          selected_project_id: opt.None,
+        )
+
+      #(model, reset_password_effect(action))
+    }
+
+    router.Admin(section, project_id) -> {
+      #(
+        Model(
+          ..model,
+          page: Admin,
+          active_section: section,
+          selected_project_id: project_id,
+        ),
+        effect.none(),
+      )
+    }
+
+    router.Member(section, project_id) -> {
+      #(
+        Model(
+          ..model,
+          page: Member,
+          member_section: section,
+          selected_project_id: project_id,
+        ),
+        effect.none(),
+      )
+    }
+  }
+}
+
+fn remote_state(remote: Remote(a)) -> hydration.ResourceState {
+  case remote {
+    NotAsked -> hydration.NotAsked
+    Loading -> hydration.Loading
+    Loaded(_) -> hydration.Loaded
+    Failed(_) -> hydration.Failed
+  }
+}
+
+fn auth_state(model: Model) -> hydration.AuthState {
+  case model.user {
+    opt.Some(user) -> hydration.Authed(user.org_role)
+
+    opt.None ->
+      case model.auth_checked {
+        True -> hydration.Unauthed
+        False -> hydration.Unknown
+      }
+  }
+}
+
+fn build_snapshot(model: Model) -> hydration.Snapshot {
+  hydration.Snapshot(
+    auth: auth_state(model),
+    projects: remote_state(model.projects),
+    invite_links: remote_state(model.invite_links),
+    capabilities: remote_state(model.capabilities),
+    my_capability_ids: remote_state(model.member_my_capability_ids),
+    org_settings_users: remote_state(model.org_settings_users),
+    members: remote_state(model.members),
+    members_project_id: model.members_project_id,
+    task_types: remote_state(model.task_types),
+    task_types_project_id: model.task_types_project_id,
+    member_tasks: remote_state(model.member_tasks),
+  )
+}
+
+fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
+  let route = current_route(model)
+  let commands = hydration.plan(route, build_snapshot(model))
+
+  case
+    list.find(commands, fn(cmd) {
+      case cmd {
+        hydration.Redirect(_) -> True
+        _ -> False
+      }
+    })
+  {
+    Ok(hydration.Redirect(to: to)) -> {
+      case to == route {
+        True -> #(model, effect.none())
+        False -> handle_navigate_to(model, to, Replace)
+      }
+    }
+
+    _ -> {
+      let #(next, effects) =
+        list.fold(commands, #(model, []), fn(state, cmd) {
+          let #(m, fx) = state
+
+          case cmd {
+            hydration.FetchMe -> {
+              #(m, [api.fetch_me(MeFetched), ..fx])
+            }
+
+            hydration.FetchProjects -> {
+              case m.projects {
+                Loading | Loaded(_) -> #(m, fx)
+
+                _ -> {
+                  let m = Model(..m, projects: Loading)
+                  #(m, [api.list_projects(ProjectsFetched), ..fx])
+                }
+              }
+            }
+
+            hydration.FetchInviteLinks -> {
+              case m.invite_links {
+                Loading | Loaded(_) -> #(m, fx)
+
+                _ -> {
+                  let m = Model(..m, invite_links: Loading)
+                  #(m, [api.list_invite_links(InviteLinksFetched), ..fx])
+                }
+              }
+            }
+
+            hydration.FetchCapabilities -> {
+              case m.capabilities {
+                Loading | Loaded(_) -> #(m, fx)
+
+                _ -> {
+                  let m = Model(..m, capabilities: Loading)
+                  #(m, [api.list_capabilities(CapabilitiesFetched), ..fx])
+                }
+              }
+            }
+
+            hydration.FetchMeCapabilityIds -> {
+              case m.member_my_capability_ids {
+                Loading | Loaded(_) -> #(m, fx)
+
+                _ -> {
+                  let m = Model(..m, member_my_capability_ids: Loading)
+                  #(m, [
+                    api.get_me_capability_ids(MemberMyCapabilityIdsFetched),
+                    ..fx
+                  ])
+                }
+              }
+            }
+
+            hydration.FetchOrgSettingsUsers -> {
+              case m.org_settings_users {
+                Loading | Loaded(_) -> #(m, fx)
+
+                _ -> {
+                  let m =
+                    Model(
+                      ..m,
+                      org_settings_users: Loading,
+                      org_settings_role_drafts: dict.new(),
+                      org_settings_save_in_flight: False,
+                      org_settings_error: opt.None,
+                      org_settings_error_user_id: opt.None,
+                    )
+
+                  #(m, [api.list_org_users("", OrgSettingsUsersFetched), ..fx])
+                }
+              }
+            }
+
+            hydration.FetchMembers(project_id: project_id) -> {
+              let can_fetch = case m.projects {
+                Loaded(projects) ->
+                  list.any(projects, fn(p) { p.id == project_id })
+                _ -> False
+              }
+
+              case can_fetch {
+                False -> #(m, fx)
+
+                True ->
+                  case m.members {
+                    Loading -> #(m, fx)
+
+                    _ -> {
+                      let m =
+                        Model(
+                          ..m,
+                          members: Loading,
+                          members_project_id: opt.Some(project_id),
+                          org_users_cache: Loading,
+                        )
+
+                      let fx_members =
+                        api.list_project_members(project_id, MembersFetched)
+                      let fx_users =
+                        api.list_org_users("", OrgUsersCacheFetched)
+
+                      #(m, [effect.batch([fx_members, fx_users]), ..fx])
+                    }
+                  }
+              }
+            }
+
+            hydration.FetchTaskTypes(project_id: project_id) -> {
+              let can_fetch = case m.projects {
+                Loaded(projects) ->
+                  list.any(projects, fn(p) { p.id == project_id })
+                _ -> False
+              }
+
+              case can_fetch {
+                False -> #(m, fx)
+
+                True ->
+                  case m.task_types {
+                    Loading -> #(m, fx)
+
+                    _ -> {
+                      let m =
+                        Model(
+                          ..m,
+                          task_types: Loading,
+                          task_types_project_id: opt.Some(project_id),
+                        )
+
+                      #(m, [
+                        api.list_task_types(project_id, TaskTypesFetched),
+                        ..fx
+                      ])
+                    }
+                  }
+              }
+            }
+
+            hydration.RefreshMember -> {
+              case m.projects {
+                Loaded(_) -> {
+                  let #(m, member_fx) = member_refresh(m)
+                  #(m, [member_fx, ..fx])
+                }
+
+                _ -> #(m, fx)
+              }
+            }
+
+            hydration.Redirect(_) -> #(m, fx)
+          }
+        })
+
+      #(next, effect.batch(list.reverse(effects)))
+    }
+  }
+}
+
+fn handle_url_changed(model: Model) -> #(Model, Effect(Msg)) {
+  let pathname = location_pathname_ffi()
+  let search = location_search_ffi()
+  let hash = location_hash_ffi()
+
+  let parsed = router.parse(pathname, search, hash)
+
+  let route = case parsed {
+    router.Parsed(route) -> route
+    router.Redirect(route) -> route
+  }
+
+  let current = current_route(model)
+
+  case parsed {
+    router.Parsed(_) ->
+      case route == current {
+        True -> #(model, effect.none())
+
+        False -> {
+          let #(model, route_fx) = apply_route_fields(model, route)
+          let #(model, hyd_fx) = hydrate_model(model)
+          #(model, effect.batch([route_fx, hyd_fx]))
+        }
+      }
+
+    router.Redirect(_) -> {
+      let #(model, route_fx) = apply_route_fields(model, route)
+      let #(model, hyd_fx) = hydrate_model(model)
+      #(model, effect.batch([write_url(Replace, route), route_fx, hyd_fx]))
+    }
+  }
+}
+
+fn handle_navigate_to(
+  model: Model,
+  route: router.Route,
+  mode: NavMode,
+) -> #(Model, Effect(Msg)) {
+  case route == current_route(model) {
+    True -> #(model, effect.none())
+
+    False -> {
+      let #(model, route_fx) = apply_route_fields(model, route)
+      let #(model, hyd_fx) = hydrate_model(model)
+
+      #(model, effect.batch([write_url(mode, route), route_fx, hyd_fx]))
+    }
+  }
+}
+
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
+    UrlChanged -> handle_url_changed(model)
+
+    NavigateTo(route, mode) -> handle_navigate_to(model, route, mode)
+
     MeFetched(Ok(user)) -> {
-      let page = case user.org_role {
+      let default_page = case user.org_role {
         org_role.Admin -> Admin
         _ -> Member
       }
 
-      let model = Model(..model, page: page, user: opt.Some(user))
-      let #(model, effect) = bootstrap_admin(model)
-      #(model, effect)
+      let resolved_page = case model.page {
+        // Allow admin users to keep using the Member app if the URL requested it.
+        Member -> Member
+
+        // Non-admin users cannot access /admin/*.
+        Admin ->
+          case user.org_role {
+            org_role.Admin -> Admin
+            _ -> Member
+          }
+
+        // Login, AcceptInvite, ResetPassword: go to role default.
+        _ -> default_page
+      }
+
+      let model =
+        Model(
+          ..model,
+          page: resolved_page,
+          user: opt.Some(user),
+          auth_checked: True,
+        )
+      let #(model, boot) = bootstrap_admin(model)
+      let #(model, hyd_fx) = hydrate_model(model)
+
+      #(
+        model,
+        effect.batch([
+          boot,
+          hyd_fx,
+          replace_url(model),
+        ]),
+      )
     }
 
     MeFetched(Error(err)) -> {
       case err.status == 401 {
-        True -> #(Model(..model, page: Login, user: opt.None), effect.none())
-        False -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            login_error: opt.Some(err.message),
-          ),
-          effect.none(),
-        )
+        True -> {
+          let model =
+            Model(..model, page: Login, user: opt.None, auth_checked: True)
+          #(model, replace_url(model))
+        }
+
+        False -> {
+          let model =
+            Model(
+              ..model,
+              page: Login,
+              user: opt.None,
+              auth_checked: True,
+              login_error: opt.Some(err.message),
+            )
+
+          #(model, replace_url(model))
+        }
       }
     }
 
@@ -515,11 +995,20 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               ..model,
               page: page,
               user: opt.Some(user),
+              auth_checked: True,
               toast: opt.Some("Welcome"),
             )
 
-          let #(model, effect) = bootstrap_admin(model)
-          #(model, effect)
+          let #(model, boot) = bootstrap_admin(model)
+          let #(model, hyd_fx) = hydrate_model(model)
+          #(
+            model,
+            effect.batch([
+              boot,
+              hyd_fx,
+              replace_url(model),
+            ]),
+          )
         }
       }
     }
@@ -545,16 +1034,18 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           }),
         )
 
-        reset_password.GoToLogin -> #(
-          Model(
-            ..model,
-            page: Login,
-            toast: opt.Some("Password updated"),
-            login_password: "",
-            login_error: opt.None,
-          ),
-          effect.none(),
-        )
+        reset_password.GoToLogin -> {
+          let model =
+            Model(
+              ..model,
+              page: Login,
+              toast: opt.Some("Password updated"),
+              login_password: "",
+              login_error: opt.None,
+            )
+
+          #(model, replace_url(model))
+        }
       }
     }
 
@@ -598,13 +1089,22 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           ..model,
           page: page,
           user: opt.Some(user),
+          auth_checked: True,
           login_in_flight: False,
           login_password: "",
           toast: opt.Some("Logged in"),
         )
 
-      let #(model, effect) = bootstrap_admin(model)
-      #(model, effect)
+      let #(model, boot) = bootstrap_admin(model)
+      let #(model, hyd_fx) = hydrate_model(model)
+      #(
+        model,
+        effect.batch([
+          boot,
+          hyd_fx,
+          replace_url(model),
+        ]),
+      )
     }
 
     LoginFinished(Error(err)) -> {
@@ -745,14 +1245,27 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       api.logout(LogoutFinished),
     )
 
-    LogoutFinished(Ok(_)) -> #(
-      Model(..model, page: Login, user: opt.None, toast: opt.Some("Logged out")),
-      effect.none(),
-    )
+    LogoutFinished(Ok(_)) -> {
+      let model =
+        Model(
+          ..model,
+          page: Login,
+          user: opt.None,
+          auth_checked: False,
+          toast: opt.Some("Logged out"),
+        )
+
+      #(model, replace_url(model))
+    }
 
     LogoutFinished(Error(err)) -> {
       case err.status == 401 {
-        True -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        True -> {
+          let model =
+            Model(..model, page: Login, user: opt.None, auth_checked: False)
+          #(model, replace_url(model))
+        }
+
         False -> #(
           Model(..model, toast: opt.Some("Logout failed")),
           effect.none(),
@@ -775,11 +1288,6 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
     }
 
-    NavSelected(section) -> {
-      let model = Model(..model, active_section: section, toast: opt.None)
-      refresh_section(model)
-    }
-
     ProjectSelected(project_id) -> {
       let selected = case int.parse(project_id) {
         Ok(id) -> opt.Some(id)
@@ -799,8 +1307,15 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
 
       case model.page {
-        Member -> member_refresh(model)
-        _ -> refresh_section(model)
+        Member -> {
+          let #(model, fx) = member_refresh(model)
+          #(model, effect.batch([fx, replace_url(model)]))
+        }
+
+        _ -> {
+          let #(model, fx) = refresh_section(model)
+          #(model, effect.batch([fx, replace_url(model)]))
+        }
       }
     }
 
@@ -817,14 +1332,32 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       let model = ensure_default_section(model)
 
       case model.page {
-        Member -> member_refresh(model)
-        _ -> #(model, effect.none())
+        Member -> {
+          let #(model, fx) = member_refresh(model)
+          let #(model, hyd_fx) = hydrate_model(model)
+          #(model, effect.batch([fx, hyd_fx, replace_url(model)]))
+        }
+
+        Admin -> {
+          let #(model, fx) = refresh_section(model)
+          let #(model, hyd_fx) = hydrate_model(model)
+          #(model, effect.batch([fx, hyd_fx, replace_url(model)]))
+        }
+
+        _ -> {
+          let #(model, hyd_fx) = hydrate_model(model)
+          #(model, effect.batch([hyd_fx, replace_url(model)]))
+        }
       }
     }
 
     ProjectsFetched(Error(err)) -> {
       case err.status == 401 {
-        True -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        True -> {
+          let model = Model(..model, page: Login, user: opt.None)
+          #(model, replace_url(model))
+        }
+
         False -> #(Model(..model, projects: Failed(err)), effect.none())
       }
     }
@@ -1732,18 +2265,6 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
     }
 
-    SwitchToAdmin -> #(Model(..model, page: Admin), effect.none())
-
-    SwitchToMember -> {
-      let model = Model(..model, page: Member)
-      member_refresh(model)
-    }
-
-    MemberNavSelected(section) -> {
-      let model = Model(..model, member_section: section)
-      member_refresh(model)
-    }
-
     MemberPoolStatusChanged(v) -> {
       let model = Model(..model, member_filters_status: v)
       member_refresh(model)
@@ -2446,17 +2967,35 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 fn bootstrap_admin(model: Model) -> #(Model, Effect(Msg)) {
-  let model = Model(..model, projects: Loading, invite_links: Loading)
+  let is_admin = case model.user {
+    opt.Some(user) -> user.org_role == org_role.Admin
+    opt.None -> False
+  }
 
-  #(
-    model,
-    effect.batch([
-      api.list_projects(ProjectsFetched),
-      api.list_capabilities(CapabilitiesFetched),
-      api.get_me_capability_ids(MemberMyCapabilityIdsFetched),
-      api.list_invite_links(InviteLinksFetched),
-    ]),
-  )
+  let model =
+    Model(
+      ..model,
+      projects: Loading,
+      capabilities: Loading,
+      member_my_capability_ids: Loading,
+      invite_links: case is_admin {
+        True -> Loading
+        False -> model.invite_links
+      },
+    )
+
+  let effects = [
+    api.list_projects(ProjectsFetched),
+    api.list_capabilities(CapabilitiesFetched),
+    api.get_me_capability_ids(MemberMyCapabilityIdsFetched),
+  ]
+
+  let effects = case is_admin {
+    True -> [api.list_invite_links(InviteLinksFetched), ..effects]
+    False -> effects
+  }
+
+  #(model, effect.batch(effects))
 }
 
 fn ensure_selected_project(
@@ -2533,7 +3072,13 @@ fn refresh_section(model: Model) -> #(Model, Effect(Msg)) {
       case model.selected_project_id {
         opt.None -> #(model, effect.none())
         opt.Some(project_id) -> {
-          let model = Model(..model, members: Loading, org_users_cache: Loading)
+          let model =
+            Model(
+              ..model,
+              members: Loading,
+              members_project_id: opt.Some(project_id),
+              org_users_cache: Loading,
+            )
           #(
             model,
             effect.batch([
@@ -2548,7 +3093,12 @@ fn refresh_section(model: Model) -> #(Model, Effect(Msg)) {
       case model.selected_project_id {
         opt.None -> #(model, effect.none())
         opt.Some(project_id) -> {
-          let model = Model(..model, task_types: Loading)
+          let model =
+            Model(
+              ..model,
+              task_types: Loading,
+              task_types_project_id: opt.Some(project_id),
+            )
           #(model, api.list_task_types(project_id, TaskTypesFetched))
         }
       }
@@ -2604,8 +3154,13 @@ fn location_pathname_ffi() -> String {
   ""
 }
 
-@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "location_query_param")
-fn location_query_param_ffi(_name: String) -> String {
+@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "location_hash")
+fn location_hash_ffi() -> String {
+  ""
+}
+
+@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "location_search")
+fn location_search_ffi() -> String {
   ""
 }
 
@@ -3019,7 +3574,15 @@ fn view_topbar(model: Model, user: User) -> Element(Msg) {
     div([attribute.class("topbar-actions")], [
       view_theme_switch(model),
       span([attribute.class("user")], [text(user.email)]),
-      button([event.on_click(SwitchToMember)], [text("App")]),
+      button(
+        [
+          event.on_click(NavigateTo(
+            router.Member(model.member_section, model.selected_project_id),
+            Push,
+          )),
+        ],
+        [text("App")],
+      ),
       button([event.on_click(LogoutClicked)], [text("Logout")]),
     ]),
   ])
@@ -3093,7 +3656,10 @@ fn view_nav(
               [
                 attribute.class(classes),
                 attribute.disabled(disabled),
-                event.on_click(NavSelected(section)),
+                event.on_click(NavigateTo(
+                  router.Admin(section, model.selected_project_id),
+                  Push,
+                )),
               ],
               [text(page_title(section))],
             )
@@ -3897,16 +4463,24 @@ fn view_member_topbar(model: Model, user: User) -> Element(Msg) {
   div([attribute.class("topbar")], [
     div([attribute.class("topbar-title")], [
       text(case model.member_section {
-        Pool -> "Pool"
-        MyBar -> "My Bar"
-        MySkills -> "My Skills"
+        member_section.Pool -> "Pool"
+        member_section.MyBar -> "My Bar"
+        member_section.MySkills -> "My Skills"
       }),
     ]),
     view_project_selector(model),
     div([attribute.class("topbar-actions")], [
       case user.org_role {
         org_role.Admin ->
-          button([event.on_click(SwitchToAdmin)], [text("Admin")])
+          button(
+            [
+              event.on_click(NavigateTo(
+                router.Admin(permissions.Invites, model.selected_project_id),
+                Push,
+              )),
+            ],
+            [text("Admin")],
+          )
         _ -> div([], [])
       },
       view_theme_switch(model),
@@ -3920,16 +4494,16 @@ fn view_member_nav(model: Model) -> Element(Msg) {
   div([attribute.class("nav")], [
     h3([], [text("App")]),
     div([], [
-      view_member_nav_button(model, Pool, "Pool"),
-      view_member_nav_button(model, MyBar, "My Bar"),
-      view_member_nav_button(model, MySkills, "My Skills"),
+      view_member_nav_button(model, member_section.Pool, "Pool"),
+      view_member_nav_button(model, member_section.MyBar, "My Bar"),
+      view_member_nav_button(model, member_section.MySkills, "My Skills"),
     ]),
   ])
 }
 
 fn view_member_nav_button(
   model: Model,
-  section: MemberSection,
+  section: member_section.MemberSection,
   label: String,
 ) -> Element(Msg) {
   let classes = case section == model.member_section {
@@ -3938,16 +4512,22 @@ fn view_member_nav_button(
   }
 
   button(
-    [attribute.class(classes), event.on_click(MemberNavSelected(section))],
+    [
+      attribute.class(classes),
+      event.on_click(NavigateTo(
+        router.Member(section, model.selected_project_id),
+        Push,
+      )),
+    ],
     [text(label)],
   )
 }
 
 fn view_member_section(model: Model, user: User) -> Element(Msg) {
   case model.member_section {
-    Pool -> view_member_pool(model)
-    MyBar -> view_member_bar(model, user)
-    MySkills -> view_member_skills(model)
+    member_section.Pool -> view_member_pool(model)
+    member_section.MyBar -> view_member_bar(model, user)
+    member_section.MySkills -> view_member_skills(model)
   }
 }
 
@@ -4531,7 +5111,7 @@ fn view_member_notes(model: Model, _task_id: Int) -> Element(Msg) {
 
 fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
   case model.member_section {
-    MySkills -> #(model, effect.none())
+    member_section.MySkills -> #(model, effect.none())
 
     _ -> {
       let projects = active_projects(model)
@@ -4557,7 +5137,7 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
 
         _ -> {
           let filters = case model.member_section {
-            MyBar ->
+            member_section.MyBar ->
               api.TaskFilters(
                 status: opt.Some("claimed"),
                 type_id: opt.None,

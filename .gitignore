@@ -27,6 +27,9 @@ Caddyfile
 # Local DB dumps
 db/schema.sql
 
+# Local screenshots
+capturas/
+
 # Gleam build output (generated)
 apps/**/build/
 packages/**/build/
