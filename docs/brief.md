@@ -101,6 +101,15 @@ Los equipos usan herramientas con modelo "push" (asignación directa) que genera
 | Posiciones compartidas | Evaluar post-MVP |
 | Integraciones | v1.2+ |
 
+### UI/UX Rules (MVP)
+
+- **Pool** muestra **solo** tareas `available` (libres). Las tareas `claimed`/`completed` no aparecen en el Pool.
+- **Mi barra (My Bar)** muestra las tareas **cogidas por mí** y se presenta como **lista ordenada** (no flotante):
+  - Orden: `priority` desc → `status` → `created_at` desc.
+- **My Skills** es una vista personal (no flotante) con filas alineadas: nombre a la izquierda, checkbox a la derecha.
+- En las tarjetas del Pool, los affordances críticos son siempre visibles y usables (aunque la tarjeta sea pequeña):
+  - Acción de Claim/Release/Complete (según estado) y el handle de drag.
+
 ### Acceptance Criteria: No Asignación Directa
 
 - **AC1:** No existe campo "Assignee" en UI
