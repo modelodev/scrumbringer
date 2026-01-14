@@ -4,7 +4,6 @@ import gleam/float
 import gleam/int
 import gleam/list
 import gleam/option as opt
-import gleam/result
 import gleam/string
 
 import lustre
@@ -77,11 +76,12 @@ pub opaque type Model {
     login_in_flight: Bool,
     projects: Remote(List(api.Project)),
     selected_project_id: opt.Option(Int),
-    invites_expires_in_hours: String,
-    invites_in_flight: Bool,
-    invites_error: opt.Option(String),
-    last_invite: opt.Option(api.OrgInvite),
-    invite_copy_status: opt.Option(String),
+    invite_links: Remote(List(api.InviteLink)),
+    invite_link_email: String,
+    invite_link_in_flight: Bool,
+    invite_link_error: opt.Option(String),
+    invite_link_last: opt.Option(api.InviteLink),
+    invite_link_copy_status: opt.Option(String),
     projects_create_name: String,
     projects_create_in_flight: Bool,
     projects_create_error: opt.Option(String),
@@ -170,11 +170,14 @@ pub type Msg {
   ProjectCreateSubmitted
   ProjectCreated(api.ApiResult(api.Project))
 
-  InvitesExpiresChanged(String)
-  InviteCreateSubmitted
-  InviteCreated(api.ApiResult(api.OrgInvite))
-  InviteCopyClicked
-  InviteCopyFinished(Bool)
+  InviteLinkEmailChanged(String)
+  InviteLinkCreateSubmitted
+  InviteLinkCreated(api.ApiResult(api.InviteLink))
+  InviteLinksFetched(api.ApiResult(List(api.InviteLink)))
+  InviteLinkRegenerateClicked(String)
+  InviteLinkRegenerated(api.ApiResult(api.InviteLink))
+  InviteLinkCopyClicked(String)
+  InviteLinkCopyFinished(Bool)
 
   CapabilitiesFetched(api.ApiResult(List(api.Capability)))
   CapabilityCreateNameChanged(String)
@@ -278,11 +281,12 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       login_in_flight: False,
       projects: NotAsked,
       selected_project_id: opt.None,
-      invites_expires_in_hours: "168",
-      invites_in_flight: False,
-      invites_error: opt.None,
-      last_invite: opt.None,
-      invite_copy_status: opt.None,
+      invite_links: NotAsked,
+      invite_link_email: "",
+      invite_link_in_flight: False,
+      invite_link_error: opt.None,
+      invite_link_last: opt.None,
+      invite_link_copy_status: opt.None,
       projects_create_name: "",
       projects_create_in_flight: False,
       projects_create_error: opt.None,
@@ -592,65 +596,110 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
     }
 
-    InvitesExpiresChanged(value) -> #(
-      Model(..model, invites_expires_in_hours: value),
+    InviteLinkEmailChanged(value) -> #(
+      Model(..model, invite_link_email: value),
       effect.none(),
     )
 
-    InviteCreateSubmitted -> {
-      case model.invites_in_flight {
+    InviteLinksFetched(Ok(links)) -> #(
+      Model(..model, invite_links: Loaded(links)),
+      effect.none(),
+    )
+
+    InviteLinksFetched(Error(err)) -> {
+      case err.status == 401 {
+        True -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        False -> #(Model(..model, invite_links: Failed(err)), effect.none())
+      }
+    }
+
+    InviteLinkCreateSubmitted -> {
+      case model.invite_link_in_flight {
         True -> #(model, effect.none())
         False -> {
-          let hours_str = string.trim(model.invites_expires_in_hours)
+          let email = string.trim(model.invite_link_email)
 
-          let maybe_hours = case hours_str == "" {
-            True -> Ok(opt.None)
-            False -> int.parse(hours_str) |> result.map(opt.Some)
-          }
-
-          case maybe_hours {
-            Ok(value) -> {
+          case email == "" {
+            True -> #(
+              Model(..model, invite_link_error: opt.Some("Email is required")),
+              effect.none(),
+            )
+            False -> {
               let model =
                 Model(
                   ..model,
-                  invites_in_flight: True,
-                  invites_error: opt.None,
-                  invite_copy_status: opt.None,
+                  invite_link_in_flight: True,
+                  invite_link_error: opt.None,
+                  invite_link_copy_status: opt.None,
                 )
-              #(model, api.create_invite(value, InviteCreated))
+              #(model, api.create_invite_link(email, InviteLinkCreated))
             }
-            Error(_) -> #(
-              Model(
-                ..model,
-                invites_error: opt.Some("expires_in_hours must be a number"),
-              ),
-              effect.none(),
-            )
           }
         }
       }
     }
 
-    InviteCreated(Ok(invite)) -> {
-      #(
-        Model(
-          ..model,
-          invites_in_flight: False,
-          last_invite: opt.Some(invite),
-          toast: opt.Some("Invite created"),
-        ),
-        effect.none(),
-      )
+    InviteLinkRegenerateClicked(email) -> {
+      case model.invite_link_in_flight {
+        True -> #(model, effect.none())
+        False -> {
+          let email = string.trim(email)
+
+          case email == "" {
+            True -> #(
+              Model(..model, invite_link_error: opt.Some("Email is required")),
+              effect.none(),
+            )
+            False -> {
+              let model =
+                Model(
+                  ..model,
+                  invite_link_in_flight: True,
+                  invite_link_error: opt.None,
+                  invite_link_copy_status: opt.None,
+                  invite_link_email: email,
+                )
+              #(model, api.regenerate_invite_link(email, InviteLinkRegenerated))
+            }
+          }
+        }
+      }
     }
 
-    InviteCreated(Error(err)) -> {
+    InviteLinkCreated(Ok(link)) -> {
+      let model =
+        Model(
+          ..model,
+          invite_link_in_flight: False,
+          invite_link_last: opt.Some(link),
+          invite_link_email: "",
+          toast: opt.Some("Invite link created"),
+        )
+
+      #(model, api.list_invite_links(InviteLinksFetched))
+    }
+
+    InviteLinkRegenerated(Ok(link)) -> {
+      let model =
+        Model(
+          ..model,
+          invite_link_in_flight: False,
+          invite_link_last: opt.Some(link),
+          invite_link_email: "",
+          toast: opt.Some("Invite link regenerated"),
+        )
+
+      #(model, api.list_invite_links(InviteLinksFetched))
+    }
+
+    InviteLinkCreated(Error(err)) -> {
       case err.status {
         401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
         403 -> #(
           Model(
             ..model,
-            invites_in_flight: False,
-            invites_error: opt.Some("Not permitted"),
+            invite_link_in_flight: False,
+            invite_link_error: opt.Some("Not permitted"),
             toast: opt.Some("Not permitted"),
           ),
           effect.none(),
@@ -658,30 +707,52 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         _ -> #(
           Model(
             ..model,
-            invites_in_flight: False,
-            invites_error: opt.Some(err.message),
+            invite_link_in_flight: False,
+            invite_link_error: opt.Some(err.message),
           ),
           effect.none(),
         )
       }
     }
 
-    InviteCopyClicked -> {
-      case model.last_invite {
-        opt.None -> #(model, effect.none())
-        opt.Some(invite) -> #(
-          Model(..model, invite_copy_status: opt.Some("Copying...")),
-          copy_to_clipboard(invite.code, InviteCopyFinished),
+    InviteLinkRegenerated(Error(err)) -> {
+      case err.status {
+        401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        403 -> #(
+          Model(
+            ..model,
+            invite_link_in_flight: False,
+            invite_link_error: opt.Some("Not permitted"),
+            toast: opt.Some("Not permitted"),
+          ),
+          effect.none(),
+        )
+        _ -> #(
+          Model(
+            ..model,
+            invite_link_in_flight: False,
+            invite_link_error: opt.Some(err.message),
+          ),
+          effect.none(),
         )
       }
     }
 
-    InviteCopyFinished(ok) -> {
+    InviteLinkCopyClicked(text) -> #(
+      Model(..model, invite_link_copy_status: opt.Some("Copying...")),
+      copy_to_clipboard(text, InviteLinkCopyFinished),
+    )
+
+    InviteLinkCopyFinished(ok) -> {
       let message = case ok {
         True -> "Copied"
         False -> "Copy failed"
       }
-      #(Model(..model, invite_copy_status: opt.Some(message)), effect.none())
+
+      #(
+        Model(..model, invite_link_copy_status: opt.Some(message)),
+        effect.none(),
+      )
     }
 
     CapabilitiesFetched(Ok(capabilities)) -> #(
@@ -1909,7 +1980,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 fn bootstrap_admin(model: Model) -> #(Model, Effect(Msg)) {
-  let model = Model(..model, projects: Loading)
+  let model = Model(..model, projects: Loading, invite_links: Loading)
 
   #(
     model,
@@ -1917,6 +1988,7 @@ fn bootstrap_admin(model: Model) -> #(Model, Effect(Msg)) {
       api.list_projects(ProjectsFetched),
       api.list_capabilities(CapabilitiesFetched),
       api.get_me_capability_ids(MemberMyCapabilityIdsFetched),
+      api.list_invite_links(InviteLinksFetched),
     ]),
   )
 }
@@ -1965,7 +2037,10 @@ fn ensure_default_section(model: Model) -> Model {
 
 fn refresh_section(model: Model) -> #(Model, Effect(Msg)) {
   case model.active_section {
-    permissions.Invites -> #(model, effect.none())
+    permissions.Invites -> {
+      let model = Model(..model, invite_links: Loading)
+      #(model, api.list_invite_links(InviteLinksFetched))
+    }
 
     permissions.Projects -> #(model, api.list_projects(ProjectsFetched))
 
@@ -2037,6 +2112,11 @@ fn days_since_iso_ffi(_iso: String) -> Int {
 @external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "element_client_offset")
 fn element_client_offset_ffi(_id: String) -> #(Int, Int) {
   #(0, 0)
+}
+
+@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "location_origin")
+fn location_origin_ffi() -> String {
+  ""
 }
 
 fn copy_to_clipboard(text: String, msg: fn(Bool) -> Msg) -> Effect(Msg) {
@@ -2293,59 +2373,142 @@ fn view_section(
 }
 
 fn view_invites(model: Model) -> Element(Msg) {
-  let create_label = case model.invites_in_flight {
-    True -> "Creating..."
-    False -> "Create invite"
+  let create_label = case model.invite_link_in_flight {
+    True -> "Working..."
+    False -> "Create invite link"
   }
 
+  let origin = location_origin_ffi()
+
   div([attribute.class("section")], [
-    p([], [text("Create an invite to onboard a new user.")]),
-    case model.invites_error {
+    p([], [
+      text(
+        "Create invite links tied to a specific email. Copy the generated link to onboard a user.",
+      ),
+    ]),
+    case model.invite_link_error {
       opt.Some(err) -> div([attribute.class("error")], [text(err)])
       opt.None -> div([], [])
     },
-    form([event.on_submit(fn(_) { InviteCreateSubmitted })], [
+    form([event.on_submit(fn(_) { InviteLinkCreateSubmitted })], [
       div([attribute.class("field")], [
-        label([], [text("expires_in_hours (optional)")]),
+        label([], [text("email")]),
         input([
-          attribute.type_("number"),
-          attribute.value(model.invites_expires_in_hours),
-          event.on_input(InvitesExpiresChanged),
+          attribute.type_("email"),
+          attribute.value(model.invite_link_email),
+          event.on_input(InviteLinkEmailChanged),
+          attribute.required(True),
         ]),
       ]),
       button(
         [
           attribute.type_("submit"),
-          attribute.disabled(model.invites_in_flight),
+          attribute.disabled(model.invite_link_in_flight),
         ],
         [text(create_label)],
       ),
     ]),
-    hr([]),
-    case model.last_invite {
-      opt.None ->
-        div([attribute.class("empty")], [text("No invite created yet")])
+    case model.invite_link_last {
+      opt.None -> div([], [])
 
-      opt.Some(invite) ->
+      opt.Some(link) -> {
+        let full = build_full_url(origin, link.url_path)
+
         div([attribute.class("invite-result")], [
-          h3([], [text("Invite Code")]),
+          h3([], [text("Latest invite link")]),
           div([attribute.class("field")], [
-            label([], [text("code")]),
+            label([], [text("email")]),
             input([
               attribute.type_("text"),
-              attribute.value(invite.code),
+              attribute.value(link.email),
               attribute.readonly(True),
             ]),
           ]),
-          button([event.on_click(InviteCopyClicked)], [text("Copy")]),
-          case model.invite_copy_status {
+          div([attribute.class("field")], [
+            label([], [text("link")]),
+            input([
+              attribute.type_("text"),
+              attribute.value(full),
+              attribute.readonly(True),
+            ]),
+          ]),
+          button([event.on_click(InviteLinkCopyClicked(full))], [text("Copy")]),
+          case model.invite_link_copy_status {
             opt.Some(status) -> div([attribute.class("hint")], [text(status)])
             opt.None -> div([], [])
           },
-          p([], [text("expires_at: " <> invite.expires_at)]),
         ])
+      }
     },
+    hr([]),
+    h3([], [text("Invite links")]),
+    view_invite_links_list(model, origin),
   ])
+}
+
+fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
+  case model.invite_links {
+    NotAsked | Loading -> div([attribute.class("empty")], [text("Loading...")])
+
+    Failed(err) ->
+      div([attribute.class("error")], [
+        text("Failed to load invite links: " <> err.message),
+      ])
+
+    Loaded(links) ->
+      case links {
+        [] -> div([attribute.class("empty")], [text("No invite links yet")])
+
+        _ ->
+          table([attribute.class("table")], [
+            thead([], [
+              tr([], [
+                th([], [text("email")]),
+                th([], [text("state")]),
+                th([], [text("created_at")]),
+                th([], [text("link")]),
+                th([], [text("actions")]),
+              ]),
+            ]),
+            tbody(
+              [],
+              list.map(links, fn(link) {
+                let full = build_full_url(origin, link.url_path)
+
+                tr([], [
+                  td([], [text(link.email)]),
+                  td([], [text(link.state)]),
+                  td([], [text(link.created_at)]),
+                  td([], [text(full)]),
+                  td([], [
+                    button(
+                      [
+                        attribute.disabled(model.invite_link_in_flight),
+                        event.on_click(InviteLinkCopyClicked(full)),
+                      ],
+                      [text("Copy")],
+                    ),
+                    button(
+                      [
+                        attribute.disabled(model.invite_link_in_flight),
+                        event.on_click(InviteLinkRegenerateClicked(link.email)),
+                      ],
+                      [text("Regenerate")],
+                    ),
+                  ]),
+                ])
+              }),
+            ),
+          ])
+      }
+  }
+}
+
+fn build_full_url(origin: String, url_path: String) -> String {
+  case origin {
+    "" -> url_path
+    _ -> origin <> url_path
+  }
 }
 
 fn view_projects(model: Model) -> Element(Msg) {

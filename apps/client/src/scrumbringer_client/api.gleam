@@ -43,6 +43,18 @@ pub type OrgInvite {
   OrgInvite(code: String, created_at: String, expires_at: String)
 }
 
+pub type InviteLink {
+  InviteLink(
+    email: String,
+    token: String,
+    url_path: String,
+    state: String,
+    created_at: String,
+    used_at: option.Option(String),
+    invalidated_at: option.Option(String),
+  )
+}
+
 pub type OrgUser {
   OrgUser(id: Int, email: String, org_role: String, created_at: String)
 }
@@ -332,6 +344,48 @@ fn invite_decoder() -> decode.Decoder(OrgInvite) {
   ))
 }
 
+fn invite_link_decoder() -> decode.Decoder(InviteLink) {
+  use email <- decode.field("email", decode.string)
+  use token <- decode.field("token", decode.string)
+  use url_path <- decode.field("url_path", decode.string)
+  use state <- decode.field("state", decode.string)
+  use created_at <- decode.field("created_at", decode.string)
+
+  use used_at <- decode.optional_field(
+    "used_at",
+    option.None,
+    decode.optional(decode.string),
+  )
+
+  use invalidated_at <- decode.optional_field(
+    "invalidated_at",
+    option.None,
+    decode.optional(decode.string),
+  )
+
+  decode.success(InviteLink(
+    email: email,
+    token: token,
+    url_path: url_path,
+    state: state,
+    created_at: created_at,
+    used_at: used_at,
+    invalidated_at: invalidated_at,
+  ))
+}
+
+pub fn invite_link_payload_decoder() -> decode.Decoder(InviteLink) {
+  decode.field("invite_link", invite_link_decoder(), decode.success)
+}
+
+pub fn invite_links_payload_decoder() -> decode.Decoder(List(InviteLink)) {
+  decode.field(
+    "invite_links",
+    decode.list(invite_link_decoder()),
+    decode.success,
+  )
+}
+
 fn org_user_decoder() -> decode.Decoder(OrgUser) {
   use id <- decode.field("id", decode.int)
   use email <- decode.field("email", decode.string)
@@ -485,6 +539,46 @@ pub fn create_invite(
 
   let decoder = decode.field("invite", invite_decoder(), decode.success)
   request("POST", "/api/v1/org/invites", option.Some(body), decoder, to_msg)
+}
+
+pub fn list_invite_links(
+  to_msg: fn(ApiResult(List(InviteLink))) -> msg,
+) -> Effect(msg) {
+  request(
+    "GET",
+    "/api/v1/org/invite-links",
+    option.None,
+    invite_links_payload_decoder(),
+    to_msg,
+  )
+}
+
+pub fn create_invite_link(
+  email: String,
+  to_msg: fn(ApiResult(InviteLink)) -> msg,
+) -> Effect(msg) {
+  let body = json.object([#("email", json.string(string.trim(email)))])
+  request(
+    "POST",
+    "/api/v1/org/invite-links",
+    option.Some(body),
+    invite_link_payload_decoder(),
+    to_msg,
+  )
+}
+
+pub fn regenerate_invite_link(
+  email: String,
+  to_msg: fn(ApiResult(InviteLink)) -> msg,
+) -> Effect(msg) {
+  let body = json.object([#("email", json.string(string.trim(email)))])
+  request(
+    "POST",
+    "/api/v1/org/invite-links/regenerate",
+    option.Some(body),
+    invite_link_payload_decoder(),
+    to_msg,
+  )
 }
 
 pub fn list_capabilities(

@@ -1,6 +1,8 @@
 .PHONY: help deps migrate squirrel test verify fmt
 
-DATABASE_URL ?= postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_test?sslmode=disable
+# Default local DB URL. CI should override `DATABASE_URL`.
+# Note: `dbmate migrate` does NOT create the database.
+DATABASE_URL ?= postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable
 
 ROOT := $(abspath $(CURDIR))
 GLEAN_BIN := $(shell if [ -x "$(ROOT)/.tools/gleam-1.14.0/gleam" ]; then echo "$(ROOT)/.tools/gleam-1.14.0/gleam"; else echo gleam; fi)
@@ -27,7 +29,7 @@ deps:
 migrate:
 	@command -v dbmate >/dev/null 2>&1 || (echo "dbmate is required (install it)" && exit 1)
 	@echo "Applying migrations with DATABASE_URL=$(DATABASE_URL)"
-	@DBMATE_DATABASE_URL="$(DATABASE_URL)" dbmate up
+	@dbmate --url "$(DATABASE_URL)" migrate
 
 # ---- Squirrel ----
 

@@ -1,0 +1,44 @@
+schema: 1
+story: '2.1'
+story_title: 'Invites por link (crear/listar/regenerar por email)'
+gate: PASS
+status_reason: 'Invite-link functionality is implemented with appropriate authz/CSRF controls and test coverage; remaining "used"-state coverage is naturally addressed in Story 2.2.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-01-14T11:19:39Z'
+
+top_issues: []
+
+waiver:
+  active: false
+
+quality_score: 95
+expires: '2026-01-28T11:19:39Z'
+
+evidence:
+  tests_reviewed: 3
+  risks_identified: 3
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 7, 8, 9, 10, 12]
+    ac_gaps: [6, 11]
+    notes: 'Trace matrix: docs/qa/assessments/2.1-trace-20260114.md'
+
+nfr_validation:
+  _assessed: [security, performance, reliability, maintainability]
+  security:
+    status: PASS
+    notes: 'Org-admin authz + CSRF double-submit enforced; opaque high-entropy token; no SMTP.'
+  performance:
+    status: PASS
+    notes: 'Indexed lookups; simple org-scoped list sorted by email.'
+  reliability:
+    status: PASS
+    notes: 'Single-statement invalidation + insert; deterministic state derivation.'
+  maintainability:
+    status: PASS
+    notes: 'Makefile clarifies DATABASE_URL expectations and uses dbmate migrate (no implicit DB creation).'
+
+recommendations:
+  immediate: []
+  future:
+    - action: 'Add invite-link validation + used-state coverage when implementing Story 2.2.'
+      refs: ['docs/stories/2.2.accept-invite.md', 'docs/architecture/api-contract.md']

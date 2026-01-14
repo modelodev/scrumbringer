@@ -134,6 +134,157 @@ order by name asc;
   |> pog.execute(db)
 }
 
+/// A row you get from running the `org_invite_links_list` query
+/// defined in `./src/scrumbringer_server/sql/org_invite_links_list.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type OrgInviteLinksListRow {
+  OrgInviteLinksListRow(
+    email: String,
+    token: String,
+    created_at: String,
+    used_at: String,
+    invalidated_at: String,
+    state: String,
+  )
+}
+
+/// name: list_org_invite_links
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn org_invite_links_list(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(OrgInviteLinksListRow), pog.QueryError) {
+  let decoder = {
+    use email <- decode.field(0, decode.string)
+    use token <- decode.field(1, decode.string)
+    use created_at <- decode.field(2, decode.string)
+    use used_at <- decode.field(3, decode.string)
+    use invalidated_at <- decode.field(4, decode.string)
+    use state <- decode.field(5, decode.string)
+    decode.success(OrgInviteLinksListRow(
+      email:,
+      token:,
+      created_at:,
+      used_at:,
+      invalidated_at:,
+      state:,
+    ))
+  }
+
+  "-- name: list_org_invite_links
+select
+  email,
+  token,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  coalesce(to_char(used_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as used_at,
+  coalesce(to_char(invalidated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as invalidated_at,
+  case
+    when used_at is not null then 'used'
+    when invalidated_at is not null then 'invalidated'
+    else 'active'
+  end as state
+from org_invite_links
+where org_id = $1
+order by email asc;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `org_invite_links_upsert` query
+/// defined in `./src/scrumbringer_server/sql/org_invite_links_upsert.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type OrgInviteLinksUpsertRow {
+  OrgInviteLinksUpsertRow(
+    email: String,
+    token: String,
+    created_at: String,
+    used_at: String,
+    invalidated_at: String,
+    state: String,
+  )
+}
+
+/// name: upsert_org_invite_link
+/// Invalidate any active invite link for email and create a new one.
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn org_invite_links_upsert(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: String,
+  arg_3: String,
+  arg_4: Int,
+) -> Result(pog.Returned(OrgInviteLinksUpsertRow), pog.QueryError) {
+  let decoder = {
+    use email <- decode.field(0, decode.string)
+    use token <- decode.field(1, decode.string)
+    use created_at <- decode.field(2, decode.string)
+    use used_at <- decode.field(3, decode.string)
+    use invalidated_at <- decode.field(4, decode.string)
+    use state <- decode.field(5, decode.string)
+    decode.success(OrgInviteLinksUpsertRow(
+      email:,
+      token:,
+      created_at:,
+      used_at:,
+      invalidated_at:,
+      state:,
+    ))
+  }
+
+  "-- name: upsert_org_invite_link
+-- Invalidate any active invite link for email and create a new one.
+with invalidated as (
+  update org_invite_links
+  set invalidated_at = now()
+  where org_id = $1
+    and email = $2
+    and used_at is null
+    and invalidated_at is null
+  returning 1
+),
+inserted as (
+  insert into org_invite_links (org_id, email, token, created_by)
+  values ($1, $2, $3, $4)
+  returning email, token, created_at, used_at, invalidated_at
+)
+select
+  email,
+  token,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  coalesce(to_char(used_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as used_at,
+  coalesce(to_char(invalidated_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as invalidated_at,
+  case
+    when used_at is not null then 'used'
+    when invalidated_at is not null then 'invalidated'
+    else 'active'
+  end as state
+from inserted
+where (select count(*) from invalidated) >= 0;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.parameter(pog.text(arg_3))
+  |> pog.parameter(pog.int(arg_4))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `org_invites` query
 /// defined in `./src/scrumbringer_server/sql/org_invites.sql`.
 ///

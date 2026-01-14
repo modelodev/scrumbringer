@@ -114,3 +114,8 @@ export function element_client_offset(id) {
   const rect = el.getBoundingClientRect()
   return [Math.round(rect.left), Math.round(rect.top)]
 }
+
+export function location_origin() {
+  if (typeof window === "undefined") return ""
+  return window.location?.origin || ""
+}
