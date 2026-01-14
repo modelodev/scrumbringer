@@ -161,6 +161,46 @@ pub fn reset_token_is_single_use_test() {
   |> should.be_true
 }
 
+pub fn consume_rejects_short_password_and_keeps_token_active_test() {
+  let app = bootstrap_app()
+  let handler = scrumbringer_server.handler(app)
+
+  let create_res =
+    handler(
+      simulate.request(http.Post, "/api/v1/auth/password-resets")
+      |> simulate.json_body(
+        json.object([#("email", json.string("admin@example.com"))]),
+      ),
+    )
+
+  create_res.status |> should.equal(200)
+  let token = decode_reset_token(simulate.read_body(create_res))
+
+  let consume_res =
+    handler(
+      simulate.request(http.Post, "/api/v1/auth/password-resets/consume")
+      |> simulate.json_body(
+        json.object([
+          #("token", json.string(token)),
+          #("password", json.string("12345678901")),
+        ]),
+      ),
+    )
+
+  consume_res.status |> should.equal(422)
+  string.contains(simulate.read_body(consume_res), "VALIDATION_ERROR")
+  |> should.be_true
+  string.contains(simulate.read_body(consume_res), "at least 12")
+  |> should.be_true
+
+  let validate =
+    handler(simulate.request(http.Get, "/api/v1/auth/password-resets/" <> token))
+
+  validate.status |> should.equal(200)
+  string.contains(simulate.read_body(validate), "admin@example.com")
+  |> should.be_true
+}
+
 pub fn validate_rejects_expired_tokens_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
