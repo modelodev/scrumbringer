@@ -24,6 +24,7 @@ pub fn base_css() -> String {
     ".error { color: var(--sb-danger); }",
     "input, select { padding: 8px; border-radius: 10px; border: 1px solid var(--sb-border); background: var(--sb-elevated); color: var(--sb-text); }",
     "button { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--sb-border); background: var(--sb-elevated); color: var(--sb-text); cursor: pointer; }",
+    ".btn-xs { padding: 4px 8px; font-size: 12px; border-radius: 8px; }",
     "button:hover { border-color: var(--sb-primary); }",
     "button:disabled { opacity: 0.6; cursor: not-allowed; }",
     "button[type=\"submit\"] { background: var(--sb-primary); border-color: var(--sb-primary); color: var(--sb-inverse); }",

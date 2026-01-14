@@ -4182,6 +4182,36 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
 
   let disable_actions = model.member_task_mutation_in_flight
 
+  // Make the primary action visible even on tiny cards (the card size is
+  // priority-driven and content is overflow-hidden).
+  let primary_action = case status, is_mine {
+    "available", _ ->
+      button(
+        [
+          attribute.class("btn-xs"),
+          attribute.attribute("title", "Claim task"),
+          attribute.attribute("aria-label", "Claim task"),
+          event.on_click(MemberClaimClicked(id, version)),
+          attribute.disabled(disable_actions),
+        ],
+        [text("Claim")],
+      )
+
+    "claimed", True ->
+      button(
+        [
+          attribute.class("btn-xs"),
+          attribute.attribute("title", "Release task"),
+          attribute.attribute("aria-label", "Release task"),
+          event.on_click(MemberReleaseClicked(id, version)),
+          attribute.disabled(disable_actions),
+        ],
+        [text("Release")],
+      )
+
+    _, _ -> div([], [])
+  }
+
   div([attribute.class(card_classes), attribute.attribute("style", style)], [
     div(
       [
@@ -4192,19 +4222,22 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
       ],
       [
         h3([], [text(title)]),
-        div(
-          [
-            attribute.class("drag-handle"),
-            attribute.attribute("title", "Drag to move"),
-            attribute.attribute("aria-label", "Drag to move"),
-            event.on("mousedown", {
-              use ox <- decode.field("offsetX", decode.int)
-              use oy <- decode.field("offsetY", decode.int)
-              decode.success(MemberDragStarted(id, ox, oy))
-            }),
-          ],
-          [text("≡")],
-        ),
+        div([attribute.class("actions")], [
+          primary_action,
+          div(
+            [
+              attribute.class("drag-handle"),
+              attribute.attribute("title", "Drag to move"),
+              attribute.attribute("aria-label", "Drag to move"),
+              event.on("mousedown", {
+                use ox <- decode.field("offsetX", decode.int)
+                use oy <- decode.field("offsetY", decode.int)
+                decode.success(MemberDragStarted(id, ox, oy))
+              }),
+            ],
+            [text("≡")],
+          ),
+        ]),
       ],
     ),
     p([], [text("type: " <> type_label)]),
@@ -4212,24 +4245,8 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
     p([], [text("status: " <> status)]),
     div([attribute.class("actions")], [
       case status, is_mine {
-        "available", _ ->
-          button(
-            [
-              event.on_click(MemberClaimClicked(id, version)),
-              attribute.disabled(disable_actions),
-            ],
-            [text("Claim")],
-          )
-
         "claimed", True ->
           div([], [
-            button(
-              [
-                event.on_click(MemberReleaseClicked(id, version)),
-                attribute.disabled(disable_actions),
-              ],
-              [text("Release")],
-            ),
             button(
               [
                 event.on_click(MemberCompleteClicked(id, version)),
