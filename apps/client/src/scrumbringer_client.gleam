@@ -4,6 +4,7 @@ import gleam/float
 import gleam/int
 import gleam/list
 import gleam/option as opt
+import gleam/order
 import gleam/string
 
 import lustre
@@ -3226,7 +3227,14 @@ fn view_toast(toast: opt.Option(String)) -> Element(Msg) {
     opt.Some(message) ->
       div([attribute.class("toast")], [
         span([], [text(message)]),
-        button([event.on_click(ToastDismissed)], [text("Dismiss")]),
+        button(
+          [
+            attribute.class("toast-dismiss btn-xs"),
+            attribute.attribute("aria-label", "Dismiss"),
+            event.on_click(ToastDismissed),
+          ],
+          [text("×")],
+        ),
       ])
   }
 }
@@ -4545,7 +4553,7 @@ fn view_member_pool(model: Model) -> Element(Msg) {
       div([attribute.class("section")], [
         view_member_filters(model),
         p([], [
-          text("Tip: use the ≡ handle on a card to drag it."),
+          text("Tip: use the ⠿ handle on a card to drag it."),
         ]),
         button([event.on_click(MemberCreateDialogOpened)], [text("New task")]),
         case model.member_create_dialog_open {
@@ -4678,7 +4686,14 @@ fn view_member_tasks(model: Model) -> Element(Msg) {
           }
         }
 
-        _ ->
+        _ -> {
+          let visible_tasks =
+            tasks
+            |> list.filter(fn(t) {
+              let api.Task(status: status, ..) = t
+              status == "available"
+            })
+
           div(
             [
               attribute.attribute("id", "member-canvas"),
@@ -4694,8 +4709,11 @@ fn view_member_tasks(model: Model) -> Element(Msg) {
               event.on("mouseup", decode.success(MemberDragEnded)),
               event.on("mouseleave", decode.success(MemberDragEnded)),
             ],
-            list.map(tasks, fn(task) { view_member_task_card(model, task) }),
+            list.map(visible_tasks, fn(task) {
+              view_member_task_card(model, task)
+            }),
           )
+        }
       }
   }
 }
@@ -4754,7 +4772,7 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
     <> int.to_string(size)
     <> "px; height:"
     <> int.to_string(size)
-    <> "px; padding:8px; overflow:hidden; opacity:"
+    <> "px; padding:40px 8px 8px 8px; overflow:hidden; opacity:"
     <> float.to_string(opacity)
     <> "; filter:saturate("
     <> float.to_string(saturation)
@@ -4768,25 +4786,56 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
     "available", _ ->
       button(
         [
-          attribute.class("btn-xs"),
+          attribute.class("btn-xs btn-icon"),
           attribute.attribute("title", "Claim task"),
           attribute.attribute("aria-label", "Claim task"),
           event.on_click(MemberClaimClicked(id, version)),
           attribute.disabled(disable_actions),
         ],
-        [text("Claim")],
+        [text("C")],
       )
 
     "claimed", True ->
       button(
         [
-          attribute.class("btn-xs"),
+          attribute.class("btn-xs btn-icon"),
           attribute.attribute("title", "Release task"),
           attribute.attribute("aria-label", "Release task"),
           event.on_click(MemberReleaseClicked(id, version)),
           attribute.disabled(disable_actions),
         ],
-        [text("Release")],
+        [text("R")],
+      )
+
+    _, _ -> div([], [])
+  }
+
+  let drag_handle =
+    div(
+      [
+        attribute.class("drag-handle"),
+        attribute.attribute("title", "Drag to move"),
+        attribute.attribute("aria-label", "Drag to move"),
+        event.on("mousedown", {
+          use ox <- decode.field("offsetX", decode.int)
+          use oy <- decode.field("offsetY", decode.int)
+          decode.success(MemberDragStarted(id, ox, oy))
+        }),
+      ],
+      [text("⠿")],
+    )
+
+  let complete_action = case status, is_mine {
+    "claimed", True ->
+      button(
+        [
+          attribute.class("btn-xs btn-icon"),
+          attribute.attribute("title", "Complete task"),
+          attribute.attribute("aria-label", "Complete task"),
+          event.on_click(MemberCompleteClicked(id, version)),
+          attribute.disabled(disable_actions),
+        ],
+        [text("✓")],
       )
 
     _, _ -> div([], [])
@@ -4797,48 +4846,37 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
       [
         attribute.attribute(
           "style",
-          "display:flex; justify-content:space-between; align-items:flex-start; gap:8px;",
+          "position:absolute; top:8px; left:8px; right:8px; display:flex; justify-content:space-between; gap:6px;",
         ),
       ],
       [
-        h3([], [text(title)]),
-        div([attribute.class("actions")], [
-          primary_action,
-          div(
-            [
-              attribute.class("drag-handle"),
-              attribute.attribute("title", "Drag to move"),
-              attribute.attribute("aria-label", "Drag to move"),
-              event.on("mousedown", {
-                use ox <- decode.field("offsetX", decode.int)
-                use oy <- decode.field("offsetY", decode.int)
-                decode.success(MemberDragStarted(id, ox, oy))
-              }),
-            ],
-            [text("≡")],
-          ),
-        ]),
+        div(
+          [
+            attribute.attribute(
+              "style",
+              "min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;",
+            ),
+          ],
+          [
+            h3([attribute.attribute("style", "margin:0; font-size:14px;")], [
+              text(title),
+            ]),
+          ],
+        ),
+        div(
+          [
+            attribute.attribute(
+              "style",
+              "display:flex; gap:6px; align-items:center; flex-shrink:0;",
+            ),
+          ],
+          [primary_action, complete_action, drag_handle],
+        ),
       ],
     ),
     p([], [text("type: " <> type_label)]),
     p([], [text("age: " <> int.to_string(age_days) <> "d")]),
     p([], [text("status: " <> status)]),
-    div([attribute.class("actions")], [
-      case status, is_mine {
-        "claimed", True ->
-          div([], [
-            button(
-              [
-                event.on_click(MemberCompleteClicked(id, version)),
-                attribute.disabled(disable_actions),
-              ],
-              [text("Complete")],
-            ),
-          ])
-
-        _, _ -> div([], [])
-      },
-    ]),
   ])
 }
 
@@ -4911,6 +4949,45 @@ fn view_member_create_dialog(model: Model) -> Element(Msg) {
   ])
 }
 
+fn member_bar_status_rank(status: String) -> Int {
+  case status {
+    "claimed" -> 0
+    "available" -> 1
+    "completed" -> 2
+    _ -> 3
+  }
+}
+
+fn compare_member_bar_tasks(a: api.Task, b: api.Task) -> order.Order {
+  let api.Task(
+    priority: priority_a,
+    status: status_a,
+    created_at: created_at_a,
+    ..,
+  ) = a
+  let api.Task(
+    priority: priority_b,
+    status: status_b,
+    created_at: created_at_b,
+    ..,
+  ) = b
+
+  case int.compare(priority_b, priority_a) {
+    order.Eq ->
+      case
+        int.compare(
+          member_bar_status_rank(status_a),
+          member_bar_status_rank(status_b),
+        )
+      {
+        order.Eq -> string.compare(created_at_b, created_at_a)
+        other -> other
+      }
+
+    other -> other
+  }
+}
+
 fn view_member_bar(model: Model, user: User) -> Element(Msg) {
   case active_projects(model) {
     [] ->
@@ -4918,28 +4995,128 @@ fn view_member_bar(model: Model, user: User) -> Element(Msg) {
         text("You are not in any project yet. Ask an admin to add you."),
       ])
 
-    _ -> {
-      let tasks = case model.member_tasks {
-        Loaded(tasks) -> tasks
-        _ -> []
+    _ ->
+      case model.member_tasks {
+        NotAsked | Loading ->
+          div([attribute.class("empty")], [text("Loading...")])
+
+        Failed(err) -> div([attribute.class("error")], [text(err.message)])
+
+        Loaded(tasks) -> {
+          let mine =
+            tasks
+            |> list.filter(fn(t) {
+              let api.Task(claimed_by: claimed_by, ..) = t
+              claimed_by == opt.Some(user.id)
+            })
+            |> list.sort(by: compare_member_bar_tasks)
+
+          div([attribute.class("section")], [
+            case mine {
+              [] ->
+                div([attribute.class("empty")], [text("No claimed tasks yet")])
+
+              _ ->
+                div(
+                  [attribute.class("task-list")],
+                  list.map(mine, fn(t) {
+                    view_member_bar_task_row(model, user, t)
+                  }),
+                )
+            },
+          ])
+        }
       }
-
-      let mine =
-        tasks
-        |> list.filter(fn(t) {
-          let api.Task(claimed_by: claimed_by, ..) = t
-          claimed_by == opt.Some(user.id)
-        })
-
-      div([attribute.class("section")], [
-        case mine {
-          [] -> div([attribute.class("empty")], [text("No claimed tasks yet")])
-          _ ->
-            div([], list.map(mine, fn(t) { view_member_task_card(model, t) }))
-        },
-      ])
-    }
   }
+}
+
+fn view_member_bar_task_row(
+  model: Model,
+  user: User,
+  task: api.Task,
+) -> Element(Msg) {
+  let api.Task(
+    id: id,
+    type_id: type_id,
+    title: title,
+    priority: priority,
+    status: status,
+    created_at: created_at,
+    version: version,
+    claimed_by: claimed_by,
+    ..,
+  ) = task
+
+  let is_mine = claimed_by == opt.Some(user.id)
+
+  let task_type = member_task_type_by_id(model.member_task_types, type_id)
+
+  let type_label = case task_type {
+    opt.Some(tt) -> tt.name <> " (" <> tt.icon <> ")"
+    opt.None -> "Type #" <> int.to_string(type_id)
+  }
+
+  let disable_actions = model.member_task_mutation_in_flight
+
+  let claim_action =
+    button(
+      [
+        attribute.class("btn-xs btn-icon"),
+        attribute.attribute("title", "Claim task"),
+        attribute.attribute("aria-label", "Claim task"),
+        event.on_click(MemberClaimClicked(id, version)),
+        attribute.disabled(disable_actions),
+      ],
+      [text("C")],
+    )
+
+  let release_action =
+    button(
+      [
+        attribute.class("btn-xs btn-icon"),
+        attribute.attribute("title", "Release task"),
+        attribute.attribute("aria-label", "Release task"),
+        event.on_click(MemberReleaseClicked(id, version)),
+        attribute.disabled(disable_actions),
+      ],
+      [text("R")],
+    )
+
+  let complete_action =
+    button(
+      [
+        attribute.class("btn-xs btn-icon"),
+        attribute.attribute("title", "Complete task"),
+        attribute.attribute("aria-label", "Complete task"),
+        event.on_click(MemberCompleteClicked(id, version)),
+        attribute.disabled(disable_actions),
+      ],
+      [text("✓")],
+    )
+  let actions = case status, is_mine {
+    "available", _ -> [claim_action]
+    "claimed", True -> [release_action, complete_action]
+    _, _ -> []
+  }
+
+  div([attribute.class("task-row")], [
+    div([], [
+      div([attribute.class("task-row-title")], [text(title)]),
+      div([attribute.class("task-row-meta")], [
+        text(
+          "priority: "
+          <> int.to_string(priority)
+          <> " · status: "
+          <> status
+          <> " · type: "
+          <> type_label
+          <> " · created: "
+          <> created_at,
+        ),
+      ]),
+    ]),
+    div([attribute.class("task-row-actions")], actions),
+  ])
 }
 
 fn view_member_skills(model: Model) -> Element(Msg) {
@@ -4969,7 +5146,7 @@ fn view_member_skills_list(model: Model) -> Element(Msg) {
   case model.capabilities {
     Loaded(capabilities) ->
       div(
-        [],
+        [attribute.class("skills-list")],
         list.map(capabilities, fn(c) {
           let selected = case
             dict.get(model.member_my_capability_ids_edit, c.id)
@@ -4978,8 +5155,8 @@ fn view_member_skills_list(model: Model) -> Element(Msg) {
             Error(_) -> False
           }
 
-          div([attribute.class("field")], [
-            label([], [text(c.name)]),
+          div([attribute.class("skill-row")], [
+            span([attribute.class("skill-name")], [text(c.name)]),
             input([
               attribute.type_("checkbox"),
               attribute.attribute("checked", case selected {

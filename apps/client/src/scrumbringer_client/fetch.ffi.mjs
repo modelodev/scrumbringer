@@ -39,7 +39,7 @@ export function send(method, url, headers, body, callback) {
     credentials: "same-origin",
   }
 
-  const m = String(method || "").toUpperCase()
+  const m = String(method || "").trim().toUpperCase()
   const unwrappedBody = unwrap_option(body)
 
   // Fetch forbids a body for GET/HEAD.
