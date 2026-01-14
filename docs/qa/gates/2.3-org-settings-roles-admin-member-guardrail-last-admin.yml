@@ -1,0 +1,40 @@
+schema: 1
+story: '2.3'
+story_title: 'Org Settings (roles admin/member + guardrail last admin)'
+gate: PASS
+status_reason: 'Endpoint + UI implementados con guardrail de último admin; tests server/client pasan y cubren paths críticos.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-01-14T13:17:14Z'
+
+top_issues: []
+waiver: { active: false }
+
+quality_score: 100
+expires: '2026-01-28T13:17:14Z'
+
+evidence:
+  tests_reviewed: 4
+  risks_identified: 3
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6]
+    ac_gaps: []
+
+nfr_validation:
+  _assessed: [security, performance, reliability, maintainability]
+  security:
+    status: PASS
+    notes: 'Org-admin only + CSRF required; guardrail prevents lockout.'
+  performance:
+    status: PASS
+    notes: 'Queries are simple and org-scoped; fine for MVP.'
+  reliability:
+    status: PASS
+    notes: 'Transactional update; last-admin protection validated.'
+  maintainability:
+    status: PASS
+    notes: 'Clear layering (HTTP → service) and tests for main constraints.'
+
+trace_refs:
+  risk_profile: 'docs/qa/assessments/2.3-risk-20260114.md'
+  nfr_assessment: 'docs/qa/assessments/2.3-nfr-20260114.md'
+  trace_matrix: 'docs/qa/assessments/2.3-trace-20260114.md'
