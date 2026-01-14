@@ -2,6 +2,7 @@ import gleam/dynamic/decode
 import gleam/erlang/charlist
 import gleam/http
 import gleam/http/request
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/result
@@ -137,6 +138,77 @@ pub fn org_users_allows_project_admin_and_scopes_org_test() {
   admin_res.status |> should.equal(200)
   decode_user_emails(simulate.read_body(admin_res))
   |> should.equal(["admin@example.com"])
+}
+
+pub fn patch_org_user_role_requires_org_admin_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  let member_email = "member@example.com"
+  create_user_via_invite(handler, db, member_email, "il_member", 1)
+
+  let member_login_res = login_as(handler, member_email, "passwordpassword")
+  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
+  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
+
+  let member_id =
+    single_int(db, "select id from users where email = $1", [
+      pog.text(member_email),
+    ])
+
+  let member_req =
+    simulate.request(
+      http.Patch,
+      "/api/v1/org/users/" <> int.to_string(member_id),
+    )
+    |> request.set_cookie("sb_session", member_session)
+    |> request.set_cookie("sb_csrf", member_csrf)
+    |> request.set_header("X-CSRF", member_csrf)
+    |> simulate.json_body(json.object([#("org_role", json.string("admin"))]))
+
+  let member_res = handler(member_req)
+  member_res.status |> should.equal(403)
+
+  let admin_req =
+    simulate.request(
+      http.Patch,
+      "/api/v1/org/users/" <> int.to_string(member_id),
+    )
+    |> request.set_cookie("sb_session", admin_session)
+    |> request.set_cookie("sb_csrf", admin_csrf)
+    |> request.set_header("X-CSRF", admin_csrf)
+    |> simulate.json_body(json.object([#("org_role", json.string("admin"))]))
+
+  let admin_res = handler(admin_req)
+  admin_res.status |> should.equal(200)
+}
+
+pub fn patch_org_user_role_rejects_demoting_last_org_admin_test() {
+  let app = bootstrap_app()
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  let req =
+    simulate.request(http.Patch, "/api/v1/org/users/1")
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+    |> simulate.json_body(json.object([#("org_role", json.string("member"))]))
+
+  let res = handler(req)
+  res.status |> should.equal(409)
+  string.contains(simulate.read_body(res), "CONFLICT_LAST_ORG_ADMIN")
+  |> should.be_true
 }
 
 fn decode_user_emails(body: String) -> List(String) {

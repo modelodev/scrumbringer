@@ -7,6 +7,7 @@ import scrumbringer_client/api.{type Project, Project}
 
 pub type AdminSection {
   Invites
+  OrgSettings
   Projects
   Members
   Capabilities
@@ -39,7 +40,7 @@ pub fn can_access_section(
   let any_admin = any_project_admin(projects)
 
   case section {
-    Invites | Projects | Capabilities -> org_admin
+    Invites | OrgSettings | Projects | Capabilities -> org_admin
 
     Members | TaskTypes -> {
       case selected_project {
@@ -57,8 +58,15 @@ pub fn visible_sections(
   let any_admin = any_project_admin(projects)
 
   case is_org_admin(org_role), any_admin {
-    True, True -> [Invites, Projects, Members, Capabilities, TaskTypes]
-    True, False -> [Invites, Projects, Capabilities]
+    True, True -> [
+      Invites,
+      OrgSettings,
+      Projects,
+      Members,
+      Capabilities,
+      TaskTypes,
+    ]
+    True, False -> [Invites, OrgSettings, Projects, Capabilities]
     False, True -> [Members, TaskTypes]
     False, False -> []
   }

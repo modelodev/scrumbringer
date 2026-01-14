@@ -94,6 +94,11 @@ pub opaque type Model {
     capabilities_create_error: opt.Option(String),
     members: Remote(List(api.ProjectMember)),
     org_users_cache: Remote(List(api.OrgUser)),
+    org_settings_users: Remote(List(api.OrgUser)),
+    org_settings_role_drafts: dict.Dict(Int, String),
+    org_settings_save_in_flight: Bool,
+    org_settings_error: opt.Option(String),
+    org_settings_error_user_id: opt.Option(Int),
     members_add_dialog_open: Bool,
     members_add_selected_user: opt.Option(api.OrgUser),
     members_add_role: String,
@@ -190,6 +195,10 @@ pub type Msg {
 
   MembersFetched(api.ApiResult(List(api.ProjectMember)))
   OrgUsersCacheFetched(api.ApiResult(List(api.OrgUser)))
+  OrgSettingsUsersFetched(api.ApiResult(List(api.OrgUser)))
+  OrgSettingsRoleChanged(Int, String)
+  OrgSettingsSaveClicked(Int)
+  OrgSettingsSaved(Int, api.ApiResult(api.OrgUser))
 
   MemberAddDialogOpened
   MemberAddDialogClosed
@@ -316,6 +325,11 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       capabilities_create_error: opt.None,
       members: NotAsked,
       org_users_cache: NotAsked,
+      org_settings_users: NotAsked,
+      org_settings_role_drafts: dict.new(),
+      org_settings_save_in_flight: False,
+      org_settings_error: opt.None,
+      org_settings_error_user_id: opt.None,
       members_add_dialog_open: False,
       members_add_selected_user: opt.None,
       members_add_role: "member",
@@ -935,6 +949,164 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       case err.status == 401 {
         True -> #(Model(..model, page: Login, user: opt.None), effect.none())
         False -> #(Model(..model, org_users_cache: Failed(err)), effect.none())
+      }
+    }
+
+    OrgSettingsUsersFetched(Ok(users)) -> #(
+      Model(
+        ..model,
+        org_settings_users: Loaded(users),
+        org_settings_role_drafts: dict.new(),
+        org_settings_save_in_flight: False,
+        org_settings_error: opt.None,
+        org_settings_error_user_id: opt.None,
+      ),
+      effect.none(),
+    )
+
+    OrgSettingsUsersFetched(Error(err)) -> {
+      case err.status {
+        401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
+
+        403 -> #(
+          Model(
+            ..model,
+            org_settings_users: Failed(err),
+            toast: opt.Some("Not permitted"),
+          ),
+          effect.none(),
+        )
+
+        _ -> #(Model(..model, org_settings_users: Failed(err)), effect.none())
+      }
+    }
+
+    OrgSettingsRoleChanged(user_id, org_role) -> #(
+      Model(
+        ..model,
+        org_settings_role_drafts: dict.insert(
+          model.org_settings_role_drafts,
+          user_id,
+          org_role,
+        ),
+        org_settings_error: opt.None,
+        org_settings_error_user_id: opt.None,
+      ),
+      effect.none(),
+    )
+
+    OrgSettingsSaveClicked(user_id) -> {
+      case model.org_settings_save_in_flight {
+        True -> #(model, effect.none())
+
+        False -> {
+          let role = case dict.get(model.org_settings_role_drafts, user_id) {
+            Ok(r) -> r
+
+            Error(_) -> {
+              case model.org_settings_users {
+                Loaded(users) -> {
+                  case list.find(users, fn(u) { u.id == user_id }) {
+                    Ok(u) -> u.org_role
+                    Error(_) -> ""
+                  }
+                }
+
+                _ -> ""
+              }
+            }
+          }
+
+          case role {
+            "admin" | "member" -> {
+              let model =
+                Model(
+                  ..model,
+                  org_settings_save_in_flight: True,
+                  org_settings_error: opt.None,
+                  org_settings_error_user_id: opt.None,
+                )
+
+              #(
+                model,
+                api.update_org_user_role(user_id, role, fn(result) {
+                  OrgSettingsSaved(user_id, result)
+                }),
+              )
+            }
+
+            _ -> #(model, effect.none())
+          }
+        }
+      }
+    }
+
+    OrgSettingsSaved(_user_id, Ok(updated)) -> {
+      let update_list = fn(users: List(api.OrgUser)) {
+        list.map(users, fn(u) {
+          case u.id == updated.id {
+            True -> updated
+            False -> u
+          }
+        })
+      }
+
+      let org_settings_users = case model.org_settings_users {
+        Loaded(users) -> Loaded(update_list(users))
+        other -> other
+      }
+
+      let org_users_cache = case model.org_users_cache {
+        Loaded(users) -> Loaded(update_list(users))
+        other -> other
+      }
+
+      #(
+        Model(
+          ..model,
+          org_settings_users: org_settings_users,
+          org_users_cache: org_users_cache,
+          org_settings_save_in_flight: False,
+          org_settings_error: opt.None,
+          org_settings_error_user_id: opt.None,
+          toast: opt.Some("Role updated"),
+        ),
+        effect.none(),
+      )
+    }
+
+    OrgSettingsSaved(user_id, Error(err)) -> {
+      case err.status {
+        401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
+
+        403 -> #(
+          Model(
+            ..model,
+            org_settings_save_in_flight: False,
+            toast: opt.Some("Not permitted"),
+          ),
+          effect.none(),
+        )
+
+        409 -> #(
+          Model(
+            ..model,
+            org_settings_save_in_flight: False,
+            org_settings_error_user_id: opt.Some(user_id),
+            org_settings_error: opt.Some(err.message),
+          ),
+          effect.none(),
+        )
+
+        _ -> #(
+          Model(
+            ..model,
+            org_settings_save_in_flight: False,
+            org_settings_error_user_id: opt.Some(user_id),
+            org_settings_error: opt.Some(err.message),
+          ),
+          effect.none(),
+        )
       }
     }
 
@@ -2115,6 +2287,20 @@ fn refresh_section(model: Model) -> #(Model, Effect(Msg)) {
       #(model, api.list_invite_links(InviteLinksFetched))
     }
 
+    permissions.OrgSettings -> {
+      let model =
+        Model(
+          ..model,
+          org_settings_users: Loading,
+          org_settings_role_drafts: dict.new(),
+          org_settings_save_in_flight: False,
+          org_settings_error: opt.None,
+          org_settings_error_user_id: opt.None,
+        )
+
+      #(model, api.list_org_users("", OrgSettingsUsersFetched))
+    }
+
     permissions.Projects -> #(model, api.list_projects(ProjectsFetched))
 
     permissions.Capabilities -> #(
@@ -2211,6 +2397,7 @@ fn copy_to_clipboard(text: String, msg: fn(Bool) -> Msg) -> Effect(Msg) {
 fn page_title(section: permissions.AdminSection) -> String {
   case section {
     permissions.Invites -> "Invites"
+    permissions.OrgSettings -> "Org Settings"
     permissions.Projects -> "Projects"
     permissions.Members -> "Members"
     permissions.Capabilities -> "Capabilities"
@@ -2536,12 +2723,91 @@ fn view_section(
     True ->
       case model.active_section {
         permissions.Invites -> view_invites(model)
+        permissions.OrgSettings -> view_org_settings(model)
         permissions.Projects -> view_projects(model)
         permissions.Capabilities -> view_capabilities(model)
         permissions.Members -> view_members(model, selected)
         permissions.TaskTypes -> view_task_types(model, selected)
       }
   }
+}
+
+fn view_org_settings(model: Model) -> Element(Msg) {
+  div([attribute.class("section")], [
+    p([], [
+      text(
+        "Manage org roles (admin/member). Changes require an explicit Save and are protected by a last-admin guardrail.",
+      ),
+    ]),
+    case model.org_settings_users {
+      NotAsked -> div([], [text("Open this section to load users.")])
+      Loading -> div([attribute.class("loading")], [text("Loading users…")])
+
+      Failed(err) -> div([attribute.class("error")], [text(err.message)])
+
+      Loaded(users) -> {
+        table([attribute.class("table")], [
+          thead([], [
+            tr([], [
+              th([], [text("Email")]),
+              th([], [text("Role")]),
+              th([], [text("Actions")]),
+            ]),
+          ]),
+          tbody(
+            [],
+            list.map(users, fn(u) {
+              let draft = case dict.get(model.org_settings_role_drafts, u.id) {
+                Ok(role) -> role
+                Error(_) -> u.org_role
+              }
+
+              let inline_error = case
+                model.org_settings_error_user_id,
+                model.org_settings_error
+              {
+                opt.Some(id), opt.Some(message) if id == u.id -> message
+                _, _ -> ""
+              }
+
+              tr([], [
+                td([], [text(u.email)]),
+                td([], [
+                  select(
+                    [
+                      attribute.value(draft),
+                      attribute.disabled(model.org_settings_save_in_flight),
+                      event.on_input(fn(value) {
+                        OrgSettingsRoleChanged(u.id, value)
+                      }),
+                    ],
+                    [
+                      option([attribute.value("admin")], "admin"),
+                      option([attribute.value("member")], "member"),
+                    ],
+                  ),
+                  case inline_error == "" {
+                    True -> div([], [])
+                    False ->
+                      div([attribute.class("error")], [text(inline_error)])
+                  },
+                ]),
+                td([], [
+                  button(
+                    [
+                      attribute.disabled(model.org_settings_save_in_flight),
+                      event.on_click(OrgSettingsSaveClicked(u.id)),
+                    ],
+                    [text("Save")],
+                  ),
+                ]),
+              ])
+            }),
+          ),
+        ])
+      }
+    },
+  ])
 }
 
 fn view_invites(model: Model) -> Element(Msg) {

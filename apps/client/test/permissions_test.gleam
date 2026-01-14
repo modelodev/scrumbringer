@@ -10,6 +10,7 @@ pub fn visible_sections_org_admin_test() {
   permissions.visible_sections(org_role.Admin, projects)
   |> should.equal([
     permissions.Invites,
+    permissions.OrgSettings,
     permissions.Projects,
     permissions.Capabilities,
   ])
@@ -21,6 +22,7 @@ pub fn visible_sections_org_admin_and_project_admin_test() {
   permissions.visible_sections(org_role.Admin, projects)
   |> should.equal([
     permissions.Invites,
+    permissions.OrgSettings,
     permissions.Projects,
     permissions.Members,
     permissions.Capabilities,

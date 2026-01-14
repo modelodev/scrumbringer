@@ -653,6 +653,24 @@ pub fn list_org_users(
   request("GET", url, option.None, decoder, to_msg)
 }
 
+pub fn update_org_user_role(
+  user_id: Int,
+  org_role: String,
+  to_msg: fn(ApiResult(OrgUser)) -> msg,
+) -> Effect(msg) {
+  let body = json.object([#("org_role", json.string(org_role))])
+
+  let decoder = decode.field("user", org_user_decoder(), decode.success)
+
+  request(
+    "PATCH",
+    "/api/v1/org/users/" <> int.to_string(user_id),
+    option.Some(body),
+    decoder,
+    to_msg,
+  )
+}
+
 pub fn list_project_members(
   project_id: Int,
   to_msg: fn(ApiResult(List(ProjectMember))) -> msg,

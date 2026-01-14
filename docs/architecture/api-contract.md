@@ -117,6 +117,7 @@ Task rules:
 - `RATE_LIMITED` (429)
 - `CONFLICT_VERSION` (409)
 - `CONFLICT_CLAIMED` (409)
+- `CONFLICT_LAST_ORG_ADMIN` (409)
 - `INVITE_REQUIRED` (403)
 - `INVITE_INVALID` (403)
 - `INVITE_EXPIRED` (403)
@@ -241,6 +242,7 @@ Legend:
 | `/api/v1/auth/logout` | POST | OA/PA/M | Clears session |
 | `/api/v1/auth/me` | GET | OA/PA/M | |
 | `/api/v1/org/users` | GET | OA/PA | Lists org users (email search) |
+| `/api/v1/org/users/:user_id` | PATCH | OA | Update org role (admin/member); cannot demote last org admin |
 | `/api/v1/org/invites` | POST | OA | Creates invite token |
 | `/api/v1/org/invite-links` | POST | OA | Creates invite link for email |
 | `/api/v1/org/invite-links` | GET | OA | Lists invite links |
@@ -329,6 +331,13 @@ Legend:
   - sort: `email ASC`
   - query: `q` (optional; searches email only)
   - 200: `{ data: { users: User[] } }`
+
+- `PATCH /api/v1/org/users/:user_id`
+  - auth: org admin only
+  - csrf: required (double-submit)
+  - body: `{ org_role }` where `org_role` is `admin|member`
+  - 200: `{ data: { user } }`
+  - 409: `CONFLICT_LAST_ORG_ADMIN` when attempting to demote the last remaining org admin
 
 #### Invites (invite-only registration)
 

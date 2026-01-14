@@ -99,6 +99,8 @@ fn handle_request(req: wisp.Request, app: App) -> wisp.Response {
       org_invite_links.handle_regenerate(req, auth_ctx(app))
     ["api", "v1", "org", "users"] ->
       org_users.handle_org_users(req, auth_ctx(app))
+    ["api", "v1", "org", "users", user_id] ->
+      org_users.handle_org_user(req, auth_ctx(app), user_id)
     ["api", "v1", "projects"] -> projects.handle_projects(req, auth_ctx(app))
     ["api", "v1", "projects", project_id, "members"] ->
       projects.handle_members(req, auth_ctx(app), project_id)

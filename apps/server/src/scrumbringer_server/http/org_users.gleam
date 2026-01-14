@@ -1,4 +1,6 @@
+import gleam/dynamic/decode
 import gleam/http
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -6,6 +8,7 @@ import pog
 import scrumbringer_domain/org_role
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
+import scrumbringer_server/http/csrf
 import scrumbringer_server/services/org_users_db
 import scrumbringer_server/services/projects_db
 import wisp
@@ -14,6 +17,97 @@ pub fn handle_org_users(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   case req.method {
     http.Get -> handle_list(req, ctx)
     _ -> wisp.method_not_allowed([http.Get])
+  }
+}
+
+pub fn handle_org_user(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  user_id: String,
+) -> wisp.Response {
+  case req.method {
+    http.Patch -> handle_update(req, ctx, user_id)
+    _ -> wisp.method_not_allowed([http.Patch])
+  }
+}
+
+fn handle_update(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  user_id: String,
+) -> wisp.Response {
+  use <- wisp.require_method(req, http.Patch)
+  use data <- wisp.require_json(req)
+
+  case int.parse(user_id) {
+    Error(_) -> api.error(422, "VALIDATION_ERROR", "Invalid user_id")
+
+    Ok(target_user_id) -> {
+      let decoder = {
+        use role <- decode.field("org_role", decode.string)
+        decode.success(role)
+      }
+
+      case decode.run(data, decoder) {
+        Error(_) -> api.error(422, "VALIDATION_ERROR", "Invalid JSON")
+
+        Ok(new_role) -> {
+          case auth.require_current_user(req, ctx) {
+            Error(_) ->
+              api.error(401, "AUTH_REQUIRED", "Authentication required")
+
+            Ok(user) -> {
+              case user.org_role {
+                org_role.Admin -> {
+                  case csrf.require_double_submit(req) {
+                    Error(_) ->
+                      api.error(
+                        403,
+                        "FORBIDDEN",
+                        "CSRF token missing or invalid",
+                      )
+
+                    Ok(Nil) -> {
+                      let auth.Ctx(db: db, ..) = ctx
+
+                      case
+                        org_users_db.update_org_role(
+                          db,
+                          user.org_id,
+                          target_user_id,
+                          new_role,
+                        )
+                      {
+                        Ok(updated) ->
+                          api.ok(json.object([#("user", user_json(updated))]))
+
+                        Error(org_users_db.InvalidRole) ->
+                          api.error(422, "VALIDATION_ERROR", "Invalid org_role")
+
+                        Error(org_users_db.UserNotFound) ->
+                          api.error(404, "NOT_FOUND", "User not found")
+
+                        Error(org_users_db.CannotDemoteLastAdmin) ->
+                          api.error(
+                            409,
+                            "CONFLICT_LAST_ORG_ADMIN",
+                            "Cannot demote last org admin",
+                          )
+
+                        Error(org_users_db.DbError(_)) ->
+                          api.error(500, "INTERNAL", "Database error")
+                      }
+                    }
+                  }
+                }
+
+                _ -> api.error(403, "FORBIDDEN", "Forbidden")
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }
 
