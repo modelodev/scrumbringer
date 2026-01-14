@@ -287,7 +287,7 @@ Legend:
 
 - `POST /api/v1/auth/register`
   - body (bootstrap when no org exists yet): `{ email, password, org_name }`
-  - body (normal registration): `{ email, password, invite_token }`
+  - body (normal registration): `{ password, invite_token }` (email is derived from the invite token)
   - errors: `INVITE_REQUIRED` | `INVITE_INVALID` | `INVITE_EXPIRED` | `INVITE_USED`
   - 200: `{ data: { user } }` + sets cookies (`sb_session`, `sb_csrf`)
 

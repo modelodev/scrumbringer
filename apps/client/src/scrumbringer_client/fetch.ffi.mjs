@@ -119,3 +119,19 @@ export function location_origin() {
   if (typeof window === "undefined") return ""
   return window.location?.origin || ""
 }
+
+export function location_pathname() {
+  if (typeof window === "undefined") return ""
+  return window.location?.pathname || ""
+}
+
+export function location_query_param(name) {
+  if (typeof window === "undefined") return ""
+  try {
+    const search = window.location?.search || ""
+    const params = new URLSearchParams(search)
+    return params.get(String(name)) || ""
+  } catch {
+    return ""
+  }
+}

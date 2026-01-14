@@ -21,7 +21,7 @@ pub fn non_admin_forbidden_for_invite_links_test() {
 
   create_member_user(handler, db)
 
-  let login_res = login_as(handler, "member@example.com", "password")
+  let login_res = login_as(handler, "member@example.com", "passwordpassword")
   login_res.status |> should.equal(200)
 
   let session = find_cookie_value(login_res.headers, "sb_session")
@@ -49,7 +49,7 @@ pub fn missing_csrf_is_rejected_for_create_and_regenerate_test() {
   let app = bootstrap_app()
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "password")
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
   login_res.status |> should.equal(200)
 
   let session = find_cookie_value(login_res.headers, "sb_session")
@@ -79,7 +79,7 @@ pub fn create_invalidates_previous_active_token_for_email_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "password")
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
   login_res.status |> should.equal(200)
 
   let session = find_cookie_value(login_res.headers, "sb_session")
@@ -139,7 +139,7 @@ pub fn list_sorted_by_email_asc_test() {
   let scrumbringer_server.App(db: _db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "password")
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
   login_res.status |> should.equal(200)
 
   let session = find_cookie_value(login_res.headers, "sb_session")
@@ -187,7 +187,7 @@ pub fn no_time_expiry_links_stay_active_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "password")
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
   login_res.status |> should.equal(200)
 
   let session = find_cookie_value(login_res.headers, "sb_session")
@@ -236,7 +236,7 @@ pub fn regenerate_creates_new_token_and_invalidates_previous_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "password")
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
   login_res.status |> should.equal(200)
 
   let session = find_cookie_value(login_res.headers, "sb_session")
@@ -291,7 +291,7 @@ pub fn invalid_email_returns_422_test() {
   let app = bootstrap_app()
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "password")
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
   login_res.status |> should.equal(200)
 
   let session = find_cookie_value(login_res.headers, "sb_session")
@@ -315,7 +315,7 @@ pub fn list_includes_invalidated_links_test() {
   let app = bootstrap_app()
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "password")
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
   login_res.status |> should.equal(200)
 
   let session = find_cookie_value(login_res.headers, "sb_session")
@@ -392,7 +392,8 @@ fn bootstrap_app() -> scrumbringer_server.App {
 
   reset_db(db)
 
-  let res = handler(bootstrap_request("admin@example.com", "password", "Acme"))
+  let res =
+    handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
   res.status |> should.equal(200)
 
   app
@@ -413,15 +414,14 @@ fn create_member_user(
   handler: fn(wisp.Request) -> wisp.Response,
   db: pog.Connection,
 ) {
-  insert_invite_valid(db, "inv_member")
+  insert_invite_link_active(db, "il_member", "member@example.com")
 
   let req =
     simulate.request(http.Post, "/api/v1/auth/register")
     |> simulate.json_body(
       json.object([
-        #("email", json.string("member@example.com")),
-        #("password", json.string("password")),
-        #("invite_code", json.string("inv_member")),
+        #("password", json.string("passwordpassword")),
+        #("invite_token", json.string("il_member")),
       ]),
     )
 
@@ -486,7 +486,7 @@ fn require_database_url() -> String {
 fn reset_db(db: pog.Connection) {
   let assert Ok(_) =
     pog.query(
-      "TRUNCATE project_members, org_invites, users, projects, organizations RESTART IDENTITY CASCADE",
+      "TRUNCATE project_members, org_invite_links, org_invites, users, projects, organizations RESTART IDENTITY CASCADE",
     )
     |> pog.execute(db)
 
@@ -499,6 +499,18 @@ fn insert_invite_valid(db: pog.Connection, code: String) {
       "insert into org_invites (code, org_id, created_by, expires_at) values ($1, 1, 1, timestamptz '2999-01-01T00:00:00Z')",
     )
     |> pog.parameter(pog.text(code))
+    |> pog.execute(db)
+
+  Nil
+}
+
+fn insert_invite_link_active(db: pog.Connection, token: String, email: String) {
+  let assert Ok(_) =
+    pog.query(
+      "insert into org_invite_links (org_id, email, token, created_by) values (1, $1, $2, 1)",
+    )
+    |> pog.parameter(pog.text(email))
+    |> pog.parameter(pog.text(token))
     |> pog.execute(db)
 
   Nil

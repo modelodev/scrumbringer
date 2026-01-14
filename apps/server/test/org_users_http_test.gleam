@@ -19,13 +19,14 @@ pub fn org_users_requires_admin_or_project_admin_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let admin_login_res = login_as(handler, "admin@example.com", "password")
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
   let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
 
   let member_email = "member@example.com"
-  create_user_via_invite(handler, db, member_email, "inv_member", 1)
+  create_user_via_invite(handler, db, member_email, "il_member", 1)
 
-  let member_login_res = login_as(handler, member_email, "password")
+  let member_login_res = login_as(handler, member_email, "passwordpassword")
   let member_session = find_cookie_value(member_login_res.headers, "sb_session")
 
   let member_req =
@@ -48,11 +49,11 @@ pub fn org_users_sorted_search_and_empty_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let login_res = login_as(handler, "admin@example.com", "password")
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
   let session = find_cookie_value(login_res.headers, "sb_session")
 
-  create_user_via_invite(handler, db, "z@example.com", "inv_z", 1)
-  create_user_via_invite(handler, db, "aaa@example.com", "inv_a", 1)
+  create_user_via_invite(handler, db, "z@example.com", "il_z", 1)
+  create_user_via_invite(handler, db, "aaa@example.com", "il_a", 1)
 
   let res =
     handler(
@@ -101,8 +102,8 @@ pub fn org_users_allows_project_admin_and_scopes_org_test() {
 
   let org2_id = insert_org(db, "Org2")
 
-  create_user_via_invite(handler, db, "b@org2.com", "inv_b", org2_id)
-  create_user_via_invite(handler, db, "a@org2.com", "inv_a2", org2_id)
+  create_user_via_invite(handler, db, "b@org2.com", "il_b", org2_id)
+  create_user_via_invite(handler, db, "a@org2.com", "il_a2", org2_id)
 
   let user2_id =
     single_int(db, "select id from users where email = 'b@org2.com'", [])
@@ -110,7 +111,7 @@ pub fn org_users_allows_project_admin_and_scopes_org_test() {
   let project2_id = insert_project(db, org2_id, "P2")
   insert_project_member(db, project2_id, user2_id, "admin")
 
-  let user2_login_res = login_as(handler, "b@org2.com", "password")
+  let user2_login_res = login_as(handler, "b@org2.com", "passwordpassword")
   let user2_session = find_cookie_value(user2_login_res.headers, "sb_session")
 
   let user2_res =
@@ -123,7 +124,8 @@ pub fn org_users_allows_project_admin_and_scopes_org_test() {
   decode_user_emails(simulate.read_body(user2_res))
   |> should.equal(["a@org2.com", "b@org2.com"])
 
-  let admin_login_res = login_as(handler, "admin@example.com", "password")
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
   let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
 
   let admin_res =
@@ -163,18 +165,17 @@ fn create_user_via_invite(
   handler: fn(wisp.Request) -> wisp.Response,
   db: pog.Connection,
   email: String,
-  invite_code: String,
+  invite_token: String,
   org_id: Int,
 ) {
-  insert_invite_valid(db, invite_code, org_id)
+  insert_invite_link_active(db, invite_token, email, org_id)
 
   let req =
     simulate.request(http.Post, "/api/v1/auth/register")
     |> simulate.json_body(
       json.object([
-        #("email", json.string(email)),
-        #("password", json.string("password")),
-        #("invite_code", json.string(invite_code)),
+        #("password", json.string("passwordpassword")),
+        #("invite_token", json.string(invite_token)),
       ]),
     )
 
@@ -182,13 +183,19 @@ fn create_user_via_invite(
   res.status |> should.equal(200)
 }
 
-fn insert_invite_valid(db: pog.Connection, code: String, org_id: Int) {
+fn insert_invite_link_active(
+  db: pog.Connection,
+  token: String,
+  email: String,
+  org_id: Int,
+) {
   let assert Ok(_) =
     pog.query(
-      "insert into org_invites (code, org_id, created_by, expires_at) values ($1, $2, 1, timestamptz '2999-01-01T00:00:00Z')",
+      "insert into org_invite_links (org_id, email, token, created_by) values ($1, $2, $3, 1)",
     )
-    |> pog.parameter(pog.text(code))
     |> pog.parameter(pog.int(org_id))
+    |> pog.parameter(pog.text(email))
+    |> pog.parameter(pog.text(token))
     |> pog.execute(db)
 
   Nil
@@ -274,7 +281,7 @@ fn bootstrap_app() -> scrumbringer_server.App {
       |> simulate.json_body(
         json.object([
           #("email", json.string("admin@example.com")),
-          #("password", json.string("password")),
+          #("password", json.string("passwordpassword")),
           #("org_name", json.string("Acme")),
         ]),
       ),
@@ -294,7 +301,7 @@ fn new_test_app() -> scrumbringer_server.App {
 fn reset_db(db: pog.Connection) {
   let assert Ok(_) =
     pog.query(
-      "TRUNCATE project_members, org_invites, users, projects, organizations RESTART IDENTITY CASCADE",
+      "TRUNCATE project_members, org_invite_links, org_invites, users, projects, organizations RESTART IDENTITY CASCADE",
     )
     |> pog.execute(db)
 

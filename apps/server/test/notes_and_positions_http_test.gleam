@@ -19,7 +19,8 @@ pub fn task_notes_create_does_not_require_claim_and_task_patch_still_requires_cl
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let admin_login_res = login_as(handler, "admin@example.com", "password")
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
   let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
   let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
 
@@ -61,12 +62,14 @@ pub fn task_notes_create_does_not_require_claim_and_task_patch_still_requires_cl
   add_member(handler, admin_session, admin_csrf, project_id, member1_id)
   add_member(handler, admin_session, admin_csrf, project_id, member2_id)
 
-  let member1_login_res = login_as(handler, "member1@example.com", "password")
+  let member1_login_res =
+    login_as(handler, "member1@example.com", "passwordpassword")
   let member1_session =
     find_cookie_value(member1_login_res.headers, "sb_session")
   let member1_csrf = find_cookie_value(member1_login_res.headers, "sb_csrf")
 
-  let member2_login_res = login_as(handler, "member2@example.com", "password")
+  let member2_login_res =
+    login_as(handler, "member2@example.com", "passwordpassword")
   let member2_session =
     find_cookie_value(member2_login_res.headers, "sb_session")
   let member2_csrf = find_cookie_value(member2_login_res.headers, "sb_csrf")
@@ -123,7 +126,8 @@ pub fn task_notes_list_requires_task_membership_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let admin_login_res = login_as(handler, "admin@example.com", "password")
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
   let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
   let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
 
@@ -158,11 +162,13 @@ pub fn task_notes_list_requires_task_membership_test() {
 
   add_member(handler, admin_session, admin_csrf, project_id, member_id)
 
-  let member_login_res = login_as(handler, "member@example.com", "password")
+  let member_login_res =
+    login_as(handler, "member@example.com", "passwordpassword")
   let member_session = find_cookie_value(member_login_res.headers, "sb_session")
   let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
 
-  let outsider_login_res = login_as(handler, "outsider@example.com", "password")
+  let outsider_login_res =
+    login_as(handler, "outsider@example.com", "passwordpassword")
   let outsider_session =
     find_cookie_value(outsider_login_res.headers, "sb_session")
   let outsider_csrf = find_cookie_value(outsider_login_res.headers, "sb_csrf")
@@ -224,7 +230,8 @@ pub fn task_notes_are_append_only_and_no_edit_delete_routes_exist_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let admin_login_res = login_as(handler, "admin@example.com", "password")
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
   let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
   let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
 
@@ -258,7 +265,8 @@ pub fn task_notes_are_append_only_and_no_edit_delete_routes_exist_test() {
 
   add_member(handler, admin_session, admin_csrf, project_id, member_id)
 
-  let member_login_res = login_as(handler, "member@example.com", "password")
+  let member_login_res =
+    login_as(handler, "member@example.com", "passwordpassword")
   let member_session = find_cookie_value(member_login_res.headers, "sb_session")
   let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
 
@@ -330,7 +338,8 @@ pub fn task_notes_create_requires_csrf_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let admin_login_res = login_as(handler, "admin@example.com", "password")
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
   let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
   let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
 
@@ -364,7 +373,8 @@ pub fn task_notes_create_requires_csrf_test() {
 
   add_member(handler, admin_session, admin_csrf, project_id, member_id)
 
-  let member_login_res = login_as(handler, "member@example.com", "password")
+  let member_login_res =
+    login_as(handler, "member@example.com", "passwordpassword")
   let member_session = find_cookie_value(member_login_res.headers, "sb_session")
   let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
 
@@ -398,7 +408,8 @@ pub fn task_positions_upsert_requires_csrf_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let admin_login_res = login_as(handler, "admin@example.com", "password")
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
   let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
   let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
 
@@ -432,7 +443,8 @@ pub fn task_positions_upsert_requires_csrf_test() {
 
   add_member(handler, admin_session, admin_csrf, project_id, member_id)
 
-  let member_login_res = login_as(handler, "member@example.com", "password")
+  let member_login_res =
+    login_as(handler, "member@example.com", "passwordpassword")
   let member_session = find_cookie_value(member_login_res.headers, "sb_session")
   let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
 
@@ -468,7 +480,8 @@ pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let admin_login_res = login_as(handler, "admin@example.com", "password")
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
   let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
   let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
 
@@ -531,12 +544,14 @@ pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
   add_member(handler, admin_session, admin_csrf, other_id, member1_id)
   add_member(handler, admin_session, admin_csrf, other_id, member2_id)
 
-  let member1_login_res = login_as(handler, "member1@example.com", "password")
+  let member1_login_res =
+    login_as(handler, "member1@example.com", "passwordpassword")
   let member1_session =
     find_cookie_value(member1_login_res.headers, "sb_session")
   let member1_csrf = find_cookie_value(member1_login_res.headers, "sb_csrf")
 
-  let member2_login_res = login_as(handler, "member2@example.com", "password")
+  let member2_login_res =
+    login_as(handler, "member2@example.com", "passwordpassword")
   let member2_session =
     find_cookie_value(member2_login_res.headers, "sb_session")
   let member2_csrf = find_cookie_value(member2_login_res.headers, "sb_csrf")
@@ -616,7 +631,8 @@ pub fn task_positions_reject_non_member_task_and_project_filter_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  let admin_login_res = login_as(handler, "admin@example.com", "password")
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
   let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
   let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
 
@@ -651,11 +667,13 @@ pub fn task_positions_reject_non_member_task_and_project_filter_test() {
 
   add_member(handler, admin_session, admin_csrf, project_id, member_id)
 
-  let member_login_res = login_as(handler, "member@example.com", "password")
+  let member_login_res =
+    login_as(handler, "member@example.com", "passwordpassword")
   let member_session = find_cookie_value(member_login_res.headers, "sb_session")
   let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
 
-  let outsider_login_res = login_as(handler, "outsider@example.com", "password")
+  let outsider_login_res =
+    login_as(handler, "outsider@example.com", "passwordpassword")
   let outsider_session =
     find_cookie_value(outsider_login_res.headers, "sb_session")
   let outsider_csrf = find_cookie_value(outsider_login_res.headers, "sb_csrf")
@@ -939,15 +957,14 @@ fn create_member_user(
   email: String,
   invite_code: String,
 ) {
-  insert_invite_valid(db, invite_code)
+  insert_invite_link_active(db, invite_code, email)
 
   let req =
     simulate.request(http.Post, "/api/v1/auth/register")
     |> simulate.json_body(
       json.object([
-        #("email", json.string(email)),
-        #("password", json.string("password")),
-        #("invite_code", json.string(invite_code)),
+        #("password", json.string("passwordpassword")),
+        #("invite_token", json.string(invite_code)),
       ]),
     )
 
@@ -977,7 +994,8 @@ fn bootstrap_app() -> scrumbringer_server.App {
 
   reset_db(db)
 
-  let res = handler(bootstrap_request("admin@example.com", "password", "Acme"))
+  let res =
+    handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
   res.status |> should.equal(200)
 
   app
@@ -1003,19 +1021,20 @@ fn bootstrap_request(email: String, password: String, org_name: String) {
 fn reset_db(db: pog.Connection) {
   let assert Ok(_) =
     pog.query(
-      "TRUNCATE project_members, org_invites, users, projects, organizations RESTART IDENTITY CASCADE",
+      "TRUNCATE project_members, org_invite_links, org_invites, users, projects, organizations RESTART IDENTITY CASCADE",
     )
     |> pog.execute(db)
 
   Nil
 }
 
-fn insert_invite_valid(db: pog.Connection, code: String) {
+fn insert_invite_link_active(db: pog.Connection, token: String, email: String) {
   let assert Ok(_) =
     pog.query(
-      "insert into org_invites (code, org_id, created_by, expires_at) values ($1, 1, 1, timestamptz '2999-01-01T00:00:00Z')",
+      "insert into org_invite_links (org_id, email, token, created_by) values (1, $1, $2, 1)",
     )
-    |> pog.parameter(pog.text(code))
+    |> pog.parameter(pog.text(email))
+    |> pog.parameter(pog.text(token))
     |> pog.execute(db)
 
   Nil

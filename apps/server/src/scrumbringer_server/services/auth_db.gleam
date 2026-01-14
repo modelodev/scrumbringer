@@ -6,15 +6,16 @@ import gleam/string
 import pog
 import scrumbringer_domain/org_role
 import scrumbringer_server/services/auth_logic
+import scrumbringer_server/services/org_invite_links_db
 import scrumbringer_server/services/password
 import scrumbringer_server/services/store_state.{type StoredUser, StoredUser}
 
 pub fn register(
   db: pog.Connection,
-  email: String,
+  email: Option(String),
   password_raw: String,
   org_name: Option(String),
-  invite_code: Option(String),
+  invite_token: Option(String),
   _now_iso: String,
   _now_unix: Int,
 ) -> Result(StoredUser, auth_logic.AuthError) {
@@ -24,8 +25,17 @@ pub fn register(
   )
 
   case org_exists {
-    True -> invite_register(db, email, password_raw, invite_code)
-    False -> bootstrap_register(db, email, password_raw, org_name)
+    True -> invite_register(db, password_raw, invite_token)
+
+    False -> {
+      let email = case email {
+        Some(e) if e != "" -> Ok(e)
+        _ -> Error(auth_logic.InviteInvalid)
+      }
+
+      use email <- result.try(email)
+      bootstrap_register(db, email, password_raw, org_name)
+    }
   }
 }
 
@@ -152,15 +162,14 @@ fn bootstrap_register(
 
 fn invite_register(
   db: pog.Connection,
-  email: String,
   password_raw: String,
-  invite_code: Option(String),
+  invite_token: Option(String),
 ) -> Result(StoredUser, auth_logic.AuthError) {
-  let invite_code = case invite_code {
-    Some(code) if code != "" -> Ok(code)
+  let invite_token = case invite_token {
+    Some(token) if token != "" -> Ok(token)
     _ -> Error(auth_logic.InviteRequired)
   }
-  use invite_code <- result.try(invite_code)
+  use invite_token <- result.try(invite_token)
 
   use password_hash <- result.try(
     password.hash(password_raw)
@@ -168,16 +177,17 @@ fn invite_register(
   )
 
   pog.transaction(db, fn(tx) {
-    use invite <- result.try(
-      get_invite_status(tx, invite_code)
+    use status <- result.try(
+      org_invite_links_db.token_status_for_update(tx, invite_token)
       |> result.map_error(auth_logic.DbError),
     )
 
-    case invite {
-      InviteMissing -> Error(auth_logic.InviteInvalid)
-      InviteUsed -> Error(auth_logic.InviteUsed)
-      InviteExpired -> Error(auth_logic.InviteExpired)
-      InviteOk(org_id) -> {
+    case status {
+      org_invite_links_db.TokenMissing -> Error(auth_logic.InviteInvalid)
+      org_invite_links_db.TokenInvalidated -> Error(auth_logic.InviteInvalid)
+      org_invite_links_db.TokenUsed -> Error(auth_logic.InviteUsed)
+
+      org_invite_links_db.TokenActive(org_id: org_id, email: email) -> {
         use user_row <- result.try(
           insert_user(tx, email, password_hash, org_id, "member")
           |> result.map_error(map_user_insert_error),
@@ -185,19 +195,24 @@ fn invite_register(
 
         let #(user_id, created_at) = user_row
 
-        use _ <- result.try(
-          mark_invite_used(tx, invite_code, user_id)
+        use used <- result.try(
+          org_invite_links_db.mark_token_used(tx, invite_token, user_id)
           |> result.map_error(auth_logic.DbError),
         )
 
-        Ok(StoredUser(
-          id: user_id,
-          email: email,
-          password_hash: password_hash,
-          org_id: org_id,
-          org_role: org_role.Member,
-          created_at: created_at,
-        ))
+        case used {
+          True ->
+            Ok(StoredUser(
+              id: user_id,
+              email: email,
+              password_hash: password_hash,
+              org_id: org_id,
+              org_role: org_role.Member,
+              created_at: created_at,
+            ))
+
+          False -> Error(auth_logic.InviteUsed)
+        }
       }
     }
   })

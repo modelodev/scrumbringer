@@ -7,6 +7,7 @@ import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
+import gleam/string
 import pog
 import scrumbringer_domain/org_role
 import scrumbringer_server/http/api
@@ -14,6 +15,7 @@ import scrumbringer_server/http/csrf
 import scrumbringer_server/services/auth_db
 import scrumbringer_server/services/auth_logic
 import scrumbringer_server/services/jwt
+import scrumbringer_server/services/org_invite_links_db
 import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/time
 import wisp
@@ -27,47 +29,89 @@ pub fn handle_register(req: wisp.Request, ctx: Ctx) -> wisp.Response {
   use data <- wisp.require_json(req)
 
   let decoder = {
-    use email <- decode.field("email", decode.string)
+    use email <- decode.optional_field("email", "", decode.string)
     use password <- decode.field("password", decode.string)
     use org_name <- decode.optional_field("org_name", "", decode.string)
-    use invite_code <- decode.optional_field("invite_code", "", decode.string)
-    decode.success(#(email, password, org_name, invite_code))
+    use invite_token <- decode.optional_field("invite_token", "", decode.string)
+    decode.success(#(email, password, org_name, invite_token))
   }
 
   case decode.run(data, decoder) {
-    Ok(#(email, password, org_name, invite_code)) -> {
-      let org_name = case org_name {
-        "" -> None
-        other -> Some(other)
-      }
+    Ok(#(email_raw, password, org_name_raw, invite_token_raw)) -> {
+      case string.length(password) < 12 {
+        True ->
+          api.error(
+            422,
+            "VALIDATION_ERROR",
+            "Password must be at least 12 characters",
+          )
 
-      let invite_code = case invite_code {
-        "" -> None
-        other -> Some(other)
-      }
+        False -> {
+          let org_name = case org_name_raw {
+            "" -> None
+            other -> Some(other)
+          }
 
-      let now_iso = time.now_iso8601()
-      let now_unix = time.now_unix_seconds()
+          let email = case email_raw {
+            "" -> None
+            other -> Some(other)
+          }
 
-      let Ctx(db: db, jwt_secret: jwt_secret) = ctx
+          let invite_token = case invite_token_raw {
+            "" -> None
+            other -> Some(other)
+          }
 
-      case
-        auth_db.register(
-          db,
-          email,
-          password,
-          org_name,
-          invite_code,
-          now_iso,
-          now_unix,
-        )
-      {
-        Ok(user) -> ok_with_auth(user, jwt_secret)
-        Error(error) -> auth_error_response(error)
+          let now_iso = time.now_iso8601()
+          let now_unix = time.now_unix_seconds()
+
+          let Ctx(db: db, jwt_secret: jwt_secret) = ctx
+
+          case
+            auth_db.register(
+              db,
+              email,
+              password,
+              org_name,
+              invite_token,
+              now_iso,
+              now_unix,
+            )
+          {
+            Ok(user) -> ok_with_auth(user, jwt_secret)
+            Error(error) -> auth_error_response(error)
+          }
+        }
       }
     }
 
     Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+  }
+}
+
+pub fn handle_invite_link_validate(
+  req: wisp.Request,
+  ctx: Ctx,
+  token: String,
+) -> wisp.Response {
+  use <- wisp.require_method(req, http.Get)
+
+  let Ctx(db: db, ..) = ctx
+
+  case org_invite_links_db.token_status(db, token) {
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
+
+    Ok(org_invite_links_db.TokenMissing) ->
+      api.error(403, "INVITE_INVALID", "Invite token invalid")
+
+    Ok(org_invite_links_db.TokenInvalidated) ->
+      api.error(403, "INVITE_INVALID", "Invite token invalid")
+
+    Ok(org_invite_links_db.TokenUsed) ->
+      api.error(403, "INVITE_USED", "Invite token already used")
+
+    Ok(org_invite_links_db.TokenActive(email: email, ..)) ->
+      api.ok(json.object([#("email", json.string(email))]))
   }
 }
 
@@ -168,13 +212,13 @@ fn user_json(user: StoredUser) -> json.Json {
 fn auth_error_response(error: auth_logic.AuthError) -> wisp.Response {
   case error {
     auth_logic.InviteRequired ->
-      api.error(403, "INVITE_REQUIRED", "Invite code required")
+      api.error(403, "INVITE_REQUIRED", "Invite token required")
     auth_logic.InviteInvalid ->
-      api.error(403, "INVITE_INVALID", "Invite code invalid")
+      api.error(403, "INVITE_INVALID", "Invite token invalid")
     auth_logic.InviteExpired ->
-      api.error(403, "INVITE_EXPIRED", "Invite code expired")
+      api.error(403, "INVITE_EXPIRED", "Invite token expired")
     auth_logic.InviteUsed ->
-      api.error(403, "INVITE_USED", "Invite code already used")
+      api.error(403, "INVITE_USED", "Invite token already used")
     auth_logic.OrgNameRequired ->
       api.error(422, "VALIDATION_ERROR", "org_name is required")
     auth_logic.EmailTaken ->

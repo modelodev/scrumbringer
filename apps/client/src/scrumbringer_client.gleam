@@ -19,6 +19,7 @@ import lustre/event
 import scrumbringer_domain/org_role
 import scrumbringer_domain/user.{type User}
 
+import scrumbringer_client/accept_invite
 import scrumbringer_client/api
 import scrumbringer_client/member_visuals
 import scrumbringer_client/permissions
@@ -43,6 +44,7 @@ type Remote(a) {
 
 type Page {
   Login
+  AcceptInvite
   Admin
   Member
 }
@@ -74,6 +76,7 @@ pub opaque type Model {
     login_password: String,
     login_error: opt.Option(String),
     login_in_flight: Bool,
+    accept_invite: accept_invite.Model,
     projects: Remote(List(api.Project)),
     selected_project_id: opt.Option(Int),
     invite_links: Remote(List(api.InviteLink)),
@@ -151,6 +154,7 @@ pub opaque type Model {
 
 pub type Msg {
   MeFetched(api.ApiResult(User))
+  AcceptInviteMsg(accept_invite.Msg)
 
   LoginEmailChanged(String)
   LoginPasswordChanged(String)
@@ -269,9 +273,24 @@ pub type Msg {
 }
 
 fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
+  let pathname = location_pathname_ffi()
+  let is_accept_invite = pathname == "/accept-invite"
+
+  let token = case is_accept_invite {
+    True -> location_query_param_ffi("token")
+    False -> ""
+  }
+
+  let #(accept_model, accept_action) = accept_invite.init(token)
+
+  let page = case is_accept_invite {
+    True -> AcceptInvite
+    False -> Login
+  }
+
   let model =
     Model(
-      page: Login,
+      page: page,
       user: opt.None,
       active_section: permissions.Invites,
       toast: opt.None,
@@ -279,6 +298,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       login_password: "",
       login_error: opt.None,
       login_in_flight: False,
+      accept_invite: accept_model,
       projects: NotAsked,
       selected_project_id: opt.None,
       invite_links: NotAsked,
@@ -353,7 +373,23 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       member_note_error: opt.None,
     )
 
-  #(model, api.fetch_me(MeFetched))
+  let effect = case is_accept_invite {
+    True -> accept_invite_effect(accept_action)
+    False -> api.fetch_me(MeFetched)
+  }
+
+  #(model, effect)
+}
+
+fn accept_invite_effect(action: accept_invite.Action) -> Effect(Msg) {
+  case action {
+    accept_invite.ValidateToken(token) ->
+      api.validate_invite_link_token(token, fn(result) {
+        AcceptInviteMsg(accept_invite.TokenValidated(result))
+      })
+
+    _ -> effect.none()
+  }
 }
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
@@ -381,6 +417,43 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           ),
           effect.none(),
         )
+      }
+    }
+
+    AcceptInviteMsg(inner) -> {
+      let #(next_accept, action) =
+        accept_invite.update(model.accept_invite, inner)
+      let model = Model(..model, accept_invite: next_accept, toast: opt.None)
+
+      case action {
+        accept_invite.NoOp -> #(model, effect.none())
+
+        accept_invite.ValidateToken(_) -> #(model, accept_invite_effect(action))
+
+        accept_invite.Register(token: token, password: password) -> #(
+          model,
+          api.register_with_invite_link(token, password, fn(result) {
+            AcceptInviteMsg(accept_invite.Registered(result))
+          }),
+        )
+
+        accept_invite.Authed(user) -> {
+          let page = case user.org_role {
+            org_role.Admin -> Admin
+            _ -> Member
+          }
+
+          let model =
+            Model(
+              ..model,
+              page: page,
+              user: opt.Some(user),
+              toast: opt.Some("Welcome"),
+            )
+
+          let #(model, effect) = bootstrap_admin(model)
+          #(model, effect)
+        }
       }
     }
 
@@ -2119,6 +2192,16 @@ fn location_origin_ffi() -> String {
   ""
 }
 
+@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "location_pathname")
+fn location_pathname_ffi() -> String {
+  ""
+}
+
+@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "location_query_param")
+fn location_query_param_ffi(_name: String) -> String {
+  ""
+}
+
 fn copy_to_clipboard(text: String, msg: fn(Bool) -> Msg) -> Effect(Msg) {
   effect.from(fn(dispatch) {
     copy_to_clipboard_ffi(text, fn(ok) { dispatch(msg(ok)) })
@@ -2159,6 +2242,7 @@ fn view(model: Model) -> Element(Msg) {
     view_toast(model.toast),
     case model.page {
       Login -> view_login(model)
+      AcceptInvite -> view_accept_invite(model)
       Admin -> view_admin(model)
       Member -> view_member(model)
     },
@@ -2174,6 +2258,94 @@ fn view_toast(toast: opt.Option(String)) -> Element(Msg) {
         button([event.on_click(ToastDismissed)], [text("Dismiss")]),
       ])
   }
+}
+
+fn view_accept_invite(model: Model) -> Element(Msg) {
+  let accept_invite.Model(
+    state: state,
+    password: password,
+    password_error: password_error,
+    submit_error: submit_error,
+    ..,
+  ) = model.accept_invite
+
+  let content = case state {
+    accept_invite.NoToken ->
+      div([attribute.class("error")], [text("Missing invite token")])
+
+    accept_invite.Validating ->
+      div([attribute.class("loading")], [text("Validating invite…")])
+
+    accept_invite.Invalid(code: _, message: message) ->
+      div([attribute.class("error")], [text(message)])
+
+    accept_invite.Ready(email) ->
+      view_accept_invite_form(email, password, False, password_error)
+
+    accept_invite.Registering(email) ->
+      view_accept_invite_form(email, password, True, password_error)
+
+    accept_invite.Done -> div([attribute.class("loading")], [text("Signed in")])
+  }
+
+  div([attribute.class("page")], [
+    h1([], [text("ScrumBringer")]),
+    h2([], [text("Accept invite")]),
+    case submit_error {
+      opt.Some(err) ->
+        div([attribute.class("error")], [
+          span([], [text(err)]),
+          button(
+            [event.on_click(AcceptInviteMsg(accept_invite.ErrorDismissed))],
+            [text("Dismiss")],
+          ),
+        ])
+      opt.None -> div([], [])
+    },
+    content,
+  ])
+}
+
+fn view_accept_invite_form(
+  email: String,
+  password: String,
+  in_flight: Bool,
+  password_error: opt.Option(String),
+) -> Element(Msg) {
+  let submit_label = case in_flight {
+    True -> "Registering…"
+    False -> "Register"
+  }
+
+  form([event.on_submit(fn(_) { AcceptInviteMsg(accept_invite.Submitted) })], [
+    div([attribute.class("field")], [
+      label([], [text("Email")]),
+      input([
+        attribute.type_("email"),
+        attribute.value(email),
+        attribute.disabled(True),
+      ]),
+    ]),
+    div([attribute.class("field")], [
+      label([], [text("Password")]),
+      input([
+        attribute.type_("password"),
+        attribute.value(password),
+        event.on_input(fn(value) {
+          AcceptInviteMsg(accept_invite.PasswordChanged(value))
+        }),
+        attribute.required(True),
+      ]),
+      case password_error {
+        opt.Some(err) -> div([attribute.class("error")], [text(err)])
+        opt.None -> div([], [])
+      },
+      p([], [text("Minimum 12 characters")]),
+    ]),
+    button([attribute.type_("submit"), attribute.disabled(in_flight)], [
+      text(submit_label),
+    ]),
+  ])
 }
 
 fn view_login(model: Model) -> Element(Msg) {

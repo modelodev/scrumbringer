@@ -86,6 +86,8 @@ fn handle_request(req: wisp.Request, app: App) -> wisp.Response {
   case wisp.path_segments(req) {
     ["api", "v1", "auth", "register"] ->
       auth.handle_register(req, auth_ctx(app))
+    ["api", "v1", "auth", "invite-links", token] ->
+      auth.handle_invite_link_validate(req, auth_ctx(app), token)
     ["api", "v1", "auth", "login"] -> auth.handle_login(req, auth_ctx(app))
     ["api", "v1", "auth", "me"] -> auth.handle_me(req, auth_ctx(app))
     ["api", "v1", "auth", "logout"] -> auth.handle_logout(req, auth_ctx(app))

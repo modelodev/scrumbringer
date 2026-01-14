@@ -489,6 +489,41 @@ pub fn fetch_me(to_msg: fn(ApiResult(User)) -> msg) -> Effect(msg) {
   request("GET", "/api/v1/auth/me", option.None, user_payload_decoder(), to_msg)
 }
 
+pub fn validate_invite_link_token(
+  token: String,
+  to_msg: fn(ApiResult(String)) -> msg,
+) -> Effect(msg) {
+  let decoder = decode.field("email", decode.string, decode.success)
+
+  request(
+    "GET",
+    "/api/v1/auth/invite-links/" <> encode_uri_component(token),
+    option.None,
+    decoder,
+    to_msg,
+  )
+}
+
+pub fn register_with_invite_link(
+  invite_token: String,
+  password: String,
+  to_msg: fn(ApiResult(User)) -> msg,
+) -> Effect(msg) {
+  let body =
+    json.object([
+      #("password", json.string(password)),
+      #("invite_token", json.string(invite_token)),
+    ])
+
+  request(
+    "POST",
+    "/api/v1/auth/register",
+    option.Some(body),
+    user_payload_decoder(),
+    to_msg,
+  )
+}
+
 pub fn login(
   email: String,
   password: String,

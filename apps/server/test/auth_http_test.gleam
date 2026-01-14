@@ -20,7 +20,8 @@ pub fn bootstrap_happy_path_creates_org_default_project_and_membership_test() {
 
   reset_db(db)
 
-  let res = handler(bootstrap_request("admin@example.com", "password", "Acme"))
+  let res =
+    handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
   res.status |> should.equal(200)
 
   let org_name = single_text(db, "select name from organizations where id = 1")
@@ -55,7 +56,8 @@ pub fn register_sets_session_and_csrf_cookies_test() {
 
   reset_db(db)
 
-  let res = handler(bootstrap_request("admin@example.com", "password", "Acme"))
+  let res =
+    handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
   res.status |> should.equal(200)
 
   let cookies = set_cookie_headers(res.headers)
@@ -93,10 +95,7 @@ pub fn register_after_bootstrap_requires_invite_test() {
   let req =
     simulate.request(http.Post, "/api/v1/auth/register")
     |> simulate.json_body(
-      json.object([
-        #("email", json.string("member@example.com")),
-        #("password", json.string("password")),
-      ]),
+      json.object([#("password", json.string("passwordpassword"))]),
     )
 
   let res = handler(req)
@@ -105,20 +104,67 @@ pub fn register_after_bootstrap_requires_invite_test() {
   |> should.be_true
 }
 
+pub fn validate_invite_link_returns_email_when_active_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  insert_invite_link_active(db, "il_active", "member@example.com")
+
+  let res =
+    handler(simulate.request(http.Get, "/api/v1/auth/invite-links/il_active"))
+
+  res.status |> should.equal(200)
+  string.contains(simulate.read_body(res), "member@example.com")
+  |> should.be_true
+}
+
+pub fn validate_invite_link_rejects_missing_invalidated_and_used_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  insert_invite_link_invalidated(db, "il_invalidated", "inv@example.com")
+  insert_invite_link_used(db, "il_used", "used@example.com")
+
+  let missing_res =
+    handler(simulate.request(http.Get, "/api/v1/auth/invite-links/il_missing"))
+
+  missing_res.status |> should.equal(403)
+  string.contains(simulate.read_body(missing_res), "INVITE_INVALID")
+  |> should.be_true
+
+  let invalidated_res =
+    handler(simulate.request(
+      http.Get,
+      "/api/v1/auth/invite-links/il_invalidated",
+    ))
+
+  invalidated_res.status |> should.equal(403)
+  string.contains(simulate.read_body(invalidated_res), "INVITE_INVALID")
+  |> should.be_true
+
+  let used_res =
+    handler(simulate.request(http.Get, "/api/v1/auth/invite-links/il_used"))
+
+  used_res.status |> should.equal(403)
+  string.contains(simulate.read_body(used_res), "INVITE_USED")
+  |> should.be_true
+}
+
 pub fn register_consumes_invite_once_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  insert_invite_valid(db, "inv_once")
+  insert_invite_link_active(db, "il_once", "first@example.com")
 
   let first_req =
     simulate.request(http.Post, "/api/v1/auth/register")
     |> simulate.json_body(
       json.object([
-        #("email", json.string("first@example.com")),
-        #("password", json.string("password")),
-        #("invite_code", json.string("inv_once")),
+        #("password", json.string("passwordpassword")),
+        #("invite_token", json.string("il_once")),
       ]),
     )
 
@@ -129,9 +175,8 @@ pub fn register_consumes_invite_once_test() {
     simulate.request(http.Post, "/api/v1/auth/register")
     |> simulate.json_body(
       json.object([
-        #("email", json.string("second@example.com")),
-        #("password", json.string("password")),
-        #("invite_code", json.string("inv_once")),
+        #("password", json.string("passwordpassword")),
+        #("invite_token", json.string("il_once")),
       ]),
     )
 
@@ -141,21 +186,24 @@ pub fn register_consumes_invite_once_test() {
   |> should.be_true
 }
 
-pub fn register_rejects_invalid_expired_and_used_invites_test() {
+pub fn register_rejects_invalid_invalidated_and_used_invite_links_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
-  insert_invite_expired(db, "inv_expired")
-  insert_invite_used(db, "inv_used")
+  insert_invite_link_invalidated(
+    db,
+    "il_invalidated",
+    "invalidated@example.com",
+  )
+  insert_invite_link_used(db, "il_used", "used@example.com")
 
   let invalid_req =
     simulate.request(http.Post, "/api/v1/auth/register")
     |> simulate.json_body(
       json.object([
-        #("email", json.string("invalid@example.com")),
-        #("password", json.string("password")),
-        #("invite_code", json.string("inv_missing")),
+        #("password", json.string("passwordpassword")),
+        #("invite_token", json.string("il_missing")),
       ]),
     )
 
@@ -164,28 +212,26 @@ pub fn register_rejects_invalid_expired_and_used_invites_test() {
   string.contains(simulate.read_body(invalid_res), "INVITE_INVALID")
   |> should.be_true
 
-  let expired_req =
+  let invalidated_req =
     simulate.request(http.Post, "/api/v1/auth/register")
     |> simulate.json_body(
       json.object([
-        #("email", json.string("expired@example.com")),
-        #("password", json.string("password")),
-        #("invite_code", json.string("inv_expired")),
+        #("password", json.string("passwordpassword")),
+        #("invite_token", json.string("il_invalidated")),
       ]),
     )
 
-  let expired_res = handler(expired_req)
-  expired_res.status |> should.equal(403)
-  string.contains(simulate.read_body(expired_res), "INVITE_EXPIRED")
+  let invalidated_res = handler(invalidated_req)
+  invalidated_res.status |> should.equal(403)
+  string.contains(simulate.read_body(invalidated_res), "INVITE_INVALID")
   |> should.be_true
 
   let used_req =
     simulate.request(http.Post, "/api/v1/auth/register")
     |> simulate.json_body(
       json.object([
-        #("email", json.string("used@example.com")),
-        #("password", json.string("password")),
-        #("invite_code", json.string("inv_used")),
+        #("password", json.string("passwordpassword")),
+        #("invite_token", json.string("il_used")),
       ]),
     )
 
@@ -318,7 +364,8 @@ fn bootstrap_app() -> scrumbringer_server.App {
 
   reset_db(db)
 
-  let res = handler(bootstrap_request("admin@example.com", "password", "Acme"))
+  let res =
+    handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
   res.status |> should.equal(200)
 
   app
@@ -341,7 +388,7 @@ fn login(handler) {
     |> simulate.json_body(
       json.object([
         #("email", json.string("admin@example.com")),
-        #("password", json.string("password")),
+        #("password", json.string("passwordpassword")),
       ]),
     )
 
@@ -388,41 +435,48 @@ fn require_database_url() -> String {
 fn reset_db(db: pog.Connection) {
   let assert Ok(_) =
     pog.query(
-      "TRUNCATE project_members, org_invites, users, projects, organizations RESTART IDENTITY CASCADE",
+      "TRUNCATE project_members, org_invite_links, org_invites, users, projects, organizations RESTART IDENTITY CASCADE",
     )
     |> pog.execute(db)
 
   Nil
 }
 
-fn insert_invite_expired(db: pog.Connection, code: String) {
+fn insert_invite_link_active(db: pog.Connection, token: String, email: String) {
   let assert Ok(_) =
     pog.query(
-      "insert into org_invites (code, org_id, created_by, expires_at) values ($1, 1, 1, timestamptz '2000-01-01T00:00:00Z')",
+      "insert into org_invite_links (org_id, email, token, created_by) values (1, $1, $2, 1)",
     )
-    |> pog.parameter(pog.text(code))
+    |> pog.parameter(pog.text(email))
+    |> pog.parameter(pog.text(token))
     |> pog.execute(db)
 
   Nil
 }
 
-fn insert_invite_valid(db: pog.Connection, code: String) {
+fn insert_invite_link_invalidated(
+  db: pog.Connection,
+  token: String,
+  email: String,
+) {
   let assert Ok(_) =
     pog.query(
-      "insert into org_invites (code, org_id, created_by, expires_at) values ($1, 1, 1, timestamptz '2999-01-01T00:00:00Z')",
+      "insert into org_invite_links (org_id, email, token, created_by, invalidated_at) values (1, $1, $2, 1, now())",
     )
-    |> pog.parameter(pog.text(code))
+    |> pog.parameter(pog.text(email))
+    |> pog.parameter(pog.text(token))
     |> pog.execute(db)
 
   Nil
 }
 
-fn insert_invite_used(db: pog.Connection, code: String) {
+fn insert_invite_link_used(db: pog.Connection, token: String, email: String) {
   let assert Ok(_) =
     pog.query(
-      "insert into org_invites (code, org_id, created_by, expires_at, used_at, used_by) values ($1, 1, 1, timestamptz '2999-01-01T00:00:00Z', timestamptz '2000-01-01T00:00:00Z', 1)",
+      "insert into org_invite_links (org_id, email, token, created_by, used_at, used_by) values (1, $1, $2, 1, now(), 1)",
     )
-    |> pog.parameter(pog.text(code))
+    |> pog.parameter(pog.text(email))
+    |> pog.parameter(pog.text(token))
     |> pog.execute(db)
 
   Nil

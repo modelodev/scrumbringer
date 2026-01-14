@@ -1,5 +1,6 @@
 import gleam/bit_array
 import gleam/crypto
+import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -11,6 +12,13 @@ pub type InviteLinkState {
   Active
   Used
   Invalidated
+}
+
+pub type TokenStatus {
+  TokenMissing
+  TokenUsed
+  TokenInvalidated
+  TokenActive(org_id: Int, email: String)
 }
 
 pub fn state_to_string(state: InviteLinkState) -> String {
@@ -126,5 +134,88 @@ fn new_invite_link_token() -> String {
   <> {
     crypto.strong_random_bytes(32)
     |> bit_array.base64_url_encode(False)
+  }
+}
+
+type TokenRow {
+  TokenRow(org_id: Int, email: String, used: Bool, invalidated: Bool)
+}
+
+pub fn token_status(
+  db: pog.Connection,
+  token: String,
+) -> Result(TokenStatus, pog.QueryError) {
+  token_status_internal(db, token, False)
+}
+
+pub fn token_status_for_update(
+  db: pog.Connection,
+  token: String,
+) -> Result(TokenStatus, pog.QueryError) {
+  token_status_internal(db, token, True)
+}
+
+fn token_status_internal(
+  db: pog.Connection,
+  token: String,
+  for_update: Bool,
+) -> Result(TokenStatus, pog.QueryError) {
+  let decoder = {
+    use org_id <- decode.field(0, decode.int)
+    use email <- decode.field(1, decode.string)
+    use used <- decode.field(2, decode.bool)
+    use invalidated <- decode.field(3, decode.bool)
+    decode.success(TokenRow(org_id:, email:, used:, invalidated:))
+  }
+
+  let sql =
+    "\nselect\n  org_id,\n  email,\n  (used_at is not null) as used,\n  (invalidated_at is not null) as invalidated\nfrom\n  org_invite_links\nwhere\n  token = $1\n"
+    <> case for_update {
+      True -> "for update\n"
+      False -> ""
+    }
+
+  use returned <- result.try(
+    pog.query(sql)
+    |> pog.parameter(pog.text(token))
+    |> pog.returning(decoder)
+    |> pog.execute(db),
+  )
+
+  case returned.rows {
+    [] -> Ok(TokenMissing)
+
+    [TokenRow(invalidated: True, ..), ..] -> Ok(TokenInvalidated)
+
+    [TokenRow(used: True, ..), ..] -> Ok(TokenUsed)
+
+    [TokenRow(org_id: org_id, email: email, ..), ..] ->
+      Ok(TokenActive(org_id: org_id, email: email))
+  }
+}
+
+pub fn mark_token_used(
+  db: pog.Connection,
+  token: String,
+  used_by: Int,
+) -> Result(Bool, pog.QueryError) {
+  let decoder = {
+    use ok <- decode.field(0, decode.int)
+    decode.success(ok)
+  }
+
+  use returned <- result.try(
+    pog.query(
+      "update org_invite_links set used_at = now(), used_by = $2 where token = $1 and used_at is null and invalidated_at is null returning 1",
+    )
+    |> pog.parameter(pog.text(token))
+    |> pog.parameter(pog.int(used_by))
+    |> pog.returning(decoder)
+    |> pog.execute(db),
+  )
+
+  case returned.rows {
+    [] -> Ok(False)
+    _ -> Ok(True)
   }
 }
