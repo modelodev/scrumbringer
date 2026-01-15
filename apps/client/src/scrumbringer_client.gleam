@@ -156,6 +156,7 @@ pub opaque type Model {
     member_quick_my_caps: Bool,
     member_pool_filters_visible: Bool,
     member_pool_view_mode: pool_prefs.ViewMode,
+    member_pool_density: pool_prefs.Density,
     member_create_dialog_open: Bool,
     member_create_title: String,
     member_create_description: String,
@@ -279,6 +280,7 @@ pub type Msg {
   MemberToggleMyCapabilitiesQuick
   MemberPoolFiltersToggled
   MemberPoolViewModeSet(pool_prefs.ViewMode)
+  MemberPoolDensitySet(pool_prefs.Density)
 
   GlobalKeyDown(pool_prefs.KeyEvent)
 
@@ -402,6 +404,10 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
     theme.local_storage_get(pool_prefs.view_mode_storage_key)
     |> pool_prefs.deserialize_view_mode
 
+  let pool_density =
+    theme.local_storage_get(pool_prefs.density_storage_key)
+    |> pool_prefs.deserialize_density
+
   let model =
     Model(
       page: page,
@@ -490,6 +496,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       member_quick_my_caps: True,
       member_pool_filters_visible: pool_filters_visible,
       member_pool_view_mode: pool_view_mode,
+      member_pool_density: pool_density,
       member_create_dialog_open: False,
       member_create_title: "",
       member_create_description: "",
@@ -669,6 +676,15 @@ fn save_pool_view_mode_effect(mode: pool_prefs.ViewMode) -> Effect(Msg) {
     theme.local_storage_set(
       pool_prefs.view_mode_storage_key,
       pool_prefs.serialize_view_mode(mode),
+    )
+  })
+}
+
+fn save_pool_density_effect(density: pool_prefs.Density) -> Effect(Msg) {
+  effect.from(fn(_dispatch) {
+    theme.local_storage_set(
+      pool_prefs.density_storage_key,
+      pool_prefs.serialize_density(density),
     )
   })
 }
@@ -2610,6 +2626,11 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     MemberPoolViewModeSet(mode) -> #(
       Model(..model, member_pool_view_mode: mode),
       save_pool_view_mode_effect(mode),
+    )
+
+    MemberPoolDensitySet(density) -> #(
+      Model(..model, member_pool_density: density),
+      save_pool_density_effect(density),
     )
 
     GlobalKeyDown(event) -> handle_pool_keydown(model, event)
@@ -5765,6 +5786,7 @@ fn view_member_pool_main(model: Model, _user: User) -> Element(Msg) {
             ],
             [text("Lista")],
           ),
+          view_pool_density_selector(model),
           button(
             [
               attribute.class("btn-xs"),
@@ -5793,6 +5815,51 @@ fn view_member_pool_main(model: Model, _user: User) -> Element(Msg) {
       ])
     }
   }
+}
+
+fn view_pool_density_selector(model: Model) -> Element(Msg) {
+  let compact_classes = case model.member_pool_density {
+    pool_prefs.Compact -> "btn-xs btn-active"
+    _ -> "btn-xs"
+  }
+
+  let normal_classes = case model.member_pool_density {
+    pool_prefs.Normal -> "btn-xs btn-active"
+    _ -> "btn-xs"
+  }
+
+  let large_classes = case model.member_pool_density {
+    pool_prefs.Large -> "btn-xs btn-active"
+    _ -> "btn-xs"
+  }
+
+  div([attribute.class("topbar-group")], [
+    span([attribute.class("hint")], [text("Densidad")]),
+    button(
+      [
+        attribute.class(compact_classes),
+        attribute.attribute("aria-label", "Densidad: compacta"),
+        event.on_click(MemberPoolDensitySet(pool_prefs.Compact)),
+      ],
+      [text("Compacta")],
+    ),
+    button(
+      [
+        attribute.class(normal_classes),
+        attribute.attribute("aria-label", "Densidad: normal"),
+        event.on_click(MemberPoolDensitySet(pool_prefs.Normal)),
+      ],
+      [text("Normal")],
+    ),
+    button(
+      [
+        attribute.class(large_classes),
+        attribute.attribute("aria-label", "Densidad: grande"),
+        event.on_click(MemberPoolDensitySet(pool_prefs.Large)),
+      ],
+      [text("Grande")],
+    ),
+  ])
 }
 
 fn view_member_filters(model: Model) -> Element(Msg) {
@@ -6119,7 +6186,15 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
     Error(_) -> #(0, 0)
   }
 
-  let size = member_visuals.priority_to_px(priority)
+  let base_size = member_visuals.priority_to_px(priority)
+
+  let size = case model.member_pool_density {
+    pool_prefs.Compact -> base_size * 85 / 100
+    pool_prefs.Normal -> base_size
+    pool_prefs.Large -> base_size * 115 / 100
+  }
+
+  let size = int.max(size, 56)
 
   let age_days = age_in_days(created_at)
 

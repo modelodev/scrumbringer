@@ -30,6 +30,19 @@ pub fn view_mode_roundtrip_test() {
   |> should.equal(pool_prefs.List)
 }
 
+pub fn density_roundtrip_test() {
+  pool_prefs.deserialize_density(pool_prefs.serialize_density(
+    pool_prefs.Compact,
+  ))
+  |> should.equal(pool_prefs.Compact)
+
+  pool_prefs.deserialize_density(pool_prefs.serialize_density(pool_prefs.Normal))
+  |> should.equal(pool_prefs.Normal)
+
+  pool_prefs.deserialize_density(pool_prefs.serialize_density(pool_prefs.Large))
+  |> should.equal(pool_prefs.Large)
+}
+
 pub fn shortcut_action_ignores_when_editing_or_modal_test() {
   pool_prefs.shortcut_action(pool_prefs.KeyEvent(
     "k",

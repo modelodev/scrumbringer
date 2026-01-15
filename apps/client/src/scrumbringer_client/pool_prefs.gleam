@@ -4,9 +4,34 @@ pub const filters_visible_storage_key = "sb_pool_filters_visible"
 
 pub const view_mode_storage_key = "sb_pool_view_mode"
 
+pub const density_storage_key = "sb_pool_density"
+
 pub type ViewMode {
   Canvas
   List
+}
+
+pub type Density {
+  Compact
+  Normal
+  Large
+}
+
+pub fn serialize_density(density: Density) -> String {
+  case density {
+    Compact -> "compact"
+    Normal -> "normal"
+    Large -> "large"
+  }
+}
+
+pub fn deserialize_density(value: String) -> Density {
+  case string.trim(value) {
+    "compact" -> Compact
+    "large" -> Large
+    "normal" -> Normal
+    _ -> Normal
+  }
 }
 
 pub fn serialize_view_mode(mode: ViewMode) -> String {
