@@ -33,6 +33,14 @@ fn local_storage_set_ffi(_key: String, _value: String) -> Nil {
   Nil
 }
 
+pub fn local_storage_get(key: String) -> String {
+  local_storage_get_ffi(key)
+}
+
+pub fn local_storage_set(key: String, value: String) -> Nil {
+  local_storage_set_ffi(key, value)
+}
+
 pub fn load_from_storage() -> Theme {
   local_storage_get_ffi(storage_key)
   |> deserialize
@@ -40,6 +48,10 @@ pub fn load_from_storage() -> Theme {
 
 pub fn save_to_storage(theme: Theme) -> Nil {
   local_storage_set_ffi(storage_key, serialize(theme))
+}
+
+pub fn filters_default_visible(_theme: Theme) -> Bool {
+  True
 }
 
 pub fn tokens(theme: Theme) -> List(#(String, String)) {

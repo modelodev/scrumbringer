@@ -1,0 +1,53 @@
+schema: 1
+story: "2.9"
+story_title: "Rediseño Pool (más espacio + filtros en una fila + panel derecho persistente)"
+gate: PASS
+status_reason: "UI/UX refinado (iconos, tooltips visibles, title legible) + constraint de BBDD para titles; make verify + tests cliente + Playwright en verde."
+reviewer: "Quinn (Test Architect)"
+updated: "2026-01-15T18:28:50Z"
+
+waiver: { active: false }
+
+top_issues: []
+
+risk_summary:
+  totals: { critical: 0, high: 0, medium: 0, low: 1 }
+  recommendations:
+    must_fix: []
+    monitor:
+      - "Verificar que el listener global de keydown no cause efectos inesperados"
+
+quality_score: 100
+expires: "2026-01-29T18:28:50Z"
+
+evidence:
+  tests_reviewed: 127
+  risks_identified: 1
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    ac_gaps: []
+  references:
+    - "docs/stories/2.9.pool-redesign-more-space.md"
+    - "db/migrations/20260115194000_limit_task_title_to_56.sql"
+    - "tests/2.9-pool-visual-sweep.spec.ts"
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: "No se introducen flujos de auth/PII; cambios UI/FFI acotados."
+  performance:
+    status: PASS
+    notes: "Cambios de layout y filtros; sin loops nuevos en update."
+  reliability:
+    status: CONCERNS
+    notes: "Listener global keydown vía FFI sin teardown explícito (esperable en SPA, pero conviene vigilar)."
+  maintainability:
+    status: PASS
+    notes: "Se aisló lógica de shortcuts/prefs en pool_prefs + tests unitarios."
+
+recommendations:
+  immediate: []
+  future:
+    - action: "Considerar teardown del listener global si se agregan múltiples mounts"
+      refs:
+        - "apps/client/src/scrumbringer_client/fetch.ffi.mjs"

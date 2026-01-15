@@ -318,54 +318,65 @@ fn handle_tasks_create(
                       api.error(400, "VALIDATION_ERROR", "Invalid JSON")
 
                     Ok(#(title, description, priority, type_id)) -> {
-                      case validate_priority(priority) {
+                      case validate_task_title(title) {
                         Error(resp) -> resp
 
-                        Ok(Nil) ->
-                          case
-                            task_types_db.is_task_type_in_project(
-                              db,
-                              type_id,
-                              project_id,
-                            )
-                          {
-                            Ok(True) ->
+                        Ok(title) ->
+                          case validate_priority(priority) {
+                            Error(resp) -> resp
+
+                            Ok(Nil) ->
                               case
-                                tasks_db.create_task(
+                                task_types_db.is_task_type_in_project(
                                   db,
-                                  user.org_id,
                                   type_id,
                                   project_id,
-                                  title,
-                                  description,
-                                  priority,
-                                  user.id,
                                 )
                               {
-                                Ok(task) ->
-                                  api.ok(
-                                    json.object([#("task", task_json(task))]),
-                                  )
+                                Ok(True) ->
+                                  case
+                                    tasks_db.create_task(
+                                      db,
+                                      user.org_id,
+                                      type_id,
+                                      project_id,
+                                      title,
+                                      description,
+                                      priority,
+                                      user.id,
+                                    )
+                                  {
+                                    Ok(task) ->
+                                      api.ok(
+                                        json.object([
+                                          #("task", task_json(task)),
+                                        ]),
+                                      )
 
-                                Error(tasks_db.InvalidTypeId) ->
+                                    Error(tasks_db.InvalidTypeId) ->
+                                      api.error(
+                                        422,
+                                        "VALIDATION_ERROR",
+                                        "Invalid type_id",
+                                      )
+
+                                    Error(_) ->
+                                      api.error(
+                                        500,
+                                        "INTERNAL",
+                                        "Database error",
+                                      )
+                                  }
+
+                                Ok(False) ->
                                   api.error(
                                     422,
                                     "VALIDATION_ERROR",
                                     "Invalid type_id",
                                   )
-
                                 Error(_) ->
                                   api.error(500, "INTERNAL", "Database error")
                               }
-
-                            Ok(False) ->
-                              api.error(
-                                422,
-                                "VALIDATION_ERROR",
-                                "Invalid type_id",
-                              )
-                            Error(_) ->
-                              api.error(500, "INTERNAL", "Database error")
                           }
                       }
                     }
@@ -871,6 +882,26 @@ fn single_query_value(
     [] -> Ok(None)
     [value] -> Ok(Some(value))
     _ -> Error(Nil)
+  }
+}
+
+const max_task_title_chars = 56
+
+fn validate_task_title(title: String) -> Result(String, wisp.Response) {
+  let title = string.trim(title)
+
+  case title == "" {
+    True -> Error(api.error(422, "VALIDATION_ERROR", "Title is required"))
+    False ->
+      case string.length(title) <= max_task_title_chars {
+        True -> Ok(title)
+        False ->
+          Error(api.error(
+            422,
+            "VALIDATION_ERROR",
+            "Title too long (max 56 characters)",
+          ))
+      }
   }
 }
 

@@ -26,6 +26,7 @@ import scrumbringer_client/hydration
 import scrumbringer_client/member_section
 import scrumbringer_client/member_visuals
 import scrumbringer_client/permissions
+import scrumbringer_client/pool_prefs
 import scrumbringer_client/reset_password
 import scrumbringer_client/router
 import scrumbringer_client/styles
@@ -153,6 +154,8 @@ pub opaque type Model {
     member_filters_capability_id: String,
     member_filters_q: String,
     member_quick_my_caps: Bool,
+    member_pool_filters_visible: Bool,
+    member_pool_view_mode: pool_prefs.ViewMode,
     member_create_dialog_open: Bool,
     member_create_title: String,
     member_create_description: String,
@@ -274,6 +277,10 @@ pub type Msg {
   MemberPoolSearchChanged(String)
   MemberPoolSearchDebounced(String)
   MemberToggleMyCapabilitiesQuick
+  MemberPoolFiltersToggled
+  MemberPoolViewModeSet(pool_prefs.ViewMode)
+
+  GlobalKeyDown(pool_prefs.KeyEvent)
 
   MemberProjectTasksFetched(Int, api.ApiResult(List(api.Task)))
   MemberTaskTypesFetched(Int, api.ApiResult(List(api.TaskType)))
@@ -385,6 +392,16 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
 
   let active_theme = theme.load_from_storage()
 
+  let pool_filters_default_visible = theme.filters_default_visible(active_theme)
+
+  let pool_filters_visible =
+    theme.local_storage_get(pool_prefs.filters_visible_storage_key)
+    |> pool_prefs.deserialize_bool(pool_filters_default_visible)
+
+  let pool_view_mode =
+    theme.local_storage_get(pool_prefs.view_mode_storage_key)
+    |> pool_prefs.deserialize_view_mode
+
   let model =
     Model(
       page: page,
@@ -469,7 +486,10 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       member_filters_type_id: "",
       member_filters_capability_id: "",
       member_filters_q: "",
-      member_quick_my_caps: False,
+      // UX: default to My Capabilities enabled.
+      member_quick_my_caps: True,
+      member_pool_filters_visible: pool_filters_visible,
+      member_pool_view_mode: pool_view_mode,
       member_create_dialog_open: False,
       member_create_title: "",
       member_create_description: "",
@@ -514,6 +534,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
     model,
     effect.batch([
       register_popstate_effect(),
+      register_keydown_effect(),
       redirect_fx,
       base_effect,
       tick_fx,
@@ -591,6 +612,116 @@ fn register_popstate_effect() -> Effect(Msg) {
   effect.from(fn(dispatch) {
     register_popstate_ffi(fn(_) { dispatch(UrlChanged) })
   })
+}
+
+@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "register_keydown")
+fn register_keydown_ffi(
+  _cb: fn(#(String, Bool, Bool, Bool, Bool, Bool)) -> Nil,
+) -> Nil {
+  Nil
+}
+
+@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "focus_element")
+fn focus_element_ffi(_id: String) -> Nil {
+  Nil
+}
+
+fn register_keydown_effect() -> Effect(Msg) {
+  effect.from(fn(dispatch) {
+    register_keydown_ffi(fn(payload) {
+      let #(key, ctrl, meta, shift, is_editing, modal_open) = payload
+      dispatch(
+        GlobalKeyDown(pool_prefs.KeyEvent(
+          key,
+          ctrl,
+          meta,
+          shift,
+          is_editing,
+          modal_open,
+        )),
+      )
+    })
+  })
+}
+
+fn focus_element_effect(id: String) -> Effect(Msg) {
+  effect.from(fn(_dispatch) {
+    // Ensure we attempt focus after the DOM update.
+    set_timeout_ffi(0, fn(_) {
+      focus_element_ffi(id)
+      Nil
+    })
+    Nil
+  })
+}
+
+fn save_pool_filters_visible_effect(visible: Bool) -> Effect(Msg) {
+  effect.from(fn(_dispatch) {
+    theme.local_storage_set(
+      pool_prefs.filters_visible_storage_key,
+      pool_prefs.serialize_bool(visible),
+    )
+  })
+}
+
+fn save_pool_view_mode_effect(mode: pool_prefs.ViewMode) -> Effect(Msg) {
+  effect.from(fn(_dispatch) {
+    theme.local_storage_set(
+      pool_prefs.view_mode_storage_key,
+      pool_prefs.serialize_view_mode(mode),
+    )
+  })
+}
+
+fn handle_pool_keydown(
+  model: Model,
+  event: pool_prefs.KeyEvent,
+) -> #(Model, Effect(Msg)) {
+  case model.page == Member && model.member_section == member_section.Pool {
+    False -> #(model, effect.none())
+    True -> {
+      case pool_prefs.shortcut_action(event) {
+        pool_prefs.NoAction -> #(model, effect.none())
+
+        pool_prefs.ToggleFilters -> {
+          let next = !model.member_pool_filters_visible
+          #(
+            Model(..model, member_pool_filters_visible: next),
+            save_pool_filters_visible_effect(next),
+          )
+        }
+
+        pool_prefs.FocusSearch -> {
+          let should_show = !model.member_pool_filters_visible
+
+          let model = Model(..model, member_pool_filters_visible: True)
+
+          let show_fx = case should_show {
+            True -> save_pool_filters_visible_effect(True)
+            False -> effect.none()
+          }
+
+          #(
+            model,
+            effect.batch([
+              show_fx,
+              focus_element_effect("pool-filter-q"),
+            ]),
+          )
+        }
+
+        pool_prefs.OpenCreate -> {
+          case model.member_create_dialog_open {
+            True -> #(model, effect.none())
+            False -> #(
+              Model(..model, member_create_dialog_open: True),
+              effect.none(),
+            )
+          }
+        }
+      }
+    }
+  }
 }
 
 fn read_login_values_effect() -> Effect(Msg) {
@@ -2468,6 +2599,21 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       effect.none(),
     )
 
+    MemberPoolFiltersToggled -> {
+      let next = !model.member_pool_filters_visible
+      #(
+        Model(..model, member_pool_filters_visible: next),
+        save_pool_filters_visible_effect(next),
+      )
+    }
+
+    MemberPoolViewModeSet(mode) -> #(
+      Model(..model, member_pool_view_mode: mode),
+      save_pool_view_mode_effect(mode),
+    )
+
+    GlobalKeyDown(event) -> handle_pool_keydown(model, event)
+
     MemberPoolSearchChanged(v) -> #(
       Model(..model, member_filters_q: v),
       effect.none(),
@@ -2678,56 +2824,69 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                 )
 
                 False ->
-                  case int.parse(model.member_create_type_id) {
-                    Error(_) -> #(
+                  case string.length(title) > 56 {
+                    True -> #(
                       Model(
                         ..model,
-                        member_create_error: opt.Some("Type is required"),
+                        member_create_error: opt.Some(
+                          "Title too long (max 56 characters)",
+                        ),
                       ),
                       effect.none(),
                     )
 
-                    Ok(type_id) -> {
-                      case int.parse(model.member_create_priority) {
-                        Ok(priority) if priority >= 1 && priority <= 5 -> {
-                          let desc =
-                            string.trim(model.member_create_description)
-                          let description = case desc == "" {
-                            True -> opt.None
-                            False -> opt.Some(desc)
-                          }
-
-                          let model =
-                            Model(
-                              ..model,
-                              member_create_in_flight: True,
-                              member_create_error: opt.None,
-                            )
-
-                          #(
-                            model,
-                            api.create_task(
-                              project_id,
-                              title,
-                              description,
-                              priority,
-                              type_id,
-                              MemberTaskCreated,
-                            ),
-                          )
-                        }
-
-                        _ -> #(
+                    False ->
+                      case int.parse(model.member_create_type_id) {
+                        Error(_) -> #(
                           Model(
                             ..model,
-                            member_create_error: opt.Some(
-                              "Priority must be 1-5",
-                            ),
+                            member_create_error: opt.Some("Type is required"),
                           ),
                           effect.none(),
                         )
+
+                        Ok(type_id) -> {
+                          case int.parse(model.member_create_priority) {
+                            Ok(priority) if priority >= 1 && priority <= 5 -> {
+                              let desc =
+                                string.trim(model.member_create_description)
+                              let description = case desc == "" {
+                                True -> opt.None
+                                False -> opt.Some(desc)
+                              }
+
+                              let model =
+                                Model(
+                                  ..model,
+                                  member_create_in_flight: True,
+                                  member_create_error: opt.None,
+                                )
+
+                              #(
+                                model,
+                                api.create_task(
+                                  project_id,
+                                  title,
+                                  description,
+                                  priority,
+                                  type_id,
+                                  MemberTaskCreated,
+                                ),
+                              )
+                            }
+
+                            _ -> #(
+                              Model(
+                                ..model,
+                                member_create_error: opt.Some(
+                                  "Priority must be 1-5",
+                                ),
+                              ),
+                              effect.none(),
+                            )
+                          }
+                        }
                       }
-                    }
                   }
               }
             }
@@ -4148,19 +4307,21 @@ fn view_project_selector(model: Model) -> Element(Msg) {
   }
 
   div([attribute.class("project-selector")], [
-    label([], [text("Project")]),
-    select(
-      [
-        attribute.value(selected_id),
-        event.on_input(ProjectSelected),
-      ],
-      [
-        option([attribute.value("")], empty_label),
-        ..list.map(projects, fn(p) {
-          option([attribute.value(int.to_string(p.id))], p.name)
-        })
-      ],
-    ),
+    div([attribute.class("topbar-group")], [
+      label([], [text("Project")]),
+      select(
+        [
+          attribute.value(selected_id),
+          event.on_input(ProjectSelected),
+        ],
+        [
+          option([attribute.value("")], empty_label),
+          ..list.map(projects, fn(p) {
+            option([attribute.value(int.to_string(p.id))], p.name)
+          })
+        ],
+      ),
+    ]),
     case helper == "" {
       True -> div([], [])
       False -> div([attribute.class("hint")], [text(helper)])
@@ -5066,17 +5227,18 @@ fn view_task_types(
             ]),
           ]),
           div([attribute.class("field")], [
-            label([], [text("icon (heroicon name)")]),
+            label([], [text("Icon")]),
             div([attribute.class("icon-row")], [
               input([
                 attribute.type_("text"),
                 attribute.value(model.task_types_create_icon),
                 event.on_input(TaskTypeCreateIconChanged),
                 attribute.required(True),
-                attribute.placeholder("bug-ant"),
+                attribute.placeholder("Search heroicon name (e.g. bug-ant)"),
               ]),
               view_icon_preview(model.task_types_create_icon),
             ]),
+            view_icon_picker(model.task_types_create_icon),
             case model.task_types_icon_preview {
               IconError ->
                 div([attribute.class("error")], [text("Unknown icon")])
@@ -5110,6 +5272,40 @@ fn view_task_types(
   }
 }
 
+fn heroicon_outline_url(name: String) -> String {
+  "https://unpkg.com/heroicons@2.1.0/24/outline/" <> name <> ".svg"
+}
+
+fn view_heroicon_inline(name: String, size: Int) -> Element(Msg) {
+  let url = heroicon_outline_url(name)
+
+  img([
+    attribute.attribute("src", url),
+    attribute.attribute("alt", name <> " icon"),
+    attribute.attribute("width", int.to_string(size)),
+    attribute.attribute("height", int.to_string(size)),
+    attribute.attribute("style", "vertical-align:middle; opacity:0.85;"),
+  ])
+}
+
+fn view_task_type_icon_inline(icon: String, size: Int) -> Element(Msg) {
+  case string.contains(icon, "-") {
+    True -> view_heroicon_inline(icon, size)
+    False ->
+      span(
+        [
+          attribute.attribute(
+            "style",
+            "font-size:" <> int.to_string(size) <> "px;",
+          ),
+        ],
+        [
+          text(icon),
+        ],
+      )
+  }
+}
+
 fn view_icon_preview(icon_name: String) -> Element(Msg) {
   let name = string.trim(icon_name)
 
@@ -5117,8 +5313,7 @@ fn view_icon_preview(icon_name: String) -> Element(Msg) {
     True -> div([attribute.class("icon-preview")], [text("-")])
 
     False -> {
-      let url =
-        "https://unpkg.com/heroicons@2.1.0/24/outline/" <> name <> ".svg"
+      let url = heroicon_outline_url(name)
 
       div([attribute.class("icon-preview")], [
         img([
@@ -5132,6 +5327,66 @@ fn view_icon_preview(icon_name: String) -> Element(Msg) {
       ])
     }
   }
+}
+
+fn view_icon_picker(current_icon: String) -> Element(Msg) {
+  let current = string.trim(current_icon)
+
+  let icons = [
+    "bug-ant",
+    "sparkles",
+    "wrench-screwdriver",
+    "clipboard-document-check",
+    "light-bulb",
+    "bolt",
+    "beaker",
+    "chat-bubble-left-right",
+    "document-text",
+    "flag",
+    "exclamation-triangle",
+    "check-circle",
+    "arrow-path",
+    "rocket-launch",
+    "pencil-square",
+    "cog-6-tooth",
+  ]
+
+  let has_current = current != "" && list.contains(icons, current)
+
+  let options = [option([attribute.value("")], "Pick a common icon…")]
+
+  let options = case current != "" && !has_current {
+    True -> [
+      option([attribute.value(current)], "Custom: " <> current),
+      ..options
+    ]
+    False -> options
+  }
+
+  let options =
+    list.append(
+      options,
+      list.map(icons, fn(name) { option([attribute.value(name)], name) }),
+    )
+
+  let selected = case current != "" && !has_current {
+    True -> current
+    False ->
+      case has_current {
+        True -> current
+        False -> ""
+      }
+  }
+
+  div([attribute.class("icon-picker")], [
+    select(
+      [
+        attribute.value(selected),
+        event.on_input(TaskTypeCreateIconChanged),
+      ],
+      options,
+    ),
+  ])
 }
 
 fn view_capability_selector(
@@ -5198,7 +5453,7 @@ fn view_task_types_list(task_types: Remote(List(api.TaskType))) -> Element(Msg) 
               list.map(task_types, fn(tt) {
                 tr([], [
                   td([], [text(tt.name)]),
-                  td([], [text(tt.icon)]),
+                  td([], [view_task_type_icon_inline(tt.icon, 20)]),
                   td([], [
                     case tt.capability_id {
                       opt.Some(id) -> text(int.to_string(id))
@@ -5231,13 +5486,29 @@ fn view_member(model: Model) -> Element(Msg) {
         False ->
           div([attribute.class("member")], [
             view_member_topbar(model, user),
-            view_now_working_panel(model, user),
-            div([attribute.class("body")], [
-              view_member_nav(model),
-              div([attribute.class("content")], [
-                view_member_section(model, user),
-              ]),
-            ]),
+            case model.member_section {
+              member_section.Pool ->
+                div([attribute.class("body")], [
+                  view_member_nav(model),
+                  div([attribute.class("content pool-main")], [
+                    view_member_pool_main(model, user),
+                  ]),
+                  div([attribute.class("pool-right")], [
+                    view_pool_right_panel(model, user),
+                  ]),
+                ])
+
+              _ ->
+                div([], [
+                  view_now_working_panel(model, user),
+                  div([attribute.class("body")], [
+                    view_member_nav(model),
+                    div([attribute.class("content")], [
+                      view_member_section(model, user),
+                    ]),
+                  ]),
+                ])
+            },
           ])
       }
   }
@@ -5365,6 +5636,36 @@ fn view_now_working_panel(model: Model, _user: User) -> Element(Msg) {
   }
 }
 
+fn view_pool_right_panel(model: Model, user: User) -> Element(Msg) {
+  let claimed_tasks = case model.member_tasks {
+    Loaded(tasks) ->
+      tasks
+      |> list.filter(fn(t) {
+        let api.Task(status: status, claimed_by: claimed_by, ..) = t
+        status == "claimed" && claimed_by == opt.Some(user.id)
+      })
+      |> list.sort(by: compare_member_bar_tasks)
+
+    _ -> []
+  }
+
+  div([], [
+    h3([], [text("Now Working")]),
+    view_now_working_panel(model, user),
+    h3([], [text("Mis tareas")]),
+    case claimed_tasks {
+      [] -> div([attribute.class("empty")], [text("No claimed tasks")])
+      _ ->
+        div(
+          [attribute.class("task-list")],
+          list.map(claimed_tasks, fn(t) {
+            view_member_bar_task_row(model, user, t)
+          }),
+        )
+    },
+  ])
+}
+
 fn view_member_nav(model: Model) -> Element(Msg) {
   let items = case model.is_mobile {
     True -> [
@@ -5409,34 +5710,78 @@ fn view_member_nav_button(
 
 fn view_member_section(model: Model, user: User) -> Element(Msg) {
   case model.member_section {
-    member_section.Pool -> view_member_pool(model)
+    member_section.Pool -> view_member_pool_main(model, user)
     member_section.MyBar -> view_member_bar(model, user)
     member_section.MySkills -> view_member_skills(model)
   }
 }
 
-fn view_member_pool(model: Model) -> Element(Msg) {
+fn view_member_pool_main(model: Model, _user: User) -> Element(Msg) {
   case active_projects(model) {
     [] ->
       div([attribute.class("empty")], [
         h2([], [text("No projects yet")]),
-        p([], [
-          text("Ask an admin to add you to a project."),
-        ]),
+        p([], [text("Ask an admin to add you to a project.")]),
       ])
 
-    _ ->
+    _ -> {
+      let filters_toggle_label = case model.member_pool_filters_visible {
+        True -> "Hide filters"
+        False -> "Show filters"
+      }
+
+      let canvas_classes = case model.member_pool_view_mode {
+        pool_prefs.Canvas -> "btn-xs btn-active"
+        pool_prefs.List -> "btn-xs"
+      }
+
+      let list_classes = case model.member_pool_view_mode {
+        pool_prefs.List -> "btn-xs btn-active"
+        pool_prefs.Canvas -> "btn-xs"
+      }
+
       div([attribute.class("section")], [
-        view_member_filters(model),
-        p([], [
-          text("Tip: use the ⠿ handle on a card to drag it."),
+        div([attribute.class("actions")], [
+          button(
+            [
+              attribute.class("btn-xs"),
+              event.on_click(MemberPoolFiltersToggled),
+            ],
+            [text(filters_toggle_label)],
+          ),
+          button(
+            [
+              attribute.class(canvas_classes),
+              attribute.attribute("aria-label", "View: canvas"),
+              event.on_click(MemberPoolViewModeSet(pool_prefs.Canvas)),
+            ],
+            [text("Lienzo")],
+          ),
+          button(
+            [
+              attribute.class(list_classes),
+              attribute.attribute("aria-label", "View: list"),
+              event.on_click(MemberPoolViewModeSet(pool_prefs.List)),
+            ],
+            [text("Lista")],
+          ),
+          button(
+            [
+              attribute.class("btn-xs"),
+              event.on_click(MemberCreateDialogOpened),
+            ],
+            [text("New task (n)")],
+          ),
         ]),
-        button([event.on_click(MemberCreateDialogOpened)], [text("New task")]),
+        case model.member_pool_filters_visible {
+          True -> view_member_filters(model)
+          False -> div([], [])
+        },
+        view_member_tasks(model),
         case model.member_create_dialog_open {
           True -> view_member_create_dialog(model)
           False -> div([], [])
         },
-        view_member_tasks(model),
         case model.member_notes_task_id {
           opt.Some(task_id) -> view_member_task_details(model, task_id)
           opt.None -> div([], [])
@@ -5446,6 +5791,7 @@ fn view_member_pool(model: Model) -> Element(Msg) {
           opt.None -> div([], [])
         },
       ])
+    }
   }
 }
 
@@ -5470,26 +5816,35 @@ fn view_member_filters(model: Model) -> Element(Msg) {
     _ -> [option([attribute.value("")], "All")]
   }
 
-  div([attribute.class("filters")], [
+  let my_caps_active = model.member_quick_my_caps
+
+  let my_caps_class = case my_caps_active {
+    True -> "btn-xs btn-icon"
+    False -> "btn-xs btn-icon"
+  }
+
+  div([attribute.class("filters-row")], [
     div([attribute.class("field")], [
-      label([], [text("Status")]),
-      select(
+      span([attribute.class("filter-tooltip")], [text("Type")]),
+      span(
         [
-          attribute.value(model.member_filters_status),
-          event.on_input(MemberPoolStatusChanged),
+          attribute.class("filter-icon"),
+          attribute.attribute("title", "Type"),
+          attribute.attribute("aria-hidden", "true"),
         ],
-        [
-          option([attribute.value("")], "All"),
-          option([attribute.value("available")], "Available"),
-          option([attribute.value("claimed")], "Claimed"),
-          option([attribute.value("completed")], "Completed"),
-        ],
+        [text("🏷")],
       ),
-    ]),
-    div([attribute.class("field")], [
-      label([], [text("Type")]),
+      label(
+        [
+          attribute.class("filter-label"),
+          attribute.attribute("for", "pool-filter-type"),
+        ],
+        [text("Type")],
+      ),
       select(
         [
+          attribute.attribute("id", "pool-filter-type"),
+          attribute.attribute("aria-label", "Type"),
           attribute.value(model.member_filters_type_id),
           event.on_input(MemberPoolTypeChanged),
           attribute.disabled(case model.member_task_types {
@@ -5501,29 +5856,87 @@ fn view_member_filters(model: Model) -> Element(Msg) {
       ),
     ]),
     div([attribute.class("field")], [
-      label([], [text("Capability")]),
+      span([attribute.class("filter-tooltip")], [text("Capability")]),
+      span(
+        [
+          attribute.class("filter-icon"),
+          attribute.attribute("title", "Capability"),
+          attribute.attribute("aria-hidden", "true"),
+        ],
+        [text("🎯")],
+      ),
+      label(
+        [
+          attribute.class("filter-label"),
+          attribute.attribute("for", "pool-filter-capability"),
+        ],
+        [text("Capability")],
+      ),
       select(
         [
+          attribute.attribute("id", "pool-filter-capability"),
+          attribute.attribute("aria-label", "Capability"),
           attribute.value(model.member_filters_capability_id),
           event.on_input(MemberPoolCapabilityChanged),
         ],
         capability_options,
       ),
-      button([event.on_click(MemberToggleMyCapabilitiesQuick)], [
-        text(case model.member_quick_my_caps {
-          True -> "My capabilities: ON"
-          False -> "My capabilities: OFF"
-        }),
-      ]),
     ]),
     div([attribute.class("field")], [
-      label([], [text("Search")]),
+      span([attribute.class("filter-tooltip")], [text("Mis capacidades")]),
+      span(
+        [
+          attribute.class("filter-icon"),
+          attribute.attribute("title", "Mis capacidades"),
+          attribute.attribute("aria-hidden", "true"),
+        ],
+        [text("★")],
+      ),
+      label([attribute.class("filter-label")], [text("Mis capacidades")]),
+      button(
+        [
+          attribute.class(my_caps_class),
+          attribute.attribute("title", "Mis capacidades"),
+          attribute.attribute("aria-label", case my_caps_active {
+            True -> "Mis capacidades: ON"
+            False -> "Mis capacidades: OFF"
+          }),
+          event.on_click(MemberToggleMyCapabilitiesQuick),
+        ],
+        [
+          text(case my_caps_active {
+            True -> "★"
+            False -> "☆"
+          }),
+        ],
+      ),
+    ]),
+
+    div([attribute.class("field filter-q")], [
+      span([attribute.class("filter-tooltip")], [text("Search")]),
+      span(
+        [
+          attribute.class("filter-icon"),
+          attribute.attribute("title", "Search"),
+          attribute.attribute("aria-hidden", "true"),
+        ],
+        [text("⌕")],
+      ),
+      label(
+        [
+          attribute.class("filter-label"),
+          attribute.attribute("for", "pool-filter-q"),
+        ],
+        [text("Search")],
+      ),
       input([
+        attribute.attribute("id", "pool-filter-q"),
+        attribute.attribute("aria-label", "Search"),
         attribute.type_("text"),
         attribute.value(model.member_filters_q),
         event.on_input(MemberPoolSearchChanged),
         event.debounce(event.on_input(MemberPoolSearchDebounced), 350),
-        attribute.placeholder("q..."),
+        attribute.placeholder("q"),
       ]),
     ]),
   ])
@@ -5534,22 +5947,26 @@ fn view_member_tasks(model: Model) -> Element(Msg) {
     NotAsked | Loading -> div([attribute.class("empty")], [text("Loading...")])
     Failed(err) -> div([attribute.class("error")], [text(err.message)])
 
-    Loaded(tasks) ->
-      case tasks {
+    Loaded(tasks) -> {
+      let available_tasks =
+        tasks
+        |> list.filter(fn(t) {
+          let api.Task(status: status, ..) = t
+          status == "available"
+        })
+
+      case available_tasks {
         [] -> {
           let no_filters =
-            string.trim(model.member_filters_status) == ""
-            && string.trim(model.member_filters_type_id) == ""
+            string.trim(model.member_filters_type_id) == ""
             && string.trim(model.member_filters_capability_id) == ""
             && string.trim(model.member_filters_q) == ""
 
           case no_filters {
             True ->
               div([attribute.class("empty")], [
-                h2([], [text("No tasks here yet")]),
-                p([], [
-                  text("Create your first task to start using the Pool."),
-                ]),
+                h2([], [text("No available tasks right now")]),
+                p([], [text("Create your first task to start using the Pool.")]),
                 button([event.on_click(MemberCreateDialogOpened)], [
                   text("New task"),
                 ]),
@@ -5563,35 +5980,104 @@ fn view_member_tasks(model: Model) -> Element(Msg) {
         }
 
         _ -> {
-          let visible_tasks =
-            tasks
-            |> list.filter(fn(t) {
-              let api.Task(status: status, ..) = t
-              status == "available"
-            })
-
-          div(
-            [
-              attribute.attribute("id", "member-canvas"),
-              attribute.attribute(
-                "style",
-                "position: relative; min-height: 600px; touch-action: none;",
-              ),
-              event.on("mousemove", {
-                use x <- decode.field("clientX", decode.int)
-                use y <- decode.field("clientY", decode.int)
-                decode.success(MemberDragMoved(x, y))
-              }),
-              event.on("mouseup", decode.success(MemberDragEnded)),
-              event.on("mouseleave", decode.success(MemberDragEnded)),
-            ],
-            list.map(visible_tasks, fn(task) {
-              view_member_task_card(model, task)
-            }),
-          )
+          case model.member_pool_view_mode {
+            pool_prefs.Canvas ->
+              view_member_tasks_canvas(model, available_tasks)
+            pool_prefs.List -> view_member_tasks_list(model, available_tasks)
+          }
         }
       }
+    }
   }
+}
+
+fn view_member_tasks_canvas(model: Model, tasks: List(api.Task)) -> Element(Msg) {
+  div(
+    [
+      attribute.attribute("id", "member-canvas"),
+      attribute.attribute(
+        "style",
+        "position: relative; min-height: 600px; touch-action: none;",
+      ),
+      event.on("mousemove", {
+        use x <- decode.field("clientX", decode.int)
+        use y <- decode.field("clientY", decode.int)
+        decode.success(MemberDragMoved(x, y))
+      }),
+      event.on("mouseup", decode.success(MemberDragEnded)),
+      event.on("mouseleave", decode.success(MemberDragEnded)),
+    ],
+    list.map(tasks, fn(task) { view_member_task_card(model, task) }),
+  )
+}
+
+fn view_member_tasks_list(model: Model, tasks: List(api.Task)) -> Element(Msg) {
+  div(
+    [attribute.class("task-list")],
+    list.map(tasks, fn(task) { view_member_pool_task_row(model, task) }),
+  )
+}
+
+fn view_member_pool_task_row(model: Model, task: api.Task) -> Element(Msg) {
+  let api.Task(
+    id: id,
+    title: title,
+    type_id: type_id,
+    priority: priority,
+    created_at: created_at,
+    version: version,
+    ..,
+  ) = task
+
+  let task_type = member_task_type_by_id(model.member_task_types, type_id)
+
+  let type_label = case task_type {
+    opt.Some(tt) -> tt.name
+    opt.None -> "Type #" <> int.to_string(type_id)
+  }
+
+  let type_icon = case task_type {
+    opt.Some(tt) -> opt.Some(tt.icon)
+    opt.None -> opt.None
+  }
+
+  let disable_actions = model.member_task_mutation_in_flight
+
+  let claim_action =
+    button(
+      [
+        attribute.class("btn-xs btn-icon"),
+        attribute.attribute("title", "Claim"),
+        attribute.attribute("aria-label", "Claim"),
+        event.on_click(MemberClaimClicked(id, version)),
+        attribute.disabled(disable_actions),
+      ],
+      [text("✋")],
+    )
+
+  div([attribute.class("task-row")], [
+    div([], [
+      div([attribute.class("task-row-title")], [text(title)]),
+      div([attribute.class("task-row-meta")], [
+        text("type: "),
+        case type_icon {
+          opt.Some(icon) ->
+            span([attribute.attribute("style", "margin-right:4px;")], [
+              view_task_type_icon_inline(icon, 16),
+            ])
+          opt.None -> span([], [])
+        },
+        text(type_label),
+        text(
+          " · priority: "
+          <> int.to_string(priority)
+          <> " · created: "
+          <> created_at,
+        ),
+      ]),
+    ]),
+    div([attribute.class("task-row-actions")], [claim_action]),
+  ])
 }
 
 fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
@@ -5617,8 +6103,13 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
   let task_type = member_task_type_by_id(model.member_task_types, type_id)
 
   let type_label = case task_type {
-    opt.Some(tt) -> tt.name <> " (" <> tt.icon <> ")"
+    opt.Some(tt) -> tt.name
     opt.None -> "Type #" <> int.to_string(type_id)
+  }
+
+  let type_icon = case task_type {
+    opt.Some(tt) -> opt.Some(tt.icon)
+    opt.None -> opt.None
   }
 
   let highlight = member_should_highlight_task(model, task_type)
@@ -5648,7 +6139,7 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
     <> int.to_string(size)
     <> "px; height:"
     <> int.to_string(size)
-    <> "px; padding:40px 8px 8px 8px; overflow:hidden; opacity:"
+    <> "px; padding:34px 8px 8px 8px; opacity:"
     <> float.to_string(opacity)
     <> "; filter:saturate("
     <> float.to_string(saturation)
@@ -5663,24 +6154,24 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
       button(
         [
           attribute.class("btn-xs btn-icon"),
-          attribute.attribute("title", "Claim task"),
-          attribute.attribute("aria-label", "Claim task"),
+          attribute.attribute("title", "Claim"),
+          attribute.attribute("aria-label", "Claim"),
           event.on_click(MemberClaimClicked(id, version)),
           attribute.disabled(disable_actions),
         ],
-        [text("C")],
+        [text("✋")],
       )
 
     "claimed", True ->
       button(
         [
           attribute.class("btn-xs btn-icon"),
-          attribute.attribute("title", "Release task"),
-          attribute.attribute("aria-label", "Release task"),
+          attribute.attribute("title", "Release"),
+          attribute.attribute("aria-label", "Release"),
           event.on_click(MemberReleaseClicked(id, version)),
           attribute.disabled(disable_actions),
         ],
-        [text("R")],
+        [text("⟲")],
       )
 
     _, _ -> div([], [])
@@ -5689,29 +6180,29 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
   let drag_handle =
     div(
       [
-        attribute.class("drag-handle"),
-        attribute.attribute("title", "Drag to move"),
-        attribute.attribute("aria-label", "Drag to move"),
+        attribute.class("drag-handle secondary-action"),
+        attribute.attribute("title", "Drag"),
+        attribute.attribute("aria-label", "Drag"),
         event.on("mousedown", {
           use ox <- decode.field("offsetX", decode.int)
           use oy <- decode.field("offsetY", decode.int)
           decode.success(MemberDragStarted(id, ox, oy))
         }),
       ],
-      [text("⠿")],
+      [text("⋮⋮")],
     )
 
   let complete_action = case status, is_mine {
     "claimed", True ->
       button(
         [
-          attribute.class("btn-xs btn-icon"),
-          attribute.attribute("title", "Complete task"),
-          attribute.attribute("aria-label", "Complete task"),
+          attribute.class("btn-xs btn-icon secondary-action"),
+          attribute.attribute("title", "Complete"),
+          attribute.attribute("aria-label", "Complete"),
           event.on_click(MemberCompleteClicked(id, version)),
           attribute.disabled(disable_actions),
         ],
-        [text("✓")],
+        [text("☑")],
       )
 
     _, _ -> div([], [])
@@ -5735,6 +6226,13 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
           ],
           [
             h3([attribute.attribute("style", "margin:0; font-size:14px;")], [
+              case type_icon {
+                opt.Some(icon) ->
+                  span([attribute.attribute("style", "margin-right:6px;")], [
+                    view_task_type_icon_inline(icon, 14),
+                  ])
+                opt.None -> span([], [])
+              },
               text(title),
             ]),
           ],
@@ -5750,9 +6248,11 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
         ),
       ],
     ),
-    p([], [text("type: " <> type_label)]),
-    p([], [text("age: " <> int.to_string(age_days) <> "d")]),
-    p([], [text("status: " <> status)]),
+    div([attribute.class("task-card-preview")], [
+      p([], [text("type: " <> type_label)]),
+      p([], [text("age: " <> int.to_string(age_days) <> "d")]),
+      p([], [text("status: " <> status)]),
+    ]),
   ])
 }
 
@@ -5768,6 +6268,7 @@ fn view_member_create_dialog(model: Model) -> Element(Msg) {
         label([], [text("Title")]),
         input([
           attribute.type_("text"),
+          attribute.attribute("maxlength", "56"),
           attribute.value(model.member_create_title),
           event.on_input(MemberCreateTitleChanged),
         ]),
@@ -5964,7 +6465,7 @@ fn view_member_bar_task_row(
     title: title,
     priority: priority,
     status: status,
-    created_at: created_at,
+    created_at: _created_at,
     version: version,
     claimed_by: claimed_by,
     ..,
@@ -5975,8 +6476,13 @@ fn view_member_bar_task_row(
   let task_type = member_task_type_by_id(model.member_task_types, type_id)
 
   let type_label = case task_type {
-    opt.Some(tt) -> tt.name <> " (" <> tt.icon <> ")"
+    opt.Some(tt) -> tt.name
     opt.None -> "Type #" <> int.to_string(type_id)
+  }
+
+  let type_icon = case task_type {
+    opt.Some(tt) -> opt.Some(tt.icon)
+    opt.None -> opt.None
   }
 
   let disable_actions =
@@ -5986,36 +6492,38 @@ fn view_member_bar_task_row(
     button(
       [
         attribute.class("btn-xs btn-icon"),
-        attribute.attribute("title", "Claim task"),
-        attribute.attribute("aria-label", "Claim task"),
+        attribute.attribute("title", "Claim"),
+        attribute.attribute("aria-label", "Claim"),
         event.on_click(MemberClaimClicked(id, version)),
         attribute.disabled(disable_actions),
       ],
-      [text("C")],
+      [text("✋")],
     )
 
   let release_action =
     button(
       [
         attribute.class("btn-xs btn-icon"),
-        attribute.attribute("title", "Release task"),
-        attribute.attribute("aria-label", "Release task"),
+        attribute.attribute("data-tooltip", "Release"),
+        attribute.attribute("title", "Release"),
+        attribute.attribute("aria-label", "Release"),
         event.on_click(MemberReleaseClicked(id, version)),
         attribute.disabled(disable_actions),
       ],
-      [text("R")],
+      [text("⟲")],
     )
 
   let complete_action =
     button(
       [
         attribute.class("btn-xs btn-icon"),
-        attribute.attribute("title", "Complete task"),
-        attribute.attribute("aria-label", "Complete task"),
+        attribute.attribute("data-tooltip", "Complete"),
+        attribute.attribute("title", "Complete"),
+        attribute.attribute("aria-label", "Complete"),
         event.on_click(MemberCompleteClicked(id, version)),
         attribute.disabled(disable_actions),
       ],
-      [text("✓")],
+      [text("☑")],
     )
 
   let start_action =
@@ -6059,16 +6567,16 @@ fn view_member_bar_task_row(
     div([], [
       div([attribute.class("task-row-title")], [text(title)]),
       div([attribute.class("task-row-meta")], [
-        text(
-          "priority: "
-          <> int.to_string(priority)
-          <> " · status: "
-          <> status
-          <> " · type: "
-          <> type_label
-          <> " · created: "
-          <> created_at,
-        ),
+        text("P" <> int.to_string(priority)),
+        text(" · "),
+        case type_icon {
+          opt.Some(icon) ->
+            span([attribute.attribute("style", "margin-right:4px;")], [
+              view_task_type_icon_inline(icon, 16),
+            ])
+          opt.None -> span([], [])
+        },
+        text(type_label),
       ]),
     ]),
     div([attribute.class("task-row-actions")], actions),
@@ -6276,6 +6784,19 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
                 type_id: opt.None,
                 capability_id: opt.None,
                 q: opt.None,
+              )
+
+            member_section.Pool ->
+              // Pool view must only *display* available tasks, but the right
+              // panel needs access to claimed tasks too (Story 2.9). We fetch
+              // without status filter and apply view-level guards.
+              api.TaskFilters(
+                status: opt.None,
+                type_id: empty_to_int_opt(model.member_filters_type_id),
+                capability_id: empty_to_int_opt(
+                  model.member_filters_capability_id,
+                ),
+                q: empty_to_opt(model.member_filters_q),
               )
 
             _ ->
