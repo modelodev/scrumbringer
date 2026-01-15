@@ -545,9 +545,11 @@ with first_claim as (
 ), deltas as (
   select
     u.id as user_id,
-    extract(epoch from (fc.first_claim_at - u.created_at)) * 1000 as delta_ms
+    extract(epoch from (fc.first_claim_at - u.first_login_at)) * 1000 as delta_ms
   from first_claim fc
   join users u on u.id = fc.actor_user_id
+  where u.first_login_at is not null
+    and (fc.first_claim_at - u.first_login_at) >= interval '0 seconds'
 ),
 buckets as (
   select
@@ -615,10 +617,11 @@ with first_claim as (
   group by actor_user_id
 ), deltas as (
   select
-    extract(epoch from (fc.first_claim_at - u.created_at)) * 1000 as delta_ms
+    extract(epoch from (fc.first_claim_at - u.first_login_at)) * 1000 as delta_ms
   from first_claim fc
   join users u on u.id = fc.actor_user_id
-  where (fc.first_claim_at - u.created_at) >= interval '0 seconds'
+  where u.first_login_at is not null
+    and (fc.first_claim_at - u.first_login_at) >= interval '0 seconds'
 )
 select
   coalesce(

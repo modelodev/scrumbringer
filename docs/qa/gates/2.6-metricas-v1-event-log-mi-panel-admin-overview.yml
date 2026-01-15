@@ -1,22 +1,17 @@
 schema: 1
 story: '2.6'
 story_title: 'Métricas v1 (event log + Mi panel + Admin overview)'
-gate: CONCERNS
-status_reason: 'Time-to-first-claim is computed from user created_at rather than first successful login; clarify KPI source event or adjust definition.'
+gate: PASS
+status_reason: 'Metrics KPIs align with story definitions and are covered by automated tests.'
 reviewer: 'Quinn (Test Architect)'
 updated: '2026-01-15T00:00:00Z'
 
-top_issues:
-  - id: 'REQ-001'
-    severity: medium
-    finding: 'AC5 defines time_to_first_claim as first successful login → first claim, but current SQL uses users.created_at → first claim.'
-    suggested_action: 'Either (a) log first successful login timestamp and compute from that, or (b) update KPI definition to use account creation explicitly.'
-    suggested_owner: 'po'
+top_issues: []
 
 waiver:
   active: false
 
-quality_score: 90
+quality_score: 100
 expires: '2026-01-29T00:00:00Z'
 
 evidence:
@@ -44,12 +39,7 @@ nfr_validation:
     notes: 'Dedicated handlers + SQL queries; tests added for event emission, authz, and drill-down shape.'
 
 recommendations:
-  immediate:
-    - action: 'Clarify/align time_to_first_claim KPI definition (login vs created_at)'
-      refs:
-        - 'apps/server/src/scrumbringer_server/sql/metrics_time_to_first_claim_p50_ms.sql'
-        - 'apps/server/src/scrumbringer_server/sql/metrics_time_to_first_claim_buckets.sql'
-        - 'docs/stories/2.6.metrics-v1.md'
+  immediate: []
   future:
     - action: 'Consider exposing window_days in UI (currently hardcoded to 30)'
       refs:

@@ -62,7 +62,15 @@ pub fn login(
   )
 
   case matched {
-    True -> Ok(user)
+    True -> {
+      use _ <- result.try(
+        set_first_login_at_if_missing(db, user.id)
+        |> result.map_error(auth_logic.DbError),
+      )
+
+      Ok(user)
+    }
+
     False -> Error(auth_logic.InvalidCredentials)
   }
 }
@@ -242,6 +250,30 @@ fn find_user_by_email(
   email: String,
 ) -> Result(Option(UserRow), pog.QueryError) {
   query_user_row(db, "where email = $1", [pog.text(email)])
+}
+
+fn set_first_login_at_if_missing(
+  db: pog.Connection,
+  user_id: Int,
+) -> Result(Bool, pog.QueryError) {
+  let decoder = {
+    use ok <- decode.field(0, decode.int)
+    decode.success(ok)
+  }
+
+  use returned <- result.try(
+    pog.query(
+      "update users set first_login_at = coalesce(first_login_at, now()) where id = $1 returning 1",
+    )
+    |> pog.parameter(pog.int(user_id))
+    |> pog.returning(decoder)
+    |> pog.execute(db),
+  )
+
+  case returned.rows {
+    [] -> Ok(False)
+    _ -> Ok(True)
+  }
 }
 
 fn find_user_by_id(
