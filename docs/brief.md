@@ -113,10 +113,13 @@ Los equipos usan herramientas con modelo "push" (asignación directa) que genera
 ### Estado Personal: "Now Working" (Servidor)
 
 - El usuario puede tener **0 o 1** tarea **activa** (global, no por proyecto).
-- Este estado es **personal** (no cambia `tasks.status`), sirve para que el usuario sepa con qué está y cuánto tiempo lleva.
+- Este estado es **personal** (no cambia `tasks.status`). Sirve para que el usuario sepa con qué está y cuánto tiempo lleva **en la sesión activa**.
 - La información se **persiste en servidor** para que sea consistente entre dispositivos (desktop/mobile).
-- Acciones personales soportadas (mínimo): `start/resume`, `pause`.
-- Regla: hacer `start` en una nueva tarea **pausa automáticamente** la anterior (si existía).
+- Acciones personales soportadas (mínimo):
+  - `start/resume`: empieza una sesión activa para una tarea claimed.
+  - `pause`: termina la sesión activa y **limpia** la tarea activa.
+- Regla: hacer `start` en una nueva tarea **reemplaza** la anterior (la anterior deja de estar activa).
+- Regla: si el usuario cambia el proyecto activo en la UI, la tarea activa se **desactiva** (limpia).
 - Acciones globales relacionadas (ya existentes en tareas claimed): `complete`, `release`.
 - **Mobile** requiere UX específica: no se muestra el Pool; solo My Bar + acciones rápidas (start/pause/complete/release) y el cronómetro.
 
