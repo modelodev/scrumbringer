@@ -156,7 +156,6 @@ pub opaque type Model {
     member_quick_my_caps: Bool,
     member_pool_filters_visible: Bool,
     member_pool_view_mode: pool_prefs.ViewMode,
-    member_pool_density: pool_prefs.Density,
     member_create_dialog_open: Bool,
     member_create_title: String,
     member_create_description: String,
@@ -280,7 +279,6 @@ pub type Msg {
   MemberToggleMyCapabilitiesQuick
   MemberPoolFiltersToggled
   MemberPoolViewModeSet(pool_prefs.ViewMode)
-  MemberPoolDensitySet(pool_prefs.Density)
 
   GlobalKeyDown(pool_prefs.KeyEvent)
 
@@ -404,10 +402,6 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
     theme.local_storage_get(pool_prefs.view_mode_storage_key)
     |> pool_prefs.deserialize_view_mode
 
-  let pool_density =
-    theme.local_storage_get(pool_prefs.density_storage_key)
-    |> pool_prefs.deserialize_density
-
   let model =
     Model(
       page: page,
@@ -496,7 +490,6 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       member_quick_my_caps: True,
       member_pool_filters_visible: pool_filters_visible,
       member_pool_view_mode: pool_view_mode,
-      member_pool_density: pool_density,
       member_create_dialog_open: False,
       member_create_title: "",
       member_create_description: "",
@@ -676,15 +669,6 @@ fn save_pool_view_mode_effect(mode: pool_prefs.ViewMode) -> Effect(Msg) {
     theme.local_storage_set(
       pool_prefs.view_mode_storage_key,
       pool_prefs.serialize_view_mode(mode),
-    )
-  })
-}
-
-fn save_pool_density_effect(density: pool_prefs.Density) -> Effect(Msg) {
-  effect.from(fn(_dispatch) {
-    theme.local_storage_set(
-      pool_prefs.density_storage_key,
-      pool_prefs.serialize_density(density),
     )
   })
 }
@@ -2626,11 +2610,6 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     MemberPoolViewModeSet(mode) -> #(
       Model(..model, member_pool_view_mode: mode),
       save_pool_view_mode_effect(mode),
-    )
-
-    MemberPoolDensitySet(density) -> #(
-      Model(..model, member_pool_density: density),
-      save_pool_density_effect(density),
     )
 
     GlobalKeyDown(event) -> handle_pool_keydown(model, event)
@@ -5230,7 +5209,7 @@ fn view_task_types(
     opt.Some(project) ->
       div([attribute.class("section")], [
         h2([], [text("Task Types - " <> project.name)]),
-        view_task_types_list(model.task_types),
+        view_task_types_list(model.task_types, model.theme),
         hr([]),
         h3([], [text("Create Task Type")]),
         case model.task_types_create_error {
@@ -5297,21 +5276,35 @@ fn heroicon_outline_url(name: String) -> String {
   "https://unpkg.com/heroicons@2.1.0/24/outline/" <> name <> ".svg"
 }
 
-fn view_heroicon_inline(name: String, size: Int) -> Element(Msg) {
+fn view_heroicon_inline(
+  name: String,
+  size: Int,
+  theme: theme.Theme,
+) -> Element(Msg) {
   let url = heroicon_outline_url(name)
+
+  let style = case theme {
+    theme.Dark ->
+      "vertical-align:middle; opacity:0.9; filter: invert(1) brightness(1.2);"
+    theme.Default -> "vertical-align:middle; opacity:0.85;"
+  }
 
   img([
     attribute.attribute("src", url),
     attribute.attribute("alt", name <> " icon"),
     attribute.attribute("width", int.to_string(size)),
     attribute.attribute("height", int.to_string(size)),
-    attribute.attribute("style", "vertical-align:middle; opacity:0.85;"),
+    attribute.attribute("style", style),
   ])
 }
 
-fn view_task_type_icon_inline(icon: String, size: Int) -> Element(Msg) {
+fn view_task_type_icon_inline(
+  icon: String,
+  size: Int,
+  theme: theme.Theme,
+) -> Element(Msg) {
   case string.contains(icon, "-") {
-    True -> view_heroicon_inline(icon, size)
+    True -> view_heroicon_inline(icon, size, theme)
     False ->
       span(
         [
@@ -5320,9 +5313,7 @@ fn view_task_type_icon_inline(icon: String, size: Int) -> Element(Msg) {
             "font-size:" <> int.to_string(size) <> "px;",
           ),
         ],
-        [
-          text(icon),
-        ],
+        [text(icon)],
       )
   }
 }
@@ -5436,7 +5427,10 @@ fn view_capability_selector(
   }
 }
 
-fn view_task_types_list(task_types: Remote(List(api.TaskType))) -> Element(Msg) {
+fn view_task_types_list(
+  task_types: Remote(List(api.TaskType)),
+  theme: theme.Theme,
+) -> Element(Msg) {
   case task_types {
     NotAsked | Loading -> div([attribute.class("empty")], [text("Loading...")])
 
@@ -5474,7 +5468,7 @@ fn view_task_types_list(task_types: Remote(List(api.TaskType))) -> Element(Msg) 
               list.map(task_types, fn(tt) {
                 tr([], [
                   td([], [text(tt.name)]),
-                  td([], [view_task_type_icon_inline(tt.icon, 20)]),
+                  td([], [view_task_type_icon_inline(tt.icon, 20, theme)]),
                   td([], [
                     case tt.capability_id {
                       opt.Some(id) -> text(int.to_string(id))
@@ -5786,7 +5780,6 @@ fn view_member_pool_main(model: Model, _user: User) -> Element(Msg) {
             ],
             [text("Lista")],
           ),
-          view_pool_density_selector(model),
           button(
             [
               attribute.class("btn-xs"),
@@ -5815,51 +5808,6 @@ fn view_member_pool_main(model: Model, _user: User) -> Element(Msg) {
       ])
     }
   }
-}
-
-fn view_pool_density_selector(model: Model) -> Element(Msg) {
-  let compact_classes = case model.member_pool_density {
-    pool_prefs.Compact -> "btn-xs btn-active"
-    _ -> "btn-xs"
-  }
-
-  let normal_classes = case model.member_pool_density {
-    pool_prefs.Normal -> "btn-xs btn-active"
-    _ -> "btn-xs"
-  }
-
-  let large_classes = case model.member_pool_density {
-    pool_prefs.Large -> "btn-xs btn-active"
-    _ -> "btn-xs"
-  }
-
-  div([attribute.class("topbar-group")], [
-    span([attribute.class("hint")], [text("Densidad")]),
-    button(
-      [
-        attribute.class(compact_classes),
-        attribute.attribute("aria-label", "Densidad: compacta"),
-        event.on_click(MemberPoolDensitySet(pool_prefs.Compact)),
-      ],
-      [text("Compacta")],
-    ),
-    button(
-      [
-        attribute.class(normal_classes),
-        attribute.attribute("aria-label", "Densidad: normal"),
-        event.on_click(MemberPoolDensitySet(pool_prefs.Normal)),
-      ],
-      [text("Normal")],
-    ),
-    button(
-      [
-        attribute.class(large_classes),
-        attribute.attribute("aria-label", "Densidad: grande"),
-        event.on_click(MemberPoolDensitySet(pool_prefs.Large)),
-      ],
-      [text("Grande")],
-    ),
-  ])
 }
 
 fn view_member_filters(model: Model) -> Element(Msg) {
@@ -6130,7 +6078,7 @@ fn view_member_pool_task_row(model: Model, task: api.Task) -> Element(Msg) {
         case type_icon {
           opt.Some(icon) ->
             span([attribute.attribute("style", "margin-right:4px;")], [
-              view_task_type_icon_inline(icon, 16),
+              view_task_type_icon_inline(icon, 16, model.theme),
             ])
           opt.None -> span([], [])
         },
@@ -6186,15 +6134,7 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
     Error(_) -> #(0, 0)
   }
 
-  let base_size = member_visuals.priority_to_px(priority)
-
-  let size = case model.member_pool_density {
-    pool_prefs.Compact -> base_size * 85 / 100
-    pool_prefs.Normal -> base_size
-    pool_prefs.Large -> base_size * 115 / 100
-  }
-
-  let size = int.max(size, 56)
+  let size = member_visuals.priority_to_px(priority)
 
   let age_days = age_in_days(created_at)
 
@@ -6214,7 +6154,7 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
     <> int.to_string(size)
     <> "px; height:"
     <> int.to_string(size)
-    <> "px; padding:34px 8px 8px 8px; opacity:"
+    <> "px; opacity:"
     <> float.to_string(opacity)
     <> "; filter:saturate("
     <> float.to_string(saturation)
@@ -6284,45 +6224,35 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
   }
 
   div([attribute.class(card_classes), attribute.attribute("style", style)], [
-    div(
-      [
-        attribute.attribute(
-          "style",
-          "position:absolute; top:8px; left:8px; right:8px; display:flex; justify-content:space-between; gap:6px;",
-        ),
-      ],
-      [
-        div(
-          [
-            attribute.attribute(
-              "style",
-              "min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;",
-            ),
-          ],
-          [
-            h3([attribute.attribute("style", "margin:0; font-size:14px;")], [
-              case type_icon {
-                opt.Some(icon) ->
-                  span([attribute.attribute("style", "margin-right:6px;")], [
-                    view_task_type_icon_inline(icon, 14),
-                  ])
-                opt.None -> span([], [])
-              },
-              text(title),
-            ]),
-          ],
-        ),
-        div(
-          [
-            attribute.attribute(
-              "style",
-              "display:flex; gap:6px; align-items:center; flex-shrink:0;",
-            ),
-          ],
-          [primary_action, complete_action, drag_handle],
-        ),
-      ],
-    ),
+    div([attribute.class("task-card-top")], [
+      div(
+        [
+          attribute.class("task-card-type-icon"),
+          attribute.attribute("title", type_label),
+          attribute.attribute("aria-label", "Type: " <> type_label),
+        ],
+        [
+          case type_icon {
+            opt.Some(icon) -> view_task_type_icon_inline(icon, 14, model.theme)
+            opt.None -> span([], [])
+          },
+        ],
+      ),
+      div([attribute.class("task-card-actions")], [
+        primary_action,
+        complete_action,
+        drag_handle,
+      ]),
+    ]),
+    div([attribute.class("task-card-body")], [
+      div(
+        [
+          attribute.class("task-card-title"),
+          attribute.attribute("title", title),
+        ],
+        [text(title)],
+      ),
+    ]),
     div([attribute.class("task-card-preview")], [
       p([], [text("type: " <> type_label)]),
       p([], [text("age: " <> int.to_string(age_days) <> "d")]),
@@ -6647,7 +6577,7 @@ fn view_member_bar_task_row(
         case type_icon {
           opt.Some(icon) ->
             span([attribute.attribute("style", "margin-right:4px;")], [
-              view_task_type_icon_inline(icon, 16),
+              view_task_type_icon_inline(icon, 16, model.theme),
             ])
           opt.None -> span([], [])
         },
