@@ -73,6 +73,7 @@ pub opaque type Model {
     page: Page,
     user: opt.Option(User),
     auth_checked: Bool,
+    is_mobile: Bool,
     active_section: permissions.AdminSection,
     toast: opt.Option(String),
     theme: theme.Theme,
@@ -130,6 +131,12 @@ pub opaque type Model {
     task_types_create_error: opt.Option(String),
     task_types_icon_preview: IconPreview,
     member_section: member_section.MemberSection,
+    member_active_task: Remote(api.ActiveTaskPayload),
+    member_now_working_in_flight: Bool,
+    member_now_working_error: opt.Option(String),
+    now_working_tick: Int,
+    now_working_tick_running: Bool,
+    now_working_server_offset_ms: Int,
     member_tasks: Remote(List(api.Task)),
     member_tasks_pending: Int,
     member_tasks_by_project: dict.Dict(Int, List(api.Task)),
@@ -186,6 +193,7 @@ pub type Msg {
   LoginEmailChanged(String)
   LoginPasswordChanged(String)
   LoginSubmitted
+  LoginDomValuesRead(String, String)
   LoginFinished(api.ApiResult(User))
 
   ForgotPasswordClicked
@@ -287,6 +295,13 @@ pub type Msg {
   MemberTaskReleased(api.ApiResult(api.Task))
   MemberTaskCompleted(api.ApiResult(api.Task))
 
+  MemberNowWorkingStartClicked(Int)
+  MemberNowWorkingPauseClicked
+  MemberActiveTaskFetched(api.ApiResult(api.ActiveTaskPayload))
+  MemberActiveTaskStarted(api.ApiResult(api.ActiveTaskPayload))
+  MemberActiveTaskPaused(api.ApiResult(api.ActiveTaskPayload))
+  NowWorkingTicked
+
   MemberMyCapabilityIdsFetched(api.ApiResult(List(Int)))
   MemberToggleCapability(Int)
   MemberSaveCapabilitiesClicked
@@ -312,8 +327,11 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
   let pathname = location_pathname_ffi()
   let search = location_search_ffi()
   let hash = location_hash_ffi()
+  let is_mobile = is_mobile_ffi()
 
-  let parsed = router.parse(pathname, search, hash)
+  let parsed =
+    router.parse(pathname, search, hash)
+    |> router.apply_mobile_rules(is_mobile)
 
   let route = case parsed {
     router.Parsed(route) -> route
@@ -363,6 +381,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       page: page,
       user: opt.None,
       auth_checked: False,
+      is_mobile: is_mobile,
       active_section: active_section,
       toast: opt.None,
       theme: active_theme,
@@ -420,6 +439,12 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       task_types_create_error: opt.None,
       task_types_icon_preview: IconIdle,
       member_section: member_section,
+      member_active_task: NotAsked,
+      member_now_working_in_flight: False,
+      member_now_working_error: opt.None,
+      now_working_tick: 0,
+      now_working_tick_running: False,
+      now_working_server_offset_ms: 0,
       member_tasks: NotAsked,
       member_tasks_pending: 0,
       member_tasks_by_project: dict.new(),
@@ -465,6 +490,8 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
     _ -> api.fetch_me(MeFetched)
   }
 
+  let tick_fx = effect.none()
+
   let redirect_fx = case parsed {
     router.Redirect(_) -> write_url(Replace, route)
     router.Parsed(_) -> effect.none()
@@ -476,6 +503,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       register_popstate_effect(),
       redirect_fx,
       base_effect,
+      tick_fx,
     ]),
   )
 }
@@ -549,6 +577,15 @@ fn register_popstate_ffi(_cb: fn(Nil) -> Nil) -> Nil {
 fn register_popstate_effect() -> Effect(Msg) {
   effect.from(fn(dispatch) {
     register_popstate_ffi(fn(_) { dispatch(UrlChanged) })
+  })
+}
+
+fn read_login_values_effect() -> Effect(Msg) {
+  effect.from(fn(dispatch) {
+    let email = input_value_ffi("login-email")
+    let password = input_value_ffi("login-password")
+    dispatch(LoginDomValuesRead(email, password))
+    Nil
   })
 }
 
@@ -663,6 +700,7 @@ fn build_snapshot(model: Model) -> hydration.Snapshot {
     task_types: remote_state(model.task_types),
     task_types_project_id: model.task_types_project_id,
     member_tasks: remote_state(model.member_tasks),
+    active_task: remote_state(model.member_active_task),
   )
 }
 
@@ -738,6 +776,17 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                     api.get_me_capability_ids(MemberMyCapabilityIdsFetched),
                     ..fx
                   ])
+                }
+              }
+            }
+
+            hydration.FetchActiveTask -> {
+              case m.member_active_task {
+                Loading | Loaded(_) -> #(m, fx)
+
+                _ -> {
+                  let m = Model(..m, member_active_task: Loading)
+                  #(m, [api.get_me_active_task(MemberActiveTaskFetched), ..fx])
                 }
               }
             }
@@ -851,8 +900,13 @@ fn handle_url_changed(model: Model) -> #(Model, Effect(Msg)) {
   let pathname = location_pathname_ffi()
   let search = location_search_ffi()
   let hash = location_hash_ffi()
+  let is_mobile = is_mobile_ffi()
 
-  let parsed = router.parse(pathname, search, hash)
+  let model = Model(..model, is_mobile: is_mobile)
+
+  let parsed =
+    router.parse(pathname, search, hash)
+    |> router.apply_mobile_rules(is_mobile)
 
   let route = case parsed {
     router.Parsed(route) -> route
@@ -886,14 +940,25 @@ fn handle_navigate_to(
   route: router.Route,
   mode: NavMode,
 ) -> #(Model, Effect(Msg)) {
-  case route == current_route(model) {
+  let #(next_route, next_mode) = case model.is_mobile, route {
+    True, router.Member(member_section.Pool, project_id) -> #(
+      router.Member(member_section.MyBar, project_id),
+      Replace,
+    )
+    _, _ -> #(route, mode)
+  }
+
+  case next_route == current_route(model) {
     True -> #(model, effect.none())
 
     False -> {
-      let #(model, route_fx) = apply_route_fields(model, route)
+      let #(model, route_fx) = apply_route_fields(model, next_route)
       let #(model, hyd_fx) = hydrate_model(model)
 
-      #(model, effect.batch([write_url(mode, route), route_fx, hyd_fx]))
+      #(
+        model,
+        effect.batch([write_url(next_mode, next_route), route_fx, hyd_fx]),
+      )
     }
   }
 }
@@ -1071,10 +1136,30 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               login_error: opt.None,
               toast: opt.None,
             )
-          #(
-            model,
-            api.login(model.login_email, model.login_password, LoginFinished),
-          )
+
+          #(model, read_login_values_effect())
+        }
+      }
+    }
+
+    LoginDomValuesRead(raw_email, raw_password) -> {
+      let email = string.trim(raw_email)
+      let password = raw_password
+
+      case email == "" || password == "" {
+        True -> #(
+          Model(
+            ..model,
+            login_in_flight: False,
+            login_error: opt.Some("Email and password required"),
+          ),
+          effect.none(),
+        )
+
+        False -> {
+          let model =
+            Model(..model, login_email: email, login_password: password)
+          #(model, api.login(email, password, LoginFinished))
         }
       }
     }
@@ -1109,9 +1194,9 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     LoginFinished(Error(err)) -> {
-      let message = case err.status == 401 {
-        True -> "Invalid credentials"
-        False -> err.message
+      let message = case err.status {
+        401 | 403 -> "Invalid credentials"
+        _ -> err.message
       }
 
       #(
@@ -1295,6 +1380,13 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         Error(_) -> opt.None
       }
 
+      let should_pause =
+        should_pause_active_task_on_project_change(
+          model.page == Member,
+          model.selected_project_id,
+          selected,
+        )
+
       let model = case selected {
         opt.None ->
           Model(
@@ -1310,7 +1402,13 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       case model.page {
         Member -> {
           let #(model, fx) = member_refresh(model)
-          #(model, effect.batch([fx, replace_url(model)]))
+
+          let pause_fx = case should_pause {
+            True -> api.pause_me_active_task(MemberActiveTaskPaused)
+            False -> effect.none()
+          }
+
+          #(model, effect.batch([fx, pause_fx, replace_url(model)]))
         }
 
         _ -> {
@@ -2620,22 +2718,34 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           toast: opt.Some("Task claimed"),
         ),
       )
-    MemberTaskReleased(Ok(_)) ->
-      member_refresh(
+    MemberTaskReleased(Ok(_)) -> {
+      let model =
         Model(
           ..model,
           member_task_mutation_in_flight: False,
           toast: opt.Some("Task released"),
-        ),
+        )
+
+      let #(model, fx) = member_refresh(model)
+      #(
+        model,
+        effect.batch([fx, api.get_me_active_task(MemberActiveTaskFetched)]),
       )
-    MemberTaskCompleted(Ok(_)) ->
-      member_refresh(
+    }
+    MemberTaskCompleted(Ok(_)) -> {
+      let model =
         Model(
           ..model,
           member_task_mutation_in_flight: False,
           toast: opt.Some("Task completed"),
-        ),
+        )
+
+      let #(model, fx) = member_refresh(model)
+      #(
+        model,
+        effect.batch([fx, api.get_me_active_task(MemberActiveTaskFetched)]),
       )
+    }
 
     MemberTaskClaimed(Error(err)) ->
       member_handle_task_mutation_error(
@@ -2652,6 +2762,143 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         Model(..model, member_task_mutation_in_flight: False),
         err,
       )
+
+    MemberNowWorkingStartClicked(task_id) -> {
+      case model.member_now_working_in_flight {
+        True -> #(model, effect.none())
+        False -> {
+          let model =
+            Model(
+              ..model,
+              member_now_working_in_flight: True,
+              member_now_working_error: opt.None,
+            )
+          #(model, api.start_me_active_task(task_id, MemberActiveTaskStarted))
+        }
+      }
+    }
+
+    MemberNowWorkingPauseClicked -> {
+      case model.member_now_working_in_flight {
+        True -> #(model, effect.none())
+        False -> {
+          let model =
+            Model(
+              ..model,
+              member_now_working_in_flight: True,
+              member_now_working_error: opt.None,
+            )
+          #(model, api.pause_me_active_task(MemberActiveTaskPaused))
+        }
+      }
+    }
+
+    MemberActiveTaskFetched(Ok(payload)) -> {
+      let api.ActiveTaskPayload(as_of: as_of, ..) = payload
+      let server_ms = parse_iso_ms_ffi(as_of)
+      let offset = now_ms_ffi() - server_ms
+
+      let #(model, tick_fx) =
+        Model(
+          ..model,
+          member_active_task: Loaded(payload),
+          now_working_server_offset_ms: offset,
+        )
+        |> start_now_working_tick_if_needed
+
+      #(model, tick_fx)
+    }
+
+    MemberActiveTaskFetched(Error(err)) -> {
+      case err.status {
+        401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        _ -> #(Model(..model, member_active_task: Failed(err)), effect.none())
+      }
+    }
+
+    MemberActiveTaskStarted(Ok(payload)) -> {
+      let api.ActiveTaskPayload(as_of: as_of, ..) = payload
+      let server_ms = parse_iso_ms_ffi(as_of)
+      let offset = now_ms_ffi() - server_ms
+
+      let #(model, tick_fx) =
+        Model(
+          ..model,
+          member_now_working_in_flight: False,
+          member_active_task: Loaded(payload),
+          now_working_server_offset_ms: offset,
+        )
+        |> start_now_working_tick_if_needed
+
+      #(model, tick_fx)
+    }
+
+    MemberActiveTaskStarted(Error(err)) -> {
+      let model = Model(..model, member_now_working_in_flight: False)
+
+      case err.status {
+        401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        _ -> #(
+          Model(
+            ..model,
+            member_now_working_error: opt.Some(err.message),
+            toast: opt.Some(err.message),
+          ),
+          effect.none(),
+        )
+      }
+    }
+
+    MemberActiveTaskPaused(Ok(payload)) -> {
+      let api.ActiveTaskPayload(as_of: as_of, ..) = payload
+      let server_ms = parse_iso_ms_ffi(as_of)
+      let offset = now_ms_ffi() - server_ms
+
+      let model =
+        Model(
+          ..model,
+          member_now_working_in_flight: False,
+          member_active_task: Loaded(payload),
+          now_working_server_offset_ms: offset,
+        )
+
+      // Stop tick loop when active task is cleared.
+      let model = case now_working_active_task(model) {
+        opt.None -> Model(..model, now_working_tick_running: False)
+        opt.Some(_) -> model
+      }
+
+      #(model, effect.none())
+    }
+
+    MemberActiveTaskPaused(Error(err)) -> {
+      let model = Model(..model, member_now_working_in_flight: False)
+
+      case err.status {
+        401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        _ -> #(
+          Model(
+            ..model,
+            member_now_working_error: opt.Some(err.message),
+            toast: opt.Some(err.message),
+          ),
+          effect.none(),
+        )
+      }
+    }
+
+    NowWorkingTicked -> {
+      let model = Model(..model, now_working_tick: model.now_working_tick + 1)
+
+      case now_working_active_task(model) {
+        opt.Some(_) -> #(model, now_working_tick_effect())
+
+        opt.None -> #(
+          Model(..model, now_working_tick_running: False),
+          effect.none(),
+        )
+      }
+    }
 
     MemberMyCapabilityIdsFetched(Ok(ids)) -> #(
       Model(
@@ -3140,6 +3387,26 @@ fn days_since_iso_ffi(_iso: String) -> Int {
   0
 }
 
+@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "is_mobile")
+fn is_mobile_ffi() -> Bool {
+  False
+}
+
+@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "now_ms")
+fn now_ms_ffi() -> Int {
+  0
+}
+
+@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "parse_iso_ms")
+fn parse_iso_ms_ffi(_iso: String) -> Int {
+  0
+}
+
+@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "set_timeout")
+fn set_timeout_ffi(_ms: Int, _cb: fn(Nil) -> Nil) -> Int {
+  0
+}
+
 @external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "element_client_offset")
 fn element_client_offset_ffi(_id: String) -> #(Int, Int) {
   #(0, 0)
@@ -3165,10 +3432,37 @@ fn location_search_ffi() -> String {
   ""
 }
 
+@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "input_value")
+fn input_value_ffi(_id: String) -> String {
+  ""
+}
+
 fn copy_to_clipboard(text: String, msg: fn(Bool) -> Msg) -> Effect(Msg) {
   effect.from(fn(dispatch) {
     copy_to_clipboard_ffi(text, fn(ok) { dispatch(msg(ok)) })
   })
+}
+
+fn now_working_tick_effect() -> Effect(Msg) {
+  effect.from(fn(dispatch) {
+    set_timeout_ffi(1000, fn(_) { dispatch(NowWorkingTicked) })
+    Nil
+  })
+}
+
+fn start_now_working_tick_if_needed(model: Model) -> #(Model, Effect(Msg)) {
+  case model.now_working_tick_running {
+    True -> #(model, effect.none())
+
+    False ->
+      case now_working_active_task(model) {
+        opt.Some(_) -> #(
+          Model(..model, now_working_tick_running: True),
+          now_working_tick_effect(),
+        )
+        opt.None -> #(model, effect.none())
+      }
+  }
 }
 
 fn page_title(section: permissions.AdminSection) -> String {
@@ -3198,6 +3492,75 @@ fn selected_project(model: Model) -> opt.Option(api.Project) {
       }
 
     _, _ -> opt.None
+  }
+}
+
+fn now_working_active_task(model: Model) -> opt.Option(api.ActiveTask) {
+  case model.member_active_task {
+    Loaded(api.ActiveTaskPayload(active_task: active_task, ..)) -> active_task
+    _ -> opt.None
+  }
+}
+
+fn now_working_active_task_id(model: Model) -> opt.Option(Int) {
+  case now_working_active_task(model) {
+    opt.Some(api.ActiveTask(task_id: task_id, ..)) -> opt.Some(task_id)
+    opt.None -> opt.None
+  }
+}
+
+fn find_task_by_id(
+  tasks: Remote(List(api.Task)),
+  task_id: Int,
+) -> opt.Option(api.Task) {
+  case tasks {
+    Loaded(tasks) ->
+      case
+        list.find(tasks, fn(t) {
+          let api.Task(id: id, ..) = t
+          id == task_id
+        })
+      {
+        Ok(t) -> opt.Some(t)
+        Error(_) -> opt.None
+      }
+
+    _ -> opt.None
+  }
+}
+
+fn format_seconds(value: Int) -> String {
+  let hours = value / 3600
+  let minutes_total = value / 60
+  let minutes = minutes_total - minutes_total / 60 * 60
+  let seconds = value - minutes_total * 60
+
+  let mm = minutes |> int.to_string |> string.pad_start(2, "0")
+  let ss = seconds |> int.to_string |> string.pad_start(2, "0")
+
+  case hours {
+    0 -> mm <> ":" <> ss
+    _ -> int.to_string(hours) <> ":" <> mm <> ":" <> ss
+  }
+}
+
+fn now_working_elapsed(model: Model) -> String {
+  case now_working_active_task(model) {
+    opt.None -> "00:00"
+
+    opt.Some(api.ActiveTask(started_at: started_at, ..)) -> {
+      let started_ms = parse_iso_ms_ffi(started_at)
+      let local_now_ms = now_ms_ffi()
+      let server_now_ms = local_now_ms - model.now_working_server_offset_ms
+      let diff_ms = server_now_ms - started_ms
+
+      let seconds = case diff_ms < 0 {
+        True -> 0
+        False -> diff_ms / 1000
+      }
+
+      format_seconds(seconds)
+    }
   }
 }
 
@@ -3501,6 +3864,7 @@ fn view_login(model: Model) -> Element(Msg) {
       div([attribute.class("field")], [
         label([], [text("Email")]),
         input([
+          attribute.attribute("id", "login-email"),
           attribute.type_("email"),
           attribute.value(model.login_email),
           event.on_input(LoginEmailChanged),
@@ -3510,6 +3874,7 @@ fn view_login(model: Model) -> Element(Msg) {
       div([attribute.class("field")], [
         label([], [text("Password")]),
         input([
+          attribute.attribute("id", "login-password"),
           attribute.type_("password"),
           attribute.value(model.login_password),
           event.on_input(LoginPasswordChanged),
@@ -4457,13 +4822,26 @@ fn view_member(model: Model) -> Element(Msg) {
     opt.None -> view_login(model)
 
     opt.Some(user) ->
-      div([attribute.class("member")], [
-        view_member_topbar(model, user),
-        div([attribute.class("body")], [
-          view_member_nav(model),
-          div([attribute.class("content")], [view_member_section(model, user)]),
-        ]),
-      ])
+      case model.is_mobile {
+        True ->
+          div([attribute.class("member")], [
+            view_member_topbar(model, user),
+            view_now_working_panel(model, user),
+            div([attribute.class("content")], [view_member_section(model, user)]),
+          ])
+
+        False ->
+          div([attribute.class("member")], [
+            view_member_topbar(model, user),
+            view_now_working_panel(model, user),
+            div([attribute.class("body")], [
+              view_member_nav(model),
+              div([attribute.class("content")], [
+                view_member_section(model, user),
+              ]),
+            ]),
+          ])
+      }
   }
 }
 
@@ -4498,14 +4876,114 @@ fn view_member_topbar(model: Model, user: User) -> Element(Msg) {
   ])
 }
 
+fn view_now_working_panel(model: Model, _user: User) -> Element(Msg) {
+  let error = case model.member_now_working_error {
+    opt.Some(err) -> div([attribute.class("now-working-error")], [text(err)])
+    opt.None -> div([], [])
+  }
+
+  case model.member_active_task {
+    Loading ->
+      div([attribute.class("now-working")], [text("Now Working: loading...")])
+
+    Failed(err) ->
+      div([attribute.class("now-working")], [
+        div([attribute.class("now-working-error")], [
+          text("Now Working error: " <> err.message),
+        ]),
+      ])
+
+    NotAsked | Loaded(_) -> {
+      let active = now_working_active_task(model)
+
+      case active {
+        opt.None ->
+          div([attribute.class("now-working")], [
+            div([attribute.class("now-working-empty")], [
+              text("Now Working: none"),
+            ]),
+            error,
+          ])
+
+        opt.Some(api.ActiveTask(task_id: task_id, ..)) -> {
+          let title = case find_task_by_id(model.member_tasks, task_id) {
+            opt.Some(api.Task(title: title, ..)) -> title
+            opt.None -> "Task #" <> int.to_string(task_id)
+          }
+
+          let disable_actions =
+            model.member_task_mutation_in_flight
+            || model.member_now_working_in_flight
+
+          let pause_action =
+            button(
+              [
+                attribute.class("btn-xs"),
+                attribute.disabled(disable_actions),
+                event.on_click(MemberNowWorkingPauseClicked),
+              ],
+              [text("Pause")],
+            )
+
+          let task_actions = case find_task_by_id(model.member_tasks, task_id) {
+            opt.Some(api.Task(version: version, ..)) -> [
+              button(
+                [
+                  attribute.class("btn-xs"),
+                  attribute.disabled(disable_actions),
+                  event.on_click(MemberCompleteClicked(task_id, version)),
+                ],
+                [text("Complete")],
+              ),
+              button(
+                [
+                  attribute.class("btn-xs"),
+                  attribute.disabled(disable_actions),
+                  event.on_click(MemberReleaseClicked(task_id, version)),
+                ],
+                [text("Release")],
+              ),
+            ]
+
+            opt.None -> []
+          }
+
+          div([attribute.class("now-working")], [
+            div([], [
+              div([attribute.class("now-working-title")], [text(title)]),
+              div([attribute.class("now-working-timer")], [
+                text(now_working_elapsed(model)),
+              ]),
+            ]),
+            div([attribute.class("now-working-actions")], [
+              pause_action,
+              ..task_actions
+            ]),
+            error,
+          ])
+        }
+      }
+    }
+  }
+}
+
 fn view_member_nav(model: Model) -> Element(Msg) {
-  div([attribute.class("nav")], [
-    h3([], [text("App")]),
-    div([], [
+  let items = case model.is_mobile {
+    True -> [
+      view_member_nav_button(model, member_section.MyBar, "My Bar"),
+      view_member_nav_button(model, member_section.MySkills, "My Skills"),
+    ]
+
+    False -> [
       view_member_nav_button(model, member_section.Pool, "Pool"),
       view_member_nav_button(model, member_section.MyBar, "My Bar"),
       view_member_nav_button(model, member_section.MySkills, "My Skills"),
-    ]),
+    ]
+  }
+
+  div([attribute.class("nav")], [
+    h3([], [text("App")]),
+    div([], items),
   ])
 }
 
@@ -5056,7 +5534,8 @@ fn view_member_bar_task_row(
     opt.None -> "Type #" <> int.to_string(type_id)
   }
 
-  let disable_actions = model.member_task_mutation_in_flight
+  let disable_actions =
+    model.member_task_mutation_in_flight || model.member_now_working_in_flight
 
   let claim_action =
     button(
@@ -5093,9 +5572,41 @@ fn view_member_bar_task_row(
       ],
       [text("✓")],
     )
+
+  let start_action =
+    button(
+      [
+        attribute.class("btn-xs"),
+        attribute.attribute("title", "Start now working"),
+        attribute.attribute("aria-label", "Start now working"),
+        event.on_click(MemberNowWorkingStartClicked(id)),
+        attribute.disabled(disable_actions),
+      ],
+      [text("Start")],
+    )
+
+  let pause_action =
+    button(
+      [
+        attribute.class("btn-xs"),
+        attribute.attribute("title", "Pause now working"),
+        attribute.attribute("aria-label", "Pause now working"),
+        event.on_click(MemberNowWorkingPauseClicked),
+        attribute.disabled(disable_actions),
+      ],
+      [text("Pause")],
+    )
+
+  let is_active = now_working_active_task_id(model) == opt.Some(id)
+
+  let now_working_action = case is_active {
+    True -> pause_action
+    False -> start_action
+  }
+
   let actions = case status, is_mine {
     "available", _ -> [claim_action]
-    "claimed", True -> [release_action, complete_action]
+    "claimed", True -> [now_working_action, release_action, complete_action]
     _, _ -> []
   }
 
@@ -5384,6 +5895,17 @@ fn member_handle_task_mutation_error(
   case err.status {
     401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
     _ -> member_refresh(Model(..model, toast: opt.Some(err.message)))
+  }
+}
+
+pub fn should_pause_active_task_on_project_change(
+  is_member_page: Bool,
+  previous_project_id: opt.Option(Int),
+  next_project_id: opt.Option(Int),
+) -> Bool {
+  case is_member_page {
+    False -> False
+    True -> previous_project_id != next_project_id
   }
 }
 

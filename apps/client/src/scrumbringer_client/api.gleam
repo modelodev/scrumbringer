@@ -91,6 +91,14 @@ pub type TaskPosition {
   TaskPosition(task_id: Int, user_id: Int, x: Int, y: Int, updated_at: String)
 }
 
+pub type ActiveTask {
+  ActiveTask(task_id: Int, project_id: Int, started_at: String)
+}
+
+pub type ActiveTaskPayload {
+  ActiveTaskPayload(active_task: option.Option(ActiveTask), as_of: String)
+}
+
 pub fn should_attach_csrf(method: String) -> Bool {
   case string.uppercase(method) {
     "POST" | "PUT" | "PATCH" | "DELETE" -> True
@@ -384,6 +392,30 @@ pub fn invite_links_payload_decoder() -> decode.Decoder(List(InviteLink)) {
     decode.list(invite_link_decoder()),
     decode.success,
   )
+}
+
+fn active_task_decoder() -> decode.Decoder(ActiveTask) {
+  use task_id <- decode.field("task_id", decode.int)
+  use project_id <- decode.field("project_id", decode.int)
+  use started_at <- decode.field("started_at", decode.string)
+  decode.success(ActiveTask(
+    task_id: task_id,
+    project_id: project_id,
+    started_at: started_at,
+  ))
+}
+
+pub fn active_task_payload_decoder() -> decode.Decoder(ActiveTaskPayload) {
+  let payload = {
+    use active_task <- decode.field(
+      "active_task",
+      decode.optional(active_task_decoder()),
+    )
+    use as_of <- decode.field("as_of", decode.string)
+    decode.success(ActiveTaskPayload(active_task: active_task, as_of: as_of))
+  }
+
+  payload
 }
 
 fn org_user_decoder() -> decode.Decoder(OrgUser) {
@@ -948,6 +980,44 @@ pub fn add_task_note(
     "/api/v1/tasks/" <> int.to_string(task_id) <> "/notes",
     option.Some(body),
     decoder,
+    to_msg,
+  )
+}
+
+pub fn get_me_active_task(
+  to_msg: fn(ApiResult(ActiveTaskPayload)) -> msg,
+) -> Effect(msg) {
+  request(
+    "GET",
+    "/api/v1/me/active-task",
+    option.None,
+    active_task_payload_decoder(),
+    to_msg,
+  )
+}
+
+pub fn start_me_active_task(
+  task_id: Int,
+  to_msg: fn(ApiResult(ActiveTaskPayload)) -> msg,
+) -> Effect(msg) {
+  let body = json.object([#("task_id", json.int(task_id))])
+  request(
+    "POST",
+    "/api/v1/me/active-task/start",
+    option.Some(body),
+    active_task_payload_decoder(),
+    to_msg,
+  )
+}
+
+pub fn pause_me_active_task(
+  to_msg: fn(ApiResult(ActiveTaskPayload)) -> msg,
+) -> Effect(msg) {
+  request(
+    "POST",
+    "/api/v1/me/active-task/pause",
+    option.None,
+    active_task_payload_decoder(),
     to_msg,
   )
 }

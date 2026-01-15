@@ -2,6 +2,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
+import scrumbringer_server/services/now_working_db
 import scrumbringer_server/sql
 
 pub type Task {
@@ -139,6 +140,9 @@ pub fn release_task(
   user_id: Int,
   version: Int,
 ) -> Result(Task, NotFoundOrDbError) {
+  // Best effort: if this task was "now working", clear it before release.
+  let _ = now_working_db.pause_if_matches(db, user_id, task_id)
+
   case sql.tasks_release(db, task_id, user_id, version) {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(task_from_release_row(row))
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
@@ -152,6 +156,9 @@ pub fn complete_task(
   user_id: Int,
   version: Int,
 ) -> Result(Task, NotFoundOrDbError) {
+  // Best effort: if this task was "now working", clear it before complete.
+  let _ = now_working_db.pause_if_matches(db, user_id, task_id)
+
   case sql.tasks_complete(db, task_id, user_id, version) {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(task_from_complete_row(row))
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)

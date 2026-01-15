@@ -1,51 +1,46 @@
 schema: 1
 story: '2.7'
 story_title: 'Client routing + deep links (Caddy SPA fallback + router/hydration)'
-gate: CONCERNS
-status_reason: 'Arquitectura de router/hydration y unit tests OK; falta evidencia automatizada (o checklist manual) para refresh/back-forward y para el comportamiento de Caddy SPA fallback.'
+gate: PASS
+status_reason: 'All browser smoke scenarios now PASS (including pushState vs replaceState) with Playwright screenshots; router canonicalizes invalid project via replaceState.'
 reviewer: 'Quinn (Test Architect)'
-updated: '2026-01-14T17:44:48Z'
+updated: '2026-01-15T11:35:50Z'
 
-top_issues:
-  - id: 'TEST-001'
-    severity: medium
-    finding: 'No hay test de integración/E2E que valide F5 (refresh) y Back/Forward con `popstate` sobre URLs canónicas.'
-    suggested_action: 'Añadir un smoke test (manual documentado o automatizado si hay tooling) para `/admin/members?project=2` y navegación back/forward.'
-    suggested_owner: 'dev'
-  - id: 'DOC-001'
-    severity: low
-    finding: 'La story menciona `/api/*`, pero el Caddy config de referencia proxy-ea `/api/v1/*`.'
-    suggested_action: 'Actualizar AC2 y tasks en la story para reflejar `/api/v1/*` (alineado a la API actual).'
-    suggested_owner: 'sm'
+top_issues: []
 
 waiver: { active: false }
 
-quality_score: 80
-expires: '2026-01-28T17:44:49Z'
+quality_score: 100
+expires: '2026-01-29T11:35:50Z'
 
 evidence:
-  tests_reviewed: 2
+  tests_reviewed: 5
   risks_identified: 4
   trace:
-    ac_covered: [3, 7, 8, 9, 10]
-    ac_gaps: [1, 2, 4, 5, 6]
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    ac_gaps: []
 
 nfr_validation:
   _assessed: [security, performance, reliability, maintainability]
   security:
     status: PASS
-    notes: 'Sin cambios en auth; parseo de URL simple y sin interpolación peligrosa en HTML.'
+    notes: 'No auth surface change; URL parsing is simple and not used for dangerous interpolation.'
   performance:
     status: PASS
-    notes: 'Planner evita fetch redundante vía estados Loading/Loaded; History API es local.'
+    notes: 'Hydration planner uses Loading/Loaded guards; no performance regressions observed in smoke.'
   reliability:
-    status: CONCERNS
-    notes: 'Comportamiento browser-level (refresh/back-forward) no cubierto por tests; dependerá de smoke manual.'
+    status: PASS
+    notes: 'History API behavior validated: user navigation uses pushState; normalization/redirect uses replaceState (Scenario 2 PASS).'
   maintainability:
     status: PASS
-    notes: 'Router/hydration extraídos a módulos; main module sigue grande pero con responsabilidades más claras.'
+    notes: 'Router/hydration are well separated and covered by unit tests; browser smoke is documented.'
 
 trace_refs:
   risk_profile: 'docs/qa/assessments/2.7-risk-20260114.md'
   nfr_assessment: 'docs/qa/assessments/2.7-nfr-20260114.md'
   trace_matrix: 'docs/qa/assessments/2.7-trace-20260114.md'
+  smoke: 'docs/qa/assessments/2.7-smoke-20260114.md'
+  browser_smoke: 'docs/qa/assessments/2.7-browser-smoke-20260115.md'
+
+recommendations:
+  immediate: []

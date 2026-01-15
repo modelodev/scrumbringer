@@ -108,12 +108,37 @@ export function days_since_iso(iso) {
   return Math.max(0, Math.floor(diffMs / 86400000))
 }
 
+export function now_ms() {
+  return Date.now()
+}
+
+export function parse_iso_ms(iso) {
+  const parsed = Date.parse(String(iso || ""))
+  if (!Number.isFinite(parsed)) return 0
+  return Math.floor(parsed)
+}
+
+export function is_mobile() {
+  if (typeof window === "undefined") return false
+  const width = Number(window.innerWidth || 0)
+  return width > 0 && width <= 640
+}
+
 export function element_client_offset(id) {
   if (typeof document === "undefined") return [0, 0]
   const el = document.getElementById(id)
   if (!el) return [0, 0]
   const rect = el.getBoundingClientRect()
   return [Math.round(rect.left), Math.round(rect.top)]
+}
+
+export function input_value(id) {
+  if (typeof document === "undefined") return ""
+  const el = document.getElementById(String(id))
+  if (!el) return ""
+  // input/textarea elements
+  const value = el.value
+  return value == null ? "" : String(value)
 }
 
 export function location_origin() {

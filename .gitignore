@@ -20,6 +20,11 @@ apps/**/.env
 apps/**/.lustre/
 apps/**/dist/
 
+# Track custom HTML entrypoint (AC12 no-flash)
+!apps/client/dist/
+apps/client/dist/*.js
+!apps/client/dist/index.html
+
 # Local reverse proxy config
 caddyfile
 Caddyfile
@@ -33,3 +38,17 @@ capturas/
 # Gleam build output (generated)
 apps/**/build/
 packages/**/build/
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+
+# Playwright scaffolding (not used in this repo)
+package.json
+package-lock.json
+playwright.config.ts
+tests/

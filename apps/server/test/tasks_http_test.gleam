@@ -4,6 +4,7 @@ import gleam/http
 import gleam/http/request
 import gleam/json
 import gleam/list
+import gleam/option
 import gleam/result
 import gleam/string
 import gleeunit/should
@@ -836,6 +837,253 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
     )
 
   complete_other_res.status |> should.equal(403)
+}
+
+pub fn me_active_task_start_pause_and_persist_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  let task_id =
+    create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+
+  claim_task(handler, session, csrf, task_id, 1) |> should.equal(200)
+
+  let start_body =
+    simulate.read_body(start_active_task(handler, session, csrf, task_id))
+
+  decode_active_task_id(start_body) |> should.equal(option.Some(task_id))
+  is_iso8601_utc(decode_as_of(start_body)) |> should.equal(True)
+
+  let get_res = get_active_task(handler, session, csrf)
+  get_res.status |> should.equal(200)
+  decode_active_task_id(simulate.read_body(get_res))
+  |> should.equal(option.Some(task_id))
+
+  let pause_res = pause_active_task(handler, session, csrf)
+  pause_res.status |> should.equal(200)
+  decode_active_task_id(simulate.read_body(pause_res))
+  |> should.equal(option.None)
+
+  let get_after_pause = get_active_task(handler, session, csrf)
+  get_after_pause.status |> should.equal(200)
+  decode_active_task_id(simulate.read_body(get_after_pause))
+  |> should.equal(option.None)
+}
+
+pub fn me_active_task_replaces_previous_on_start_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  let t1 = create_task(handler, session, csrf, project_id, "T1", "", 3, type_id)
+  let t2 = create_task(handler, session, csrf, project_id, "T2", "", 3, type_id)
+
+  claim_task(handler, session, csrf, t1, 1) |> should.equal(200)
+  claim_task(handler, session, csrf, t2, 1) |> should.equal(200)
+
+  start_active_task(handler, session, csrf, t1).status |> should.equal(200)
+  let res = start_active_task(handler, session, csrf, t2)
+  res.status |> should.equal(200)
+
+  decode_active_task_id(simulate.read_body(res))
+  |> should.equal(option.Some(t2))
+}
+
+pub fn me_active_task_start_returns_409_when_not_claimed_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  let task_id =
+    create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+
+  let res = start_active_task(handler, session, csrf, task_id)
+  res.status |> should.equal(409)
+  string.contains(simulate.read_body(res), "CONFLICT_CLAIMED")
+  |> should.equal(True)
+}
+
+pub fn me_active_task_clears_before_release_and_complete_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  let task_id =
+    create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+
+  claim_task(handler, session, csrf, task_id, 1) |> should.equal(200)
+  start_active_task(handler, session, csrf, task_id).status |> should.equal(200)
+
+  let version = task_version(db, task_id)
+
+  let release_res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/tasks/" <> int_to_string(task_id) <> "/release",
+      )
+      |> request.set_cookie("sb_session", session)
+      |> request.set_cookie("sb_csrf", csrf)
+      |> request.set_header("X-CSRF", csrf)
+      |> simulate.json_body(json.object([#("version", json.int(version))])),
+    )
+
+  release_res.status |> should.equal(200)
+
+  let active_after_release = get_active_task(handler, session, csrf)
+  decode_active_task_id(simulate.read_body(active_after_release))
+  |> should.equal(option.None)
+
+  // Re-claim + start, then complete.
+  let version = task_version(db, task_id)
+  claim_task(handler, session, csrf, task_id, version) |> should.equal(200)
+  start_active_task(handler, session, csrf, task_id).status |> should.equal(200)
+
+  let version = task_version(db, task_id)
+  complete_task(handler, session, csrf, task_id, version) |> should.equal(200)
+
+  let active_after_complete = get_active_task(handler, session, csrf)
+  decode_active_task_id(simulate.read_body(active_after_complete))
+  |> should.equal(option.None)
+}
+
+fn get_active_task(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+) -> wisp.Response {
+  handler(
+    simulate.request(http.Get, "/api/v1/me/active-task")
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf),
+  )
+}
+
+fn start_active_task(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  task_id: Int,
+) -> wisp.Response {
+  handler(
+    simulate.request(http.Post, "/api/v1/me/active-task/start")
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+    |> simulate.json_body(json.object([#("task_id", json.int(task_id))])),
+  )
+}
+
+fn pause_active_task(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+) -> wisp.Response {
+  handler(
+    simulate.request(http.Post, "/api/v1/me/active-task/pause")
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf),
+  )
+}
+
+fn decode_active_task(body: String) -> #(option.Option(Int), String) {
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+
+  let active_decoder = decode.field("task_id", decode.int, decode.success)
+
+  let data_decoder = {
+    use active_task <- decode.field(
+      "active_task",
+      decode.optional(active_decoder),
+    )
+    use as_of <- decode.field("as_of", decode.string)
+    decode.success(#(active_task, as_of))
+  }
+
+  let response_decoder = decode.field("data", data_decoder, decode.success)
+
+  let assert Ok(payload) = decode.run(dynamic, response_decoder)
+  payload
+}
+
+fn decode_active_task_id(body: String) -> option.Option(Int) {
+  let #(active_task, _) = decode_active_task(body)
+  active_task
+}
+
+fn decode_as_of(body: String) -> String {
+  let #(_, as_of) = decode_active_task(body)
+  as_of
+}
+
+fn is_iso8601_utc(value: String) -> Bool {
+  string.contains(value, "T") && string.ends_with(value, "Z")
 }
 
 fn task_claimed_by(db: pog.Connection, task_id: Int) -> Int {

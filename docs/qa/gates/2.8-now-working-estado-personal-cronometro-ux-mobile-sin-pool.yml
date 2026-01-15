@@ -1,0 +1,45 @@
+schema: 1
+story: '2.8'
+story_title: 'Now Working (estado personal + cronómetro + UX mobile sin Pool)'
+gate: PASS
+status_reason: 'Re-verified on 2026-01-15: make verify + apps/client gleam test pass; no new issues detected.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-01-15T10:33:53Z'
+
+top_issues: []
+
+waiver:
+  active: false
+
+quality_score: 100
+expires: '2026-01-29T10:33:53Z'
+
+evidence:
+  tests_reviewed: 7
+  risks_identified: 1
+  trace:
+    ac_covered: [2, 3, 4, 5, 6, 7, 9, 10, 11]
+    ac_gaps: [1, 8]
+  references:
+    - 'docs/stories/2.8.now-working-personal-timer.md'
+
+nfr_validation:
+  _assessed: [security, performance, reliability, maintainability]
+  security:
+    status: PASS
+    notes: 'Endpoints require authentication; POST endpoints enforce double-submit CSRF.'
+  performance:
+    status: PASS
+    notes: 'Tick is scheduled on active_task transitions and runs only while active.'
+  reliability:
+    status: PASS
+    notes: 'Server enforces claim precondition for start (409); clear-before-release/complete is best-effort and covered by tests.'
+  maintainability:
+    status: PASS
+    notes: 'Now Working logic is somewhat centralized, but remains readable; future modularization is optional.'
+
+recommendations:
+  immediate: []
+  future:
+    - action: 'Consider isolating Now Working UI/state if it grows'
+      refs: ['apps/client/src/scrumbringer_client.gleam']

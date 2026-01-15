@@ -7,6 +7,7 @@ import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/capabilities
+import scrumbringer_server/http/me_active_task
 import scrumbringer_server/http/org_invite_links
 import scrumbringer_server/http/org_invites
 import scrumbringer_server/http/org_users
@@ -139,6 +140,12 @@ fn handle_request(req: wisp.Request, app: App) -> wisp.Response {
       task_positions.handle_me_task_positions(req, auth_ctx(app))
     ["api", "v1", "me", "task-positions", task_id] ->
       task_positions.handle_me_task_position(req, auth_ctx(app), task_id)
+    ["api", "v1", "me", "active-task"] ->
+      me_active_task.handle_me_active_task(req, auth_ctx(app))
+    ["api", "v1", "me", "active-task", "start"] ->
+      me_active_task.handle_me_active_task_start(req, auth_ctx(app))
+    ["api", "v1", "me", "active-task", "pause"] ->
+      me_active_task.handle_me_active_task_pause(req, auth_ctx(app))
     ["api", "v1", "health"] -> api.ok(json.object([#("ok", json.bool(True))]))
     _ -> wisp.not_found()
   }

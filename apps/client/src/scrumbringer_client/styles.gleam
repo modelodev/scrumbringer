@@ -58,6 +58,13 @@ pub fn base_css() -> String {
     ".skills-list { display: flex; flex-direction: column; gap: 6px; }",
     ".skill-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border: 1px solid var(--sb-border); border-radius: 12px; background: var(--sb-elevated); }",
     ".skill-name { font-weight: 600; }",
+    ".now-working { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 12px; padding: 10px 12px; }",
+    ".now-working-title { font-weight: 700; }",
+    ".now-working-timer { font-variant-numeric: tabular-nums; color: var(--sb-muted); }",
+    ".now-working-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }",
+    ".now-working-empty { color: var(--sb-muted); }",
+    ".now-working-error { color: var(--sb-danger); }",
+    "@media (max-width: 640px) { .body { flex-direction: column; } .nav { width: 100%; } }",
   ]
   |> string.join("\n")
 }

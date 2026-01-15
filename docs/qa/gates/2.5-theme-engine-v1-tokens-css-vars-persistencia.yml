@@ -1,34 +1,34 @@
 schema: 1
 story: '2.5'
 story_title: 'Theme engine v1 (tokens + CSS vars + persistencia)'
-gate: CONCERNS
-status_reason: 'Implementación y tests unitarios OK, pero faltan validaciones manuales de contraste/estados y hay riesgo de flash pre-mount en tema persistido.'
+gate: PASS
+status_reason: 'Nueva evidencia Playwright cubre AC12 (no-flash) y valida AC13 en default+dark; quedan checks puntuales no ejercidos (mensajes de estado y modales) recomendados para seguimiento sin bloquear el MVP.'
 reviewer: 'Quinn (Test Architect)'
-updated: '2026-01-14T15:22:53Z'
+updated: '2026-01-15T11:23:26Z'
 
 top_issues:
-  - id: 'UX-001'
-    severity: medium
-    finding: 'Checklist visual (AC13) aún no verificado en default+dark (contraste, focus ring, hover/disabled, modales/overlay).'
-    suggested_action: 'Completar el checklist visual manual y ajustar tokens/estilos si aparece algún P0 (especialmente links y focus ring).'
-    suggested_owner: 'dev'
-  - id: 'UX-002'
-    severity: medium
-    finding: 'Posible “flash” perceptible antes de que Lustre aplique el tema persistido (AC12), dependiendo del navegador/red.'
-    suggested_action: 'Si se observa flash, aplicar el tema antes del mount (p.ej. inline pre-hydration o early CSS injection) manteniendo tokens en CSS vars.'
-    suggested_owner: 'dev'
+  - id: 'UX-004'
+    severity: low
+    finding: 'Mensajes de estado (danger/warning/success/info) no fueron explícitamente ejercidos en la evidencia Playwright para verificar legibilidad en surface/elevated.'
+    suggested_action: 'Agregar 1-2 screenshots dirigidos donde se disparen mensajes de estado en ambos temas y confirmar contraste/legibilidad.'
+    suggested_owner: 'po'
+  - id: 'UX-005'
+    severity: low
+    finding: 'Diálogos/modales/overlay (si existen) no fueron explícitamente ejercidos en la evidencia Playwright.'
+    suggested_action: 'Si existen modales en el producto, capturar evidencia con overlay + focus visible en default y dark; si no existen, marcar N/A en el checklist.'
+    suggested_owner: 'po'
 
 waiver: { active: false }
 
-quality_score: 80
-expires: '2026-01-28T15:22:53Z'
+quality_score: 90
+expires: '2026-01-29T11:23:26Z'
 
 evidence:
-  tests_reviewed: 1
+  tests_reviewed: 48
   risks_identified: 3
   trace:
-    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-    ac_gaps: [11, 12, 13]
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+    ac_gaps: []
 
 nfr_validation:
   _assessed: [security, performance, reliability, maintainability]
@@ -49,3 +49,4 @@ trace_refs:
   risk_profile: 'docs/qa/assessments/2.5-risk-20260114.md'
   nfr_assessment: 'docs/qa/assessments/2.5-nfr-20260114.md'
   trace_matrix: 'docs/qa/assessments/2.5-trace-20260114.md'
+  visual_checklist: 'docs/qa/assessments/2.5-visual-checklist-20260115.md'

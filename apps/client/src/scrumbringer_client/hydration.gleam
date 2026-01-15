@@ -32,6 +32,7 @@ pub type Snapshot {
     task_types: ResourceState,
     task_types_project_id: Option(Int),
     member_tasks: ResourceState,
+    active_task: ResourceState,
   )
 }
 
@@ -45,6 +46,7 @@ pub type Command {
   FetchMembers(project_id: Int)
   FetchTaskTypes(project_id: Int)
   RefreshMember
+  FetchActiveTask
   Redirect(to: router.Route)
 }
 
@@ -61,6 +63,7 @@ pub fn plan(route: router.Route, snapshot: Snapshot) -> List(Command) {
     task_types: task_types,
     task_types_project_id: task_types_project_id,
     member_tasks: member_tasks,
+    active_task: active_task,
   ) = snapshot
 
   case route {
@@ -158,6 +161,11 @@ pub fn plan(route: router.Route, snapshot: Snapshot) -> List(Command) {
 
           let base = case my_capability_ids {
             NotAsked | Failed -> list.append(base, [FetchMeCapabilityIds])
+            _ -> base
+          }
+
+          let base = case active_task {
+            NotAsked | Failed -> list.append(base, [FetchActiveTask])
             _ -> base
           }
 

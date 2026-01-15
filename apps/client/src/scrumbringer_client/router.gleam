@@ -21,15 +21,32 @@ pub type ParseResult {
 
 pub fn parse(pathname: String, search: String, hash: String) -> ParseResult {
   // Legacy support: old hash routing `/?project=2#/admin/members`.
-  case pathname == "/" {
-    True -> {
-      case parse_legacy_hash(hash, search) {
-        Some(route) -> Redirect(route)
-        None -> Parsed(parse_pathname(pathname, search))
-      }
-    }
+  let legacy = case pathname == "/" {
+    True -> parse_legacy_hash(hash, search)
+    False -> None
+  }
 
-    False -> Parsed(parse_pathname(pathname, search))
+  let route = case legacy {
+    Some(route) -> route
+    None -> parse_pathname(pathname, search)
+  }
+
+  // Normalize invalid `project=` query values by removing them (replaceState).
+  case legacy != None || has_invalid_project(search) {
+    True -> Redirect(route)
+    False -> Parsed(route)
+  }
+}
+
+fn has_invalid_project(search: String) -> Bool {
+  case query_param(search, "project") {
+    None -> False
+
+    Some(raw) ->
+      case int.parse(raw) {
+        Ok(_) -> False
+        Error(_) -> True
+      }
   }
 }
 
@@ -193,5 +210,28 @@ fn admin_section_slug(section: permissions.AdminSection) -> String {
     permissions.Members -> "members"
     permissions.Capabilities -> "capabilities"
     permissions.TaskTypes -> "task-types"
+  }
+}
+
+pub fn apply_mobile_rules(result: ParseResult, is_mobile: Bool) -> ParseResult {
+  case is_mobile {
+    False -> result
+
+    True ->
+      case result {
+        Parsed(route) ->
+          case route {
+            Member(member_section.Pool, project_id) ->
+              Redirect(Member(member_section.MyBar, project_id))
+            _ -> Parsed(route)
+          }
+
+        Redirect(route) ->
+          case route {
+            Member(member_section.Pool, project_id) ->
+              Redirect(Member(member_section.MyBar, project_id))
+            _ -> Redirect(route)
+          }
+      }
   }
 }
