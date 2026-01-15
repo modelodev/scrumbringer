@@ -1,0 +1,56 @@
+schema: 1
+story: '2.6'
+story_title: 'Métricas v1 (event log + Mi panel + Admin overview)'
+gate: CONCERNS
+status_reason: 'Time-to-first-claim is computed from user created_at rather than first successful login; clarify KPI source event or adjust definition.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-01-15T00:00:00Z'
+
+top_issues:
+  - id: 'REQ-001'
+    severity: medium
+    finding: 'AC5 defines time_to_first_claim as first successful login → first claim, but current SQL uses users.created_at → first claim.'
+    suggested_action: 'Either (a) log first successful login timestamp and compute from that, or (b) update KPI definition to use account creation explicitly.'
+    suggested_owner: 'po'
+
+waiver:
+  active: false
+
+quality_score: 90
+expires: '2026-01-29T00:00:00Z'
+
+evidence:
+  tests_reviewed:
+    server: 'make verify (65 tests)'
+    client: 'apps/client: gleam test (55 tests)'
+  endpoints:
+    - 'GET /api/v1/me/metrics'
+    - 'GET /api/v1/org/metrics/overview'
+    - 'GET /api/v1/org/metrics/projects/:project_id/tasks'
+
+nfr_validation:
+  _assessed: [security, performance, reliability, maintainability]
+  security:
+    status: PASS
+    notes: 'Org overview and drill-down are org-admin only; project drill-down verifies project belongs to org.'
+  performance:
+    status: PASS
+    notes: 'Queries are bounded by window_days and supported by (org_id, created_at) / (actor_user_id, created_at) indexes.'
+  reliability:
+    status: PASS
+    notes: 'Event emission is transactional with task mutations; endpoints validated by tests.'
+  maintainability:
+    status: PASS
+    notes: 'Dedicated handlers + SQL queries; tests added for event emission, authz, and drill-down shape.'
+
+recommendations:
+  immediate:
+    - action: 'Clarify/align time_to_first_claim KPI definition (login vs created_at)'
+      refs:
+        - 'apps/server/src/scrumbringer_server/sql/metrics_time_to_first_claim_p50_ms.sql'
+        - 'apps/server/src/scrumbringer_server/sql/metrics_time_to_first_claim_buckets.sql'
+        - 'docs/stories/2.6.metrics-v1.md'
+  future:
+    - action: 'Consider exposing window_days in UI (currently hardcoded to 30)'
+      refs:
+        - 'apps/client/src/scrumbringer_client.gleam'
