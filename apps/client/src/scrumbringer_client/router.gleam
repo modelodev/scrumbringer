@@ -194,6 +194,7 @@ fn admin_section_from_slug(slug: String) -> permissions.AdminSection {
   case slug {
     "org-settings" -> permissions.OrgSettings
     "projects" -> permissions.Projects
+    "metrics" -> permissions.Metrics
     "members" -> permissions.Members
     "capabilities" -> permissions.Capabilities
     "task-types" -> permissions.TaskTypes
@@ -207,6 +208,7 @@ fn admin_section_slug(section: permissions.AdminSection) -> String {
     permissions.Invites -> "invites"
     permissions.OrgSettings -> "org-settings"
     permissions.Projects -> "projects"
+    permissions.Metrics -> "metrics"
     permissions.Members -> "members"
     permissions.Capabilities -> "capabilities"
     permissions.TaskTypes -> "task-types"

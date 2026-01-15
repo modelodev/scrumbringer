@@ -134,6 +134,507 @@ order by name asc;
   |> pog.execute(db)
 }
 
+/// A row you get from running the `metrics_my` query
+/// defined in `./src/scrumbringer_server/sql/metrics_my.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type MetricsMyRow {
+  MetricsMyRow(claimed_count: Int, released_count: Int, completed_count: Int)
+}
+
+/// name: metrics_my
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn metrics_my(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: String,
+) -> Result(pog.Returned(MetricsMyRow), pog.QueryError) {
+  let decoder = {
+    use claimed_count <- decode.field(0, decode.int)
+    use released_count <- decode.field(1, decode.int)
+    use completed_count <- decode.field(2, decode.int)
+    decode.success(MetricsMyRow(
+      claimed_count:,
+      released_count:,
+      completed_count:,
+    ))
+  }
+
+  "-- name: metrics_my
+select
+  coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
+  coalesce(sum(case when event_type = 'task_released' then 1 else 0 end), 0) as released_count,
+  coalesce(sum(case when event_type = 'task_completed' then 1 else 0 end), 0) as completed_count
+from task_events
+where actor_user_id = $1
+  and created_at >= now() - ($2 || ' days')::interval;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `metrics_org_overview` query
+/// defined in `./src/scrumbringer_server/sql/metrics_org_overview.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type MetricsOrgOverviewRow {
+  MetricsOrgOverviewRow(
+    claimed_count: Int,
+    released_count: Int,
+    completed_count: Int,
+  )
+}
+
+/// name: metrics_org_overview
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn metrics_org_overview(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: String,
+) -> Result(pog.Returned(MetricsOrgOverviewRow), pog.QueryError) {
+  let decoder = {
+    use claimed_count <- decode.field(0, decode.int)
+    use released_count <- decode.field(1, decode.int)
+    use completed_count <- decode.field(2, decode.int)
+    decode.success(MetricsOrgOverviewRow(
+      claimed_count:,
+      released_count:,
+      completed_count:,
+    ))
+  }
+
+  "-- name: metrics_org_overview
+select
+  coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
+  coalesce(sum(case when event_type = 'task_released' then 1 else 0 end), 0) as released_count,
+  coalesce(sum(case when event_type = 'task_completed' then 1 else 0 end), 0) as completed_count
+from task_events
+where org_id = $1
+  and created_at >= now() - ($2 || ' days')::interval;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `metrics_org_overview_by_project` query
+/// defined in `./src/scrumbringer_server/sql/metrics_org_overview_by_project.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type MetricsOrgOverviewByProjectRow {
+  MetricsOrgOverviewByProjectRow(
+    project_id: Int,
+    project_name: String,
+    claimed_count: Int,
+    released_count: Int,
+    completed_count: Int,
+  )
+}
+
+/// name: metrics_org_overview_by_project
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn metrics_org_overview_by_project(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: String,
+) -> Result(pog.Returned(MetricsOrgOverviewByProjectRow), pog.QueryError) {
+  let decoder = {
+    use project_id <- decode.field(0, decode.int)
+    use project_name <- decode.field(1, decode.string)
+    use claimed_count <- decode.field(2, decode.int)
+    use released_count <- decode.field(3, decode.int)
+    use completed_count <- decode.field(4, decode.int)
+    decode.success(MetricsOrgOverviewByProjectRow(
+      project_id:,
+      project_name:,
+      claimed_count:,
+      released_count:,
+      completed_count:,
+    ))
+  }
+
+  "-- name: metrics_org_overview_by_project
+select
+  p.id as project_id,
+  p.name as project_name,
+  coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
+  coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as released_count,
+  coalesce(sum(case when e.event_type = 'task_completed' then 1 else 0 end), 0) as completed_count
+from projects p
+left join task_events e
+  on e.project_id = p.id
+  and e.created_at >= now() - ($2 || ' days')::interval
+where p.org_id = $1
+group by p.id, p.name
+order by p.name asc;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `metrics_project_tasks` query
+/// defined in `./src/scrumbringer_server/sql/metrics_project_tasks.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type MetricsProjectTasksRow {
+  MetricsProjectTasksRow(
+    id: Int,
+    project_id: Int,
+    type_id: Int,
+    title: String,
+    description: String,
+    priority: Int,
+    status: String,
+    created_by: Int,
+    claimed_by: Int,
+    claimed_at: String,
+    completed_at: String,
+    created_at: String,
+    version: Int,
+    claim_count: Int,
+    release_count: Int,
+    complete_count: Int,
+    first_claim_at: String,
+  )
+}
+
+/// name: metrics_project_tasks
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn metrics_project_tasks(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: String,
+) -> Result(pog.Returned(MetricsProjectTasksRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use project_id <- decode.field(1, decode.int)
+    use type_id <- decode.field(2, decode.int)
+    use title <- decode.field(3, decode.string)
+    use description <- decode.field(4, decode.string)
+    use priority <- decode.field(5, decode.int)
+    use status <- decode.field(6, decode.string)
+    use created_by <- decode.field(7, decode.int)
+    use claimed_by <- decode.field(8, decode.int)
+    use claimed_at <- decode.field(9, decode.string)
+    use completed_at <- decode.field(10, decode.string)
+    use created_at <- decode.field(11, decode.string)
+    use version <- decode.field(12, decode.int)
+    use claim_count <- decode.field(13, decode.int)
+    use release_count <- decode.field(14, decode.int)
+    use complete_count <- decode.field(15, decode.int)
+    use first_claim_at <- decode.field(16, decode.string)
+    decode.success(MetricsProjectTasksRow(
+      id:,
+      project_id:,
+      type_id:,
+      title:,
+      description:,
+      priority:,
+      status:,
+      created_by:,
+      claimed_by:,
+      claimed_at:,
+      completed_at:,
+      created_at:,
+      version:,
+      claim_count:,
+      release_count:,
+      complete_count:,
+      first_claim_at:,
+    ))
+  }
+
+  "-- name: metrics_project_tasks
+with task_scope as (
+  select
+    t.id,
+    t.project_id,
+    t.type_id,
+    t.title,
+    coalesce(t.description, '') as description,
+    t.priority,
+    t.status,
+    t.created_by,
+    coalesce(t.claimed_by, 0) as claimed_by,
+    coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
+    coalesce(to_char(t.completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    t.version
+  from tasks t
+  where t.project_id = $1
+), event_counts as (
+  select
+    e.task_id,
+    coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claim_count,
+    coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as release_count,
+    coalesce(sum(case when e.event_type = 'task_completed' then 1 else 0 end), 0) as complete_count,
+    coalesce(min(case when e.event_type = 'task_claimed' then e.created_at else null end), null) as first_claim_at
+  from task_events e
+  where e.project_id = $1
+    and e.created_at >= now() - ($2 || ' days')::interval
+  group by e.task_id
+)
+select
+  ts.id,
+  ts.project_id,
+  ts.type_id,
+  ts.title,
+  ts.description,
+  ts.priority,
+  ts.status,
+  ts.created_by,
+  ts.claimed_by,
+  ts.claimed_at,
+  ts.completed_at,
+  ts.created_at,
+  ts.version,
+  coalesce(ec.claim_count, 0) as claim_count,
+  coalesce(ec.release_count, 0) as release_count,
+  coalesce(ec.complete_count, 0) as complete_count,
+  coalesce(to_char(ec.first_claim_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as first_claim_at
+from task_scope ts
+left join event_counts ec on ec.task_id = ts.id
+order by ts.created_at desc;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `metrics_release_rate_buckets` query
+/// defined in `./src/scrumbringer_server/sql/metrics_release_rate_buckets.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type MetricsReleaseRateBucketsRow {
+  MetricsReleaseRateBucketsRow(bucket: String, count: Int)
+}
+
+/// name: metrics_release_rate_buckets
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn metrics_release_rate_buckets(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: String,
+) -> Result(pog.Returned(MetricsReleaseRateBucketsRow), pog.QueryError) {
+  let decoder = {
+    use bucket <- decode.field(0, decode.string)
+    use count <- decode.field(1, decode.int)
+    decode.success(MetricsReleaseRateBucketsRow(bucket:, count:))
+  }
+
+  "-- name: metrics_release_rate_buckets
+with per_user as (
+  select
+    actor_user_id,
+    coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claims,
+    coalesce(sum(case when event_type = 'task_released' then 1 else 0 end), 0) as releases
+  from task_events
+  where org_id = $1
+    and created_at >= now() - ($2 || ' days')::interval
+  group by actor_user_id
+), rates as (
+  select
+    actor_user_id,
+    case
+      when claims = 0 then null
+      else releases::numeric / claims::numeric
+    end as rate
+  from per_user
+)
+select bucket, count::int as count
+from (
+  select
+    case
+      when rate is null then 'no-claims'
+      when rate = 0 then '0%'
+      when rate <= 0.15 then '0-15%'
+      when rate <= 0.50 then '15-50%'
+      else '>50%'
+    end as bucket,
+    case
+      when rate is null then 5
+      when rate = 0 then 1
+      when rate <= 0.15 then 2
+      when rate <= 0.50 then 3
+      else 4
+    end as sort_key,
+    count(*) as count
+  from rates
+  group by bucket, sort_key
+) b
+order by sort_key;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `metrics_time_to_first_claim_buckets` query
+/// defined in `./src/scrumbringer_server/sql/metrics_time_to_first_claim_buckets.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type MetricsTimeToFirstClaimBucketsRow {
+  MetricsTimeToFirstClaimBucketsRow(bucket: String, count: Int)
+}
+
+/// name: metrics_time_to_first_claim_buckets
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn metrics_time_to_first_claim_buckets(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: String,
+) -> Result(pog.Returned(MetricsTimeToFirstClaimBucketsRow), pog.QueryError) {
+  let decoder = {
+    use bucket <- decode.field(0, decode.string)
+    use count <- decode.field(1, decode.int)
+    decode.success(MetricsTimeToFirstClaimBucketsRow(bucket:, count:))
+  }
+
+  "-- name: metrics_time_to_first_claim_buckets
+with first_claim as (
+  select
+    actor_user_id,
+    min(created_at) as first_claim_at
+  from task_events
+  where org_id = $1
+    and event_type = 'task_claimed'
+    and created_at >= now() - ($2 || ' days')::interval
+  group by actor_user_id
+), deltas as (
+  select
+    u.id as user_id,
+    extract(epoch from (fc.first_claim_at - u.created_at)) * 1000 as delta_ms
+  from first_claim fc
+  join users u on u.id = fc.actor_user_id
+),
+buckets as (
+  select
+    case
+      when delta_ms <= 3600000 then '0-1h'
+      when delta_ms <= 14400000 then '1-4h'
+      when delta_ms <= 86400000 then '4-24h'
+      else '>24h'
+    end as bucket,
+    case
+      when delta_ms <= 3600000 then 1
+      when delta_ms <= 14400000 then 2
+      when delta_ms <= 86400000 then 3
+      else 4
+    end as sort_key
+  from deltas
+)
+select bucket, count(*)::int as count
+from buckets
+group by bucket, sort_key
+order by sort_key;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `metrics_time_to_first_claim_p50_ms` query
+/// defined in `./src/scrumbringer_server/sql/metrics_time_to_first_claim_p50_ms.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type MetricsTimeToFirstClaimP50MsRow {
+  MetricsTimeToFirstClaimP50MsRow(p50_ms: Int, sample_size: Int)
+}
+
+/// name: metrics_time_to_first_claim_p50_ms
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn metrics_time_to_first_claim_p50_ms(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: String,
+) -> Result(pog.Returned(MetricsTimeToFirstClaimP50MsRow), pog.QueryError) {
+  let decoder = {
+    use p50_ms <- decode.field(0, decode.int)
+    use sample_size <- decode.field(1, decode.int)
+    decode.success(MetricsTimeToFirstClaimP50MsRow(p50_ms:, sample_size:))
+  }
+
+  "-- name: metrics_time_to_first_claim_p50_ms
+with first_claim as (
+  select
+    actor_user_id,
+    min(created_at) as first_claim_at
+  from task_events
+  where org_id = $1
+    and event_type = 'task_claimed'
+    and created_at >= now() - ($2 || ' days')::interval
+  group by actor_user_id
+), deltas as (
+  select
+    extract(epoch from (fc.first_claim_at - u.created_at)) * 1000 as delta_ms
+  from first_claim fc
+  join users u on u.id = fc.actor_user_id
+  where (fc.first_claim_at - u.created_at) >= interval '0 seconds'
+)
+select
+  coalesce(
+    percentile_disc(0.5) within group (order by delta_ms)::bigint,
+    0
+  ) as p50_ms,
+  count(*)::int as sample_size
+from deltas;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `org_invite_links_list` query
 /// defined in `./src/scrumbringer_server/sql/org_invite_links_list.sql`.
 ///
@@ -856,6 +1357,56 @@ where id = $1;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `task_events_insert` query
+/// defined in `./src/scrumbringer_server/sql/task_events_insert.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskEventsInsertRow {
+  TaskEventsInsertRow(id: Int)
+}
+
+/// name: task_events_insert
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_events_insert(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Int,
+  arg_4: Int,
+  arg_5: String,
+) -> Result(pog.Returned(TaskEventsInsertRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(TaskEventsInsertRow(id:))
+  }
+
+  "-- name: task_events_insert
+insert into task_events (
+  org_id,
+  project_id,
+  task_id,
+  actor_user_id,
+  event_type,
+  created_at
+)
+values ($1, $2, $3, $4, $5, now())
+returning id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.parameter(pog.int(arg_4))
+  |> pog.parameter(pog.text(arg_5))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

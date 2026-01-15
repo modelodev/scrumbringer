@@ -9,6 +9,7 @@ pub type AdminSection {
   Invites
   OrgSettings
   Projects
+  Metrics
   Members
   Capabilities
   TaskTypes
@@ -40,7 +41,7 @@ pub fn can_access_section(
   let any_admin = any_project_admin(projects)
 
   case section {
-    Invites | OrgSettings | Projects | Capabilities -> org_admin
+    Invites | OrgSettings | Projects | Capabilities | Metrics -> org_admin
 
     Members | TaskTypes -> {
       case selected_project {
@@ -62,11 +63,12 @@ pub fn visible_sections(
       Invites,
       OrgSettings,
       Projects,
+      Metrics,
       Members,
       Capabilities,
       TaskTypes,
     ]
-    True, False -> [Invites, OrgSettings, Projects, Capabilities]
+    True, False -> [Invites, OrgSettings, Projects, Metrics, Capabilities]
     False, True -> [Members, TaskTypes]
     False, False -> []
   }

@@ -439,6 +439,224 @@ pub fn claim_conflict_version_conflict_and_state_machine_test() {
   |> should.be_true
 }
 
+pub fn task_events_persist_for_lifecycle_actions_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  let admin_id =
+    single_int(db, "select id from users where email = 'admin@example.com'", [])
+
+  let task_id =
+    create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+
+  count_task_events(db, task_id, "task_created") |> should.equal(1)
+  count_task_events_for_actor(db, task_id, admin_id, "task_created")
+  |> should.equal(1)
+
+  claim_task(handler, session, csrf, task_id, 1) |> should.equal(200)
+  count_task_events(db, task_id, "task_claimed") |> should.equal(1)
+
+  release_task(handler, session, csrf, task_id, 2) |> should.equal(200)
+  count_task_events(db, task_id, "task_released") |> should.equal(1)
+
+  claim_task(handler, session, csrf, task_id, 3) |> should.equal(200)
+  complete_task(handler, session, csrf, task_id, 4) |> should.equal(200)
+  count_task_events(db, task_id, "task_completed") |> should.equal(1)
+}
+
+pub fn me_metrics_returns_counts_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  let task_id =
+    create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+
+  claim_task(handler, session, csrf, task_id, 1) |> should.equal(200)
+  complete_task(handler, session, csrf, task_id, 2) |> should.equal(200)
+
+  let req =
+    simulate.request(http.Get, "/api/v1/me/metrics?window_days=30")
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+
+  let res = handler(req)
+  res.status |> should.equal(200)
+
+  let body = simulate.read_body(res)
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+
+  let metrics_decoder = {
+    use claimed_count <- decode.field("claimed_count", decode.int)
+    use released_count <- decode.field("released_count", decode.int)
+    use completed_count <- decode.field("completed_count", decode.int)
+    decode.success(#(claimed_count, released_count, completed_count))
+  }
+
+  let data_decoder = {
+    use metrics <- decode.field("metrics", metrics_decoder)
+    decode.success(metrics)
+  }
+
+  let response_decoder = decode.field("data", data_decoder, decode.success)
+
+  let assert Ok(#(claimed, released, completed)) =
+    decode.run(dynamic, response_decoder)
+
+  claimed |> should.equal(1)
+  released |> should.equal(0)
+  completed |> should.equal(1)
+}
+
+pub fn org_metrics_overview_requires_org_admin_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_member_user(handler, db, "member@example.com", "inv_member")
+
+  let member_login_res =
+    login_as(handler, "member@example.com", "passwordpassword")
+  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
+  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
+
+  // member is authenticated but not org admin
+  let req =
+    simulate.request(http.Get, "/api/v1/org/metrics/overview")
+    |> request.set_cookie("sb_session", member_session)
+    |> request.set_cookie("sb_csrf", member_csrf)
+
+  let res = handler(req)
+  res.status |> should.equal(403)
+
+  // admin succeeds
+  let admin_req =
+    simulate.request(http.Get, "/api/v1/org/metrics/overview")
+    |> request.set_cookie("sb_session", admin_session)
+    |> request.set_cookie("sb_csrf", admin_csrf)
+
+  let admin_res = handler(admin_req)
+  admin_res.status |> should.equal(200)
+}
+
+pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  let task_id =
+    create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+
+  claim_task(handler, session, csrf, task_id, 1) |> should.equal(200)
+
+  let req =
+    simulate.request(
+      http.Get,
+      "/api/v1/org/metrics/projects/" <> int_to_string(project_id) <> "/tasks",
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+
+  let res = handler(req)
+  res.status |> should.equal(200)
+
+  let body = simulate.read_body(res)
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+
+  let task_decoder = {
+    use id <- decode.field("id", decode.int)
+    use claim_count <- decode.field("claim_count", decode.int)
+    use release_count <- decode.field("release_count", decode.int)
+    use complete_count <- decode.field("complete_count", decode.int)
+    use first_claim_at <- decode.field(
+      "first_claim_at",
+      decode.optional(decode.string),
+    )
+    decode.success(#(
+      id,
+      claim_count,
+      release_count,
+      complete_count,
+      first_claim_at,
+    ))
+  }
+
+  let data_decoder = {
+    use tasks <- decode.field("tasks", decode.list(task_decoder))
+    decode.success(tasks)
+  }
+
+  let response_decoder = decode.field("data", data_decoder, decode.success)
+
+  let assert Ok(tasks) = decode.run(dynamic, response_decoder)
+
+  case tasks {
+    [#(id, claim_count, release_count, complete_count, first_claim_at), ..] -> {
+      id |> should.equal(task_id)
+      claim_count |> should.equal(1)
+      release_count |> should.equal(0)
+      complete_count |> should.equal(0)
+      let _ = first_claim_at |> should.be_some
+      Nil
+    }
+    _ -> False |> should.be_true
+  }
+}
+
 pub fn tasks_list_requires_membership_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -1096,6 +1314,31 @@ fn task_version(db: pog.Connection, task_id: Int) -> Int {
   single_int(db, "select version from tasks where id = $1", [pog.int(task_id)])
 }
 
+fn count_task_events(
+  db: pog.Connection,
+  task_id: Int,
+  event_type: String,
+) -> Int {
+  single_int(
+    db,
+    "select count(*) from task_events where task_id = $1 and event_type = $2",
+    [pog.int(task_id), pog.text(event_type)],
+  )
+}
+
+fn count_task_events_for_actor(
+  db: pog.Connection,
+  task_id: Int,
+  actor_user_id: Int,
+  event_type: String,
+) -> Int {
+  single_int(
+    db,
+    "select count(*) from task_events where task_id = $1 and actor_user_id = $2 and event_type = $3",
+    [pog.int(task_id), pog.int(actor_user_id), pog.text(event_type)],
+  )
+}
+
 fn claim_task(
   handler: fn(wisp.Request) -> wisp.Response,
   session: String,
@@ -1108,6 +1351,28 @@ fn claim_task(
       simulate.request(
         http.Post,
         "/api/v1/tasks/" <> int_to_string(task_id) <> "/claim",
+      )
+      |> request.set_cookie("sb_session", session)
+      |> request.set_cookie("sb_csrf", csrf)
+      |> request.set_header("X-CSRF", csrf)
+      |> simulate.json_body(json.object([#("version", json.int(version))])),
+    )
+
+  res.status
+}
+
+fn release_task(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  task_id: Int,
+  version: Int,
+) -> Int {
+  let res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/tasks/" <> int_to_string(task_id) <> "/release",
       )
       |> request.set_cookie("sb_session", session)
       |> request.set_cookie("sb_csrf", csrf)

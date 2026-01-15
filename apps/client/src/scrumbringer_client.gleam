@@ -108,6 +108,9 @@ pub opaque type Model {
     members_project_id: opt.Option(Int),
     org_users_cache: Remote(List(api.OrgUser)),
     org_settings_users: Remote(List(api.OrgUser)),
+    admin_metrics_overview: Remote(api.OrgMetricsOverview),
+    admin_metrics_project_tasks: Remote(api.OrgMetricsProjectTasksPayload),
+    admin_metrics_project_id: opt.Option(Int),
     org_settings_role_drafts: dict.Dict(Int, String),
     org_settings_save_in_flight: Bool,
     org_settings_error: opt.Option(String),
@@ -132,6 +135,7 @@ pub opaque type Model {
     task_types_icon_preview: IconPreview,
     member_section: member_section.MemberSection,
     member_active_task: Remote(api.ActiveTaskPayload),
+    member_metrics: Remote(api.MyMetrics),
     member_now_working_in_flight: Bool,
     member_now_working_error: opt.Option(String),
     now_working_tick: Int,
@@ -300,6 +304,11 @@ pub type Msg {
   MemberActiveTaskFetched(api.ApiResult(api.ActiveTaskPayload))
   MemberActiveTaskStarted(api.ApiResult(api.ActiveTaskPayload))
   MemberActiveTaskPaused(api.ApiResult(api.ActiveTaskPayload))
+  MemberMetricsFetched(api.ApiResult(api.MyMetrics))
+  AdminMetricsOverviewFetched(api.ApiResult(api.OrgMetricsOverview))
+  AdminMetricsProjectTasksFetched(
+    api.ApiResult(api.OrgMetricsProjectTasksPayload),
+  )
   NowWorkingTicked
 
   MemberMyCapabilityIdsFetched(api.ApiResult(List(Int)))
@@ -416,6 +425,9 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       members_project_id: opt.None,
       org_users_cache: NotAsked,
       org_settings_users: NotAsked,
+      admin_metrics_overview: NotAsked,
+      admin_metrics_project_tasks: NotAsked,
+      admin_metrics_project_id: opt.None,
       org_settings_role_drafts: dict.new(),
       org_settings_save_in_flight: False,
       org_settings_error: opt.None,
@@ -440,6 +452,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       task_types_icon_preview: IconIdle,
       member_section: member_section,
       member_active_task: NotAsked,
+      member_metrics: NotAsked,
       member_now_working_in_flight: False,
       member_now_working_error: opt.None,
       now_working_tick: 0,
@@ -701,6 +714,10 @@ fn build_snapshot(model: Model) -> hydration.Snapshot {
     task_types_project_id: model.task_types_project_id,
     member_tasks: remote_state(model.member_tasks),
     active_task: remote_state(model.member_active_task),
+    me_metrics: remote_state(model.member_metrics),
+    org_metrics_overview: remote_state(model.admin_metrics_overview),
+    org_metrics_project_tasks: remote_state(model.admin_metrics_project_tasks),
+    org_metrics_project_id: model.admin_metrics_project_id,
   )
 }
 
@@ -788,6 +805,73 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                   let m = Model(..m, member_active_task: Loading)
                   #(m, [api.get_me_active_task(MemberActiveTaskFetched), ..fx])
                 }
+              }
+            }
+
+            hydration.FetchMeMetrics -> {
+              case m.member_metrics {
+                Loading | Loaded(_) -> #(m, fx)
+
+                _ -> {
+                  let m = Model(..m, member_metrics: Loading)
+                  #(m, [api.get_me_metrics(30, MemberMetricsFetched), ..fx])
+                }
+              }
+            }
+
+            hydration.FetchOrgMetricsOverview -> {
+              case m.admin_metrics_overview {
+                Loading | Loaded(_) -> #(m, fx)
+
+                _ -> {
+                  let m = Model(..m, admin_metrics_overview: Loading)
+                  #(m, [
+                    api.get_org_metrics_overview(
+                      30,
+                      AdminMetricsOverviewFetched,
+                    ),
+                    ..fx
+                  ])
+                }
+              }
+            }
+
+            hydration.FetchOrgMetricsProjectTasks(project_id: project_id) -> {
+              let can_fetch = case m.projects {
+                Loaded(projects) ->
+                  list.any(projects, fn(p) { p.id == project_id })
+                _ -> False
+              }
+
+              case can_fetch {
+                False -> #(m, fx)
+
+                True ->
+                  case
+                    m.admin_metrics_project_tasks,
+                    m.admin_metrics_project_id
+                  {
+                    Loading, _ -> #(m, fx)
+                    Loaded(_), opt.Some(pid) if pid == project_id -> #(m, fx)
+
+                    _, _ -> {
+                      let m =
+                        Model(
+                          ..m,
+                          admin_metrics_project_tasks: Loading,
+                          admin_metrics_project_id: opt.Some(project_id),
+                        )
+
+                      let fx_tasks =
+                        api.get_org_metrics_project_tasks(
+                          project_id,
+                          30,
+                          AdminMetricsProjectTasksFetched,
+                        )
+
+                      #(m, [fx_tasks, ..fx])
+                    }
+                  }
               }
             }
 
@@ -2887,6 +2971,57 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
     }
 
+    MemberMetricsFetched(Ok(metrics)) -> #(
+      Model(..model, member_metrics: Loaded(metrics)),
+      effect.none(),
+    )
+
+    MemberMetricsFetched(Error(err)) -> {
+      case err.status {
+        401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        _ -> #(Model(..model, member_metrics: Failed(err)), effect.none())
+      }
+    }
+
+    AdminMetricsOverviewFetched(Ok(overview)) -> #(
+      Model(..model, admin_metrics_overview: Loaded(overview)),
+      effect.none(),
+    )
+
+    AdminMetricsOverviewFetched(Error(err)) -> {
+      case err.status {
+        401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        _ -> #(
+          Model(..model, admin_metrics_overview: Failed(err)),
+          effect.none(),
+        )
+      }
+    }
+
+    AdminMetricsProjectTasksFetched(Ok(payload)) -> {
+      let api.OrgMetricsProjectTasksPayload(project_id: project_id, ..) =
+        payload
+
+      #(
+        Model(
+          ..model,
+          admin_metrics_project_tasks: Loaded(payload),
+          admin_metrics_project_id: opt.Some(project_id),
+        ),
+        effect.none(),
+      )
+    }
+
+    AdminMetricsProjectTasksFetched(Error(err)) -> {
+      case err.status {
+        401 -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        _ -> #(
+          Model(..model, admin_metrics_project_tasks: Failed(err)),
+          effect.none(),
+        )
+      }
+    }
+
     NowWorkingTicked -> {
       let model = Model(..model, now_working_tick: model.now_working_tick + 1)
 
@@ -3311,6 +3446,35 @@ fn refresh_section(model: Model) -> #(Model, Effect(Msg)) {
 
     permissions.Projects -> #(model, api.list_projects(ProjectsFetched))
 
+    permissions.Metrics -> {
+      let model = Model(..model, admin_metrics_overview: Loading)
+
+      let overview_fx =
+        api.get_org_metrics_overview(30, AdminMetricsOverviewFetched)
+
+      case model.selected_project_id {
+        opt.None -> #(model, overview_fx)
+
+        opt.Some(project_id) -> {
+          let model =
+            Model(
+              ..model,
+              admin_metrics_project_tasks: Loading,
+              admin_metrics_project_id: opt.Some(project_id),
+            )
+
+          let tasks_fx =
+            api.get_org_metrics_project_tasks(
+              project_id,
+              30,
+              AdminMetricsProjectTasksFetched,
+            )
+
+          #(model, effect.batch([overview_fx, tasks_fx]))
+        }
+      }
+    }
+
     permissions.Capabilities -> #(
       model,
       api.list_capabilities(CapabilitiesFetched),
@@ -3470,6 +3634,7 @@ fn page_title(section: permissions.AdminSection) -> String {
     permissions.Invites -> "Invites"
     permissions.OrgSettings -> "Org Settings"
     permissions.Projects -> "Projects"
+    permissions.Metrics -> "Metrics"
     permissions.Members -> "Members"
     permissions.Capabilities -> "Capabilities"
     permissions.TaskTypes -> "Task Types"
@@ -3935,6 +4100,7 @@ fn view_topbar(model: Model, user: User) -> Element(Msg) {
   let show_project_selector =
     model.active_section == permissions.Members
     || model.active_section == permissions.TaskTypes
+    || model.active_section == permissions.Metrics
 
   div([attribute.class("topbar")], [
     div([attribute.class("topbar-title")], [
@@ -4068,10 +4234,242 @@ fn view_section(
         permissions.Invites -> view_invites(model)
         permissions.OrgSettings -> view_org_settings(model)
         permissions.Projects -> view_projects(model)
+        permissions.Metrics -> view_metrics(model, selected)
         permissions.Capabilities -> view_capabilities(model)
         permissions.Members -> view_members(model, selected)
         permissions.TaskTypes -> view_task_types(model, selected)
       }
+  }
+}
+
+fn view_metrics(model: Model, selected: opt.Option(api.Project)) -> Element(Msg) {
+  let overview_panel = case model.admin_metrics_overview {
+    NotAsked | Loading ->
+      div([attribute.class("panel")], [
+        h2([], [text("Metrics Overview")]),
+        div([attribute.class("loading")], [text("Loading overview…")]),
+      ])
+
+    Failed(err) ->
+      div([attribute.class("panel")], [
+        h2([], [text("Metrics Overview")]),
+        div([attribute.class("error")], [text(err.message)]),
+      ])
+
+    Loaded(overview) -> {
+      let api.OrgMetricsOverview(
+        window_days: window_days,
+        claimed_count: claimed_count,
+        released_count: released_count,
+        completed_count: completed_count,
+        release_rate_percent: release_rate_percent,
+        pool_flow_ratio_percent: pool_flow_ratio_percent,
+        time_to_first_claim_p50_ms: time_to_first_claim_p50_ms,
+        time_to_first_claim_sample_size: time_to_first_claim_sample_size,
+        time_to_first_claim_buckets: time_to_first_claim_buckets,
+        release_rate_buckets: release_rate_buckets,
+        by_project: by_project,
+      ) = overview
+
+      div([attribute.class("panel")], [
+        h2([], [text("Metrics Overview")]),
+        p([], [text("Window: " <> int.to_string(window_days) <> " days")]),
+        table([attribute.class("table")], [
+          thead([], [
+            tr([], [
+              th([], [text("Claimed")]),
+              th([], [text("Released")]),
+              th([], [text("Completed")]),
+              th([], [text("Release %")]),
+              th([], [text("Flow %")]),
+            ]),
+          ]),
+          tbody([], [
+            tr([], [
+              td([], [text(int.to_string(claimed_count))]),
+              td([], [text(int.to_string(released_count))]),
+              td([], [text(int.to_string(completed_count))]),
+              td([], [text(option_percent_label(release_rate_percent))]),
+              td([], [text(option_percent_label(pool_flow_ratio_percent))]),
+            ]),
+          ]),
+        ]),
+        h3([], [text("Time to first claim")]),
+        p([], [
+          text(
+            "P50: "
+            <> option_ms_label(time_to_first_claim_p50_ms)
+            <> " (n="
+            <> int.to_string(time_to_first_claim_sample_size)
+            <> ")",
+          ),
+        ]),
+        div([attribute.class("buckets")], [
+          table([attribute.class("table")], [
+            thead([], [
+              tr([], [th([], [text("Bucket")]), th([], [text("Count")])]),
+            ]),
+            tbody(
+              [],
+              list.map(time_to_first_claim_buckets, fn(b) {
+                let api.OrgMetricsBucket(bucket: bucket, count: count) = b
+                tr([], [
+                  td([], [text(bucket)]),
+                  td([], [text(int.to_string(count))]),
+                ])
+              }),
+            ),
+          ]),
+        ]),
+        h3([], [text("Release rate distribution")]),
+        table([attribute.class("table")], [
+          thead([], [
+            tr([], [th([], [text("Bucket")]), th([], [text("Count")])]),
+          ]),
+          tbody(
+            [],
+            list.map(release_rate_buckets, fn(b) {
+              let api.OrgMetricsBucket(bucket: bucket, count: count) = b
+              tr([], [
+                td([], [text(bucket)]),
+                td([], [text(int.to_string(count))]),
+              ])
+            }),
+          ),
+        ]),
+        h3([], [text("By project")]),
+        table([attribute.class("table")], [
+          thead([], [
+            tr([], [
+              th([], [text("Project")]),
+              th([], [text("Claimed")]),
+              th([], [text("Released")]),
+              th([], [text("Completed")]),
+              th([], [text("Release %")]),
+              th([], [text("Flow %")]),
+              th([], [text("Drill")]),
+            ]),
+          ]),
+          tbody(
+            [],
+            list.map(by_project, fn(p) {
+              let api.OrgMetricsProjectOverview(
+                project_id: project_id,
+                project_name: project_name,
+                claimed_count: claimed,
+                released_count: released,
+                completed_count: completed,
+                release_rate_percent: rrp,
+                pool_flow_ratio_percent: pfrp,
+              ) = p
+
+              tr([], [
+                td([], [text(project_name)]),
+                td([], [text(int.to_string(claimed))]),
+                td([], [text(int.to_string(released))]),
+                td([], [text(int.to_string(completed))]),
+                td([], [text(option_percent_label(rrp))]),
+                td([], [text(option_percent_label(pfrp))]),
+                td([], [
+                  button(
+                    [
+                      attribute.class("btn-xs"),
+                      event.on_click(NavigateTo(
+                        router.Admin(permissions.Metrics, opt.Some(project_id)),
+                        Push,
+                      )),
+                    ],
+                    [text("View")],
+                  ),
+                ]),
+              ])
+            }),
+          ),
+        ]),
+      ])
+    }
+  }
+
+  let project_panel = case selected {
+    opt.None ->
+      div([attribute.class("panel")], [
+        h3([], [text("Project drill-down")]),
+        p([], [text("Select a project to inspect tasks.")]),
+      ])
+
+    opt.Some(api.Project(id: _project_id, name: project_name, ..)) -> {
+      let body = case model.admin_metrics_project_tasks {
+        NotAsked | Loading ->
+          div([attribute.class("loading")], [text("Loading tasks…")])
+        Failed(err) -> div([attribute.class("error")], [text(err.message)])
+
+        Loaded(payload) -> {
+          let api.OrgMetricsProjectTasksPayload(tasks: tasks, ..) = payload
+
+          table([attribute.class("table")], [
+            thead([], [
+              tr([], [
+                th([], [text("Title")]),
+                th([], [text("Status")]),
+                th([], [text("Claims")]),
+                th([], [text("Releases")]),
+                th([], [text("Completes")]),
+                th([], [text("First claim")]),
+              ]),
+            ]),
+            tbody(
+              [],
+              list.map(tasks, fn(t) {
+                let api.MetricsProjectTask(
+                  task: api.Task(title: title, status: status, ..),
+                  claim_count: claim_count,
+                  release_count: release_count,
+                  complete_count: complete_count,
+                  first_claim_at: first_claim_at,
+                ) = t
+
+                tr([], [
+                  td([], [text(title)]),
+                  td([], [text(status)]),
+                  td([], [text(int.to_string(claim_count))]),
+                  td([], [text(int.to_string(release_count))]),
+                  td([], [text(int.to_string(complete_count))]),
+                  td([], [text(option_string_label(first_claim_at))]),
+                ])
+              }),
+            ),
+          ])
+        }
+      }
+
+      div([attribute.class("panel")], [
+        h3([], [text("Project tasks: " <> project_name)]),
+        body,
+      ])
+    }
+  }
+
+  div([attribute.class("section")], [overview_panel, project_panel])
+}
+
+fn option_percent_label(value: opt.Option(Int)) -> String {
+  case value {
+    opt.Some(v) -> int.to_string(v) <> "%"
+    opt.None -> "-"
+  }
+}
+
+fn option_ms_label(value: opt.Option(Int)) -> String {
+  case value {
+    opt.Some(v) -> int.to_string(v) <> "ms"
+    opt.None -> "-"
+  }
+}
+
+fn option_string_label(value: opt.Option(String)) -> String {
+  case value {
+    opt.Some(v) -> v
+    opt.None -> "-"
   }
 }
 
@@ -5466,6 +5864,52 @@ fn compare_member_bar_tasks(a: api.Task, b: api.Task) -> order.Order {
   }
 }
 
+fn view_member_metrics_panel(model: Model) -> Element(Msg) {
+  case model.member_metrics {
+    NotAsked | Loading ->
+      div([attribute.class("panel")], [
+        h3([], [text("My Metrics")]),
+        div([attribute.class("loading")], [text("Loading metrics…")]),
+      ])
+
+    Failed(err) ->
+      div([attribute.class("panel")], [
+        h3([], [text("My Metrics")]),
+        div([attribute.class("error")], [text(err.message)]),
+      ])
+
+    Loaded(metrics) -> {
+      let api.MyMetrics(
+        window_days: window_days,
+        claimed_count: claimed_count,
+        released_count: released_count,
+        completed_count: completed_count,
+      ) = metrics
+
+      div([attribute.class("panel")], [
+        h3([], [text("My Metrics")]),
+        p([], [text("Window: " <> int.to_string(window_days) <> " days")]),
+        table([attribute.class("table")], [
+          thead([], [
+            tr([], [
+              th([], [text("Claimed")]),
+              th([], [text("Released")]),
+              th([], [text("Completed")]),
+            ]),
+          ]),
+          tbody([], [
+            tr([], [
+              td([], [text(int.to_string(claimed_count))]),
+              td([], [text(int.to_string(released_count))]),
+              td([], [text(int.to_string(completed_count))]),
+            ]),
+          ]),
+        ]),
+      ])
+    }
+  }
+}
+
 fn view_member_bar(model: Model, user: User) -> Element(Msg) {
   case active_projects(model) {
     [] ->
@@ -5490,6 +5934,7 @@ fn view_member_bar(model: Model, user: User) -> Element(Msg) {
             |> list.sort(by: compare_member_bar_tasks)
 
           div([attribute.class("section")], [
+            view_member_metrics_panel(model),
             case mine {
               [] ->
                 div([attribute.class("empty")], [text("No claimed tasks yet")])

@@ -22,6 +22,10 @@ pub fn admin_members_unknown_auth_requires_fetch_me_test() {
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
       active_task: hydration.NotAsked,
+      me_metrics: hydration.NotAsked,
+      org_metrics_overview: hydration.NotAsked,
+      org_metrics_project_tasks: hydration.NotAsked,
+      org_metrics_project_id: None,
     )
 
   hydration.plan(router.Admin(permissions.Members, Some(2)), snap)
@@ -43,6 +47,10 @@ pub fn admin_members_authed_admin_plans_projects_then_members_test() {
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
       active_task: hydration.NotAsked,
+      me_metrics: hydration.NotAsked,
+      org_metrics_overview: hydration.NotAsked,
+      org_metrics_project_tasks: hydration.NotAsked,
+      org_metrics_project_id: None,
     )
 
   hydration.plan(router.Admin(permissions.Members, Some(2)), snap)
@@ -66,6 +74,10 @@ pub fn admin_members_authed_admin_plans_projects_then_members_test() {
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
       active_task: hydration.NotAsked,
+      me_metrics: hydration.NotAsked,
+      org_metrics_overview: hydration.NotAsked,
+      org_metrics_project_tasks: hydration.NotAsked,
+      org_metrics_project_id: None,
     )
 
   hydration.plan(router.Admin(permissions.Members, Some(2)), snap_with_projects)
@@ -87,6 +99,10 @@ pub fn admin_route_non_admin_redirects_to_member_pool_test() {
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
       active_task: hydration.NotAsked,
+      me_metrics: hydration.NotAsked,
+      org_metrics_overview: hydration.NotAsked,
+      org_metrics_project_tasks: hydration.NotAsked,
+      org_metrics_project_id: None,
     )
 
   hydration.plan(router.Admin(permissions.Invites, Some(2)), snap)
@@ -110,8 +126,16 @@ pub fn member_pool_with_projects_loaded_only_refreshes_member_test() {
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
       active_task: hydration.NotAsked,
+      me_metrics: hydration.NotAsked,
+      org_metrics_overview: hydration.NotAsked,
+      org_metrics_project_tasks: hydration.NotAsked,
+      org_metrics_project_id: None,
     )
 
   hydration.plan(router.Member(member_section.Pool, Some(2)), snap)
-  |> should.equal([hydration.FetchActiveTask, hydration.RefreshMember])
+  |> should.equal([
+    hydration.FetchActiveTask,
+    hydration.FetchMeMetrics,
+    hydration.RefreshMember,
+  ])
 }

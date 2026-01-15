@@ -12,6 +12,7 @@ pub fn visible_sections_org_admin_test() {
     permissions.Invites,
     permissions.OrgSettings,
     permissions.Projects,
+    permissions.Metrics,
     permissions.Capabilities,
   ])
 }
@@ -24,6 +25,7 @@ pub fn visible_sections_org_admin_and_project_admin_test() {
     permissions.Invites,
     permissions.OrgSettings,
     permissions.Projects,
+    permissions.Metrics,
     permissions.Members,
     permissions.Capabilities,
     permissions.TaskTypes,

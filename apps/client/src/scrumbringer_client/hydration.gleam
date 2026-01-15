@@ -1,5 +1,5 @@
 import gleam/list
-import gleam/option.{type Option, Some}
+import gleam/option.{type Option, None, Some}
 
 import scrumbringer_client/member_section
 import scrumbringer_client/permissions
@@ -33,6 +33,10 @@ pub type Snapshot {
     task_types_project_id: Option(Int),
     member_tasks: ResourceState,
     active_task: ResourceState,
+    me_metrics: ResourceState,
+    org_metrics_overview: ResourceState,
+    org_metrics_project_tasks: ResourceState,
+    org_metrics_project_id: Option(Int),
   )
 }
 
@@ -47,6 +51,9 @@ pub type Command {
   FetchTaskTypes(project_id: Int)
   RefreshMember
   FetchActiveTask
+  FetchMeMetrics
+  FetchOrgMetricsOverview
+  FetchOrgMetricsProjectTasks(project_id: Int)
   Redirect(to: router.Route)
 }
 
@@ -64,6 +71,10 @@ pub fn plan(route: router.Route, snapshot: Snapshot) -> List(Command) {
     task_types_project_id: task_types_project_id,
     member_tasks: member_tasks,
     active_task: active_task,
+    me_metrics: me_metrics,
+    org_metrics_overview: org_metrics_overview,
+    org_metrics_project_tasks: org_metrics_project_tasks,
+    org_metrics_project_id: org_metrics_project_id,
   ) = snapshot
 
   case route {
@@ -135,6 +146,28 @@ pub fn plan(route: router.Route, snapshot: Snapshot) -> List(Command) {
                     _ -> base
                   }
 
+                permissions.Metrics -> {
+                  let base = case org_metrics_overview {
+                    NotAsked | Failed ->
+                      list.append(base, [FetchOrgMetricsOverview])
+                    _ -> base
+                  }
+
+                  case project_id {
+                    Some(id) ->
+                      case org_metrics_project_tasks, org_metrics_project_id {
+                        Loading, _ -> base
+                        Loaded, Some(pid) if pid == id -> base
+                        _, _ ->
+                          list.append(base, [
+                            FetchOrgMetricsProjectTasks(project_id: id),
+                          ])
+                      }
+
+                    None -> base
+                  }
+                }
+
                 _ -> base
               }
             }
@@ -166,6 +199,11 @@ pub fn plan(route: router.Route, snapshot: Snapshot) -> List(Command) {
 
           let base = case active_task {
             NotAsked | Failed -> list.append(base, [FetchActiveTask])
+            _ -> base
+          }
+
+          let base = case me_metrics {
+            NotAsked | Failed -> list.append(base, [FetchMeMetrics])
             _ -> base
           }
 

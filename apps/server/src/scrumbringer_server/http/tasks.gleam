@@ -333,6 +333,7 @@ fn handle_tasks_create(
                               case
                                 tasks_db.create_task(
                                   db,
+                                  user.org_id,
                                   type_id,
                                   project_id,
                                   title,
@@ -577,7 +578,13 @@ fn handle_task_claim(
                           )
                         _ ->
                           case
-                            tasks_db.claim_task(db, task_id, user.id, version)
+                            tasks_db.claim_task(
+                              db,
+                              user.org_id,
+                              task_id,
+                              user.id,
+                              version,
+                            )
                           {
                             Ok(task) ->
                               api.ok(json.object([#("task", task_json(task))]))
@@ -646,6 +653,7 @@ fn handle_task_release(
                               case
                                 tasks_db.release_task(
                                   db,
+                                  user.org_id,
                                   task_id,
                                   user.id,
                                   version,
@@ -727,6 +735,7 @@ fn handle_task_complete(
                               case
                                 tasks_db.complete_task(
                                   db,
+                                  user.org_id,
                                   task_id,
                                   user.id,
                                   version,

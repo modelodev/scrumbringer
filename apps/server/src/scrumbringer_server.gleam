@@ -8,8 +8,10 @@ import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/capabilities
 import scrumbringer_server/http/me_active_task
+import scrumbringer_server/http/me_metrics
 import scrumbringer_server/http/org_invite_links
 import scrumbringer_server/http/org_invites
+import scrumbringer_server/http/org_metrics
 import scrumbringer_server/http/org_users
 import scrumbringer_server/http/password_resets
 import scrumbringer_server/http/projects
@@ -146,6 +148,16 @@ fn handle_request(req: wisp.Request, app: App) -> wisp.Response {
       me_active_task.handle_me_active_task_start(req, auth_ctx(app))
     ["api", "v1", "me", "active-task", "pause"] ->
       me_active_task.handle_me_active_task_pause(req, auth_ctx(app))
+    ["api", "v1", "me", "metrics"] ->
+      me_metrics.handle_me_metrics(req, auth_ctx(app))
+    ["api", "v1", "org", "metrics", "overview"] ->
+      org_metrics.handle_org_metrics_overview(req, auth_ctx(app))
+    ["api", "v1", "org", "metrics", "projects", project_id, "tasks"] ->
+      org_metrics.handle_org_metrics_project_tasks(
+        req,
+        auth_ctx(app),
+        project_id,
+      )
     ["api", "v1", "health"] -> api.ok(json.object([#("ok", json.bool(True))]))
     _ -> wisp.not_found()
   }
