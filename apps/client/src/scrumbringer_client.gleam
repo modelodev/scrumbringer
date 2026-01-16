@@ -37,9 +37,8 @@ import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/i18n/text as i18n_text
 
 import scrumbringer_client/client_state.{
-  // Types
-  type Model, type Msg, type NavMode, type Page, type Remote, type IconPreview,
-  type MemberDrag, type Rect,
+  // Types (used in type annotations)
+  type Model, type Msg, type NavMode, type Remote,
   // Type constructors
   Model, MemberDrag, Rect,
   // Remote constructors
@@ -108,7 +107,7 @@ import scrumbringer_client/client_state.{
   MemberTaskDetailsOpened, MemberTaskDetailsClosed, MemberNotesFetched,
   MemberNoteContentChanged, MemberNoteSubmitted, MemberNoteAdded,
   // Helper functions
-  rect_contains_point, remote_to_resource_state,
+  rect_contains_point,
 }
 
 pub fn app() -> lustre.App(Nil, Model, Msg) {
