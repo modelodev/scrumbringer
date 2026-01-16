@@ -4647,7 +4647,14 @@ fn view_section(
 }
 
 fn view_metrics(model: Model, selected: opt.Option(api.Project)) -> Element(Msg) {
-  let overview_panel = case model.admin_metrics_overview {
+  div([attribute.class("section")], [
+    view_metrics_overview_panel(model),
+    view_metrics_project_panel(model, selected),
+  ])
+}
+
+fn view_metrics_overview_panel(model: Model) -> Element(Msg) {
+  case model.admin_metrics_overview {
     NotAsked | Loading ->
       div([attribute.class("panel")], [
         h2([], [text(i18n_t(model, i18n_text.MetricsOverview))]),
@@ -4662,208 +4669,261 @@ fn view_metrics(model: Model, selected: opt.Option(api.Project)) -> Element(Msg)
         div([attribute.class("error")], [text(err.message)]),
       ])
 
-    Loaded(overview) -> {
-      let api.OrgMetricsOverview(
-        window_days: window_days,
-        claimed_count: claimed_count,
-        released_count: released_count,
-        completed_count: completed_count,
-        release_rate_percent: release_rate_percent,
-        pool_flow_ratio_percent: pool_flow_ratio_percent,
-        time_to_first_claim_p50_ms: time_to_first_claim_p50_ms,
-        time_to_first_claim_sample_size: time_to_first_claim_sample_size,
-        time_to_first_claim_buckets: time_to_first_claim_buckets,
-        release_rate_buckets: release_rate_buckets,
-        by_project: by_project,
-      ) = overview
-
-      div([attribute.class("panel")], [
-        h2([], [text(i18n_t(model, i18n_text.MetricsOverview))]),
-        p([], [text(i18n_t(model, i18n_text.WindowDays(window_days)))]),
-        table([attribute.class("table")], [
-          thead([], [
-            tr([], [
-              th([], [text(i18n_t(model, i18n_text.Claimed))]),
-              th([], [text(i18n_t(model, i18n_text.Released))]),
-              th([], [text(i18n_t(model, i18n_text.Completed))]),
-              th([], [text(i18n_t(model, i18n_text.ReleasePercent))]),
-              th([], [text(i18n_t(model, i18n_text.FlowPercent))]),
-            ]),
-          ]),
-          tbody([], [
-            tr([], [
-              td([], [text(int.to_string(claimed_count))]),
-              td([], [text(int.to_string(released_count))]),
-              td([], [text(int.to_string(completed_count))]),
-              td([], [text(option_percent_label(release_rate_percent))]),
-              td([], [text(option_percent_label(pool_flow_ratio_percent))]),
-            ]),
-          ]),
-        ]),
-        h3([], [text(i18n_t(model, i18n_text.TimeToFirstClaim))]),
-        p([], [
-          text(i18n_t(
-            model,
-            i18n_text.TimeToFirstClaimP50(
-              option_ms_label(time_to_first_claim_p50_ms),
-              time_to_first_claim_sample_size,
-            ),
-          )),
-        ]),
-        div([attribute.class("buckets")], [
-          table([attribute.class("table")], [
-            thead([], [
-              tr([], [
-                th([], [text(i18n_t(model, i18n_text.Bucket))]),
-                th([], [text(i18n_t(model, i18n_text.Count))]),
-              ]),
-            ]),
-            tbody(
-              [],
-              list.map(time_to_first_claim_buckets, fn(b) {
-                let api.OrgMetricsBucket(bucket: bucket, count: count) = b
-                tr([], [
-                  td([], [text(bucket)]),
-                  td([], [text(int.to_string(count))]),
-                ])
-              }),
-            ),
-          ]),
-        ]),
-        h3([], [text(i18n_t(model, i18n_text.ReleaseRateDistribution))]),
-        table([attribute.class("table")], [
-          thead([], [
-            tr([], [
-              th([], [text(i18n_t(model, i18n_text.Bucket))]),
-              th([], [text(i18n_t(model, i18n_text.Count))]),
-            ]),
-          ]),
-          tbody(
-            [],
-            list.map(release_rate_buckets, fn(b) {
-              let api.OrgMetricsBucket(bucket: bucket, count: count) = b
-              tr([], [
-                td([], [text(bucket)]),
-                td([], [text(int.to_string(count))]),
-              ])
-            }),
-          ),
-        ]),
-        h3([], [text(i18n_t(model, i18n_text.ByProject))]),
-        table([attribute.class("table")], [
-          thead([], [
-            tr([], [
-              th([], [text(i18n_t(model, i18n_text.ProjectLabel))]),
-              th([], [text(i18n_t(model, i18n_text.Claimed))]),
-              th([], [text(i18n_t(model, i18n_text.Released))]),
-              th([], [text(i18n_t(model, i18n_text.Completed))]),
-              th([], [text(i18n_t(model, i18n_text.ReleasePercent))]),
-              th([], [text(i18n_t(model, i18n_text.FlowPercent))]),
-              th([], [text(i18n_t(model, i18n_text.Drill))]),
-            ]),
-          ]),
-          tbody(
-            [],
-            list.map(by_project, fn(p) {
-              let api.OrgMetricsProjectOverview(
-                project_id: project_id,
-                project_name: project_name,
-                claimed_count: claimed,
-                released_count: released,
-                completed_count: completed,
-                release_rate_percent: rrp,
-                pool_flow_ratio_percent: pfrp,
-              ) = p
-
-              tr([], [
-                td([], [text(project_name)]),
-                td([], [text(int.to_string(claimed))]),
-                td([], [text(int.to_string(released))]),
-                td([], [text(int.to_string(completed))]),
-                td([], [text(option_percent_label(rrp))]),
-                td([], [text(option_percent_label(pfrp))]),
-                td([], [
-                  button(
-                    [
-                      attribute.class("btn-xs"),
-                      event.on_click(NavigateTo(
-                        router.Admin(permissions.Metrics, opt.Some(project_id)),
-                        Push,
-                      )),
-                    ],
-                    [text(i18n_t(model, i18n_text.View))],
-                  ),
-                ]),
-              ])
-            }),
-          ),
-        ]),
-      ])
-    }
+    Loaded(overview) -> view_metrics_overview_loaded(model, overview)
   }
+}
 
-  let project_panel = case selected {
+fn view_metrics_overview_loaded(
+  model: Model,
+  overview: api.OrgMetricsOverview,
+) -> Element(Msg) {
+  let api.OrgMetricsOverview(
+    window_days: window_days,
+    claimed_count: claimed_count,
+    released_count: released_count,
+    completed_count: completed_count,
+    release_rate_percent: release_rate_percent,
+    pool_flow_ratio_percent: pool_flow_ratio_percent,
+    time_to_first_claim_p50_ms: time_to_first_claim_p50_ms,
+    time_to_first_claim_sample_size: time_to_first_claim_sample_size,
+    time_to_first_claim_buckets: time_to_first_claim_buckets,
+    release_rate_buckets: release_rate_buckets,
+    by_project: by_project,
+  ) = overview
+
+  div([attribute.class("panel")], [
+    h2([], [text(i18n_t(model, i18n_text.MetricsOverview))]),
+    p([], [text(i18n_t(model, i18n_text.WindowDays(window_days)))]),
+    view_metrics_summary_table(
+      model,
+      claimed_count,
+      released_count,
+      completed_count,
+      release_rate_percent,
+      pool_flow_ratio_percent,
+    ),
+    view_metrics_time_to_first_claim(
+      model,
+      time_to_first_claim_p50_ms,
+      time_to_first_claim_sample_size,
+      time_to_first_claim_buckets,
+    ),
+    view_metrics_release_rate_buckets(model, release_rate_buckets),
+    view_metrics_by_project_table(model, by_project),
+  ])
+}
+
+fn view_metrics_summary_table(
+  model: Model,
+  claimed_count: Int,
+  released_count: Int,
+  completed_count: Int,
+  release_rate_percent: opt.Option(Int),
+  pool_flow_ratio_percent: opt.Option(Int),
+) -> Element(Msg) {
+  table([attribute.class("table")], [
+    thead([], [
+      tr([], [
+        th([], [text(i18n_t(model, i18n_text.Claimed))]),
+        th([], [text(i18n_t(model, i18n_text.Released))]),
+        th([], [text(i18n_t(model, i18n_text.Completed))]),
+        th([], [text(i18n_t(model, i18n_text.ReleasePercent))]),
+        th([], [text(i18n_t(model, i18n_text.FlowPercent))]),
+      ]),
+    ]),
+    tbody([], [
+      tr([], [
+        td([], [text(int.to_string(claimed_count))]),
+        td([], [text(int.to_string(released_count))]),
+        td([], [text(int.to_string(completed_count))]),
+        td([], [text(option_percent_label(release_rate_percent))]),
+        td([], [text(option_percent_label(pool_flow_ratio_percent))]),
+      ]),
+    ]),
+  ])
+}
+
+fn view_metrics_time_to_first_claim(
+  model: Model,
+  p50_ms: opt.Option(Int),
+  sample_size: Int,
+  buckets: List(api.OrgMetricsBucket),
+) -> Element(Msg) {
+  div([], [
+    h3([], [text(i18n_t(model, i18n_text.TimeToFirstClaim))]),
+    p([], [
+      text(i18n_t(
+        model,
+        i18n_text.TimeToFirstClaimP50(option_ms_label(p50_ms), sample_size),
+      )),
+    ]),
+    div([attribute.class("buckets")], [view_metrics_bucket_table(model, buckets)]),
+  ])
+}
+
+fn view_metrics_release_rate_buckets(
+  model: Model,
+  buckets: List(api.OrgMetricsBucket),
+) -> Element(Msg) {
+  div([], [
+    h3([], [text(i18n_t(model, i18n_text.ReleaseRateDistribution))]),
+    view_metrics_bucket_table(model, buckets),
+  ])
+}
+
+fn view_metrics_bucket_table(
+  model: Model,
+  buckets: List(api.OrgMetricsBucket),
+) -> Element(Msg) {
+  table([attribute.class("table")], [
+    thead([], [
+      tr([], [
+        th([], [text(i18n_t(model, i18n_text.Bucket))]),
+        th([], [text(i18n_t(model, i18n_text.Count))]),
+      ]),
+    ]),
+    tbody(
+      [],
+      list.map(buckets, fn(b) {
+        let api.OrgMetricsBucket(bucket: bucket, count: count) = b
+        tr([], [td([], [text(bucket)]), td([], [text(int.to_string(count))])])
+      }),
+    ),
+  ])
+}
+
+fn view_metrics_by_project_table(
+  model: Model,
+  by_project: List(api.OrgMetricsProjectOverview),
+) -> Element(Msg) {
+  div([], [
+    h3([], [text(i18n_t(model, i18n_text.ByProject))]),
+    table([attribute.class("table")], [
+      thead([], [
+        tr([], [
+          th([], [text(i18n_t(model, i18n_text.ProjectLabel))]),
+          th([], [text(i18n_t(model, i18n_text.Claimed))]),
+          th([], [text(i18n_t(model, i18n_text.Released))]),
+          th([], [text(i18n_t(model, i18n_text.Completed))]),
+          th([], [text(i18n_t(model, i18n_text.ReleasePercent))]),
+          th([], [text(i18n_t(model, i18n_text.FlowPercent))]),
+          th([], [text(i18n_t(model, i18n_text.Drill))]),
+        ]),
+      ]),
+      tbody([], list.map(by_project, view_metrics_project_row(model, _))),
+    ]),
+  ])
+}
+
+fn view_metrics_project_row(
+  model: Model,
+  p: api.OrgMetricsProjectOverview,
+) -> Element(Msg) {
+  let api.OrgMetricsProjectOverview(
+    project_id: project_id,
+    project_name: project_name,
+    claimed_count: claimed,
+    released_count: released,
+    completed_count: completed,
+    release_rate_percent: rrp,
+    pool_flow_ratio_percent: pfrp,
+  ) = p
+
+  tr([], [
+    td([], [text(project_name)]),
+    td([], [text(int.to_string(claimed))]),
+    td([], [text(int.to_string(released))]),
+    td([], [text(int.to_string(completed))]),
+    td([], [text(option_percent_label(rrp))]),
+    td([], [text(option_percent_label(pfrp))]),
+    td([], [
+      button(
+        [
+          attribute.class("btn-xs"),
+          event.on_click(NavigateTo(
+            router.Admin(permissions.Metrics, opt.Some(project_id)),
+            Push,
+          )),
+        ],
+        [text(i18n_t(model, i18n_text.View))],
+      ),
+    ]),
+  ])
+}
+
+fn view_metrics_project_panel(
+  model: Model,
+  selected: opt.Option(api.Project),
+) -> Element(Msg) {
+  case selected {
     opt.None ->
       div([attribute.class("panel")], [
         h3([], [text(i18n_t(model, i18n_text.ProjectDrillDown))]),
         p([], [text(i18n_t(model, i18n_text.SelectProjectToInspectTasks))]),
       ])
 
-    opt.Some(api.Project(id: _project_id, name: project_name, ..)) -> {
-      let body = case model.admin_metrics_project_tasks {
-        NotAsked | Loading ->
-          div([attribute.class("loading")], [
-            text(i18n_t(model, i18n_text.LoadingTasks)),
-          ])
-        Failed(err) -> div([attribute.class("error")], [text(err.message)])
+    opt.Some(api.Project(name: project_name, ..)) ->
+      view_metrics_project_tasks_panel(model, project_name)
+  }
+}
 
-        Loaded(payload) -> {
-          let api.OrgMetricsProjectTasksPayload(tasks: tasks, ..) = payload
-
-          table([attribute.class("table")], [
-            thead([], [
-              tr([], [
-                th([], [text(i18n_t(model, i18n_text.Title))]),
-                th([], [text(i18n_t(model, i18n_text.Status))]),
-                th([], [text(i18n_t(model, i18n_text.Claims))]),
-                th([], [text(i18n_t(model, i18n_text.Releases))]),
-                th([], [text(i18n_t(model, i18n_text.Completes))]),
-                th([], [text(i18n_t(model, i18n_text.FirstClaim))]),
-              ]),
-            ]),
-            tbody(
-              [],
-              list.map(tasks, fn(t) {
-                let api.MetricsProjectTask(
-                  task: api.Task(title: title, status: status, ..),
-                  claim_count: claim_count,
-                  release_count: release_count,
-                  complete_count: complete_count,
-                  first_claim_at: first_claim_at,
-                ) = t
-
-                tr([], [
-                  td([], [text(title)]),
-                  td([], [text(api.task_status_to_string(status))]),
-                  td([], [text(int.to_string(claim_count))]),
-                  td([], [text(int.to_string(release_count))]),
-                  td([], [text(int.to_string(complete_count))]),
-                  td([], [text(option_string_label(first_claim_at))]),
-                ])
-              }),
-            ),
-          ])
-        }
-      }
-
-      div([attribute.class("panel")], [
-        h3([], [text(i18n_t(model, i18n_text.ProjectTasks(project_name)))]),
-        body,
+fn view_metrics_project_tasks_panel(
+  model: Model,
+  project_name: String,
+) -> Element(Msg) {
+  let body = case model.admin_metrics_project_tasks {
+    NotAsked | Loading ->
+      div([attribute.class("loading")], [
+        text(i18n_t(model, i18n_text.LoadingTasks)),
       ])
-    }
+    Failed(err) -> div([attribute.class("error")], [text(err.message)])
+    Loaded(payload) -> view_metrics_project_tasks_table(model, payload)
   }
 
-  div([attribute.class("section")], [overview_panel, project_panel])
+  div([attribute.class("panel")], [
+    h3([], [text(i18n_t(model, i18n_text.ProjectTasks(project_name)))]),
+    body,
+  ])
+}
+
+fn view_metrics_project_tasks_table(
+  model: Model,
+  payload: api.OrgMetricsProjectTasksPayload,
+) -> Element(Msg) {
+  let api.OrgMetricsProjectTasksPayload(tasks: tasks, ..) = payload
+
+  table([attribute.class("table")], [
+    thead([], [
+      tr([], [
+        th([], [text(i18n_t(model, i18n_text.Title))]),
+        th([], [text(i18n_t(model, i18n_text.Status))]),
+        th([], [text(i18n_t(model, i18n_text.Claims))]),
+        th([], [text(i18n_t(model, i18n_text.Releases))]),
+        th([], [text(i18n_t(model, i18n_text.Completes))]),
+        th([], [text(i18n_t(model, i18n_text.FirstClaim))]),
+      ]),
+    ]),
+    tbody([], list.map(tasks, view_metrics_task_row)),
+  ])
+}
+
+fn view_metrics_task_row(t: api.MetricsProjectTask) -> Element(Msg) {
+  let api.MetricsProjectTask(
+    task: api.Task(title: title, status: status, ..),
+    claim_count: claim_count,
+    release_count: release_count,
+    complete_count: complete_count,
+    first_claim_at: first_claim_at,
+  ) = t
+
+  tr([], [
+    td([], [text(title)]),
+    td([], [text(api.task_status_to_string(status))]),
+    td([], [text(int.to_string(claim_count))]),
+    td([], [text(int.to_string(release_count))]),
+    td([], [text(int.to_string(complete_count))]),
+    td([], [text(option_string_label(first_claim_at))]),
+  ])
 }
 
 fn option_percent_label(value: opt.Option(Int)) -> String {
