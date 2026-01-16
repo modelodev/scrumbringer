@@ -47,6 +47,9 @@ node_modules/
 /playwright/.cache/
 /playwright/.auth/
 
+# QA artifacts (decision pending)
+docs/qa/
+
 # Playwright scaffolding (not used in this repo)
 package.json
 package-lock.json

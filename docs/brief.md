@@ -110,18 +110,21 @@ Los equipos usan herramientas con modelo "push" (asignación directa) que genera
 - En las tarjetas del Pool, los affordances críticos son siempre visibles y usables (aunque la tarjeta sea pequeña):
   - Acción de Claim/Release/Complete (según estado) y el handle de drag.
 
-### Estado Personal: "Now Working" (Servidor)
+### Estado Personal: "Now Working" / Time Tracking (Servidor)
 
-- El usuario puede tener **0 o 1** tarea **activa** (global, no por proyecto).
-- Este estado es **personal** (no cambia `tasks.status`). Sirve para que el usuario sepa con qué está y cuánto tiempo lleva **en la sesión activa**.
+- El usuario puede tener **0..N** tareas **en curso** (“Now Working”) simultáneamente (global, no por proyecto).
+- Este estado sigue siendo **personal** (no cambia `tasks.status`), pero habilita derivar un estado **por tarea** (p.ej. `ongoing`) para comunicar “hay alguien trabajando ahora mismo” y **quién**.
+- Regla de negocio (cerrada): una tarea solo puede estar **claimed por 1 usuario**; por tanto, **solo** el claimer puede iniciar trabajo en esa tarea.
 - La información se **persiste en servidor** para que sea consistente entre dispositivos (desktop/mobile).
 - Acciones personales soportadas (mínimo):
-  - `start/resume`: empieza una sesión activa para una tarea claimed.
-  - `pause`: termina la sesión activa y **limpia** la tarea activa.
-- Regla: hacer `start` en una nueva tarea **reemplaza** la anterior (la anterior deja de estar activa).
-- Regla: si el usuario cambia el proyecto activo en la UI, la tarea activa se **desactiva** (limpia).
+  - `start/resume`: inicia (o reanuda) trabajo en una tarea **claimed por el usuario**.
+  - `pause`: pausa trabajo en **esa** tarea.
+- Regla: hacer `start` en una tarea **NO** reemplaza ni pausa automáticamente otras tareas en curso del usuario.
+- Regla: cambiar de proyecto en la UI **NO** debe “limpiar” automáticamente el trabajo en curso (es global); la UI puede filtrar/mostrar la lista por proyecto si lo necesita.
 - Acciones globales relacionadas (ya existentes en tareas claimed): `complete`, `release`.
-- **Mobile** requiere UX específica: no se muestra el Pool; solo My Bar + acciones rápidas (start/pause/complete/release) y el cronómetro.
+- **Implicación UX (MVP):** “Now Working” debe soportar **múltiples entradas** (lista), no solo una tarjeta:
+  - Desktop: HUD/panel con lista de tareas en curso + cronómetro por tarea.
+  - Mobile: no se muestra el Pool; solo My Bar + lista Now Working + acciones rápidas (start/pause/complete/release).
 
 ### Acceptance Criteria: No Asignación Directa
 

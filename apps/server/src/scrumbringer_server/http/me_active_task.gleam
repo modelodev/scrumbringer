@@ -108,6 +108,36 @@ pub fn handle_me_active_task_pause(
   }
 }
 
+pub fn handle_me_active_task_heartbeat(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+) -> wisp.Response {
+  use <- wisp.require_method(req, http.Post)
+
+  case auth.require_current_user(req, ctx) {
+    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+
+    Ok(user) ->
+      case csrf.require_double_submit(req) {
+        Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+
+        Ok(Nil) -> {
+          let auth.Ctx(db: db, ..) = ctx
+
+          case now_working_db.heartbeat(db, user.id) {
+            Ok(_) ->
+              case build_payload(db, user.id) {
+                Ok(payload) -> api.ok(payload)
+                Error(_) -> api.error(500, "INTERNAL", "Database error")
+              }
+
+            Error(_) -> api.error(500, "INTERNAL", "Database error")
+          }
+        }
+      }
+  }
+}
+
 fn build_payload(
   db: pog.Connection,
   user_id: Int,
@@ -133,11 +163,13 @@ fn active_task_json(task: now_working_db.ActiveTask) -> json.Json {
     task_id: task_id,
     project_id: project_id,
     started_at: started_at,
+    accumulated_s: accumulated_s,
   ) = task
 
   json.object([
     #("task_id", json.int(task_id)),
     #("project_id", json.int(project_id)),
     #("started_at", json.string(started_at)),
+    #("accumulated_s", json.int(accumulated_s)),
   ])
 }

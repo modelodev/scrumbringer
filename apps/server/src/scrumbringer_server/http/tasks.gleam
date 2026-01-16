@@ -250,6 +250,7 @@ fn handle_tasks_list(
                     tasks_db.list_tasks_for_project(
                       db,
                       project_id,
+                      user.id,
                       filters.status,
                       filters.type_id,
                       filters.capability_id,
@@ -1048,10 +1049,14 @@ fn task_json(task: tasks_db.Task) -> json.Json {
     id: id,
     project_id: project_id,
     type_id: type_id,
+    type_name: type_name,
+    type_icon: type_icon,
     title: title,
     description: description,
     priority: priority,
     status: status,
+    is_ongoing: is_ongoing,
+    ongoing_by_user_id: ongoing_by_user_id,
     created_by: created_by,
     claimed_by: claimed_by,
     claimed_at: claimed_at,
@@ -1060,14 +1065,26 @@ fn task_json(task: tasks_db.Task) -> json.Json {
     version: version,
   ) = task
 
+  let work_state = derive_work_state(status, is_ongoing)
+
   json.object([
     #("id", json.int(id)),
     #("project_id", json.int(project_id)),
     #("type_id", json.int(type_id)),
+    #(
+      "task_type",
+      json.object([
+        #("id", json.int(type_id)),
+        #("name", json.string(type_name)),
+        #("icon", json.string(type_icon)),
+      ]),
+    ),
+    #("ongoing_by", ongoing_by_json(ongoing_by_user_id)),
     #("title", json.string(title)),
     #("description", option_string_json(description)),
     #("priority", json.int(priority)),
     #("status", json.string(status)),
+    #("work_state", json.string(work_state)),
     #("created_by", json.int(created_by)),
     #("claimed_by", option_int_json(claimed_by)),
     #("claimed_at", option_string_json(claimed_at)),
@@ -1088,5 +1105,28 @@ fn option_string_json(value: Option(String)) -> json.Json {
   case value {
     None -> json.null()
     Some(v) -> json.string(v)
+  }
+}
+
+fn ongoing_by_json(value: Option(Int)) -> json.Json {
+  case value {
+    None -> json.null()
+    Some(user_id) ->
+      json.object([
+        #("user_id", json.int(user_id)),
+      ])
+  }
+}
+
+fn derive_work_state(status: String, is_ongoing: Bool) -> String {
+  case status {
+    "available" -> "available"
+    "completed" -> "completed"
+    "claimed" ->
+      case is_ongoing {
+        True -> "ongoing"
+        False -> "claimed"
+      }
+    _ -> status
   }
 }

@@ -148,6 +148,8 @@ fn handle_request(req: wisp.Request, app: App) -> wisp.Response {
       me_active_task.handle_me_active_task_start(req, auth_ctx(app))
     ["api", "v1", "me", "active-task", "pause"] ->
       me_active_task.handle_me_active_task_pause(req, auth_ctx(app))
+    ["api", "v1", "me", "active-task", "heartbeat"] ->
+      me_active_task.handle_me_active_task_heartbeat(req, auth_ctx(app))
     ["api", "v1", "me", "metrics"] ->
       me_metrics.handle_me_metrics(req, auth_ctx(app))
     ["api", "v1", "org", "metrics", "overview"] ->

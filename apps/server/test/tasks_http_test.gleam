@@ -275,6 +275,244 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
   |> should.be_true
 }
 
+pub fn tasks_list_includes_task_contract_fields_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+
+  let req =
+    simulate.request(
+      http.Get,
+      "/api/v1/projects/" <> int_to_string(project_id) <> "/tasks",
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+
+  let res = handler(req)
+  res.status |> should.equal(200)
+
+  let body = simulate.read_body(res)
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+
+  let task_type_decoder = {
+    use id <- decode.field("id", decode.int)
+    use name <- decode.field("name", decode.string)
+    use icon <- decode.field("icon", decode.string)
+    decode.success(#(id, name, icon))
+  }
+
+  let ongoing_by_decoder =
+    decode.optional({
+      use user_id <- decode.field("user_id", decode.int)
+      decode.success(user_id)
+    })
+
+  let task_decoder = {
+    use work_state <- decode.field("work_state", decode.string)
+    use task_type <- decode.field("task_type", task_type_decoder)
+    use ongoing_by <- decode.field("ongoing_by", ongoing_by_decoder)
+    decode.success(#(work_state, task_type, ongoing_by))
+  }
+
+  let data_decoder = {
+    use tasks <- decode.field("tasks", decode.list(task_decoder))
+    decode.success(tasks)
+  }
+
+  let response_decoder = decode.field("data", data_decoder, decode.success)
+
+  let assert Ok(tasks) = decode.run(dynamic, response_decoder)
+
+  case tasks {
+    [
+      #(work_state, #(task_type_id, task_type_name, task_type_icon), ongoing_by),
+      ..
+    ] -> {
+      work_state |> should.equal("available")
+      task_type_id |> should.equal(type_id)
+      task_type_name |> should.equal("Bug")
+      task_type_icon |> should.equal("bug-ant")
+      ongoing_by |> should.equal(option.None)
+      Nil
+    }
+    _ -> False |> should.be_true
+  }
+}
+
+pub fn task_get_includes_task_contract_fields_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  let task_id =
+    create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+
+  let req =
+    simulate.request(http.Get, "/api/v1/tasks/" <> int_to_string(task_id))
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+
+  let res = handler(req)
+  res.status |> should.equal(200)
+
+  let body = simulate.read_body(res)
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+
+  let task_type_decoder = {
+    use id <- decode.field("id", decode.int)
+    use name <- decode.field("name", decode.string)
+    use icon <- decode.field("icon", decode.string)
+    decode.success(#(id, name, icon))
+  }
+
+  let ongoing_by_decoder =
+    decode.optional({
+      use user_id <- decode.field("user_id", decode.int)
+      decode.success(user_id)
+    })
+
+  let task_decoder = {
+    use work_state <- decode.field("work_state", decode.string)
+    use task_type <- decode.field("task_type", task_type_decoder)
+    use ongoing_by <- decode.field("ongoing_by", ongoing_by_decoder)
+    decode.success(#(work_state, task_type, ongoing_by))
+  }
+
+  let data_decoder = {
+    use task <- decode.field("task", task_decoder)
+    decode.success(task)
+  }
+
+  let response_decoder = decode.field("data", data_decoder, decode.success)
+
+  let assert Ok(#(
+    work_state,
+    #(task_type_id, task_type_name, task_type_icon),
+    ongoing_by,
+  )) = decode.run(dynamic, response_decoder)
+
+  work_state |> should.equal("available")
+  task_type_id |> should.equal(type_id)
+  task_type_name |> should.equal("Bug")
+  task_type_icon |> should.equal("bug-ant")
+  ongoing_by |> should.equal(option.None)
+}
+
+pub fn task_get_includes_ongoing_by_when_active_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  let task_id =
+    create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+
+  claim_task(handler, session, csrf, task_id, 1) |> should.equal(200)
+  start_active_task(handler, session, csrf, task_id).status |> should.equal(200)
+
+  let user_id =
+    single_int(db, "select id from users where email = 'admin@example.com'", [])
+
+  let req =
+    simulate.request(http.Get, "/api/v1/tasks/" <> int_to_string(task_id))
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+
+  let res = handler(req)
+  res.status |> should.equal(200)
+
+  let body = simulate.read_body(res)
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+
+  let task_type_decoder = {
+    use id <- decode.field("id", decode.int)
+    use name <- decode.field("name", decode.string)
+    use icon <- decode.field("icon", decode.string)
+    decode.success(#(id, name, icon))
+  }
+
+  let ongoing_by_decoder =
+    decode.optional({
+      use user_id <- decode.field("user_id", decode.int)
+      decode.success(user_id)
+    })
+
+  let task_decoder = {
+    use work_state <- decode.field("work_state", decode.string)
+    use task_type <- decode.field("task_type", task_type_decoder)
+    use ongoing_by <- decode.field("ongoing_by", ongoing_by_decoder)
+    decode.success(#(work_state, task_type, ongoing_by))
+  }
+
+  let data_decoder = {
+    use task <- decode.field("task", task_decoder)
+    decode.success(task)
+  }
+
+  let response_decoder = decode.field("data", data_decoder, decode.success)
+
+  let assert Ok(#(
+    work_state,
+    #(task_type_id, task_type_name, task_type_icon),
+    ongoing_by,
+  )) = decode.run(dynamic, response_decoder)
+
+  work_state |> should.equal("ongoing")
+  task_type_id |> should.equal(type_id)
+  task_type_name |> should.equal("Bug")
+  task_type_icon |> should.equal("bug-ant")
+  ongoing_by |> should.equal(option.Some(user_id))
+}
+
 pub fn claim_conflict_version_conflict_and_state_machine_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -619,6 +857,12 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
 
   let task_decoder = {
     use id <- decode.field("id", decode.int)
+
+    // Ensure global Task contract fields exist
+    use _task_type <- decode.field("task_type", decode.dynamic)
+    use _work_state <- decode.field("work_state", decode.string)
+    use _ongoing_by <- decode.field("ongoing_by", decode.dynamic)
+
     use claim_count <- decode.field("claim_count", decode.int)
     use release_count <- decode.field("release_count", decode.int)
     use complete_count <- decode.field("complete_count", decode.int)
@@ -626,6 +870,7 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
       "first_claim_at",
       decode.optional(decode.string),
     )
+
     decode.success(#(
       id,
       claim_count,
@@ -1094,15 +1339,96 @@ pub fn me_active_task_start_pause_and_persist_test() {
   decode_active_task_id(simulate.read_body(get_res))
   |> should.equal(option.Some(task_id))
 
+  // Simulate ~70s of elapsed time, then pause to flush accumulation.
+  let user_id =
+    single_int(db, "select id from users where email = 'admin@example.com'", [])
+
+  let _ =
+    pog.query(
+      "update user_now_working set started_at = now() - interval '70 seconds' where user_id = $1 and task_id = $2",
+    )
+    |> pog.parameter(pog.int(user_id))
+    |> pog.parameter(pog.int(task_id))
+    |> pog.execute(db)
+
   let pause_res = pause_active_task(handler, session, csrf)
   pause_res.status |> should.equal(200)
   decode_active_task_id(simulate.read_body(pause_res))
   |> should.equal(option.None)
 
+  let accumulated_after_pause =
+    single_int(
+      db,
+      "select accumulated_s from user_task_now_working_time where user_id = $1 and task_id = $2",
+      [pog.int(user_id), pog.int(task_id)],
+    )
+
+  let _ = should.be_true(accumulated_after_pause >= 70)
+
+  let resume_body =
+    simulate.read_body(start_active_task(handler, session, csrf, task_id))
+
+  decode_active_task_accumulated_s(resume_body)
+  |> should.equal(option.Some(accumulated_after_pause))
+
   let get_after_pause = get_active_task(handler, session, csrf)
   get_after_pause.status |> should.equal(200)
   decode_active_task_id(simulate.read_body(get_after_pause))
-  |> should.equal(option.None)
+  |> should.equal(option.Some(task_id))
+}
+
+pub fn me_active_task_heartbeat_persists_accumulated_s_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  let task_id =
+    create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+
+  claim_task(handler, session, csrf, task_id, 1) |> should.equal(200)
+  start_active_task(handler, session, csrf, task_id).status |> should.equal(200)
+
+  let user_id =
+    single_int(db, "select id from users where email = 'admin@example.com'", [])
+
+  let _ =
+    pog.query(
+      "update user_now_working set started_at = now() - interval '65 seconds' where user_id = $1 and task_id = $2",
+    )
+    |> pog.parameter(pog.int(user_id))
+    |> pog.parameter(pog.int(task_id))
+    |> pog.execute(db)
+
+  let heartbeat_body =
+    simulate.read_body(heartbeat_active_task(handler, session, csrf))
+
+  let accumulated_after_heartbeat =
+    single_int(
+      db,
+      "select accumulated_s from user_task_now_working_time where user_id = $1 and task_id = $2",
+      [pog.int(user_id), pog.int(task_id)],
+    )
+
+  let _ = should.be_true(accumulated_after_heartbeat >= 65)
+
+  decode_active_task_accumulated_s(heartbeat_body)
+  |> should.equal(option.Some(accumulated_after_heartbeat))
 }
 
 pub fn me_active_task_replaces_previous_on_start_test() {
@@ -1270,10 +1596,27 @@ fn pause_active_task(
   )
 }
 
-fn decode_active_task(body: String) -> #(option.Option(Int), String) {
+fn heartbeat_active_task(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+) -> wisp.Response {
+  handler(
+    simulate.request(http.Post, "/api/v1/me/active-task/heartbeat")
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf),
+  )
+}
+
+fn decode_active_task(body: String) -> #(option.Option(Int), String, Int) {
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)
 
-  let active_decoder = decode.field("task_id", decode.int, decode.success)
+  let active_decoder = {
+    use task_id <- decode.field("task_id", decode.int)
+    use accumulated_s <- decode.field("accumulated_s", decode.int)
+    decode.success(#(task_id, accumulated_s))
+  }
 
   let data_decoder = {
     use active_task <- decode.field(
@@ -1281,7 +1624,16 @@ fn decode_active_task(body: String) -> #(option.Option(Int), String) {
       decode.optional(active_decoder),
     )
     use as_of <- decode.field("as_of", decode.string)
-    decode.success(#(active_task, as_of))
+
+    let #(active_task_id, accumulated_s) = case active_task {
+      option.Some(#(task_id, accumulated)) -> #(
+        option.Some(task_id),
+        accumulated,
+      )
+      option.None -> #(option.None, 0)
+    }
+
+    decode.success(#(active_task_id, as_of, accumulated_s))
   }
 
   let response_decoder = decode.field("data", data_decoder, decode.success)
@@ -1291,12 +1643,21 @@ fn decode_active_task(body: String) -> #(option.Option(Int), String) {
 }
 
 fn decode_active_task_id(body: String) -> option.Option(Int) {
-  let #(active_task, _) = decode_active_task(body)
-  active_task
+  let #(active_task_id, _, _) = decode_active_task(body)
+  active_task_id
+}
+
+fn decode_active_task_accumulated_s(body: String) -> option.Option(Int) {
+  let #(active_task_id, _, accumulated_s) = decode_active_task(body)
+
+  case active_task_id {
+    option.Some(_) -> option.Some(accumulated_s)
+    option.None -> option.None
+  }
 }
 
 fn decode_as_of(body: String) -> String {
-  let #(_, as_of) = decode_active_task(body)
+  let #(_, as_of, _) = decode_active_task(body)
   as_of
 }
 

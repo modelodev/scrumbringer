@@ -236,18 +236,35 @@ fn project_task_json(row: sql.MetricsProjectTasksRow) -> json.Json {
     other -> Some(other)
   }
 
+  let ongoing_by_user_id = case row.ongoing_by_user_id {
+    0 -> None
+    other -> Some(other)
+  }
+
   let claimed_at = empty_string_to_option(row.claimed_at)
   let completed_at = empty_string_to_option(row.completed_at)
   let first_claim_at = empty_string_to_option(row.first_claim_at)
+
+  let work_state = derive_work_state(row.status, row.is_ongoing)
 
   json.object([
     #("id", json.int(row.id)),
     #("project_id", json.int(row.project_id)),
     #("type_id", json.int(row.type_id)),
+    #(
+      "task_type",
+      json.object([
+        #("id", json.int(row.type_id)),
+        #("name", json.string(row.type_name)),
+        #("icon", json.string(row.type_icon)),
+      ]),
+    ),
+    #("ongoing_by", ongoing_by_json(ongoing_by_user_id)),
     #("title", json.string(row.title)),
     #("description", json.string(row.description)),
     #("priority", json.int(row.priority)),
     #("status", json.string(row.status)),
+    #("work_state", json.string(work_state)),
     #("created_by", json.int(row.created_by)),
     #("claimed_by", option_int_json(claimed_by)),
     #("claimed_at", option_string_json(claimed_at)),
@@ -286,6 +303,26 @@ fn option_string_json(value: Option(String)) -> json.Json {
   case value {
     None -> json.null()
     Some(v) -> json.string(v)
+  }
+}
+
+fn ongoing_by_json(value: Option(Int)) -> json.Json {
+  case value {
+    None -> json.null()
+    Some(user_id) -> json.object([#("user_id", json.int(user_id))])
+  }
+}
+
+fn derive_work_state(status: String, is_ongoing: Bool) -> String {
+  case status {
+    "available" -> "available"
+    "completed" -> "completed"
+    "claimed" ->
+      case is_ongoing {
+        True -> "ongoing"
+        False -> "claimed"
+      }
+    _ -> status
   }
 }
 

@@ -59,15 +59,66 @@ pub type OrgUser {
   OrgUser(id: Int, email: String, org_role: String, created_at: String)
 }
 
+// Make invalid states unrepresentable:
+// - Ongoing implies Claimed
+// - Available/Completed are mutually exclusive with Claimed
+pub type TaskStatus {
+  Available
+  Claimed(ClaimedState)
+  Completed
+}
+
+pub type ClaimedState {
+  Taken
+  Ongoing
+}
+
+pub fn parse_task_status(value: String) -> Result(TaskStatus, String) {
+  case value {
+    "available" -> Ok(Available)
+    "claimed" -> Ok(Claimed(Taken))
+    "ongoing" -> Ok(Claimed(Ongoing))
+    "completed" -> Ok(Completed)
+    _ -> Error("Unknown task status: " <> value)
+  }
+}
+
+pub fn task_status_to_string(status: TaskStatus) -> String {
+  case status {
+    Available -> "available"
+    Claimed(Taken) -> "claimed"
+    Claimed(Ongoing) -> "ongoing"
+    Completed -> "completed"
+  }
+}
+
+pub type TaskTypeInline {
+  TaskTypeInline(id: Int, name: String, icon: String)
+}
+
+pub type WorkState {
+  WorkAvailable
+  WorkClaimed
+  WorkOngoing
+  WorkCompleted
+}
+
+pub type OngoingBy {
+  OngoingBy(user_id: Int)
+}
+
 pub type Task {
   Task(
     id: Int,
     project_id: Int,
     type_id: Int,
+    task_type: TaskTypeInline,
+    ongoing_by: option.Option(OngoingBy),
     title: String,
     description: option.Option(String),
     priority: Int,
-    status: String,
+    status: TaskStatus,
+    work_state: WorkState,
     created_by: Int,
     claimed_by: option.Option(Int),
     claimed_at: option.Option(String),
@@ -92,7 +143,12 @@ pub type TaskPosition {
 }
 
 pub type ActiveTask {
-  ActiveTask(task_id: Int, project_id: Int, started_at: String)
+  ActiveTask(
+    task_id: Int,
+    project_id: Int,
+    started_at: String,
+    accumulated_s: Int,
+  )
 }
 
 pub type ActiveTaskPayload {
@@ -457,10 +513,22 @@ fn active_task_decoder() -> decode.Decoder(ActiveTask) {
   use task_id <- decode.field("task_id", decode.int)
   use project_id <- decode.field("project_id", decode.int)
   use started_at <- decode.field("started_at", decode.string)
+  use accumulated <- decode.optional_field(
+    "accumulated_s",
+    option.None,
+    decode.optional(decode.int),
+  )
+
+  let accumulated_s = case accumulated {
+    option.Some(v) -> v
+    option.None -> 0
+  }
+
   decode.success(ActiveTask(
     task_id: task_id,
     project_id: project_id,
     started_at: started_at,
+    accumulated_s: accumulated_s,
   ))
 }
 
@@ -599,7 +667,13 @@ fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
   )
 
   use priority <- decode.field("priority", decode.int)
-  use status <- decode.field("status", decode.string)
+  use status_raw <- decode.field("status", decode.string)
+
+  let status = case parse_task_status(status_raw) {
+    Ok(s) -> s
+    Error(_) -> Available
+  }
+
   use created_by <- decode.field("created_by", decode.int)
 
   use claimed_by <- decode.optional_field(
@@ -632,15 +706,26 @@ fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
     decode.optional(decode.string),
   )
 
+  use task_type <- decode.field("task_type", task_type_inline_decoder())
+  use ongoing_by <- decode.optional_field(
+    "ongoing_by",
+    option.None,
+    decode.optional(ongoing_by_decoder()),
+  )
+  use work_state <- decode.field("work_state", work_state_decoder())
+
   let task =
     Task(
       id: id,
       project_id: project_id,
       type_id: type_id,
+      task_type: task_type,
+      ongoing_by: ongoing_by,
       title: title,
       description: description,
       priority: priority,
       status: status,
+      work_state: work_state,
       created_by: created_by,
       claimed_by: claimed_by,
       claimed_at: claimed_at,
@@ -688,10 +773,44 @@ fn org_user_decoder() -> decode.Decoder(OrgUser) {
   ))
 }
 
-fn task_decoder() -> decode.Decoder(Task) {
+fn task_type_inline_decoder() -> decode.Decoder(TaskTypeInline) {
+  use id <- decode.field("id", decode.int)
+  use name <- decode.field("name", decode.string)
+  use icon <- decode.field("icon", decode.string)
+  decode.success(TaskTypeInline(id: id, name: name, icon: icon))
+}
+
+fn ongoing_by_decoder() -> decode.Decoder(OngoingBy) {
+  use user_id <- decode.field("user_id", decode.int)
+  decode.success(OngoingBy(user_id: user_id))
+}
+
+fn work_state_decoder() -> decode.Decoder(WorkState) {
+  decode.string
+  |> decode.map(fn(raw) {
+    case raw {
+      "available" -> WorkAvailable
+      "claimed" -> WorkClaimed
+      "ongoing" -> WorkOngoing
+      "completed" -> WorkCompleted
+      _ -> WorkClaimed
+    }
+  })
+}
+
+pub fn task_decoder() -> decode.Decoder(Task) {
   use id <- decode.field("id", decode.int)
   use project_id <- decode.field("project_id", decode.int)
   use type_id <- decode.field("type_id", decode.int)
+
+  use task_type <- decode.field("task_type", task_type_inline_decoder())
+
+  use ongoing_by <- decode.optional_field(
+    "ongoing_by",
+    option.None,
+    decode.optional(ongoing_by_decoder()),
+  )
+
   use title <- decode.field("title", decode.string)
 
   use description <- decode.optional_field(
@@ -701,7 +820,15 @@ fn task_decoder() -> decode.Decoder(Task) {
   )
 
   use priority <- decode.field("priority", decode.int)
-  use status <- decode.field("status", decode.string)
+
+  use status_raw <- decode.field("status", decode.string)
+  let status = case parse_task_status(status_raw) {
+    Ok(s) -> s
+    Error(_) -> Available
+  }
+
+  use work_state <- decode.field("work_state", work_state_decoder())
+
   use created_by <- decode.field("created_by", decode.int)
 
   use claimed_by <- decode.optional_field(
@@ -729,10 +856,13 @@ fn task_decoder() -> decode.Decoder(Task) {
     id: id,
     project_id: project_id,
     type_id: type_id,
+    task_type: task_type,
+    ongoing_by: ongoing_by,
     title: title,
     description: description,
     priority: priority,
     status: status,
+    work_state: work_state,
     created_by: created_by,
     claimed_by: claimed_by,
     claimed_at: claimed_at,
@@ -1273,6 +1403,18 @@ pub fn pause_me_active_task(
   request(
     "POST",
     "/api/v1/me/active-task/pause",
+    option.None,
+    active_task_payload_decoder(),
+    to_msg,
+  )
+}
+
+pub fn heartbeat_me_active_task(
+  to_msg: fn(ApiResult(ActiveTaskPayload)) -> msg,
+) -> Effect(msg) {
+  request(
+    "POST",
+    "/api/v1/me/active-task/heartbeat",
     option.None,
     active_task_payload_decoder(),
     to_msg,

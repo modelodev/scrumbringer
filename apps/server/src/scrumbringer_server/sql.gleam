@@ -306,10 +306,14 @@ pub type MetricsProjectTasksRow {
     id: Int,
     project_id: Int,
     type_id: Int,
+    type_name: String,
+    type_icon: String,
     title: String,
     description: String,
     priority: Int,
     status: String,
+    is_ongoing: Bool,
+    ongoing_by_user_id: Int,
     created_by: Int,
     claimed_by: Int,
     claimed_at: String,
@@ -337,28 +341,36 @@ pub fn metrics_project_tasks(
     use id <- decode.field(0, decode.int)
     use project_id <- decode.field(1, decode.int)
     use type_id <- decode.field(2, decode.int)
-    use title <- decode.field(3, decode.string)
-    use description <- decode.field(4, decode.string)
-    use priority <- decode.field(5, decode.int)
-    use status <- decode.field(6, decode.string)
-    use created_by <- decode.field(7, decode.int)
-    use claimed_by <- decode.field(8, decode.int)
-    use claimed_at <- decode.field(9, decode.string)
-    use completed_at <- decode.field(10, decode.string)
-    use created_at <- decode.field(11, decode.string)
-    use version <- decode.field(12, decode.int)
-    use claim_count <- decode.field(13, decode.int)
-    use release_count <- decode.field(14, decode.int)
-    use complete_count <- decode.field(15, decode.int)
-    use first_claim_at <- decode.field(16, decode.string)
+    use type_name <- decode.field(3, decode.string)
+    use type_icon <- decode.field(4, decode.string)
+    use title <- decode.field(5, decode.string)
+    use description <- decode.field(6, decode.string)
+    use priority <- decode.field(7, decode.int)
+    use status <- decode.field(8, decode.string)
+    use is_ongoing <- decode.field(9, decode.bool)
+    use ongoing_by_user_id <- decode.field(10, decode.int)
+    use created_by <- decode.field(11, decode.int)
+    use claimed_by <- decode.field(12, decode.int)
+    use claimed_at <- decode.field(13, decode.string)
+    use completed_at <- decode.field(14, decode.string)
+    use created_at <- decode.field(15, decode.string)
+    use version <- decode.field(16, decode.int)
+    use claim_count <- decode.field(17, decode.int)
+    use release_count <- decode.field(18, decode.int)
+    use complete_count <- decode.field(19, decode.int)
+    use first_claim_at <- decode.field(20, decode.string)
     decode.success(MetricsProjectTasksRow(
       id:,
       project_id:,
       type_id:,
+      type_name:,
+      type_icon:,
       title:,
       description:,
       priority:,
       status:,
+      is_ongoing:,
+      ongoing_by_user_id:,
       created_by:,
       claimed_by:,
       claimed_at:,
@@ -378,17 +390,36 @@ with task_scope as (
     t.id,
     t.project_id,
     t.type_id,
+    tt.name as type_name,
+    tt.icon as type_icon,
     t.title,
     coalesce(t.description, '') as description,
     t.priority,
-    t.status,
-    t.created_by,
+     t.status,
+     (
+       t.status = 'claimed'
+       and exists(
+         select 1
+         from user_now_working unw
+         where unw.task_id = t.id
+       )
+     ) as is_ongoing,
+     coalesce((
+       select unw.user_id
+       from user_now_working unw
+       where unw.task_id = t.id
+       order by unw.updated_at desc
+       limit 1
+     ), 0) as ongoing_by_user_id,
+     t.created_by,
+
     coalesce(t.claimed_by, 0) as claimed_by,
     coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
     coalesce(to_char(t.completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
     to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     t.version
   from tasks t
+  join task_types tt on tt.id = t.type_id
   where t.project_id = $1
 ), event_counts as (
   select
@@ -406,10 +437,14 @@ select
   ts.id,
   ts.project_id,
   ts.type_id,
+  ts.type_name,
+  ts.type_icon,
   ts.title,
   ts.description,
   ts.priority,
   ts.status,
+  ts.is_ongoing,
+  ts.ongoing_by_user_id,
   ts.created_by,
   ts.claimed_by,
   ts.claimed_at,
@@ -1844,6 +1879,10 @@ pub type TasksClaimRow {
     completed_at: String,
     created_at: String,
     version: Int,
+    type_name: String,
+    type_icon: String,
+    is_ongoing: Bool,
+    ongoing_by_user_id: Int,
   )
 }
 
@@ -1872,6 +1911,10 @@ pub fn tasks_claim(
     use completed_at <- decode.field(10, decode.string)
     use created_at <- decode.field(11, decode.string)
     use version <- decode.field(12, decode.int)
+    use type_name <- decode.field(13, decode.string)
+    use type_icon <- decode.field(14, decode.string)
+    use is_ongoing <- decode.field(15, decode.bool)
+    use ongoing_by_user_id <- decode.field(16, decode.int)
     decode.success(TasksClaimRow(
       id:,
       project_id:,
@@ -1886,33 +1929,47 @@ pub fn tasks_claim(
       completed_at:,
       created_at:,
       version:,
+      type_name:,
+      type_icon:,
+      is_ongoing:,
+      ongoing_by_user_id:,
     ))
   }
 
   "-- name: claim_task
-update tasks
-set
-  claimed_by = $2,
-  claimed_at = now(),
-  status = 'claimed',
-  version = version + 1
-where id = $1
-  and status = 'available'
-  and version = $3
-returning
-  id,
-  project_id,
-  type_id,
-  title,
-  coalesce(description, '') as description,
-  priority,
-  status,
-  created_by,
-  coalesce(claimed_by, 0) as claimed_by,
-  coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-  coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
-  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
-  version;
+with updated as (
+  update tasks
+  set
+    claimed_by = $2,
+    claimed_at = now(),
+    status = 'claimed',
+    version = version + 1
+  where id = $1
+    and status = 'available'
+    and version = $3
+  returning
+    id,
+    project_id,
+    type_id,
+    title,
+    coalesce(description, '') as description,
+    priority,
+    status,
+    created_by,
+    coalesce(claimed_by, 0) as claimed_by,
+    coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
+    coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    version
+)
+select
+  updated.*,
+  tt.name as type_name,
+  tt.icon as type_icon,
+  false as is_ongoing,
+  0 as ongoing_by_user_id
+from updated
+join task_types tt on tt.id = updated.type_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -1943,6 +2000,10 @@ pub type TasksCompleteRow {
     completed_at: String,
     created_at: String,
     version: Int,
+    type_name: String,
+    type_icon: String,
+    is_ongoing: Bool,
+    ongoing_by_user_id: Int,
   )
 }
 
@@ -1971,6 +2032,10 @@ pub fn tasks_complete(
     use completed_at <- decode.field(10, decode.string)
     use created_at <- decode.field(11, decode.string)
     use version <- decode.field(12, decode.int)
+    use type_name <- decode.field(13, decode.string)
+    use type_icon <- decode.field(14, decode.string)
+    use is_ongoing <- decode.field(15, decode.bool)
+    use ongoing_by_user_id <- decode.field(16, decode.int)
     decode.success(TasksCompleteRow(
       id:,
       project_id:,
@@ -1985,33 +2050,47 @@ pub fn tasks_complete(
       completed_at:,
       created_at:,
       version:,
+      type_name:,
+      type_icon:,
+      is_ongoing:,
+      ongoing_by_user_id:,
     ))
   }
 
   "-- name: complete_task
-update tasks
-set
-  status = 'completed',
-  completed_at = now(),
-  version = version + 1
-where id = $1
-  and status = 'claimed'
-  and claimed_by = $2
-  and version = $3
-returning
-  id,
-  project_id,
-  type_id,
-  title,
-  coalesce(description, '') as description,
-  priority,
-  status,
-  created_by,
-  coalesce(claimed_by, 0) as claimed_by,
-  coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-  coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
-  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
-  version;
+with updated as (
+  update tasks
+  set
+    status = 'completed',
+    completed_at = now(),
+    version = version + 1
+  where id = $1
+    and status = 'claimed'
+    and claimed_by = $2
+    and version = $3
+  returning
+    id,
+    project_id,
+    type_id,
+    title,
+    coalesce(description, '') as description,
+    priority,
+    status,
+    created_by,
+    coalesce(claimed_by, 0) as claimed_by,
+    coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
+    coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    version
+)
+select
+  updated.*,
+  tt.name as type_name,
+  tt.icon as type_icon,
+  false as is_ongoing,
+  0 as ongoing_by_user_id
+from updated
+join task_types tt on tt.id = updated.type_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -2042,6 +2121,10 @@ pub type TasksCreateRow {
     completed_at: String,
     created_at: String,
     version: Int,
+    type_name: String,
+    type_icon: String,
+    is_ongoing: Bool,
+    ongoing_by_user_id: Int,
   )
 }
 
@@ -2074,6 +2157,10 @@ pub fn tasks_create(
     use completed_at <- decode.field(10, decode.string)
     use created_at <- decode.field(11, decode.string)
     use version <- decode.field(12, decode.int)
+    use type_name <- decode.field(13, decode.string)
+    use type_icon <- decode.field(14, decode.string)
+    use is_ongoing <- decode.field(15, decode.bool)
+    use ongoing_by_user_id <- decode.field(16, decode.int)
     decode.success(TasksCreateRow(
       id:,
       project_id:,
@@ -2088,6 +2175,10 @@ pub fn tasks_create(
       completed_at:,
       created_at:,
       version:,
+      type_name:,
+      type_icon:,
+      is_ongoing:,
+      ongoing_by_user_id:,
     ))
   }
 
@@ -2098,30 +2189,39 @@ with type_ok as (
   from task_types
   where id = $1
     and project_id = $2
+), inserted as (
+  insert into tasks (project_id, type_id, title, description, priority, created_by)
+  select
+    $2,
+    type_ok.id,
+    $3,
+    nullif($4, ''),
+    $5,
+    $6
+  from type_ok
+  returning
+    id,
+    project_id,
+    type_id,
+    title,
+    coalesce(description, '') as description,
+    priority,
+    status,
+    created_by,
+    coalesce(claimed_by, 0) as claimed_by,
+    coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
+    coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    version
 )
-insert into tasks (project_id, type_id, title, description, priority, created_by)
 select
-  $2,
-  type_ok.id,
-  $3,
-  nullif($4, ''),
-  $5,
-  $6
-from type_ok
-returning
-  id,
-  project_id,
-  type_id,
-  title,
-  coalesce(description, '') as description,
-  priority,
-  status,
-  created_by,
-  coalesce(claimed_by, 0) as claimed_by,
-  coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-  coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
-  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
-  version;
+  inserted.*,
+  tt.name as type_name,
+  tt.icon as type_icon,
+  (false) as is_ongoing,
+  0 as ongoing_by_user_id
+from inserted
+join task_types tt on tt.id = inserted.type_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -2145,10 +2245,14 @@ pub type TasksGetForUserRow {
     id: Int,
     project_id: Int,
     type_id: Int,
+    type_name: String,
+    type_icon: String,
     title: String,
     description: String,
     priority: Int,
     status: String,
+    is_ongoing: Bool,
+    ongoing_by_user_id: Int,
     created_by: Int,
     claimed_by: Int,
     claimed_at: String,
@@ -2172,24 +2276,32 @@ pub fn tasks_get_for_user(
     use id <- decode.field(0, decode.int)
     use project_id <- decode.field(1, decode.int)
     use type_id <- decode.field(2, decode.int)
-    use title <- decode.field(3, decode.string)
-    use description <- decode.field(4, decode.string)
-    use priority <- decode.field(5, decode.int)
-    use status <- decode.field(6, decode.string)
-    use created_by <- decode.field(7, decode.int)
-    use claimed_by <- decode.field(8, decode.int)
-    use claimed_at <- decode.field(9, decode.string)
-    use completed_at <- decode.field(10, decode.string)
-    use created_at <- decode.field(11, decode.string)
-    use version <- decode.field(12, decode.int)
+    use type_name <- decode.field(3, decode.string)
+    use type_icon <- decode.field(4, decode.string)
+    use title <- decode.field(5, decode.string)
+    use description <- decode.field(6, decode.string)
+    use priority <- decode.field(7, decode.int)
+    use status <- decode.field(8, decode.string)
+    use is_ongoing <- decode.field(9, decode.bool)
+    use ongoing_by_user_id <- decode.field(10, decode.int)
+    use created_by <- decode.field(11, decode.int)
+    use claimed_by <- decode.field(12, decode.int)
+    use claimed_at <- decode.field(13, decode.string)
+    use completed_at <- decode.field(14, decode.string)
+    use created_at <- decode.field(15, decode.string)
+    use version <- decode.field(16, decode.int)
     decode.success(TasksGetForUserRow(
       id:,
       project_id:,
       type_id:,
+      type_name:,
+      type_icon:,
       title:,
       description:,
       priority:,
       status:,
+      is_ongoing:,
+      ongoing_by_user_id:,
       created_by:,
       claimed_by:,
       claimed_at:,
@@ -2204,10 +2316,27 @@ select
   t.id,
   t.project_id,
   t.type_id,
+  tt.name as type_name,
+  tt.icon as type_icon,
   t.title,
   coalesce(t.description, '') as description,
   t.priority,
   t.status,
+  (
+    t.status = 'claimed'
+    and exists(
+      select 1
+      from user_now_working unw
+      where unw.task_id = t.id
+    )
+  ) as is_ongoing,
+  coalesce((
+    select unw.user_id
+    from user_now_working unw
+    where unw.task_id = t.id
+    order by unw.updated_at desc
+    limit 1
+  ), 0) as ongoing_by_user_id,
   t.created_by,
   coalesce(t.claimed_by, 0) as claimed_by,
   coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
@@ -2215,6 +2344,7 @@ select
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
   t.version
 from tasks t
+join task_types tt on tt.id = t.type_id
 where t.id = $1
   and exists(
     select 1
@@ -2241,10 +2371,14 @@ pub type TasksListRow {
     id: Int,
     project_id: Int,
     type_id: Int,
+    type_name: String,
+    type_icon: String,
     title: String,
     description: String,
     priority: Int,
     status: String,
+    is_ongoing: Bool,
+    ongoing_by_user_id: Int,
     created_by: Int,
     claimed_by: Int,
     claimed_at: String,
@@ -2271,24 +2405,32 @@ pub fn tasks_list(
     use id <- decode.field(0, decode.int)
     use project_id <- decode.field(1, decode.int)
     use type_id <- decode.field(2, decode.int)
-    use title <- decode.field(3, decode.string)
-    use description <- decode.field(4, decode.string)
-    use priority <- decode.field(5, decode.int)
-    use status <- decode.field(6, decode.string)
-    use created_by <- decode.field(7, decode.int)
-    use claimed_by <- decode.field(8, decode.int)
-    use claimed_at <- decode.field(9, decode.string)
-    use completed_at <- decode.field(10, decode.string)
-    use created_at <- decode.field(11, decode.string)
-    use version <- decode.field(12, decode.int)
+    use type_name <- decode.field(3, decode.string)
+    use type_icon <- decode.field(4, decode.string)
+    use title <- decode.field(5, decode.string)
+    use description <- decode.field(6, decode.string)
+    use priority <- decode.field(7, decode.int)
+    use status <- decode.field(8, decode.string)
+    use is_ongoing <- decode.field(9, decode.bool)
+    use ongoing_by_user_id <- decode.field(10, decode.int)
+    use created_by <- decode.field(11, decode.int)
+    use claimed_by <- decode.field(12, decode.int)
+    use claimed_at <- decode.field(13, decode.string)
+    use completed_at <- decode.field(14, decode.string)
+    use created_at <- decode.field(15, decode.string)
+    use version <- decode.field(16, decode.int)
     decode.success(TasksListRow(
       id:,
       project_id:,
       type_id:,
+      type_name:,
+      type_icon:,
       title:,
       description:,
       priority:,
       status:,
+      is_ongoing:,
+      ongoing_by_user_id:,
       created_by:,
       claimed_by:,
       claimed_at:,
@@ -2303,10 +2445,27 @@ select
   t.id,
   t.project_id,
   t.type_id,
+  tt.name as type_name,
+  tt.icon as type_icon,
   t.title,
   coalesce(t.description, '') as description,
   t.priority,
   t.status,
+  (
+    t.status = 'claimed'
+    and exists(
+      select 1
+      from user_now_working unw
+      where unw.task_id = t.id
+    )
+  ) as is_ongoing,
+  coalesce((
+    select unw.user_id
+    from user_now_working unw
+    where unw.task_id = t.id
+    order by unw.updated_at desc
+    limit 1
+  ), 0) as ongoing_by_user_id,
   t.created_by,
   coalesce(t.claimed_by, 0) as claimed_by,
   coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
@@ -2357,6 +2516,10 @@ pub type TasksReleaseRow {
     completed_at: String,
     created_at: String,
     version: Int,
+    type_name: String,
+    type_icon: String,
+    is_ongoing: Bool,
+    ongoing_by_user_id: Int,
   )
 }
 
@@ -2385,6 +2548,10 @@ pub fn tasks_release(
     use completed_at <- decode.field(10, decode.string)
     use created_at <- decode.field(11, decode.string)
     use version <- decode.field(12, decode.int)
+    use type_name <- decode.field(13, decode.string)
+    use type_icon <- decode.field(14, decode.string)
+    use is_ongoing <- decode.field(15, decode.bool)
+    use ongoing_by_user_id <- decode.field(16, decode.int)
     decode.success(TasksReleaseRow(
       id:,
       project_id:,
@@ -2399,34 +2566,48 @@ pub fn tasks_release(
       completed_at:,
       created_at:,
       version:,
+      type_name:,
+      type_icon:,
+      is_ongoing:,
+      ongoing_by_user_id:,
     ))
   }
 
   "-- name: release_task
-update tasks
-set
-  claimed_by = null,
-  claimed_at = null,
-  status = 'available',
-  version = version + 1
-where id = $1
-  and status = 'claimed'
-  and claimed_by = $2
-  and version = $3
-returning
-  id,
-  project_id,
-  type_id,
-  title,
-  coalesce(description, '') as description,
-  priority,
-  status,
-  created_by,
-  coalesce(claimed_by, 0) as claimed_by,
-  coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-  coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
-  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
-  version;
+with updated as (
+  update tasks
+  set
+    claimed_by = null,
+    claimed_at = null,
+    status = 'available',
+    version = version + 1
+  where id = $1
+    and status = 'claimed'
+    and claimed_by = $2
+    and version = $3
+  returning
+    id,
+    project_id,
+    type_id,
+    title,
+    coalesce(description, '') as description,
+    priority,
+    status,
+    created_by,
+    coalesce(claimed_by, 0) as claimed_by,
+    coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
+    coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    version
+)
+select
+  updated.*,
+  tt.name as type_name,
+  tt.icon as type_icon,
+  false as is_ongoing,
+  0 as ongoing_by_user_id
+from updated
+join task_types tt on tt.id = updated.type_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -2457,6 +2638,10 @@ pub type TasksUpdateRow {
     completed_at: String,
     created_at: String,
     version: Int,
+    type_name: String,
+    type_icon: String,
+    is_ongoing: Bool,
+    ongoing_by_user_id: Int,
   )
 }
 
@@ -2489,6 +2674,10 @@ pub fn tasks_update(
     use completed_at <- decode.field(10, decode.string)
     use created_at <- decode.field(11, decode.string)
     use version <- decode.field(12, decode.int)
+    use type_name <- decode.field(13, decode.string)
+    use type_icon <- decode.field(14, decode.string)
+    use is_ongoing <- decode.field(15, decode.bool)
+    use ongoing_by_user_id <- decode.field(16, decode.int)
     decode.success(TasksUpdateRow(
       id:,
       project_id:,
@@ -2503,35 +2692,49 @@ pub fn tasks_update(
       completed_at:,
       created_at:,
       version:,
+      type_name:,
+      type_icon:,
+      is_ongoing:,
+      ongoing_by_user_id:,
     ))
   }
 
   "-- name: update_task_claimed_by_user
-update tasks
-set
-  title = case when $3 = '__unset__' then title else $3 end,
-  description = case when $4 = '__unset__' then description else nullif($4, '') end,
-  priority = case when $5 = -1 then priority else $5 end,
-  type_id = case when $6 = -1 then type_id else $6 end,
-  version = version + 1
-where id = $1
-  and claimed_by = $2
-  and status = 'claimed'
-  and version = $7
-returning
-  id,
-  project_id,
-  type_id,
-  title,
-  coalesce(description, '') as description,
-  priority,
-  status,
-  created_by,
-  coalesce(claimed_by, 0) as claimed_by,
-  coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
-  coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
-  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
-  version;
+with updated as (
+  update tasks
+  set
+    title = case when $3 = '__unset__' then title else $3 end,
+    description = case when $4 = '__unset__' then description else nullif($4, '') end,
+    priority = case when $5 = -1 then priority else $5 end,
+    type_id = case when $6 = -1 then type_id else $6 end,
+    version = version + 1
+  where id = $1
+    and claimed_by = $2
+    and status = 'claimed'
+    and version = $7
+  returning
+    id,
+    project_id,
+    type_id,
+    title,
+    coalesce(description, '') as description,
+    priority,
+    status,
+    created_by,
+    coalesce(claimed_by, 0) as claimed_by,
+    coalesce(to_char(claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
+    coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+    to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+    version
+)
+select
+  updated.*,
+  tt.name as type_name,
+  tt.icon as type_icon,
+  false as is_ongoing,
+  0 as ongoing_by_user_id
+from updated
+join task_types tt on tt.id = updated.type_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
