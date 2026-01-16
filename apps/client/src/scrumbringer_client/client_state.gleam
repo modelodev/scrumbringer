@@ -9,12 +9,13 @@
 ////
 //// ## Responsibilities
 ////
-//// - Define the `Model` opaque type containing all application state
+//// - Define the `Model` type containing all application state
 //// - Define page variants (`Page`) for client-side routing
 //// - Define remote data loading states (`Remote`) for async operations
 //// - Define all message variants (`Msg`) for the Lustre update cycle
 //// - Define UI state types (`IconPreview`, `MemberDrag`, `Rect`)
 //// - Define navigation mode (`NavMode`) for history management
+//// - Provide smart constructors (`default_model`) for state initialization
 //// - Provide geometry helpers tied to state types (e.g., `rect_contains_point`)
 ////
 //// ## Non-responsibilities
@@ -25,6 +26,15 @@
 //// - Update logic and effect handling (see `scrumbringer_client.gleam`)
 //// - Internationalization (see `i18n/` modules)
 //// - Theme and styling (see `theme.gleam`, `styles.gleam`)
+////
+//// ## Design Decision: Model is NOT Opaque
+////
+//// `Model` is intentionally a public (non-opaque) type because:
+//// 1. The Lustre update pattern requires `Model(..model, field: value)` syntax
+//// 2. Making it opaque would require 70+ accessor/setter functions
+//// 3. The trade-off favors ergonomics over strict encapsulation
+////
+//// Use `default_model()` for initialization to get sensible defaults.
 ////
 //// ## Relations
 ////
@@ -523,4 +533,187 @@ pub fn remote_to_resource_state(remote: Remote(a)) -> hydration.ResourceState {
     Loaded(_) -> hydration.Loaded
     Failed(_) -> hydration.Failed
   }
+}
+
+/// Creates a Model with sensible default values for all fields.
+///
+/// Use this as a starting point and override specific fields:
+///
+/// ## Example
+///
+/// ```gleam
+/// let model = Model(
+///   ..default_model(),
+///   page: Admin,
+///   user: option.Some(current_user),
+///   theme: loaded_theme,
+/// )
+/// ```
+///
+/// ## Defaults
+///
+/// - All `Remote` fields start as `NotAsked`
+/// - All `Option` fields start as `None`
+/// - All `Bool` flags start as `False` (except `member_quick_my_caps`)
+/// - All `String` fields start as `""`
+/// - All `Int` counters start as `0`
+/// - All `Dict` fields start empty
+/// - `page` defaults to `Login`
+/// - `member_create_priority` defaults to `"3"` (medium)
+/// - `members_add_role` defaults to `"member"`
+pub fn default_model() -> Model {
+  Model(
+    // Core navigation and auth
+    page: Login,
+    user: option.None,
+    auth_checked: False,
+    is_mobile: False,
+    active_section: permissions.Invites,
+    toast: option.None,
+    theme: theme.Default,
+    locale: i18n_locale.En,
+    // Login form
+    login_email: "",
+    login_password: "",
+    login_error: option.None,
+    login_in_flight: False,
+    // Forgot password dialog
+    forgot_password_open: False,
+    forgot_password_email: "",
+    forgot_password_in_flight: False,
+    forgot_password_result: option.None,
+    forgot_password_error: option.None,
+    forgot_password_copy_status: option.None,
+    // Child components (initialized with empty token state)
+    accept_invite: accept_invite.Model(
+      token: "",
+      state: accept_invite.NoToken,
+      password: "",
+      password_error: option.None,
+      submit_error: option.None,
+    ),
+    reset_password: reset_password.Model(
+      token: "",
+      state: reset_password.NoToken,
+      password: "",
+      password_error: option.None,
+      submit_error: option.None,
+    ),
+    // Projects
+    projects: NotAsked,
+    selected_project_id: option.None,
+    // Invite links
+    invite_links: NotAsked,
+    invite_link_email: "",
+    invite_link_in_flight: False,
+    invite_link_error: option.None,
+    invite_link_last: option.None,
+    invite_link_copy_status: option.None,
+    // Project creation
+    projects_create_name: "",
+    projects_create_in_flight: False,
+    projects_create_error: option.None,
+    // Capabilities
+    capabilities: NotAsked,
+    capabilities_create_name: "",
+    capabilities_create_in_flight: False,
+    capabilities_create_error: option.None,
+    // Members
+    members: NotAsked,
+    members_project_id: option.None,
+    // Org users
+    org_users_cache: NotAsked,
+    org_settings_users: NotAsked,
+    // Admin metrics
+    admin_metrics_overview: NotAsked,
+    admin_metrics_project_tasks: NotAsked,
+    admin_metrics_project_id: option.None,
+    // Org settings
+    org_settings_role_drafts: dict.new(),
+    org_settings_save_in_flight: False,
+    org_settings_error: option.None,
+    org_settings_error_user_id: option.None,
+    // Member add dialog
+    members_add_dialog_open: False,
+    members_add_selected_user: option.None,
+    members_add_role: "member",
+    members_add_in_flight: False,
+    members_add_error: option.None,
+    // Member remove dialog
+    members_remove_confirm: option.None,
+    members_remove_in_flight: False,
+    members_remove_error: option.None,
+    // Org user search
+    org_users_search_query: "",
+    org_users_search_results: NotAsked,
+    // Task types
+    task_types: NotAsked,
+    task_types_project_id: option.None,
+    task_types_create_name: "",
+    task_types_create_icon: "",
+    task_types_create_capability_id: option.None,
+    task_types_create_in_flight: False,
+    task_types_create_error: option.None,
+    task_types_icon_preview: IconIdle,
+    // Member section
+    member_section: member_section.Pool,
+    member_active_task: NotAsked,
+    member_metrics: NotAsked,
+    member_now_working_in_flight: False,
+    member_now_working_error: option.None,
+    // Now working timer
+    now_working_tick: 0,
+    now_working_tick_running: False,
+    now_working_server_offset_ms: 0,
+    // Member tasks
+    member_tasks: NotAsked,
+    member_tasks_pending: 0,
+    member_tasks_by_project: dict.new(),
+    member_task_types: NotAsked,
+    member_task_types_pending: 0,
+    member_task_types_by_project: dict.new(),
+    member_task_mutation_in_flight: False,
+    // Member filters
+    member_filters_status: "",
+    member_filters_type_id: "",
+    member_filters_capability_id: "",
+    member_filters_q: "",
+    // UX: default to My Capabilities enabled
+    member_quick_my_caps: True,
+    member_pool_filters_visible: False,
+    member_pool_view_mode: pool_prefs.Canvas,
+    // Member task creation
+    member_create_dialog_open: False,
+    member_create_title: "",
+    member_create_description: "",
+    member_create_priority: "3",
+    member_create_type_id: "",
+    member_create_in_flight: False,
+    member_create_error: option.None,
+    // Member capabilities
+    member_my_capability_ids: NotAsked,
+    member_my_capability_ids_edit: dict.new(),
+    member_my_capabilities_in_flight: False,
+    member_my_capabilities_error: option.None,
+    // Member drag-and-drop
+    member_positions_by_task: dict.new(),
+    member_drag: option.None,
+    member_canvas_left: 0,
+    member_canvas_top: 0,
+    member_pool_my_tasks_rect: option.None,
+    member_pool_drag_to_claim_armed: False,
+    member_pool_drag_over_my_tasks: False,
+    // Member position editing
+    member_position_edit_task: option.None,
+    member_position_edit_x: "",
+    member_position_edit_y: "",
+    member_position_edit_in_flight: False,
+    member_position_edit_error: option.None,
+    // Member notes
+    member_notes_task_id: option.None,
+    member_notes: NotAsked,
+    member_note_content: "",
+    member_note_in_flight: False,
+    member_note_error: option.None,
+  )
 }

@@ -84,10 +84,24 @@ pub fn location_search() -> String {
 // =============================================================================
 // DOM APIs
 // =============================================================================
+//
+// Design note: These functions return sentinel values (empty strings, zeros)
+// when elements are not found. This is intentional for UI code where:
+// 1. Elements are expected to exist (rendered by the same app)
+// 2. Silent failure with defaults is acceptable for these use cases
+// 3. Distinguishing "not found" from "found with default value" would require
+//    JavaScript changes to return tagged Result-like structures
+//
+// For stricter error handling, consider adding try_* variants that modify
+// the JavaScript to return {ok: value} or {error: reason} objects.
+// =============================================================================
 
 /// Focus an element by its ID.
 ///
-/// Example:
+/// Returns silently if element is not found (no-op).
+///
+/// ## Example
+///
 /// ```gleam
 /// focus_element("login-email")
 /// ```
@@ -98,7 +112,11 @@ pub fn focus_element(_id: String) -> Nil {
 
 /// Get the value of an input element by ID.
 ///
-/// Example:
+/// Returns `""` if element is not found or has no value.
+/// **Note**: Cannot distinguish "not found" from "empty input value".
+///
+/// ## Example
+///
 /// ```gleam
 /// let email = input_value("login-email")
 /// ```
@@ -109,7 +127,11 @@ pub fn input_value(_id: String) -> String {
 
 /// Get the client offset (left, top) of an element by ID.
 ///
-/// Example:
+/// Returns `#(0, 0)` if element is not found.
+/// **Note**: Cannot distinguish "not found" from "element at origin".
+///
+/// ## Example
+///
 /// ```gleam
 /// let #(left, top) = element_client_offset("canvas")
 /// ```
@@ -120,7 +142,11 @@ pub fn element_client_offset(_id: String) -> #(Int, Int) {
 
 /// Get the client rect (left, top, width, height) of an element by ID.
 ///
-/// Example:
+/// Returns `#(0, 0, 0, 0)` if element is not found.
+/// **Note**: Cannot distinguish "not found" from "collapsed element at origin".
+///
+/// ## Example
+///
 /// ```gleam
 /// let #(left, top, width, height) = element_client_rect("canvas")
 /// ```
