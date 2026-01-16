@@ -22,6 +22,7 @@ import scrumbringer_domain/user.{type User}
 
 import scrumbringer_client/accept_invite
 import scrumbringer_client/api
+import scrumbringer_client/client_ffi
 import scrumbringer_client/hydration
 import scrumbringer_client/member_section
 import scrumbringer_client/member_visuals
@@ -122,10 +123,10 @@ pub fn main() {
 }
 
 fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
-  let pathname = location_pathname_ffi()
-  let search = location_search_ffi()
-  let hash = location_hash_ffi()
-  let is_mobile = is_mobile_ffi()
+  let pathname = client_ffi.location_pathname()
+  let search = client_ffi.location_search()
+  let hash = client_ffi.location_hash()
+  let is_mobile = client_ffi.is_mobile()
 
   let parsed =
     router.parse(pathname, search, hash)
@@ -353,19 +354,9 @@ fn url_for_model(model: Model) -> String {
   router.format(current_route(model))
 }
 
-@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "history_push_state")
-fn history_push_state_ffi(_path: String) -> Nil {
-  Nil
-}
-
-@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "history_replace_state")
-fn history_replace_state_ffi(_path: String) -> Nil {
-  Nil
-}
-
 fn replace_url(model: Model) -> Effect(Msg) {
   let path = url_for_model(model)
-  effect.from(fn(_dispatch) { history_replace_state_ffi(path) })
+  effect.from(fn(_dispatch) { client_ffi.history_replace_state(path) })
 }
 
 fn accept_invite_effect(action: accept_invite.Action) -> Effect(Msg) {
@@ -390,32 +381,15 @@ fn reset_password_effect(action: reset_password.Action) -> Effect(Msg) {
   }
 }
 
-@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "register_popstate")
-fn register_popstate_ffi(_cb: fn(Nil) -> Nil) -> Nil {
-  Nil
-}
-
 fn register_popstate_effect() -> Effect(Msg) {
   effect.from(fn(dispatch) {
-    register_popstate_ffi(fn(_) { dispatch(UrlChanged) })
+    client_ffi.register_popstate(fn(_) { dispatch(UrlChanged) })
   })
-}
-
-@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "register_keydown")
-fn register_keydown_ffi(
-  _cb: fn(#(String, Bool, Bool, Bool, Bool, Bool)) -> Nil,
-) -> Nil {
-  Nil
-}
-
-@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "focus_element")
-fn focus_element_ffi(_id: String) -> Nil {
-  Nil
 }
 
 fn register_keydown_effect() -> Effect(Msg) {
   effect.from(fn(dispatch) {
-    register_keydown_ffi(fn(payload) {
+    client_ffi.register_keydown(fn(payload) {
       let #(key, ctrl, meta, shift, is_editing, modal_open) = payload
       dispatch(
         GlobalKeyDown(pool_prefs.KeyEvent(
@@ -434,8 +408,8 @@ fn register_keydown_effect() -> Effect(Msg) {
 fn focus_element_effect(id: String) -> Effect(Msg) {
   effect.from(fn(_dispatch) {
     // Ensure we attempt focus after the DOM update.
-    set_timeout_ffi(0, fn(_) {
-      focus_element_ffi(id)
+    client_ffi.set_timeout(0, fn(_) {
+      client_ffi.focus_element(id)
       Nil
     })
     Nil
@@ -513,8 +487,8 @@ fn handle_pool_keydown(
 
 fn read_login_values_effect() -> Effect(Msg) {
   effect.from(fn(dispatch) {
-    let email = input_value_ffi("login-email")
-    let password = input_value_ffi("login-password")
+    let email = client_ffi.input_value("login-email")
+    let password = client_ffi.input_value("login-password")
     dispatch(LoginDomValuesRead(email, password))
     Nil
   })
@@ -525,8 +499,8 @@ fn write_url(mode: NavMode, route: router.Route) -> Effect(Msg) {
 
   effect.from(fn(_dispatch) {
     case mode {
-      Push -> history_push_state_ffi(url)
-      Replace -> history_replace_state_ffi(url)
+      Push -> client_ffi.history_push_state(url)
+      Replace -> client_ffi.history_replace_state(url)
     }
   })
 }
@@ -918,10 +892,10 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
 }
 
 fn handle_url_changed(model: Model) -> #(Model, Effect(Msg)) {
-  let pathname = location_pathname_ffi()
-  let search = location_search_ffi()
-  let hash = location_hash_ffi()
-  let is_mobile = is_mobile_ffi()
+  let pathname = client_ffi.location_pathname()
+  let search = client_ffi.location_search()
+  let hash = client_ffi.location_hash()
+  let is_mobile = client_ffi.is_mobile()
 
   let model = Model(..model, is_mobile: is_mobile)
 
@@ -1342,7 +1316,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         opt.None -> #(model, effect.none())
 
         opt.Some(reset) -> {
-          let origin = location_origin_ffi()
+          let origin = client_ffi.location_origin()
           let text = origin <> reset.url_path
 
           #(
@@ -2729,11 +2703,11 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(
         model,
         effect.from(fn(dispatch) {
-          let #(left, top) = element_client_offset_ffi("member-canvas")
+          let #(left, top) = client_ffi.element_client_offset("member-canvas")
           dispatch(MemberCanvasRectFetched(left, top))
 
           let #(dz_left, dz_top, dz_width, dz_height) =
-            element_client_rect_ffi("pool-my-tasks")
+            client_ffi.element_client_rect("pool-my-tasks")
           dispatch(MemberPoolMyTasksRectFetched(
             dz_left,
             dz_top,
@@ -3124,8 +3098,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     MemberActiveTaskFetched(Ok(payload)) -> {
       let api.ActiveTaskPayload(as_of: as_of, ..) = payload
-      let server_ms = parse_iso_ms_ffi(as_of)
-      let offset = now_ms_ffi() - server_ms
+      let server_ms = client_ffi.parse_iso_ms(as_of)
+      let offset = client_ffi.now_ms() - server_ms
 
       let #(model, tick_fx) =
         Model(
@@ -3157,8 +3131,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     MemberActiveTaskStarted(Ok(payload)) -> {
       let api.ActiveTaskPayload(as_of: as_of, ..) = payload
-      let server_ms = parse_iso_ms_ffi(as_of)
-      let offset = now_ms_ffi() - server_ms
+      let server_ms = client_ffi.parse_iso_ms(as_of)
+      let offset = client_ffi.now_ms() - server_ms
 
       let #(model, tick_fx) =
         Model(
@@ -3200,8 +3174,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     MemberActiveTaskPaused(Ok(payload)) -> {
       let api.ActiveTaskPayload(as_of: as_of, ..) = payload
-      let server_ms = parse_iso_ms_ffi(as_of)
-      let offset = now_ms_ffi() - server_ms
+      let server_ms = client_ffi.parse_iso_ms(as_of)
+      let offset = client_ffi.now_ms() - server_ms
 
       let model =
         Model(
@@ -3248,8 +3222,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     MemberActiveTaskHeartbeated(Ok(payload)) -> {
       let api.ActiveTaskPayload(as_of: as_of, ..) = payload
-      let server_ms = parse_iso_ms_ffi(as_of)
-      let offset = now_ms_ffi() - server_ms
+      let server_ms = client_ffi.parse_iso_ms(as_of)
+      let offset = client_ffi.now_ms() - server_ms
 
       let #(model, tick_fx) =
         Model(
@@ -3958,80 +3932,15 @@ fn fallback_org_user(model: Model, user_id: Int) -> api.OrgUser {
   )
 }
 
-@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "copy_to_clipboard")
-fn copy_to_clipboard_ffi(_text: String, _cb: fn(Bool) -> Nil) -> Nil {
-  Nil
-}
-
-@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "days_since_iso")
-fn days_since_iso_ffi(_iso: String) -> Int {
-  0
-}
-
-@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "is_mobile")
-fn is_mobile_ffi() -> Bool {
-  False
-}
-
-@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "now_ms")
-fn now_ms_ffi() -> Int {
-  0
-}
-
-@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "parse_iso_ms")
-fn parse_iso_ms_ffi(_iso: String) -> Int {
-  0
-}
-
-@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "set_timeout")
-fn set_timeout_ffi(_ms: Int, _cb: fn(Nil) -> Nil) -> Int {
-  0
-}
-
-@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "element_client_offset")
-fn element_client_offset_ffi(_id: String) -> #(Int, Int) {
-  #(0, 0)
-}
-
-@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "element_client_rect")
-fn element_client_rect_ffi(_id: String) -> #(Int, Int, Int, Int) {
-  #(0, 0, 0, 0)
-}
-
-@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "location_origin")
-fn location_origin_ffi() -> String {
-  ""
-}
-
-@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "location_pathname")
-fn location_pathname_ffi() -> String {
-  ""
-}
-
-@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "location_hash")
-fn location_hash_ffi() -> String {
-  ""
-}
-
-@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "location_search")
-fn location_search_ffi() -> String {
-  ""
-}
-
-@external(javascript, "./scrumbringer_client/fetch.ffi.mjs", "input_value")
-fn input_value_ffi(_id: String) -> String {
-  ""
-}
-
 fn copy_to_clipboard(text: String, msg: fn(Bool) -> Msg) -> Effect(Msg) {
   effect.from(fn(dispatch) {
-    copy_to_clipboard_ffi(text, fn(ok) { dispatch(msg(ok)) })
+    client_ffi.copy_to_clipboard(text, fn(ok) { dispatch(msg(ok)) })
   })
 }
 
 fn now_working_tick_effect() -> Effect(Msg) {
   effect.from(fn(dispatch) {
-    set_timeout_ffi(1000, fn(_) { dispatch(NowWorkingTicked) })
+    client_ffi.set_timeout(1000, fn(_) { dispatch(NowWorkingTicked) })
     Nil
   })
 }
@@ -4166,8 +4075,8 @@ fn now_working_elapsed(model: Model) -> String {
       accumulated_s: accumulated_s,
       ..,
     )) -> {
-      let started_ms = parse_iso_ms_ffi(started_at)
-      let local_now_ms = now_ms_ffi()
+      let started_ms = client_ffi.parse_iso_ms(started_at)
+      let local_now_ms = client_ffi.now_ms()
       let server_now_ms = local_now_ms - model.now_working_server_offset_ms
       now_working_elapsed_from_ms(accumulated_s, started_ms, server_now_ms)
     }
@@ -4410,7 +4319,7 @@ fn view_forgot_password(model: Model) -> Element(Msg) {
     False -> i18n_t(model, i18n_text.GenerateResetLink)
   }
 
-  let origin = location_origin_ffi()
+  let origin = client_ffi.location_origin()
 
   let link = case model.forgot_password_result {
     opt.Some(reset) -> origin <> reset.url_path
@@ -5071,7 +4980,7 @@ fn view_invites(model: Model) -> Element(Msg) {
     False -> i18n_t(model, i18n_text.CreateInviteLink)
   }
 
-  let origin = location_origin_ffi()
+  let origin = client_ffi.location_origin()
 
   div([attribute.class("section")], [
     p([], [text(i18n_t(model, i18n_text.InviteLinksHelp))]),
@@ -7551,7 +7460,7 @@ fn flatten_task_types(
 }
 
 fn age_in_days(created_at: String) -> Int {
-  days_since_iso_ffi(created_at)
+  client_ffi.days_since_iso(created_at)
 }
 
 fn decay_to_visuals(age_days: Int) -> #(Float, Float) {
