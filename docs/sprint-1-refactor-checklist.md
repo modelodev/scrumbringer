@@ -16,13 +16,13 @@
 
 ## Checklist
 ### Client: Split `scrumbringer_client.gleam`
-- [ ] Create `client_state.gleam` (Model/Msg/state types + docs)
+- [x] Create `client_state.gleam` (Model/Msg/state types + docs)
 - [ ] Create `client_update.gleam` (update + helpers; reduce nested cases)
 - [ ] Create `client_view.gleam` (view + subviews; split >100‑line functions)
-- [ ] Create `client_effects.gleam` (effect helpers)
-- [ ] Create `client_router.gleam` (routing + URL helpers)
+- [x] Create `client_ffi.gleam` (FFI isolation - per interop guideline)
+- [ ] Create `client_router.gleam` (routing + URL helpers) — NOTE: `router.gleam` already exists
 - [ ] Reduce `scrumbringer_client.gleam` to entry wiring
-- [ ] Add module/type/function docs for all new modules
+- [x] Add module/type/function docs for new modules (client_state, client_ffi)
 
 ### Client: Split `api.gleam`
 - [ ] `api/core.gleam` (request + error decoding)
