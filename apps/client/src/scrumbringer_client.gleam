@@ -36,6 +36,81 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/i18n/text as i18n_text
 
+import scrumbringer_client/client_state.{
+  // Types
+  type Model, type Msg, type NavMode, type Page, type Remote, type IconPreview,
+  type MemberDrag, type Rect,
+  // Type constructors
+  Model, MemberDrag, Rect,
+  // Remote constructors
+  NotAsked, Loading, Loaded, Failed,
+  // Page constructors
+  Login, AcceptInvite as AcceptInvitePage, ResetPassword as ResetPasswordPage, Admin, Member,
+  // IconPreview constructors
+  IconIdle, IconLoading, IconOk, IconError,
+  // NavMode constructors
+  Push, Replace,
+  // Msg constructors - Navigation
+  MemberPoolMyTasksRectFetched, MemberPoolDragToClaimArmed, UrlChanged, NavigateTo,
+  // Msg constructors - Auth
+  MeFetched, AcceptInviteMsg, ResetPasswordMsg,
+  // Msg constructors - Login
+  LoginEmailChanged, LoginPasswordChanged, LoginSubmitted, LoginDomValuesRead, LoginFinished,
+  // Msg constructors - Forgot password
+  ForgotPasswordClicked, ForgotPasswordEmailChanged, ForgotPasswordSubmitted,
+  ForgotPasswordFinished, ForgotPasswordCopyClicked, ForgotPasswordCopyFinished, ForgotPasswordDismissed,
+  // Msg constructors - Logout
+  LogoutClicked, LogoutFinished,
+  // Msg constructors - UI
+  ToastDismissed, ThemeSelected, LocaleSelected, ProjectSelected,
+  // Msg constructors - Projects
+  ProjectsFetched, ProjectCreateNameChanged, ProjectCreateSubmitted, ProjectCreated,
+  // Msg constructors - Invite links
+  InviteLinkEmailChanged, InviteLinkCreateSubmitted, InviteLinkCreated, InviteLinksFetched,
+  InviteLinkRegenerateClicked, InviteLinkRegenerated, InviteLinkCopyClicked, InviteLinkCopyFinished,
+  // Msg constructors - Capabilities
+  CapabilitiesFetched, CapabilityCreateNameChanged, CapabilityCreateSubmitted, CapabilityCreated,
+  // Msg constructors - Members
+  MembersFetched, OrgUsersCacheFetched, OrgSettingsUsersFetched, OrgSettingsRoleChanged,
+  OrgSettingsSaveClicked, OrgSettingsSaved, MemberAddDialogOpened, MemberAddDialogClosed,
+  MemberAddRoleChanged, MemberAddUserSelected, MemberAddSubmitted, MemberAdded,
+  MemberRemoveClicked, MemberRemoveCancelled, MemberRemoveConfirmed, MemberRemoved,
+  // Msg constructors - Org users search
+  OrgUsersSearchChanged, OrgUsersSearchDebounced, OrgUsersSearchResults,
+  // Msg constructors - Task types
+  TaskTypesFetched, TaskTypeCreateNameChanged, TaskTypeCreateIconChanged, TaskTypeIconLoaded,
+  TaskTypeIconErrored, TaskTypeCreateCapabilityChanged, TaskTypeCreateSubmitted, TaskTypeCreated,
+  // Msg constructors - Pool filters
+  MemberPoolStatusChanged, MemberPoolTypeChanged, MemberPoolCapabilityChanged,
+  MemberPoolSearchChanged, MemberPoolSearchDebounced, MemberToggleMyCapabilitiesQuick,
+  MemberPoolFiltersToggled, MemberPoolViewModeSet, GlobalKeyDown,
+  // Msg constructors - Member tasks
+  MemberProjectTasksFetched, MemberTaskTypesFetched,
+  // Msg constructors - Drag and drop
+  MemberCanvasRectFetched, MemberDragStarted, MemberDragMoved, MemberDragEnded,
+  // Msg constructors - Task creation
+  MemberCreateDialogOpened, MemberCreateDialogClosed, MemberCreateTitleChanged,
+  MemberCreateDescriptionChanged, MemberCreatePriorityChanged, MemberCreateTypeIdChanged,
+  MemberCreateSubmitted, MemberTaskCreated,
+  // Msg constructors - Task actions
+  MemberClaimClicked, MemberReleaseClicked, MemberCompleteClicked,
+  MemberTaskClaimed, MemberTaskReleased, MemberTaskCompleted,
+  // Msg constructors - Now working
+  MemberNowWorkingStartClicked, MemberNowWorkingPauseClicked, MemberActiveTaskFetched,
+  MemberActiveTaskStarted, MemberActiveTaskPaused, MemberActiveTaskHeartbeated,
+  MemberMetricsFetched, AdminMetricsOverviewFetched, AdminMetricsProjectTasksFetched, NowWorkingTicked,
+  // Msg constructors - Member capabilities
+  MemberMyCapabilityIdsFetched, MemberToggleCapability, MemberSaveCapabilitiesClicked, MemberMyCapabilityIdsSaved,
+  // Msg constructors - Position editing
+  MemberPositionsFetched, MemberPositionEditOpened, MemberPositionEditClosed,
+  MemberPositionEditXChanged, MemberPositionEditYChanged, MemberPositionEditSubmitted, MemberPositionSaved,
+  // Msg constructors - Task details
+  MemberTaskDetailsOpened, MemberTaskDetailsClosed, MemberNotesFetched,
+  MemberNoteContentChanged, MemberNoteSubmitted, MemberNoteAdded,
+  // Helper functions
+  rect_contains_point, remote_to_resource_state,
+}
+
 pub fn app() -> lustre.App(Nil, Model, Msg) {
   lustre.application(init, update, view)
 }
@@ -45,319 +120,6 @@ pub fn main() {
     Ok(_) -> Nil
     Error(_) -> Nil
   }
-}
-
-type Remote(a) {
-  NotAsked
-  Loading
-  Loaded(a)
-  Failed(api.ApiError)
-}
-
-type Page {
-  Login
-  AcceptInvite
-  ResetPassword
-  Admin
-  Member
-}
-
-type IconPreview {
-  IconIdle
-  IconLoading
-  IconOk
-  IconError
-}
-
-type MemberDrag {
-  MemberDrag(task_id: Int, offset_x: Int, offset_y: Int)
-}
-
-type Rect {
-  Rect(left: Int, top: Int, width: Int, height: Int)
-}
-
-fn rect_contains_point(rect: Rect, x: Int, y: Int) -> Bool {
-  let Rect(left: left, top: top, width: width, height: height) = rect
-  x >= left && x <= left + width && y >= top && y <= top + height
-}
-
-pub opaque type Model {
-  Model(
-    page: Page,
-    user: opt.Option(User),
-    auth_checked: Bool,
-    is_mobile: Bool,
-    active_section: permissions.AdminSection,
-    toast: opt.Option(String),
-    theme: theme.Theme,
-    locale: i18n_locale.Locale,
-    login_email: String,
-    login_password: String,
-    login_error: opt.Option(String),
-    login_in_flight: Bool,
-    forgot_password_open: Bool,
-    forgot_password_email: String,
-    forgot_password_in_flight: Bool,
-    forgot_password_result: opt.Option(api.PasswordReset),
-    forgot_password_error: opt.Option(String),
-    forgot_password_copy_status: opt.Option(String),
-    accept_invite: accept_invite.Model,
-    reset_password: reset_password.Model,
-    projects: Remote(List(api.Project)),
-    selected_project_id: opt.Option(Int),
-    invite_links: Remote(List(api.InviteLink)),
-    invite_link_email: String,
-    invite_link_in_flight: Bool,
-    invite_link_error: opt.Option(String),
-    invite_link_last: opt.Option(api.InviteLink),
-    invite_link_copy_status: opt.Option(String),
-    projects_create_name: String,
-    projects_create_in_flight: Bool,
-    projects_create_error: opt.Option(String),
-    capabilities: Remote(List(api.Capability)),
-    capabilities_create_name: String,
-    capabilities_create_in_flight: Bool,
-    capabilities_create_error: opt.Option(String),
-    members: Remote(List(api.ProjectMember)),
-    members_project_id: opt.Option(Int),
-    org_users_cache: Remote(List(api.OrgUser)),
-    org_settings_users: Remote(List(api.OrgUser)),
-    admin_metrics_overview: Remote(api.OrgMetricsOverview),
-    admin_metrics_project_tasks: Remote(api.OrgMetricsProjectTasksPayload),
-    admin_metrics_project_id: opt.Option(Int),
-    org_settings_role_drafts: dict.Dict(Int, String),
-    org_settings_save_in_flight: Bool,
-    org_settings_error: opt.Option(String),
-    org_settings_error_user_id: opt.Option(Int),
-    members_add_dialog_open: Bool,
-    members_add_selected_user: opt.Option(api.OrgUser),
-    members_add_role: String,
-    members_add_in_flight: Bool,
-    members_add_error: opt.Option(String),
-    members_remove_confirm: opt.Option(api.OrgUser),
-    members_remove_in_flight: Bool,
-    members_remove_error: opt.Option(String),
-    org_users_search_query: String,
-    org_users_search_results: Remote(List(api.OrgUser)),
-    task_types: Remote(List(api.TaskType)),
-    task_types_project_id: opt.Option(Int),
-    task_types_create_name: String,
-    task_types_create_icon: String,
-    task_types_create_capability_id: opt.Option(String),
-    task_types_create_in_flight: Bool,
-    task_types_create_error: opt.Option(String),
-    task_types_icon_preview: IconPreview,
-    member_section: member_section.MemberSection,
-    member_active_task: Remote(api.ActiveTaskPayload),
-    member_metrics: Remote(api.MyMetrics),
-    member_now_working_in_flight: Bool,
-    member_now_working_error: opt.Option(String),
-    now_working_tick: Int,
-    now_working_tick_running: Bool,
-    now_working_server_offset_ms: Int,
-    member_tasks: Remote(List(api.Task)),
-    member_tasks_pending: Int,
-    member_tasks_by_project: dict.Dict(Int, List(api.Task)),
-    member_task_types: Remote(List(api.TaskType)),
-    member_task_types_pending: Int,
-    member_task_types_by_project: dict.Dict(Int, List(api.TaskType)),
-    member_task_mutation_in_flight: Bool,
-    member_filters_status: String,
-    member_filters_type_id: String,
-    member_filters_capability_id: String,
-    member_filters_q: String,
-    member_quick_my_caps: Bool,
-    member_pool_filters_visible: Bool,
-    member_pool_view_mode: pool_prefs.ViewMode,
-    member_create_dialog_open: Bool,
-    member_create_title: String,
-    member_create_description: String,
-    member_create_priority: String,
-    member_create_type_id: String,
-    member_create_in_flight: Bool,
-    member_create_error: opt.Option(String),
-    member_my_capability_ids: Remote(List(Int)),
-    member_my_capability_ids_edit: dict.Dict(Int, Bool),
-    member_my_capabilities_in_flight: Bool,
-    member_my_capabilities_error: opt.Option(String),
-    member_positions_by_task: dict.Dict(Int, #(Int, Int)),
-    member_drag: opt.Option(MemberDrag),
-    member_canvas_left: Int,
-    member_canvas_top: Int,
-    member_pool_my_tasks_rect: opt.Option(Rect),
-    member_pool_drag_to_claim_armed: Bool,
-    member_pool_drag_over_my_tasks: Bool,
-    member_position_edit_task: opt.Option(Int),
-    member_position_edit_x: String,
-    member_position_edit_y: String,
-    member_position_edit_in_flight: Bool,
-    member_position_edit_error: opt.Option(String),
-    member_notes_task_id: opt.Option(Int),
-    member_notes: Remote(List(api.TaskNote)),
-    member_note_content: String,
-    member_note_in_flight: Bool,
-    member_note_error: opt.Option(String),
-  )
-}
-
-pub type NavMode {
-  Push
-  Replace
-}
-
-pub type Msg {
-  MemberPoolMyTasksRectFetched(Int, Int, Int, Int)
-  MemberPoolDragToClaimArmed(Bool)
-  UrlChanged
-  NavigateTo(router.Route, NavMode)
-
-  MeFetched(api.ApiResult(User))
-  AcceptInviteMsg(accept_invite.Msg)
-  ResetPasswordMsg(reset_password.Msg)
-
-  LoginEmailChanged(String)
-  LoginPasswordChanged(String)
-  LoginSubmitted
-  LoginDomValuesRead(String, String)
-  LoginFinished(api.ApiResult(User))
-
-  ForgotPasswordClicked
-  ForgotPasswordEmailChanged(String)
-  ForgotPasswordSubmitted
-  ForgotPasswordFinished(api.ApiResult(api.PasswordReset))
-  ForgotPasswordCopyClicked
-  ForgotPasswordCopyFinished(Bool)
-  ForgotPasswordDismissed
-
-  LogoutClicked
-  LogoutFinished(api.ApiResult(Nil))
-
-  ToastDismissed
-
-  ThemeSelected(String)
-  LocaleSelected(String)
-
-  ProjectSelected(String)
-
-  ProjectsFetched(api.ApiResult(List(api.Project)))
-  ProjectCreateNameChanged(String)
-  ProjectCreateSubmitted
-  ProjectCreated(api.ApiResult(api.Project))
-
-  InviteLinkEmailChanged(String)
-  InviteLinkCreateSubmitted
-  InviteLinkCreated(api.ApiResult(api.InviteLink))
-  InviteLinksFetched(api.ApiResult(List(api.InviteLink)))
-  InviteLinkRegenerateClicked(String)
-  InviteLinkRegenerated(api.ApiResult(api.InviteLink))
-  InviteLinkCopyClicked(String)
-  InviteLinkCopyFinished(Bool)
-
-  CapabilitiesFetched(api.ApiResult(List(api.Capability)))
-  CapabilityCreateNameChanged(String)
-  CapabilityCreateSubmitted
-  CapabilityCreated(api.ApiResult(api.Capability))
-
-  MembersFetched(api.ApiResult(List(api.ProjectMember)))
-  OrgUsersCacheFetched(api.ApiResult(List(api.OrgUser)))
-  OrgSettingsUsersFetched(api.ApiResult(List(api.OrgUser)))
-  OrgSettingsRoleChanged(Int, String)
-  OrgSettingsSaveClicked(Int)
-  OrgSettingsSaved(Int, api.ApiResult(api.OrgUser))
-
-  MemberAddDialogOpened
-  MemberAddDialogClosed
-  MemberAddRoleChanged(String)
-  MemberAddUserSelected(Int)
-  MemberAddSubmitted
-  MemberAdded(api.ApiResult(api.ProjectMember))
-
-  MemberRemoveClicked(Int)
-  MemberRemoveCancelled
-  MemberRemoveConfirmed
-  MemberRemoved(api.ApiResult(Nil))
-
-  OrgUsersSearchChanged(String)
-  OrgUsersSearchDebounced(String)
-  OrgUsersSearchResults(api.ApiResult(List(api.OrgUser)))
-
-  TaskTypesFetched(api.ApiResult(List(api.TaskType)))
-  TaskTypeCreateNameChanged(String)
-  TaskTypeCreateIconChanged(String)
-  TaskTypeIconLoaded
-  TaskTypeIconErrored
-  TaskTypeCreateCapabilityChanged(String)
-  TaskTypeCreateSubmitted
-  TaskTypeCreated(api.ApiResult(api.TaskType))
-
-  MemberPoolStatusChanged(String)
-  MemberPoolTypeChanged(String)
-  MemberPoolCapabilityChanged(String)
-  MemberPoolSearchChanged(String)
-  MemberPoolSearchDebounced(String)
-  MemberToggleMyCapabilitiesQuick
-  MemberPoolFiltersToggled
-  MemberPoolViewModeSet(pool_prefs.ViewMode)
-
-  GlobalKeyDown(pool_prefs.KeyEvent)
-
-  MemberProjectTasksFetched(Int, api.ApiResult(List(api.Task)))
-  MemberTaskTypesFetched(Int, api.ApiResult(List(api.TaskType)))
-
-  MemberCanvasRectFetched(Int, Int)
-  MemberDragStarted(Int, Int, Int)
-  MemberDragMoved(Int, Int)
-  MemberDragEnded
-
-  MemberCreateDialogOpened
-  MemberCreateDialogClosed
-  MemberCreateTitleChanged(String)
-  MemberCreateDescriptionChanged(String)
-  MemberCreatePriorityChanged(String)
-  MemberCreateTypeIdChanged(String)
-  MemberCreateSubmitted
-  MemberTaskCreated(api.ApiResult(api.Task))
-
-  MemberClaimClicked(Int, Int)
-  MemberReleaseClicked(Int, Int)
-  MemberCompleteClicked(Int, Int)
-  MemberTaskClaimed(api.ApiResult(api.Task))
-  MemberTaskReleased(api.ApiResult(api.Task))
-  MemberTaskCompleted(api.ApiResult(api.Task))
-
-  MemberNowWorkingStartClicked(Int)
-  MemberNowWorkingPauseClicked
-  MemberActiveTaskFetched(api.ApiResult(api.ActiveTaskPayload))
-  MemberActiveTaskStarted(api.ApiResult(api.ActiveTaskPayload))
-  MemberActiveTaskPaused(api.ApiResult(api.ActiveTaskPayload))
-  MemberActiveTaskHeartbeated(api.ApiResult(api.ActiveTaskPayload))
-  MemberMetricsFetched(api.ApiResult(api.MyMetrics))
-  AdminMetricsOverviewFetched(api.ApiResult(api.OrgMetricsOverview))
-  AdminMetricsProjectTasksFetched(
-    api.ApiResult(api.OrgMetricsProjectTasksPayload),
-  )
-  NowWorkingTicked
-
-  MemberMyCapabilityIdsFetched(api.ApiResult(List(Int)))
-  MemberToggleCapability(Int)
-  MemberSaveCapabilitiesClicked
-  MemberMyCapabilityIdsSaved(api.ApiResult(List(Int)))
-
-  MemberPositionsFetched(api.ApiResult(List(api.TaskPosition)))
-  MemberPositionEditOpened(Int)
-  MemberPositionEditClosed
-  MemberPositionEditXChanged(String)
-  MemberPositionEditYChanged(String)
-  MemberPositionEditSubmitted
-  MemberPositionSaved(api.ApiResult(api.TaskPosition))
-
-  MemberTaskDetailsOpened(Int)
-  MemberTaskDetailsClosed
-  MemberNotesFetched(api.ApiResult(List(api.TaskNote)))
-  MemberNoteContentChanged(String)
-  MemberNoteSubmitted
-  MemberNoteAdded(api.ApiResult(api.TaskNote))
 }
 
 fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
@@ -387,8 +149,8 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
 
   let page = case route {
     router.Login -> Login
-    router.AcceptInvite(_) -> AcceptInvite
-    router.ResetPassword(_) -> ResetPassword
+    router.AcceptInvite(_) -> AcceptInvitePage
+    router.ResetPassword(_) -> ResetPasswordPage
     router.Admin(_, _) -> Admin
     router.Member(_, _) -> Member
   }
@@ -544,8 +306,8 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
     )
 
   let base_effect = case page {
-    AcceptInvite -> accept_invite_effect(accept_action)
-    ResetPassword -> reset_password_effect(reset_action)
+    AcceptInvitePage -> accept_invite_effect(accept_action)
+    ResetPasswordPage -> reset_password_effect(reset_action)
     _ -> api.fetch_me(MeFetched)
   }
 
@@ -572,12 +334,12 @@ fn current_route(model: Model) -> router.Route {
   case model.page {
     Login -> router.Login
 
-    AcceptInvite -> {
+    AcceptInvitePage -> {
       let accept_invite.Model(token: token, ..) = model.accept_invite
       router.AcceptInvite(token)
     }
 
-    ResetPassword -> {
+    ResetPasswordPage -> {
       let reset_password.Model(token: token, ..) = model.reset_password
       router.ResetPassword(token)
     }
@@ -792,12 +554,12 @@ fn apply_route_fields(
     }
 
     router.AcceptInvite(token) -> {
-      let #(accept_model, action) = accept_invite.init(token)
+      let #(new_accept_model, action) = accept_invite.init(token)
       let model =
         Model(
           ..model,
-          page: AcceptInvite,
-          accept_invite: accept_model,
+          page: AcceptInvitePage,
+          accept_invite: new_accept_model,
           selected_project_id: opt.None,
           member_drag: opt.None,
           member_pool_drag_to_claim_armed: False,
@@ -808,12 +570,12 @@ fn apply_route_fields(
     }
 
     router.ResetPassword(token) -> {
-      let #(reset_model, action) = reset_password.init(token)
+      let #(new_reset_model, action) = reset_password.init(token)
       let model =
         Model(
           ..model,
-          page: ResetPassword,
-          reset_password: reset_model,
+          page: ResetPasswordPage,
+          reset_password: new_reset_model,
           selected_project_id: opt.None,
           member_drag: opt.None,
           member_pool_drag_to_claim_armed: False,
@@ -4424,8 +4186,8 @@ fn view(model: Model) -> Element(Msg) {
       view_toast(model),
       case model.page {
         Login -> view_login(model)
-        AcceptInvite -> view_accept_invite(model)
-        ResetPassword -> view_reset_password(model)
+        AcceptInvitePage -> view_accept_invite(model)
+        ResetPasswordPage -> view_reset_password(model)
         Admin -> view_admin(model)
         Member -> view_member(model)
       },
