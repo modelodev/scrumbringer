@@ -2,8 +2,8 @@ import gleam/dynamic/decode
 import gleam/json
 import gleam/option
 import gleeunit/should
-import scrumbringer_client
 import scrumbringer_client/api
+import scrumbringer_client/client_view
 
 pub fn active_task_payload_decoder_decodes_active_task_test() {
   let body =
@@ -43,8 +43,7 @@ pub fn active_task_payload_decoder_decodes_null_active_task_test() {
 }
 
 pub fn now_working_elapsed_uses_accumulated_and_delta_test() {
-  let elapsed =
-    scrumbringer_client.now_working_elapsed_from_ms_for_test(90, 1000, 1120)
+  let elapsed = client_view.now_working_elapsed_from_ms_for_test(90, 1000, 1120)
 
   elapsed |> should.equal("01:30")
 }

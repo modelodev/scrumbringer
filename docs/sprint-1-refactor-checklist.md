@@ -22,23 +22,22 @@
   - Main module reduced from 7593 to 7383 lines (~210 lines extracted)
   - View-related helpers (formatters, comparators) deferred to client_view.gleam extraction
 - [x] Create `client_update.gleam` (update + handlers; reduce nested cases)
-  - Module created as documented placeholder for future extraction
-  - Documents planned domain-based extraction: Auth, Admin, Member, Metrics handlers
-  - Full extraction deferred: 163 handlers (~2800 lines) tightly coupled to Model/Msg/Effects
-  - scrumbringer_client.gleam retains update function until incremental extraction
+  - Full extraction complete: 3854 lines with update function + all handlers
+  - Includes: hydration, navigation, bootstrap, message handlers
+  - Exports: update, register_popstate_effect, register_keydown_effect, write_url, accept_invite_effect, reset_password_effect
 - [x] Create `client_view.gleam` (view + subviews; split >100‑line functions)
-  - Module created as documented placeholder for future extraction
-  - Documents planned structure: view/auth, view/admin, view/member, view/shared
-  - Lists functions needing split (5 functions >100 lines)
-  - Full extraction deferred: 70 view functions (~3400 lines), 60+ Msg constructors
+  - Full extraction complete: 3618 lines with view function + all view helpers
+  - Includes: all page views, component views, admin/member sections
+  - Note: 5 functions >100 lines remain (can be split in future sprint)
 - [x] Create `client_ffi.gleam` (FFI isolation - per interop guideline)
 - [x] Move @external from api.gleam to client_ffi.gleam
 - [x] Create `client_router.gleam` (routing + URL helpers)
   - `router.gleam` already exists with full functionality
   - Added module/function docs (parse, format, apply_mobile_rules)
-- [ ] Reduce `scrumbringer_client.gleam` to entry wiring (deferred)
-  - Deferred until client_update and client_view extractions complete in future sprint
-  - Currently: ~7383 lines (update ~2800 + view ~3400 + entry ~1100)
+- [x] Reduce `scrumbringer_client.gleam` to entry wiring
+  - Extracted update function (3854 lines) to `client_update.gleam`
+  - Extracted view function (3618 lines) to `client_view.gleam`
+  - Entry module reduced to 287 lines (app, main, init only)
 - [x] Add module/type/function docs for new modules (client_state, client_ffi, update_helpers)
 - [x] Add //// module docs to scrumbringer_client.gleam
 - [x] Add //// module docs to api.gleam
