@@ -69,3 +69,8 @@
 - [x] `gleam test` passes
 - [x] Hygiene rules verified (for new modules)
 - [x] Docs updated for all new modules
+- [x] Size justification `///` docs for functions >100 lines:
+  - client_update.gleam: update, hydrate_model, member_refresh
+  - client_view.gleam: view_now_working_panel, view_member_filters, view_member_task_card, view_member_bar_task_row
+  - scrumbringer_client.gleam: init
+  - tasks.gleam: handle_task_types_create, handle_tasks_create, handle_task_patch
