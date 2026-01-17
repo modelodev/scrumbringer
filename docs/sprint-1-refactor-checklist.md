@@ -18,11 +18,17 @@
 ### Client: Split `scrumbringer_client.gleam`
 - [x] Create `client_state.gleam` (Model/Msg/state types + docs)
 - [ ] Create `client_update.gleam` (update + helpers; reduce nested cases)
+  - Blocker: update (2781 lines) has ~15 local helper dependencies
+  - Approach: extract handlers by domain (auth, member, admin)
 - [ ] Create `client_view.gleam` (view + subviews; split >100‑line functions)
+  - view is ~3460 lines with many subviews
 - [x] Create `client_ffi.gleam` (FFI isolation - per interop guideline)
+- [x] Move @external from api.gleam to client_ffi.gleam
 - [ ] Create `client_router.gleam` (routing + URL helpers) — NOTE: `router.gleam` already exists
 - [ ] Reduce `scrumbringer_client.gleam` to entry wiring
 - [x] Add module/type/function docs for new modules (client_state, client_ffi)
+- [x] Add //// module docs to scrumbringer_client.gleam
+- [x] Add //// module docs to api.gleam
 
 ### Client: Split `api.gleam`
 - [ ] `api/core.gleam` (request + error decoding)
