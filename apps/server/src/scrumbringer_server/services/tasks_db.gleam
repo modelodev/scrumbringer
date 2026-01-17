@@ -1,3 +1,22 @@
+//// Task database operations for Scrumbringer server.
+////
+//// ## Mission
+////
+//// Provides database access for tasks including CRUD operations,
+//// state transitions (claim, release, complete), and listing with filters.
+////
+//// ## Usage
+////
+//// ```gleam
+//// import scrumbringer_server/services/tasks_db
+////
+//// // List tasks for a project
+//// tasks_db.list_tasks_for_project(db, project_id, user_id, "", 0, 0, "")
+////
+//// // Claim a task
+//// tasks_db.claim_task(db, org_id, task_id, user_id, version)
+//// ```
+
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result

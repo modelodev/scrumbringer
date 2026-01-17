@@ -550,6 +550,20 @@ pub fn remote_to_resource_state(remote: Remote(a)) -> hydration.ResourceState {
 /// )
 /// ```
 ///
+/// ## Size Justification (~155 lines)
+///
+/// Initializes all 100+ Model fields with sensible defaults. The Model type
+/// has grown to encompass the entire SPA state including:
+/// - Authentication and navigation state
+/// - Form fields for all dialogs (login, forgot password, create task, etc.)
+/// - Remote data caches for all API resources
+/// - Drag-and-drop and canvas positioning state
+/// - Filter and preference states
+///
+/// A single constructor call is clearer than spreading initialization across
+/// multiple functions. The function is pure, has no branching, and serves as
+/// the single source of truth for initial state.
+///
 /// ## Defaults
 ///
 /// - All `Remote` fields start as `NotAsked`

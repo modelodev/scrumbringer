@@ -1,3 +1,21 @@
+//// Hydration logic for client state management.
+////
+//// ## Mission
+////
+//// Computes the minimal set of API calls needed when navigating routes,
+//// avoiding redundant fetches by comparing current snapshot to requirements.
+////
+//// ## Responsibilities
+////
+//// - Model snapshot extraction for comparing resource states
+//// - Route-based resource requirement planning
+//// - Efficient fetch command generation (only what's missing/stale)
+////
+//// ## Non-responsibilities
+////
+//// - HTTP requests (see `api.gleam`)
+//// - State transitions (see `client_update.gleam`)
+
 import gleam/list
 import gleam/option.{type Option, None, Some}
 
@@ -6,6 +24,7 @@ import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_domain/org_role.{type OrgRole, Admin}
 
+/// Loading state for a resource (simplified from Remote for snapshot comparison).
 pub type ResourceState {
   NotAsked
   Loading
@@ -13,12 +32,14 @@ pub type ResourceState {
   Failed
 }
 
+/// Authentication state for hydration decisions.
 pub type AuthState {
   Unknown
   Unauthed
   Authed(OrgRole)
 }
 
+/// Snapshot of current model state for hydration planning.
 pub type Snapshot {
   Snapshot(
     auth: AuthState,
@@ -40,6 +61,7 @@ pub type Snapshot {
   )
 }
 
+/// Command to execute during hydration (API fetch or redirect).
 pub type Command {
   FetchMe
   FetchProjects

@@ -67,10 +67,21 @@ import scrumbringer_client/client_view
 // Application Entry Point
 // =============================================================================
 
+/// Create the Lustre application with init, update, and view functions.
+///
+/// ## Example
+///
+/// ```gleam
+/// let application = app()
+/// lustre.start(application, "#app", Nil)
+/// ```
 pub fn app() -> lustre.App(Nil, Model, Msg) {
   lustre.application(init, client_update.update, client_view.view)
 }
 
+/// Application entry point - starts the Lustre SPA.
+///
+/// Mounts the application to the `#app` DOM element.
 pub fn main() {
   case lustre.start(app(), "#app", Nil) {
     Ok(_) -> Nil
