@@ -21,6 +21,7 @@ help:
 deps:
 	@echo "Using gleam: $(GLEAN_BIN)"
 	@cd apps/server && $(GLEAN_BIN) deps download
+	@cd apps/client && $(GLEAN_BIN) deps download
 	@cd packages/domain && $(GLEAN_BIN) deps download
 	@cd packages/birl && $(GLEAN_BIN) deps download
 
@@ -42,6 +43,8 @@ squirrel:
 test:
 	@echo "Running server tests with DATABASE_URL=$(DATABASE_URL)"
 	@cd apps/server && DATABASE_URL="$(DATABASE_URL)" $(GLEAN_BIN) test
+	@echo "Running client tests"
+	@cd apps/client && $(GLEAN_BIN) test
 	@cd packages/domain && $(GLEAN_BIN) test
 	@cd packages/birl && $(GLEAN_BIN) test
 
@@ -49,5 +52,6 @@ verify: migrate squirrel test
 
 fmt:
 	@cd apps/server && $(GLEAN_BIN) format
+	@cd apps/client && $(GLEAN_BIN) format
 	@cd packages/domain && $(GLEAN_BIN) format
 	@cd packages/birl && $(GLEAN_BIN) format
