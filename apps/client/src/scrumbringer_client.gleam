@@ -79,6 +79,7 @@ import scrumbringer_client/reset_password
 import scrumbringer_client/router
 import scrumbringer_client/styles
 import scrumbringer_client/theme
+import scrumbringer_client/update_helpers
 
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale as i18n_locale
@@ -2277,7 +2278,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     MemberRemoveClicked(user_id) -> {
-      let maybe_user = resolve_org_user(model.org_users_cache, user_id)
+      let maybe_user = update_helpers.resolve_org_user(model.org_users_cache, user_id)
 
       let user = case maybe_user {
         opt.Some(user) -> user
@@ -2654,7 +2655,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
       case pending <= 0 {
         True -> #(
-          Model(..model, member_tasks: Loaded(flatten_tasks(tasks_by_project))),
+          Model(..model, member_tasks: Loaded(update_helpers.flatten_tasks(tasks_by_project))),
           effect.none(),
         )
         False -> #(model, effect.none())
@@ -2697,7 +2698,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         True -> #(
           Model(
             ..model,
-            member_task_types: Loaded(flatten_task_types(task_types_by_project)),
+            member_task_types: Loaded(update_helpers.flatten_task_types(task_types_by_project)),
           ),
           effect.none(),
         )
@@ -2817,7 +2818,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           // If the pointer ended over My Tasks, interpret as optional drop-to-claim.
           case over_my_tasks {
             True -> {
-              case find_task_by_id(model.member_tasks, task_id) {
+              case update_helpers.find_task_by_id(model.member_tasks, task_id) {
                 opt.Some(api.Task(version: version, ..)) ->
                   case model.member_task_mutation_in_flight {
                     True -> #(model, effect.none())
@@ -3233,7 +3234,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         )
 
       // Stop tick loop when active task is cleared.
-      let model = case now_working_active_task(model) {
+      let model = case update_helpers.now_working_active_task(model) {
         opt.None -> Model(..model, now_working_tick_running: False)
         opt.Some(_) -> model
       }
@@ -3388,13 +3389,13 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       let heartbeat_fx = case
         next_tick % 60 == 0
         && model.member_now_working_in_flight == False
-        && now_working_active_task(model) != opt.None
+        && update_helpers.now_working_active_task(model) != opt.None
       {
         True -> api.heartbeat_me_active_task(MemberActiveTaskHeartbeated)
         False -> effect.none()
       }
 
-      case now_working_active_task(model) {
+      case update_helpers.now_working_active_task(model) {
         opt.Some(_) -> #(
           model,
           effect.batch([now_working_tick_effect(), heartbeat_fx]),
@@ -3411,7 +3412,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       Model(
         ..model,
         member_my_capability_ids: Loaded(ids),
-        member_my_capability_ids_edit: ids_to_bool_dict(ids),
+        member_my_capability_ids_edit: update_helpers.ids_to_bool_dict(ids),
       ),
       effect.none(),
     )
@@ -3459,7 +3460,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       case model.member_my_capabilities_in_flight {
         True -> #(model, effect.none())
         False -> {
-          let ids = bool_dict_to_ids(model.member_my_capability_ids_edit)
+          let ids = update_helpers.bool_dict_to_ids(model.member_my_capability_ids_edit)
           let model =
             Model(
               ..model,
@@ -3476,7 +3477,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         ..model,
         member_my_capabilities_in_flight: False,
         member_my_capability_ids: Loaded(ids),
-        member_my_capability_ids_edit: ids_to_bool_dict(ids),
+        member_my_capability_ids_edit: update_helpers.ids_to_bool_dict(ids),
         toast: opt.Some(i18n_t(model, i18n_text.SkillsSaved)),
       ),
       effect.none(),
@@ -3508,7 +3509,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     MemberPositionsFetched(Ok(positions)) -> #(
-      Model(..model, member_positions_by_task: positions_to_dict(positions)),
+      Model(..model, member_positions_by_task: update_helpers.positions_to_dict(positions)),
       effect.none(),
     )
 
@@ -3955,21 +3956,6 @@ fn refresh_section(model: Model) -> #(Model, Effect(Msg)) {
   }
 }
 
-fn resolve_org_user(
-  cache: Remote(List(api.OrgUser)),
-  user_id: Int,
-) -> opt.Option(api.OrgUser) {
-  case cache {
-    Loaded(users) ->
-      case list.find(users, fn(u) { u.id == user_id }) {
-        Ok(user) -> opt.Some(user)
-        Error(_) -> opt.None
-      }
-
-    _ -> opt.None
-  }
-}
-
 fn fallback_org_user(model: Model, user_id: Int) -> api.OrgUser {
   api.OrgUser(
     id: user_id,
@@ -3997,7 +3983,7 @@ fn start_now_working_tick_if_needed(model: Model) -> #(Model, Effect(Msg)) {
     True -> #(model, effect.none())
 
     False ->
-      case now_working_active_task(model) {
+      case update_helpers.now_working_active_task(model) {
         opt.Some(_) -> #(
           Model(..model, now_working_tick_running: True),
           now_working_tick_effect(),
@@ -4023,98 +4009,16 @@ fn page_title(section: permissions.AdminSection) -> i18n_text.Text {
   }
 }
 
-fn active_projects(model: Model) -> List(api.Project) {
-  case model.projects {
-    Loaded(projects) -> projects
-    _ -> []
-  }
-}
-
-fn selected_project(model: Model) -> opt.Option(api.Project) {
-  case model.selected_project_id, model.projects {
-    opt.Some(id), Loaded(projects) ->
-      case list.find(projects, fn(p) { p.id == id }) {
-        Ok(project) -> opt.Some(project)
-        Error(_) -> opt.None
-      }
-
-    _, _ -> opt.None
-  }
-}
-
-fn now_working_active_task(model: Model) -> opt.Option(api.ActiveTask) {
-  case model.member_active_task {
-    Loaded(api.ActiveTaskPayload(active_task: active_task, ..)) -> active_task
-    _ -> opt.None
-  }
-}
-
-fn now_working_active_task_id(model: Model) -> opt.Option(Int) {
-  case now_working_active_task(model) {
-    opt.Some(api.ActiveTask(task_id: task_id, ..)) -> opt.Some(task_id)
-    opt.None -> opt.None
-  }
-}
-
-fn find_task_by_id(
-  tasks: Remote(List(api.Task)),
-  task_id: Int,
-) -> opt.Option(api.Task) {
-  case tasks {
-    Loaded(tasks) ->
-      case
-        list.find(tasks, fn(t) {
-          let api.Task(id: id, ..) = t
-          id == task_id
-        })
-      {
-        Ok(t) -> opt.Some(t)
-        Error(_) -> opt.None
-      }
-
-    _ -> opt.None
-  }
-}
-
-fn format_seconds(value: Int) -> String {
-  let hours = value / 3600
-  let minutes_total = value / 60
-  let minutes = minutes_total - minutes_total / 60 * 60
-  let seconds = value - minutes_total * 60
-
-  let mm = minutes |> int.to_string |> string.pad_start(2, "0")
-  let ss = seconds |> int.to_string |> string.pad_start(2, "0")
-
-  case hours {
-    0 -> mm <> ":" <> ss
-    _ -> int.to_string(hours) <> ":" <> mm <> ":" <> ss
-  }
-}
-
-fn now_working_elapsed_from_ms(
-  accumulated_s: Int,
-  started_ms: Int,
-  server_now_ms: Int,
-) -> String {
-  let diff_ms = server_now_ms - started_ms
-  let delta_s = case diff_ms < 0 {
-    True -> 0
-    False -> diff_ms / 1000
-  }
-
-  format_seconds(accumulated_s + delta_s)
-}
-
 pub fn now_working_elapsed_from_ms_for_test(
   accumulated_s: Int,
   started_ms: Int,
   server_now_ms: Int,
 ) -> String {
-  now_working_elapsed_from_ms(accumulated_s, started_ms, server_now_ms)
+  update_helpers.now_working_elapsed_from_ms(accumulated_s, started_ms, server_now_ms)
 }
 
 fn now_working_elapsed(model: Model) -> String {
-  case now_working_active_task(model) {
+  case update_helpers.now_working_active_task(model) {
     opt.None -> "00:00"
 
     opt.Some(api.ActiveTask(
@@ -4125,7 +4029,7 @@ fn now_working_elapsed(model: Model) -> String {
       let started_ms = client_ffi.parse_iso_ms(started_at)
       let local_now_ms = client_ffi.now_ms()
       let server_now_ms = local_now_ms - model.now_working_server_offset_ms
-      now_working_elapsed_from_ms(accumulated_s, started_ms, server_now_ms)
+      update_helpers.now_working_elapsed_from_ms(accumulated_s, started_ms, server_now_ms)
     }
   }
 }
@@ -4485,8 +4389,8 @@ fn view_admin(model: Model) -> Element(Msg) {
     opt.None -> view_login(model)
 
     opt.Some(user) -> {
-      let projects = active_projects(model)
-      let selected = selected_project(model)
+      let projects = update_helpers.active_projects(model)
+      let selected = update_helpers.selected_project(model)
       let sections = permissions.visible_sections(user.org_role, projects)
 
       div([attribute.class("admin")], [
@@ -4573,7 +4477,7 @@ fn view_topbar(model: Model, user: User) -> Element(Msg) {
 }
 
 fn view_project_selector(model: Model) -> Element(Msg) {
-  let projects = active_projects(model)
+  let projects = update_helpers.active_projects(model)
 
   let selected_id = case model.selected_project_id {
     opt.Some(id) -> int.to_string(id)
@@ -5458,7 +5362,7 @@ fn view_members_table(
             tbody(
               [],
               list.map(members, fn(m) {
-                let email = case resolve_org_user(cache, m.user_id) {
+                let email = case update_helpers.resolve_org_user(cache, m.user_id) {
                   opt.Some(user) -> user.email
                   opt.None -> i18n_t(model, i18n_text.UserNumber(m.user_id))
                 }
@@ -6062,7 +5966,7 @@ fn view_now_working_panel(model: Model, _user: User) -> Element(Msg) {
       ])
 
     NotAsked | Loaded(_) -> {
-      let active = now_working_active_task(model)
+      let active = update_helpers.now_working_active_task(model)
 
       case active {
         opt.None ->
@@ -6074,7 +5978,7 @@ fn view_now_working_panel(model: Model, _user: User) -> Element(Msg) {
           ])
 
         opt.Some(api.ActiveTask(task_id: task_id, ..)) -> {
-          let title = case find_task_by_id(model.member_tasks, task_id) {
+          let title = case update_helpers.find_task_by_id(model.member_tasks, task_id) {
             opt.Some(api.Task(title: title, ..)) -> title
             opt.None -> i18n_t(model, i18n_text.TaskNumber(task_id))
           }
@@ -6093,7 +5997,7 @@ fn view_now_working_panel(model: Model, _user: User) -> Element(Msg) {
               [text(i18n_t(model, i18n_text.Pause))],
             )
 
-          let task_actions = case find_task_by_id(model.member_tasks, task_id) {
+          let task_actions = case update_helpers.find_task_by_id(model.member_tasks, task_id) {
             opt.Some(api.Task(version: version, ..)) -> [
               button(
                 [
@@ -6249,7 +6153,7 @@ fn view_member_section(model: Model, user: User) -> Element(Msg) {
 }
 
 fn view_member_pool_main(model: Model, _user: User) -> Element(Msg) {
-  case active_projects(model) {
+  case update_helpers.active_projects(model) {
     [] ->
       div([attribute.class("empty")], [
         h2([], [text(i18n_t(model, i18n_text.NoProjectsYet))]),
@@ -7006,7 +6910,7 @@ fn view_member_metrics_panel(model: Model) -> Element(Msg) {
 }
 
 fn view_member_bar(model: Model, user: User) -> Element(Msg) {
-  case active_projects(model) {
+  case update_helpers.active_projects(model) {
     [] ->
       div([attribute.class("empty")], [
         h2([], [text(i18n_t(model, i18n_text.NoProjectsYet))]),
@@ -7148,7 +7052,7 @@ fn view_member_bar_task_row(
       [text(i18n_t(model, i18n_text.Pause))],
     )
 
-  let is_active = now_working_active_task_id(model) == opt.Some(id)
+  let is_active = update_helpers.now_working_active_task_id(model) == opt.Some(id)
 
   let now_working_action = case is_active {
     True -> pause_action
@@ -7368,7 +7272,7 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
     member_section.MySkills -> #(model, effect.none())
 
     _ -> {
-      let projects = active_projects(model)
+      let projects = update_helpers.active_projects(model)
 
       let project_ids = case model.selected_project_id {
         opt.Some(project_id) -> [project_id]
@@ -7405,21 +7309,21 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
               // without status filter and apply view-level guards.
               api.TaskFilters(
                 status: opt.None,
-                type_id: empty_to_int_opt(model.member_filters_type_id),
-                capability_id: empty_to_int_opt(
+                type_id: update_helpers.empty_to_int_opt(model.member_filters_type_id),
+                capability_id: update_helpers.empty_to_int_opt(
                   model.member_filters_capability_id,
                 ),
-                q: empty_to_opt(model.member_filters_q),
+                q: update_helpers.empty_to_opt(model.member_filters_q),
               )
 
             _ ->
               api.TaskFilters(
-                status: empty_to_opt(model.member_filters_status),
-                type_id: empty_to_int_opt(model.member_filters_type_id),
-                capability_id: empty_to_int_opt(
+                status: update_helpers.empty_to_opt(model.member_filters_status),
+                type_id: update_helpers.empty_to_int_opt(model.member_filters_type_id),
+                capability_id: update_helpers.empty_to_int_opt(
                   model.member_filters_capability_id,
                 ),
-                q: empty_to_opt(model.member_filters_q),
+                q: update_helpers.empty_to_opt(model.member_filters_q),
               )
           }
 
@@ -7496,74 +7400,6 @@ pub fn should_pause_active_task_on_project_change(
     False -> False
     True -> previous_project_id != next_project_id
   }
-}
-
-fn empty_to_opt(value: String) -> opt.Option(String) {
-  case string.trim(value) == "" {
-    True -> opt.None
-    False -> opt.Some(value)
-  }
-}
-
-fn empty_to_int_opt(value: String) -> opt.Option(Int) {
-  let trimmed = string.trim(value)
-
-  case trimmed == "" {
-    True -> opt.None
-    False ->
-      case int.parse(trimmed) {
-        Ok(i) -> opt.Some(i)
-        Error(_) -> opt.None
-      }
-  }
-}
-
-fn ids_to_bool_dict(ids: List(Int)) -> dict.Dict(Int, Bool) {
-  ids |> list.fold(dict.new(), fn(acc, id) { dict.insert(acc, id, True) })
-}
-
-fn bool_dict_to_ids(values: dict.Dict(Int, Bool)) -> List(Int) {
-  values
-  |> dict.to_list
-  |> list.filter_map(fn(pair) {
-    let #(id, selected) = pair
-    case selected {
-      True -> Ok(id)
-      False -> Error(Nil)
-    }
-  })
-}
-
-fn positions_to_dict(
-  positions: List(api.TaskPosition),
-) -> dict.Dict(Int, #(Int, Int)) {
-  positions
-  |> list.fold(dict.new(), fn(acc, pos) {
-    let api.TaskPosition(task_id: task_id, x: x, y: y, ..) = pos
-    dict.insert(acc, task_id, #(x, y))
-  })
-}
-
-fn flatten_tasks(
-  tasks_by_project: dict.Dict(Int, List(api.Task)),
-) -> List(api.Task) {
-  tasks_by_project
-  |> dict.to_list
-  |> list.fold([], fn(acc, pair) {
-    let #(_project_id, tasks) = pair
-    list.append(acc, tasks)
-  })
-}
-
-fn flatten_task_types(
-  task_types_by_project: dict.Dict(Int, List(api.TaskType)),
-) -> List(api.TaskType) {
-  task_types_by_project
-  |> dict.to_list
-  |> list.fold([], fn(acc, pair) {
-    let #(_project_id, task_types) = pair
-    list.append(acc, task_types)
-  })
 }
 
 fn age_in_days(created_at: String) -> Int {
