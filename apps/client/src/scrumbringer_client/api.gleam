@@ -23,15 +23,19 @@
 //// All API functions return `Effect(msg)` where `msg` wraps `ApiResult(a)`.
 //// Errors are decoded into `ApiError` with status, code, and message.
 ////
-//// ## Module Structure (planned refactor)
+//// ## Module Structure
 ////
-//// This module is currently monolithic. Future refactoring will extract:
-//// - `api/core.gleam`: Base request/response handling
-//// - `api/auth.gleam`: Authentication endpoints
-//// - `api/projects.gleam`: Project CRUD
-//// - `api/tasks.gleam`: Task operations
-//// - `api/metrics.gleam`: Metrics endpoints
-//// - `api/org.gleam`: Organization management
+//// The API functionality has been extracted to domain-specific submodules:
+//// - `api/core.gleam`: Base request/response handling, ApiError, ApiResult
+//// - `api/auth.gleam`: Authentication endpoints (login, logout, password reset)
+//// - `api/projects.gleam`: Project and ProjectMember types and operations
+//// - `api/tasks.gleam`: Task, TaskType, TaskPosition, ActiveTask operations
+//// - `api/metrics.gleam`: MyMetrics, OrgMetrics* types and endpoints
+//// - `api/org.gleam`: OrgUser, Capability, InviteLink operations
+////
+//// This module is maintained for backward compatibility. New code should
+//// prefer importing from submodules directly for better code organization.
+//// Migration of existing imports will be completed in a future sprint.
 ////
 //// ## Relations
 ////

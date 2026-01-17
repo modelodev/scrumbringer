@@ -48,7 +48,10 @@
 - [x] `api/tasks.gleam`
 - [x] `api/metrics.gleam`
 - [x] `api/org.gleam`
-- [ ] Update imports + docs + examples (original api.gleam kept for backwards compatibility)
+- [x] Update imports + docs + examples (original api.gleam kept for backwards compatibility)
+  - api.gleam module docs updated to document submodule structure
+  - Submodules have full docs with usage examples
+  - Import migration to submodules deferred (Gleam lacks type re-export for ADTs)
 
 ### Server: `http/tasks.gleam`
 - [x] `tasks/validators.gleam` (task input validation + auth helpers)
