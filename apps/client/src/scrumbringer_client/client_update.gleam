@@ -47,7 +47,7 @@ import scrumbringer_client/client_state.{
   CapabilityCreated, Failed, ForgotPasswordClicked, ForgotPasswordCopyClicked,
   ForgotPasswordCopyFinished, ForgotPasswordDismissed,
   ForgotPasswordEmailChanged, ForgotPasswordFinished, ForgotPasswordSubmitted,
-  GlobalKeyDown, IconError, IconIdle, IconLoading, IconOk, InviteLinkCopyClicked,
+  GlobalKeyDown, InviteLinkCopyClicked,
   InviteLinkCopyFinished, InviteLinkCreateSubmitted, InviteLinkCreated,
   InviteLinkEmailChanged, InviteLinkRegenerateClicked, InviteLinkRegenerated,
   InviteLinksFetched, Loaded, Loading, LocaleSelected, Login, LoginDomValuesRead,
@@ -88,7 +88,15 @@ import scrumbringer_client/client_state.{
   ToastDismissed, UrlChanged, rect_contains_point,
 }
 
-import scrumbringer_client/i18n/locale as i18n_locale
+import scrumbringer_client/client_workflows/admin as admin_workflow
+import scrumbringer_client/client_workflows/auth as auth_workflow
+import scrumbringer_client/client_workflows/capabilities as capabilities_workflow
+import scrumbringer_client/client_workflows/i18n as i18n_workflow
+import scrumbringer_client/client_workflows/invite_links as invite_links_workflow
+import scrumbringer_client/client_workflows/now_working as now_working_workflow
+import scrumbringer_client/client_workflows/projects as projects_workflow
+import scrumbringer_client/client_workflows/task_types as task_types_workflow
+import scrumbringer_client/client_workflows/tasks as tasks_workflow
 
 // ---------------------------------------------------------------------------
 // Routing helpers
@@ -246,15 +254,6 @@ fn handle_pool_keydown(
       }
     }
   }
-}
-
-fn read_login_values_effect() -> Effect(Msg) {
-  effect.from(fn(dispatch) {
-    let email = client_ffi.input_value("login-email")
-    let password = client_ffi.input_value("login-password")
-    dispatch(LoginDomValuesRead(email, password))
-    Nil
-  })
 }
 
 pub fn write_url(mode: NavMode, route: router.Route) -> Effect(Msg) {
@@ -869,43 +868,6 @@ fn refresh_section(model: Model) -> #(Model, Effect(Msg)) {
   }
 }
 
-fn fallback_org_user(model: Model, user_id: Int) -> api.OrgUser {
-  api.OrgUser(
-    id: user_id,
-    email: update_helpers.i18n_t(model, i18n_text.UserNumber(user_id)),
-    org_role: "",
-    created_at: "",
-  )
-}
-
-fn copy_to_clipboard(text: String, msg: fn(Bool) -> Msg) -> Effect(Msg) {
-  effect.from(fn(dispatch) {
-    client_ffi.copy_to_clipboard(text, fn(ok) { dispatch(msg(ok)) })
-  })
-}
-
-fn now_working_tick_effect() -> Effect(Msg) {
-  effect.from(fn(dispatch) {
-    client_ffi.set_timeout(1000, fn(_) { dispatch(NowWorkingTicked) })
-    Nil
-  })
-}
-
-fn start_now_working_tick_if_needed(model: Model) -> #(Model, Effect(Msg)) {
-  case model.now_working_tick_running {
-    True -> #(model, effect.none())
-
-    False ->
-      case update_helpers.now_working_active_task(model) {
-        opt.Some(_) -> #(
-          Model(..model, now_working_tick_running: True),
-          now_working_tick_effect(),
-        )
-        opt.None -> #(model, effect.none())
-      }
-  }
-}
-
 /// Refresh member section data (tasks, types, positions, active task, metrics).
 ///
 /// ## Size Justification (105 lines)
@@ -1021,26 +983,6 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
         }
       }
     }
-  }
-}
-
-fn member_handle_task_mutation_error(
-  model: Model,
-  err: api.ApiError,
-) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> #(
-      Model(
-        ..model,
-        page: Login,
-        user: opt.None,
-        member_drag: opt.None,
-        member_pool_drag_to_claim_armed: False,
-        member_pool_drag_over_my_tasks: False,
-      ),
-      effect.none(),
-    )
-    _ -> member_refresh(Model(..model, toast: opt.Some(err.message)))
   }
 }
 
@@ -1261,264 +1203,46 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
     }
 
-    LoginEmailChanged(email) -> #(
-      Model(..model, login_email: email),
-      effect.none(),
-    )
-
-    LoginPasswordChanged(password) -> #(
-      Model(..model, login_password: password),
-      effect.none(),
-    )
-
-    LoginSubmitted -> {
-      case model.login_in_flight {
-        True -> #(model, effect.none())
-        False -> {
-          let model =
-            Model(
-              ..model,
-              login_in_flight: True,
-              login_error: opt.None,
-              toast: opt.None,
-            )
-
-          #(model, read_login_values_effect())
-        }
-      }
-    }
-
-    LoginDomValuesRead(raw_email, raw_password) -> {
-      let email = string.trim(raw_email)
-      let password = raw_password
-
-      case email == "" || password == "" {
-        True -> #(
-          Model(
-            ..model,
-            login_in_flight: False,
-            login_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.EmailAndPasswordRequired,
-            )),
-          ),
-          effect.none(),
-        )
-
-        False -> {
-          let model =
-            Model(..model, login_email: email, login_password: password)
-          #(model, api.login(email, password, LoginFinished))
-        }
-      }
-    }
-
-    LoginFinished(Ok(user)) -> {
-      let page = case user.org_role {
-        org_role.Admin -> Admin
-        _ -> Member
-      }
-
-      let model =
-        Model(
-          ..model,
-          page: page,
-          user: opt.Some(user),
-          auth_checked: True,
-          login_in_flight: False,
-          login_password: "",
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.LoggedIn)),
-        )
-
-      let #(model, boot) = bootstrap_admin(model)
-      let #(model, hyd_fx) = hydrate_model(model)
-      #(
+    LoginEmailChanged(email) ->
+      auth_workflow.handle_login_email_changed(model, email)
+    LoginPasswordChanged(password) ->
+      auth_workflow.handle_login_password_changed(model, password)
+    LoginSubmitted -> auth_workflow.handle_login_submitted(model)
+    LoginDomValuesRead(raw_email, raw_password) ->
+      auth_workflow.handle_login_dom_values_read(model, raw_email, raw_password)
+    LoginFinished(Ok(user)) ->
+      auth_workflow.handle_login_finished_ok(
         model,
-        effect.batch([
-          boot,
-          hyd_fx,
-          replace_url(model),
-        ]),
+        user,
+        bootstrap_admin,
+        hydrate_model,
+        replace_url,
       )
-    }
+    LoginFinished(Error(err)) ->
+      auth_workflow.handle_login_finished_error(model, err)
 
-    LoginFinished(Error(err)) -> {
-      let message = case err.status {
-        401 | 403 -> update_helpers.i18n_t(model, i18n_text.InvalidCredentials)
-        _ -> err.message
-      }
+    ForgotPasswordClicked ->
+      auth_workflow.handle_forgot_password_clicked(model)
+    ForgotPasswordEmailChanged(email) ->
+      auth_workflow.handle_forgot_password_email_changed(model, email)
+    ForgotPasswordSubmitted ->
+      auth_workflow.handle_forgot_password_submitted(model)
+    ForgotPasswordFinished(Ok(reset)) ->
+      auth_workflow.handle_forgot_password_finished_ok(model, reset)
+    ForgotPasswordFinished(Error(err)) ->
+      auth_workflow.handle_forgot_password_finished_error(model, err)
+    ForgotPasswordCopyClicked ->
+      auth_workflow.handle_forgot_password_copy_clicked(model)
+    ForgotPasswordCopyFinished(ok) ->
+      auth_workflow.handle_forgot_password_copy_finished(model, ok)
+    ForgotPasswordDismissed ->
+      auth_workflow.handle_forgot_password_dismissed(model)
 
-      #(
-        Model(..model, login_in_flight: False, login_error: opt.Some(message)),
-        effect.none(),
-      )
-    }
-
-    ForgotPasswordClicked -> {
-      let open = !model.forgot_password_open
-
-      #(
-        Model(
-          ..model,
-          forgot_password_open: open,
-          forgot_password_in_flight: False,
-          forgot_password_result: opt.None,
-          forgot_password_error: opt.None,
-          forgot_password_copy_status: opt.None,
-          toast: opt.None,
-        ),
-        effect.none(),
-      )
-    }
-
-    ForgotPasswordEmailChanged(email) -> #(
-      Model(
-        ..model,
-        forgot_password_email: email,
-        forgot_password_error: opt.None,
-        forgot_password_copy_status: opt.None,
-      ),
-      effect.none(),
-    )
-
-    ForgotPasswordSubmitted -> {
-      case model.forgot_password_in_flight {
-        True -> #(model, effect.none())
-
-        False -> {
-          let email = string.trim(model.forgot_password_email)
-
-          case email == "" {
-            True -> #(
-              Model(
-                ..model,
-                forgot_password_error: opt.Some(update_helpers.i18n_t(
-                  model,
-                  i18n_text.EmailRequired,
-                )),
-              ),
-              effect.none(),
-            )
-
-            False -> {
-              let model =
-                Model(
-                  ..model,
-                  forgot_password_in_flight: True,
-                  forgot_password_error: opt.None,
-                  forgot_password_result: opt.None,
-                  forgot_password_copy_status: opt.None,
-                )
-
-              #(
-                model,
-                api.request_password_reset(email, ForgotPasswordFinished),
-              )
-            }
-          }
-        }
-      }
-    }
-
-    ForgotPasswordFinished(Ok(reset)) -> #(
-      Model(
-        ..model,
-        forgot_password_in_flight: False,
-        forgot_password_result: opt.Some(reset),
-        forgot_password_error: opt.None,
-        forgot_password_copy_status: opt.None,
-      ),
-      effect.none(),
-    )
-
-    ForgotPasswordFinished(Error(err)) -> #(
-      Model(
-        ..model,
-        forgot_password_in_flight: False,
-        forgot_password_error: opt.Some(err.message),
-      ),
-      effect.none(),
-    )
-
-    ForgotPasswordCopyClicked -> {
-      case model.forgot_password_result {
-        opt.None -> #(model, effect.none())
-
-        opt.Some(reset) -> {
-          let origin = client_ffi.location_origin()
-          let text = origin <> reset.url_path
-
-          #(
-            Model(
-              ..model,
-              forgot_password_copy_status: opt.Some(update_helpers.i18n_t(
-                model,
-                i18n_text.Copying,
-              )),
-            ),
-            copy_to_clipboard(text, ForgotPasswordCopyFinished),
-          )
-        }
-      }
-    }
-
-    ForgotPasswordCopyFinished(ok) -> {
-      let message = case ok {
-        True -> update_helpers.i18n_t(model, i18n_text.Copied)
-        False -> update_helpers.i18n_t(model, i18n_text.CopyFailed)
-      }
-
-      #(
-        Model(..model, forgot_password_copy_status: opt.Some(message)),
-        effect.none(),
-      )
-    }
-
-    ForgotPasswordDismissed -> #(
-      Model(
-        ..model,
-        forgot_password_error: opt.None,
-        forgot_password_copy_status: opt.None,
-        forgot_password_result: opt.None,
-      ),
-      effect.none(),
-    )
-
-    LogoutClicked -> #(
-      Model(..model, toast: opt.None),
-      api.logout(LogoutFinished),
-    )
-
-    LogoutFinished(Ok(_)) -> {
-      let model =
-        Model(
-          ..model,
-          page: Login,
-          user: opt.None,
-          auth_checked: False,
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.LoggedOut)),
-        )
-
-      #(model, replace_url(model))
-    }
-
-    LogoutFinished(Error(err)) -> {
-      case err.status == 401 {
-        True -> {
-          let model =
-            Model(..model, page: Login, user: opt.None, auth_checked: False)
-          #(model, replace_url(model))
-        }
-
-        False -> #(
-          Model(
-            ..model,
-            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.LogoutFailed)),
-          ),
-          effect.none(),
-        )
-      }
-    }
+    LogoutClicked -> auth_workflow.handle_logout_clicked(model)
+    LogoutFinished(Ok(_)) ->
+      auth_workflow.handle_logout_finished_ok(model, replace_url)
+    LogoutFinished(Error(err)) ->
+      auth_workflow.handle_logout_finished_error(model, err, replace_url)
 
     ToastDismissed -> #(Model(..model, toast: opt.None), effect.none())
 
@@ -1535,18 +1259,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
     }
 
-    LocaleSelected(value) -> {
-      let next_locale = i18n_locale.deserialize(value)
-
-      case next_locale == model.locale {
-        True -> #(model, effect.none())
-
-        False -> #(
-          Model(..model, locale: next_locale),
-          effect.from(fn(_dispatch) { i18n_locale.save(next_locale) }),
-        )
-      }
-    }
+    LocaleSelected(value) -> i18n_workflow.handle_locale_selected(model, value)
 
     ProjectSelected(project_id) -> {
       let selected = case int.parse(project_id) {
@@ -1646,1070 +1359,129 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
     }
 
-    ProjectCreateNameChanged(name) -> #(
-      Model(..model, projects_create_name: name),
-      effect.none(),
-    )
-
-    ProjectCreateSubmitted -> {
-      case model.projects_create_in_flight {
-        True -> #(model, effect.none())
-        False -> {
-          let name = string.trim(model.projects_create_name)
-
-          case name == "" {
-            True -> #(
-              Model(
-                ..model,
-                projects_create_error: opt.Some(update_helpers.i18n_t(
-                  model,
-                  i18n_text.NameRequired,
-                )),
-              ),
-              effect.none(),
-            )
-            False -> {
-              let model =
-                Model(
-                  ..model,
-                  projects_create_in_flight: True,
-                  projects_create_error: opt.None,
-                )
-              #(model, api.create_project(name, ProjectCreated))
-            }
-          }
-        }
-      }
-    }
-
-    ProjectCreated(Ok(project)) -> {
-      let updated_projects = case model.projects {
-        Loaded(projects) -> [project, ..projects]
-        _ -> [project]
-      }
-
-      #(
-        Model(
-          ..model,
-          projects: Loaded(updated_projects),
-          selected_project_id: opt.Some(project.id),
-          projects_create_in_flight: False,
-          projects_create_name: "",
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.ProjectCreated)),
-        ),
-        effect.none(),
-      )
-    }
-
-    ProjectCreated(Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        403 -> #(
-          Model(
-            ..model,
-            projects_create_in_flight: False,
-            projects_create_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NotPermitted,
-            )),
-            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-          ),
-          effect.none(),
-        )
-        _ -> #(
-          Model(
-            ..model,
-            projects_create_in_flight: False,
-            projects_create_error: opt.Some(err.message),
-          ),
-          effect.none(),
-        )
-      }
-    }
-
-    InviteLinkEmailChanged(value) -> #(
-      Model(..model, invite_link_email: value),
-      effect.none(),
-    )
-
-    InviteLinksFetched(Ok(links)) -> #(
-      Model(..model, invite_links: Loaded(links)),
-      effect.none(),
-    )
-
-    InviteLinksFetched(Error(err)) -> {
-      case err.status == 401 {
-        True -> #(Model(..model, page: Login, user: opt.None), effect.none())
-        False -> #(Model(..model, invite_links: Failed(err)), effect.none())
-      }
-    }
-
-    InviteLinkCreateSubmitted -> {
-      case model.invite_link_in_flight {
-        True -> #(model, effect.none())
-        False -> {
-          let email = string.trim(model.invite_link_email)
-
-          case email == "" {
-            True -> #(
-              Model(
-                ..model,
-                invite_link_error: opt.Some(update_helpers.i18n_t(
-                  model,
-                  i18n_text.EmailRequired,
-                )),
-              ),
-              effect.none(),
-            )
-            False -> {
-              let model =
-                Model(
-                  ..model,
-                  invite_link_in_flight: True,
-                  invite_link_error: opt.None,
-                  invite_link_copy_status: opt.None,
-                )
-              #(model, api.create_invite_link(email, InviteLinkCreated))
-            }
-          }
-        }
-      }
-    }
-
-    InviteLinkRegenerateClicked(email) -> {
-      case model.invite_link_in_flight {
-        True -> #(model, effect.none())
-        False -> {
-          let email = string.trim(email)
-
-          case email == "" {
-            True -> #(
-              Model(
-                ..model,
-                invite_link_error: opt.Some(update_helpers.i18n_t(
-                  model,
-                  i18n_text.EmailRequired,
-                )),
-              ),
-              effect.none(),
-            )
-            False -> {
-              let model =
-                Model(
-                  ..model,
-                  invite_link_in_flight: True,
-                  invite_link_error: opt.None,
-                  invite_link_copy_status: opt.None,
-                  invite_link_email: email,
-                )
-              #(model, api.regenerate_invite_link(email, InviteLinkRegenerated))
-            }
-          }
-        }
-      }
-    }
-
-    InviteLinkCreated(Ok(link)) -> {
-      let model =
-        Model(
-          ..model,
-          invite_link_in_flight: False,
-          invite_link_last: opt.Some(link),
-          invite_link_email: "",
-          toast: opt.Some(update_helpers.i18n_t(
-            model,
-            i18n_text.InviteLinkCreated,
-          )),
-        )
-
-      #(model, api.list_invite_links(InviteLinksFetched))
-    }
-
-    InviteLinkRegenerated(Ok(link)) -> {
-      let model =
-        Model(
-          ..model,
-          invite_link_in_flight: False,
-          invite_link_last: opt.Some(link),
-          invite_link_email: "",
-          toast: opt.Some(update_helpers.i18n_t(
-            model,
-            i18n_text.InviteLinkRegenerated,
-          )),
-        )
-
-      #(model, api.list_invite_links(InviteLinksFetched))
-    }
-
-    InviteLinkRegenerated(Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        403 -> #(
-          Model(
-            ..model,
-            invite_link_in_flight: False,
-            invite_link_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NotPermitted,
-            )),
-            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-          ),
-          effect.none(),
-        )
-        _ -> #(
-          Model(
-            ..model,
-            invite_link_in_flight: False,
-            invite_link_error: opt.Some(err.message),
-          ),
-          effect.none(),
-        )
-      }
-    }
-
-    InviteLinkCreated(Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        403 -> #(
-          Model(
-            ..model,
-            invite_link_in_flight: False,
-            invite_link_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NotPermitted,
-            )),
-            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-          ),
-          effect.none(),
-        )
-        _ -> #(
-          Model(
-            ..model,
-            invite_link_in_flight: False,
-            invite_link_error: opt.Some(err.message),
-          ),
-          effect.none(),
-        )
-      }
-    }
-
-    InviteLinkCopyClicked(text) -> #(
-      Model(
-        ..model,
-        invite_link_copy_status: opt.Some(update_helpers.i18n_t(
-          model,
-          i18n_text.Copying,
-        )),
-      ),
-      copy_to_clipboard(text, InviteLinkCopyFinished),
-    )
-
-    InviteLinkCopyFinished(ok) -> {
-      let message = case ok {
-        True -> update_helpers.i18n_t(model, i18n_text.Copied)
-        False -> update_helpers.i18n_t(model, i18n_text.CopyFailed)
-      }
-
-      #(
-        Model(..model, invite_link_copy_status: opt.Some(message)),
-        effect.none(),
-      )
-    }
-
-    CapabilitiesFetched(Ok(capabilities)) -> #(
-      Model(..model, capabilities: Loaded(capabilities)),
-      effect.none(),
-    )
-
-    CapabilitiesFetched(Error(err)) -> {
-      case err.status == 401 {
-        True -> #(Model(..model, page: Login, user: opt.None), effect.none())
-        False -> #(Model(..model, capabilities: Failed(err)), effect.none())
-      }
-    }
-
-    CapabilityCreateNameChanged(name) -> #(
-      Model(..model, capabilities_create_name: name),
-      effect.none(),
-    )
-
-    CapabilityCreateSubmitted -> {
-      case model.capabilities_create_in_flight {
-        True -> #(model, effect.none())
-        False -> {
-          let name = string.trim(model.capabilities_create_name)
-
-          case name == "" {
-            True -> #(
-              Model(
-                ..model,
-                capabilities_create_error: opt.Some(update_helpers.i18n_t(
-                  model,
-                  i18n_text.NameRequired,
-                )),
-              ),
-              effect.none(),
-            )
-            False -> {
-              let model =
-                Model(
-                  ..model,
-                  capabilities_create_in_flight: True,
-                  capabilities_create_error: opt.None,
-                )
-              #(model, api.create_capability(name, CapabilityCreated))
-            }
-          }
-        }
-      }
-    }
-
-    CapabilityCreated(Ok(capability)) -> {
-      let updated = case model.capabilities {
-        Loaded(capabilities) -> [capability, ..capabilities]
-        _ -> [capability]
-      }
-
-      #(
-        Model(
-          ..model,
-          capabilities: Loaded(updated),
-          capabilities_create_in_flight: False,
-          capabilities_create_name: "",
-          toast: opt.Some(update_helpers.i18n_t(
-            model,
-            i18n_text.CapabilityCreated,
-          )),
-        ),
-        effect.none(),
-      )
-    }
-
-    CapabilityCreated(Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        403 -> #(
-          Model(
-            ..model,
-            capabilities_create_in_flight: False,
-            capabilities_create_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NotPermitted,
-            )),
-            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-          ),
-          effect.none(),
-        )
-        _ -> #(
-          Model(
-            ..model,
-            capabilities_create_in_flight: False,
-            capabilities_create_error: opt.Some(err.message),
-          ),
-          effect.none(),
-        )
-      }
-    }
-
-    MembersFetched(Ok(members)) -> #(
-      Model(..model, members: Loaded(members)),
-      effect.none(),
-    )
-
-    MembersFetched(Error(err)) -> {
-      case err.status == 401 {
-        True -> #(Model(..model, page: Login, user: opt.None), effect.none())
-        False -> #(Model(..model, members: Failed(err)), effect.none())
-      }
-    }
-
-    OrgUsersCacheFetched(Ok(users)) -> #(
-      Model(..model, org_users_cache: Loaded(users)),
-      effect.none(),
-    )
-
-    OrgUsersCacheFetched(Error(err)) -> {
-      case err.status == 401 {
-        True -> #(Model(..model, page: Login, user: opt.None), effect.none())
-        False -> #(Model(..model, org_users_cache: Failed(err)), effect.none())
-      }
-    }
-
-    OrgSettingsUsersFetched(Ok(users)) -> #(
-      Model(
-        ..model,
-        org_settings_users: Loaded(users),
-        org_settings_role_drafts: dict.new(),
-        org_settings_save_in_flight: False,
-        org_settings_error: opt.None,
-        org_settings_error_user_id: opt.None,
-      ),
-      effect.none(),
-    )
-
-    OrgSettingsUsersFetched(Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-
-        403 -> #(
-          Model(
-            ..model,
-            org_settings_users: Failed(err),
-            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-          ),
-          effect.none(),
-        )
-
-        _ -> #(Model(..model, org_settings_users: Failed(err)), effect.none())
-      }
-    }
-
-    OrgSettingsRoleChanged(user_id, org_role) -> #(
-      Model(
-        ..model,
-        org_settings_role_drafts: dict.insert(
-          model.org_settings_role_drafts,
-          user_id,
-          org_role,
-        ),
-        org_settings_error: opt.None,
-        org_settings_error_user_id: opt.None,
-      ),
-      effect.none(),
-    )
-
-    OrgSettingsSaveClicked(user_id) -> {
-      case model.org_settings_save_in_flight {
-        True -> #(model, effect.none())
-
-        False -> {
-          let role = case dict.get(model.org_settings_role_drafts, user_id) {
-            Ok(r) -> r
-
-            Error(_) -> {
-              case model.org_settings_users {
-                Loaded(users) -> {
-                  case list.find(users, fn(u) { u.id == user_id }) {
-                    Ok(u) -> u.org_role
-                    Error(_) -> ""
-                  }
-                }
-
-                _ -> ""
-              }
-            }
-          }
-
-          case role {
-            "admin" | "member" -> {
-              let model =
-                Model(
-                  ..model,
-                  org_settings_save_in_flight: True,
-                  org_settings_error: opt.None,
-                  org_settings_error_user_id: opt.None,
-                )
-
-              #(
-                model,
-                api.update_org_user_role(user_id, role, fn(result) {
-                  OrgSettingsSaved(user_id, result)
-                }),
-              )
-            }
-
-            _ -> #(model, effect.none())
-          }
-        }
-      }
-    }
-
-    OrgSettingsSaved(_user_id, Ok(updated)) -> {
-      let update_list = fn(users: List(api.OrgUser)) {
-        list.map(users, fn(u) {
-          case u.id == updated.id {
-            True -> updated
-            False -> u
-          }
-        })
-      }
-
-      let org_settings_users = case model.org_settings_users {
-        Loaded(users) -> Loaded(update_list(users))
-        other -> other
-      }
-
-      let org_users_cache = case model.org_users_cache {
-        Loaded(users) -> Loaded(update_list(users))
-        other -> other
-      }
-
-      #(
-        Model(
-          ..model,
-          org_settings_users: org_settings_users,
-          org_users_cache: org_users_cache,
-          org_settings_save_in_flight: False,
-          org_settings_error: opt.None,
-          org_settings_error_user_id: opt.None,
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.RoleUpdated)),
-        ),
-        effect.none(),
-      )
-    }
-
-    OrgSettingsSaved(user_id, Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-
-        403 -> #(
-          Model(
-            ..model,
-            org_settings_save_in_flight: False,
-            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-          ),
-          effect.none(),
-        )
-
-        409 -> #(
-          Model(
-            ..model,
-            org_settings_save_in_flight: False,
-            org_settings_error_user_id: opt.Some(user_id),
-            org_settings_error: opt.Some(err.message),
-          ),
-          effect.none(),
-        )
-
-        _ -> #(
-          Model(
-            ..model,
-            org_settings_save_in_flight: False,
-            org_settings_error_user_id: opt.Some(user_id),
-            org_settings_error: opt.Some(err.message),
-          ),
-          effect.none(),
-        )
-      }
-    }
-
-    MemberAddDialogOpened -> {
-      #(
-        Model(
-          ..model,
-          members_add_dialog_open: True,
-          members_add_selected_user: opt.None,
-          members_add_error: opt.None,
-          org_users_search_query: "",
-          org_users_search_results: NotAsked,
-        ),
-        effect.none(),
-      )
-    }
-
-    MemberAddDialogClosed -> {
-      #(
-        Model(
-          ..model,
-          members_add_dialog_open: False,
-          members_add_selected_user: opt.None,
-          members_add_error: opt.None,
-          org_users_search_query: "",
-          org_users_search_results: NotAsked,
-        ),
-        effect.none(),
-      )
-    }
-
-    MemberAddRoleChanged(role) -> #(
-      Model(..model, members_add_role: role),
-      effect.none(),
-    )
-
-    MemberAddUserSelected(user_id) -> {
-      let selected = case model.org_users_search_results {
-        Loaded(users) ->
-          case list.find(users, fn(u) { u.id == user_id }) {
-            Ok(user) -> opt.Some(user)
-            Error(_) -> opt.None
-          }
-
-        _ -> opt.None
-      }
-
-      #(Model(..model, members_add_selected_user: selected), effect.none())
-    }
-
-    MemberAddSubmitted -> {
-      case model.members_add_in_flight {
-        True -> #(model, effect.none())
-        False -> {
-          case model.selected_project_id, model.members_add_selected_user {
-            opt.Some(project_id), opt.Some(user) -> {
-              let model =
-                Model(
-                  ..model,
-                  members_add_in_flight: True,
-                  members_add_error: opt.None,
-                )
-              #(
-                model,
-                api.add_project_member(
-                  project_id,
-                  user.id,
-                  model.members_add_role,
-                  MemberAdded,
-                ),
-              )
-            }
-
-            _, _ -> #(
-              Model(
-                ..model,
-                members_add_error: opt.Some(update_helpers.i18n_t(
-                  model,
-                  i18n_text.SelectUserFirst,
-                )),
-              ),
-              effect.none(),
-            )
-          }
-        }
-      }
-    }
-
-    MemberAdded(Ok(_)) -> {
-      let model =
-        Model(
-          ..model,
-          members_add_in_flight: False,
-          members_add_dialog_open: False,
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.MemberAdded)),
-        )
-      refresh_section(model)
-    }
-
-    MemberAdded(Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        403 -> #(
-          Model(
-            ..model,
-            members_add_in_flight: False,
-            members_add_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NotPermitted,
-            )),
-            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-          ),
-          effect.none(),
-        )
-        _ -> #(
-          Model(
-            ..model,
-            members_add_in_flight: False,
-            members_add_error: opt.Some(err.message),
-          ),
-          effect.none(),
-        )
-      }
-    }
-
-    MemberRemoveClicked(user_id) -> {
-      let maybe_user =
-        update_helpers.resolve_org_user(model.org_users_cache, user_id)
-
-      let user = case maybe_user {
-        opt.Some(user) -> user
-        opt.None -> fallback_org_user(model, user_id)
-      }
-
-      #(
-        Model(
-          ..model,
-          members_remove_confirm: opt.Some(user),
-          members_remove_error: opt.None,
-        ),
-        effect.none(),
-      )
-    }
-
-    MemberRemoveCancelled -> #(
-      Model(
-        ..model,
-        members_remove_confirm: opt.None,
-        members_remove_error: opt.None,
-      ),
-      effect.none(),
-    )
-
-    MemberRemoveConfirmed -> {
-      case model.members_remove_in_flight {
-        True -> #(model, effect.none())
-        False -> {
-          case model.selected_project_id, model.members_remove_confirm {
-            opt.Some(project_id), opt.Some(user) -> {
-              let model =
-                Model(
-                  ..model,
-                  members_remove_in_flight: True,
-                  members_remove_error: opt.None,
-                )
-              #(
-                model,
-                api.remove_project_member(project_id, user.id, MemberRemoved),
-              )
-            }
-            _, _ -> #(model, effect.none())
-          }
-        }
-      }
-    }
-
-    MemberRemoved(Ok(_)) -> {
-      let model =
-        Model(
-          ..model,
-          members_remove_in_flight: False,
-          members_remove_confirm: opt.None,
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.MemberRemoved)),
-        )
-      refresh_section(model)
-    }
-
-    MemberRemoved(Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        403 -> #(
-          Model(
-            ..model,
-            members_remove_in_flight: False,
-            members_remove_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NotPermitted,
-            )),
-            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-          ),
-          effect.none(),
-        )
-        _ -> #(
-          Model(
-            ..model,
-            members_remove_in_flight: False,
-            members_remove_error: opt.Some(err.message),
-          ),
-          effect.none(),
-        )
-      }
-    }
-
-    OrgUsersSearchChanged(query) -> #(
-      Model(..model, org_users_search_query: query),
-      effect.none(),
-    )
-
-    OrgUsersSearchDebounced(query) -> {
-      case string.trim(query) == "" {
-        True -> #(
-          Model(..model, org_users_search_results: NotAsked),
-          effect.none(),
-        )
-        False -> {
-          let model = Model(..model, org_users_search_results: Loading)
-          #(model, api.list_org_users(query, OrgUsersSearchResults))
-        }
-      }
-    }
-
-    OrgUsersSearchResults(Ok(users)) -> #(
-      Model(..model, org_users_search_results: Loaded(users)),
-      effect.none(),
-    )
-
-    OrgUsersSearchResults(Error(err)) -> {
-      case err.status == 401 {
-        True -> #(Model(..model, page: Login, user: opt.None), effect.none())
-        False -> #(
-          Model(..model, org_users_search_results: Failed(err)),
-          effect.none(),
-        )
-      }
-    }
-
-    TaskTypesFetched(Ok(task_types)) -> #(
-      Model(..model, task_types: Loaded(task_types)),
-      effect.none(),
-    )
-
-    TaskTypesFetched(Error(err)) -> {
-      case err.status == 401 {
-        True -> #(Model(..model, page: Login, user: opt.None), effect.none())
-        False -> #(Model(..model, task_types: Failed(err)), effect.none())
-      }
-    }
-
-    TaskTypeCreateNameChanged(name) -> #(
-      Model(..model, task_types_create_name: name),
-      effect.none(),
-    )
-
-    TaskTypeCreateIconChanged(icon) -> #(
-      Model(
-        ..model,
-        task_types_create_icon: icon,
-        task_types_icon_preview: IconLoading,
-      ),
-      effect.none(),
-    )
-
-    TaskTypeIconLoaded -> #(
-      Model(..model, task_types_icon_preview: IconOk),
-      effect.none(),
-    )
-
-    TaskTypeIconErrored -> #(
-      Model(..model, task_types_icon_preview: IconError),
-      effect.none(),
-    )
-
-    TaskTypeCreateCapabilityChanged(value) -> {
-      case string.trim(value) == "" {
-        True -> #(
-          Model(..model, task_types_create_capability_id: opt.None),
-          effect.none(),
-        )
-        False -> #(
-          Model(..model, task_types_create_capability_id: opt.Some(value)),
-          effect.none(),
-        )
-      }
-    }
-
-    TaskTypeCreateSubmitted -> {
-      case model.task_types_create_in_flight {
-        True -> #(model, effect.none())
-        False -> {
-          case model.selected_project_id {
-            opt.None -> #(
-              Model(
-                ..model,
-                task_types_create_error: opt.Some(update_helpers.i18n_t(
-                  model,
-                  i18n_text.SelectProjectFirst,
-                )),
-              ),
-              effect.none(),
-            )
-
-            opt.Some(project_id) -> {
-              let name = string.trim(model.task_types_create_name)
-              let icon = string.trim(model.task_types_create_icon)
-
-              case name == "" || icon == "" {
-                True -> #(
-                  Model(
-                    ..model,
-                    task_types_create_error: opt.Some(update_helpers.i18n_t(
-                      model,
-                      i18n_text.NameAndIconRequired,
-                    )),
-                  ),
-                  effect.none(),
-                )
-                False -> {
-                  case model.task_types_icon_preview {
-                    IconError -> #(
-                      Model(
-                        ..model,
-                        task_types_create_error: opt.Some(update_helpers.i18n_t(
-                          model,
-                          i18n_text.UnknownIcon,
-                        )),
-                      ),
-                      effect.none(),
-                    )
-                    IconLoading | IconIdle -> #(
-                      Model(
-                        ..model,
-                        task_types_create_error: opt.Some(update_helpers.i18n_t(
-                          model,
-                          i18n_text.WaitForIconPreview,
-                        )),
-                      ),
-                      effect.none(),
-                    )
-                    IconOk -> {
-                      let capability_id = case
-                        model.task_types_create_capability_id
-                      {
-                        opt.None -> opt.None
-                        opt.Some(id_str) ->
-                          case int.parse(id_str) {
-                            Ok(id) -> opt.Some(id)
-                            Error(_) -> opt.None
-                          }
-                      }
-
-                      let model =
-                        Model(
-                          ..model,
-                          task_types_create_in_flight: True,
-                          task_types_create_error: opt.None,
-                        )
-
-                      #(
-                        model,
-                        api.create_task_type(
-                          project_id,
-                          name,
-                          icon,
-                          capability_id,
-                          TaskTypeCreated,
-                        ),
-                      )
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-    TaskTypeCreated(Ok(_)) -> {
-      let model =
-        Model(
-          ..model,
-          task_types_create_in_flight: False,
-          task_types_create_name: "",
-          task_types_create_icon: "",
-          task_types_create_capability_id: opt.None,
-          task_types_icon_preview: IconIdle,
-          toast: opt.Some(update_helpers.i18n_t(
-            model,
-            i18n_text.TaskTypeCreated,
-          )),
-        )
-
-      refresh_section(model)
-    }
-
-    TaskTypeCreated(Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        403 -> #(
-          Model(
-            ..model,
-            task_types_create_in_flight: False,
-            task_types_create_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NotPermitted,
-            )),
-            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-          ),
-          effect.none(),
-        )
-        _ -> #(
-          Model(
-            ..model,
-            task_types_create_in_flight: False,
-            task_types_create_error: opt.Some(err.message),
-          ),
-          effect.none(),
-        )
-      }
-    }
+    ProjectCreateNameChanged(name) ->
+      projects_workflow.handle_project_create_name_changed(model, name)
+    ProjectCreateSubmitted ->
+      projects_workflow.handle_project_create_submitted(model)
+    ProjectCreated(Ok(project)) ->
+      projects_workflow.handle_project_created_ok(model, project)
+    ProjectCreated(Error(err)) ->
+      projects_workflow.handle_project_created_error(model, err)
+
+    InviteLinkEmailChanged(value) ->
+      invite_links_workflow.handle_invite_link_email_changed(model, value)
+    InviteLinksFetched(Ok(links)) ->
+      invite_links_workflow.handle_invite_links_fetched_ok(model, links)
+    InviteLinksFetched(Error(err)) ->
+      invite_links_workflow.handle_invite_links_fetched_error(model, err)
+    InviteLinkCreateSubmitted ->
+      invite_links_workflow.handle_invite_link_create_submitted(model)
+    InviteLinkRegenerateClicked(email) ->
+      invite_links_workflow.handle_invite_link_regenerate_clicked(model, email)
+    InviteLinkCreated(Ok(link)) ->
+      invite_links_workflow.handle_invite_link_created_ok(model, link)
+    InviteLinkCreated(Error(err)) ->
+      invite_links_workflow.handle_invite_link_created_error(model, err)
+    InviteLinkRegenerated(Ok(link)) ->
+      invite_links_workflow.handle_invite_link_regenerated_ok(model, link)
+    InviteLinkRegenerated(Error(err)) ->
+      invite_links_workflow.handle_invite_link_regenerated_error(model, err)
+    InviteLinkCopyClicked(text) ->
+      invite_links_workflow.handle_invite_link_copy_clicked(model, text)
+    InviteLinkCopyFinished(ok) ->
+      invite_links_workflow.handle_invite_link_copy_finished(model, ok)
+
+    CapabilitiesFetched(Ok(capabilities)) ->
+      capabilities_workflow.handle_capabilities_fetched_ok(model, capabilities)
+    CapabilitiesFetched(Error(err)) ->
+      capabilities_workflow.handle_capabilities_fetched_error(model, err)
+    CapabilityCreateNameChanged(name) ->
+      capabilities_workflow.handle_capability_create_name_changed(model, name)
+    CapabilityCreateSubmitted ->
+      capabilities_workflow.handle_capability_create_submitted(model)
+    CapabilityCreated(Ok(capability)) ->
+      capabilities_workflow.handle_capability_created_ok(model, capability)
+    CapabilityCreated(Error(err)) ->
+      capabilities_workflow.handle_capability_created_error(model, err)
+
+    MembersFetched(Ok(members)) ->
+      admin_workflow.handle_members_fetched_ok(model, members)
+    MembersFetched(Error(err)) ->
+      admin_workflow.handle_members_fetched_error(model, err)
+
+    OrgUsersCacheFetched(Ok(users)) ->
+      admin_workflow.handle_org_users_cache_fetched_ok(model, users)
+    OrgUsersCacheFetched(Error(err)) ->
+      admin_workflow.handle_org_users_cache_fetched_error(model, err)
+    OrgSettingsUsersFetched(Ok(users)) ->
+      admin_workflow.handle_org_settings_users_fetched_ok(model, users)
+
+    OrgSettingsUsersFetched(Error(err)) ->
+      admin_workflow.handle_org_settings_users_fetched_error(model, err)
+    OrgSettingsRoleChanged(user_id, org_role) ->
+      admin_workflow.handle_org_settings_role_changed(model, user_id, org_role)
+    OrgSettingsSaveClicked(user_id) ->
+      admin_workflow.handle_org_settings_save_clicked(model, user_id)
+    OrgSettingsSaved(_user_id, Ok(updated)) ->
+      admin_workflow.handle_org_settings_saved_ok(model, updated)
+    OrgSettingsSaved(user_id, Error(err)) ->
+      admin_workflow.handle_org_settings_saved_error(model, user_id, err)
+
+    MemberAddDialogOpened ->
+      admin_workflow.handle_member_add_dialog_opened(model)
+    MemberAddDialogClosed ->
+      admin_workflow.handle_member_add_dialog_closed(model)
+    MemberAddRoleChanged(role) ->
+      admin_workflow.handle_member_add_role_changed(model, role)
+    MemberAddUserSelected(user_id) ->
+      admin_workflow.handle_member_add_user_selected(model, user_id)
+    MemberAddSubmitted ->
+      admin_workflow.handle_member_add_submitted(model)
+    MemberAdded(Ok(_)) ->
+      admin_workflow.handle_member_added_ok(model, refresh_section)
+    MemberAdded(Error(err)) ->
+      admin_workflow.handle_member_added_error(model, err)
+
+    MemberRemoveClicked(user_id) ->
+      admin_workflow.handle_member_remove_clicked(model, user_id)
+    MemberRemoveCancelled ->
+      admin_workflow.handle_member_remove_cancelled(model)
+    MemberRemoveConfirmed ->
+      admin_workflow.handle_member_remove_confirmed(model)
+    MemberRemoved(Ok(_)) ->
+      admin_workflow.handle_member_removed_ok(model, refresh_section)
+    MemberRemoved(Error(err)) ->
+      admin_workflow.handle_member_removed_error(model, err)
+
+    OrgUsersSearchChanged(query) ->
+      admin_workflow.handle_org_users_search_changed(model, query)
+
+    OrgUsersSearchDebounced(query) ->
+      admin_workflow.handle_org_users_search_debounced(model, query)
+    OrgUsersSearchResults(Ok(users)) ->
+      admin_workflow.handle_org_users_search_results_ok(model, users)
+    OrgUsersSearchResults(Error(err)) ->
+      admin_workflow.handle_org_users_search_results_error(model, err)
+
+    TaskTypesFetched(Ok(task_types)) ->
+      task_types_workflow.handle_task_types_fetched_ok(model, task_types)
+    TaskTypesFetched(Error(err)) ->
+      task_types_workflow.handle_task_types_fetched_error(model, err)
+    TaskTypeCreateNameChanged(name) ->
+      task_types_workflow.handle_task_type_create_name_changed(model, name)
+    TaskTypeCreateIconChanged(icon) ->
+      task_types_workflow.handle_task_type_create_icon_changed(model, icon)
+    TaskTypeIconLoaded -> task_types_workflow.handle_task_type_icon_loaded(model)
+    TaskTypeIconErrored ->
+      task_types_workflow.handle_task_type_icon_errored(model)
+    TaskTypeCreateCapabilityChanged(value) ->
+      task_types_workflow.handle_task_type_create_capability_changed(model, value)
+    TaskTypeCreateSubmitted ->
+      task_types_workflow.handle_task_type_create_submitted(model)
+    TaskTypeCreated(Ok(_)) ->
+      task_types_workflow.handle_task_type_created_ok(model, refresh_section)
+    TaskTypeCreated(Error(err)) ->
+      task_types_workflow.handle_task_type_created_error(model, err)
 
     MemberPoolStatusChanged(v) -> {
       let model = Model(..model, member_filters_status: v)
@@ -2969,457 +1741,72 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
     }
 
-    MemberCreateDialogOpened -> #(
-      Model(
-        ..model,
-        member_create_dialog_open: True,
-        member_create_error: opt.None,
-      ),
-      effect.none(),
-    )
+    MemberCreateDialogOpened ->
+      tasks_workflow.handle_create_dialog_opened(model)
+    MemberCreateDialogClosed ->
+      tasks_workflow.handle_create_dialog_closed(model)
+    MemberCreateTitleChanged(v) ->
+      tasks_workflow.handle_create_title_changed(model, v)
+    MemberCreateDescriptionChanged(v) ->
+      tasks_workflow.handle_create_description_changed(model, v)
+    MemberCreatePriorityChanged(v) ->
+      tasks_workflow.handle_create_priority_changed(model, v)
+    MemberCreateTypeIdChanged(v) ->
+      tasks_workflow.handle_create_type_id_changed(model, v)
 
-    MemberCreateDialogClosed -> #(
-      Model(
-        ..model,
-        member_create_dialog_open: False,
-        member_create_error: opt.None,
-      ),
-      effect.none(),
-    )
+    MemberCreateSubmitted ->
+      tasks_workflow.handle_create_submitted(model, member_refresh)
 
-    MemberCreateTitleChanged(v) -> #(
-      Model(..model, member_create_title: v),
-      effect.none(),
-    )
-    MemberCreateDescriptionChanged(v) -> #(
-      Model(..model, member_create_description: v),
-      effect.none(),
-    )
-    MemberCreatePriorityChanged(v) -> #(
-      Model(..model, member_create_priority: v),
-      effect.none(),
-    )
-    MemberCreateTypeIdChanged(v) -> #(
-      Model(..model, member_create_type_id: v),
-      effect.none(),
-    )
+    MemberTaskCreated(Ok(_)) ->
+      tasks_workflow.handle_task_created_ok(model, member_refresh)
+    MemberTaskCreated(Error(err)) ->
+      tasks_workflow.handle_task_created_error(model, err)
 
-    MemberCreateSubmitted -> {
-      case model.member_create_in_flight {
-        True -> #(model, effect.none())
-        False ->
-          case model.selected_project_id {
-            opt.None -> #(
-              Model(
-                ..model,
-                member_create_error: opt.Some(update_helpers.i18n_t(
-                  model,
-                  i18n_text.SelectProjectFirst,
-                )),
-              ),
-              effect.none(),
-            )
-
-            opt.Some(project_id) -> {
-              let title = string.trim(model.member_create_title)
-
-              case title == "" {
-                True -> #(
-                  Model(
-                    ..model,
-                    member_create_error: opt.Some(update_helpers.i18n_t(
-                      model,
-                      i18n_text.TitleRequired,
-                    )),
-                  ),
-                  effect.none(),
-                )
-
-                False ->
-                  case string.length(title) > 56 {
-                    True -> #(
-                      Model(
-                        ..model,
-                        member_create_error: opt.Some(update_helpers.i18n_t(
-                          model,
-                          i18n_text.TitleTooLongMax56,
-                        )),
-                      ),
-                      effect.none(),
-                    )
-
-                    False ->
-                      case int.parse(model.member_create_type_id) {
-                        Error(_) -> #(
-                          Model(
-                            ..model,
-                            member_create_error: opt.Some(update_helpers.i18n_t(
-                              model,
-                              i18n_text.TypeRequired,
-                            )),
-                          ),
-                          effect.none(),
-                        )
-
-                        Ok(type_id) -> {
-                          case int.parse(model.member_create_priority) {
-                            Ok(priority) if priority >= 1 && priority <= 5 -> {
-                              let desc =
-                                string.trim(model.member_create_description)
-                              let description = case desc == "" {
-                                True -> opt.None
-                                False -> opt.Some(desc)
-                              }
-
-                              let model =
-                                Model(
-                                  ..model,
-                                  member_create_in_flight: True,
-                                  member_create_error: opt.None,
-                                )
-
-                              #(
-                                model,
-                                api.create_task(
-                                  project_id,
-                                  title,
-                                  description,
-                                  priority,
-                                  type_id,
-                                  MemberTaskCreated,
-                                ),
-                              )
-                            }
-
-                            _ -> #(
-                              Model(
-                                ..model,
-                                member_create_error: opt.Some(
-                                  update_helpers.i18n_t(
-                                    model,
-                                    i18n_text.PriorityMustBe1To5,
-                                  ),
-                                ),
-                              ),
-                              effect.none(),
-                            )
-                          }
-                        }
-                      }
-                  }
-              }
-            }
-          }
-      }
-    }
-
-    MemberTaskCreated(Ok(_)) -> {
-      let model =
-        Model(
-          ..model,
-          member_create_in_flight: False,
-          member_create_dialog_open: False,
-          member_create_title: "",
-          member_create_description: "",
-          member_create_priority: "3",
-          member_create_type_id: "",
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskCreated)),
-        )
-      member_refresh(model)
-    }
-
-    MemberTaskCreated(Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        _ -> #(
-          Model(
-            ..model,
-            member_create_in_flight: False,
-            member_create_error: opt.Some(err.message),
-          ),
-          effect.none(),
-        )
-      }
-    }
-
-    MemberClaimClicked(task_id, version) -> {
-      case model.member_task_mutation_in_flight {
-        True -> #(model, effect.none())
-        False -> #(
-          Model(..model, member_task_mutation_in_flight: True),
-          api.claim_task(task_id, version, MemberTaskClaimed),
-        )
-      }
-    }
-
-    MemberReleaseClicked(task_id, version) -> {
-      case model.member_task_mutation_in_flight {
-        True -> #(model, effect.none())
-        False -> #(
-          Model(..model, member_task_mutation_in_flight: True),
-          api.release_task(task_id, version, MemberTaskReleased),
-        )
-      }
-    }
-
-    MemberCompleteClicked(task_id, version) -> {
-      case model.member_task_mutation_in_flight {
-        True -> #(model, effect.none())
-        False -> #(
-          Model(..model, member_task_mutation_in_flight: True),
-          api.complete_task(task_id, version, MemberTaskCompleted),
-        )
-      }
-    }
+    MemberClaimClicked(task_id, version) ->
+      tasks_workflow.handle_claim_clicked(model, task_id, version)
+    MemberReleaseClicked(task_id, version) ->
+      tasks_workflow.handle_release_clicked(model, task_id, version)
+    MemberCompleteClicked(task_id, version) ->
+      tasks_workflow.handle_complete_clicked(model, task_id, version)
 
     MemberTaskClaimed(Ok(_)) ->
-      member_refresh(
-        Model(
-          ..model,
-          member_task_mutation_in_flight: False,
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskClaimed)),
-        ),
-      )
-    MemberTaskReleased(Ok(_)) -> {
-      let model =
-        Model(
-          ..model,
-          member_task_mutation_in_flight: False,
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskReleased)),
-        )
-
-      let #(model, fx) = member_refresh(model)
-      #(
-        model,
-        effect.batch([fx, api.get_me_active_task(MemberActiveTaskFetched)]),
-      )
-    }
-    MemberTaskCompleted(Ok(_)) -> {
-      let model =
-        Model(
-          ..model,
-          member_task_mutation_in_flight: False,
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskCompleted)),
-        )
-
-      let #(model, fx) = member_refresh(model)
-      #(
-        model,
-        effect.batch([fx, api.get_me_active_task(MemberActiveTaskFetched)]),
-      )
-    }
+      tasks_workflow.handle_task_claimed_ok(model, member_refresh)
+    MemberTaskReleased(Ok(_)) ->
+      tasks_workflow.handle_task_released_ok(model, member_refresh)
+    MemberTaskCompleted(Ok(_)) ->
+      tasks_workflow.handle_task_completed_ok(model, member_refresh)
 
     MemberTaskClaimed(Error(err)) ->
-      member_handle_task_mutation_error(
-        Model(..model, member_task_mutation_in_flight: False),
-        err,
-      )
+      tasks_workflow.handle_mutation_error(model, err, member_refresh)
     MemberTaskReleased(Error(err)) ->
-      member_handle_task_mutation_error(
-        Model(..model, member_task_mutation_in_flight: False),
-        err,
-      )
+      tasks_workflow.handle_mutation_error(model, err, member_refresh)
     MemberTaskCompleted(Error(err)) ->
-      member_handle_task_mutation_error(
-        Model(..model, member_task_mutation_in_flight: False),
-        err,
-      )
+      tasks_workflow.handle_mutation_error(model, err, member_refresh)
 
-    MemberNowWorkingStartClicked(task_id) -> {
-      case model.member_now_working_in_flight {
-        True -> #(model, effect.none())
-        False -> {
-          let model =
-            Model(
-              ..model,
-              member_now_working_in_flight: True,
-              member_now_working_error: opt.None,
-            )
-          #(model, api.start_me_active_task(task_id, MemberActiveTaskStarted))
-        }
-      }
-    }
+    MemberNowWorkingStartClicked(task_id) ->
+      now_working_workflow.handle_start_clicked(model, task_id)
+    MemberNowWorkingPauseClicked ->
+      now_working_workflow.handle_pause_clicked(model)
 
-    MemberNowWorkingPauseClicked -> {
-      case model.member_now_working_in_flight {
-        True -> #(model, effect.none())
-        False -> {
-          let model =
-            Model(
-              ..model,
-              member_now_working_in_flight: True,
-              member_now_working_error: opt.None,
-            )
-          #(model, api.pause_me_active_task(MemberActiveTaskPaused))
-        }
-      }
-    }
+    MemberActiveTaskFetched(Ok(payload)) ->
+      now_working_workflow.handle_fetched_ok(model, payload)
+    MemberActiveTaskFetched(Error(err)) ->
+      now_working_workflow.handle_fetched_error(model, err)
 
-    MemberActiveTaskFetched(Ok(payload)) -> {
-      let api.ActiveTaskPayload(as_of: as_of, ..) = payload
-      let server_ms = client_ffi.parse_iso_ms(as_of)
-      let offset = client_ffi.now_ms() - server_ms
+    MemberActiveTaskStarted(Ok(payload)) ->
+      now_working_workflow.handle_started_ok(model, payload)
+    MemberActiveTaskStarted(Error(err)) ->
+      now_working_workflow.handle_started_error(model, err)
 
-      let #(model, tick_fx) =
-        Model(
-          ..model,
-          member_active_task: Loaded(payload),
-          now_working_server_offset_ms: offset,
-        )
-        |> start_now_working_tick_if_needed
+    MemberActiveTaskPaused(Ok(payload)) ->
+      now_working_workflow.handle_paused_ok(model, payload)
+    MemberActiveTaskPaused(Error(err)) ->
+      now_working_workflow.handle_paused_error(model, err)
 
-      #(model, tick_fx)
-    }
-
-    MemberActiveTaskFetched(Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        _ -> #(Model(..model, member_active_task: Failed(err)), effect.none())
-      }
-    }
-
-    MemberActiveTaskStarted(Ok(payload)) -> {
-      let api.ActiveTaskPayload(as_of: as_of, ..) = payload
-      let server_ms = client_ffi.parse_iso_ms(as_of)
-      let offset = client_ffi.now_ms() - server_ms
-
-      let #(model, tick_fx) =
-        Model(
-          ..model,
-          member_now_working_in_flight: False,
-          member_active_task: Loaded(payload),
-          now_working_server_offset_ms: offset,
-        )
-        |> start_now_working_tick_if_needed
-
-      #(model, tick_fx)
-    }
-
-    MemberActiveTaskStarted(Error(err)) -> {
-      let model = Model(..model, member_now_working_in_flight: False)
-
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        _ -> #(
-          Model(
-            ..model,
-            member_now_working_error: opt.Some(err.message),
-            toast: opt.Some(err.message),
-          ),
-          effect.none(),
-        )
-      }
-    }
-
-    MemberActiveTaskPaused(Ok(payload)) -> {
-      let api.ActiveTaskPayload(as_of: as_of, ..) = payload
-      let server_ms = client_ffi.parse_iso_ms(as_of)
-      let offset = client_ffi.now_ms() - server_ms
-
-      let model =
-        Model(
-          ..model,
-          member_now_working_in_flight: False,
-          member_active_task: Loaded(payload),
-          now_working_server_offset_ms: offset,
-        )
-
-      let model = case update_helpers.now_working_active_task(model) {
-        opt.None -> Model(..model, now_working_tick_running: False)
-        opt.Some(_) -> model
-      }
-
-      #(model, effect.none())
-    }
-
-    MemberActiveTaskPaused(Error(err)) -> {
-      let model = Model(..model, member_now_working_in_flight: False)
-
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        _ -> #(
-          Model(
-            ..model,
-            member_now_working_error: opt.Some(err.message),
-            toast: opt.Some(err.message),
-          ),
-          effect.none(),
-        )
-      }
-    }
-
-    MemberActiveTaskHeartbeated(Ok(payload)) -> {
-      let api.ActiveTaskPayload(as_of: as_of, ..) = payload
-      let server_ms = client_ffi.parse_iso_ms(as_of)
-      let offset = client_ffi.now_ms() - server_ms
-
-      let #(model, tick_fx) =
-        Model(
-          ..model,
-          member_active_task: Loaded(payload),
-          now_working_server_offset_ms: offset,
-        )
-        |> start_now_working_tick_if_needed
-
-      #(model, tick_fx)
-    }
-
-    MemberActiveTaskHeartbeated(Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        _ -> #(model, effect.none())
-      }
-    }
+    MemberActiveTaskHeartbeated(Ok(payload)) ->
+      now_working_workflow.handle_heartbeated_ok(model, payload)
+    MemberActiveTaskHeartbeated(Error(err)) ->
+      now_working_workflow.handle_heartbeated_error(model, err)
 
     MemberMetricsFetched(Ok(metrics)) -> #(
       Model(..model, member_metrics: Loaded(metrics)),
@@ -3502,31 +1889,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
     }
 
-    NowWorkingTicked -> {
-      let next_tick = model.now_working_tick + 1
-      let model = Model(..model, now_working_tick: next_tick)
-
-      let heartbeat_fx = case
-        next_tick % 60 == 0
-        && model.member_now_working_in_flight == False
-        && update_helpers.now_working_active_task(model) != opt.None
-      {
-        True -> api.heartbeat_me_active_task(MemberActiveTaskHeartbeated)
-        False -> effect.none()
-      }
-
-      case update_helpers.now_working_active_task(model) {
-        opt.Some(_) -> #(
-          model,
-          effect.batch([now_working_tick_effect(), heartbeat_fx]),
-        )
-
-        opt.None -> #(
-          Model(..model, now_working_tick_running: False),
-          effect.none(),
-        )
-      }
-    }
+    NowWorkingTicked -> now_working_workflow.handle_ticked(model)
 
     MemberMyCapabilityIdsFetched(Ok(ids)) -> #(
       Model(

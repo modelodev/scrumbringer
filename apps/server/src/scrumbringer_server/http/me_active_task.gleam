@@ -1,15 +1,39 @@
+//// HTTP handlers for active task (now working) endpoints.
+////
+//// ## Mission
+////
+//// Handles HTTP requests for active task operations.
+//// Delegates business logic to now_working_actor.
+////
+//// ## Responsibilities
+////
+//// - HTTP method validation
+//// - Authentication checks
+//// - Request body parsing
+//// - CSRF validation
+//// - Response JSON construction
+////
+//// ## Non-responsibilities
+////
+//// - Business logic (see `services/now_working_actor.gleam`)
+//// - Database operations (see `services/now_working_db.gleam`)
+
 import gleam/dynamic/decode
 import gleam/http
 import gleam/json
 import gleam/option.{None, Some}
-import gleam/result
-import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
+import scrumbringer_server/services/now_working_actor
 import scrumbringer_server/services/now_working_db
 import wisp
 
+// =============================================================================
+// Public Handlers
+// =============================================================================
+
+/// Handle GET /api/me/active-task
 pub fn handle_me_active_task(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
@@ -19,14 +43,19 @@ pub fn handle_me_active_task(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response 
     Ok(user) -> {
       let auth.Ctx(db: db, ..) = ctx
 
-      case build_payload(db, user.id) {
-        Ok(payload) -> api.ok(payload)
-        Error(_) -> api.error(500, "INTERNAL", "Database error")
+      case
+        now_working_actor.handle(db, now_working_actor.GetActiveTask(user.id))
+      {
+        Ok(state) -> api.ok(state_to_json(state))
+        Error(now_working_actor.DbError(_)) ->
+          api.error(500, "INTERNAL", "Database error")
+        Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
       }
     }
   }
 }
 
+/// Handle POST /api/me/active-task/start
 pub fn handle_me_active_task_start(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -54,21 +83,22 @@ pub fn handle_me_active_task_start(
             Ok(task_id) -> {
               let auth.Ctx(db: db, ..) = ctx
 
-              case now_working_db.start(db, user.id, task_id) {
-                Ok(_) ->
-                  case build_payload(db, user.id) {
-                    Ok(payload) -> api.ok(payload)
-                    Error(_) -> api.error(500, "INTERNAL", "Database error")
-                  }
+              case
+                now_working_actor.handle(
+                  db,
+                  now_working_actor.StartActiveTask(user.id, task_id),
+                )
+              {
+                Ok(state) -> api.ok(state_to_json(state))
 
-                Error(now_working_db.NotClaimed) ->
+                Error(now_working_actor.TaskNotClaimed) ->
                   api.error(
                     409,
                     "CONFLICT_CLAIMED",
                     "Task is not claimed by you",
                   )
 
-                Error(now_working_db.DbError(_)) ->
+                Error(now_working_actor.DbError(_)) ->
                   api.error(500, "INTERNAL", "Database error")
               }
             }
@@ -78,6 +108,7 @@ pub fn handle_me_active_task_start(
   }
 }
 
+/// Handle POST /api/me/active-task/pause
 pub fn handle_me_active_task_pause(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -94,20 +125,23 @@ pub fn handle_me_active_task_pause(
         Ok(Nil) -> {
           let auth.Ctx(db: db, ..) = ctx
 
-          case now_working_db.pause(db, user.id) {
-            Ok(_) ->
-              case build_payload(db, user.id) {
-                Ok(payload) -> api.ok(payload)
-                Error(_) -> api.error(500, "INTERNAL", "Database error")
-              }
-
-            Error(_) -> api.error(500, "INTERNAL", "Database error")
+          case
+            now_working_actor.handle(
+              db,
+              now_working_actor.PauseActiveTask(user.id),
+            )
+          {
+            Ok(state) -> api.ok(state_to_json(state))
+            Error(now_working_actor.DbError(_)) ->
+              api.error(500, "INTERNAL", "Database error")
+            Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
           }
         }
       }
   }
 }
 
+/// Handle POST /api/me/active-task/heartbeat
 pub fn handle_me_active_task_heartbeat(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -124,38 +158,33 @@ pub fn handle_me_active_task_heartbeat(
         Ok(Nil) -> {
           let auth.Ctx(db: db, ..) = ctx
 
-          case now_working_db.heartbeat(db, user.id) {
-            Ok(_) ->
-              case build_payload(db, user.id) {
-                Ok(payload) -> api.ok(payload)
-                Error(_) -> api.error(500, "INTERNAL", "Database error")
-              }
-
-            Error(_) -> api.error(500, "INTERNAL", "Database error")
+          case
+            now_working_actor.handle(db, now_working_actor.Heartbeat(user.id))
+          {
+            Ok(state) -> api.ok(state_to_json(state))
+            Error(now_working_actor.DbError(_)) ->
+              api.error(500, "INTERNAL", "Database error")
+            Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
           }
         }
       }
   }
 }
 
-fn build_payload(
-  db: pog.Connection,
-  user_id: Int,
-) -> Result(json.Json, pog.QueryError) {
-  use active_task <- result.try(now_working_db.get_active_task(db, user_id))
-  use as_of <- result.try(now_working_db.as_of(db))
+// =============================================================================
+// JSON Serialization
+// =============================================================================
 
-  let active_task = case active_task {
+fn state_to_json(state: now_working_actor.ActiveTaskState) -> json.Json {
+  let active_task = case state.active_task {
     Some(active) -> active_task_json(active)
     None -> json.null()
   }
 
-  Ok(
-    json.object([
-      #("active_task", active_task),
-      #("as_of", json.string(as_of)),
-    ]),
-  )
+  json.object([
+    #("active_task", active_task),
+    #("as_of", json.string(state.as_of)),
+  ])
 }
 
 fn active_task_json(task: now_working_db.ActiveTask) -> json.Json {

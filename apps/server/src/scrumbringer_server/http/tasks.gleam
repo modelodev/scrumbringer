@@ -4,31 +4,48 @@
 ////
 //// Provides HTTP route handlers for task-related operations including
 //// task types, tasks, and task state transitions (claim, release, complete).
+//// Delegates business logic to task_workflow_actor.
+////
+//// ## Responsibilities
+////
+//// - HTTP method validation
+//// - Authentication checks
+//// - Request body parsing
+//// - CSRF validation
+//// - Response JSON construction
+//// - Error mapping to HTTP status codes
+////
+//// ## Non-responsibilities
+////
+//// - Business logic (see `services/task_workflow_actor.gleam`)
+//// - Input validation (see `services/task_workflow_actor.gleam`)
+//// - Database operations (see `services/tasks_db.gleam`)
 ////
 //// ## Submodules
 ////
-//// - `tasks/validators`: Input validation functions
 //// - `tasks/presenters`: JSON serialization functions
 //// - `tasks/filters`: Query parameter parsing
-//// - `tasks/conflict_handlers`: Conflict resolution
 
 import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
 import gleam/option.{None, Some}
-import scrumbringer_server/domain/task_status.{Available, Claimed, Completed}
+import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
 import scrumbringer_server/http/tasks/conflict_handlers
 import scrumbringer_server/http/tasks/filters
 import scrumbringer_server/http/tasks/presenters
-import scrumbringer_server/http/tasks/validators
-import scrumbringer_server/services/task_types_db
-import scrumbringer_server/services/tasks_db
+import scrumbringer_server/services/task_workflow_actor as actor
 import wisp
 
+// =============================================================================
+// Route Handlers
+// =============================================================================
+
+/// Handle task types routes (GET list, POST create).
 pub fn handle_task_types(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -41,6 +58,7 @@ pub fn handle_task_types(
   }
 }
 
+/// Handle project tasks routes (GET list, POST create).
 pub fn handle_project_tasks(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -53,6 +71,7 @@ pub fn handle_project_tasks(
   }
 }
 
+/// Handle single task routes (GET, PATCH).
 pub fn handle_task(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -65,6 +84,7 @@ pub fn handle_task(
   }
 }
 
+/// Handle task claim (POST).
 pub fn handle_claim(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -74,6 +94,7 @@ pub fn handle_claim(
   handle_task_claim(req, ctx, task_id)
 }
 
+/// Handle task release (POST).
 pub fn handle_release(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -83,6 +104,7 @@ pub fn handle_release(
   handle_task_release(req, ctx, task_id)
 }
 
+/// Handle task complete (POST).
 pub fn handle_complete(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -91,6 +113,10 @@ pub fn handle_complete(
   use <- wisp.require_method(req, http.Post)
   handle_task_complete(req, ctx, task_id)
 }
+
+// =============================================================================
+// Task Types Handlers
+// =============================================================================
 
 fn handle_task_types_list(
   req: wisp.Request,
@@ -109,45 +135,29 @@ fn handle_task_types_list(
         Ok(project_id) -> {
           let auth.Ctx(db: db, ..) = ctx
 
-          case validators.require_project_member(db, project_id, user.id) {
-            Error(resp) -> resp
+          case actor.handle(db, actor.ListTaskTypes(project_id, user.id)) {
+            Ok(actor.TaskTypesList(task_types)) ->
+              api.ok(
+                json.object([
+                  #(
+                    "task_types",
+                    json.array(task_types, of: presenters.task_type_json),
+                  ),
+                ]),
+              )
 
-            Ok(Nil) ->
-              case task_types_db.list_task_types_for_project(db, project_id) {
-                Ok(task_types) ->
-                  api.ok(
-                    json.object([
-                      #(
-                        "task_types",
-                        json.array(task_types, of: presenters.task_type_json),
-                      ),
-                    ]),
-                  )
-
-                Error(_) -> api.error(500, "INTERNAL", "Database error")
-              }
+            Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
+            Error(actor.NotAuthorized) ->
+              api.error(403, "FORBIDDEN", "Forbidden")
+            Error(actor.DbError(_)) ->
+              api.error(500, "INTERNAL", "Database error")
+            Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
           }
         }
       }
   }
 }
 
-/// Create a new task type for a project.
-///
-/// ## Size Justification (~110 lines)
-///
-/// Follows standard HTTP handler pattern with:
-/// 1. Method validation
-/// 2. Authentication check
-/// 3. Request body parsing and validation
-/// 4. Authorization (project membership + role)
-/// 5. Business logic (capability validation, DB insert)
-/// 6. Response construction
-/// 7. Error handling at each step
-///
-/// Each step has distinct error responses. The linear flow makes the
-/// request lifecycle clear. Splitting would fragment the cohesive
-/// request-response cycle.
 fn handle_task_types_create(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -169,81 +179,62 @@ fn handle_task_types_create(
             Ok(project_id) -> {
               let auth.Ctx(db: db, ..) = ctx
 
-              case validators.require_project_admin(db, project_id, user.id) {
-                Error(resp) -> resp
+              use data <- wisp.require_json(req)
 
-                Ok(Nil) -> {
-                  use data <- wisp.require_json(req)
+              let decoder = {
+                use name <- decode.field("name", decode.string)
+                use icon <- decode.field("icon", decode.string)
+                use capability_id <- decode.optional_field(
+                  "capability_id",
+                  0,
+                  decode.int,
+                )
+                decode.success(#(name, icon, capability_id))
+              }
 
-                  let decoder = {
-                    use name <- decode.field("name", decode.string)
-                    use icon <- decode.field("icon", decode.string)
-                    use capability_id <- decode.optional_field(
-                      "capability_id",
-                      0,
-                      decode.int,
-                    )
-                    decode.success(#(name, icon, capability_id))
+              case decode.run(data, decoder) {
+                Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+
+                Ok(#(name, icon, capability_id)) -> {
+                  let cap_opt = case capability_id {
+                    0 -> None
+                    id -> Some(id)
                   }
 
-                  case decode.run(data, decoder) {
-                    Error(_) ->
-                      api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+                  case
+                    actor.handle(
+                      db,
+                      actor.CreateTaskType(
+                        project_id,
+                        user.id,
+                        user.org_id,
+                        name,
+                        icon,
+                        cap_opt,
+                      ),
+                    )
+                  {
+                    Ok(actor.TaskTypeCreated(task_type)) ->
+                      api.ok(
+                        json.object([
+                          #("task_type", presenters.task_type_json(task_type)),
+                        ]),
+                      )
 
-                    Ok(#(name, icon, capability_id)) -> {
-                      let cap_opt = case capability_id {
-                        0 -> None
-                        id -> Some(id)
-                      }
-
-                      case
-                        validators.validate_capability_in_org(
-                          db,
-                          cap_opt,
-                          user.org_id,
-                        )
-                      {
-                        Error(resp) -> resp
-
-                        Ok(Nil) ->
-                          case
-                            task_types_db.create_task_type(
-                              db,
-                              project_id,
-                              name,
-                              icon,
-                              cap_opt,
-                            )
-                          {
-                            Ok(task_type) ->
-                              api.ok(
-                                json.object([
-                                  #(
-                                    "task_type",
-                                    presenters.task_type_json(task_type),
-                                  ),
-                                ]),
-                              )
-
-                            Error(task_types_db.AlreadyExists) ->
-                              api.error(
-                                422,
-                                "VALIDATION_ERROR",
-                                "Task type name already exists",
-                              )
-
-                            Error(task_types_db.InvalidCapabilityId) ->
-                              api.error(
-                                422,
-                                "VALIDATION_ERROR",
-                                "Invalid capability_id",
-                              )
-
-                            Error(_) ->
-                              api.error(500, "INTERNAL", "Database error")
-                          }
-                      }
-                    }
+                    Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
+                    Error(actor.NotAuthorized) ->
+                      api.error(403, "FORBIDDEN", "Forbidden")
+                    Error(actor.TaskTypeAlreadyExists) ->
+                      api.error(
+                        422,
+                        "VALIDATION_ERROR",
+                        "Task type name already exists",
+                      )
+                    Error(actor.ValidationError(msg)) ->
+                      api.error(422, "VALIDATION_ERROR", msg)
+                    Error(actor.DbError(_)) ->
+                      api.error(500, "INTERNAL", "Database error")
+                    Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
                   }
                 }
               }
@@ -252,6 +243,10 @@ fn handle_task_types_create(
       }
   }
 }
+
+// =============================================================================
+// Tasks Handlers
+// =============================================================================
 
 fn handle_tasks_list(
   req: wisp.Request,
@@ -269,41 +264,41 @@ fn handle_tasks_list(
 
         Ok(project_id) -> {
           let auth.Ctx(db: db, ..) = ctx
+          let query = wisp.get_query(req)
 
-          case validators.require_project_member(db, project_id, user.id) {
+          case filters.parse_task_filters(query) {
             Error(resp) -> resp
 
-            Ok(Nil) -> {
-              let query = wisp.get_query(req)
+            Ok(task_filters) -> {
+              let actor_filters =
+                actor.TaskFilters(
+                  status: filters.status_filter_to_db_string(
+                    task_filters.status,
+                  ),
+                  type_id: task_filters.type_id,
+                  capability_id: task_filters.capability_id,
+                  q: task_filters.q,
+                )
 
-              case filters.parse_task_filters(query) {
-                Error(resp) -> resp
+              case
+                actor.handle(
+                  db,
+                  actor.ListTasks(project_id, user.id, actor_filters),
+                )
+              {
+                Ok(actor.TasksList(tasks)) ->
+                  api.ok(
+                    json.object([
+                      #("tasks", json.array(tasks, of: presenters.task_json)),
+                    ]),
+                  )
 
-                Ok(task_filters) -> {
-                  case
-                    tasks_db.list_tasks_for_project(
-                      db,
-                      project_id,
-                      user.id,
-                      filters.status_filter_to_db_string(task_filters.status),
-                      task_filters.type_id,
-                      task_filters.capability_id,
-                      task_filters.q,
-                    )
-                  {
-                    Ok(tasks) ->
-                      api.ok(
-                        json.object([
-                          #(
-                            "tasks",
-                            json.array(tasks, of: presenters.task_json),
-                          ),
-                        ]),
-                      )
-
-                    Error(_) -> api.error(500, "INTERNAL", "Database error")
-                  }
-                }
+                Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
+                Error(actor.NotAuthorized) ->
+                  api.error(403, "FORBIDDEN", "Forbidden")
+                Error(actor.DbError(_)) ->
+                  api.error(500, "INTERNAL", "Database error")
+                Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
               }
             }
           }
@@ -312,21 +307,6 @@ fn handle_tasks_list(
   }
 }
 
-/// Create a new task in a project.
-///
-/// ## Size Justification (~140 lines)
-///
-/// Follows standard HTTP handler pattern with:
-/// 1. Method validation
-/// 2. Authentication check
-/// 3. Request body parsing with multiple fields (title, description, priority, type_id)
-/// 4. Authorization (project membership)
-/// 5. Business logic (task type validation, priority bounds, DB insert)
-/// 6. Response construction with full task data
-/// 7. Error handling for validation failures and conflicts
-///
-/// The handler validates task type belongs to project and handles
-/// optional fields. Each validation step produces specific error responses.
 fn handle_tasks_create(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -348,93 +328,52 @@ fn handle_tasks_create(
             Ok(project_id) -> {
               let auth.Ctx(db: db, ..) = ctx
 
-              case validators.require_project_member(db, project_id, user.id) {
-                Error(resp) -> resp
+              use data <- wisp.require_json(req)
 
-                Ok(Nil) -> {
-                  use data <- wisp.require_json(req)
+              let decoder = {
+                use title <- decode.field("title", decode.string)
+                use description <- decode.optional_field(
+                  "description",
+                  "",
+                  decode.string,
+                )
+                use priority <- decode.field("priority", decode.int)
+                use type_id <- decode.field("type_id", decode.int)
+                decode.success(#(title, description, priority, type_id))
+              }
 
-                  let decoder = {
-                    use title <- decode.field("title", decode.string)
-                    use description <- decode.optional_field(
-                      "description",
-                      "",
-                      decode.string,
+              case decode.run(data, decoder) {
+                Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+
+                Ok(#(title, description, priority, type_id)) ->
+                  case
+                    actor.handle(
+                      db,
+                      actor.CreateTask(
+                        project_id,
+                        user.id,
+                        user.org_id,
+                        title,
+                        description,
+                        priority,
+                        type_id,
+                      ),
                     )
-                    use priority <- decode.field("priority", decode.int)
-                    use type_id <- decode.field("type_id", decode.int)
-                    decode.success(#(title, description, priority, type_id))
+                  {
+                    Ok(actor.TaskResult(task)) ->
+                      api.ok(
+                        json.object([#("task", presenters.task_json(task))]),
+                      )
+
+                    Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
+                    Error(actor.NotAuthorized) ->
+                      api.error(403, "FORBIDDEN", "Forbidden")
+                    Error(actor.ValidationError(msg)) ->
+                      api.error(422, "VALIDATION_ERROR", msg)
+                    Error(actor.DbError(_)) ->
+                      api.error(500, "INTERNAL", "Database error")
+                    Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
                   }
-
-                  case decode.run(data, decoder) {
-                    Error(_) ->
-                      api.error(400, "VALIDATION_ERROR", "Invalid JSON")
-
-                    Ok(#(title, description, priority, type_id)) -> {
-                      case validators.validate_task_title(title) {
-                        Error(resp) -> resp
-
-                        Ok(title) ->
-                          case validators.validate_priority(priority) {
-                            Error(resp) -> resp
-
-                            Ok(Nil) ->
-                              case
-                                task_types_db.is_task_type_in_project(
-                                  db,
-                                  type_id,
-                                  project_id,
-                                )
-                              {
-                                Ok(True) ->
-                                  case
-                                    tasks_db.create_task(
-                                      db,
-                                      user.org_id,
-                                      type_id,
-                                      project_id,
-                                      title,
-                                      description,
-                                      priority,
-                                      user.id,
-                                    )
-                                  {
-                                    Ok(task) ->
-                                      api.ok(
-                                        json.object([
-                                          #("task", presenters.task_json(task)),
-                                        ]),
-                                      )
-
-                                    Error(tasks_db.InvalidTypeId) ->
-                                      api.error(
-                                        422,
-                                        "VALIDATION_ERROR",
-                                        "Invalid type_id",
-                                      )
-
-                                    Error(_) ->
-                                      api.error(
-                                        500,
-                                        "INTERNAL",
-                                        "Database error",
-                                      )
-                                  }
-
-                                Ok(False) ->
-                                  api.error(
-                                    422,
-                                    "VALIDATION_ERROR",
-                                    "Invalid type_id",
-                                  )
-                                Error(_) ->
-                                  api.error(500, "INTERNAL", "Database error")
-                              }
-                          }
-                      }
-                    }
-                  }
-                }
               }
             }
           }
@@ -459,37 +398,21 @@ fn handle_task_get(
         Ok(task_id) -> {
           let auth.Ctx(db: db, ..) = ctx
 
-          case tasks_db.get_task_for_user(db, task_id, user.id) {
-            Ok(task) ->
+          case actor.handle(db, actor.GetTask(task_id, user.id)) {
+            Ok(actor.TaskResult(task)) ->
               api.ok(json.object([#("task", presenters.task_json(task))]))
-            Error(tasks_db.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
-            Error(_) -> api.error(500, "INTERNAL", "Database error")
+
+            Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
+            Error(actor.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
+            Error(actor.DbError(_)) ->
+              api.error(500, "INTERNAL", "Database error")
+            Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
           }
         }
       }
   }
 }
 
-/// Update a task (status, assignment, position, priority, etc.).
-///
-/// ## Size Justification (~180 lines)
-///
-/// Handles partial updates with:
-/// 1. Method validation
-/// 2. Authentication check
-/// 3. Task existence and project membership validation
-/// 4. Partial field extraction (status, priority, position, claim/release)
-/// 5. Business logic per field type:
-///    - Status transitions with validation
-///    - Claim/release with conflict detection
-///    - Position updates
-///    - Priority changes
-/// 6. Conflict resolution (optimistic locking via version field)
-/// 7. Response construction
-///
-/// The PATCH handler supports multiple update operations in one request.
-/// The field-by-field validation and conflict handling is necessarily
-/// verbose to provide clear error messages for each failure mode.
 fn handle_task_patch(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -517,12 +440,12 @@ fn handle_task_patch(
                 use version <- decode.field("version", decode.int)
                 use title <- decode.optional_field(
                   "title",
-                  validators.unset_string,
+                  actor.unset_string,
                   decode.string,
                 )
                 use description <- decode.optional_field(
                   "description",
-                  validators.unset_string,
+                  actor.unset_string,
                   decode.string,
                 )
                 use priority <- decode.optional_field(
@@ -538,77 +461,37 @@ fn handle_task_patch(
                 Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
 
                 Ok(#(version, title, description, priority, type_id)) -> {
-                  case validators.validate_optional_priority(priority) {
-                    Error(resp) -> resp
+                  let updates =
+                    actor.TaskUpdates(
+                      title: title,
+                      description: description,
+                      priority: priority,
+                      type_id: type_id,
+                    )
 
-                    Ok(Nil) ->
-                      case tasks_db.get_task_for_user(db, task_id, user.id) {
-                        Error(tasks_db.NotFound) ->
-                          api.error(404, "NOT_FOUND", "Not found")
-                        Error(_) -> api.error(500, "INTERNAL", "Database error")
+                  case
+                    actor.handle(
+                      db,
+                      actor.UpdateTask(task_id, user.id, version, updates),
+                    )
+                  {
+                    Ok(actor.TaskResult(task)) ->
+                      api.ok(
+                        json.object([#("task", presenters.task_json(task))]),
+                      )
 
-                        Ok(current) -> {
-                          case current.status {
-                            Claimed(_) ->
-                              case current.claimed_by {
-                                Some(id) if id == user.id ->
-                                  case
-                                    validators.validate_type_update(
-                                      db,
-                                      type_id,
-                                      current.project_id,
-                                    )
-                                  {
-                                    Error(resp) -> resp
-
-                                    Ok(Nil) ->
-                                      case
-                                        tasks_db.update_task_claimed_by_user(
-                                          db,
-                                          task_id,
-                                          user.id,
-                                          title,
-                                          description,
-                                          priority,
-                                          type_id,
-                                          version,
-                                        )
-                                      {
-                                        Ok(task) ->
-                                          api.ok(
-                                            json.object([
-                                              #(
-                                                "task",
-                                                presenters.task_json(task),
-                                              ),
-                                            ]),
-                                          )
-
-                                        Error(tasks_db.NotFound) ->
-                                          conflict_handlers.handle_version_or_claim_conflict(
-                                            db,
-                                            task_id,
-                                            user.id,
-                                          )
-
-                                        Error(_) ->
-                                          api.error(
-                                            500,
-                                            "INTERNAL",
-                                            "Database error",
-                                          )
-                                      }
-                                  }
-
-                                _ -> api.error(403, "FORBIDDEN", "Forbidden")
-                              }
-
-                            // Task not claimed - can't update
-                            Available | Completed ->
-                              api.error(403, "FORBIDDEN", "Forbidden")
-                          }
-                        }
-                      }
+                    Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
+                    Error(actor.NotFound) ->
+                      api.error(404, "NOT_FOUND", "Not found")
+                    Error(actor.NotAuthorized) ->
+                      api.error(403, "FORBIDDEN", "Forbidden")
+                    Error(actor.VersionConflict) ->
+                      handle_version_conflict(db, task_id, user.id)
+                    Error(actor.ValidationError(msg)) ->
+                      api.error(422, "VALIDATION_ERROR", msg)
+                    Error(actor.DbError(_)) ->
+                      api.error(500, "INTERNAL", "Database error")
+                    Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
                   }
                 }
               }
@@ -617,6 +500,10 @@ fn handle_task_patch(
       }
   }
 }
+
+// =============================================================================
+// State Transition Handlers
+// =============================================================================
 
 fn handle_task_claim(
   req: wisp.Request,
@@ -648,53 +535,31 @@ fn handle_task_claim(
                 Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
 
                 Ok(version) ->
-                  case tasks_db.get_task_for_user(db, task_id, user.id) {
-                    Error(tasks_db.NotFound) ->
+                  case
+                    actor.handle(
+                      db,
+                      actor.ClaimTask(task_id, user.id, user.org_id, version),
+                    )
+                  {
+                    Ok(actor.TaskResult(task)) ->
+                      api.ok(
+                        json.object([#("task", presenters.task_json(task))]),
+                      )
+
+                    Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
+                    Error(actor.NotFound) ->
                       api.error(404, "NOT_FOUND", "Not found")
-                    Error(_) -> api.error(500, "INTERNAL", "Database error")
-
-                    Ok(current) ->
-                      case current.status {
-                        Claimed(_) ->
-                          api.error(
-                            409,
-                            "CONFLICT_CLAIMED",
-                            "Task already claimed",
-                          )
-                        Completed ->
-                          api.error(
-                            422,
-                            "VALIDATION_ERROR",
-                            "Invalid transition",
-                          )
-                        Available ->
-                          case
-                            tasks_db.claim_task(
-                              db,
-                              user.org_id,
-                              task_id,
-                              user.id,
-                              version,
-                            )
-                          {
-                            Ok(task) ->
-                              api.ok(
-                                json.object([
-                                  #("task", presenters.task_json(task)),
-                                ]),
-                              )
-
-                            Error(tasks_db.NotFound) ->
-                              conflict_handlers.handle_claim_conflict(
-                                db,
-                                task_id,
-                                user.id,
-                              )
-
-                            Error(_) ->
-                              api.error(500, "INTERNAL", "Database error")
-                          }
-                      }
+                    Error(actor.AlreadyClaimed) ->
+                      api.error(409, "CONFLICT_CLAIMED", "Task already claimed")
+                    Error(actor.InvalidTransition) ->
+                      api.error(422, "VALIDATION_ERROR", "Invalid transition")
+                    Error(actor.ClaimOwnershipConflict(_)) ->
+                      api.error(409, "CONFLICT_CLAIMED", "Task already claimed")
+                    Error(actor.VersionConflict) ->
+                      handle_claim_conflict(db, task_id, user.id)
+                    Error(actor.DbError(_)) ->
+                      api.error(500, "INTERNAL", "Database error")
+                    Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
                   }
               }
             }
@@ -733,54 +598,29 @@ fn handle_task_release(
                 Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
 
                 Ok(version) ->
-                  case tasks_db.get_task_for_user(db, task_id, user.id) {
-                    Error(tasks_db.NotFound) ->
+                  case
+                    actor.handle(
+                      db,
+                      actor.ReleaseTask(task_id, user.id, user.org_id, version),
+                    )
+                  {
+                    Ok(actor.TaskResult(task)) ->
+                      api.ok(
+                        json.object([#("task", presenters.task_json(task))]),
+                      )
+
+                    Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
+                    Error(actor.NotFound) ->
                       api.error(404, "NOT_FOUND", "Not found")
-                    Error(_) -> api.error(500, "INTERNAL", "Database error")
-
-                    Ok(current) ->
-                      case current.status {
-                        Claimed(_) ->
-                          case current.claimed_by {
-                            Some(id) if id == user.id ->
-                              case
-                                tasks_db.release_task(
-                                  db,
-                                  user.org_id,
-                                  task_id,
-                                  user.id,
-                                  version,
-                                )
-                              {
-                                Ok(task) ->
-                                  api.ok(
-                                    json.object([
-                                      #("task", presenters.task_json(task)),
-                                    ]),
-                                  )
-
-                                Error(tasks_db.NotFound) ->
-                                  conflict_handlers.handle_version_or_claim_conflict(
-                                    db,
-                                    task_id,
-                                    user.id,
-                                  )
-
-                                Error(_) ->
-                                  api.error(500, "INTERNAL", "Database error")
-                              }
-
-                            _ -> api.error(403, "FORBIDDEN", "Forbidden")
-                          }
-
-                        // Task not claimed - invalid transition
-                        Available | Completed ->
-                          api.error(
-                            422,
-                            "VALIDATION_ERROR",
-                            "Invalid transition",
-                          )
-                      }
+                    Error(actor.NotAuthorized) ->
+                      api.error(403, "FORBIDDEN", "Forbidden")
+                    Error(actor.InvalidTransition) ->
+                      api.error(422, "VALIDATION_ERROR", "Invalid transition")
+                    Error(actor.VersionConflict) ->
+                      handle_version_conflict(db, task_id, user.id)
+                    Error(actor.DbError(_)) ->
+                      api.error(500, "INTERNAL", "Database error")
+                    Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
                   }
               }
             }
@@ -819,58 +659,53 @@ fn handle_task_complete(
                 Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
 
                 Ok(version) ->
-                  case tasks_db.get_task_for_user(db, task_id, user.id) {
-                    Error(tasks_db.NotFound) ->
+                  case
+                    actor.handle(
+                      db,
+                      actor.CompleteTask(task_id, user.id, user.org_id, version),
+                    )
+                  {
+                    Ok(actor.TaskResult(task)) ->
+                      api.ok(
+                        json.object([#("task", presenters.task_json(task))]),
+                      )
+
+                    Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
+                    Error(actor.NotFound) ->
                       api.error(404, "NOT_FOUND", "Not found")
-                    Error(_) -> api.error(500, "INTERNAL", "Database error")
-
-                    Ok(current) ->
-                      case current.status {
-                        Claimed(_) ->
-                          case current.claimed_by {
-                            Some(id) if id == user.id ->
-                              case
-                                tasks_db.complete_task(
-                                  db,
-                                  user.org_id,
-                                  task_id,
-                                  user.id,
-                                  version,
-                                )
-                              {
-                                Ok(task) ->
-                                  api.ok(
-                                    json.object([
-                                      #("task", presenters.task_json(task)),
-                                    ]),
-                                  )
-
-                                Error(tasks_db.NotFound) ->
-                                  conflict_handlers.handle_version_or_claim_conflict(
-                                    db,
-                                    task_id,
-                                    user.id,
-                                  )
-
-                                Error(_) ->
-                                  api.error(500, "INTERNAL", "Database error")
-                              }
-
-                            _ -> api.error(403, "FORBIDDEN", "Forbidden")
-                          }
-
-                        // Task not claimed - invalid transition
-                        Available | Completed ->
-                          api.error(
-                            422,
-                            "VALIDATION_ERROR",
-                            "Invalid transition",
-                          )
-                      }
+                    Error(actor.NotAuthorized) ->
+                      api.error(403, "FORBIDDEN", "Forbidden")
+                    Error(actor.InvalidTransition) ->
+                      api.error(422, "VALIDATION_ERROR", "Invalid transition")
+                    Error(actor.VersionConflict) ->
+                      handle_version_conflict(db, task_id, user.id)
+                    Error(actor.DbError(_)) ->
+                      api.error(500, "INTERNAL", "Database error")
+                    Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
                   }
               }
             }
           }
       }
   }
+}
+
+// =============================================================================
+// Conflict Handling
+// =============================================================================
+
+fn handle_version_conflict(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+) -> wisp.Response {
+  conflict_handlers.handle_version_or_claim_conflict(db, task_id, user_id)
+}
+
+fn handle_claim_conflict(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+) -> wisp.Response {
+  conflict_handlers.handle_claim_conflict(db, task_id, user_id)
 }

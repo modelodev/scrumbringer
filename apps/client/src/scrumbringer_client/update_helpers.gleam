@@ -31,8 +31,10 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
 
+import lustre/effect.{type Effect}
+
 import scrumbringer_client/api
-import scrumbringer_client/client_state.{type Model, type Remote, Loaded, Model}
+import scrumbringer_client/client_state.{type Model, type Msg, type Remote, Loaded, Login, Model}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
@@ -428,4 +430,125 @@ pub fn ensure_default_section(model: Model) -> Model {
 
     _, _ -> model
   }
+}
+
+// =============================================================================
+// Drag State Management
+// =============================================================================
+
+/// Clear all drag-related state from the model.
+///
+/// Used when transitioning away from pages with drag functionality
+/// (e.g., on logout or auth errors).
+///
+/// ## Example
+///
+/// ```gleam
+/// clear_drag_state(model)
+/// // Model with member_drag: None, drag flags: False
+/// ```
+pub fn clear_drag_state(model: Model) -> Model {
+  Model(
+    ..model,
+    member_drag: None,
+    member_pool_drag_to_claim_armed: False,
+    member_pool_drag_over_my_tasks: False,
+  )
+}
+
+// =============================================================================
+// Auth Error Handling
+// =============================================================================
+
+/// Reset model to login page, clearing user and drag state.
+///
+/// Used for 401 unauthorized responses across all handlers.
+///
+/// ## Example
+///
+/// ```gleam
+/// reset_to_login(model)
+/// // #(Model with page: Login, user: None, cleared drag, effect.none())
+/// ```
+pub fn reset_to_login(model: Model) -> #(Model, Effect(Msg)) {
+  #(clear_drag_state(Model(..model, page: Login, user: None)), effect.none())
+}
+
+/// Handle common API auth errors (401/403).
+///
+/// Returns Some with result for 401 (redirect to login) or 403 (toast).
+/// Returns None for other errors that need custom handling.
+///
+/// ## Example
+///
+/// ```gleam
+/// case handle_auth_error(model, err) {
+///   Some(result) -> result
+///   None -> #(Model(..model, my_error: Some(err.message)), effect.none())
+/// }
+/// ```
+pub fn handle_auth_error(
+  model: Model,
+  err: api.ApiError,
+) -> Option(#(Model, Effect(Msg))) {
+  case err.status {
+    401 -> Some(reset_to_login(model))
+    403 ->
+      Some(#(
+        Model(..model, toast: Some(i18n_t(model, i18n_text.NotPermitted))),
+        effect.none(),
+      ))
+    _ -> None
+  }
+}
+
+// =============================================================================
+// Form Validation Helpers
+// =============================================================================
+
+/// Validate that a string is not empty after trimming.
+///
+/// Returns Ok with trimmed string, or Error with translated message.
+///
+/// ## Example
+///
+/// ```gleam
+/// validate_required_string(model, "  hello  ", i18n_text.NameRequired)
+/// // Ok("hello")
+///
+/// validate_required_string(model, "   ", i18n_text.NameRequired)
+/// // Error("Name is required")
+/// ```
+pub fn validate_required_string(
+  model: Model,
+  value: String,
+  error_text: i18n_text.Text,
+) -> Result(String, String) {
+  let trimmed = string.trim(value)
+  case trimmed == "" {
+    True -> Error(i18n_t(model, error_text))
+    False -> Ok(trimmed)
+  }
+}
+
+/// Validate multiple required fields and return first error.
+///
+/// ## Example
+///
+/// ```gleam
+/// validate_required_fields(model, [
+///   #(name, i18n_text.NameRequired),
+///   #(email, i18n_text.EmailRequired),
+/// ])
+/// // Ok([trimmed_name, trimmed_email]) or Error("Name is required")
+/// ```
+pub fn validate_required_fields(
+  model: Model,
+  fields: List(#(String, i18n_text.Text)),
+) -> Result(List(String), String) {
+  fields
+  |> list.try_map(fn(field) {
+    let #(value, error_text) = field
+    validate_required_string(model, value, error_text)
+  })
 }

@@ -1,19 +1,44 @@
+//// HTTP handlers for organization metrics endpoints.
+////
+//// ## Mission
+////
+//// Handles HTTP requests for admin metrics views.
+//// Delegates business logic to metrics_service, JSON to metrics_presenters.
+////
+//// ## Responsibilities
+////
+//// - HTTP method and authentication checks
+//// - Request parameter parsing and validation
+//// - Role-based access control
+//// - Response formatting via presenters
+////
+//// ## Non-responsibilities
+////
+//// - Business logic (see `metrics_service.gleam`)
+//// - JSON building (see `metrics_presenters.gleam`)
+//// - SQL queries (see `sql.gleam`)
+
 import gleam/http
 import gleam/int
-import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import pog
+
 import scrumbringer_domain/org_role
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
-import scrumbringer_server/sql
+import scrumbringer_server/http/metrics_presenters
+import scrumbringer_server/http/metrics_service
 import wisp
 
 const default_window_days = 30
 
 const max_window_days = 365
 
+// =============================================================================
+// Public Handlers
+// =============================================================================
+
+/// Handle GET /api/org/metrics/overview
 pub fn handle_org_metrics_overview(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -32,6 +57,7 @@ pub fn handle_org_metrics_overview(
   }
 }
 
+/// Handle GET /api/org/metrics/projects/:id/tasks
 pub fn handle_org_metrics_project_tasks(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -52,6 +78,10 @@ pub fn handle_org_metrics_project_tasks(
   }
 }
 
+// =============================================================================
+// Private Handlers
+// =============================================================================
+
 fn overview_as_admin(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -63,117 +93,9 @@ fn overview_as_admin(
     Error(resp) -> resp
 
     Ok(window_days) -> {
-      let window_days_str = int.to_string(window_days)
-
-      let totals = sql.metrics_org_overview(db, org_id, window_days_str)
-      let buckets_claim =
-        sql.metrics_time_to_first_claim_buckets(db, org_id, window_days_str)
-      let p50 =
-        sql.metrics_time_to_first_claim_p50_ms(db, org_id, window_days_str)
-      let buckets_release =
-        sql.metrics_release_rate_buckets(db, org_id, window_days_str)
-      let by_project =
-        sql.metrics_org_overview_by_project(db, org_id, window_days_str)
-
-      case totals, buckets_claim, p50, buckets_release, by_project {
-        Ok(pog.Returned(rows: [totals_row, ..], ..)),
-          Ok(pog.Returned(rows: ttf_buckets, ..)),
-          Ok(pog.Returned(rows: [p50_row, ..], ..)),
-          Ok(pog.Returned(rows: rr_buckets, ..)),
-          Ok(pog.Returned(rows: project_rows, ..))
-        -> {
-          let claimed = totals_row.claimed_count
-          let released = totals_row.released_count
-          let completed = totals_row.completed_count
-
-          let release_rate_percent = percent(released, claimed)
-          let pool_flow_ratio_percent = percent(completed, claimed)
-
-          let time_to_first_claim_p50_ms = case p50_row.sample_size {
-            0 -> None
-            _ -> Some(p50_row.p50_ms)
-          }
-
-          api.ok(
-            json.object([
-              #(
-                "overview",
-                json.object([
-                  #("window_days", json.int(window_days)),
-                  #(
-                    "totals",
-                    json.object([
-                      #("claimed_count", json.int(claimed)),
-                      #("released_count", json.int(released)),
-                      #("completed_count", json.int(completed)),
-                    ]),
-                  ),
-                  #(
-                    "release_rate_percent",
-                    option_int_json(release_rate_percent),
-                  ),
-                  #(
-                    "pool_flow_ratio_percent",
-                    option_int_json(pool_flow_ratio_percent),
-                  ),
-                  #(
-                    "time_to_first_claim_p50_ms",
-                    option_int_json(time_to_first_claim_p50_ms),
-                  ),
-                  #(
-                    "time_to_first_claim_sample_size",
-                    json.int(p50_row.sample_size),
-                  ),
-                  #(
-                    "time_to_first_claim_buckets",
-                    json.array(ttf_buckets, of: fn(row) {
-                      json.object([
-                        #("bucket", json.string(row.bucket)),
-                        #("count", json.int(row.count)),
-                      ])
-                    }),
-                  ),
-                  #(
-                    "release_rate_buckets",
-                    json.array(rr_buckets, of: fn(row) {
-                      json.object([
-                        #("bucket", json.string(row.bucket)),
-                        #("count", json.int(row.count)),
-                      ])
-                    }),
-                  ),
-                  #(
-                    "by_project",
-                    json.array(project_rows, of: fn(row) {
-                      let project_release_rate_percent =
-                        percent(row.released_count, row.claimed_count)
-                      let project_pool_flow_ratio_percent =
-                        percent(row.completed_count, row.claimed_count)
-
-                      json.object([
-                        #("project_id", json.int(row.project_id)),
-                        #("project_name", json.string(row.project_name)),
-                        #("claimed_count", json.int(row.claimed_count)),
-                        #("released_count", json.int(row.released_count)),
-                        #("completed_count", json.int(row.completed_count)),
-                        #(
-                          "release_rate_percent",
-                          option_int_json(project_release_rate_percent),
-                        ),
-                        #(
-                          "pool_flow_ratio_percent",
-                          option_int_json(project_pool_flow_ratio_percent),
-                        ),
-                      ])
-                    }),
-                  ),
-                ]),
-              ),
-            ]),
-          )
-        }
-
-        _, _, _, _, _ -> api.error(500, "INTERNAL", "Database error")
+      case metrics_service.get_org_overview(db, org_id, window_days) {
+        Ok(overview) -> api.ok(metrics_presenters.overview_json(overview))
+        Error(_) -> api.error(500, "INTERNAL", "Database error")
       }
     }
   }
@@ -191,140 +113,40 @@ fn project_tasks_as_admin(
     Error(_) -> api.error(404, "NOT_FOUND", "Not found")
 
     Ok(project_id) -> {
-      case sql.projects_org_id(db, project_id) {
-        Ok(pog.Returned(rows: [row, ..], ..)) ->
-          case row.org_id == org_id {
-            False -> api.error(404, "NOT_FOUND", "Not found")
+      case metrics_service.verify_project_org(db, project_id, org_id) {
+        Error(metrics_service.NotFound) ->
+          api.error(404, "NOT_FOUND", "Not found")
+        Error(metrics_service.DbError(_)) ->
+          api.error(500, "INTERNAL", "Database error")
 
-            True ->
-              case parse_window_days(req) {
-                Error(resp) -> resp
+        Ok(False) -> api.error(404, "NOT_FOUND", "Not found")
 
-                Ok(window_days) ->
-                  case
-                    sql.metrics_project_tasks(
-                      db,
-                      project_id,
-                      int.to_string(window_days),
-                    )
-                  {
-                    Ok(pog.Returned(rows: rows, ..)) ->
-                      api.ok(
-                        json.object([
-                          #("window_days", json.int(window_days)),
-                          #("project_id", json.int(project_id)),
-                          #("tasks", json.array(rows, of: project_task_json)),
-                        ]),
-                      )
+        Ok(True) ->
+          case parse_window_days(req) {
+            Error(resp) -> resp
 
-                    Error(_) -> api.error(500, "INTERNAL", "Database error")
-                  }
+            Ok(window_days) ->
+              case
+                metrics_service.get_project_tasks(db, project_id, window_days)
+              {
+                Ok(tasks) ->
+                  api.ok(metrics_presenters.project_tasks_json(
+                    window_days,
+                    project_id,
+                    tasks,
+                  ))
+
+                Error(_) -> api.error(500, "INTERNAL", "Database error")
               }
           }
-
-        Ok(pog.Returned(rows: [], ..)) ->
-          api.error(404, "NOT_FOUND", "Not found")
-        Error(_) -> api.error(500, "INTERNAL", "Database error")
       }
     }
   }
 }
 
-fn project_task_json(row: sql.MetricsProjectTasksRow) -> json.Json {
-  let claimed_by = case row.claimed_by {
-    0 -> None
-    other -> Some(other)
-  }
-
-  let ongoing_by_user_id = case row.ongoing_by_user_id {
-    0 -> None
-    other -> Some(other)
-  }
-
-  let claimed_at = empty_string_to_option(row.claimed_at)
-  let completed_at = empty_string_to_option(row.completed_at)
-  let first_claim_at = empty_string_to_option(row.first_claim_at)
-
-  let work_state = derive_work_state(row.status, row.is_ongoing)
-
-  json.object([
-    #("id", json.int(row.id)),
-    #("project_id", json.int(row.project_id)),
-    #("type_id", json.int(row.type_id)),
-    #(
-      "task_type",
-      json.object([
-        #("id", json.int(row.type_id)),
-        #("name", json.string(row.type_name)),
-        #("icon", json.string(row.type_icon)),
-      ]),
-    ),
-    #("ongoing_by", ongoing_by_json(ongoing_by_user_id)),
-    #("title", json.string(row.title)),
-    #("description", json.string(row.description)),
-    #("priority", json.int(row.priority)),
-    #("status", json.string(row.status)),
-    #("work_state", json.string(work_state)),
-    #("created_by", json.int(row.created_by)),
-    #("claimed_by", option_int_json(claimed_by)),
-    #("claimed_at", option_string_json(claimed_at)),
-    #("completed_at", option_string_json(completed_at)),
-    #("created_at", json.string(row.created_at)),
-    #("version", json.int(row.version)),
-    #("claim_count", json.int(row.claim_count)),
-    #("release_count", json.int(row.release_count)),
-    #("complete_count", json.int(row.complete_count)),
-    #("first_claim_at", option_string_json(first_claim_at)),
-  ])
-}
-
-fn empty_string_to_option(value: String) -> Option(String) {
-  case value {
-    "" -> None
-    other -> Some(other)
-  }
-}
-
-fn percent(numerator: Int, denominator: Int) -> Option(Int) {
-  case denominator {
-    0 -> None
-    _ -> Some(numerator * 100 / denominator)
-  }
-}
-
-fn option_int_json(value: Option(Int)) -> json.Json {
-  case value {
-    None -> json.null()
-    Some(v) -> json.int(v)
-  }
-}
-
-fn option_string_json(value: Option(String)) -> json.Json {
-  case value {
-    None -> json.null()
-    Some(v) -> json.string(v)
-  }
-}
-
-fn ongoing_by_json(value: Option(Int)) -> json.Json {
-  case value {
-    None -> json.null()
-    Some(user_id) -> json.object([#("user_id", json.int(user_id))])
-  }
-}
-
-fn derive_work_state(status: String, is_ongoing: Bool) -> String {
-  case status {
-    "available" -> "available"
-    "completed" -> "completed"
-    "claimed" ->
-      case is_ongoing {
-        True -> "ongoing"
-        False -> "claimed"
-      }
-    _ -> status
-  }
-}
+// =============================================================================
+// Request Parsing
+// =============================================================================
 
 fn parse_window_days(req: wisp.Request) -> Result(Int, wisp.Response) {
   let query = wisp.get_query(req)
