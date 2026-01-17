@@ -82,6 +82,26 @@ pub fn main() {
 // Initialization
 // =============================================================================
 
+/// Initialize the application state from browser context.
+///
+/// ## Size Justification (~200 lines)
+///
+/// Performs comprehensive application bootstrap:
+/// 1. URL parsing and route extraction (pathname, search, hash)
+/// 2. Mobile detection and responsive rules
+/// 3. Route-specific token extraction (accept invite, reset password)
+/// 4. Page and section derivation from route
+/// 5. Sub-module initialization (accept_invite, reset_password)
+/// 6. Theme and locale loading from localStorage
+/// 7. Pool preferences restoration
+/// 8. Full Model construction with 60+ fields
+/// 9. Initial effect batching (popstate, keydown, redirect, auth check)
+///
+/// The init function is a Lustre contract requirement that must return
+/// the complete initial state. The Model has 60+ fields initialized from
+/// route context, localStorage, and sub-modules. Splitting would require
+/// either partial Model construction (not type-safe) or complex builder
+/// patterns that add indirection without clarity.
 fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
   let pathname = client_ffi.location_pathname()
   let search = client_ffi.location_search()

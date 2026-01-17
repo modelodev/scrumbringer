@@ -395,6 +395,24 @@ fn build_snapshot(model: Model) -> hydration.Snapshot {
   )
 }
 
+/// Hydrate model based on current route and resource states.
+///
+/// ## Size Justification (259 lines)
+///
+/// This function handles hydration commands for 12 resource types, each requiring:
+/// - State validation (Loading/Loaded check)
+/// - Project ID validation where applicable
+/// - Model updates and effect batching
+///
+/// Splitting would fragment the hydration logic and make the command-to-effect
+/// mapping harder to understand. The function is a single-purpose dispatcher
+/// that processes hydration.Command variants sequentially.
+///
+/// ## Example
+///
+/// ```gleam
+/// let #(model, effects) = hydrate_model(model)
+/// ```
 fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
   let route = current_route(model)
   let commands = hydration.plan(route, build_snapshot(model))
@@ -888,6 +906,19 @@ fn start_now_working_tick_if_needed(model: Model) -> #(Model, Effect(Msg)) {
   }
 }
 
+/// Refresh member section data (tasks, types, positions, active task, metrics).
+///
+/// ## Size Justification (105 lines)
+///
+/// Coordinates 5 parallel data fetches with project ID filtering:
+/// - Tasks by project (with pending counter)
+/// - Task types by project (with pending counter)
+/// - Task positions
+/// - Active task state
+/// - Member metrics
+///
+/// The batched fetching logic and state updates are tightly coupled
+/// and splitting would complicate the refresh coordination.
 fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
   case model.member_section {
     member_section.MySkills -> #(model, effect.none())
@@ -1028,6 +1059,34 @@ pub fn should_pause_active_task_on_project_change(
 // Main update function
 // ---------------------------------------------------------------------------
 
+/// Main Lustre update function - dispatches messages to handlers.
+///
+/// ## Size Justification (~2800 lines)
+///
+/// This function is the central message dispatcher for the Lustre/Elm architecture.
+/// It handles 163 distinct Msg variants covering:
+/// - Authentication flow (login, logout, password reset)
+/// - Navigation and routing
+/// - Admin sections (projects, capabilities, members, task types, metrics, org settings)
+/// - Member sections (pool, tasks, notes, drag-and-drop, timer)
+/// - API responses and error handling
+/// - UI state (dialogs, filters, toasts, themes)
+///
+/// The large case expression is inherent to the Elm architecture pattern where
+/// a single update function handles all application messages. Splitting would
+/// require either:
+/// 1. Breaking the Lustre contract (not possible)
+/// 2. Adding dispatch indirection that increases complexity without benefit
+///
+/// Each case arm delegates to focused handler functions, keeping individual
+/// logic units small and testable. The update function itself is a flat
+/// dispatcher with minimal logic per branch.
+///
+/// ## Example
+///
+/// ```gleam
+/// let #(new_model, effects) = update(model, LoginSubmit)
+/// ```
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     UrlChanged -> handle_url_changed(model)

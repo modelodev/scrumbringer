@@ -131,6 +131,22 @@ fn handle_task_types_list(
   }
 }
 
+/// Create a new task type for a project.
+///
+/// ## Size Justification (~110 lines)
+///
+/// Follows standard HTTP handler pattern with:
+/// 1. Method validation
+/// 2. Authentication check
+/// 3. Request body parsing and validation
+/// 4. Authorization (project membership + role)
+/// 5. Business logic (capability validation, DB insert)
+/// 6. Response construction
+/// 7. Error handling at each step
+///
+/// Each step has distinct error responses. The linear flow makes the
+/// request lifecycle clear. Splitting would fragment the cohesive
+/// request-response cycle.
 fn handle_task_types_create(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -295,6 +311,21 @@ fn handle_tasks_list(
   }
 }
 
+/// Create a new task in a project.
+///
+/// ## Size Justification (~140 lines)
+///
+/// Follows standard HTTP handler pattern with:
+/// 1. Method validation
+/// 2. Authentication check
+/// 3. Request body parsing with multiple fields (title, description, priority, type_id)
+/// 4. Authorization (project membership)
+/// 5. Business logic (task type validation, priority bounds, DB insert)
+/// 6. Response construction with full task data
+/// 7. Error handling for validation failures and conflicts
+///
+/// The handler validates task type belongs to project and handles
+/// optional fields. Each validation step produces specific error responses.
 fn handle_tasks_create(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -438,6 +469,26 @@ fn handle_task_get(
   }
 }
 
+/// Update a task (status, assignment, position, priority, etc.).
+///
+/// ## Size Justification (~180 lines)
+///
+/// Handles partial updates with:
+/// 1. Method validation
+/// 2. Authentication check
+/// 3. Task existence and project membership validation
+/// 4. Partial field extraction (status, priority, position, claim/release)
+/// 5. Business logic per field type:
+///    - Status transitions with validation
+///    - Claim/release with conflict detection
+///    - Position updates
+///    - Priority changes
+/// 6. Conflict resolution (optimistic locking via version field)
+/// 7. Response construction
+///
+/// The PATCH handler supports multiple update operations in one request.
+/// The field-by-field validation and conflict handling is necessarily
+/// verbose to provide clear error messages for each failure mode.
 fn handle_task_patch(
   req: wisp.Request,
   ctx: auth.Ctx,

@@ -68,34 +68,29 @@ import scrumbringer_client/client_state.{
   AcceptInviteMsg, Admin, CapabilityCreateNameChanged, CapabilityCreateSubmitted,
   Failed, ForgotPasswordClicked, ForgotPasswordCopyClicked,
   ForgotPasswordDismissed, ForgotPasswordEmailChanged, ForgotPasswordSubmitted,
-  IconError, IconIdle, IconLoading, IconOk, InviteLinkCopyClicked,
-  InviteLinkCreateSubmitted, InviteLinkEmailChanged, InviteLinkRegenerateClicked,
-  Loaded, Loading, LocaleSelected, Login, LoginEmailChanged,
-  LoginPasswordChanged, LoginSubmitted, LogoutClicked, Member,
-  MemberAddDialogClosed, MemberAddDialogOpened, MemberAddRoleChanged,
-  MemberAddSubmitted, MemberAddUserSelected, MemberCanvasRectFetched,
+  IconError, IconOk, InviteLinkCopyClicked, InviteLinkCreateSubmitted,
+  InviteLinkEmailChanged, InviteLinkRegenerateClicked, Loaded, Loading,
+  LocaleSelected, Login, LoginEmailChanged, LoginPasswordChanged, LoginSubmitted,
+  LogoutClicked, Member, MemberAddDialogClosed, MemberAddDialogOpened,
+  MemberAddRoleChanged, MemberAddSubmitted, MemberAddUserSelected,
   MemberClaimClicked, MemberCompleteClicked, MemberCreateDescriptionChanged,
   MemberCreateDialogClosed, MemberCreateDialogOpened,
   MemberCreatePriorityChanged, MemberCreateSubmitted, MemberCreateTitleChanged,
-  MemberCreateTypeIdChanged, MemberDrag, MemberDragEnded, MemberDragMoved,
-  MemberDragStarted, MemberNoteContentChanged, MemberNoteSubmitted,
-  MemberNowWorkingPauseClicked, MemberNowWorkingStartClicked,
-  MemberPoolCapabilityChanged, MemberPoolDragToClaimArmed,
-  MemberPoolFiltersToggled, MemberPoolMyTasksRectFetched,
-  MemberPoolSearchChanged, MemberPoolSearchDebounced, MemberPoolStatusChanged,
+  MemberCreateTypeIdChanged, MemberDragEnded, MemberDragMoved, MemberDragStarted,
+  MemberNoteContentChanged, MemberNoteSubmitted, MemberNowWorkingPauseClicked,
+  MemberNowWorkingStartClicked, MemberPoolCapabilityChanged,
+  MemberPoolFiltersToggled, MemberPoolSearchChanged, MemberPoolSearchDebounced,
   MemberPoolTypeChanged, MemberPoolViewModeSet, MemberPositionEditClosed,
-  MemberPositionEditOpened, MemberPositionEditSubmitted,
-  MemberPositionEditXChanged, MemberPositionEditYChanged, MemberReleaseClicked,
-  MemberRemoveCancelled, MemberRemoveClicked, MemberRemoveConfirmed,
-  MemberSaveCapabilitiesClicked, MemberTaskDetailsClosed,
-  MemberTaskDetailsOpened, MemberToggleCapability,
-  MemberToggleMyCapabilitiesQuick, Model, NavigateTo, NotAsked,
-  OrgSettingsRoleChanged, OrgSettingsSaveClicked, OrgUsersSearchChanged,
-  OrgUsersSearchDebounced, ProjectCreateNameChanged, ProjectCreateSubmitted,
-  ProjectSelected, Push, Rect, Replace, ResetPassword as ResetPasswordPage,
+  MemberPositionEditSubmitted, MemberPositionEditXChanged,
+  MemberPositionEditYChanged, MemberReleaseClicked, MemberRemoveCancelled,
+  MemberRemoveClicked, MemberRemoveConfirmed, MemberSaveCapabilitiesClicked,
+  MemberTaskDetailsClosed, MemberToggleCapability, MemberToggleMyCapabilitiesQuick,
+  NavigateTo, NotAsked, OrgSettingsRoleChanged, OrgSettingsSaveClicked,
+  OrgUsersSearchChanged, OrgUsersSearchDebounced, ProjectCreateNameChanged,
+  ProjectCreateSubmitted, ProjectSelected, Push, ResetPassword as ResetPasswordPage,
   ResetPasswordMsg, TaskTypeCreateCapabilityChanged, TaskTypeCreateIconChanged,
   TaskTypeCreateNameChanged, TaskTypeCreateSubmitted, TaskTypeIconErrored,
-  TaskTypeIconLoaded, ThemeSelected, ToastDismissed, rect_contains_point,
+  TaskTypeIconLoaded, ThemeSelected, ToastDismissed,
 }
 
 // =============================================================================
@@ -2142,6 +2137,19 @@ fn view_member_topbar(model: Model, user: User) -> Element(Msg) {
   ])
 }
 
+/// Render the "Now Working" panel showing active task timer and controls.
+///
+/// ## Size Justification (~130 lines)
+///
+/// Handles 4 distinct states (Loading, Loaded with/without task, Failed, NotAsked)
+/// plus conditional rendering for:
+/// - Timer display with elapsed time calculation
+/// - Start/pause/resume buttons
+/// - Error messages
+/// - Loading indicators
+///
+/// The view logic is tightly coupled to the active task state machine and
+/// splitting would fragment related UI elements that change together.
 fn view_now_working_panel(model: Model, _user: User) -> Element(Msg) {
   let error = case model.member_now_working_error {
     opt.Some(err) -> div([attribute.class("now-working-error")], [text(err)])
@@ -2441,6 +2449,19 @@ fn view_member_pool_main(model: Model, _user: User) -> Element(Msg) {
   }
 }
 
+/// Render the member pool filter panel with status, type, capability, and search filters.
+///
+/// ## Size Justification (~120 lines)
+///
+/// Builds a filter form with 5 filter controls, each requiring:
+/// - Options loading from model state (capabilities, task types)
+/// - Event handlers for changes
+/// - i18n labels
+/// - Responsive layout considerations
+///
+/// The filters are semantically related and user-facing as a single panel.
+/// Splitting individual filter controls would complicate the shared layout
+/// and state coordination between filters.
 fn view_member_filters(model: Model) -> Element(Msg) {
   let type_options = case model.member_task_types {
     Loaded(task_types) -> [
@@ -2793,6 +2814,22 @@ fn view_member_pool_task_row(model: Model, task: api.Task) -> Element(Msg) {
   ])
 }
 
+/// Render a task card for the pool grid/canvas view with drag-and-drop support.
+///
+/// ## Size Justification (~180 lines)
+///
+/// Renders a complete task card with:
+/// - Header (type icon, title, priority badge)
+/// - Status indicators (claimed by, assignee)
+/// - Action buttons (claim, start, notes, position edit)
+/// - Drag-and-drop event handlers
+/// - Position styling for canvas placement
+/// - Conditional sections based on task state and user permissions
+///
+/// Task cards are cohesive UI units. Splitting would scatter related
+/// rendering logic across helpers with no clear boundaries. The card
+/// elements are interdependent (actions depend on status, layout depends
+/// on all elements present).
 fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
   let api.Task(
     id: id,
@@ -3244,6 +3281,22 @@ fn view_member_bar(model: Model, user: User) -> Element(Msg) {
   }
 }
 
+/// Render a task row for the bar/list view mode.
+///
+/// ## Size Justification (~140 lines)
+///
+/// Renders a task list row with:
+/// - Type icon and title
+/// - Priority and status badges
+/// - Assignee information
+/// - Action buttons (claim, start, notes)
+/// - Responsive column layout
+/// - Conditional actions based on user permissions and task state
+///
+/// Similar to view_member_task_card, this is a cohesive row unit where
+/// all elements are rendered together. The bar view is an alternative
+/// presentation of the same task data with different layout but
+/// similar complexity.
 fn view_member_bar_task_row(
   model: Model,
   user: User,
