@@ -1510,7 +1510,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     ProjectsFetched(Ok(projects)) -> {
       let selected =
-        ensure_selected_project(model.selected_project_id, projects)
+        update_helpers.ensure_selected_project(model.selected_project_id, projects)
       let model =
         Model(
           ..model,
@@ -1518,7 +1518,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           selected_project_id: selected,
         )
 
-      let model = ensure_default_section(model)
+      let model = update_helpers.ensure_default_section(model)
 
       case model.page {
         Member -> {
@@ -3818,48 +3818,6 @@ fn bootstrap_admin(model: Model) -> #(Model, Effect(Msg)) {
   }
 
   #(model, effect.batch(effects))
-}
-
-fn ensure_selected_project(
-  selected: opt.Option(Int),
-  projects: List(api.Project),
-) -> opt.Option(Int) {
-  case selected {
-    opt.Some(id) ->
-      case list.any(projects, fn(p) { p.id == id }) {
-        True -> opt.Some(id)
-        False ->
-          case projects {
-            [first, ..] -> opt.Some(first.id)
-            [] -> opt.None
-          }
-      }
-
-    opt.None ->
-      case projects {
-        [first, ..] -> opt.Some(first.id)
-        [] -> opt.None
-      }
-  }
-}
-
-fn ensure_default_section(model: Model) -> Model {
-  case model.user, model.projects {
-    opt.Some(user), Loaded(projects) -> {
-      let visible = permissions.visible_sections(user.org_role, projects)
-
-      case list.any(visible, fn(s) { s == model.active_section }) {
-        True -> model
-        False ->
-          case visible {
-            [first, ..] -> Model(..model, active_section: first)
-            [] -> model
-          }
-      }
-    }
-
-    _, _ -> model
-  }
 }
 
 fn refresh_section(model: Model) -> #(Model, Effect(Msg)) {

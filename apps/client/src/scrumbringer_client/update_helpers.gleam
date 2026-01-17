@@ -32,9 +32,10 @@ import gleam/option.{type Option, None, Some}
 import gleam/string
 
 import scrumbringer_client/api
-import scrumbringer_client/client_state.{type Model, type Remote, Loaded}
+import scrumbringer_client/client_state.{type Model, type Remote, Loaded, Model}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/permissions
 
 // =============================================================================
 // Pure Data Transformations
@@ -359,4 +360,72 @@ pub fn flatten_task_types(
 /// ```
 pub fn i18n_t(model: Model, text: i18n_text.Text) -> String {
   i18n.t(model.locale, text)
+}
+
+// =============================================================================
+// Project/Section Selection
+// =============================================================================
+
+/// Ensure a valid project is selected from the available projects.
+///
+/// If current selection is valid, keep it. Otherwise, select first project
+/// or None if no projects available.
+///
+/// ## Example
+///
+/// ```gleam
+/// ensure_selected_project(Some(5), [project1, project2])
+/// // Some(5) if project 5 exists, else Some(project1.id)
+/// ```
+pub fn ensure_selected_project(
+  selected: Option(Int),
+  projects: List(api.Project),
+) -> Option(Int) {
+  case selected {
+    Some(id) ->
+      case list.any(projects, fn(p) { p.id == id }) {
+        True -> Some(id)
+        False ->
+          case projects {
+            [first, ..] -> Some(first.id)
+            [] -> None
+          }
+      }
+
+    None ->
+      case projects {
+        [first, ..] -> Some(first.id)
+        [] -> None
+      }
+  }
+}
+
+/// Ensure the current admin section is valid for the user's permissions.
+///
+/// If current section is not in visible sections, switch to first visible
+/// section or keep current if user/projects not loaded.
+///
+/// ## Example
+///
+/// ```gleam
+/// ensure_default_section(model)
+/// // Model with valid active_section
+/// ```
+pub fn ensure_default_section(model: Model) -> Model {
+  case model.user, model.projects {
+    Some(user), Loaded(projects) -> {
+      let visible = permissions.visible_sections(user.org_role, projects)
+
+      case list.any(visible, fn(s) { s == model.active_section }) {
+        True -> model
+        False ->
+          case visible {
+            [first, ..] -> Model(..model, active_section: first)
+            [] -> model
+          }
+      }
+    }
+
+    _, _ -> model
+  }
 }
