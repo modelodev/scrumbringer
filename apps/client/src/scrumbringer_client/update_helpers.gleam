@@ -33,6 +33,8 @@ import gleam/string
 
 import scrumbringer_client/api
 import scrumbringer_client/client_state.{type Model, type Remote, Loaded}
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/text as i18n_text
 
 // =============================================================================
 // Pure Data Transformations
@@ -339,4 +341,22 @@ pub fn flatten_task_types(
     let #(_project_id, types) = pair
     list.append(acc, types)
   })
+}
+
+// =============================================================================
+// Internationalization
+// =============================================================================
+
+/// Translate text using the model's current locale.
+///
+/// Convenience wrapper around `i18n.t` that extracts locale from model.
+///
+/// ## Example
+///
+/// ```gleam
+/// i18n_t(model, i18n_text.Welcome)
+/// // "Welcome" or "Bienvenido" depending on locale
+/// ```
+pub fn i18n_t(model: Model, text: i18n_text.Text) -> String {
+  i18n.t(model.locale, text)
 }

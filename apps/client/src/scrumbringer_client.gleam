@@ -1127,7 +1127,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               page: page,
               user: opt.Some(user),
               auth_checked: True,
-              toast: opt.Some(i18n_t(model, i18n_text.Welcome)),
+              toast: opt.Some(update_helpers.i18n_t(model, i18n_text.Welcome)),
             )
 
           let #(model, boot) = bootstrap_admin(model)
@@ -1170,7 +1170,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             Model(
               ..model,
               page: Login,
-              toast: opt.Some(i18n_t(model, i18n_text.PasswordUpdated)),
+              toast: opt.Some(update_helpers.i18n_t(model, i18n_text.PasswordUpdated)),
               login_password: "",
               login_error: opt.None,
             )
@@ -1216,7 +1216,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           Model(
             ..model,
             login_in_flight: False,
-            login_error: opt.Some(i18n_t(
+            login_error: opt.Some(update_helpers.i18n_t(
               model,
               i18n_text.EmailAndPasswordRequired,
             )),
@@ -1246,7 +1246,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           auth_checked: True,
           login_in_flight: False,
           login_password: "",
-          toast: opt.Some(i18n_t(model, i18n_text.LoggedIn)),
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.LoggedIn)),
         )
 
       let #(model, boot) = bootstrap_admin(model)
@@ -1263,7 +1263,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     LoginFinished(Error(err)) -> {
       let message = case err.status {
-        401 | 403 -> i18n_t(model, i18n_text.InvalidCredentials)
+        401 | 403 -> update_helpers.i18n_t(model, i18n_text.InvalidCredentials)
         _ -> err.message
       }
 
@@ -1311,7 +1311,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             True -> #(
               Model(
                 ..model,
-                forgot_password_error: opt.Some(i18n_t(
+                forgot_password_error: opt.Some(update_helpers.i18n_t(
                   model,
                   i18n_text.EmailRequired,
                 )),
@@ -1370,7 +1370,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           #(
             Model(
               ..model,
-              forgot_password_copy_status: opt.Some(i18n_t(
+              forgot_password_copy_status: opt.Some(update_helpers.i18n_t(
                 model,
                 i18n_text.Copying,
               )),
@@ -1383,8 +1383,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     ForgotPasswordCopyFinished(ok) -> {
       let message = case ok {
-        True -> i18n_t(model, i18n_text.Copied)
-        False -> i18n_t(model, i18n_text.CopyFailed)
+        True -> update_helpers.i18n_t(model, i18n_text.Copied)
+        False -> update_helpers.i18n_t(model, i18n_text.CopyFailed)
       }
 
       #(
@@ -1415,7 +1415,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           page: Login,
           user: opt.None,
           auth_checked: False,
-          toast: opt.Some(i18n_t(model, i18n_text.LoggedOut)),
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.LoggedOut)),
         )
 
       #(model, replace_url(model))
@@ -1430,7 +1430,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         }
 
         False -> #(
-          Model(..model, toast: opt.Some(i18n_t(model, i18n_text.LogoutFailed))),
+          Model(..model, toast: opt.Some(update_helpers.i18n_t(model, i18n_text.LogoutFailed))),
           effect.none(),
         )
       }
@@ -1574,7 +1574,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             True -> #(
               Model(
                 ..model,
-                projects_create_error: opt.Some(i18n_t(
+                projects_create_error: opt.Some(update_helpers.i18n_t(
                   model,
                   i18n_text.NameRequired,
                 )),
@@ -1608,7 +1608,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           selected_project_id: opt.Some(project.id),
           projects_create_in_flight: False,
           projects_create_name: "",
-          toast: opt.Some(i18n_t(model, i18n_text.ProjectCreated)),
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.ProjectCreated)),
         ),
         effect.none(),
       )
@@ -1631,11 +1631,11 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           Model(
             ..model,
             projects_create_in_flight: False,
-            projects_create_error: opt.Some(i18n_t(
+            projects_create_error: opt.Some(update_helpers.i18n_t(
               model,
               i18n_text.NotPermitted,
             )),
-            toast: opt.Some(i18n_t(model, i18n_text.NotPermitted)),
+            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
           ),
           effect.none(),
         )
@@ -1677,7 +1677,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             True -> #(
               Model(
                 ..model,
-                invite_link_error: opt.Some(i18n_t(
+                invite_link_error: opt.Some(update_helpers.i18n_t(
                   model,
                   i18n_text.EmailRequired,
                 )),
@@ -1709,7 +1709,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             True -> #(
               Model(
                 ..model,
-                invite_link_error: opt.Some(i18n_t(
+                invite_link_error: opt.Some(update_helpers.i18n_t(
                   model,
                   i18n_text.EmailRequired,
                 )),
@@ -1739,7 +1739,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           invite_link_in_flight: False,
           invite_link_last: opt.Some(link),
           invite_link_email: "",
-          toast: opt.Some(i18n_t(model, i18n_text.InviteLinkCreated)),
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.InviteLinkCreated)),
         )
 
       #(model, api.list_invite_links(InviteLinksFetched))
@@ -1752,7 +1752,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           invite_link_in_flight: False,
           invite_link_last: opt.Some(link),
           invite_link_email: "",
-          toast: opt.Some(i18n_t(model, i18n_text.InviteLinkRegenerated)),
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.InviteLinkRegenerated)),
         )
 
       #(model, api.list_invite_links(InviteLinksFetched))
@@ -1775,8 +1775,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           Model(
             ..model,
             invite_link_in_flight: False,
-            invite_link_error: opt.Some(i18n_t(model, i18n_text.NotPermitted)),
-            toast: opt.Some(i18n_t(model, i18n_text.NotPermitted)),
+            invite_link_error: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
           ),
           effect.none(),
         )
@@ -1808,8 +1808,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           Model(
             ..model,
             invite_link_in_flight: False,
-            invite_link_error: opt.Some(i18n_t(model, i18n_text.NotPermitted)),
-            toast: opt.Some(i18n_t(model, i18n_text.NotPermitted)),
+            invite_link_error: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
           ),
           effect.none(),
         )
@@ -1827,15 +1827,15 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     InviteLinkCopyClicked(text) -> #(
       Model(
         ..model,
-        invite_link_copy_status: opt.Some(i18n_t(model, i18n_text.Copying)),
+        invite_link_copy_status: opt.Some(update_helpers.i18n_t(model, i18n_text.Copying)),
       ),
       copy_to_clipboard(text, InviteLinkCopyFinished),
     )
 
     InviteLinkCopyFinished(ok) -> {
       let message = case ok {
-        True -> i18n_t(model, i18n_text.Copied)
-        False -> i18n_t(model, i18n_text.CopyFailed)
+        True -> update_helpers.i18n_t(model, i18n_text.Copied)
+        False -> update_helpers.i18n_t(model, i18n_text.CopyFailed)
       }
 
       #(
@@ -1871,7 +1871,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             True -> #(
               Model(
                 ..model,
-                capabilities_create_error: opt.Some(i18n_t(
+                capabilities_create_error: opt.Some(update_helpers.i18n_t(
                   model,
                   i18n_text.NameRequired,
                 )),
@@ -1904,7 +1904,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           capabilities: Loaded(updated),
           capabilities_create_in_flight: False,
           capabilities_create_name: "",
-          toast: opt.Some(i18n_t(model, i18n_text.CapabilityCreated)),
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.CapabilityCreated)),
         ),
         effect.none(),
       )
@@ -1927,11 +1927,11 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           Model(
             ..model,
             capabilities_create_in_flight: False,
-            capabilities_create_error: opt.Some(i18n_t(
+            capabilities_create_error: opt.Some(update_helpers.i18n_t(
               model,
               i18n_text.NotPermitted,
             )),
-            toast: opt.Some(i18n_t(model, i18n_text.NotPermitted)),
+            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
           ),
           effect.none(),
         )
@@ -2000,7 +2000,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           Model(
             ..model,
             org_settings_users: Failed(err),
-            toast: opt.Some(i18n_t(model, i18n_text.NotPermitted)),
+            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
           ),
           effect.none(),
         )
@@ -2097,7 +2097,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           org_settings_save_in_flight: False,
           org_settings_error: opt.None,
           org_settings_error_user_id: opt.None,
-          toast: opt.Some(i18n_t(model, i18n_text.RoleUpdated)),
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.RoleUpdated)),
         ),
         effect.none(),
       )
@@ -2121,7 +2121,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           Model(
             ..model,
             org_settings_save_in_flight: False,
-            toast: opt.Some(i18n_t(model, i18n_text.NotPermitted)),
+            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
           ),
           effect.none(),
         )
@@ -2221,7 +2221,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             _, _ -> #(
               Model(
                 ..model,
-                members_add_error: opt.Some(i18n_t(
+                members_add_error: opt.Some(update_helpers.i18n_t(
                   model,
                   i18n_text.SelectUserFirst,
                 )),
@@ -2239,7 +2239,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           ..model,
           members_add_in_flight: False,
           members_add_dialog_open: False,
-          toast: opt.Some(i18n_t(model, i18n_text.MemberAdded)),
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.MemberAdded)),
         )
       refresh_section(model)
     }
@@ -2261,8 +2261,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           Model(
             ..model,
             members_add_in_flight: False,
-            members_add_error: opt.Some(i18n_t(model, i18n_text.NotPermitted)),
-            toast: opt.Some(i18n_t(model, i18n_text.NotPermitted)),
+            members_add_error: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
           ),
           effect.none(),
         )
@@ -2333,7 +2333,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           ..model,
           members_remove_in_flight: False,
           members_remove_confirm: opt.None,
-          toast: opt.Some(i18n_t(model, i18n_text.MemberRemoved)),
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.MemberRemoved)),
         )
       refresh_section(model)
     }
@@ -2355,8 +2355,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           Model(
             ..model,
             members_remove_in_flight: False,
-            members_remove_error: opt.Some(i18n_t(model, i18n_text.NotPermitted)),
-            toast: opt.Some(i18n_t(model, i18n_text.NotPermitted)),
+            members_remove_error: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
           ),
           effect.none(),
         )
@@ -2461,7 +2461,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             opt.None -> #(
               Model(
                 ..model,
-                task_types_create_error: opt.Some(i18n_t(
+                task_types_create_error: opt.Some(update_helpers.i18n_t(
                   model,
                   i18n_text.SelectProjectFirst,
                 )),
@@ -2477,7 +2477,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                 True -> #(
                   Model(
                     ..model,
-                    task_types_create_error: opt.Some(i18n_t(
+                    task_types_create_error: opt.Some(update_helpers.i18n_t(
                       model,
                       i18n_text.NameAndIconRequired,
                     )),
@@ -2489,7 +2489,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                     IconError -> #(
                       Model(
                         ..model,
-                        task_types_create_error: opt.Some(i18n_t(
+                        task_types_create_error: opt.Some(update_helpers.i18n_t(
                           model,
                           i18n_text.UnknownIcon,
                         )),
@@ -2499,7 +2499,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                     IconLoading | IconIdle -> #(
                       Model(
                         ..model,
-                        task_types_create_error: opt.Some(i18n_t(
+                        task_types_create_error: opt.Some(update_helpers.i18n_t(
                           model,
                           i18n_text.WaitForIconPreview,
                         )),
@@ -2554,7 +2554,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           task_types_create_icon: "",
           task_types_create_capability_id: opt.None,
           task_types_icon_preview: IconIdle,
-          toast: opt.Some(i18n_t(model, i18n_text.TaskTypeCreated)),
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskTypeCreated)),
         )
 
       refresh_section(model)
@@ -2577,11 +2577,11 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           Model(
             ..model,
             task_types_create_in_flight: False,
-            task_types_create_error: opt.Some(i18n_t(
+            task_types_create_error: opt.Some(update_helpers.i18n_t(
               model,
               i18n_text.NotPermitted,
             )),
-            toast: opt.Some(i18n_t(model, i18n_text.NotPermitted)),
+            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
           ),
           effect.none(),
         )
@@ -2893,7 +2893,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             opt.None -> #(
               Model(
                 ..model,
-                member_create_error: opt.Some(i18n_t(
+                member_create_error: opt.Some(update_helpers.i18n_t(
                   model,
                   i18n_text.SelectProjectFirst,
                 )),
@@ -2908,7 +2908,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                 True -> #(
                   Model(
                     ..model,
-                    member_create_error: opt.Some(i18n_t(
+                    member_create_error: opt.Some(update_helpers.i18n_t(
                       model,
                       i18n_text.TitleRequired,
                     )),
@@ -2921,7 +2921,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                     True -> #(
                       Model(
                         ..model,
-                        member_create_error: opt.Some(i18n_t(
+                        member_create_error: opt.Some(update_helpers.i18n_t(
                           model,
                           i18n_text.TitleTooLongMax56,
                         )),
@@ -2934,7 +2934,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                         Error(_) -> #(
                           Model(
                             ..model,
-                            member_create_error: opt.Some(i18n_t(
+                            member_create_error: opt.Some(update_helpers.i18n_t(
                               model,
                               i18n_text.TypeRequired,
                             )),
@@ -2975,7 +2975,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                             _ -> #(
                               Model(
                                 ..model,
-                                member_create_error: opt.Some(i18n_t(
+                                member_create_error: opt.Some(update_helpers.i18n_t(
                                   model,
                                   i18n_text.PriorityMustBe1To5,
                                 )),
@@ -3002,7 +3002,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           member_create_description: "",
           member_create_priority: "3",
           member_create_type_id: "",
-          toast: opt.Some(i18n_t(model, i18n_text.TaskCreated)),
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskCreated)),
         )
       member_refresh(model)
     }
@@ -3066,7 +3066,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         Model(
           ..model,
           member_task_mutation_in_flight: False,
-          toast: opt.Some(i18n_t(model, i18n_text.TaskClaimed)),
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskClaimed)),
         ),
       )
     MemberTaskReleased(Ok(_)) -> {
@@ -3074,7 +3074,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         Model(
           ..model,
           member_task_mutation_in_flight: False,
-          toast: opt.Some(i18n_t(model, i18n_text.TaskReleased)),
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskReleased)),
         )
 
       let #(model, fx) = member_refresh(model)
@@ -3088,7 +3088,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         Model(
           ..model,
           member_task_mutation_in_flight: False,
-          toast: opt.Some(i18n_t(model, i18n_text.TaskCompleted)),
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskCompleted)),
         )
 
       let #(model, fx) = member_refresh(model)
@@ -3478,7 +3478,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         member_my_capabilities_in_flight: False,
         member_my_capability_ids: Loaded(ids),
         member_my_capability_ids_edit: update_helpers.ids_to_bool_dict(ids),
-        toast: opt.Some(i18n_t(model, i18n_text.SkillsSaved)),
+        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.SkillsSaved)),
       ),
       effect.none(),
     )
@@ -3597,7 +3597,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                 _, _ -> #(
                   Model(
                     ..model,
-                    member_position_edit_error: opt.Some(i18n_t(
+                    member_position_edit_error: opt.Some(update_helpers.i18n_t(
                       model,
                       i18n_text.InvalidXY,
                     )),
@@ -3714,7 +3714,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                 True -> #(
                   Model(
                     ..model,
-                    member_note_error: opt.Some(i18n_t(
+                    member_note_error: opt.Some(update_helpers.i18n_t(
                       model,
                       i18n_text.ContentRequired,
                     )),
@@ -3748,7 +3748,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           member_note_in_flight: False,
           member_note_content: "",
           member_notes: Loaded(updated),
-          toast: opt.Some(i18n_t(model, i18n_text.NoteAdded)),
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NoteAdded)),
         ),
         effect.none(),
       )
@@ -3959,7 +3959,7 @@ fn refresh_section(model: Model) -> #(Model, Effect(Msg)) {
 fn fallback_org_user(model: Model, user_id: Int) -> api.OrgUser {
   api.OrgUser(
     id: user_id,
-    email: i18n_t(model, i18n_text.UserNumber(user_id)),
+    email: update_helpers.i18n_t(model, i18n_text.UserNumber(user_id)),
     org_role: "",
     created_at: "",
   )
@@ -3991,10 +3991,6 @@ fn start_now_working_tick_if_needed(model: Model) -> #(Model, Effect(Msg)) {
         opt.None -> #(model, effect.none())
       }
   }
-}
-
-fn i18n_t(model: Model, text: i18n_text.Text) -> String {
-  i18n.t(model.locale, text)
 }
 
 fn page_title(section: permissions.AdminSection) -> i18n_text.Text {
@@ -4063,7 +4059,7 @@ fn view_toast(model: Model) -> Element(Msg) {
         button(
           [
             attribute.class("toast-dismiss btn-xs"),
-            attribute.attribute("aria-label", i18n_t(model, i18n_text.Dismiss)),
+            attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Dismiss)),
             event.on_click(ToastDismissed),
           ],
           [text("×")],
@@ -4084,12 +4080,12 @@ fn view_accept_invite(model: Model) -> Element(Msg) {
   let content = case state {
     accept_invite.NoToken ->
       div([attribute.class("error")], [
-        text(i18n_t(model, i18n_text.MissingInviteToken)),
+        text(update_helpers.i18n_t(model, i18n_text.MissingInviteToken)),
       ])
 
     accept_invite.Validating ->
       div([attribute.class("loading")], [
-        text(i18n_t(model, i18n_text.ValidatingInvite)),
+        text(update_helpers.i18n_t(model, i18n_text.ValidatingInvite)),
       ])
 
     accept_invite.Invalid(code: _, message: message) ->
@@ -4103,20 +4099,20 @@ fn view_accept_invite(model: Model) -> Element(Msg) {
 
     accept_invite.Done ->
       div([attribute.class("loading")], [
-        text(i18n_t(model, i18n_text.SignedIn)),
+        text(update_helpers.i18n_t(model, i18n_text.SignedIn)),
       ])
   }
 
   div([attribute.class("page")], [
-    h1([], [text(i18n_t(model, i18n_text.AppName))]),
-    h2([], [text(i18n_t(model, i18n_text.AcceptInviteTitle))]),
+    h1([], [text(update_helpers.i18n_t(model, i18n_text.AppName))]),
+    h2([], [text(update_helpers.i18n_t(model, i18n_text.AcceptInviteTitle))]),
     case submit_error {
       opt.Some(err) ->
         div([attribute.class("error")], [
           span([], [text(err)]),
           button(
             [event.on_click(AcceptInviteMsg(accept_invite.ErrorDismissed))],
-            [text(i18n_t(model, i18n_text.Dismiss))],
+            [text(update_helpers.i18n_t(model, i18n_text.Dismiss))],
           ),
         ])
       opt.None -> div([], [])
@@ -4133,13 +4129,13 @@ fn view_accept_invite_form(
   password_error: opt.Option(String),
 ) -> Element(Msg) {
   let submit_label = case in_flight {
-    True -> i18n_t(model, i18n_text.Registering)
-    False -> i18n_t(model, i18n_text.Register)
+    True -> update_helpers.i18n_t(model, i18n_text.Registering)
+    False -> update_helpers.i18n_t(model, i18n_text.Register)
   }
 
   form([event.on_submit(fn(_) { AcceptInviteMsg(accept_invite.Submitted) })], [
     div([attribute.class("field")], [
-      label([], [text(i18n_t(model, i18n_text.EmailLabel))]),
+      label([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
       input([
         attribute.type_("email"),
         attribute.value(email),
@@ -4147,7 +4143,7 @@ fn view_accept_invite_form(
       ]),
     ]),
     div([attribute.class("field")], [
-      label([], [text(i18n_t(model, i18n_text.PasswordLabel))]),
+      label([], [text(update_helpers.i18n_t(model, i18n_text.PasswordLabel))]),
       input([
         attribute.type_("password"),
         attribute.value(password),
@@ -4160,7 +4156,7 @@ fn view_accept_invite_form(
         opt.Some(err) -> div([attribute.class("error")], [text(err)])
         opt.None -> div([], [])
       },
-      p([], [text(i18n_t(model, i18n_text.MinimumPasswordLength))]),
+      p([], [text(update_helpers.i18n_t(model, i18n_text.MinimumPasswordLength))]),
     ]),
     button([attribute.type_("submit"), attribute.disabled(in_flight)], [
       text(submit_label),
@@ -4180,12 +4176,12 @@ fn view_reset_password(model: Model) -> Element(Msg) {
   let content = case state {
     reset_password.NoToken ->
       div([attribute.class("error")], [
-        text(i18n_t(model, i18n_text.MissingResetToken)),
+        text(update_helpers.i18n_t(model, i18n_text.MissingResetToken)),
       ])
 
     reset_password.Validating ->
       div([attribute.class("loading")], [
-        text(i18n_t(model, i18n_text.ValidatingResetToken)),
+        text(update_helpers.i18n_t(model, i18n_text.ValidatingResetToken)),
       ])
 
     reset_password.Invalid(code: _, message: message) ->
@@ -4199,20 +4195,20 @@ fn view_reset_password(model: Model) -> Element(Msg) {
 
     reset_password.Done ->
       div([attribute.class("loading")], [
-        text(i18n_t(model, i18n_text.PasswordUpdated)),
+        text(update_helpers.i18n_t(model, i18n_text.PasswordUpdated)),
       ])
   }
 
   div([attribute.class("page")], [
-    h1([], [text(i18n_t(model, i18n_text.AppName))]),
-    h2([], [text(i18n_t(model, i18n_text.ResetPasswordTitle))]),
+    h1([], [text(update_helpers.i18n_t(model, i18n_text.AppName))]),
+    h2([], [text(update_helpers.i18n_t(model, i18n_text.ResetPasswordTitle))]),
     case submit_error {
       opt.Some(err) ->
         div([attribute.class("error")], [
           span([], [text(err)]),
           button(
             [event.on_click(ResetPasswordMsg(reset_password.ErrorDismissed))],
-            [text(i18n_t(model, i18n_text.Dismiss))],
+            [text(update_helpers.i18n_t(model, i18n_text.Dismiss))],
           ),
         ])
       opt.None -> div([], [])
@@ -4229,13 +4225,13 @@ fn view_reset_password_form(
   password_error: opt.Option(String),
 ) -> Element(Msg) {
   let submit_label = case in_flight {
-    True -> i18n_t(model, i18n_text.Saving)
-    False -> i18n_t(model, i18n_text.SaveNewPassword)
+    True -> update_helpers.i18n_t(model, i18n_text.Saving)
+    False -> update_helpers.i18n_t(model, i18n_text.SaveNewPassword)
   }
 
   form([event.on_submit(fn(_) { ResetPasswordMsg(reset_password.Submitted) })], [
     div([attribute.class("field")], [
-      label([], [text(i18n_t(model, i18n_text.EmailLabel))]),
+      label([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
       input([
         attribute.type_("email"),
         attribute.value(email),
@@ -4243,7 +4239,7 @@ fn view_reset_password_form(
       ]),
     ]),
     div([attribute.class("field")], [
-      label([], [text(i18n_t(model, i18n_text.NewPasswordLabel))]),
+      label([], [text(update_helpers.i18n_t(model, i18n_text.NewPasswordLabel))]),
       input([
         attribute.type_("password"),
         attribute.value(password),
@@ -4256,7 +4252,7 @@ fn view_reset_password_form(
         opt.Some(err) -> div([attribute.class("error")], [text(err)])
         opt.None -> div([], [])
       },
-      p([], [text(i18n_t(model, i18n_text.MinimumPasswordLength))]),
+      p([], [text(update_helpers.i18n_t(model, i18n_text.MinimumPasswordLength))]),
     ]),
     button([attribute.type_("submit"), attribute.disabled(in_flight)], [
       text(submit_label),
@@ -4266,8 +4262,8 @@ fn view_reset_password_form(
 
 fn view_forgot_password(model: Model) -> Element(Msg) {
   let submit_label = case model.forgot_password_in_flight {
-    True -> i18n_t(model, i18n_text.Working)
-    False -> i18n_t(model, i18n_text.GenerateResetLink)
+    True -> update_helpers.i18n_t(model, i18n_text.Working)
+    False -> update_helpers.i18n_t(model, i18n_text.GenerateResetLink)
   }
 
   let origin = client_ffi.location_origin()
@@ -4278,20 +4274,20 @@ fn view_forgot_password(model: Model) -> Element(Msg) {
   }
 
   div([attribute.class("section")], [
-    p([], [text(i18n_t(model, i18n_text.NoEmailIntegrationNote))]),
+    p([], [text(update_helpers.i18n_t(model, i18n_text.NoEmailIntegrationNote))]),
     case model.forgot_password_error {
       opt.Some(err) ->
         div([attribute.class("error")], [
           span([], [text(err)]),
           button([event.on_click(ForgotPasswordDismissed)], [
-            text(i18n_t(model, i18n_text.Dismiss)),
+            text(update_helpers.i18n_t(model, i18n_text.Dismiss)),
           ]),
         ])
       opt.None -> div([], [])
     },
     form([event.on_submit(fn(_) { ForgotPasswordSubmitted })], [
       div([attribute.class("field")], [
-        label([], [text(i18n_t(model, i18n_text.EmailLabel))]),
+        label([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
         input([
           attribute.type_("email"),
           attribute.value(model.forgot_password_email),
@@ -4312,7 +4308,7 @@ fn view_forgot_password(model: Model) -> Element(Msg) {
 
       False ->
         div([attribute.class("field")], [
-          label([], [text(i18n_t(model, i18n_text.ResetLink))]),
+          label([], [text(update_helpers.i18n_t(model, i18n_text.ResetLink))]),
           div([attribute.class("copy")], [
             input([
               attribute.type_("text"),
@@ -4320,7 +4316,7 @@ fn view_forgot_password(model: Model) -> Element(Msg) {
               attribute.readonly(True),
             ]),
             button([event.on_click(ForgotPasswordCopyClicked)], [
-              text(i18n_t(model, i18n_text.Copy)),
+              text(update_helpers.i18n_t(model, i18n_text.Copy)),
             ]),
           ]),
           case model.forgot_password_copy_status {
@@ -4334,20 +4330,20 @@ fn view_forgot_password(model: Model) -> Element(Msg) {
 
 fn view_login(model: Model) -> Element(Msg) {
   let submit_label = case model.login_in_flight {
-    True -> i18n_t(model, i18n_text.LoggingIn)
-    False -> i18n_t(model, i18n_text.LoginTitle)
+    True -> update_helpers.i18n_t(model, i18n_text.LoggingIn)
+    False -> update_helpers.i18n_t(model, i18n_text.LoginTitle)
   }
 
   div([attribute.class("page")], [
-    h1([], [text(i18n_t(model, i18n_text.AppName))]),
-    p([], [text(i18n_t(model, i18n_text.LoginSubtitle))]),
+    h1([], [text(update_helpers.i18n_t(model, i18n_text.AppName))]),
+    p([], [text(update_helpers.i18n_t(model, i18n_text.LoginSubtitle))]),
     case model.login_error {
       opt.Some(err) -> div([attribute.class("error")], [text(err)])
       opt.None -> div([], [])
     },
     form([event.on_submit(fn(_) { LoginSubmitted })], [
       div([attribute.class("field")], [
-        label([], [text(i18n_t(model, i18n_text.EmailLabel))]),
+        label([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
         input([
           attribute.attribute("id", "login-email"),
           attribute.type_("email"),
@@ -4357,7 +4353,7 @@ fn view_login(model: Model) -> Element(Msg) {
         ]),
       ]),
       div([attribute.class("field")], [
-        label([], [text(i18n_t(model, i18n_text.PasswordLabel))]),
+        label([], [text(update_helpers.i18n_t(model, i18n_text.PasswordLabel))]),
         input([
           attribute.attribute("id", "login-password"),
           attribute.type_("password"),
@@ -4375,7 +4371,7 @@ fn view_login(model: Model) -> Element(Msg) {
       ),
     ]),
     button([event.on_click(ForgotPasswordClicked)], [
-      text(i18n_t(model, i18n_text.ForgotPassword)),
+      text(update_helpers.i18n_t(model, i18n_text.ForgotPassword)),
     ]),
     case model.forgot_password_open {
       True -> view_forgot_password(model)
@@ -4485,21 +4481,21 @@ fn view_project_selector(model: Model) -> Element(Msg) {
   }
 
   let empty_label = case model.page {
-    Member -> i18n_t(model, i18n_text.AllProjects)
-    _ -> i18n_t(model, i18n_text.SelectProjectToManageSettings)
+    Member -> update_helpers.i18n_t(model, i18n_text.AllProjects)
+    _ -> update_helpers.i18n_t(model, i18n_text.SelectProjectToManageSettings)
   }
 
   let helper = case model.page, model.selected_project_id {
-    Member, opt.None -> i18n_t(model, i18n_text.ShowingTasksFromAllProjects)
+    Member, opt.None -> update_helpers.i18n_t(model, i18n_text.ShowingTasksFromAllProjects)
     Member, _ -> ""
     _, opt.None ->
-      i18n_t(model, i18n_text.SelectProjectToManageMembersOrTaskTypes)
+      update_helpers.i18n_t(model, i18n_text.SelectProjectToManageMembersOrTaskTypes)
     _, _ -> ""
   }
 
   div([attribute.class("project-selector")], [
     div([attribute.class("topbar-group")], [
-      label([], [text(i18n_t(model, i18n_text.ProjectLabel))]),
+      label([], [text(update_helpers.i18n_t(model, i18n_text.ProjectLabel))]),
       select(
         [
           attribute.value(selected_id),
@@ -4525,11 +4521,11 @@ fn view_nav(
   sections: List(permissions.AdminSection),
 ) -> Element(Msg) {
   div([attribute.class("nav")], [
-    h3([], [text(i18n_t(model, i18n_text.Admin))]),
+    h3([], [text(update_helpers.i18n_t(model, i18n_text.Admin))]),
     case sections {
       [] ->
         div([attribute.class("empty")], [
-          text(i18n_t(model, i18n_text.NoAdminPermissions)),
+          text(update_helpers.i18n_t(model, i18n_text.NoAdminPermissions)),
         ])
       _ ->
         div(
@@ -4580,8 +4576,8 @@ fn view_section(
   case allowed {
     False ->
       div([attribute.class("not-permitted")], [
-        h2([], [text(i18n_t(model, i18n_text.NotPermitted))]),
-        p([], [text(i18n_t(model, i18n_text.NotPermittedBody))]),
+        h2([], [text(update_helpers.i18n_t(model, i18n_text.NotPermitted))]),
+        p([], [text(update_helpers.i18n_t(model, i18n_text.NotPermittedBody))]),
       ])
 
     True ->
@@ -4608,15 +4604,15 @@ fn view_metrics_overview_panel(model: Model) -> Element(Msg) {
   case model.admin_metrics_overview {
     NotAsked | Loading ->
       div([attribute.class("panel")], [
-        h2([], [text(i18n_t(model, i18n_text.MetricsOverview))]),
+        h2([], [text(update_helpers.i18n_t(model, i18n_text.MetricsOverview))]),
         div([attribute.class("loading")], [
-          text(i18n_t(model, i18n_text.LoadingOverview)),
+          text(update_helpers.i18n_t(model, i18n_text.LoadingOverview)),
         ]),
       ])
 
     Failed(err) ->
       div([attribute.class("panel")], [
-        h2([], [text(i18n_t(model, i18n_text.MetricsOverview))]),
+        h2([], [text(update_helpers.i18n_t(model, i18n_text.MetricsOverview))]),
         div([attribute.class("error")], [text(err.message)]),
       ])
 
@@ -4643,8 +4639,8 @@ fn view_metrics_overview_loaded(
   ) = overview
 
   div([attribute.class("panel")], [
-    h2([], [text(i18n_t(model, i18n_text.MetricsOverview))]),
-    p([], [text(i18n_t(model, i18n_text.WindowDays(window_days)))]),
+    h2([], [text(update_helpers.i18n_t(model, i18n_text.MetricsOverview))]),
+    p([], [text(update_helpers.i18n_t(model, i18n_text.WindowDays(window_days)))]),
     view_metrics_summary_table(
       model,
       claimed_count,
@@ -4675,11 +4671,11 @@ fn view_metrics_summary_table(
   table([attribute.class("table")], [
     thead([], [
       tr([], [
-        th([], [text(i18n_t(model, i18n_text.Claimed))]),
-        th([], [text(i18n_t(model, i18n_text.Released))]),
-        th([], [text(i18n_t(model, i18n_text.Completed))]),
-        th([], [text(i18n_t(model, i18n_text.ReleasePercent))]),
-        th([], [text(i18n_t(model, i18n_text.FlowPercent))]),
+        th([], [text(update_helpers.i18n_t(model, i18n_text.Claimed))]),
+        th([], [text(update_helpers.i18n_t(model, i18n_text.Released))]),
+        th([], [text(update_helpers.i18n_t(model, i18n_text.Completed))]),
+        th([], [text(update_helpers.i18n_t(model, i18n_text.ReleasePercent))]),
+        th([], [text(update_helpers.i18n_t(model, i18n_text.FlowPercent))]),
       ]),
     ]),
     tbody([], [
@@ -4701,9 +4697,9 @@ fn view_metrics_time_to_first_claim(
   buckets: List(api.OrgMetricsBucket),
 ) -> Element(Msg) {
   div([], [
-    h3([], [text(i18n_t(model, i18n_text.TimeToFirstClaim))]),
+    h3([], [text(update_helpers.i18n_t(model, i18n_text.TimeToFirstClaim))]),
     p([], [
-      text(i18n_t(
+      text(update_helpers.i18n_t(
         model,
         i18n_text.TimeToFirstClaimP50(option_ms_label(p50_ms), sample_size),
       )),
@@ -4717,7 +4713,7 @@ fn view_metrics_release_rate_buckets(
   buckets: List(api.OrgMetricsBucket),
 ) -> Element(Msg) {
   div([], [
-    h3([], [text(i18n_t(model, i18n_text.ReleaseRateDistribution))]),
+    h3([], [text(update_helpers.i18n_t(model, i18n_text.ReleaseRateDistribution))]),
     view_metrics_bucket_table(model, buckets),
   ])
 }
@@ -4729,8 +4725,8 @@ fn view_metrics_bucket_table(
   table([attribute.class("table")], [
     thead([], [
       tr([], [
-        th([], [text(i18n_t(model, i18n_text.Bucket))]),
-        th([], [text(i18n_t(model, i18n_text.Count))]),
+        th([], [text(update_helpers.i18n_t(model, i18n_text.Bucket))]),
+        th([], [text(update_helpers.i18n_t(model, i18n_text.Count))]),
       ]),
     ]),
     tbody(
@@ -4748,17 +4744,17 @@ fn view_metrics_by_project_table(
   by_project: List(api.OrgMetricsProjectOverview),
 ) -> Element(Msg) {
   div([], [
-    h3([], [text(i18n_t(model, i18n_text.ByProject))]),
+    h3([], [text(update_helpers.i18n_t(model, i18n_text.ByProject))]),
     table([attribute.class("table")], [
       thead([], [
         tr([], [
-          th([], [text(i18n_t(model, i18n_text.ProjectLabel))]),
-          th([], [text(i18n_t(model, i18n_text.Claimed))]),
-          th([], [text(i18n_t(model, i18n_text.Released))]),
-          th([], [text(i18n_t(model, i18n_text.Completed))]),
-          th([], [text(i18n_t(model, i18n_text.ReleasePercent))]),
-          th([], [text(i18n_t(model, i18n_text.FlowPercent))]),
-          th([], [text(i18n_t(model, i18n_text.Drill))]),
+          th([], [text(update_helpers.i18n_t(model, i18n_text.ProjectLabel))]),
+          th([], [text(update_helpers.i18n_t(model, i18n_text.Claimed))]),
+          th([], [text(update_helpers.i18n_t(model, i18n_text.Released))]),
+          th([], [text(update_helpers.i18n_t(model, i18n_text.Completed))]),
+          th([], [text(update_helpers.i18n_t(model, i18n_text.ReleasePercent))]),
+          th([], [text(update_helpers.i18n_t(model, i18n_text.FlowPercent))]),
+          th([], [text(update_helpers.i18n_t(model, i18n_text.Drill))]),
         ]),
       ]),
       tbody([], list.map(by_project, view_metrics_project_row(model, _))),
@@ -4796,7 +4792,7 @@ fn view_metrics_project_row(
             Push,
           )),
         ],
-        [text(i18n_t(model, i18n_text.View))],
+        [text(update_helpers.i18n_t(model, i18n_text.View))],
       ),
     ]),
   ])
@@ -4809,8 +4805,8 @@ fn view_metrics_project_panel(
   case selected {
     opt.None ->
       div([attribute.class("panel")], [
-        h3([], [text(i18n_t(model, i18n_text.ProjectDrillDown))]),
-        p([], [text(i18n_t(model, i18n_text.SelectProjectToInspectTasks))]),
+        h3([], [text(update_helpers.i18n_t(model, i18n_text.ProjectDrillDown))]),
+        p([], [text(update_helpers.i18n_t(model, i18n_text.SelectProjectToInspectTasks))]),
       ])
 
     opt.Some(api.Project(name: project_name, ..)) ->
@@ -4825,14 +4821,14 @@ fn view_metrics_project_tasks_panel(
   let body = case model.admin_metrics_project_tasks {
     NotAsked | Loading ->
       div([attribute.class("loading")], [
-        text(i18n_t(model, i18n_text.LoadingTasks)),
+        text(update_helpers.i18n_t(model, i18n_text.LoadingTasks)),
       ])
     Failed(err) -> div([attribute.class("error")], [text(err.message)])
     Loaded(payload) -> view_metrics_project_tasks_table(model, payload)
   }
 
   div([attribute.class("panel")], [
-    h3([], [text(i18n_t(model, i18n_text.ProjectTasks(project_name)))]),
+    h3([], [text(update_helpers.i18n_t(model, i18n_text.ProjectTasks(project_name)))]),
     body,
   ])
 }
@@ -4846,12 +4842,12 @@ fn view_metrics_project_tasks_table(
   table([attribute.class("table")], [
     thead([], [
       tr([], [
-        th([], [text(i18n_t(model, i18n_text.Title))]),
-        th([], [text(i18n_t(model, i18n_text.Status))]),
-        th([], [text(i18n_t(model, i18n_text.Claims))]),
-        th([], [text(i18n_t(model, i18n_text.Releases))]),
-        th([], [text(i18n_t(model, i18n_text.Completes))]),
-        th([], [text(i18n_t(model, i18n_text.FirstClaim))]),
+        th([], [text(update_helpers.i18n_t(model, i18n_text.Title))]),
+        th([], [text(update_helpers.i18n_t(model, i18n_text.Status))]),
+        th([], [text(update_helpers.i18n_t(model, i18n_text.Claims))]),
+        th([], [text(update_helpers.i18n_t(model, i18n_text.Releases))]),
+        th([], [text(update_helpers.i18n_t(model, i18n_text.Completes))]),
+        th([], [text(update_helpers.i18n_t(model, i18n_text.FirstClaim))]),
       ]),
     ]),
     tbody([], list.map(tasks, view_metrics_task_row)),
@@ -4900,16 +4896,16 @@ fn option_string_label(value: opt.Option(String)) -> String {
 
 fn view_org_settings(model: Model) -> Element(Msg) {
   div([attribute.class("section")], [
-    p([], [text(i18n_t(model, i18n_text.OrgSettingsHelp))]),
+    p([], [text(update_helpers.i18n_t(model, i18n_text.OrgSettingsHelp))]),
     case model.org_settings_users {
       NotAsked ->
-        div([], [text(i18n_t(model, i18n_text.OpenThisSectionToLoadUsers))])
+        div([], [text(update_helpers.i18n_t(model, i18n_text.OpenThisSectionToLoadUsers))])
       Loading ->
         div(
           [
             attribute.class("loading"),
           ],
-          [text(i18n_t(model, i18n_text.LoadingUsers))],
+          [text(update_helpers.i18n_t(model, i18n_text.LoadingUsers))],
         )
 
       Failed(err) -> div([attribute.class("error")], [text(err.message)])
@@ -4918,9 +4914,9 @@ fn view_org_settings(model: Model) -> Element(Msg) {
         table([attribute.class("table")], [
           thead([], [
             tr([], [
-              th([], [text(i18n_t(model, i18n_text.EmailLabel))]),
-              th([], [text(i18n_t(model, i18n_text.Role))]),
-              th([], [text(i18n_t(model, i18n_text.Actions))]),
+              th([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
+              th([], [text(update_helpers.i18n_t(model, i18n_text.Role))]),
+              th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
             ]),
           ]),
           tbody(
@@ -4953,11 +4949,11 @@ fn view_org_settings(model: Model) -> Element(Msg) {
                     [
                       option(
                         [attribute.value("admin")],
-                        i18n_t(model, i18n_text.RoleAdmin),
+                        update_helpers.i18n_t(model, i18n_text.RoleAdmin),
                       ),
                       option(
                         [attribute.value("member")],
-                        i18n_t(model, i18n_text.RoleMember),
+                        update_helpers.i18n_t(model, i18n_text.RoleMember),
                       ),
                     ],
                   ),
@@ -4973,7 +4969,7 @@ fn view_org_settings(model: Model) -> Element(Msg) {
                       attribute.disabled(model.org_settings_save_in_flight),
                       event.on_click(OrgSettingsSaveClicked(u.id)),
                     ],
-                    [text(i18n_t(model, i18n_text.Save))],
+                    [text(update_helpers.i18n_t(model, i18n_text.Save))],
                   ),
                 ]),
               ])
@@ -4987,21 +4983,21 @@ fn view_org_settings(model: Model) -> Element(Msg) {
 
 fn view_invites(model: Model) -> Element(Msg) {
   let create_label = case model.invite_link_in_flight {
-    True -> i18n_t(model, i18n_text.Working)
-    False -> i18n_t(model, i18n_text.CreateInviteLink)
+    True -> update_helpers.i18n_t(model, i18n_text.Working)
+    False -> update_helpers.i18n_t(model, i18n_text.CreateInviteLink)
   }
 
   let origin = client_ffi.location_origin()
 
   div([attribute.class("section")], [
-    p([], [text(i18n_t(model, i18n_text.InviteLinksHelp))]),
+    p([], [text(update_helpers.i18n_t(model, i18n_text.InviteLinksHelp))]),
     case model.invite_link_error {
       opt.Some(err) -> div([attribute.class("error")], [text(err)])
       opt.None -> div([], [])
     },
     form([event.on_submit(fn(_) { InviteLinkCreateSubmitted })], [
       div([attribute.class("field")], [
-        label([], [text(i18n_t(model, i18n_text.EmailLabel))]),
+        label([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
         input([
           attribute.type_("email"),
           attribute.value(model.invite_link_email),
@@ -5024,9 +5020,9 @@ fn view_invites(model: Model) -> Element(Msg) {
         let full = build_full_url(origin, link.url_path)
 
         div([attribute.class("invite-result")], [
-          h3([], [text(i18n_t(model, i18n_text.LatestInviteLink))]),
+          h3([], [text(update_helpers.i18n_t(model, i18n_text.LatestInviteLink))]),
           div([attribute.class("field")], [
-            label([], [text(i18n_t(model, i18n_text.EmailLabel))]),
+            label([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
             input([
               attribute.type_("text"),
               attribute.value(link.email),
@@ -5034,7 +5030,7 @@ fn view_invites(model: Model) -> Element(Msg) {
             ]),
           ]),
           div([attribute.class("field")], [
-            label([], [text(i18n_t(model, i18n_text.Link))]),
+            label([], [text(update_helpers.i18n_t(model, i18n_text.Link))]),
             input([
               attribute.type_("text"),
               attribute.value(full),
@@ -5042,7 +5038,7 @@ fn view_invites(model: Model) -> Element(Msg) {
             ]),
           ]),
           button([event.on_click(InviteLinkCopyClicked(full))], [
-            text(i18n_t(model, i18n_text.Copy)),
+            text(update_helpers.i18n_t(model, i18n_text.Copy)),
           ]),
           case model.invite_link_copy_status {
             opt.Some(status) -> div([attribute.class("hint")], [text(status)])
@@ -5052,7 +5048,7 @@ fn view_invites(model: Model) -> Element(Msg) {
       }
     },
     hr([]),
-    h3([], [text(i18n_t(model, i18n_text.InviteLinks))]),
+    h3([], [text(update_helpers.i18n_t(model, i18n_text.InviteLinks))]),
     view_invite_links_list(model, origin),
   ])
 }
@@ -5061,13 +5057,13 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
   case model.invite_links {
     NotAsked | Loading ->
       div([attribute.class("empty")], [
-        text(i18n_t(model, i18n_text.LoadingEllipsis)),
+        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
       ])
 
     Failed(err) ->
       div([attribute.class("error")], [
         text(
-          i18n_t(model, i18n_text.FailedToLoadInviteLinksPrefix) <> err.message,
+          update_helpers.i18n_t(model, i18n_text.FailedToLoadInviteLinksPrefix) <> err.message,
         ),
       ])
 
@@ -5075,18 +5071,18 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
       case links {
         [] ->
           div([attribute.class("empty")], [
-            text(i18n_t(model, i18n_text.NoInviteLinksYet)),
+            text(update_helpers.i18n_t(model, i18n_text.NoInviteLinksYet)),
           ])
 
         _ ->
           table([attribute.class("table")], [
             thead([], [
               tr([], [
-                th([], [text(i18n_t(model, i18n_text.EmailLabel))]),
-                th([], [text(i18n_t(model, i18n_text.State))]),
-                th([], [text(i18n_t(model, i18n_text.CreatedAt))]),
-                th([], [text(i18n_t(model, i18n_text.Link))]),
-                th([], [text(i18n_t(model, i18n_text.Actions))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.State))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.CreatedAt))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.Link))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
               ]),
             ]),
             tbody(
@@ -5105,14 +5101,14 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
                         attribute.disabled(model.invite_link_in_flight),
                         event.on_click(InviteLinkCopyClicked(full)),
                       ],
-                      [text(i18n_t(model, i18n_text.Copy))],
+                      [text(update_helpers.i18n_t(model, i18n_text.Copy))],
                     ),
                     button(
                       [
                         attribute.disabled(model.invite_link_in_flight),
                         event.on_click(InviteLinkRegenerateClicked(link.email)),
                       ],
-                      [text(i18n_t(model, i18n_text.Regenerate))],
+                      [text(update_helpers.i18n_t(model, i18n_text.Regenerate))],
                     ),
                   ]),
                 ])
@@ -5132,17 +5128,17 @@ fn build_full_url(origin: String, url_path: String) -> String {
 
 fn view_projects(model: Model) -> Element(Msg) {
   div([attribute.class("section")], [
-    h2([], [text(i18n_t(model, i18n_text.Projects))]),
+    h2([], [text(update_helpers.i18n_t(model, i18n_text.Projects))]),
     view_projects_list(model, model.projects),
     hr([]),
-    h3([], [text(i18n_t(model, i18n_text.CreateProject))]),
+    h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateProject))]),
     case model.projects_create_error {
       opt.Some(err) -> div([attribute.class("error")], [text(err)])
       opt.None -> div([], [])
     },
     form([event.on_submit(fn(_) { ProjectCreateSubmitted })], [
       div([attribute.class("field")], [
-        label([], [text(i18n_t(model, i18n_text.Name))]),
+        label([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
         input([
           attribute.type_("text"),
           attribute.value(model.projects_create_name),
@@ -5157,8 +5153,8 @@ fn view_projects(model: Model) -> Element(Msg) {
         ],
         [
           text(case model.projects_create_in_flight {
-            True -> i18n_t(model, i18n_text.Creating)
-            False -> i18n_t(model, i18n_text.Create)
+            True -> update_helpers.i18n_t(model, i18n_text.Creating)
+            False -> update_helpers.i18n_t(model, i18n_text.Create)
           }),
         ],
       ),
@@ -5173,7 +5169,7 @@ fn view_projects_list(
   case projects {
     NotAsked | Loading ->
       div([attribute.class("empty")], [
-        text(i18n_t(model, i18n_text.LoadingEllipsis)),
+        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
       ])
 
     Failed(err) ->
@@ -5183,7 +5179,7 @@ fn view_projects_list(
             [
               attribute.class("not-permitted"),
             ],
-            [text(i18n_t(model, i18n_text.NotPermitted))],
+            [text(update_helpers.i18n_t(model, i18n_text.NotPermitted))],
           )
         False -> div([attribute.class("error")], [text(err.message)])
       }
@@ -5192,14 +5188,14 @@ fn view_projects_list(
       case projects {
         [] ->
           div([attribute.class("empty")], [
-            text(i18n_t(model, i18n_text.NoProjectsYet)),
+            text(update_helpers.i18n_t(model, i18n_text.NoProjectsYet)),
           ])
         _ ->
           table([attribute.class("table")], [
             thead([], [
               tr([], [
-                th([], [text(i18n_t(model, i18n_text.Name))]),
-                th([], [text(i18n_t(model, i18n_text.MyRole))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.MyRole))]),
               ]),
             ]),
             tbody(
@@ -5215,17 +5211,17 @@ fn view_projects_list(
 
 fn view_capabilities(model: Model) -> Element(Msg) {
   div([attribute.class("section")], [
-    h2([], [text(i18n_t(model, i18n_text.Capabilities))]),
+    h2([], [text(update_helpers.i18n_t(model, i18n_text.Capabilities))]),
     view_capabilities_list(model, model.capabilities),
     hr([]),
-    h3([], [text(i18n_t(model, i18n_text.CreateCapability))]),
+    h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateCapability))]),
     case model.capabilities_create_error {
       opt.Some(err) -> div([attribute.class("error")], [text(err)])
       opt.None -> div([], [])
     },
     form([event.on_submit(fn(_) { CapabilityCreateSubmitted })], [
       div([attribute.class("field")], [
-        label([], [text(i18n_t(model, i18n_text.Name))]),
+        label([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
         input([
           attribute.type_("text"),
           attribute.value(model.capabilities_create_name),
@@ -5240,8 +5236,8 @@ fn view_capabilities(model: Model) -> Element(Msg) {
         ],
         [
           text(case model.capabilities_create_in_flight {
-            True -> i18n_t(model, i18n_text.Creating)
-            False -> i18n_t(model, i18n_text.Create)
+            True -> update_helpers.i18n_t(model, i18n_text.Creating)
+            False -> update_helpers.i18n_t(model, i18n_text.Create)
           }),
         ],
       ),
@@ -5256,7 +5252,7 @@ fn view_capabilities_list(
   case capabilities {
     NotAsked | Loading ->
       div([attribute.class("empty")], [
-        text(i18n_t(model, i18n_text.LoadingEllipsis)),
+        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
       ])
 
     Failed(err) ->
@@ -5266,7 +5262,7 @@ fn view_capabilities_list(
             [
               attribute.class("not-permitted"),
             ],
-            [text(i18n_t(model, i18n_text.NotPermitted))],
+            [text(update_helpers.i18n_t(model, i18n_text.NotPermitted))],
           )
         False -> div([attribute.class("error")], [text(err.message)])
       }
@@ -5275,11 +5271,11 @@ fn view_capabilities_list(
       case capabilities {
         [] ->
           div([attribute.class("empty")], [
-            text(i18n_t(model, i18n_text.NoCapabilitiesYet)),
+            text(update_helpers.i18n_t(model, i18n_text.NoCapabilitiesYet)),
           ])
         _ ->
           table([attribute.class("table")], [
-            thead([], [tr([], [th([], [text(i18n_t(model, i18n_text.Name))])])]),
+            thead([], [tr([], [th([], [text(update_helpers.i18n_t(model, i18n_text.Name))])])]),
             tbody(
               [],
               list.map(capabilities, fn(c) { tr([], [td([], [text(c.name)])]) }),
@@ -5296,14 +5292,14 @@ fn view_members(
   case selected_project {
     opt.None ->
       div([attribute.class("empty")], [
-        text(i18n_t(model, i18n_text.SelectProjectToManageMembers)),
+        text(update_helpers.i18n_t(model, i18n_text.SelectProjectToManageMembers)),
       ])
 
     opt.Some(project) ->
       div([attribute.class("section")], [
-        h2([], [text(i18n_t(model, i18n_text.MembersTitle(project.name)))]),
+        h2([], [text(update_helpers.i18n_t(model, i18n_text.MembersTitle(project.name)))]),
         button([event.on_click(MemberAddDialogOpened)], [
-          text(i18n_t(model, i18n_text.AddMember)),
+          text(update_helpers.i18n_t(model, i18n_text.AddMember)),
         ]),
         case model.members_remove_error {
           opt.Some(err) -> div([attribute.class("error")], [text(err)])
@@ -5330,14 +5326,14 @@ fn view_members_table(
   case members {
     NotAsked | Loading ->
       div([attribute.class("empty")], [
-        text(i18n_t(model, i18n_text.LoadingEllipsis)),
+        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
       ])
 
     Failed(err) ->
       case err.status == 403 {
         True ->
           div([attribute.class("not-permitted")], [
-            text(i18n_t(model, i18n_text.NotPermitted)),
+            text(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
           ])
         False -> div([attribute.class("error")], [text(err.message)])
       }
@@ -5346,17 +5342,17 @@ fn view_members_table(
       case members {
         [] ->
           div([attribute.class("empty")], [
-            text(i18n_t(model, i18n_text.NoMembersYet)),
+            text(update_helpers.i18n_t(model, i18n_text.NoMembersYet)),
           ])
         _ ->
           table([attribute.class("table")], [
             thead([], [
               tr([], [
-                th([], [text(i18n_t(model, i18n_text.User))]),
-                th([], [text(i18n_t(model, i18n_text.UserId))]),
-                th([], [text(i18n_t(model, i18n_text.Role))]),
-                th([], [text(i18n_t(model, i18n_text.CreatedAt))]),
-                th([], [text(i18n_t(model, i18n_text.Actions))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.User))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.UserId))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.Role))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.CreatedAt))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
               ]),
             ]),
             tbody(
@@ -5364,7 +5360,7 @@ fn view_members_table(
               list.map(members, fn(m) {
                 let email = case update_helpers.resolve_org_user(cache, m.user_id) {
                   opt.Some(user) -> user.email
-                  opt.None -> i18n_t(model, i18n_text.UserNumber(m.user_id))
+                  opt.None -> update_helpers.i18n_t(model, i18n_text.UserNumber(m.user_id))
                 }
 
                 tr([], [
@@ -5374,7 +5370,7 @@ fn view_members_table(
                   td([], [text(m.created_at)]),
                   td([], [
                     button([event.on_click(MemberRemoveClicked(m.user_id))], [
-                      text(i18n_t(model, i18n_text.Remove)),
+                      text(update_helpers.i18n_t(model, i18n_text.Remove)),
                     ]),
                   ]),
                 ])
@@ -5388,24 +5384,24 @@ fn view_members_table(
 fn view_add_member_dialog(model: Model) -> Element(Msg) {
   div([attribute.class("modal")], [
     div([attribute.class("modal-content")], [
-      h3([], [text(i18n_t(model, i18n_text.AddMember))]),
+      h3([], [text(update_helpers.i18n_t(model, i18n_text.AddMember))]),
       case model.members_add_error {
         opt.Some(err) -> div([attribute.class("error")], [text(err)])
         opt.None -> div([], [])
       },
       div([attribute.class("field")], [
-        label([], [text(i18n_t(model, i18n_text.SearchByEmail))]),
+        label([], [text(update_helpers.i18n_t(model, i18n_text.SearchByEmail))]),
         input([
           attribute.type_("text"),
           attribute.value(model.org_users_search_query),
           event.on_input(OrgUsersSearchChanged),
           event.debounce(event.on_input(OrgUsersSearchDebounced), 350),
-          attribute.placeholder(i18n_t(model, i18n_text.EmailPlaceholderExample)),
+          attribute.placeholder(update_helpers.i18n_t(model, i18n_text.EmailPlaceholderExample)),
         ]),
       ]),
       view_org_users_search_results(model, model.org_users_search_results),
       div([attribute.class("field")], [
-        label([], [text(i18n_t(model, i18n_text.Role))]),
+        label([], [text(update_helpers.i18n_t(model, i18n_text.Role))]),
         select(
           [
             attribute.value(model.members_add_role),
@@ -5414,18 +5410,18 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
           [
             option(
               [attribute.value("member")],
-              i18n_t(model, i18n_text.RoleMember),
+              update_helpers.i18n_t(model, i18n_text.RoleMember),
             ),
             option(
               [attribute.value("admin")],
-              i18n_t(model, i18n_text.RoleAdmin),
+              update_helpers.i18n_t(model, i18n_text.RoleAdmin),
             ),
           ],
         ),
       ]),
       div([attribute.class("actions")], [
         button([event.on_click(MemberAddDialogClosed)], [
-          text(i18n_t(model, i18n_text.Cancel)),
+          text(update_helpers.i18n_t(model, i18n_text.Cancel)),
         ]),
         button(
           [
@@ -5437,8 +5433,8 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
           ],
           [
             text(case model.members_add_in_flight {
-              True -> i18n_t(model, i18n_text.Working)
-              False -> i18n_t(model, i18n_text.AddMember)
+              True -> update_helpers.i18n_t(model, i18n_text.Working)
+              False -> update_helpers.i18n_t(model, i18n_text.AddMember)
             }),
           ],
         ),
@@ -5454,11 +5450,11 @@ fn view_org_users_search_results(
   case results {
     NotAsked ->
       div([attribute.class("empty")], [
-        text(i18n_t(model, i18n_text.TypeAnEmailToSearch)),
+        text(update_helpers.i18n_t(model, i18n_text.TypeAnEmailToSearch)),
       ])
 
     Loading ->
-      div([attribute.class("empty")], [text(i18n_t(model, i18n_text.Searching))])
+      div([attribute.class("empty")], [text(update_helpers.i18n_t(model, i18n_text.Searching))])
 
     Failed(err) ->
       case err.status == 403 {
@@ -5467,7 +5463,7 @@ fn view_org_users_search_results(
             [
               attribute.class("not-permitted"),
             ],
-            [text(i18n_t(model, i18n_text.NotPermitted))],
+            [text(update_helpers.i18n_t(model, i18n_text.NotPermitted))],
           )
         False -> div([attribute.class("error")], [text(err.message)])
       }
@@ -5476,17 +5472,17 @@ fn view_org_users_search_results(
       case users {
         [] ->
           div([attribute.class("empty")], [
-            text(i18n_t(model, i18n_text.NoResults)),
+            text(update_helpers.i18n_t(model, i18n_text.NoResults)),
           ])
 
         _ ->
           table([attribute.class("table")], [
             thead([], [
               tr([], [
-                th([], [text(i18n_t(model, i18n_text.EmailLabel))]),
-                th([], [text(i18n_t(model, i18n_text.OrgRole))]),
-                th([], [text(i18n_t(model, i18n_text.Created))]),
-                th([], [text(i18n_t(model, i18n_text.Select))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.OrgRole))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.Created))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.Select))]),
               ]),
             ]),
             tbody(
@@ -5498,7 +5494,7 @@ fn view_org_users_search_results(
                   td([], [text(u.created_at)]),
                   td([], [
                     button([event.on_click(MemberAddUserSelected(u.id))], [
-                      text(i18n_t(model, i18n_text.Select)),
+                      text(update_helpers.i18n_t(model, i18n_text.Select)),
                     ]),
                   ]),
                 ])
@@ -5516,9 +5512,9 @@ fn view_remove_member_dialog(
 ) -> Element(Msg) {
   div([attribute.class("modal")], [
     div([attribute.class("modal-content")], [
-      h3([], [text(i18n_t(model, i18n_text.RemoveMemberTitle))]),
+      h3([], [text(update_helpers.i18n_t(model, i18n_text.RemoveMemberTitle))]),
       p([], [
-        text(i18n_t(
+        text(update_helpers.i18n_t(
           model,
           i18n_text.RemoveMemberConfirm(user.email, project_name),
         )),
@@ -5529,7 +5525,7 @@ fn view_remove_member_dialog(
       },
       div([attribute.class("actions")], [
         button([event.on_click(MemberRemoveCancelled)], [
-          text(i18n_t(model, i18n_text.Cancel)),
+          text(update_helpers.i18n_t(model, i18n_text.Cancel)),
         ]),
         button(
           [
@@ -5538,8 +5534,8 @@ fn view_remove_member_dialog(
           ],
           [
             text(case model.members_remove_in_flight {
-              True -> i18n_t(model, i18n_text.Removing)
-              False -> i18n_t(model, i18n_text.Remove)
+              True -> update_helpers.i18n_t(model, i18n_text.Removing)
+              False -> update_helpers.i18n_t(model, i18n_text.Remove)
             }),
           ],
         ),
@@ -5555,22 +5551,22 @@ fn view_task_types(
   case selected_project {
     opt.None ->
       div([attribute.class("empty")], [
-        text(i18n_t(model, i18n_text.SelectProjectToManageTaskTypes)),
+        text(update_helpers.i18n_t(model, i18n_text.SelectProjectToManageTaskTypes)),
       ])
 
     opt.Some(project) ->
       div([attribute.class("section")], [
-        h2([], [text(i18n_t(model, i18n_text.TaskTypesTitle(project.name)))]),
+        h2([], [text(update_helpers.i18n_t(model, i18n_text.TaskTypesTitle(project.name)))]),
         view_task_types_list(model, model.task_types, model.theme),
         hr([]),
-        h3([], [text(i18n_t(model, i18n_text.CreateTaskType))]),
+        h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateTaskType))]),
         case model.task_types_create_error {
           opt.Some(err) -> div([attribute.class("error")], [text(err)])
           opt.None -> div([], [])
         },
         form([event.on_submit(fn(_) { TaskTypeCreateSubmitted })], [
           div([attribute.class("field")], [
-            label([], [text(i18n_t(model, i18n_text.Name))]),
+            label([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
             input([
               attribute.type_("text"),
               attribute.value(model.task_types_create_name),
@@ -5579,14 +5575,14 @@ fn view_task_types(
             ]),
           ]),
           div([attribute.class("field")], [
-            label([], [text(i18n_t(model, i18n_text.Icon))]),
+            label([], [text(update_helpers.i18n_t(model, i18n_text.Icon))]),
             div([attribute.class("icon-row")], [
               input([
                 attribute.type_("text"),
                 attribute.value(model.task_types_create_icon),
                 event.on_input(TaskTypeCreateIconChanged),
                 attribute.required(True),
-                attribute.placeholder(i18n_t(
+                attribute.placeholder(update_helpers.i18n_t(
                   model,
                   i18n_text.HeroiconSearchPlaceholder,
                 )),
@@ -5597,13 +5593,13 @@ fn view_task_types(
             case model.task_types_icon_preview {
               IconError ->
                 div([attribute.class("error")], [
-                  text(i18n_t(model, i18n_text.UnknownIcon)),
+                  text(update_helpers.i18n_t(model, i18n_text.UnknownIcon)),
                 ])
               _ -> div([], [])
             },
           ]),
           div([attribute.class("field")], [
-            label([], [text(i18n_t(model, i18n_text.CapabilityOptional))]),
+            label([], [text(update_helpers.i18n_t(model, i18n_text.CapabilityOptional))]),
             view_capability_selector(
               model,
               model.capabilities,
@@ -5620,8 +5616,8 @@ fn view_task_types(
             ],
             [
               text(case model.task_types_create_in_flight {
-                True -> i18n_t(model, i18n_text.Creating)
-                False -> i18n_t(model, i18n_text.Create)
+                True -> update_helpers.i18n_t(model, i18n_text.Creating)
+                False -> update_helpers.i18n_t(model, i18n_text.Create)
               }),
             ],
           ),
@@ -5774,7 +5770,7 @@ fn view_capability_selector(
           event.on_input(TaskTypeCreateCapabilityChanged),
         ],
         [
-          option([attribute.value("")], i18n_t(model, i18n_text.NoneOption)),
+          option([attribute.value("")], update_helpers.i18n_t(model, i18n_text.NoneOption)),
           ..list.map(capabilities, fn(c) {
             option([attribute.value(int.to_string(c.id))], c.name)
           })
@@ -5787,7 +5783,7 @@ fn view_capability_selector(
         [
           attribute.class("empty"),
         ],
-        [text(i18n_t(model, i18n_text.LoadingCapabilities))],
+        [text(update_helpers.i18n_t(model, i18n_text.LoadingCapabilities))],
       )
   }
 }
@@ -5800,7 +5796,7 @@ fn view_task_types_list(
   case task_types {
     NotAsked | Loading ->
       div([attribute.class("empty")], [
-        text(i18n_t(model, i18n_text.LoadingEllipsis)),
+        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
       ])
 
     Failed(err) ->
@@ -5810,7 +5806,7 @@ fn view_task_types_list(
             [
               attribute.class("not-permitted"),
             ],
-            [text(i18n_t(model, i18n_text.NotPermitted))],
+            [text(update_helpers.i18n_t(model, i18n_text.NotPermitted))],
           )
         False -> div([attribute.class("error")], [text(err.message)])
       }
@@ -5819,17 +5815,17 @@ fn view_task_types_list(
       case task_types {
         [] ->
           div([attribute.class("empty")], [
-            h2([], [text(i18n_t(model, i18n_text.NoTaskTypesYet))]),
-            p([], [text(i18n_t(model, i18n_text.TaskTypesExplain))]),
-            p([], [text(i18n_t(model, i18n_text.CreateFirstTaskTypeHint))]),
+            h2([], [text(update_helpers.i18n_t(model, i18n_text.NoTaskTypesYet))]),
+            p([], [text(update_helpers.i18n_t(model, i18n_text.TaskTypesExplain))]),
+            p([], [text(update_helpers.i18n_t(model, i18n_text.CreateFirstTaskTypeHint))]),
           ])
         _ ->
           table([attribute.class("table")], [
             thead([], [
               tr([], [
-                th([], [text(i18n_t(model, i18n_text.Name))]),
-                th([], [text(i18n_t(model, i18n_text.Icon))]),
-                th([], [text(i18n_t(model, i18n_text.CapabilityLabel))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.Icon))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.CapabilityLabel))]),
               ]),
             ]),
             tbody(
@@ -5915,7 +5911,7 @@ fn view_member_topbar(model: Model, user: User) -> Element(Msg) {
   div([attribute.class("topbar")], [
     div([attribute.class("topbar-title")], [
       text(
-        i18n_t(model, case model.member_section {
+        update_helpers.i18n_t(model, case model.member_section {
           member_section.Pool -> i18n_text.Pool
           member_section.MyBar -> i18n_text.MyBar
           member_section.MySkills -> i18n_text.MySkills
@@ -5933,14 +5929,14 @@ fn view_member_topbar(model: Model, user: User) -> Element(Msg) {
                 Push,
               )),
             ],
-            [text(i18n_t(model, i18n_text.Admin))],
+            [text(update_helpers.i18n_t(model, i18n_text.Admin))],
           )
         _ -> div([], [])
       },
       view_theme_switch(model),
       span([attribute.class("user")], [text(user.email)]),
       button([event.on_click(LogoutClicked)], [
-        text(i18n_t(model, i18n_text.Logout)),
+        text(update_helpers.i18n_t(model, i18n_text.Logout)),
       ]),
     ]),
   ])
@@ -5955,13 +5951,13 @@ fn view_now_working_panel(model: Model, _user: User) -> Element(Msg) {
   case model.member_active_task {
     Loading ->
       div([attribute.class("now-working")], [
-        text(i18n_t(model, i18n_text.NowWorkingLoading)),
+        text(update_helpers.i18n_t(model, i18n_text.NowWorkingLoading)),
       ])
 
     Failed(err) ->
       div([attribute.class("now-working")], [
         div([attribute.class("now-working-error")], [
-          text(i18n_t(model, i18n_text.NowWorkingErrorPrefix) <> err.message),
+          text(update_helpers.i18n_t(model, i18n_text.NowWorkingErrorPrefix) <> err.message),
         ]),
       ])
 
@@ -5972,7 +5968,7 @@ fn view_now_working_panel(model: Model, _user: User) -> Element(Msg) {
         opt.None ->
           div([attribute.class("now-working")], [
             div([attribute.class("now-working-empty")], [
-              text(i18n_t(model, i18n_text.NowWorkingNone)),
+              text(update_helpers.i18n_t(model, i18n_text.NowWorkingNone)),
             ]),
             error,
           ])
@@ -5980,7 +5976,7 @@ fn view_now_working_panel(model: Model, _user: User) -> Element(Msg) {
         opt.Some(api.ActiveTask(task_id: task_id, ..)) -> {
           let title = case update_helpers.find_task_by_id(model.member_tasks, task_id) {
             opt.Some(api.Task(title: title, ..)) -> title
-            opt.None -> i18n_t(model, i18n_text.TaskNumber(task_id))
+            opt.None -> update_helpers.i18n_t(model, i18n_text.TaskNumber(task_id))
           }
 
           let disable_actions =
@@ -5994,7 +5990,7 @@ fn view_now_working_panel(model: Model, _user: User) -> Element(Msg) {
                 attribute.disabled(disable_actions),
                 event.on_click(MemberNowWorkingPauseClicked),
               ],
-              [text(i18n_t(model, i18n_text.Pause))],
+              [text(update_helpers.i18n_t(model, i18n_text.Pause))],
             )
 
           let task_actions = case update_helpers.find_task_by_id(model.member_tasks, task_id) {
@@ -6005,7 +6001,7 @@ fn view_now_working_panel(model: Model, _user: User) -> Element(Msg) {
                   attribute.disabled(disable_actions),
                   event.on_click(MemberCompleteClicked(task_id, version)),
                 ],
-                [text(i18n_t(model, i18n_text.Complete))],
+                [text(update_helpers.i18n_t(model, i18n_text.Complete))],
               ),
               button(
                 [
@@ -6013,7 +6009,7 @@ fn view_now_working_panel(model: Model, _user: User) -> Element(Msg) {
                   attribute.disabled(disable_actions),
                   event.on_click(MemberReleaseClicked(task_id, version)),
                 ],
-                [text(i18n_t(model, i18n_text.Release))],
+                [text(update_helpers.i18n_t(model, i18n_text.Release))],
               ),
             ]
 
@@ -6062,9 +6058,9 @@ fn view_pool_right_panel(model: Model, user: User) -> Element(Msg) {
   }
 
   div([], [
-    h3([], [text(i18n_t(model, i18n_text.NowWorking))]),
+    h3([], [text(update_helpers.i18n_t(model, i18n_text.NowWorking))]),
     view_now_working_panel(model, user),
-    h3([], [text(i18n_t(model, i18n_text.MyTasks))]),
+    h3([], [text(update_helpers.i18n_t(model, i18n_text.MyTasks))]),
     // Drop-to-claim target (optional UX): we wrap the My Tasks area so we can
     // measure it and highlight it while dragging.
     div(
@@ -6077,9 +6073,9 @@ fn view_pool_right_panel(model: Model, user: User) -> Element(Msg) {
           True ->
             div([attribute.class("dropzone-hint")], [
               text(
-                i18n_t(model, i18n_text.Claim)
+                update_helpers.i18n_t(model, i18n_text.Claim)
                 <> ": "
-                <> i18n_t(model, i18n_text.MyTasks),
+                <> update_helpers.i18n_t(model, i18n_text.MyTasks),
               ),
             ])
           False -> div([], [])
@@ -6087,7 +6083,7 @@ fn view_pool_right_panel(model: Model, user: User) -> Element(Msg) {
         case claimed_tasks {
           [] ->
             div([attribute.class("empty")], [
-              text(i18n_t(model, i18n_text.NoClaimedTasks)),
+              text(update_helpers.i18n_t(model, i18n_text.NoClaimedTasks)),
             ])
           _ ->
             div(
@@ -6117,7 +6113,7 @@ fn view_member_nav(model: Model) -> Element(Msg) {
   }
 
   div([attribute.class("nav")], [
-    h3([], [text(i18n_t(model, i18n_text.AppSectionTitle))]),
+    h3([], [text(update_helpers.i18n_t(model, i18n_text.AppSectionTitle))]),
     div([], items),
   ])
 }
@@ -6140,7 +6136,7 @@ fn view_member_nav_button(
         Push,
       )),
     ],
-    [text(i18n_t(model, label))],
+    [text(update_helpers.i18n_t(model, label))],
   )
 }
 
@@ -6156,14 +6152,14 @@ fn view_member_pool_main(model: Model, _user: User) -> Element(Msg) {
   case update_helpers.active_projects(model) {
     [] ->
       div([attribute.class("empty")], [
-        h2([], [text(i18n_t(model, i18n_text.NoProjectsYet))]),
-        p([], [text(i18n_t(model, i18n_text.NoProjectsBody))]),
+        h2([], [text(update_helpers.i18n_t(model, i18n_text.NoProjectsYet))]),
+        p([], [text(update_helpers.i18n_t(model, i18n_text.NoProjectsBody))]),
       ])
 
     _ -> {
       let filters_toggle_label = case model.member_pool_filters_visible {
-        True -> i18n_t(model, i18n_text.HideFilters)
-        False -> i18n_t(model, i18n_text.ShowFilters)
+        True -> update_helpers.i18n_t(model, i18n_text.HideFilters)
+        False -> update_helpers.i18n_t(model, i18n_text.ShowFilters)
       }
 
       let canvas_classes = case model.member_pool_view_mode {
@@ -6190,29 +6186,29 @@ fn view_member_pool_main(model: Model, _user: User) -> Element(Msg) {
               attribute.class(canvas_classes),
               attribute.attribute(
                 "aria-label",
-                i18n_t(model, i18n_text.ViewCanvas),
+                update_helpers.i18n_t(model, i18n_text.ViewCanvas),
               ),
               event.on_click(MemberPoolViewModeSet(pool_prefs.Canvas)),
             ],
-            [text(i18n_t(model, i18n_text.Canvas))],
+            [text(update_helpers.i18n_t(model, i18n_text.Canvas))],
           ),
           button(
             [
               attribute.class(list_classes),
               attribute.attribute(
                 "aria-label",
-                i18n_t(model, i18n_text.ViewList),
+                update_helpers.i18n_t(model, i18n_text.ViewList),
               ),
               event.on_click(MemberPoolViewModeSet(pool_prefs.List)),
             ],
-            [text(i18n_t(model, i18n_text.List))],
+            [text(update_helpers.i18n_t(model, i18n_text.List))],
           ),
           button(
             [
               attribute.class("btn-xs"),
               event.on_click(MemberCreateDialogOpened),
             ],
-            [text(i18n_t(model, i18n_text.NewTaskShortcut))],
+            [text(update_helpers.i18n_t(model, i18n_text.NewTaskShortcut))],
           ),
         ]),
         case model.member_pool_filters_visible {
@@ -6240,24 +6236,24 @@ fn view_member_pool_main(model: Model, _user: User) -> Element(Msg) {
 fn view_member_filters(model: Model) -> Element(Msg) {
   let type_options = case model.member_task_types {
     Loaded(task_types) -> [
-      option([attribute.value("")], i18n_t(model, i18n_text.AllOption)),
+      option([attribute.value("")], update_helpers.i18n_t(model, i18n_text.AllOption)),
       ..list.map(task_types, fn(tt) {
         option([attribute.value(int.to_string(tt.id))], tt.name)
       })
     ]
 
-    _ -> [option([attribute.value("")], i18n_t(model, i18n_text.AllOption))]
+    _ -> [option([attribute.value("")], update_helpers.i18n_t(model, i18n_text.AllOption))]
   }
 
   let capability_options = case model.capabilities {
     Loaded(caps) -> [
-      option([attribute.value("")], i18n_t(model, i18n_text.AllOption)),
+      option([attribute.value("")], update_helpers.i18n_t(model, i18n_text.AllOption)),
       ..list.map(caps, fn(c) {
         option([attribute.value(int.to_string(c.id))], c.name)
       })
     ]
 
-    _ -> [option([attribute.value("")], i18n_t(model, i18n_text.AllOption))]
+    _ -> [option([attribute.value("")], update_helpers.i18n_t(model, i18n_text.AllOption))]
   }
 
   let my_caps_active = model.member_quick_my_caps
@@ -6270,12 +6266,12 @@ fn view_member_filters(model: Model) -> Element(Msg) {
   div([attribute.class("filters-row")], [
     div([attribute.class("field")], [
       span([attribute.class("filter-tooltip")], [
-        text(i18n_t(model, i18n_text.TypeLabel)),
+        text(update_helpers.i18n_t(model, i18n_text.TypeLabel)),
       ]),
       span(
         [
           attribute.class("filter-icon"),
-          attribute.attribute("title", i18n_t(model, i18n_text.TypeLabel)),
+          attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.TypeLabel)),
           attribute.attribute("aria-hidden", "true"),
         ],
         [text("🏷")],
@@ -6285,12 +6281,12 @@ fn view_member_filters(model: Model) -> Element(Msg) {
           attribute.class("filter-label"),
           attribute.attribute("for", "pool-filter-type"),
         ],
-        [text(i18n_t(model, i18n_text.TypeLabel))],
+        [text(update_helpers.i18n_t(model, i18n_text.TypeLabel))],
       ),
       select(
         [
           attribute.attribute("id", "pool-filter-type"),
-          attribute.attribute("aria-label", i18n_t(model, i18n_text.TypeLabel)),
+          attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.TypeLabel)),
           attribute.value(model.member_filters_type_id),
           event.on_input(MemberPoolTypeChanged),
           attribute.disabled(case model.member_task_types {
@@ -6303,12 +6299,12 @@ fn view_member_filters(model: Model) -> Element(Msg) {
     ]),
     div([attribute.class("field")], [
       span([attribute.class("filter-tooltip")], [
-        text(i18n_t(model, i18n_text.CapabilityLabel)),
+        text(update_helpers.i18n_t(model, i18n_text.CapabilityLabel)),
       ]),
       span(
         [
           attribute.class("filter-icon"),
-          attribute.attribute("title", i18n_t(model, i18n_text.CapabilityLabel)),
+          attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.CapabilityLabel)),
           attribute.attribute("aria-hidden", "true"),
         ],
         [text("🎯")],
@@ -6318,14 +6314,14 @@ fn view_member_filters(model: Model) -> Element(Msg) {
           attribute.class("filter-label"),
           attribute.attribute("for", "pool-filter-capability"),
         ],
-        [text(i18n_t(model, i18n_text.CapabilityLabel))],
+        [text(update_helpers.i18n_t(model, i18n_text.CapabilityLabel))],
       ),
       select(
         [
           attribute.attribute("id", "pool-filter-capability"),
           attribute.attribute(
             "aria-label",
-            i18n_t(model, i18n_text.CapabilityLabel),
+            update_helpers.i18n_t(model, i18n_text.CapabilityLabel),
           ),
           attribute.value(model.member_filters_capability_id),
           event.on_input(MemberPoolCapabilityChanged),
@@ -6335,36 +6331,36 @@ fn view_member_filters(model: Model) -> Element(Msg) {
     ]),
     div([attribute.class("field")], [
       span([attribute.class("filter-tooltip")], [
-        text(i18n_t(model, i18n_text.MyCapabilitiesLabel)),
+        text(update_helpers.i18n_t(model, i18n_text.MyCapabilitiesLabel)),
       ]),
       span(
         [
           attribute.class("filter-icon"),
           attribute.attribute(
             "title",
-            i18n_t(model, i18n_text.MyCapabilitiesLabel),
+            update_helpers.i18n_t(model, i18n_text.MyCapabilitiesLabel),
           ),
           attribute.attribute("aria-hidden", "true"),
         ],
         [text("★")],
       ),
       label([attribute.class("filter-label")], [
-        text(i18n_t(model, i18n_text.MyCapabilitiesLabel)),
+        text(update_helpers.i18n_t(model, i18n_text.MyCapabilitiesLabel)),
       ]),
       button(
         [
           attribute.class(my_caps_class),
           attribute.attribute(
             "title",
-            i18n_t(model, i18n_text.MyCapabilitiesLabel),
+            update_helpers.i18n_t(model, i18n_text.MyCapabilitiesLabel),
           ),
           attribute.attribute(
             "aria-label",
-            i18n_t(model, i18n_text.MyCapabilitiesLabel)
+            update_helpers.i18n_t(model, i18n_text.MyCapabilitiesLabel)
               <> ": "
               <> case my_caps_active {
-              True -> i18n_t(model, i18n_text.MyCapabilitiesOn)
-              False -> i18n_t(model, i18n_text.MyCapabilitiesOff)
+              True -> update_helpers.i18n_t(model, i18n_text.MyCapabilitiesOn)
+              False -> update_helpers.i18n_t(model, i18n_text.MyCapabilitiesOff)
             },
           ),
           event.on_click(MemberToggleMyCapabilitiesQuick),
@@ -6380,12 +6376,12 @@ fn view_member_filters(model: Model) -> Element(Msg) {
 
     div([attribute.class("field filter-q")], [
       span([attribute.class("filter-tooltip")], [
-        text(i18n_t(model, i18n_text.SearchLabel)),
+        text(update_helpers.i18n_t(model, i18n_text.SearchLabel)),
       ]),
       span(
         [
           attribute.class("filter-icon"),
-          attribute.attribute("title", i18n_t(model, i18n_text.SearchLabel)),
+          attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.SearchLabel)),
           attribute.attribute("aria-hidden", "true"),
         ],
         [text("⌕")],
@@ -6395,16 +6391,16 @@ fn view_member_filters(model: Model) -> Element(Msg) {
           attribute.class("filter-label"),
           attribute.attribute("for", "pool-filter-q"),
         ],
-        [text(i18n_t(model, i18n_text.SearchLabel))],
+        [text(update_helpers.i18n_t(model, i18n_text.SearchLabel))],
       ),
       input([
         attribute.attribute("id", "pool-filter-q"),
-        attribute.attribute("aria-label", i18n_t(model, i18n_text.SearchLabel)),
+        attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.SearchLabel)),
         attribute.type_("text"),
         attribute.value(model.member_filters_q),
         event.on_input(MemberPoolSearchChanged),
         event.debounce(event.on_input(MemberPoolSearchDebounced), 350),
-        attribute.placeholder(i18n_t(model, i18n_text.SearchPlaceholder)),
+        attribute.placeholder(update_helpers.i18n_t(model, i18n_text.SearchPlaceholder)),
       ]),
     ]),
   ])
@@ -6414,7 +6410,7 @@ fn view_member_tasks(model: Model) -> Element(Msg) {
   case model.member_tasks {
     NotAsked | Loading ->
       div([attribute.class("empty")], [
-        text(i18n_t(model, i18n_text.LoadingEllipsis)),
+        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
       ])
     Failed(err) -> div([attribute.class("error")], [text(err.message)])
 
@@ -6436,18 +6432,18 @@ fn view_member_tasks(model: Model) -> Element(Msg) {
           case no_filters {
             True ->
               div([attribute.class("empty")], [
-                h2([], [text(i18n_t(model, i18n_text.NoAvailableTasksRightNow))]),
+                h2([], [text(update_helpers.i18n_t(model, i18n_text.NoAvailableTasksRightNow))]),
                 p([], [
-                  text(i18n_t(model, i18n_text.CreateFirstTaskToStartUsingPool)),
+                  text(update_helpers.i18n_t(model, i18n_text.CreateFirstTaskToStartUsingPool)),
                 ]),
                 button([event.on_click(MemberCreateDialogOpened)], [
-                  text(i18n_t(model, i18n_text.NewTask)),
+                  text(update_helpers.i18n_t(model, i18n_text.NewTask)),
                 ]),
               ])
 
             False ->
               div([attribute.class("empty")], [
-                text(i18n_t(model, i18n_text.NoTasksMatchYourFilters)),
+                text(update_helpers.i18n_t(model, i18n_text.NoTasksMatchYourFilters)),
               ])
           }
         }
@@ -6506,8 +6502,8 @@ fn view_member_pool_task_row(model: Model, task: api.Task) -> Element(Msg) {
     button(
       [
         attribute.class("btn-xs btn-icon"),
-        attribute.attribute("title", i18n_t(model, i18n_text.Claim)),
-        attribute.attribute("aria-label", i18n_t(model, i18n_text.Claim)),
+        attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.Claim)),
+        attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Claim)),
         event.on_click(MemberClaimClicked(id, version)),
         attribute.disabled(disable_actions),
       ],
@@ -6518,7 +6514,7 @@ fn view_member_pool_task_row(model: Model, task: api.Task) -> Element(Msg) {
     div([], [
       div([attribute.class("task-row-title")], [text(title)]),
       div([attribute.class("task-row-meta")], [
-        text(i18n_t(model, i18n_text.MetaType)),
+        text(update_helpers.i18n_t(model, i18n_text.MetaType)),
         case type_icon {
           opt.Some(icon) ->
             span([attribute.attribute("style", "margin-right:4px;")], [
@@ -6527,10 +6523,10 @@ fn view_member_pool_task_row(model: Model, task: api.Task) -> Element(Msg) {
         },
         text(type_label),
         text(" · "),
-        text(i18n_t(model, i18n_text.MetaPriority)),
+        text(update_helpers.i18n_t(model, i18n_text.MetaPriority)),
         text(int.to_string(priority)),
         text(" · "),
-        text(i18n_t(model, i18n_text.MetaCreated)),
+        text(update_helpers.i18n_t(model, i18n_text.MetaCreated)),
         text(created_at),
       ]),
     ]),
@@ -6612,8 +6608,8 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
       button(
         [
           attribute.class("btn-xs btn-icon"),
-          attribute.attribute("title", i18n_t(model, i18n_text.Claim)),
-          attribute.attribute("aria-label", i18n_t(model, i18n_text.Claim)),
+          attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.Claim)),
+          attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Claim)),
           event.on_click(MemberClaimClicked(id, version)),
           attribute.disabled(disable_actions),
         ],
@@ -6624,8 +6620,8 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
       button(
         [
           attribute.class("btn-xs btn-icon"),
-          attribute.attribute("title", i18n_t(model, i18n_text.Release)),
-          attribute.attribute("aria-label", i18n_t(model, i18n_text.Release)),
+          attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.Release)),
+          attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Release)),
           event.on_click(MemberReleaseClicked(id, version)),
           attribute.disabled(disable_actions),
         ],
@@ -6639,8 +6635,8 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
     button(
       [
         attribute.class("btn-xs btn-icon secondary-action drag-handle"),
-        attribute.attribute("title", i18n_t(model, i18n_text.Drag)),
-        attribute.attribute("aria-label", i18n_t(model, i18n_text.Drag)),
+        attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.Drag)),
+        attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Drag)),
         // Avoid accidental form submits if this ends up in a form.
         attribute.attribute("type", "button"),
         event.on("mousedown", {
@@ -6657,8 +6653,8 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
       button(
         [
           attribute.class("btn-xs btn-icon secondary-action"),
-          attribute.attribute("title", i18n_t(model, i18n_text.Complete)),
-          attribute.attribute("aria-label", i18n_t(model, i18n_text.Complete)),
+          attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.Complete)),
+          attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Complete)),
           event.on_click(MemberCompleteClicked(id, version)),
           attribute.disabled(disable_actions),
         ],
@@ -6712,17 +6708,17 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
         [
           div([attribute.class("task-preview-grid")], [
             span([attribute.class("task-preview-label")], [
-              text(i18n_t(model, i18n_text.PopoverType)),
+              text(update_helpers.i18n_t(model, i18n_text.PopoverType)),
             ]),
             span([attribute.class("task-preview-value")], [text(type_label)]),
             span([attribute.class("task-preview-label")], [
-              text(i18n_t(model, i18n_text.PopoverCreated)),
+              text(update_helpers.i18n_t(model, i18n_text.PopoverCreated)),
             ]),
             span([attribute.class("task-preview-value")], [
-              text(i18n_t(model, i18n_text.CreatedAgoDays(age_days))),
+              text(update_helpers.i18n_t(model, i18n_text.CreatedAgoDays(age_days))),
             ]),
             span([attribute.class("task-preview-label")], [
-              text(i18n_t(model, i18n_text.PopoverStatus)),
+              text(update_helpers.i18n_t(model, i18n_text.PopoverStatus)),
             ]),
             span([attribute.class("task-preview-value")], [
               span(
@@ -6745,13 +6741,13 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
 fn view_member_create_dialog(model: Model) -> Element(Msg) {
   div([attribute.class("modal")], [
     div([attribute.class("modal-content")], [
-      h3([], [text(i18n_t(model, i18n_text.NewTask))]),
+      h3([], [text(update_helpers.i18n_t(model, i18n_text.NewTask))]),
       case model.member_create_error {
         opt.Some(err) -> div([attribute.class("error")], [text(err)])
         opt.None -> div([], [])
       },
       div([attribute.class("field")], [
-        label([], [text(i18n_t(model, i18n_text.Title))]),
+        label([], [text(update_helpers.i18n_t(model, i18n_text.Title))]),
         input([
           attribute.type_("text"),
           attribute.attribute("maxlength", "56"),
@@ -6760,7 +6756,7 @@ fn view_member_create_dialog(model: Model) -> Element(Msg) {
         ]),
       ]),
       div([attribute.class("field")], [
-        label([], [text(i18n_t(model, i18n_text.Description))]),
+        label([], [text(update_helpers.i18n_t(model, i18n_text.Description))]),
         input([
           attribute.type_("text"),
           attribute.value(model.member_create_description),
@@ -6768,7 +6764,7 @@ fn view_member_create_dialog(model: Model) -> Element(Msg) {
         ]),
       ]),
       div([attribute.class("field")], [
-        label([], [text(i18n_t(model, i18n_text.Priority))]),
+        label([], [text(update_helpers.i18n_t(model, i18n_text.Priority))]),
         input([
           attribute.type_("number"),
           attribute.value(model.member_create_priority),
@@ -6776,7 +6772,7 @@ fn view_member_create_dialog(model: Model) -> Element(Msg) {
         ]),
       ]),
       div([attribute.class("field")], [
-        label([], [text(i18n_t(model, i18n_text.TypeLabel))]),
+        label([], [text(update_helpers.i18n_t(model, i18n_text.TypeLabel))]),
         select(
           [
             attribute.value(model.member_create_type_id),
@@ -6784,7 +6780,7 @@ fn view_member_create_dialog(model: Model) -> Element(Msg) {
           ],
           case model.member_task_types {
             Loaded(task_types) -> [
-              option([attribute.value("")], i18n_t(model, i18n_text.SelectType)),
+              option([attribute.value("")], update_helpers.i18n_t(model, i18n_text.SelectType)),
               ..list.map(task_types, fn(tt) {
                 option([attribute.value(int.to_string(tt.id))], tt.name)
               })
@@ -6792,7 +6788,7 @@ fn view_member_create_dialog(model: Model) -> Element(Msg) {
             _ -> [
               option(
                 [attribute.value("")],
-                i18n_t(model, i18n_text.LoadingEllipsis),
+                update_helpers.i18n_t(model, i18n_text.LoadingEllipsis),
               ),
             ]
           },
@@ -6800,7 +6796,7 @@ fn view_member_create_dialog(model: Model) -> Element(Msg) {
       ]),
       div([attribute.class("actions")], [
         button([event.on_click(MemberCreateDialogClosed)], [
-          text(i18n_t(model, i18n_text.Cancel)),
+          text(update_helpers.i18n_t(model, i18n_text.Cancel)),
         ]),
         button(
           [
@@ -6809,8 +6805,8 @@ fn view_member_create_dialog(model: Model) -> Element(Msg) {
           ],
           [
             text(case model.member_create_in_flight {
-              True -> i18n_t(model, i18n_text.Creating)
-              False -> i18n_t(model, i18n_text.Create)
+              True -> update_helpers.i18n_t(model, i18n_text.Creating)
+              False -> update_helpers.i18n_t(model, i18n_text.Create)
             }),
           ],
         ),
@@ -6862,18 +6858,18 @@ fn view_member_metrics_panel(model: Model) -> Element(Msg) {
   case model.member_metrics {
     NotAsked | Loading ->
       div([attribute.class("panel")], [
-        h3([], [text(i18n_t(model, i18n_text.MyMetrics))]),
+        h3([], [text(update_helpers.i18n_t(model, i18n_text.MyMetrics))]),
         div(
           [
             attribute.class("loading"),
           ],
-          [text(i18n_t(model, i18n_text.LoadingMetrics))],
+          [text(update_helpers.i18n_t(model, i18n_text.LoadingMetrics))],
         ),
       ])
 
     Failed(err) ->
       div([attribute.class("panel")], [
-        h3([], [text(i18n_t(model, i18n_text.MyMetrics))]),
+        h3([], [text(update_helpers.i18n_t(model, i18n_text.MyMetrics))]),
         div([attribute.class("error")], [text(err.message)]),
       ])
 
@@ -6886,14 +6882,14 @@ fn view_member_metrics_panel(model: Model) -> Element(Msg) {
       ) = metrics
 
       div([attribute.class("panel")], [
-        h3([], [text(i18n_t(model, i18n_text.MyMetrics))]),
-        p([], [text(i18n_t(model, i18n_text.WindowDays(window_days)))]),
+        h3([], [text(update_helpers.i18n_t(model, i18n_text.MyMetrics))]),
+        p([], [text(update_helpers.i18n_t(model, i18n_text.WindowDays(window_days)))]),
         table([attribute.class("table")], [
           thead([], [
             tr([], [
-              th([], [text(i18n_t(model, i18n_text.Claimed))]),
-              th([], [text(i18n_t(model, i18n_text.Released))]),
-              th([], [text(i18n_t(model, i18n_text.Completed))]),
+              th([], [text(update_helpers.i18n_t(model, i18n_text.Claimed))]),
+              th([], [text(update_helpers.i18n_t(model, i18n_text.Released))]),
+              th([], [text(update_helpers.i18n_t(model, i18n_text.Completed))]),
             ]),
           ]),
           tbody([], [
@@ -6913,15 +6909,15 @@ fn view_member_bar(model: Model, user: User) -> Element(Msg) {
   case update_helpers.active_projects(model) {
     [] ->
       div([attribute.class("empty")], [
-        h2([], [text(i18n_t(model, i18n_text.NoProjectsYet))]),
-        p([], [text(i18n_t(model, i18n_text.NoProjectsBody))]),
+        h2([], [text(update_helpers.i18n_t(model, i18n_text.NoProjectsYet))]),
+        p([], [text(update_helpers.i18n_t(model, i18n_text.NoProjectsBody))]),
       ])
 
     _ ->
       case model.member_tasks {
         NotAsked | Loading ->
           div([attribute.class("empty")], [
-            text(i18n_t(model, i18n_text.LoadingEllipsis)),
+            text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
           ])
 
         Failed(err) -> div([attribute.class("error")], [text(err.message)])
@@ -6940,7 +6936,7 @@ fn view_member_bar(model: Model, user: User) -> Element(Msg) {
             case mine {
               [] ->
                 div([attribute.class("empty")], [
-                  text(i18n_t(model, i18n_text.NoClaimedTasks)),
+                  text(update_helpers.i18n_t(model, i18n_text.NoClaimedTasks)),
                 ])
 
               _ ->
@@ -6988,8 +6984,8 @@ fn view_member_bar_task_row(
     button(
       [
         attribute.class("btn-xs btn-icon"),
-        attribute.attribute("title", i18n_t(model, i18n_text.Claim)),
-        attribute.attribute("aria-label", i18n_t(model, i18n_text.Claim)),
+        attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.Claim)),
+        attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Claim)),
         event.on_click(MemberClaimClicked(id, version)),
         attribute.disabled(disable_actions),
       ],
@@ -7000,9 +6996,9 @@ fn view_member_bar_task_row(
     button(
       [
         attribute.class("btn-xs btn-icon"),
-        attribute.attribute("data-tooltip", i18n_t(model, i18n_text.Release)),
-        attribute.attribute("title", i18n_t(model, i18n_text.Release)),
-        attribute.attribute("aria-label", i18n_t(model, i18n_text.Release)),
+        attribute.attribute("data-tooltip", update_helpers.i18n_t(model, i18n_text.Release)),
+        attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.Release)),
+        attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Release)),
         event.on_click(MemberReleaseClicked(id, version)),
         attribute.disabled(disable_actions),
       ],
@@ -7013,9 +7009,9 @@ fn view_member_bar_task_row(
     button(
       [
         attribute.class("btn-xs btn-icon"),
-        attribute.attribute("data-tooltip", i18n_t(model, i18n_text.Complete)),
-        attribute.attribute("title", i18n_t(model, i18n_text.Complete)),
-        attribute.attribute("aria-label", i18n_t(model, i18n_text.Complete)),
+        attribute.attribute("data-tooltip", update_helpers.i18n_t(model, i18n_text.Complete)),
+        attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.Complete)),
+        attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Complete)),
         event.on_click(MemberCompleteClicked(id, version)),
         attribute.disabled(disable_actions),
       ],
@@ -7026,30 +7022,30 @@ fn view_member_bar_task_row(
     button(
       [
         attribute.class("btn-xs"),
-        attribute.attribute("title", i18n_t(model, i18n_text.StartNowWorking)),
+        attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.StartNowWorking)),
         attribute.attribute(
           "aria-label",
-          i18n_t(model, i18n_text.StartNowWorking),
+          update_helpers.i18n_t(model, i18n_text.StartNowWorking),
         ),
         event.on_click(MemberNowWorkingStartClicked(id)),
         attribute.disabled(disable_actions),
       ],
-      [text(i18n_t(model, i18n_text.Start))],
+      [text(update_helpers.i18n_t(model, i18n_text.Start))],
     )
 
   let pause_action =
     button(
       [
         attribute.class("btn-xs"),
-        attribute.attribute("title", i18n_t(model, i18n_text.PauseNowWorking)),
+        attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.PauseNowWorking)),
         attribute.attribute(
           "aria-label",
-          i18n_t(model, i18n_text.PauseNowWorking),
+          update_helpers.i18n_t(model, i18n_text.PauseNowWorking),
         ),
         event.on_click(MemberNowWorkingPauseClicked),
         attribute.disabled(disable_actions),
       ],
-      [text(i18n_t(model, i18n_text.Pause))],
+      [text(update_helpers.i18n_t(model, i18n_text.Pause))],
     )
 
   let is_active = update_helpers.now_working_active_task_id(model) == opt.Some(id)
@@ -7073,7 +7069,7 @@ fn view_member_bar_task_row(
     div([], [
       div([attribute.class("task-row-title")], [text(title)]),
       div([attribute.class("task-row-meta")], [
-        text(i18n_t(model, i18n_text.PriorityShort(priority))),
+        text(update_helpers.i18n_t(model, i18n_text.PriorityShort(priority))),
         text(" · "),
         case type_icon {
           opt.Some(icon) ->
@@ -7090,7 +7086,7 @@ fn view_member_bar_task_row(
 
 fn view_member_skills(model: Model) -> Element(Msg) {
   div([attribute.class("section")], [
-    h2([], [text(i18n_t(model, i18n_text.MySkills))]),
+    h2([], [text(update_helpers.i18n_t(model, i18n_text.MySkills))]),
     case model.member_my_capabilities_error {
       opt.Some(err) -> div([attribute.class("error")], [text(err)])
       opt.None -> div([], [])
@@ -7103,8 +7099,8 @@ fn view_member_skills(model: Model) -> Element(Msg) {
       ],
       [
         text(case model.member_my_capabilities_in_flight {
-          True -> i18n_t(model, i18n_text.Saving)
-          False -> i18n_t(model, i18n_text.Save)
+          True -> update_helpers.i18n_t(model, i18n_text.Saving)
+          False -> update_helpers.i18n_t(model, i18n_text.Save)
         }),
       ],
     ),
@@ -7143,7 +7139,7 @@ fn view_member_skills_list(model: Model) -> Element(Msg) {
         [
           attribute.class("empty"),
         ],
-        [text(i18n_t(model, i18n_text.LoadingEllipsis))],
+        [text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis))],
       )
   }
 }
@@ -7151,13 +7147,13 @@ fn view_member_skills_list(model: Model) -> Element(Msg) {
 fn view_member_position_edit(model: Model, _task_id: Int) -> Element(Msg) {
   div([attribute.class("modal")], [
     div([attribute.class("modal-content")], [
-      h3([], [text(i18n_t(model, i18n_text.EditPosition))]),
+      h3([], [text(update_helpers.i18n_t(model, i18n_text.EditPosition))]),
       case model.member_position_edit_error {
         opt.Some(err) -> div([attribute.class("error")], [text(err)])
         opt.None -> div([], [])
       },
       div([attribute.class("field")], [
-        label([], [text(i18n_t(model, i18n_text.XLabel))]),
+        label([], [text(update_helpers.i18n_t(model, i18n_text.XLabel))]),
         input([
           attribute.type_("number"),
           attribute.value(model.member_position_edit_x),
@@ -7165,7 +7161,7 @@ fn view_member_position_edit(model: Model, _task_id: Int) -> Element(Msg) {
         ]),
       ]),
       div([attribute.class("field")], [
-        label([], [text(i18n_t(model, i18n_text.YLabel))]),
+        label([], [text(update_helpers.i18n_t(model, i18n_text.YLabel))]),
         input([
           attribute.type_("number"),
           attribute.value(model.member_position_edit_y),
@@ -7174,7 +7170,7 @@ fn view_member_position_edit(model: Model, _task_id: Int) -> Element(Msg) {
       ]),
       div([attribute.class("actions")], [
         button([event.on_click(MemberPositionEditClosed)], [
-          text(i18n_t(model, i18n_text.Cancel)),
+          text(update_helpers.i18n_t(model, i18n_text.Cancel)),
         ]),
         button(
           [
@@ -7183,8 +7179,8 @@ fn view_member_position_edit(model: Model, _task_id: Int) -> Element(Msg) {
           ],
           [
             text(case model.member_position_edit_in_flight {
-              True -> i18n_t(model, i18n_text.Saving)
-              False -> i18n_t(model, i18n_text.Save)
+              True -> update_helpers.i18n_t(model, i18n_text.Saving)
+              False -> update_helpers.i18n_t(model, i18n_text.Save)
             }),
           ],
         ),
@@ -7196,9 +7192,9 @@ fn view_member_position_edit(model: Model, _task_id: Int) -> Element(Msg) {
 fn view_member_task_details(model: Model, task_id: Int) -> Element(Msg) {
   div([attribute.class("modal")], [
     div([attribute.class("modal-content")], [
-      h3([], [text(i18n_t(model, i18n_text.Notes))]),
+      h3([], [text(update_helpers.i18n_t(model, i18n_text.Notes))]),
       button([event.on_click(MemberTaskDetailsClosed)], [
-        text(i18n_t(model, i18n_text.Close)),
+        text(update_helpers.i18n_t(model, i18n_text.Close)),
       ]),
       view_member_notes(model, task_id),
     ]),
@@ -7215,7 +7211,7 @@ fn view_member_notes(model: Model, _task_id: Int) -> Element(Msg) {
     case model.member_notes {
       NotAsked | Loading ->
         div([attribute.class("empty")], [
-          text(i18n_t(model, i18n_text.LoadingEllipsis)),
+          text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
         ])
       Failed(err) -> div([attribute.class("error")], [text(err.message)])
       Loaded(notes) ->
@@ -7229,8 +7225,8 @@ fn view_member_notes(model: Model, _task_id: Int) -> Element(Msg) {
               ..,
             ) = n
             let author = case user_id == current_user_id {
-              True -> i18n_t(model, i18n_text.You)
-              False -> i18n_t(model, i18n_text.UserNumber(user_id))
+              True -> update_helpers.i18n_t(model, i18n_text.You)
+              False -> update_helpers.i18n_t(model, i18n_text.UserNumber(user_id))
             }
 
             div([attribute.class("note")], [
@@ -7245,7 +7241,7 @@ fn view_member_notes(model: Model, _task_id: Int) -> Element(Msg) {
       opt.None -> div([], [])
     },
     div([attribute.class("field")], [
-      label([], [text(i18n_t(model, i18n_text.AddNote))]),
+      label([], [text(update_helpers.i18n_t(model, i18n_text.AddNote))]),
       input([
         attribute.type_("text"),
         attribute.value(model.member_note_content),
@@ -7259,8 +7255,8 @@ fn view_member_notes(model: Model, _task_id: Int) -> Element(Msg) {
       ],
       [
         text(case model.member_note_in_flight {
-          True -> i18n_t(model, i18n_text.Adding)
-          False -> i18n_t(model, i18n_text.Add)
+          True -> update_helpers.i18n_t(model, i18n_text.Adding)
+          False -> update_helpers.i18n_t(model, i18n_text.Add)
         }),
       ],
     ),
