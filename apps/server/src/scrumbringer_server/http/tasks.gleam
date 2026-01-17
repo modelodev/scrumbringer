@@ -17,6 +17,7 @@ import gleam/http
 import gleam/int
 import gleam/json
 import gleam/option.{None, Some}
+import scrumbringer_server/domain/task_status.{Available, Claimed, Completed}
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
@@ -278,16 +279,16 @@ fn handle_tasks_list(
               case filters.parse_task_filters(query) {
                 Error(resp) -> resp
 
-                Ok(filters) -> {
+                Ok(task_filters) -> {
                   case
                     tasks_db.list_tasks_for_project(
                       db,
                       project_id,
                       user.id,
-                      filters.status,
-                      filters.type_id,
-                      filters.capability_id,
-                      filters.q,
+                      filters.status_filter_to_db_string(task_filters.status),
+                      task_filters.type_id,
+                      task_filters.capability_id,
+                      task_filters.q,
                     )
                   {
                     Ok(tasks) ->
@@ -547,9 +548,8 @@ fn handle_task_patch(
                         Error(_) -> api.error(500, "INTERNAL", "Database error")
 
                         Ok(current) -> {
-                          case current.status != "claimed" {
-                            True -> api.error(403, "FORBIDDEN", "Forbidden")
-                            False ->
+                          case current.status {
+                            Claimed(_) ->
                               case current.claimed_by {
                                 Some(id) if id == user.id ->
                                   case
@@ -602,6 +602,10 @@ fn handle_task_patch(
 
                                 _ -> api.error(403, "FORBIDDEN", "Forbidden")
                               }
+
+                            // Task not claimed - can't update
+                            Available | Completed ->
+                              api.error(403, "FORBIDDEN", "Forbidden")
                           }
                         }
                       }
@@ -651,19 +655,19 @@ fn handle_task_claim(
 
                     Ok(current) ->
                       case current.status {
-                        "claimed" ->
+                        Claimed(_) ->
                           api.error(
                             409,
                             "CONFLICT_CLAIMED",
                             "Task already claimed",
                           )
-                        "completed" ->
+                        Completed ->
                           api.error(
                             422,
                             "VALIDATION_ERROR",
                             "Invalid transition",
                           )
-                        _ ->
+                        Available ->
                           case
                             tasks_db.claim_task(
                               db,
@@ -735,14 +739,8 @@ fn handle_task_release(
                     Error(_) -> api.error(500, "INTERNAL", "Database error")
 
                     Ok(current) ->
-                      case current.status != "claimed" {
-                        True ->
-                          api.error(
-                            422,
-                            "VALIDATION_ERROR",
-                            "Invalid transition",
-                          )
-                        False ->
+                      case current.status {
+                        Claimed(_) ->
                           case current.claimed_by {
                             Some(id) if id == user.id ->
                               case
@@ -774,6 +772,14 @@ fn handle_task_release(
 
                             _ -> api.error(403, "FORBIDDEN", "Forbidden")
                           }
+
+                        // Task not claimed - invalid transition
+                        Available | Completed ->
+                          api.error(
+                            422,
+                            "VALIDATION_ERROR",
+                            "Invalid transition",
+                          )
                       }
                   }
               }
@@ -819,14 +825,8 @@ fn handle_task_complete(
                     Error(_) -> api.error(500, "INTERNAL", "Database error")
 
                     Ok(current) ->
-                      case current.status != "claimed" {
-                        True ->
-                          api.error(
-                            422,
-                            "VALIDATION_ERROR",
-                            "Invalid transition",
-                          )
-                        False ->
+                      case current.status {
+                        Claimed(_) ->
                           case current.claimed_by {
                             Some(id) if id == user.id ->
                               case
@@ -858,6 +858,14 @@ fn handle_task_complete(
 
                             _ -> api.error(403, "FORBIDDEN", "Forbidden")
                           }
+
+                        // Task not claimed - invalid transition
+                        Available | Completed ->
+                          api.error(
+                            422,
+                            "VALIDATION_ERROR",
+                            "Invalid transition",
+                          )
                       }
                   }
               }

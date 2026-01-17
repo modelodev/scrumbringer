@@ -16,6 +16,7 @@
 
 import gleam/option.{Some}
 import pog
+import scrumbringer_server/domain/task_status.{Available, Claimed, Completed}
 import scrumbringer_server/http/api
 import scrumbringer_server/services/tasks_db
 import wisp
@@ -45,9 +46,9 @@ pub fn handle_claim_conflict(
 
     Ok(current) ->
       case current.status {
-        "claimed" -> api.error(409, "CONFLICT_CLAIMED", "Task already claimed")
-        "completed" -> api.error(422, "VALIDATION_ERROR", "Invalid transition")
-        _ -> api.error(409, "CONFLICT_VERSION", "Version conflict")
+        Claimed(_) -> api.error(409, "CONFLICT_CLAIMED", "Task already claimed")
+        Completed -> api.error(422, "VALIDATION_ERROR", "Invalid transition")
+        Available -> api.error(409, "CONFLICT_VERSION", "Version conflict")
       }
   }
 }
@@ -73,14 +74,16 @@ pub fn handle_version_or_claim_conflict(
     Error(_) -> api.error(500, "INTERNAL", "Database error")
 
     Ok(current) ->
-      case current.status != "claimed" {
-        True -> api.error(422, "VALIDATION_ERROR", "Invalid transition")
-        False ->
+      case current.status {
+        Claimed(_) ->
           case current.claimed_by {
             Some(id) if id == user_id ->
               api.error(409, "CONFLICT_VERSION", "Version conflict")
             _ -> api.error(403, "FORBIDDEN", "Forbidden")
           }
+
+        Available | Completed ->
+          api.error(422, "VALIDATION_ERROR", "Invalid transition")
       }
   }
 }

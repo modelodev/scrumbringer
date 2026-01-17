@@ -22,6 +22,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
+import scrumbringer_server/domain/task_status.{type TaskStatus}
 import scrumbringer_server/http/api
 import wisp
 
@@ -31,9 +32,16 @@ import wisp
 
 /// Parsed task list filters.
 ///
-/// Empty string or 0 means "no filter applied".
+/// `status` is None when no filter is applied, Some(TaskStatus) otherwise.
+/// `type_id` and `capability_id` are 0 when no filter is applied.
+/// `q` is empty string when no search query.
 pub type TaskFilters {
-  TaskFilters(status: String, type_id: Int, capability_id: Int, q: String)
+  TaskFilters(
+    status: Option(TaskStatus),
+    type_id: Int,
+    capability_id: Int,
+    q: String,
+  )
 }
 
 // =============================================================================
@@ -47,7 +55,7 @@ pub type TaskFilters {
 /// ```gleam
 /// let query = [#("status", "available"), #("type_id", "5")]
 /// case parse_task_filters(query) {
-///   Ok(TaskFilters(status: "available", type_id: 5, ..)) -> // parsed
+///   Ok(TaskFilters(status: Some(Available), type_id: 5, ..)) -> // parsed
 ///   Error(response) -> response
 /// }
 /// ```
@@ -66,21 +74,42 @@ pub fn parse_task_filters(
   ))
 }
 
+/// Convert status filter to database query string.
+///
+/// Returns empty string for None (no filter), or the status string for Some.
+///
+/// ## Example
+///
+/// ```gleam
+/// status_filter_to_db_string(None)                    // ""
+/// status_filter_to_db_string(Some(Available))         // "available"
+/// status_filter_to_db_string(Some(Claimed(Taken)))    // "claimed"
+/// ```
+pub fn status_filter_to_db_string(status: Option(TaskStatus)) -> String {
+  case status {
+    None -> ""
+    Some(s) -> task_status.to_db_status(s)
+  }
+}
+
 // =============================================================================
 // Individual Parsers
 // =============================================================================
 
 /// Parse status filter: must be available, claimed, or completed.
+///
+/// Returns None for empty/missing, Some(TaskStatus) for valid values,
+/// Error for invalid values.
 fn parse_status_filter(
   query: List(#(String, String)),
-) -> Result(String, wisp.Response) {
+) -> Result(Option(TaskStatus), wisp.Response) {
   case single_query_value(query, "status") {
-    Ok(None) -> Ok("")
+    Ok(None) -> Ok(None)
 
     Ok(Some(value)) ->
-      case value {
-        "available" | "claimed" | "completed" -> Ok(value)
-        _ -> Error(api.error(422, "VALIDATION_ERROR", "Invalid status"))
+      case task_status.parse_filter(value) {
+        Ok(status) -> Ok(Some(status))
+        Error(_) -> Error(api.error(422, "VALIDATION_ERROR", "Invalid status"))
       }
 
     Error(_) -> Error(api.error(422, "VALIDATION_ERROR", "Invalid status"))

@@ -16,6 +16,9 @@
 
 import gleam/json
 import gleam/option.{type Option, None, Some}
+import scrumbringer_server/domain/task_status.{
+  type TaskStatus, Available, Claimed, Completed, Ongoing, Taken,
+}
 import scrumbringer_server/services/task_types_db
 import scrumbringer_server/services/tasks_db
 
@@ -71,7 +74,6 @@ pub fn task_json(task: tasks_db.Task) -> json.Json {
     description: description,
     priority: priority,
     status: status,
-    is_ongoing: is_ongoing,
     ongoing_by_user_id: ongoing_by_user_id,
     created_by: created_by,
     claimed_by: claimed_by,
@@ -80,8 +82,6 @@ pub fn task_json(task: tasks_db.Task) -> json.Json {
     created_at: created_at,
     version: version,
   ) = task
-
-  let work_state = derive_work_state(status, is_ongoing)
 
   json.object([
     #("id", json.int(id)),
@@ -99,8 +99,8 @@ pub fn task_json(task: tasks_db.Task) -> json.Json {
     #("title", json.string(title)),
     #("description", option_string_json(description)),
     #("priority", json.int(priority)),
-    #("status", json.string(status)),
-    #("work_state", json.string(work_state)),
+    #("status", json.string(status_to_string(status))),
+    #("work_state", json.string(status_to_work_state(status))),
     #("created_by", json.int(created_by)),
     #("claimed_by", option_int_json(claimed_by)),
     #("claimed_at", option_string_json(claimed_at)),
@@ -162,25 +162,38 @@ pub fn ongoing_by_json(value: Option(Int)) -> json.Json {
   }
 }
 
-/// Derive work_state from status and is_ongoing flag.
+/// Convert TaskStatus to database status string for JSON output.
 ///
 /// ## Example
 ///
 /// ```gleam
-/// derive_work_state("claimed", True)   // "ongoing"
-/// derive_work_state("claimed", False)  // "claimed"
-/// derive_work_state("available", _)    // "available"
-/// derive_work_state("completed", _)    // "completed"
+/// status_to_string(Available)        // "available"
+/// status_to_string(Claimed(Taken))   // "claimed"
+/// status_to_string(Claimed(Ongoing)) // "claimed"
+/// status_to_string(Completed)        // "completed"
 /// ```
-pub fn derive_work_state(status: String, is_ongoing: Bool) -> String {
+pub fn status_to_string(status: TaskStatus) -> String {
+  task_status.to_db_status(status)
+}
+
+/// Convert TaskStatus to work_state string for JSON output.
+///
+/// The work_state provides more granular information than status,
+/// distinguishing between "claimed" (idle) and "ongoing" (active work).
+///
+/// ## Example
+///
+/// ```gleam
+/// status_to_work_state(Available)        // "available"
+/// status_to_work_state(Claimed(Taken))   // "claimed"
+/// status_to_work_state(Claimed(Ongoing)) // "ongoing"
+/// status_to_work_state(Completed)        // "completed"
+/// ```
+pub fn status_to_work_state(status: TaskStatus) -> String {
   case status {
-    "available" -> "available"
-    "completed" -> "completed"
-    "claimed" ->
-      case is_ongoing {
-        True -> "ongoing"
-        False -> "claimed"
-      }
-    _ -> status
+    Available -> "available"
+    Claimed(Taken) -> "claimed"
+    Claimed(Ongoing) -> "ongoing"
+    Completed -> "completed"
   }
 }

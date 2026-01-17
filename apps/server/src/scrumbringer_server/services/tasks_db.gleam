@@ -2,10 +2,26 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
+import scrumbringer_server/domain/task_status.{type TaskStatus}
 import scrumbringer_server/services/now_working_db
 import scrumbringer_server/services/task_events_db
 import scrumbringer_server/sql
 
+/// Task record with type-safe status.
+///
+/// The `status` field uses the `TaskStatus` ADT instead of strings,
+/// enabling compile-time verification of status handling.
+///
+/// ## Example
+///
+/// ```gleam
+/// case task.status {
+///   task_status.Available -> "Can be claimed"
+///   task_status.Claimed(task_status.Ongoing) -> "Being worked on"
+///   task_status.Claimed(task_status.Taken) -> "Claimed but idle"
+///   task_status.Completed -> "Done"
+/// }
+/// ```
 pub type Task {
   Task(
     id: Int,
@@ -16,8 +32,7 @@ pub type Task {
     title: String,
     description: Option(String),
     priority: Int,
-    status: String,
-    is_ongoing: Bool,
+    status: TaskStatus,
     ongoing_by_user_id: Option(Int),
     created_by: Int,
     claimed_by: Option(Int),
@@ -453,8 +468,7 @@ fn task_from_fields(
     title: title,
     description: string_option(description),
     priority: priority,
-    status: status,
-    is_ongoing: is_ongoing,
+    status: task_status.from_db(status, is_ongoing),
     ongoing_by_user_id: int_option(ongoing_by_user_id),
     created_by: created_by,
     claimed_by: int_option(claimed_by),
