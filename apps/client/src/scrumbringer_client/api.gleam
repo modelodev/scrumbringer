@@ -1,3 +1,48 @@
+//// API client module for Scrumbringer.
+////
+//// ## Mission
+////
+//// Provides typed HTTP API interactions for the client application. Abstracts
+//// away request construction, response parsing, and error handling.
+////
+//// ## Responsibilities
+////
+//// - Define API response types (`ApiError`, `ApiResult`)
+//// - Construct HTTP requests with proper headers (CSRF, auth)
+//// - Parse JSON responses into typed Gleam values
+//// - Return Lustre effects for async operations
+////
+//// ## Non-responsibilities
+////
+//// - Low-level HTTP/FFI (see `client_ffi.gleam`)
+//// - Application state management (see `client_state.gleam`)
+//// - UI rendering (see `scrumbringer_client.gleam`)
+////
+//// ## Error Handling
+////
+//// All API functions return `Effect(msg)` where `msg` wraps `ApiResult(a)`.
+//// Errors are decoded into `ApiError` with status, code, and message.
+////
+//// ## Module Structure
+////
+//// The API functionality has been extracted to domain-specific submodules:
+//// - `api/core.gleam`: Base request/response handling, ApiError, ApiResult
+//// - `api/auth.gleam`: Authentication endpoints (login, logout, password reset)
+//// - `api/projects.gleam`: Project and ProjectMember types and operations
+//// - `api/tasks.gleam`: Task, TaskType, TaskPosition, ActiveTask operations
+//// - `api/metrics.gleam`: MyMetrics, OrgMetrics* types and endpoints
+//// - `api/org.gleam`: OrgUser, Capability, InviteLink operations
+////
+//// This module is maintained for backward compatibility. New code should
+//// prefer importing from submodules directly for better code organization.
+//// Migration of existing imports will be completed in a future sprint.
+////
+//// ## Relations
+////
+//// - **client_ffi.gleam**: Provides HTTP primitives (`send`, `read_cookie`)
+//// - **client_state.gleam**: Consumers import `ApiResult`, `ApiError`
+//// - **scrumbringer_client.gleam**: Calls API functions from update
+
 import gleam/dynamic/decode
 import gleam/int
 import gleam/json
@@ -8,28 +53,35 @@ import gleam/string
 
 import lustre/effect.{type Effect}
 
+import scrumbringer_client/client_ffi
 import scrumbringer_domain/org_role
 import scrumbringer_domain/user.{type User, User}
 
+/// API error response from the server.
 pub type ApiError {
   ApiError(status: Int, code: String, message: String)
 }
 
+/// Result type for API operations.
 pub type ApiResult(a) =
   Result(a, ApiError)
 
+/// Project record with user's role.
 pub type Project {
   Project(id: Int, name: String, my_role: String)
 }
 
+/// Project membership record.
 pub type ProjectMember {
   ProjectMember(user_id: Int, role: String, created_at: String)
 }
 
+/// Capability (skill) record.
 pub type Capability {
   Capability(id: Int, name: String)
 }
 
+/// Task type definition with optional capability requirement.
 pub type TaskType {
   TaskType(
     id: Int,
@@ -39,10 +91,12 @@ pub type TaskType {
   )
 }
 
+/// Organization invite code.
 pub type OrgInvite {
   OrgInvite(code: String, created_at: String, expires_at: String)
 }
 
+/// Invite link for user registration.
 pub type InviteLink {
   InviteLink(
     email: String,
@@ -55,24 +109,30 @@ pub type InviteLink {
   )
 }
 
+/// Organization user record.
 pub type OrgUser {
   OrgUser(id: Int, email: String, org_role: String, created_at: String)
 }
 
-// Make invalid states unrepresentable:
-// - Ongoing implies Claimed
-// - Available/Completed are mutually exclusive with Claimed
+/// Task status ADT - makes invalid states unrepresentable.
+///
+/// - `Available`: task is open for claiming
+/// - `Claimed(Taken)`: task is claimed but not actively worked
+/// - `Claimed(Ongoing)`: task is being actively worked (timer running)
+/// - `Completed`: task is finished
 pub type TaskStatus {
   Available
   Claimed(ClaimedState)
   Completed
 }
 
+/// Sub-state for claimed tasks (taken but idle vs actively working).
 pub type ClaimedState {
   Taken
   Ongoing
 }
 
+/// Parse task status string into typed ADT.
 pub fn parse_task_status(value: String) -> Result(TaskStatus, String) {
   case value {
     "available" -> Ok(Available)
@@ -83,6 +143,7 @@ pub fn parse_task_status(value: String) -> Result(TaskStatus, String) {
   }
 }
 
+/// Convert task status ADT to string for API requests.
 pub fn task_status_to_string(status: TaskStatus) -> String {
   case status {
     Available -> "available"
@@ -92,10 +153,12 @@ pub fn task_status_to_string(status: TaskStatus) -> String {
   }
 }
 
+/// Inline task type info embedded in task responses.
 pub type TaskTypeInline {
   TaskTypeInline(id: Int, name: String, icon: String)
 }
 
+/// Work state as returned by the API (denormalized for UI convenience).
 pub type WorkState {
   WorkAvailable
   WorkClaimed
@@ -103,10 +166,12 @@ pub type WorkState {
   WorkCompleted
 }
 
+/// User currently working on a task (for ongoing indicator).
 pub type OngoingBy {
   OngoingBy(user_id: Int)
 }
 
+/// Full task record with type info, status, and metadata.
 pub type Task {
   Task(
     id: Int,
@@ -128,6 +193,7 @@ pub type Task {
   )
 }
 
+/// Note attached to a task by a user.
 pub type TaskNote {
   TaskNote(
     id: Int,
@@ -138,10 +204,12 @@ pub type TaskNote {
   )
 }
 
+/// User-specific task position on the pool canvas.
 pub type TaskPosition {
   TaskPosition(task_id: Int, user_id: Int, x: Int, y: Int, updated_at: String)
 }
 
+/// Currently active (timer running) task for a user.
 pub type ActiveTask {
   ActiveTask(
     task_id: Int,
@@ -151,10 +219,12 @@ pub type ActiveTask {
   )
 }
 
+/// API response wrapper for active task with server timestamp.
 pub type ActiveTaskPayload {
   ActiveTaskPayload(active_task: option.Option(ActiveTask), as_of: String)
 }
 
+/// Personal metrics for the current user.
 pub type MyMetrics {
   MyMetrics(
     window_days: Int,
@@ -164,10 +234,12 @@ pub type MyMetrics {
   )
 }
 
+/// Histogram bucket for org-level metrics charts.
 pub type OrgMetricsBucket {
   OrgMetricsBucket(bucket: String, count: Int)
 }
 
+/// Per-project metrics summary for admin overview.
 pub type OrgMetricsProjectOverview {
   OrgMetricsProjectOverview(
     project_id: Int,
@@ -180,6 +252,7 @@ pub type OrgMetricsProjectOverview {
   )
 }
 
+/// Organization-wide metrics overview with aggregates and histograms.
 pub type OrgMetricsOverview {
   OrgMetricsOverview(
     window_days: Int,
@@ -196,6 +269,7 @@ pub type OrgMetricsOverview {
   )
 }
 
+/// Task with associated metrics for admin drill-down view.
 pub type MetricsProjectTask {
   MetricsProjectTask(
     task: Task,
@@ -206,6 +280,7 @@ pub type MetricsProjectTask {
   )
 }
 
+/// API response wrapper for project tasks with metrics.
 pub type OrgMetricsProjectTasksPayload {
   OrgMetricsProjectTasksPayload(
     window_days: Int,
@@ -214,6 +289,7 @@ pub type OrgMetricsProjectTasksPayload {
   )
 }
 
+/// Check if HTTP method requires CSRF token.
 pub fn should_attach_csrf(method: String) -> Bool {
   case string.uppercase(method) {
     "POST" | "PUT" | "PATCH" | "DELETE" -> True
@@ -221,6 +297,7 @@ pub fn should_attach_csrf(method: String) -> Bool {
   }
 }
 
+/// Build CSRF header list for state-changing requests.
 pub fn build_csrf_headers(
   method: String,
   csrf: option.Option(String),
@@ -231,32 +308,11 @@ pub fn build_csrf_headers(
   }
 }
 
-@external(javascript, "./fetch.ffi.mjs", "read_cookie")
-fn read_cookie_ffi(_name: String) -> String {
-  ""
-}
-
 fn read_cookie(name: String) -> option.Option(String) {
-  case read_cookie_ffi(name) {
+  case client_ffi.read_cookie(name) {
     "" -> option.None
     value -> option.Some(value)
   }
-}
-
-@external(javascript, "./fetch.ffi.mjs", "send")
-fn send(
-  _method: String,
-  _url: String,
-  _headers: List(#(String, String)),
-  _body: option.Option(String),
-  _callback: fn(#(Int, String)) -> Nil,
-) -> Nil {
-  Nil
-}
-
-@external(javascript, "./fetch.ffi.mjs", "encode_uri_component")
-fn encode_uri_component(_value: String) -> String {
-  ""
 }
 
 fn envelope(payload: decode.Decoder(a)) -> decode.Decoder(a) {
@@ -320,7 +376,7 @@ fn request(
 
     let body_string = option.map(body, json.to_string)
 
-    send(method, url, headers, body_string, fn(result) {
+    client_ffi.send(method, url, headers, body_string, fn(result) {
       let #(status, text) = result
 
       let msg = case status >= 200 && status < 300 {
@@ -366,7 +422,7 @@ fn request_nil(
 
     let body_string = option.map(body, json.to_string)
 
-    send(method, url, headers, body_string, fn(result) {
+    client_ffi.send(method, url, headers, body_string, fn(result) {
       let #(status, text) = result
 
       let msg = case status >= 200 && status < 300 {
@@ -409,6 +465,7 @@ fn user_decoder() -> decode.Decoder(User) {
   }
 }
 
+/// Decoder for user payload from auth responses.
 pub fn user_payload_decoder() -> decode.Decoder(User) {
   decode.field("user", user_decoder(), decode.success)
 }
@@ -497,10 +554,12 @@ fn invite_link_decoder() -> decode.Decoder(InviteLink) {
   ))
 }
 
+/// Decoder for single invite link payload.
 pub fn invite_link_payload_decoder() -> decode.Decoder(InviteLink) {
   decode.field("invite_link", invite_link_decoder(), decode.success)
 }
 
+/// Decoder for invite links list payload.
 pub fn invite_links_payload_decoder() -> decode.Decoder(List(InviteLink)) {
   decode.field(
     "invite_links",
@@ -532,6 +591,7 @@ fn active_task_decoder() -> decode.Decoder(ActiveTask) {
   ))
 }
 
+/// Decoder for active task payload with server timestamp.
 pub fn active_task_payload_decoder() -> decode.Decoder(ActiveTaskPayload) {
   let payload = {
     use active_task <- decode.field(
@@ -798,6 +858,7 @@ fn work_state_decoder() -> decode.Decoder(WorkState) {
   })
 }
 
+/// Decoder for full task record from API responses.
 pub fn task_decoder() -> decode.Decoder(Task) {
   use id <- decode.field("id", decode.int)
   use project_id <- decode.field("project_id", decode.int)
@@ -916,7 +977,7 @@ pub fn validate_invite_link_token(
 
   request(
     "GET",
-    "/api/v1/auth/invite-links/" <> encode_uri_component(token),
+    "/api/v1/auth/invite-links/" <> client_ffi.encode_uri_component(token),
     option.None,
     decoder,
     to_msg,
@@ -943,6 +1004,7 @@ pub fn register_with_invite_link(
   )
 }
 
+/// Password reset token and URL path for admin-initiated resets.
 pub type PasswordReset {
   PasswordReset(token: String, url_path: String)
 }
@@ -978,7 +1040,7 @@ pub fn validate_password_reset_token(
 
   request(
     "GET",
-    "/api/v1/auth/password-resets/" <> encode_uri_component(token),
+    "/api/v1/auth/password-resets/" <> client_ffi.encode_uri_component(token),
     option.None,
     decoder,
     to_msg,
@@ -1125,7 +1187,7 @@ pub fn list_org_users(
 
   let url = case q == "" {
     True -> "/api/v1/org/users"
-    False -> "/api/v1/org/users?q=" <> encode_uri_component(q)
+    False -> "/api/v1/org/users?q=" <> client_ffi.encode_uri_component(q)
   }
 
   let decoder =
@@ -1219,6 +1281,7 @@ pub fn list_task_types(
   )
 }
 
+/// Task list filter parameters for pool queries.
 pub type TaskFilters {
   TaskFilters(
     status: option.Option(String),
@@ -1228,6 +1291,7 @@ pub type TaskFilters {
   )
 }
 
+/// Build URL for project tasks endpoint with filter query params.
 pub fn project_tasks_url(project_id: Int, filters: TaskFilters) -> String {
   let TaskFilters(
     status: status,
@@ -1532,7 +1596,7 @@ fn add_param_string(
       <> append_query(existing)
       <> key
       <> "="
-      <> encode_uri_component(v)
+      <> client_ffi.encode_uri_component(v)
   }
 }
 

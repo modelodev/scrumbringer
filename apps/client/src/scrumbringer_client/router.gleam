@@ -1,3 +1,39 @@
+//// URL routing for Scrumbringer client.
+////
+//// ## Mission
+////
+//// Provides URL parsing and formatting for client-side navigation. Handles
+//// both modern path-based URLs and legacy hash-based URLs for backwards
+//// compatibility.
+////
+//// ## Responsibilities
+////
+//// - Route type definitions (Login, Admin, Member, etc.)
+//// - URL parsing (`parse`) with legacy hash support
+//// - URL formatting (`format`)
+//// - Mobile-specific routing rules (`apply_mobile_rules`)
+////
+//// ## Non-responsibilities
+////
+//// - Model state changes (see scrumbringer_client.gleam)
+//// - Navigation effects (see scrumbringer_client.gleam)
+////
+//// ## Usage
+////
+//// ```gleam
+//// import scrumbringer_client/router
+////
+//// // Parse URL
+//// case router.parse("/admin/members", "?project=5", "") {
+////   router.Parsed(route) -> apply_route(route)
+////   router.Redirect(route) -> redirect_to(route)
+//// }
+////
+//// // Format URL
+//// let url = router.format(router.Admin(permissions.Members, Some(5)))
+//// // "/admin/members?project=5"
+//// ```
+
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -6,6 +42,14 @@ import gleam/string
 import scrumbringer_client/member_section.{type MemberSection}
 import scrumbringer_client/permissions
 
+/// Client route representing the current page and state.
+///
+/// ## Example
+///
+/// ```gleam
+/// let route = router.Admin(permissions.Members, Some(5))
+/// router.format(route)  // "/admin/members?project=5"
+/// ```
 pub type Route {
   Login
   AcceptInvite(token: String)
@@ -14,11 +58,27 @@ pub type Route {
   Member(section: MemberSection, project_id: Option(Int))
 }
 
+/// Result of parsing a URL, indicating whether it was parsed directly
+/// or needs a redirect (for legacy URLs or invalid query params).
 pub type ParseResult {
   Parsed(Route)
   Redirect(Route)
 }
 
+/// Parse URL components into a Route.
+///
+/// Handles both modern path-based URLs and legacy hash-based URLs.
+/// Returns Redirect if the URL uses legacy format or has invalid query params.
+///
+/// ## Example
+///
+/// ```gleam
+/// parse("/admin/members", "?project=5", "")
+/// // Parsed(Admin(Members, Some(5)))
+///
+/// parse("/", "", "#/admin/members")
+/// // Redirect(Admin(Members, None))  -- legacy hash format
+/// ```
 pub fn parse(pathname: String, search: String, hash: String) -> ParseResult {
   // Legacy support: old hash routing `/?project=2#/admin/members`.
   let legacy = case pathname == "/" {
@@ -103,6 +163,15 @@ fn parse_pathname(pathname: String, search: String) -> Route {
   }
 }
 
+/// Format a Route into a URL string.
+///
+/// ## Example
+///
+/// ```gleam
+/// format(Login)  // "/"
+/// format(Admin(Members, Some(5)))  // "/admin/members?project=5"
+/// format(AcceptInvite("abc123"))  // "/accept-invite?token=abc123"
+/// ```
 pub fn format(route: Route) -> String {
   case route {
     Login -> "/"
@@ -215,6 +284,18 @@ fn admin_section_slug(section: permissions.AdminSection) -> String {
   }
 }
 
+/// Apply mobile-specific routing rules.
+///
+/// On mobile devices, redirects Pool section to MyBar since Pool
+/// requires drag-and-drop which is not supported on mobile.
+///
+/// ## Example
+///
+/// ```gleam
+/// let result = parse("/app/pool", "", "")
+/// apply_mobile_rules(result, True)
+/// // Redirect(Member(MyBar, None))
+/// ```
 pub fn apply_mobile_rules(result: ParseResult, is_mobile: Bool) -> ParseResult {
   case is_mobile {
     False -> result
