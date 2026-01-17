@@ -18,8 +18,9 @@
 ### Client: Split `scrumbringer_client.gleam`
 - [x] Create `client_state.gleam` (Model/Msg/state types + docs)
 - [x] Create `update_helpers.gleam` (pure helper functions + Model accessors)
-  - Extracted 15 functions (342 lines): dict conversions, time formatting, lookups
-  - Main module reduced from 7593 to 7429 lines
+  - Extracted 18 functions (431 lines): dict conversions, time formatting, lookups, i18n, selection helpers
+  - Main module reduced from 7593 to 7383 lines (~210 lines extracted)
+  - View-related helpers (formatters, comparators) deferred to client_view.gleam extraction
 - [ ] Create `client_update.gleam` (update + handlers; reduce nested cases)
   - Remaining: update still has domain handlers + effect-creating helpers
   - Approach: extract handlers by domain (auth, member, admin) in future sprint
