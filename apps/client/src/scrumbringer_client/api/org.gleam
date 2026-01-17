@@ -225,7 +225,13 @@ pub fn create_invite(
     })
 
   let decoder = decode.field("invite", invite_decoder(), decode.success)
-  core.request("POST", "/api/v1/org/invites", option.Some(body), decoder, to_msg)
+  core.request(
+    "POST",
+    "/api/v1/org/invites",
+    option.Some(body),
+    decoder,
+    to_msg,
+  )
 }
 
 /// List all invite links.

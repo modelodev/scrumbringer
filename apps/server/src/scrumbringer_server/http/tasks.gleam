@@ -180,7 +180,11 @@ fn handle_task_types_create(
                       }
 
                       case
-                        validators.validate_capability_in_org(db, cap_opt, user.org_id)
+                        validators.validate_capability_in_org(
+                          db,
+                          cap_opt,
+                          user.org_id,
+                        )
                       {
                         Error(resp) -> resp
 
@@ -197,7 +201,10 @@ fn handle_task_types_create(
                             Ok(task_type) ->
                               api.ok(
                                 json.object([
-                                  #("task_type", presenters.task_type_json(task_type)),
+                                  #(
+                                    "task_type",
+                                    presenters.task_type_json(task_type),
+                                  ),
                                 ]),
                               )
 
@@ -270,7 +277,10 @@ fn handle_tasks_list(
                     Ok(tasks) ->
                       api.ok(
                         json.object([
-                          #("tasks", json.array(tasks, of: presenters.task_json)),
+                          #(
+                            "tasks",
+                            json.array(tasks, of: presenters.task_json),
+                          ),
                         ]),
                       )
 
@@ -418,7 +428,8 @@ fn handle_task_get(
           let auth.Ctx(db: db, ..) = ctx
 
           case tasks_db.get_task_for_user(db, task_id, user.id) {
-            Ok(task) -> api.ok(json.object([#("task", presenters.task_json(task))]))
+            Ok(task) ->
+              api.ok(json.object([#("task", presenters.task_json(task))]))
             Error(tasks_db.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
             Error(_) -> api.error(500, "INTERNAL", "Database error")
           }
@@ -515,7 +526,10 @@ fn handle_task_patch(
                                         Ok(task) ->
                                           api.ok(
                                             json.object([
-                                              #("task", presenters.task_json(task)),
+                                              #(
+                                                "task",
+                                                presenters.task_json(task),
+                                              ),
                                             ]),
                                           )
 
@@ -609,10 +623,18 @@ fn handle_task_claim(
                             )
                           {
                             Ok(task) ->
-                              api.ok(json.object([#("task", presenters.task_json(task))]))
+                              api.ok(
+                                json.object([
+                                  #("task", presenters.task_json(task)),
+                                ]),
+                              )
 
                             Error(tasks_db.NotFound) ->
-                              conflict_handlers.handle_claim_conflict(db, task_id, user.id)
+                              conflict_handlers.handle_claim_conflict(
+                                db,
+                                task_id,
+                                user.id,
+                              )
 
                             Error(_) ->
                               api.error(500, "INTERNAL", "Database error")
@@ -683,7 +705,9 @@ fn handle_task_release(
                               {
                                 Ok(task) ->
                                   api.ok(
-                                    json.object([#("task", presenters.task_json(task))]),
+                                    json.object([
+                                      #("task", presenters.task_json(task)),
+                                    ]),
                                   )
 
                                 Error(tasks_db.NotFound) ->
@@ -765,7 +789,9 @@ fn handle_task_complete(
                               {
                                 Ok(task) ->
                                   api.ok(
-                                    json.object([#("task", presenters.task_json(task))]),
+                                    json.object([
+                                      #("task", presenters.task_json(task)),
+                                    ]),
                                   )
 
                                 Error(tasks_db.NotFound) ->

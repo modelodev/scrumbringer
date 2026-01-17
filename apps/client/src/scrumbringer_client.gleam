@@ -86,78 +86,82 @@ import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/i18n/text as i18n_text
 
 import scrumbringer_client/client_state.{
-  // Types (used in type annotations)
   type Model, type Msg, type NavMode, type Remote,
-  // Type constructors
-  Model, MemberDrag, Rect,
-  // Remote constructors
-  NotAsked, Loading, Loaded, Failed,
-  // Page constructors
-  Login, AcceptInvite as AcceptInvitePage, ResetPassword as ResetPasswordPage, Admin, Member,
-  // IconPreview constructors
-  IconIdle, IconLoading, IconOk, IconError,
-  // NavMode constructors
-  Push, Replace,
-  // Msg constructors - Navigation
-  MemberPoolMyTasksRectFetched, MemberPoolDragToClaimArmed, UrlChanged, NavigateTo,
-  // Msg constructors - Auth
-  MeFetched, AcceptInviteMsg, ResetPasswordMsg,
-  // Msg constructors - Login
-  LoginEmailChanged, LoginPasswordChanged, LoginSubmitted, LoginDomValuesRead, LoginFinished,
-  // Msg constructors - Forgot password
-  ForgotPasswordClicked, ForgotPasswordEmailChanged, ForgotPasswordSubmitted,
-  ForgotPasswordFinished, ForgotPasswordCopyClicked, ForgotPasswordCopyFinished, ForgotPasswordDismissed,
-  // Msg constructors - Logout
-  LogoutClicked, LogoutFinished,
-  // Msg constructors - UI
-  ToastDismissed, ThemeSelected, LocaleSelected, ProjectSelected,
-  // Msg constructors - Projects
-  ProjectsFetched, ProjectCreateNameChanged, ProjectCreateSubmitted, ProjectCreated,
-  // Msg constructors - Invite links
-  InviteLinkEmailChanged, InviteLinkCreateSubmitted, InviteLinkCreated, InviteLinksFetched,
-  InviteLinkRegenerateClicked, InviteLinkRegenerated, InviteLinkCopyClicked, InviteLinkCopyFinished,
-  // Msg constructors - Capabilities
-  CapabilitiesFetched, CapabilityCreateNameChanged, CapabilityCreateSubmitted, CapabilityCreated,
-  // Msg constructors - Members
-  MembersFetched, OrgUsersCacheFetched, OrgSettingsUsersFetched, OrgSettingsRoleChanged,
-  OrgSettingsSaveClicked, OrgSettingsSaved, MemberAddDialogOpened, MemberAddDialogClosed,
-  MemberAddRoleChanged, MemberAddUserSelected, MemberAddSubmitted, MemberAdded,
-  MemberRemoveClicked, MemberRemoveCancelled, MemberRemoveConfirmed, MemberRemoved,
-  // Msg constructors - Org users search
-  OrgUsersSearchChanged, OrgUsersSearchDebounced, OrgUsersSearchResults,
-  // Msg constructors - Task types
-  TaskTypesFetched, TaskTypeCreateNameChanged, TaskTypeCreateIconChanged, TaskTypeIconLoaded,
-  TaskTypeIconErrored, TaskTypeCreateCapabilityChanged, TaskTypeCreateSubmitted, TaskTypeCreated,
-  // Msg constructors - Pool filters
-  MemberPoolStatusChanged, MemberPoolTypeChanged, MemberPoolCapabilityChanged,
-  MemberPoolSearchChanged, MemberPoolSearchDebounced, MemberToggleMyCapabilitiesQuick,
-  MemberPoolFiltersToggled, MemberPoolViewModeSet, GlobalKeyDown,
-  // Msg constructors - Member tasks
-  MemberProjectTasksFetched, MemberTaskTypesFetched,
-  // Msg constructors - Drag and drop
-  MemberCanvasRectFetched, MemberDragStarted, MemberDragMoved, MemberDragEnded,
-  // Msg constructors - Task creation
-  MemberCreateDialogOpened, MemberCreateDialogClosed, MemberCreateTitleChanged,
-  MemberCreateDescriptionChanged, MemberCreatePriorityChanged, MemberCreateTypeIdChanged,
-  MemberCreateSubmitted, MemberTaskCreated,
-  // Msg constructors - Task actions
-  MemberClaimClicked, MemberReleaseClicked, MemberCompleteClicked,
-  MemberTaskClaimed, MemberTaskReleased, MemberTaskCompleted,
-  // Msg constructors - Now working
-  MemberNowWorkingStartClicked, MemberNowWorkingPauseClicked, MemberActiveTaskFetched,
-  MemberActiveTaskStarted, MemberActiveTaskPaused, MemberActiveTaskHeartbeated,
-  MemberMetricsFetched, AdminMetricsOverviewFetched, AdminMetricsProjectTasksFetched, NowWorkingTicked,
-  // Msg constructors - Member capabilities
-  MemberMyCapabilityIdsFetched, MemberToggleCapability, MemberSaveCapabilitiesClicked, MemberMyCapabilityIdsSaved,
-  // Msg constructors - Position editing
-  MemberPositionsFetched, MemberPositionEditOpened, MemberPositionEditClosed,
-  MemberPositionEditXChanged, MemberPositionEditYChanged, MemberPositionEditSubmitted, MemberPositionSaved,
-  // Msg constructors - Task details
-  MemberTaskDetailsOpened, MemberTaskDetailsClosed, MemberNotesFetched,
-  MemberNoteContentChanged, MemberNoteSubmitted, MemberNoteAdded,
-  // Helper functions
-  rect_contains_point,
+  AcceptInvite as AcceptInvitePage, AcceptInviteMsg, Admin,
+  AdminMetricsOverviewFetched, AdminMetricsProjectTasksFetched,
+  CapabilitiesFetched, CapabilityCreateNameChanged, CapabilityCreateSubmitted,
+  CapabilityCreated, Failed, ForgotPasswordClicked, ForgotPasswordCopyClicked,
+  ForgotPasswordCopyFinished, ForgotPasswordDismissed,
+  ForgotPasswordEmailChanged, ForgotPasswordFinished, ForgotPasswordSubmitted,
+  GlobalKeyDown, IconError, IconIdle, IconLoading, IconOk, InviteLinkCopyClicked,
+  InviteLinkCopyFinished, InviteLinkCreateSubmitted, InviteLinkCreated,
+  InviteLinkEmailChanged, InviteLinkRegenerateClicked, InviteLinkRegenerated,
+  InviteLinksFetched, Loaded, Loading, LocaleSelected, Login, LoginDomValuesRead,
+  LoginEmailChanged, LoginFinished, LoginPasswordChanged, LoginSubmitted,
+  LogoutClicked, LogoutFinished, MeFetched, Member, MemberActiveTaskFetched,
+  MemberActiveTaskHeartbeated, MemberActiveTaskPaused, MemberActiveTaskStarted,
+  MemberAddDialogClosed, MemberAddDialogOpened, MemberAddRoleChanged,
+  MemberAddSubmitted, MemberAddUserSelected, MemberAdded,
+  MemberCanvasRectFetched, MemberClaimClicked, MemberCompleteClicked,
+  MemberCreateDescriptionChanged, MemberCreateDialogClosed,
+  MemberCreateDialogOpened, MemberCreatePriorityChanged, MemberCreateSubmitted,
+  MemberCreateTitleChanged, MemberCreateTypeIdChanged, MemberDrag,
+  MemberDragEnded, MemberDragMoved, MemberDragStarted, MemberMetricsFetched,
+  MemberMyCapabilityIdsFetched, MemberMyCapabilityIdsSaved, MemberNoteAdded,
+  MemberNoteContentChanged, MemberNoteSubmitted, MemberNotesFetched,
+  MemberNowWorkingPauseClicked, MemberNowWorkingStartClicked,
+  MemberPoolCapabilityChanged, MemberPoolDragToClaimArmed,
+  MemberPoolFiltersToggled, MemberPoolMyTasksRectFetched,
+  MemberPoolSearchChanged, MemberPoolSearchDebounced, MemberPoolStatusChanged,
+  MemberPoolTypeChanged, MemberPoolViewModeSet, MemberPositionEditClosed,
+  MemberPositionEditOpened, MemberPositionEditSubmitted,
+  MemberPositionEditXChanged, MemberPositionEditYChanged, MemberPositionSaved,
+  MemberPositionsFetched, MemberProjectTasksFetched, MemberReleaseClicked,
+  MemberRemoveCancelled, MemberRemoveClicked, MemberRemoveConfirmed,
+  MemberRemoved, MemberSaveCapabilitiesClicked, MemberTaskClaimed,
+  MemberTaskCompleted, MemberTaskCreated, MemberTaskDetailsClosed,
+  MemberTaskDetailsOpened, MemberTaskReleased, MemberTaskTypesFetched,
+  MemberToggleCapability, MemberToggleMyCapabilitiesQuick, MembersFetched, Model,
+  NavigateTo, NotAsked, NowWorkingTicked, OrgSettingsRoleChanged,
+  OrgSettingsSaveClicked, OrgSettingsSaved, OrgSettingsUsersFetched,
+  OrgUsersCacheFetched, OrgUsersSearchChanged, OrgUsersSearchDebounced,
+  OrgUsersSearchResults, ProjectCreateNameChanged, ProjectCreateSubmitted,
+  ProjectCreated, ProjectSelected, ProjectsFetched, Push, Rect, Replace,
+  ResetPassword as ResetPasswordPage, ResetPasswordMsg,
+  TaskTypeCreateCapabilityChanged, TaskTypeCreateIconChanged,
+  TaskTypeCreateNameChanged, TaskTypeCreateSubmitted, TaskTypeCreated,
+  TaskTypeIconErrored, TaskTypeIconLoaded, TaskTypesFetched, ThemeSelected,
+  ToastDismissed, UrlChanged, rect_contains_point,
 }
+
+// Types (used in type annotations)
+// Type constructors
+// Remote constructors
+// Page constructors
+// IconPreview constructors
+// NavMode constructors
+// Msg constructors - Navigation
+// Msg constructors - Auth
+// Msg constructors - Login
+// Msg constructors - Forgot password
+// Msg constructors - Logout
+// Msg constructors - UI
+// Msg constructors - Projects
+// Msg constructors - Invite links
+// Msg constructors - Capabilities
+// Msg constructors - Members
+// Msg constructors - Org users search
+// Msg constructors - Task types
+// Msg constructors - Pool filters
+// Msg constructors - Member tasks
+// Msg constructors - Drag and drop
+// Msg constructors - Task creation
+// Msg constructors - Task actions
+// Msg constructors - Now working
+// Msg constructors - Member capabilities
+// Msg constructors - Position editing
+// Msg constructors - Task details
+// Helper functions
 
 pub fn app() -> lustre.App(Nil, Model, Msg) {
   lustre.application(init, update, view)
@@ -1170,7 +1174,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             Model(
               ..model,
               page: Login,
-              toast: opt.Some(update_helpers.i18n_t(model, i18n_text.PasswordUpdated)),
+              toast: opt.Some(update_helpers.i18n_t(
+                model,
+                i18n_text.PasswordUpdated,
+              )),
               login_password: "",
               login_error: opt.None,
             )
@@ -1430,7 +1437,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         }
 
         False -> #(
-          Model(..model, toast: opt.Some(update_helpers.i18n_t(model, i18n_text.LogoutFailed))),
+          Model(
+            ..model,
+            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.LogoutFailed)),
+          ),
           effect.none(),
         )
       }
@@ -1510,7 +1520,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     ProjectsFetched(Ok(projects)) -> {
       let selected =
-        update_helpers.ensure_selected_project(model.selected_project_id, projects)
+        update_helpers.ensure_selected_project(
+          model.selected_project_id,
+          projects,
+        )
       let model =
         Model(
           ..model,
@@ -1739,7 +1752,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           invite_link_in_flight: False,
           invite_link_last: opt.Some(link),
           invite_link_email: "",
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.InviteLinkCreated)),
+          toast: opt.Some(update_helpers.i18n_t(
+            model,
+            i18n_text.InviteLinkCreated,
+          )),
         )
 
       #(model, api.list_invite_links(InviteLinksFetched))
@@ -1752,7 +1768,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           invite_link_in_flight: False,
           invite_link_last: opt.Some(link),
           invite_link_email: "",
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.InviteLinkRegenerated)),
+          toast: opt.Some(update_helpers.i18n_t(
+            model,
+            i18n_text.InviteLinkRegenerated,
+          )),
         )
 
       #(model, api.list_invite_links(InviteLinksFetched))
@@ -1775,7 +1794,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           Model(
             ..model,
             invite_link_in_flight: False,
-            invite_link_error: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+            invite_link_error: opt.Some(update_helpers.i18n_t(
+              model,
+              i18n_text.NotPermitted,
+            )),
             toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
           ),
           effect.none(),
@@ -1808,7 +1830,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           Model(
             ..model,
             invite_link_in_flight: False,
-            invite_link_error: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+            invite_link_error: opt.Some(update_helpers.i18n_t(
+              model,
+              i18n_text.NotPermitted,
+            )),
             toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
           ),
           effect.none(),
@@ -1827,7 +1852,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     InviteLinkCopyClicked(text) -> #(
       Model(
         ..model,
-        invite_link_copy_status: opt.Some(update_helpers.i18n_t(model, i18n_text.Copying)),
+        invite_link_copy_status: opt.Some(update_helpers.i18n_t(
+          model,
+          i18n_text.Copying,
+        )),
       ),
       copy_to_clipboard(text, InviteLinkCopyFinished),
     )
@@ -1904,7 +1932,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           capabilities: Loaded(updated),
           capabilities_create_in_flight: False,
           capabilities_create_name: "",
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.CapabilityCreated)),
+          toast: opt.Some(update_helpers.i18n_t(
+            model,
+            i18n_text.CapabilityCreated,
+          )),
         ),
         effect.none(),
       )
@@ -2261,7 +2292,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           Model(
             ..model,
             members_add_in_flight: False,
-            members_add_error: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+            members_add_error: opt.Some(update_helpers.i18n_t(
+              model,
+              i18n_text.NotPermitted,
+            )),
             toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
           ),
           effect.none(),
@@ -2278,7 +2312,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     MemberRemoveClicked(user_id) -> {
-      let maybe_user = update_helpers.resolve_org_user(model.org_users_cache, user_id)
+      let maybe_user =
+        update_helpers.resolve_org_user(model.org_users_cache, user_id)
 
       let user = case maybe_user {
         opt.Some(user) -> user
@@ -2355,7 +2390,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           Model(
             ..model,
             members_remove_in_flight: False,
-            members_remove_error: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+            members_remove_error: opt.Some(update_helpers.i18n_t(
+              model,
+              i18n_text.NotPermitted,
+            )),
             toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
           ),
           effect.none(),
@@ -2554,7 +2592,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           task_types_create_icon: "",
           task_types_create_capability_id: opt.None,
           task_types_icon_preview: IconIdle,
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskTypeCreated)),
+          toast: opt.Some(update_helpers.i18n_t(
+            model,
+            i18n_text.TaskTypeCreated,
+          )),
         )
 
       refresh_section(model)
@@ -2655,7 +2696,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
       case pending <= 0 {
         True -> #(
-          Model(..model, member_tasks: Loaded(update_helpers.flatten_tasks(tasks_by_project))),
+          Model(
+            ..model,
+            member_tasks: Loaded(update_helpers.flatten_tasks(tasks_by_project)),
+          ),
           effect.none(),
         )
         False -> #(model, effect.none())
@@ -2698,7 +2742,9 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         True -> #(
           Model(
             ..model,
-            member_task_types: Loaded(update_helpers.flatten_task_types(task_types_by_project)),
+            member_task_types: Loaded(update_helpers.flatten_task_types(
+              task_types_by_project,
+            )),
           ),
           effect.none(),
         )
@@ -2975,10 +3021,12 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                             _ -> #(
                               Model(
                                 ..model,
-                                member_create_error: opt.Some(update_helpers.i18n_t(
-                                  model,
-                                  i18n_text.PriorityMustBe1To5,
-                                )),
+                                member_create_error: opt.Some(
+                                  update_helpers.i18n_t(
+                                    model,
+                                    i18n_text.PriorityMustBe1To5,
+                                  ),
+                                ),
                               ),
                               effect.none(),
                             )
@@ -3460,7 +3508,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       case model.member_my_capabilities_in_flight {
         True -> #(model, effect.none())
         False -> {
-          let ids = update_helpers.bool_dict_to_ids(model.member_my_capability_ids_edit)
+          let ids =
+            update_helpers.bool_dict_to_ids(model.member_my_capability_ids_edit)
           let model =
             Model(
               ..model,
@@ -3509,7 +3558,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     MemberPositionsFetched(Ok(positions)) -> #(
-      Model(..model, member_positions_by_task: update_helpers.positions_to_dict(positions)),
+      Model(
+        ..model,
+        member_positions_by_task: update_helpers.positions_to_dict(positions),
+      ),
       effect.none(),
     )
 
@@ -3968,7 +4020,11 @@ pub fn now_working_elapsed_from_ms_for_test(
   started_ms: Int,
   server_now_ms: Int,
 ) -> String {
-  update_helpers.now_working_elapsed_from_ms(accumulated_s, started_ms, server_now_ms)
+  update_helpers.now_working_elapsed_from_ms(
+    accumulated_s,
+    started_ms,
+    server_now_ms,
+  )
 }
 
 fn now_working_elapsed(model: Model) -> String {
@@ -3983,7 +4039,11 @@ fn now_working_elapsed(model: Model) -> String {
       let started_ms = client_ffi.parse_iso_ms(started_at)
       let local_now_ms = client_ffi.now_ms()
       let server_now_ms = local_now_ms - model.now_working_server_offset_ms
-      update_helpers.now_working_elapsed_from_ms(accumulated_s, started_ms, server_now_ms)
+      update_helpers.now_working_elapsed_from_ms(
+        accumulated_s,
+        started_ms,
+        server_now_ms,
+      )
     }
   }
 }
@@ -4017,7 +4077,10 @@ fn view_toast(model: Model) -> Element(Msg) {
         button(
           [
             attribute.class("toast-dismiss btn-xs"),
-            attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Dismiss)),
+            attribute.attribute(
+              "aria-label",
+              update_helpers.i18n_t(model, i18n_text.Dismiss),
+            ),
             event.on_click(ToastDismissed),
           ],
           [text("×")],
@@ -4114,7 +4177,9 @@ fn view_accept_invite_form(
         opt.Some(err) -> div([attribute.class("error")], [text(err)])
         opt.None -> div([], [])
       },
-      p([], [text(update_helpers.i18n_t(model, i18n_text.MinimumPasswordLength))]),
+      p([], [
+        text(update_helpers.i18n_t(model, i18n_text.MinimumPasswordLength)),
+      ]),
     ]),
     button([attribute.type_("submit"), attribute.disabled(in_flight)], [
       text(submit_label),
@@ -4210,7 +4275,9 @@ fn view_reset_password_form(
         opt.Some(err) -> div([attribute.class("error")], [text(err)])
         opt.None -> div([], [])
       },
-      p([], [text(update_helpers.i18n_t(model, i18n_text.MinimumPasswordLength))]),
+      p([], [
+        text(update_helpers.i18n_t(model, i18n_text.MinimumPasswordLength)),
+      ]),
     ]),
     button([attribute.type_("submit"), attribute.disabled(in_flight)], [
       text(submit_label),
@@ -4444,10 +4511,14 @@ fn view_project_selector(model: Model) -> Element(Msg) {
   }
 
   let helper = case model.page, model.selected_project_id {
-    Member, opt.None -> update_helpers.i18n_t(model, i18n_text.ShowingTasksFromAllProjects)
+    Member, opt.None ->
+      update_helpers.i18n_t(model, i18n_text.ShowingTasksFromAllProjects)
     Member, _ -> ""
     _, opt.None ->
-      update_helpers.i18n_t(model, i18n_text.SelectProjectToManageMembersOrTaskTypes)
+      update_helpers.i18n_t(
+        model,
+        i18n_text.SelectProjectToManageMembersOrTaskTypes,
+      )
     _, _ -> ""
   }
 
@@ -4598,7 +4669,9 @@ fn view_metrics_overview_loaded(
 
   div([attribute.class("panel")], [
     h2([], [text(update_helpers.i18n_t(model, i18n_text.MetricsOverview))]),
-    p([], [text(update_helpers.i18n_t(model, i18n_text.WindowDays(window_days)))]),
+    p([], [
+      text(update_helpers.i18n_t(model, i18n_text.WindowDays(window_days))),
+    ]),
     view_metrics_summary_table(
       model,
       claimed_count,
@@ -4662,7 +4735,9 @@ fn view_metrics_time_to_first_claim(
         i18n_text.TimeToFirstClaimP50(option_ms_label(p50_ms), sample_size),
       )),
     ]),
-    div([attribute.class("buckets")], [view_metrics_bucket_table(model, buckets)]),
+    div([attribute.class("buckets")], [
+      view_metrics_bucket_table(model, buckets),
+    ]),
   ])
 }
 
@@ -4671,7 +4746,9 @@ fn view_metrics_release_rate_buckets(
   buckets: List(api.OrgMetricsBucket),
 ) -> Element(Msg) {
   div([], [
-    h3([], [text(update_helpers.i18n_t(model, i18n_text.ReleaseRateDistribution))]),
+    h3([], [
+      text(update_helpers.i18n_t(model, i18n_text.ReleaseRateDistribution)),
+    ]),
     view_metrics_bucket_table(model, buckets),
   ])
 }
@@ -4764,7 +4841,12 @@ fn view_metrics_project_panel(
     opt.None ->
       div([attribute.class("panel")], [
         h3([], [text(update_helpers.i18n_t(model, i18n_text.ProjectDrillDown))]),
-        p([], [text(update_helpers.i18n_t(model, i18n_text.SelectProjectToInspectTasks))]),
+        p([], [
+          text(update_helpers.i18n_t(
+            model,
+            i18n_text.SelectProjectToInspectTasks,
+          )),
+        ]),
       ])
 
     opt.Some(api.Project(name: project_name, ..)) ->
@@ -4786,7 +4868,9 @@ fn view_metrics_project_tasks_panel(
   }
 
   div([attribute.class("panel")], [
-    h3([], [text(update_helpers.i18n_t(model, i18n_text.ProjectTasks(project_name)))]),
+    h3([], [
+      text(update_helpers.i18n_t(model, i18n_text.ProjectTasks(project_name))),
+    ]),
     body,
   ])
 }
@@ -4857,7 +4941,12 @@ fn view_org_settings(model: Model) -> Element(Msg) {
     p([], [text(update_helpers.i18n_t(model, i18n_text.OrgSettingsHelp))]),
     case model.org_settings_users {
       NotAsked ->
-        div([], [text(update_helpers.i18n_t(model, i18n_text.OpenThisSectionToLoadUsers))])
+        div([], [
+          text(update_helpers.i18n_t(
+            model,
+            i18n_text.OpenThisSectionToLoadUsers,
+          )),
+        ])
       Loading ->
         div(
           [
@@ -4978,7 +5067,9 @@ fn view_invites(model: Model) -> Element(Msg) {
         let full = build_full_url(origin, link.url_path)
 
         div([attribute.class("invite-result")], [
-          h3([], [text(update_helpers.i18n_t(model, i18n_text.LatestInviteLink))]),
+          h3([], [
+            text(update_helpers.i18n_t(model, i18n_text.LatestInviteLink)),
+          ]),
           div([attribute.class("field")], [
             label([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
             input([
@@ -5021,7 +5112,8 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
     Failed(err) ->
       div([attribute.class("error")], [
         text(
-          update_helpers.i18n_t(model, i18n_text.FailedToLoadInviteLinksPrefix) <> err.message,
+          update_helpers.i18n_t(model, i18n_text.FailedToLoadInviteLinksPrefix)
+          <> err.message,
         ),
       ])
 
@@ -5036,7 +5128,9 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
           table([attribute.class("table")], [
             thead([], [
               tr([], [
-                th([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.EmailLabel)),
+                ]),
                 th([], [text(update_helpers.i18n_t(model, i18n_text.State))]),
                 th([], [text(update_helpers.i18n_t(model, i18n_text.CreatedAt))]),
                 th([], [text(update_helpers.i18n_t(model, i18n_text.Link))]),
@@ -5233,7 +5327,11 @@ fn view_capabilities_list(
           ])
         _ ->
           table([attribute.class("table")], [
-            thead([], [tr([], [th([], [text(update_helpers.i18n_t(model, i18n_text.Name))])])]),
+            thead([], [
+              tr([], [
+                th([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
+              ]),
+            ]),
             tbody(
               [],
               list.map(capabilities, fn(c) { tr([], [td([], [text(c.name)])]) }),
@@ -5250,12 +5348,20 @@ fn view_members(
   case selected_project {
     opt.None ->
       div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.SelectProjectToManageMembers)),
+        text(update_helpers.i18n_t(
+          model,
+          i18n_text.SelectProjectToManageMembers,
+        )),
       ])
 
     opt.Some(project) ->
       div([attribute.class("section")], [
-        h2([], [text(update_helpers.i18n_t(model, i18n_text.MembersTitle(project.name)))]),
+        h2([], [
+          text(update_helpers.i18n_t(
+            model,
+            i18n_text.MembersTitle(project.name),
+          )),
+        ]),
         button([event.on_click(MemberAddDialogOpened)], [
           text(update_helpers.i18n_t(model, i18n_text.AddMember)),
         ]),
@@ -5316,9 +5422,15 @@ fn view_members_table(
             tbody(
               [],
               list.map(members, fn(m) {
-                let email = case update_helpers.resolve_org_user(cache, m.user_id) {
+                let email = case
+                  update_helpers.resolve_org_user(cache, m.user_id)
+                {
                   opt.Some(user) -> user.email
-                  opt.None -> update_helpers.i18n_t(model, i18n_text.UserNumber(m.user_id))
+                  opt.None ->
+                    update_helpers.i18n_t(
+                      model,
+                      i18n_text.UserNumber(m.user_id),
+                    )
                 }
 
                 tr([], [
@@ -5354,7 +5466,10 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
           attribute.value(model.org_users_search_query),
           event.on_input(OrgUsersSearchChanged),
           event.debounce(event.on_input(OrgUsersSearchDebounced), 350),
-          attribute.placeholder(update_helpers.i18n_t(model, i18n_text.EmailPlaceholderExample)),
+          attribute.placeholder(update_helpers.i18n_t(
+            model,
+            i18n_text.EmailPlaceholderExample,
+          )),
         ]),
       ]),
       view_org_users_search_results(model, model.org_users_search_results),
@@ -5412,7 +5527,9 @@ fn view_org_users_search_results(
       ])
 
     Loading ->
-      div([attribute.class("empty")], [text(update_helpers.i18n_t(model, i18n_text.Searching))])
+      div([attribute.class("empty")], [
+        text(update_helpers.i18n_t(model, i18n_text.Searching)),
+      ])
 
     Failed(err) ->
       case err.status == 403 {
@@ -5437,7 +5554,9 @@ fn view_org_users_search_results(
           table([attribute.class("table")], [
             thead([], [
               tr([], [
-                th([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.EmailLabel)),
+                ]),
                 th([], [text(update_helpers.i18n_t(model, i18n_text.OrgRole))]),
                 th([], [text(update_helpers.i18n_t(model, i18n_text.Created))]),
                 th([], [text(update_helpers.i18n_t(model, i18n_text.Select))]),
@@ -5509,12 +5628,20 @@ fn view_task_types(
   case selected_project {
     opt.None ->
       div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.SelectProjectToManageTaskTypes)),
+        text(update_helpers.i18n_t(
+          model,
+          i18n_text.SelectProjectToManageTaskTypes,
+        )),
       ])
 
     opt.Some(project) ->
       div([attribute.class("section")], [
-        h2([], [text(update_helpers.i18n_t(model, i18n_text.TaskTypesTitle(project.name)))]),
+        h2([], [
+          text(update_helpers.i18n_t(
+            model,
+            i18n_text.TaskTypesTitle(project.name),
+          )),
+        ]),
         view_task_types_list(model, model.task_types, model.theme),
         hr([]),
         h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateTaskType))]),
@@ -5557,7 +5684,9 @@ fn view_task_types(
             },
           ]),
           div([attribute.class("field")], [
-            label([], [text(update_helpers.i18n_t(model, i18n_text.CapabilityOptional))]),
+            label([], [
+              text(update_helpers.i18n_t(model, i18n_text.CapabilityOptional)),
+            ]),
             view_capability_selector(
               model,
               model.capabilities,
@@ -5728,7 +5857,10 @@ fn view_capability_selector(
           event.on_input(TaskTypeCreateCapabilityChanged),
         ],
         [
-          option([attribute.value("")], update_helpers.i18n_t(model, i18n_text.NoneOption)),
+          option(
+            [attribute.value("")],
+            update_helpers.i18n_t(model, i18n_text.NoneOption),
+          ),
           ..list.map(capabilities, fn(c) {
             option([attribute.value(int.to_string(c.id))], c.name)
           })
@@ -5773,9 +5905,18 @@ fn view_task_types_list(
       case task_types {
         [] ->
           div([attribute.class("empty")], [
-            h2([], [text(update_helpers.i18n_t(model, i18n_text.NoTaskTypesYet))]),
-            p([], [text(update_helpers.i18n_t(model, i18n_text.TaskTypesExplain))]),
-            p([], [text(update_helpers.i18n_t(model, i18n_text.CreateFirstTaskTypeHint))]),
+            h2([], [
+              text(update_helpers.i18n_t(model, i18n_text.NoTaskTypesYet)),
+            ]),
+            p([], [
+              text(update_helpers.i18n_t(model, i18n_text.TaskTypesExplain)),
+            ]),
+            p([], [
+              text(update_helpers.i18n_t(
+                model,
+                i18n_text.CreateFirstTaskTypeHint,
+              )),
+            ]),
           ])
         _ ->
           table([attribute.class("table")], [
@@ -5783,7 +5924,9 @@ fn view_task_types_list(
               tr([], [
                 th([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
                 th([], [text(update_helpers.i18n_t(model, i18n_text.Icon))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.CapabilityLabel))]),
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.CapabilityLabel)),
+                ]),
               ]),
             ]),
             tbody(
@@ -5915,7 +6058,10 @@ fn view_now_working_panel(model: Model, _user: User) -> Element(Msg) {
     Failed(err) ->
       div([attribute.class("now-working")], [
         div([attribute.class("now-working-error")], [
-          text(update_helpers.i18n_t(model, i18n_text.NowWorkingErrorPrefix) <> err.message),
+          text(
+            update_helpers.i18n_t(model, i18n_text.NowWorkingErrorPrefix)
+            <> err.message,
+          ),
         ]),
       ])
 
@@ -5932,9 +6078,12 @@ fn view_now_working_panel(model: Model, _user: User) -> Element(Msg) {
           ])
 
         opt.Some(api.ActiveTask(task_id: task_id, ..)) -> {
-          let title = case update_helpers.find_task_by_id(model.member_tasks, task_id) {
+          let title = case
+            update_helpers.find_task_by_id(model.member_tasks, task_id)
+          {
             opt.Some(api.Task(title: title, ..)) -> title
-            opt.None -> update_helpers.i18n_t(model, i18n_text.TaskNumber(task_id))
+            opt.None ->
+              update_helpers.i18n_t(model, i18n_text.TaskNumber(task_id))
           }
 
           let disable_actions =
@@ -5951,7 +6100,9 @@ fn view_now_working_panel(model: Model, _user: User) -> Element(Msg) {
               [text(update_helpers.i18n_t(model, i18n_text.Pause))],
             )
 
-          let task_actions = case update_helpers.find_task_by_id(model.member_tasks, task_id) {
+          let task_actions = case
+            update_helpers.find_task_by_id(model.member_tasks, task_id)
+          {
             opt.Some(api.Task(version: version, ..)) -> [
               button(
                 [
@@ -6194,24 +6345,40 @@ fn view_member_pool_main(model: Model, _user: User) -> Element(Msg) {
 fn view_member_filters(model: Model) -> Element(Msg) {
   let type_options = case model.member_task_types {
     Loaded(task_types) -> [
-      option([attribute.value("")], update_helpers.i18n_t(model, i18n_text.AllOption)),
+      option(
+        [attribute.value("")],
+        update_helpers.i18n_t(model, i18n_text.AllOption),
+      ),
       ..list.map(task_types, fn(tt) {
         option([attribute.value(int.to_string(tt.id))], tt.name)
       })
     ]
 
-    _ -> [option([attribute.value("")], update_helpers.i18n_t(model, i18n_text.AllOption))]
+    _ -> [
+      option(
+        [attribute.value("")],
+        update_helpers.i18n_t(model, i18n_text.AllOption),
+      ),
+    ]
   }
 
   let capability_options = case model.capabilities {
     Loaded(caps) -> [
-      option([attribute.value("")], update_helpers.i18n_t(model, i18n_text.AllOption)),
+      option(
+        [attribute.value("")],
+        update_helpers.i18n_t(model, i18n_text.AllOption),
+      ),
       ..list.map(caps, fn(c) {
         option([attribute.value(int.to_string(c.id))], c.name)
       })
     ]
 
-    _ -> [option([attribute.value("")], update_helpers.i18n_t(model, i18n_text.AllOption))]
+    _ -> [
+      option(
+        [attribute.value("")],
+        update_helpers.i18n_t(model, i18n_text.AllOption),
+      ),
+    ]
   }
 
   let my_caps_active = model.member_quick_my_caps
@@ -6229,7 +6396,10 @@ fn view_member_filters(model: Model) -> Element(Msg) {
       span(
         [
           attribute.class("filter-icon"),
-          attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.TypeLabel)),
+          attribute.attribute(
+            "title",
+            update_helpers.i18n_t(model, i18n_text.TypeLabel),
+          ),
           attribute.attribute("aria-hidden", "true"),
         ],
         [text("🏷")],
@@ -6244,7 +6414,10 @@ fn view_member_filters(model: Model) -> Element(Msg) {
       select(
         [
           attribute.attribute("id", "pool-filter-type"),
-          attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.TypeLabel)),
+          attribute.attribute(
+            "aria-label",
+            update_helpers.i18n_t(model, i18n_text.TypeLabel),
+          ),
           attribute.value(model.member_filters_type_id),
           event.on_input(MemberPoolTypeChanged),
           attribute.disabled(case model.member_task_types {
@@ -6262,7 +6435,10 @@ fn view_member_filters(model: Model) -> Element(Msg) {
       span(
         [
           attribute.class("filter-icon"),
-          attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.CapabilityLabel)),
+          attribute.attribute(
+            "title",
+            update_helpers.i18n_t(model, i18n_text.CapabilityLabel),
+          ),
           attribute.attribute("aria-hidden", "true"),
         ],
         [text("🎯")],
@@ -6339,7 +6515,10 @@ fn view_member_filters(model: Model) -> Element(Msg) {
       span(
         [
           attribute.class("filter-icon"),
-          attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.SearchLabel)),
+          attribute.attribute(
+            "title",
+            update_helpers.i18n_t(model, i18n_text.SearchLabel),
+          ),
           attribute.attribute("aria-hidden", "true"),
         ],
         [text("⌕")],
@@ -6353,12 +6532,18 @@ fn view_member_filters(model: Model) -> Element(Msg) {
       ),
       input([
         attribute.attribute("id", "pool-filter-q"),
-        attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.SearchLabel)),
+        attribute.attribute(
+          "aria-label",
+          update_helpers.i18n_t(model, i18n_text.SearchLabel),
+        ),
         attribute.type_("text"),
         attribute.value(model.member_filters_q),
         event.on_input(MemberPoolSearchChanged),
         event.debounce(event.on_input(MemberPoolSearchDebounced), 350),
-        attribute.placeholder(update_helpers.i18n_t(model, i18n_text.SearchPlaceholder)),
+        attribute.placeholder(update_helpers.i18n_t(
+          model,
+          i18n_text.SearchPlaceholder,
+        )),
       ]),
     ]),
   ])
@@ -6390,9 +6575,17 @@ fn view_member_tasks(model: Model) -> Element(Msg) {
           case no_filters {
             True ->
               div([attribute.class("empty")], [
-                h2([], [text(update_helpers.i18n_t(model, i18n_text.NoAvailableTasksRightNow))]),
+                h2([], [
+                  text(update_helpers.i18n_t(
+                    model,
+                    i18n_text.NoAvailableTasksRightNow,
+                  )),
+                ]),
                 p([], [
-                  text(update_helpers.i18n_t(model, i18n_text.CreateFirstTaskToStartUsingPool)),
+                  text(update_helpers.i18n_t(
+                    model,
+                    i18n_text.CreateFirstTaskToStartUsingPool,
+                  )),
                 ]),
                 button([event.on_click(MemberCreateDialogOpened)], [
                   text(update_helpers.i18n_t(model, i18n_text.NewTask)),
@@ -6401,7 +6594,10 @@ fn view_member_tasks(model: Model) -> Element(Msg) {
 
             False ->
               div([attribute.class("empty")], [
-                text(update_helpers.i18n_t(model, i18n_text.NoTasksMatchYourFilters)),
+                text(update_helpers.i18n_t(
+                  model,
+                  i18n_text.NoTasksMatchYourFilters,
+                )),
               ])
           }
         }
@@ -6460,8 +6656,14 @@ fn view_member_pool_task_row(model: Model, task: api.Task) -> Element(Msg) {
     button(
       [
         attribute.class("btn-xs btn-icon"),
-        attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.Claim)),
-        attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Claim)),
+        attribute.attribute(
+          "title",
+          update_helpers.i18n_t(model, i18n_text.Claim),
+        ),
+        attribute.attribute(
+          "aria-label",
+          update_helpers.i18n_t(model, i18n_text.Claim),
+        ),
         event.on_click(MemberClaimClicked(id, version)),
         attribute.disabled(disable_actions),
       ],
@@ -6566,8 +6768,14 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
       button(
         [
           attribute.class("btn-xs btn-icon"),
-          attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.Claim)),
-          attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Claim)),
+          attribute.attribute(
+            "title",
+            update_helpers.i18n_t(model, i18n_text.Claim),
+          ),
+          attribute.attribute(
+            "aria-label",
+            update_helpers.i18n_t(model, i18n_text.Claim),
+          ),
           event.on_click(MemberClaimClicked(id, version)),
           attribute.disabled(disable_actions),
         ],
@@ -6578,8 +6786,14 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
       button(
         [
           attribute.class("btn-xs btn-icon"),
-          attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.Release)),
-          attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Release)),
+          attribute.attribute(
+            "title",
+            update_helpers.i18n_t(model, i18n_text.Release),
+          ),
+          attribute.attribute(
+            "aria-label",
+            update_helpers.i18n_t(model, i18n_text.Release),
+          ),
           event.on_click(MemberReleaseClicked(id, version)),
           attribute.disabled(disable_actions),
         ],
@@ -6593,8 +6807,14 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
     button(
       [
         attribute.class("btn-xs btn-icon secondary-action drag-handle"),
-        attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.Drag)),
-        attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Drag)),
+        attribute.attribute(
+          "title",
+          update_helpers.i18n_t(model, i18n_text.Drag),
+        ),
+        attribute.attribute(
+          "aria-label",
+          update_helpers.i18n_t(model, i18n_text.Drag),
+        ),
         // Avoid accidental form submits if this ends up in a form.
         attribute.attribute("type", "button"),
         event.on("mousedown", {
@@ -6611,8 +6831,14 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
       button(
         [
           attribute.class("btn-xs btn-icon secondary-action"),
-          attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.Complete)),
-          attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Complete)),
+          attribute.attribute(
+            "title",
+            update_helpers.i18n_t(model, i18n_text.Complete),
+          ),
+          attribute.attribute(
+            "aria-label",
+            update_helpers.i18n_t(model, i18n_text.Complete),
+          ),
           event.on_click(MemberCompleteClicked(id, version)),
           attribute.disabled(disable_actions),
         ],
@@ -6673,7 +6899,10 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
               text(update_helpers.i18n_t(model, i18n_text.PopoverCreated)),
             ]),
             span([attribute.class("task-preview-value")], [
-              text(update_helpers.i18n_t(model, i18n_text.CreatedAgoDays(age_days))),
+              text(update_helpers.i18n_t(
+                model,
+                i18n_text.CreatedAgoDays(age_days),
+              )),
             ]),
             span([attribute.class("task-preview-label")], [
               text(update_helpers.i18n_t(model, i18n_text.PopoverStatus)),
@@ -6738,7 +6967,10 @@ fn view_member_create_dialog(model: Model) -> Element(Msg) {
           ],
           case model.member_task_types {
             Loaded(task_types) -> [
-              option([attribute.value("")], update_helpers.i18n_t(model, i18n_text.SelectType)),
+              option(
+                [attribute.value("")],
+                update_helpers.i18n_t(model, i18n_text.SelectType),
+              ),
               ..list.map(task_types, fn(tt) {
                 option([attribute.value(int.to_string(tt.id))], tt.name)
               })
@@ -6841,7 +7073,9 @@ fn view_member_metrics_panel(model: Model) -> Element(Msg) {
 
       div([attribute.class("panel")], [
         h3([], [text(update_helpers.i18n_t(model, i18n_text.MyMetrics))]),
-        p([], [text(update_helpers.i18n_t(model, i18n_text.WindowDays(window_days)))]),
+        p([], [
+          text(update_helpers.i18n_t(model, i18n_text.WindowDays(window_days))),
+        ]),
         table([attribute.class("table")], [
           thead([], [
             tr([], [
@@ -6942,8 +7176,14 @@ fn view_member_bar_task_row(
     button(
       [
         attribute.class("btn-xs btn-icon"),
-        attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.Claim)),
-        attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Claim)),
+        attribute.attribute(
+          "title",
+          update_helpers.i18n_t(model, i18n_text.Claim),
+        ),
+        attribute.attribute(
+          "aria-label",
+          update_helpers.i18n_t(model, i18n_text.Claim),
+        ),
         event.on_click(MemberClaimClicked(id, version)),
         attribute.disabled(disable_actions),
       ],
@@ -6954,9 +7194,18 @@ fn view_member_bar_task_row(
     button(
       [
         attribute.class("btn-xs btn-icon"),
-        attribute.attribute("data-tooltip", update_helpers.i18n_t(model, i18n_text.Release)),
-        attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.Release)),
-        attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Release)),
+        attribute.attribute(
+          "data-tooltip",
+          update_helpers.i18n_t(model, i18n_text.Release),
+        ),
+        attribute.attribute(
+          "title",
+          update_helpers.i18n_t(model, i18n_text.Release),
+        ),
+        attribute.attribute(
+          "aria-label",
+          update_helpers.i18n_t(model, i18n_text.Release),
+        ),
         event.on_click(MemberReleaseClicked(id, version)),
         attribute.disabled(disable_actions),
       ],
@@ -6967,9 +7216,18 @@ fn view_member_bar_task_row(
     button(
       [
         attribute.class("btn-xs btn-icon"),
-        attribute.attribute("data-tooltip", update_helpers.i18n_t(model, i18n_text.Complete)),
-        attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.Complete)),
-        attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Complete)),
+        attribute.attribute(
+          "data-tooltip",
+          update_helpers.i18n_t(model, i18n_text.Complete),
+        ),
+        attribute.attribute(
+          "title",
+          update_helpers.i18n_t(model, i18n_text.Complete),
+        ),
+        attribute.attribute(
+          "aria-label",
+          update_helpers.i18n_t(model, i18n_text.Complete),
+        ),
         event.on_click(MemberCompleteClicked(id, version)),
         attribute.disabled(disable_actions),
       ],
@@ -6980,7 +7238,10 @@ fn view_member_bar_task_row(
     button(
       [
         attribute.class("btn-xs"),
-        attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.StartNowWorking)),
+        attribute.attribute(
+          "title",
+          update_helpers.i18n_t(model, i18n_text.StartNowWorking),
+        ),
         attribute.attribute(
           "aria-label",
           update_helpers.i18n_t(model, i18n_text.StartNowWorking),
@@ -6995,7 +7256,10 @@ fn view_member_bar_task_row(
     button(
       [
         attribute.class("btn-xs"),
-        attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.PauseNowWorking)),
+        attribute.attribute(
+          "title",
+          update_helpers.i18n_t(model, i18n_text.PauseNowWorking),
+        ),
         attribute.attribute(
           "aria-label",
           update_helpers.i18n_t(model, i18n_text.PauseNowWorking),
@@ -7006,7 +7270,8 @@ fn view_member_bar_task_row(
       [text(update_helpers.i18n_t(model, i18n_text.Pause))],
     )
 
-  let is_active = update_helpers.now_working_active_task_id(model) == opt.Some(id)
+  let is_active =
+    update_helpers.now_working_active_task_id(model) == opt.Some(id)
 
   let now_working_action = case is_active {
     True -> pause_action
@@ -7184,7 +7449,8 @@ fn view_member_notes(model: Model, _task_id: Int) -> Element(Msg) {
             ) = n
             let author = case user_id == current_user_id {
               True -> update_helpers.i18n_t(model, i18n_text.You)
-              False -> update_helpers.i18n_t(model, i18n_text.UserNumber(user_id))
+              False ->
+                update_helpers.i18n_t(model, i18n_text.UserNumber(user_id))
             }
 
             div([attribute.class("note")], [
@@ -7263,7 +7529,9 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
               // without status filter and apply view-level guards.
               api.TaskFilters(
                 status: opt.None,
-                type_id: update_helpers.empty_to_int_opt(model.member_filters_type_id),
+                type_id: update_helpers.empty_to_int_opt(
+                  model.member_filters_type_id,
+                ),
                 capability_id: update_helpers.empty_to_int_opt(
                   model.member_filters_capability_id,
                 ),
@@ -7273,7 +7541,9 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
             _ ->
               api.TaskFilters(
                 status: update_helpers.empty_to_opt(model.member_filters_status),
-                type_id: update_helpers.empty_to_int_opt(model.member_filters_type_id),
+                type_id: update_helpers.empty_to_int_opt(
+                  model.member_filters_type_id,
+                ),
                 capability_id: update_helpers.empty_to_int_opt(
                   model.member_filters_capability_id,
                 ),

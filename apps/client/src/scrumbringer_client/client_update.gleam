@@ -1,51 +1,50 @@
-//// Update module for Scrumbringer client.
+//// Update function and handlers for Scrumbringer client.
 ////
 //// ## Mission
 ////
-//// Handles all state transitions in the Lustre application. Contains the
-//// central `update` function and message-specific handlers.
+//// Contains the main Lustre update function and all message handlers.
+//// Handles state transitions and effect creation for the entire application.
 ////
-//// ## Responsibilities
+//// ## Current Status
 ////
-//// - Process `Msg` variants and update `Model`
-//// - Produce effects for side-effects (API calls, navigation, timers)
-//// - Coordinate with child component updates (accept_invite, reset_password)
+//// This module is a placeholder for future extraction. The update function
+//// (163 handlers, ~2800 lines) remains in `scrumbringer_client.gleam` due to:
+////
+//// - Tight coupling with Model, Msg constructors, and API effects
+//// - Complex hydration and bootstrap logic
+//// - 60+ Msg constructors used across handlers
+////
+//// ## Planned Extraction (Future Sprint)
+////
+//// The extraction will be done incrementally by domain:
+////
+//// 1. **Auth handlers**: MeFetched, Login*, Logout*, ForgotPassword*, AcceptInvite*, ResetPassword*
+//// 2. **Admin handlers**: Project*, Capability*, Member*, TaskType*, InviteLink*, OrgSettings*
+//// 3. **Member handlers**: MemberPool*, MemberTask*, MemberCreate*, MemberDrag*, MemberNotes*
+//// 4. **Metrics handlers**: *Metrics*, NowWorking*
+////
+//// Each domain group can be extracted to its own handler module, with the main
+//// update function dispatching to them.
+////
+//// ## Responsibilities (when complete)
+////
+//// - Main `update` function dispatching messages to handlers
+//// - Effect creation (API calls, navigation, timers, clipboard)
+//// - Route application and URL management
+//// - Hydration and bootstrap logic
 ////
 //// ## Non-responsibilities
 ////
 //// - Type definitions (see `client_state.gleam`)
-//// - View rendering (see `scrumbringer_client.gleam` / future `client_view.gleam`)
-//// - API request construction (see `api.gleam`)
+//// - View rendering (see `scrumbringer_client.gleam`)
+//// - API request logic (see `api.gleam`)
 ////
-//// ## Current Status
+//// ## Relations
 ////
-//// This module is a placeholder. The update function (~2700 lines) remains in
-//// `scrumbringer_client.gleam` pending extraction of shared helper functions.
-////
-//// ## Planned Structure
-////
-//// Future refactoring should extract domain-specific handlers:
-//// - `update/auth.gleam`: login, logout, password reset
-//// - `update/member.gleam`: member section, tasks, pool
-//// - `update/admin.gleam`: admin section, projects, capabilities
-////
-//// ## Dependencies (when fully extracted)
-////
-//// The update function will need:
-//// - `client_state`: Model, Msg, Remote types
-//// - `api`: API effects
-//// - `client_ffi`: browser FFI
-//// - `router`: URL handling
-//// - `accept_invite`, `reset_password`: child component updates
+//// - **client_state.gleam**: Provides Model, Msg, and state types
+//// - **scrumbringer_client.gleam**: Entry point with update function (current location)
+//// - **api.gleam**: Provides API effects
+//// - **router.gleam**: Provides URL parsing
 
-// =============================================================================
-// Placeholder - actual update lives in scrumbringer_client.gleam
-// =============================================================================
-
-// This module exists to:
-// 1. Document the intended architecture
-// 2. Reserve the module name for future extraction
-// 3. Track the refactoring plan
-
-// When extracted, the update function will have this signature:
-// pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg))
+// This module will receive imports as handlers are extracted.
+// Placeholder to maintain module structure for future extraction.

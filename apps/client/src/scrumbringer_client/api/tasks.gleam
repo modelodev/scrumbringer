@@ -715,5 +715,11 @@ pub fn put_me_capability_ids(
   let body = json.object([#("capability_ids", json.array(ids, of: json.int))])
   let decoder =
     decode.field("capability_ids", decode.list(decode.int), decode.success)
-  core.request("PUT", "/api/v1/me/capabilities", option.Some(body), decoder, to_msg)
+  core.request(
+    "PUT",
+    "/api/v1/me/capabilities",
+    option.Some(body),
+    decoder,
+    to_msg,
+  )
 }

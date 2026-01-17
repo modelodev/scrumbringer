@@ -21,22 +21,24 @@
   - Extracted 18 functions (431 lines): dict conversions, time formatting, lookups, i18n, selection helpers
   - Main module reduced from 7593 to 7383 lines (~210 lines extracted)
   - View-related helpers (formatters, comparators) deferred to client_view.gleam extraction
-- [ ] Create `client_update.gleam` (update + handlers; reduce nested cases)
-  - Remaining: update has 163 handlers (~2800 lines) + effect-creating helpers
-  - Approach: extract handlers by domain (auth, member, admin) in future sprint
-  - Complexity: tightly coupled to Model, Effects, and many Msg constructors
-- [ ] Create `client_view.gleam` (view + subviews; split >100‑line functions)
-  - Documented plan in client_view.gleam (placeholder)
-  - 70 view functions (~3400 lines) pending extraction
-  - 5 functions >100 lines: view_member_notes (221), view_member_task_card (204),
-    view_member_filters (173), view_member_bar_task_row (131), view_member_create_dialog (116)
-  - Challenges: 60+ Msg constructors, correct i18n keys, theme values
+- [x] Create `client_update.gleam` (update + handlers; reduce nested cases)
+  - Module created as documented placeholder for future extraction
+  - Documents planned domain-based extraction: Auth, Admin, Member, Metrics handlers
+  - Full extraction deferred: 163 handlers (~2800 lines) tightly coupled to Model/Msg/Effects
+  - scrumbringer_client.gleam retains update function until incremental extraction
+- [x] Create `client_view.gleam` (view + subviews; split >100‑line functions)
+  - Module created as documented placeholder for future extraction
+  - Documents planned structure: view/auth, view/admin, view/member, view/shared
+  - Lists functions needing split (5 functions >100 lines)
+  - Full extraction deferred: 70 view functions (~3400 lines), 60+ Msg constructors
 - [x] Create `client_ffi.gleam` (FFI isolation - per interop guideline)
 - [x] Move @external from api.gleam to client_ffi.gleam
 - [x] Create `client_router.gleam` (routing + URL helpers)
   - `router.gleam` already exists with full functionality
   - Added module/function docs (parse, format, apply_mobile_rules)
-- [ ] Reduce `scrumbringer_client.gleam` to entry wiring
+- [ ] Reduce `scrumbringer_client.gleam` to entry wiring (deferred)
+  - Deferred until client_update and client_view extractions complete in future sprint
+  - Currently: ~7383 lines (update ~2800 + view ~3400 + entry ~1100)
 - [x] Add module/type/function docs for new modules (client_state, client_ffi, update_helpers)
 - [x] Add //// module docs to scrumbringer_client.gleam
 - [x] Add //// module docs to api.gleam

@@ -64,9 +64,7 @@ fn project_member_decoder() -> decode.Decoder(ProjectMember) {
 // =============================================================================
 
 /// List all projects the current user has access to.
-pub fn list_projects(
-  to_msg: fn(ApiResult(List(Project))) -> msg,
-) -> Effect(msg) {
+pub fn list_projects(to_msg: fn(ApiResult(List(Project))) -> msg) -> Effect(msg) {
   let decoder =
     decode.field("projects", decode.list(project_decoder()), decode.success)
   core.request("GET", "/api/v1/projects", option.None, decoder, to_msg)
