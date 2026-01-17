@@ -6,15 +6,19 @@
 //// - Expose browser APIs (history, location, DOM, clipboard)
 //// - Expose timing utilities (now_ms, set_timeout, parse_iso_ms)
 //// - Expose event registration (popstate, keydown)
+//// - Expose HTTP primitives (send, cookies, URL encoding)
 ////
 //// Non-responsibilities:
 //// - Lustre effects (see main client module)
 //// - Business logic (see client_update)
 //// - Type definitions (see client_state)
+//// - API request/response handling (see api.gleam)
 ////
 //// Relations:
-//// - Used by: scrumbringer_client (for effects and init)
+//// - Used by: scrumbringer_client (for effects and init), api (for HTTP)
 //// - Uses: fetch.ffi.mjs (JavaScript module)
+
+import gleam/option.{type Option}
 
 // =============================================================================
 // Navigation APIs
@@ -263,4 +267,60 @@ pub fn set_timeout(_ms: Int, _cb: fn(Nil) -> Nil) -> Int {
 @external(javascript, "./fetch.ffi.mjs", "is_mobile")
 pub fn is_mobile() -> Bool {
   False
+}
+
+// =============================================================================
+// HTTP and Cookie APIs
+// =============================================================================
+
+/// Read a browser cookie by name.
+///
+/// Returns the cookie value or empty string if not found.
+/// **Note**: Cannot distinguish "not found" from "empty value".
+///
+/// ## Example
+///
+/// ```gleam
+/// let session = read_cookie("session_id")
+/// ```
+@external(javascript, "./fetch.ffi.mjs", "read_cookie")
+pub fn read_cookie(_name: String) -> String {
+  ""
+}
+
+/// Send an HTTP request with the specified method, URL, headers, and body.
+///
+/// The callback receives a tuple of (status_code, response_body).
+/// This is a low-level primitive; prefer using api.gleam for typed requests.
+///
+/// ## Example
+///
+/// ```gleam
+/// send("GET", "/api/users", [#("Accept", "application/json")], None, fn(response) {
+///   let #(status, body) = response
+///   // handle response
+/// })
+/// ```
+@external(javascript, "./fetch.ffi.mjs", "send")
+pub fn send(
+  _method: String,
+  _url: String,
+  _headers: List(#(String, String)),
+  _body: Option(String),
+  _callback: fn(#(Int, String)) -> Nil,
+) -> Nil {
+  Nil
+}
+
+/// URL-encode a string component.
+///
+/// ## Example
+///
+/// ```gleam
+/// let encoded = encode_uri_component("hello world")
+/// // "hello%20world"
+/// ```
+@external(javascript, "./fetch.ffi.mjs", "encode_uri_component")
+pub fn encode_uri_component(_value: String) -> String {
+  ""
 }

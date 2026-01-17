@@ -1,3 +1,50 @@
+//// Main client module for Scrumbringer web application.
+////
+//// ## Mission
+////
+//// Entry point and orchestrator for the Lustre-based SPA client. Wires together
+//// initialization, routing, state management, and view rendering.
+////
+//// ## Responsibilities
+////
+//// - Application bootstrap (`main`, `init`)
+//// - Lustre update cycle (`update`)
+//// - View rendering and routing (`view`)
+//// - Effect management (API calls, navigation, timers)
+//// - Message dispatch and state transitions
+////
+//// ## Non-responsibilities
+////
+//// - Type definitions (see `client_state.gleam`)
+//// - API request/response handling (see `api.gleam`)
+//// - JavaScript FFI (see `client_ffi.gleam`)
+//// - Routing logic and URL parsing (see `router.gleam`)
+//// - Internationalization (see `i18n/` modules)
+//// - Theme and styling (see `theme.gleam`, `styles.gleam`)
+////
+//// ## Architecture
+////
+//// Follows the Lustre/Elm architecture pattern:
+//// - **Model**: Application state (defined in `client_state.gleam`)
+//// - **Msg**: Messages that trigger state changes (defined in `client_state.gleam`)
+//// - **Update**: Pure function `(Model, Msg) -> #(Model, Effect(Msg))`
+//// - **View**: Pure function `Model -> Element(Msg)`
+////
+//// ## Module Structure (planned refactor)
+////
+//// This module is currently monolithic. Future refactoring will extract:
+//// - `client_update.gleam`: update function and helpers
+//// - `client_view.gleam`: view function and subviews
+////
+//// ## Relations
+////
+//// - **client_state.gleam**: Provides Model, Msg, and state types
+//// - **api.gleam**: Provides API effects for data fetching
+//// - **client_ffi.gleam**: Provides browser FFI (history, DOM, timers)
+//// - **router.gleam**: Provides URL parsing and route types
+//// - **theme.gleam**: Provides theme management
+//// - **styles.gleam**: Provides CSS generation
+
 import gleam/dict
 import gleam/dynamic/decode
 import gleam/float
