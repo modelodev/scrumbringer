@@ -1,1 +1,0 @@
--record(ongoing_by, {user_id :: integer()}).

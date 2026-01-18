@@ -1,1 +1,0 @@
--record(task_type_inline, {id :: integer(), name :: binary(), icon :: binary()}).

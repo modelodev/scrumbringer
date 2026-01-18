@@ -38,6 +38,7 @@ capturas/
 # Gleam build output (generated)
 apps/**/build/
 packages/**/build/
+shared/build/
 
 # Playwright
 node_modules/

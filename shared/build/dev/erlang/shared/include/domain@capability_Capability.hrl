@@ -1,1 +1,0 @@
--record(capability, {id :: integer(), name :: binary()}).
