@@ -1,3 +1,8 @@
+//// HTTP handlers for task notes (comments).
+////
+//// Provides endpoints for listing notes on a task and adding
+//// new notes. Requires task access (membership in task's project).
+
 import gleam/dynamic/decode
 import gleam/http
 import gleam/int
@@ -6,10 +11,11 @@ import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
+import scrumbringer_server/persistence/tasks/queries as tasks_queries
 import scrumbringer_server/services/task_notes_db
-import scrumbringer_server/services/tasks_db
 import wisp
 
+/// Routes /api/tasks/:id/notes requests (GET list, POST create).
 pub fn handle_task_notes(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -120,9 +126,10 @@ fn require_task_access(
   task_id: Int,
   user_id: Int,
 ) -> Result(Nil, wisp.Response) {
-  case tasks_db.get_task_for_user(db, task_id, user_id) {
+  case tasks_queries.get_task_for_user(db, task_id, user_id) {
     Ok(_) -> Ok(Nil)
-    Error(tasks_db.NotFound) -> Error(api.error(404, "NOT_FOUND", "Not found"))
+    Error(tasks_queries.NotFound) ->
+      Error(api.error(404, "NOT_FOUND", "Not found"))
     Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
   }
 }

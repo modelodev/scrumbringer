@@ -1,19 +1,39 @@
+//// Database operations for organization invite codes.
+////
+//// Invite codes allow existing organization members to invite new users.
+//// Codes are cryptographically random and have configurable expiration.
+
 import gleam/bit_array
 import gleam/crypto
 import gleam/string
 import pog
 import scrumbringer_server/sql
 
+/// An invitation code for joining an organization.
 pub type OrgInvite {
   OrgInvite(code: String, created_at: String, expires_at: String)
 }
 
+/// Errors that can occur when creating an invite.
 pub type CreateInviteError {
   DbError(pog.QueryError)
   ExpiryHoursInvalid
   NoRowReturned
 }
 
+/// Creates a new organization invite code.
+///
+/// Generates a cryptographically secure code with the specified expiration.
+/// Retries on collision (up to 5 attempts).
+///
+/// ## Example
+/// ```gleam
+/// case org_invites_db.create_invite(db, org_id, user_id, 24) {
+///   Ok(invite) -> Ok(invite.code)
+///   Error(ExpiryHoursInvalid) -> Error(InvalidExpiry)
+///   Error(_) -> Error(InternalError)
+/// }
+/// ```
 pub fn create_invite(
   db: pog.Connection,
   org_id: Int,

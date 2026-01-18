@@ -1,17 +1,33 @@
+//// Database operations for task positions on the board.
+////
+//// Task positions track where each user has placed tasks on their personal
+//// board view. Each user can have their own arrangement of tasks.
+
 import gleam/list
 import gleam/result
 import pog
 import scrumbringer_server/sql
 
+/// A task's position on a user's board view.
 pub type TaskPosition {
   TaskPosition(task_id: Int, user_id: Int, x: Int, y: Int, updated_at: String)
 }
 
+/// Errors that can occur when upserting a position.
 pub type UpsertPositionError {
   DbError(pog.QueryError)
   UnexpectedEmptyResult
 }
 
+/// Lists all task positions for a user in a project.
+///
+/// ## Example
+/// ```gleam
+/// case task_positions_db.list_positions_for_user(db, user_id, project_id) {
+///   Ok(positions) -> restore_board_layout(positions)
+///   Error(_) -> use_default_layout()
+/// }
+/// ```
 pub fn list_positions_for_user(
   db: pog.Connection,
   user_id: Int,
@@ -28,6 +44,15 @@ pub fn list_positions_for_user(
   |> Ok
 }
 
+/// Updates or inserts a task's position on a user's board.
+///
+/// ## Example
+/// ```gleam
+/// case task_positions_db.upsert_position(db, task_id, user_id, 100, 250) {
+///   Ok(pos) -> Ok(PositionSaved)
+///   Error(_) -> Error(SaveFailed)
+/// }
+/// ```
 pub fn upsert_position(
   db: pog.Connection,
   task_id: Int,

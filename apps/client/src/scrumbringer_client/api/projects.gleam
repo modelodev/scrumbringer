@@ -23,18 +23,9 @@ import lustre/effect.{type Effect}
 
 import scrumbringer_client/api/core.{type ApiResult}
 
-// =============================================================================
-// Types
-// =============================================================================
-
-/// A project in the organization.
-pub type Project {
-  Project(id: Int, name: String, my_role: String)
-}
-
-/// A member of a project with their role.
-pub type ProjectMember {
-  ProjectMember(user_id: Int, role: String, created_at: String)
+// Import types from shared domain
+import domain/project.{
+  type Project, type ProjectMember, Project, ProjectMember,
 }
 
 // =============================================================================

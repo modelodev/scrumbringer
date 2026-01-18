@@ -1,3 +1,8 @@
+//// I18n text key definitions for Scrumbringer UI.
+////
+//// Defines all translatable text keys as a variant type. Each key maps to
+//// translations in language-specific modules (en.gleam, es.gleam).
+
 pub type Text {
   // App
   AppName

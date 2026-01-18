@@ -17,14 +17,21 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - Business logic (see `services/task_workflow_actor.gleam`)
-//// - Input validation (see `services/task_workflow_actor.gleam`)
-//// - Database operations (see `services/tasks_db.gleam`)
+//// - Business logic (see `services/workflows/handlers.gleam`)
+//// - Input validation (see `services/workflows/validation.gleam`)
+//// - Database operations (see `persistence/tasks/queries.gleam`)
 ////
 //// ## Submodules
 ////
 //// - `tasks/presenters`: JSON serialization functions
 //// - `tasks/filters`: Query parameter parsing
+////
+//// ## Line Count Justification
+////
+//// ~710 lines: Central task HTTP handler covering 9 endpoints (task types,
+//// tasks CRUD, claim/release/complete). Already delegates business logic to
+//// `services/workflows/handlers.gleam`. Splitting by HTTP method would
+//// fragment related endpoint logic and complicate route registration.
 
 import gleam/dynamic/decode
 import gleam/http
@@ -38,7 +45,8 @@ import scrumbringer_server/http/csrf
 import scrumbringer_server/http/tasks/conflict_handlers
 import scrumbringer_server/http/tasks/filters
 import scrumbringer_server/http/tasks/presenters
-import scrumbringer_server/services/task_workflow_actor as actor
+import scrumbringer_server/services/workflows/handlers as workflow
+import scrumbringer_server/services/workflows/types as workflow_types
 import wisp
 
 // =============================================================================
@@ -135,8 +143,8 @@ fn handle_task_types_list(
         Ok(project_id) -> {
           let auth.Ctx(db: db, ..) = ctx
 
-          case actor.handle(db, actor.ListTaskTypes(project_id, user.id)) {
-            Ok(actor.TaskTypesList(task_types)) ->
+          case workflow.handle(db, workflow_types.ListTaskTypes(project_id, user.id)) {
+            Ok(workflow_types.TaskTypesList(task_types)) ->
               api.ok(
                 json.object([
                   #(
@@ -147,9 +155,9 @@ fn handle_task_types_list(
               )
 
             Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
-            Error(actor.NotAuthorized) ->
+            Error(workflow_types.NotAuthorized) ->
               api.error(403, "FORBIDDEN", "Forbidden")
-            Error(actor.DbError(_)) ->
+            Error(workflow_types.DbError(_)) ->
               api.error(500, "INTERNAL", "Database error")
             Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
           }
@@ -202,9 +210,9 @@ fn handle_task_types_create(
                   }
 
                   case
-                    actor.handle(
+                    workflow.handle(
                       db,
-                      actor.CreateTaskType(
+                      workflow_types.CreateTaskType(
                         project_id,
                         user.id,
                         user.org_id,
@@ -214,7 +222,7 @@ fn handle_task_types_create(
                       ),
                     )
                   {
-                    Ok(actor.TaskTypeCreated(task_type)) ->
+                    Ok(workflow_types.TaskTypeCreated(task_type)) ->
                       api.ok(
                         json.object([
                           #("task_type", presenters.task_type_json(task_type)),
@@ -222,17 +230,17 @@ fn handle_task_types_create(
                       )
 
                     Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
-                    Error(actor.NotAuthorized) ->
+                    Error(workflow_types.NotAuthorized) ->
                       api.error(403, "FORBIDDEN", "Forbidden")
-                    Error(actor.TaskTypeAlreadyExists) ->
+                    Error(workflow_types.TaskTypeAlreadyExists) ->
                       api.error(
                         422,
                         "VALIDATION_ERROR",
                         "Task type name already exists",
                       )
-                    Error(actor.ValidationError(msg)) ->
+                    Error(workflow_types.ValidationError(msg)) ->
                       api.error(422, "VALIDATION_ERROR", msg)
-                    Error(actor.DbError(_)) ->
+                    Error(workflow_types.DbError(_)) ->
                       api.error(500, "INTERNAL", "Database error")
                     Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
                   }
@@ -271,7 +279,7 @@ fn handle_tasks_list(
 
             Ok(task_filters) -> {
               let actor_filters =
-                actor.TaskFilters(
+                workflow_types.TaskFilters(
                   status: filters.status_filter_to_db_string(
                     task_filters.status,
                   ),
@@ -281,12 +289,12 @@ fn handle_tasks_list(
                 )
 
               case
-                actor.handle(
+                workflow.handle(
                   db,
-                  actor.ListTasks(project_id, user.id, actor_filters),
+                  workflow_types.ListTasks(project_id, user.id, actor_filters),
                 )
               {
-                Ok(actor.TasksList(tasks)) ->
+                Ok(workflow_types.TasksList(tasks)) ->
                   api.ok(
                     json.object([
                       #("tasks", json.array(tasks, of: presenters.task_json)),
@@ -294,9 +302,9 @@ fn handle_tasks_list(
                   )
 
                 Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
-                Error(actor.NotAuthorized) ->
+                Error(workflow_types.NotAuthorized) ->
                   api.error(403, "FORBIDDEN", "Forbidden")
-                Error(actor.DbError(_)) ->
+                Error(workflow_types.DbError(_)) ->
                   api.error(500, "INTERNAL", "Database error")
                 Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
               }
@@ -347,9 +355,9 @@ fn handle_tasks_create(
 
                 Ok(#(title, description, priority, type_id)) ->
                   case
-                    actor.handle(
+                    workflow.handle(
                       db,
-                      actor.CreateTask(
+                      workflow_types.CreateTask(
                         project_id,
                         user.id,
                         user.org_id,
@@ -360,17 +368,17 @@ fn handle_tasks_create(
                       ),
                     )
                   {
-                    Ok(actor.TaskResult(task)) ->
+                    Ok(workflow_types.TaskResult(task)) ->
                       api.ok(
                         json.object([#("task", presenters.task_json(task))]),
                       )
 
                     Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
-                    Error(actor.NotAuthorized) ->
+                    Error(workflow_types.NotAuthorized) ->
                       api.error(403, "FORBIDDEN", "Forbidden")
-                    Error(actor.ValidationError(msg)) ->
+                    Error(workflow_types.ValidationError(msg)) ->
                       api.error(422, "VALIDATION_ERROR", msg)
-                    Error(actor.DbError(_)) ->
+                    Error(workflow_types.DbError(_)) ->
                       api.error(500, "INTERNAL", "Database error")
                     Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
                   }
@@ -398,13 +406,13 @@ fn handle_task_get(
         Ok(task_id) -> {
           let auth.Ctx(db: db, ..) = ctx
 
-          case actor.handle(db, actor.GetTask(task_id, user.id)) {
-            Ok(actor.TaskResult(task)) ->
+          case workflow.handle(db, workflow_types.GetTask(task_id, user.id)) {
+            Ok(workflow_types.TaskResult(task)) ->
               api.ok(json.object([#("task", presenters.task_json(task))]))
 
             Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
-            Error(actor.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
-            Error(actor.DbError(_)) ->
+            Error(workflow_types.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
+            Error(workflow_types.DbError(_)) ->
               api.error(500, "INTERNAL", "Database error")
             Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
           }
@@ -440,12 +448,12 @@ fn handle_task_patch(
                 use version <- decode.field("version", decode.int)
                 use title <- decode.optional_field(
                   "title",
-                  actor.unset_string,
+                  workflow_types.unset_string,
                   decode.string,
                 )
                 use description <- decode.optional_field(
                   "description",
-                  actor.unset_string,
+                  workflow_types.unset_string,
                   decode.string,
                 )
                 use priority <- decode.optional_field(
@@ -462,7 +470,7 @@ fn handle_task_patch(
 
                 Ok(#(version, title, description, priority, type_id)) -> {
                   let updates =
-                    actor.TaskUpdates(
+                    workflow_types.TaskUpdates(
                       title: title,
                       description: description,
                       priority: priority,
@@ -470,26 +478,26 @@ fn handle_task_patch(
                     )
 
                   case
-                    actor.handle(
+                    workflow.handle(
                       db,
-                      actor.UpdateTask(task_id, user.id, version, updates),
+                      workflow_types.UpdateTask(task_id, user.id, version, updates),
                     )
                   {
-                    Ok(actor.TaskResult(task)) ->
+                    Ok(workflow_types.TaskResult(task)) ->
                       api.ok(
                         json.object([#("task", presenters.task_json(task))]),
                       )
 
                     Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
-                    Error(actor.NotFound) ->
+                    Error(workflow_types.NotFound) ->
                       api.error(404, "NOT_FOUND", "Not found")
-                    Error(actor.NotAuthorized) ->
+                    Error(workflow_types.NotAuthorized) ->
                       api.error(403, "FORBIDDEN", "Forbidden")
-                    Error(actor.VersionConflict) ->
+                    Error(workflow_types.VersionConflict) ->
                       handle_version_conflict(db, task_id, user.id)
-                    Error(actor.ValidationError(msg)) ->
+                    Error(workflow_types.ValidationError(msg)) ->
                       api.error(422, "VALIDATION_ERROR", msg)
-                    Error(actor.DbError(_)) ->
+                    Error(workflow_types.DbError(_)) ->
                       api.error(500, "INTERNAL", "Database error")
                     Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
                   }
@@ -536,28 +544,28 @@ fn handle_task_claim(
 
                 Ok(version) ->
                   case
-                    actor.handle(
+                    workflow.handle(
                       db,
-                      actor.ClaimTask(task_id, user.id, user.org_id, version),
+                      workflow_types.ClaimTask(task_id, user.id, user.org_id, version),
                     )
                   {
-                    Ok(actor.TaskResult(task)) ->
+                    Ok(workflow_types.TaskResult(task)) ->
                       api.ok(
                         json.object([#("task", presenters.task_json(task))]),
                       )
 
                     Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
-                    Error(actor.NotFound) ->
+                    Error(workflow_types.NotFound) ->
                       api.error(404, "NOT_FOUND", "Not found")
-                    Error(actor.AlreadyClaimed) ->
+                    Error(workflow_types.AlreadyClaimed) ->
                       api.error(409, "CONFLICT_CLAIMED", "Task already claimed")
-                    Error(actor.InvalidTransition) ->
+                    Error(workflow_types.InvalidTransition) ->
                       api.error(422, "VALIDATION_ERROR", "Invalid transition")
-                    Error(actor.ClaimOwnershipConflict(_)) ->
+                    Error(workflow_types.ClaimOwnershipConflict(_)) ->
                       api.error(409, "CONFLICT_CLAIMED", "Task already claimed")
-                    Error(actor.VersionConflict) ->
+                    Error(workflow_types.VersionConflict) ->
                       handle_claim_conflict(db, task_id, user.id)
-                    Error(actor.DbError(_)) ->
+                    Error(workflow_types.DbError(_)) ->
                       api.error(500, "INTERNAL", "Database error")
                     Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
                   }
@@ -599,26 +607,26 @@ fn handle_task_release(
 
                 Ok(version) ->
                   case
-                    actor.handle(
+                    workflow.handle(
                       db,
-                      actor.ReleaseTask(task_id, user.id, user.org_id, version),
+                      workflow_types.ReleaseTask(task_id, user.id, user.org_id, version),
                     )
                   {
-                    Ok(actor.TaskResult(task)) ->
+                    Ok(workflow_types.TaskResult(task)) ->
                       api.ok(
                         json.object([#("task", presenters.task_json(task))]),
                       )
 
                     Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
-                    Error(actor.NotFound) ->
+                    Error(workflow_types.NotFound) ->
                       api.error(404, "NOT_FOUND", "Not found")
-                    Error(actor.NotAuthorized) ->
+                    Error(workflow_types.NotAuthorized) ->
                       api.error(403, "FORBIDDEN", "Forbidden")
-                    Error(actor.InvalidTransition) ->
+                    Error(workflow_types.InvalidTransition) ->
                       api.error(422, "VALIDATION_ERROR", "Invalid transition")
-                    Error(actor.VersionConflict) ->
+                    Error(workflow_types.VersionConflict) ->
                       handle_version_conflict(db, task_id, user.id)
-                    Error(actor.DbError(_)) ->
+                    Error(workflow_types.DbError(_)) ->
                       api.error(500, "INTERNAL", "Database error")
                     Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
                   }
@@ -660,26 +668,26 @@ fn handle_task_complete(
 
                 Ok(version) ->
                   case
-                    actor.handle(
+                    workflow.handle(
                       db,
-                      actor.CompleteTask(task_id, user.id, user.org_id, version),
+                      workflow_types.CompleteTask(task_id, user.id, user.org_id, version),
                     )
                   {
-                    Ok(actor.TaskResult(task)) ->
+                    Ok(workflow_types.TaskResult(task)) ->
                       api.ok(
                         json.object([#("task", presenters.task_json(task))]),
                       )
 
                     Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
-                    Error(actor.NotFound) ->
+                    Error(workflow_types.NotFound) ->
                       api.error(404, "NOT_FOUND", "Not found")
-                    Error(actor.NotAuthorized) ->
+                    Error(workflow_types.NotAuthorized) ->
                       api.error(403, "FORBIDDEN", "Forbidden")
-                    Error(actor.InvalidTransition) ->
+                    Error(workflow_types.InvalidTransition) ->
                       api.error(422, "VALIDATION_ERROR", "Invalid transition")
-                    Error(actor.VersionConflict) ->
+                    Error(workflow_types.VersionConflict) ->
                       handle_version_conflict(db, task_id, user.id)
-                    Error(actor.DbError(_)) ->
+                    Error(workflow_types.DbError(_)) ->
                       api.error(500, "INTERNAL", "Database error")
                     Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
                   }

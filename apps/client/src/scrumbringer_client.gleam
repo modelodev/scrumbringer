@@ -43,7 +43,7 @@ import lustre
 import lustre/effect.{type Effect}
 
 import scrumbringer_client/accept_invite
-import scrumbringer_client/api
+import scrumbringer_client/api/auth as api_auth
 import scrumbringer_client/client_ffi
 import scrumbringer_client/member_section
 import scrumbringer_client/permissions
@@ -298,7 +298,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
   let base_effect = case page {
     AcceptInvitePage -> client_update.accept_invite_effect(accept_action)
     ResetPasswordPage -> client_update.reset_password_effect(reset_action)
-    _ -> api.fetch_me(MeFetched)
+    _ -> api_auth.fetch_me(MeFetched)
   }
 
   let redirect_fx = case parsed {

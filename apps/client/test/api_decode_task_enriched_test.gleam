@@ -1,7 +1,7 @@
 import gleam/dynamic/decode
 import gleam/json
 import gleeunit/should
-import scrumbringer_client/api
+import scrumbringer_client/api/tasks as api_tasks
 
 pub fn task_decoder_accepts_enriched_task_type_and_work_state_test() {
   let body =
@@ -9,7 +9,7 @@ pub fn task_decoder_accepts_enriched_task_type_and_work_state_test() {
 
   let assert Ok(dynamic) = json.parse(from: body, using: decode.dynamic)
 
-  let result = decode.run(dynamic, api.task_decoder())
+  let result = decode.run(dynamic, api_tasks.task_decoder())
 
   result |> should.be_ok
 }

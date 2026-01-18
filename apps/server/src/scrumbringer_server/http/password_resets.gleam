@@ -1,3 +1,26 @@
+//// HTTP handlers for password reset flow.
+////
+//// ## Mission
+////
+//// Provides HTTP endpoints for password reset: request, validate, and consume.
+////
+//// ## Responsibilities
+////
+//// - Create password reset tokens with rate limiting
+//// - Validate reset tokens
+//// - Consume tokens and update passwords in transaction
+////
+//// ## Non-responsibilities
+////
+//// - Token generation (see `services/password_resets_db.gleam`)
+//// - Password hashing (see `services/password.gleam`)
+////
+//// ## Line Count Justification
+////
+//// `handle_consume_post` (~112 lines) handles transactional password update
+//// with comprehensive error recovery. Splitting would fragment the atomic
+//// transaction logic and error mapping.
+
 import gleam/dynamic/decode
 import gleam/http
 import gleam/http/request

@@ -1,3 +1,7 @@
+//// English translations for Scrumbringer UI.
+////
+//// Provides English (en) translations for all UI text keys defined in text.gleam.
+
 import gleam/int
 
 import scrumbringer_client/i18n/text.{type Text}

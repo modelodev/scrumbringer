@@ -1,3 +1,8 @@
+//// HTTP handler for current user metrics.
+////
+//// Provides an endpoint to retrieve task activity metrics
+//// (claimed, released, completed counts) for the authenticated user.
+
 import gleam/http
 import gleam/int
 import gleam/json
@@ -13,6 +18,16 @@ const default_window_days = 30
 
 const max_window_days = 365
 
+/// Handles GET /api/me/metrics to return user activity metrics.
+///
+/// Accepts an optional `window_days` query param (1-365, default 30).
+///
+/// ## Example
+///
+/// ```gleam
+/// handle_me_metrics(req, ctx)
+/// // -> { "metrics": { "window_days": 30, "claimed_count": 5, ... } }
+/// ```
 pub fn handle_me_metrics(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 

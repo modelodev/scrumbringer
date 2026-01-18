@@ -1,3 +1,8 @@
+//// Database operations for password reset tokens.
+////
+//// Manages the password reset flow: token generation, validation,
+//// and consumption. Tokens expire after 24 hours.
+
 import gleam/bit_array
 import gleam/crypto
 import gleam/dynamic/decode
@@ -6,8 +11,10 @@ import gleam/result
 import gleam/string
 import pog
 
+/// Token time-to-live in hours.
 pub const reset_token_ttl_hours = 24
 
+/// Status of a password reset token.
 pub type TokenStatus {
   TokenMissing
   TokenUsed
@@ -16,6 +23,7 @@ pub type TokenStatus {
   TokenActive(email: String)
 }
 
+/// Errors that can occur when consuming a reset token.
 pub type ConsumeError {
   Invalid
   Used
@@ -23,6 +31,7 @@ pub type ConsumeError {
   DbError(pog.QueryError)
 }
 
+/// Generates a cryptographically secure reset token.
 pub fn new_reset_token() -> String {
   "pr_"
   <> {
@@ -31,6 +40,7 @@ pub fn new_reset_token() -> String {
   }
 }
 
+/// Invalidates all active reset tokens for an email.
 pub fn invalidate_active_for_email(
   db: pog.Connection,
   email: String,
@@ -43,6 +53,7 @@ pub fn invalidate_active_for_email(
   |> result.map(fn(_) { Nil })
 }
 
+/// Inserts a new password reset record.
 pub fn insert_reset(
   db: pog.Connection,
   email: String,
@@ -55,6 +66,7 @@ pub fn insert_reset(
   |> result.map(fn(_) { Nil })
 }
 
+/// Checks if a user exists with the given email.
 pub fn user_exists(
   db: pog.Connection,
   email: String,
@@ -77,6 +89,7 @@ pub fn user_exists(
   }
 }
 
+/// Gets the status of a reset token.
 pub fn token_status(
   db: pog.Connection,
   token: String,
@@ -84,6 +97,7 @@ pub fn token_status(
   token_status_internal(db, token, False)
 }
 
+/// Gets token status with row lock for update.
 pub fn token_status_for_update(
   db: pog.Connection,
   token: String,
@@ -137,6 +151,7 @@ fn token_status_internal(
   }
 }
 
+/// Marks a token as used, preventing reuse.
 pub fn mark_used(
   db: pog.Connection,
   token: String,
@@ -161,6 +176,7 @@ pub fn mark_used(
   }
 }
 
+/// Updates a user's password hash by email.
 pub fn update_user_password_hash(
   db: pog.Connection,
   email: String,

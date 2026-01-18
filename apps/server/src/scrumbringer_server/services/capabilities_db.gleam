@@ -1,19 +1,35 @@
+//// Database operations for organization capabilities (skills).
+////
+//// Capabilities represent skills or competencies that can be assigned to
+//// users and required for tasks within an organization.
+
 import gleam/list
 import gleam/result
 import gleam/string
 import pog
 import scrumbringer_server/sql
 
+/// A capability (skill) defined within an organization.
 pub type Capability {
   Capability(id: Int, org_id: Int, name: String, created_at: String)
 }
 
+/// Errors that can occur when creating a capability.
 pub type CreateCapabilityError {
   AlreadyExists
   DbError(pog.QueryError)
   NoRowReturned
 }
 
+/// Lists all capabilities defined for an organization.
+///
+/// ## Example
+/// ```gleam
+/// case capabilities_db.list_capabilities_for_org(db, org_id) {
+///   Ok(capabilities) -> render_skills_list(capabilities)
+///   Error(_) -> Error(DatabaseError)
+/// }
+/// ```
 pub fn list_capabilities_for_org(
   db: pog.Connection,
   org_id: Int,
@@ -32,6 +48,19 @@ pub fn list_capabilities_for_org(
   |> Ok
 }
 
+/// Creates a new capability for an organization.
+///
+/// Returns `AlreadyExists` if a capability with the same name already exists.
+///
+/// ## Example
+/// ```gleam
+/// case capabilities_db.create_capability(db, org_id, "Gleam") {
+///   Ok(cap) -> Ok(cap.id)
+///   Error(AlreadyExists) -> Error(DuplicateSkill)
+///   Error(DbError(_)) -> Error(DatabaseError)
+///   Error(NoRowReturned) -> Error(InternalError)
+/// }
+/// ```
 pub fn create_capability(
   db: pog.Connection,
   org_id: Int,

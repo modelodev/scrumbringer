@@ -1,6 +1,6 @@
 import gleeunit/should
 
-import scrumbringer_client/api
+import domain/api_error.{ApiError}
 import scrumbringer_client/client_state.{
   Failed, Loaded, Loading, NotAsked, Rect, rect_contains_point,
   remote_to_resource_state,
@@ -112,14 +112,14 @@ pub fn remote_to_resource_state_loaded_empty_test() {
 }
 
 pub fn remote_to_resource_state_failed_test() {
-  let error = api.ApiError(status: 500, code: "SERVER_ERROR", message: "Oops")
+  let error = ApiError(status: 500, code: "SERVER_ERROR", message: "Oops")
 
   remote_to_resource_state(Failed(error))
   |> should.equal(hydration.Failed)
 }
 
 pub fn remote_to_resource_state_failed_401_test() {
-  let error = api.ApiError(status: 401, code: "UNAUTHORIZED", message: "Login")
+  let error = ApiError(status: 401, code: "UNAUTHORIZED", message: "Login")
 
   remote_to_resource_state(Failed(error))
   |> should.equal(hydration.Failed)

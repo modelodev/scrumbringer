@@ -1,0 +1,1 @@
+-record(org_metrics_bucket, {bucket :: binary(), count :: integer()}).

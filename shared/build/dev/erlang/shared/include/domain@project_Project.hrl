@@ -1,0 +1,1 @@
+-record(project, {id :: integer(), name :: binary(), my_role :: binary()}).

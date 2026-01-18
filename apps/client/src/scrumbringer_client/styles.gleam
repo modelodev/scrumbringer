@@ -1,3 +1,8 @@
+//// CSS style definitions for Scrumbringer UI.
+////
+//// Generates all base CSS rules as strings for injection into the page.
+//// Includes layout, typography, forms, buttons, and theme variables.
+
 import gleam/string
 
 pub fn base_css() -> String {

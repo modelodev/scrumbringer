@@ -1,10 +1,16 @@
+//// Permission checks for admin functionality.
+////
+//// Determines which admin sections a user can access based on their
+//// organization role and project memberships.
+
 import gleam/list
 import gleam/option.{type Option, None, Some}
 
 import scrumbringer_domain/org_role.{type OrgRole, Admin}
 
-import scrumbringer_client/api.{type Project, Project}
+import domain/project.{type Project, Project}
 
+/// Admin panel sections.
 pub type AdminSection {
   Invites
   OrgSettings
@@ -15,10 +21,12 @@ pub type AdminSection {
   TaskTypes
 }
 
+/// Returns true if the role has organization admin privileges.
 pub fn is_org_admin(role: OrgRole) -> Bool {
   role == Admin
 }
 
+/// Returns true if the user is an admin of the project.
 pub fn is_project_admin(project: Project) -> Bool {
   case project {
     Project(_, _, "admin") -> True
@@ -26,11 +34,13 @@ pub fn is_project_admin(project: Project) -> Bool {
   }
 }
 
+/// Returns true if the user is admin of any project.
 pub fn any_project_admin(projects: List(Project)) -> Bool {
   projects
   |> list.any(is_project_admin)
 }
 
+/// Checks if a user can access an admin section.
 pub fn can_access_section(
   section: AdminSection,
   org_role: OrgRole,
@@ -52,6 +62,7 @@ pub fn can_access_section(
   }
 }
 
+/// Returns the admin sections visible to a user.
 pub fn visible_sections(
   org_role: OrgRole,
   projects: List(Project),

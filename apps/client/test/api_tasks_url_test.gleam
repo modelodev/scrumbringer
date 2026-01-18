@@ -1,11 +1,12 @@
 import gleam/option
 import gleeunit/should
-import scrumbringer_client/api
+import domain/task.{TaskFilters}
+import scrumbringer_client/api/tasks as api_tasks
 
 pub fn project_tasks_url_builds_query_params_test() {
-  api.project_tasks_url(
+  api_tasks.project_tasks_url(
     1,
-    api.TaskFilters(
+    TaskFilters(
       status: option.None,
       type_id: option.None,
       capability_id: option.None,
@@ -14,9 +15,9 @@ pub fn project_tasks_url_builds_query_params_test() {
   )
   |> should.equal("/api/v1/projects/1/tasks")
 
-  api.project_tasks_url(
+  api_tasks.project_tasks_url(
     1,
-    api.TaskFilters(
+    TaskFilters(
       status: option.Some("available"),
       type_id: option.Some(2),
       capability_id: option.Some(3),

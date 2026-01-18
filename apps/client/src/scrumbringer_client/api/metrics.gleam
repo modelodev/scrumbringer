@@ -22,78 +22,20 @@ import gleam/option
 import lustre/effect.{type Effect}
 
 import scrumbringer_client/api/core.{type ApiResult}
-import scrumbringer_client/api/tasks.{
-  type Task, type TaskStatus, type TaskTypeInline, type WorkState, Available,
-  Task, parse_task_status,
+
+// Import types from shared domain
+import domain/task_status.{
+  type OngoingBy, type TaskStatus, type WorkState, Available, OngoingBy,
+  WorkAvailable, WorkClaimed, WorkCompleted, WorkOngoing, parse_task_status,
 }
-
-// =============================================================================
-// Types
-// =============================================================================
-
-/// Personal metrics for the current user.
-pub type MyMetrics {
-  MyMetrics(
-    window_days: Int,
-    claimed_count: Int,
-    released_count: Int,
-    completed_count: Int,
-  )
-}
-
-/// A bucket in a histogram.
-pub type OrgMetricsBucket {
-  OrgMetricsBucket(bucket: String, count: Int)
-}
-
-/// Per-project metrics overview.
-pub type OrgMetricsProjectOverview {
-  OrgMetricsProjectOverview(
-    project_id: Int,
-    project_name: String,
-    claimed_count: Int,
-    released_count: Int,
-    completed_count: Int,
-    release_rate_percent: option.Option(Int),
-    pool_flow_ratio_percent: option.Option(Int),
-  )
-}
-
-/// Organization-wide metrics overview.
-pub type OrgMetricsOverview {
-  OrgMetricsOverview(
-    window_days: Int,
-    claimed_count: Int,
-    released_count: Int,
-    completed_count: Int,
-    release_rate_percent: option.Option(Int),
-    pool_flow_ratio_percent: option.Option(Int),
-    time_to_first_claim_p50_ms: option.Option(Int),
-    time_to_first_claim_sample_size: Int,
-    time_to_first_claim_buckets: List(OrgMetricsBucket),
-    release_rate_buckets: List(OrgMetricsBucket),
-    by_project: List(OrgMetricsProjectOverview),
-  )
-}
-
-/// A task with its metrics for project task detail view.
-pub type MetricsProjectTask {
-  MetricsProjectTask(
-    task: Task,
-    claim_count: Int,
-    release_count: Int,
-    complete_count: Int,
-    first_claim_at: option.Option(String),
-  )
-}
-
-/// Payload for project tasks metrics.
-pub type OrgMetricsProjectTasksPayload {
-  OrgMetricsProjectTasksPayload(
-    window_days: Int,
-    project_id: Int,
-    tasks: List(MetricsProjectTask),
-  )
+import domain/task.{Task}
+import domain/task_type.{type TaskTypeInline, TaskTypeInline}
+import domain/metrics.{
+  type MetricsProjectTask, type MyMetrics, type OrgMetricsBucket,
+  type OrgMetricsOverview, type OrgMetricsProjectOverview,
+  type OrgMetricsProjectTasksPayload, MetricsProjectTask, MyMetrics,
+  OrgMetricsBucket, OrgMetricsOverview, OrgMetricsProjectOverview,
+  OrgMetricsProjectTasksPayload,
 }
 
 // =============================================================================
@@ -213,23 +155,23 @@ fn task_type_inline_decoder() -> decode.Decoder(TaskTypeInline) {
   use id <- decode.field("id", decode.int)
   use name <- decode.field("name", decode.string)
   use icon <- decode.field("icon", decode.string)
-  decode.success(tasks.TaskTypeInline(id: id, name: name, icon: icon))
+  decode.success(TaskTypeInline(id: id, name: name, icon: icon))
 }
 
-fn ongoing_by_decoder() -> decode.Decoder(tasks.OngoingBy) {
+fn ongoing_by_decoder() -> decode.Decoder(OngoingBy) {
   use user_id <- decode.field("user_id", decode.int)
-  decode.success(tasks.OngoingBy(user_id: user_id))
+  decode.success(OngoingBy(user_id: user_id))
 }
 
 fn work_state_decoder() -> decode.Decoder(WorkState) {
   decode.string
   |> decode.map(fn(raw) {
     case raw {
-      "available" -> tasks.WorkAvailable
-      "claimed" -> tasks.WorkClaimed
-      "ongoing" -> tasks.WorkOngoing
-      "completed" -> tasks.WorkCompleted
-      _ -> tasks.WorkClaimed
+      "available" -> WorkAvailable
+      "claimed" -> WorkClaimed
+      "ongoing" -> WorkOngoing
+      "completed" -> WorkCompleted
+      _ -> WorkClaimed
     }
   })
 }

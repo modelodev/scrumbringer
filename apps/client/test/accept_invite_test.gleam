@@ -1,8 +1,8 @@
 import gleam/option
 import gleeunit/should
 
+import domain/api_error.{ApiError}
 import scrumbringer_client/accept_invite
-import scrumbringer_client/api
 import scrumbringer_domain/org_role
 import scrumbringer_domain/user
 
@@ -44,7 +44,7 @@ pub fn token_validation_success_moves_to_ready_test() {
 pub fn token_validation_failure_moves_to_invalid_test() {
   let #(model, _) = accept_invite.init("il_token")
 
-  let err = api.ApiError(status: 403, code: "INVITE_INVALID", message: "Nope")
+  let err = ApiError(status: 403, code: "INVITE_INVALID", message: "Nope")
 
   let #(next, action) =
     accept_invite.update(model, accept_invite.TokenValidated(Error(err)))

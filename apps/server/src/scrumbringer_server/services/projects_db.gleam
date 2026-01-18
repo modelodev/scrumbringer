@@ -1,3 +1,15 @@
+//// Database operations for projects and project membership.
+////
+//// ## Mission
+////
+//// Provides data access layer for projects within organizations.
+////
+//// ## Responsibilities
+////
+//// - List projects accessible to a user
+//// - Manage project members and roles
+//// - Handle project creation and updates
+
 import gleam/list
 import gleam/result
 import pog

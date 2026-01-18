@@ -1,3 +1,15 @@
+//// Database operations for active task tracking (time tracking).
+////
+//// ## Mission
+////
+//// Manages the "now working on" state for users tracking time on tasks.
+////
+//// ## Responsibilities
+////
+//// - Track which task a user is currently working on
+//// - Start and stop work sessions
+//// - Accumulate time spent on tasks
+
 import gleam/dynamic/decode
 import gleam/option.{type Option, None, Some}
 import gleam/result

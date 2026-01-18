@@ -1,13 +1,21 @@
+//// Theme management and CSS variable generation.
+////
+//// Handles theme persistence, color token definitions, and
+//// localStorage utilities shared across the client.
+
 import gleam/list
 import gleam/string
 
+/// LocalStorage key for theme preference.
 pub const storage_key = "sb_theme"
 
+/// Available visual themes.
 pub type Theme {
   Default
   Dark
 }
 
+/// Converts a theme to its string representation.
 pub fn serialize(theme: Theme) -> String {
   case theme {
     Default -> "default"
@@ -15,6 +23,7 @@ pub fn serialize(theme: Theme) -> String {
   }
 }
 
+/// Parses a string into a theme (defaults to Default).
 pub fn deserialize(value: String) -> Theme {
   case string.trim(value) {
     "default" -> Default
@@ -33,27 +42,33 @@ fn local_storage_set_ffi(_key: String, _value: String) -> Nil {
   Nil
 }
 
+/// Gets a value from localStorage (returns "" if not found).
 pub fn local_storage_get(key: String) -> String {
   local_storage_get_ffi(key)
 }
 
+/// Sets a value in localStorage.
 pub fn local_storage_set(key: String, value: String) -> Nil {
   local_storage_set_ffi(key, value)
 }
 
+/// Loads the theme preference from localStorage.
 pub fn load_from_storage() -> Theme {
   local_storage_get_ffi(storage_key)
   |> deserialize
 }
 
+/// Saves the theme preference to localStorage.
 pub fn save_to_storage(theme: Theme) -> Nil {
   local_storage_set_ffi(storage_key, serialize(theme))
 }
 
+/// Returns whether filters should be visible by default.
 pub fn filters_default_visible(_theme: Theme) -> Bool {
   True
 }
 
+/// Returns the CSS custom property values for a theme.
 pub fn tokens(theme: Theme) -> List(#(String, String)) {
   case theme {
     Default -> [
@@ -94,6 +109,7 @@ pub fn tokens(theme: Theme) -> List(#(String, String)) {
   }
 }
 
+/// Generates a CSS custom property string for inline styles.
 pub fn css_vars(theme: Theme) -> String {
   let parts =
     list.map(tokens(theme), fn(pair) {

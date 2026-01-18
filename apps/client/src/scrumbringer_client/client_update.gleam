@@ -14,6 +14,17 @@
 ////
 //// - Type definitions (see `client_state.gleam`)
 //// - View rendering (see `scrumbringer_client.gleam`)
+////
+//// ## Line Count Justification
+////
+//// ~2300 lines: Central TEA update hub that dispatches all Msg variants to
+//// feature-specific update handlers. While large, this file acts as an
+//// orchestration layer with clear delegation patterns:
+//// - Each `case msg { ... }` branch delegates to `features/*/update.gleam`
+//// - Splitting further would fragment the single entry point pattern
+//// - Lustre's TEA model benefits from a unified `update` function
+//// Future: Consider code generation for message dispatch if Msg variants
+//// exceed 100.
 
 import gleam/dict
 import gleam/int
@@ -26,7 +37,15 @@ import lustre/effect.{type Effect}
 import scrumbringer_domain/org_role
 
 import scrumbringer_client/accept_invite
-import scrumbringer_client/api
+// API modules
+import scrumbringer_client/api/auth as api_auth
+import scrumbringer_client/api/projects as api_projects
+import scrumbringer_client/api/tasks as api_tasks
+import scrumbringer_client/api/org as api_org
+import scrumbringer_client/api/metrics as api_metrics
+// Domain types
+import domain/task.{Task, TaskFilters, TaskPosition}
+import domain/metrics.{OrgMetricsProjectTasksPayload}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/hydration
 import scrumbringer_client/member_section
@@ -88,15 +107,15 @@ import scrumbringer_client/client_state.{
   ToastDismissed, UrlChanged, rect_contains_point,
 }
 
-import scrumbringer_client/client_workflows/admin as admin_workflow
-import scrumbringer_client/client_workflows/auth as auth_workflow
-import scrumbringer_client/client_workflows/capabilities as capabilities_workflow
-import scrumbringer_client/client_workflows/i18n as i18n_workflow
-import scrumbringer_client/client_workflows/invite_links as invite_links_workflow
-import scrumbringer_client/client_workflows/now_working as now_working_workflow
-import scrumbringer_client/client_workflows/projects as projects_workflow
-import scrumbringer_client/client_workflows/task_types as task_types_workflow
-import scrumbringer_client/client_workflows/tasks as tasks_workflow
+import scrumbringer_client/features/admin/update as admin_workflow
+import scrumbringer_client/features/auth/update as auth_workflow
+import scrumbringer_client/features/capabilities/update as capabilities_workflow
+import scrumbringer_client/features/i18n/update as i18n_workflow
+import scrumbringer_client/features/invites/update as invite_links_workflow
+import scrumbringer_client/features/now_working/update as now_working_workflow
+import scrumbringer_client/features/projects/update as projects_workflow
+import scrumbringer_client/features/task_types/update as task_types_workflow
+import scrumbringer_client/features/tasks/update as tasks_workflow
 
 // ---------------------------------------------------------------------------
 // Routing helpers
@@ -134,7 +153,7 @@ fn replace_url(model: Model) -> Effect(Msg) {
 pub fn accept_invite_effect(action: accept_invite.Action) -> Effect(Msg) {
   case action {
     accept_invite.ValidateToken(token) ->
-      api.validate_invite_link_token(token, fn(result) {
+      api_auth.validate_invite_link_token(token, fn(result) {
         AcceptInviteMsg(accept_invite.TokenValidated(result))
       })
 
@@ -145,7 +164,7 @@ pub fn accept_invite_effect(action: accept_invite.Action) -> Effect(Msg) {
 pub fn reset_password_effect(action: reset_password.Action) -> Effect(Msg) {
   case action {
     reset_password.ValidateToken(token) ->
-      api.validate_password_reset_token(token, fn(result) {
+      api_auth.validate_password_reset_token(token, fn(result) {
         ResetPasswordMsg(reset_password.TokenValidated(result))
       })
 
@@ -438,7 +457,7 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
 
           case cmd {
             hydration.FetchMe -> {
-              #(m, [api.fetch_me(MeFetched), ..fx])
+              #(m, [api_auth.fetch_me(MeFetched), ..fx])
             }
 
             hydration.FetchProjects -> {
@@ -447,7 +466,7 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
 
                 _ -> {
                   let m = Model(..m, projects: Loading)
-                  #(m, [api.list_projects(ProjectsFetched), ..fx])
+                  #(m, [api_projects.list_projects(ProjectsFetched), ..fx])
                 }
               }
             }
@@ -458,7 +477,7 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
 
                 _ -> {
                   let m = Model(..m, invite_links: Loading)
-                  #(m, [api.list_invite_links(InviteLinksFetched), ..fx])
+                  #(m, [api_org.list_invite_links(InviteLinksFetched), ..fx])
                 }
               }
             }
@@ -469,7 +488,7 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
 
                 _ -> {
                   let m = Model(..m, capabilities: Loading)
-                  #(m, [api.list_capabilities(CapabilitiesFetched), ..fx])
+                  #(m, [api_org.list_capabilities(CapabilitiesFetched), ..fx])
                 }
               }
             }
@@ -481,7 +500,7 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                 _ -> {
                   let m = Model(..m, member_my_capability_ids: Loading)
                   #(m, [
-                    api.get_me_capability_ids(MemberMyCapabilityIdsFetched),
+                    api_tasks.get_me_capability_ids(MemberMyCapabilityIdsFetched),
                     ..fx
                   ])
                 }
@@ -494,7 +513,7 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
 
                 _ -> {
                   let m = Model(..m, member_active_task: Loading)
-                  #(m, [api.get_me_active_task(MemberActiveTaskFetched), ..fx])
+                  #(m, [api_tasks.get_me_active_task(MemberActiveTaskFetched), ..fx])
                 }
               }
             }
@@ -505,7 +524,7 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
 
                 _ -> {
                   let m = Model(..m, member_metrics: Loading)
-                  #(m, [api.get_me_metrics(30, MemberMetricsFetched), ..fx])
+                  #(m, [api_metrics.get_me_metrics(30, MemberMetricsFetched), ..fx])
                 }
               }
             }
@@ -517,7 +536,7 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                 _ -> {
                   let m = Model(..m, admin_metrics_overview: Loading)
                   #(m, [
-                    api.get_org_metrics_overview(
+                    api_metrics.get_org_metrics_overview(
                       30,
                       AdminMetricsOverviewFetched,
                     ),
@@ -554,7 +573,7 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                         )
 
                       let fx_tasks =
-                        api.get_org_metrics_project_tasks(
+                        api_metrics.get_org_metrics_project_tasks(
                           project_id,
                           30,
                           AdminMetricsProjectTasksFetched,
@@ -581,7 +600,7 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                       org_settings_error_user_id: opt.None,
                     )
 
-                  #(m, [api.list_org_users("", OrgSettingsUsersFetched), ..fx])
+                  #(m, [api_org.list_org_users("", OrgSettingsUsersFetched), ..fx])
                 }
               }
             }
@@ -610,9 +629,9 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                         )
 
                       let fx_members =
-                        api.list_project_members(project_id, MembersFetched)
+                        api_projects.list_project_members(project_id, MembersFetched)
                       let fx_users =
-                        api.list_org_users("", OrgUsersCacheFetched)
+                        api_org.list_org_users("", OrgUsersCacheFetched)
 
                       #(m, [effect.batch([fx_members, fx_users]), ..fx])
                     }
@@ -643,7 +662,7 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                         )
 
                       #(m, [
-                        api.list_task_types(project_id, TaskTypesFetched),
+                        api_tasks.list_task_types(project_id, TaskTypesFetched),
                         ..fx
                       ])
                     }
@@ -761,13 +780,13 @@ fn bootstrap_admin(model: Model) -> #(Model, Effect(Msg)) {
     )
 
   let effects = [
-    api.list_projects(ProjectsFetched),
-    api.list_capabilities(CapabilitiesFetched),
-    api.get_me_capability_ids(MemberMyCapabilityIdsFetched),
+    api_projects.list_projects(ProjectsFetched),
+    api_org.list_capabilities(CapabilitiesFetched),
+    api_tasks.get_me_capability_ids(MemberMyCapabilityIdsFetched),
   ]
 
   let effects = case is_admin {
-    True -> [api.list_invite_links(InviteLinksFetched), ..effects]
+    True -> [api_org.list_invite_links(InviteLinksFetched), ..effects]
     False -> effects
   }
 
@@ -778,7 +797,7 @@ fn refresh_section(model: Model) -> #(Model, Effect(Msg)) {
   case model.active_section {
     permissions.Invites -> {
       let model = Model(..model, invite_links: Loading)
-      #(model, api.list_invite_links(InviteLinksFetched))
+      #(model, api_org.list_invite_links(InviteLinksFetched))
     }
 
     permissions.OrgSettings -> {
@@ -792,16 +811,16 @@ fn refresh_section(model: Model) -> #(Model, Effect(Msg)) {
           org_settings_error_user_id: opt.None,
         )
 
-      #(model, api.list_org_users("", OrgSettingsUsersFetched))
+      #(model, api_org.list_org_users("", OrgSettingsUsersFetched))
     }
 
-    permissions.Projects -> #(model, api.list_projects(ProjectsFetched))
+    permissions.Projects -> #(model, api_projects.list_projects(ProjectsFetched))
 
     permissions.Metrics -> {
       let model = Model(..model, admin_metrics_overview: Loading)
 
       let overview_fx =
-        api.get_org_metrics_overview(30, AdminMetricsOverviewFetched)
+        api_metrics.get_org_metrics_overview(30, AdminMetricsOverviewFetched)
 
       case model.selected_project_id {
         opt.None -> #(model, overview_fx)
@@ -815,7 +834,7 @@ fn refresh_section(model: Model) -> #(Model, Effect(Msg)) {
             )
 
           let tasks_fx =
-            api.get_org_metrics_project_tasks(
+            api_metrics.get_org_metrics_project_tasks(
               project_id,
               30,
               AdminMetricsProjectTasksFetched,
@@ -828,7 +847,7 @@ fn refresh_section(model: Model) -> #(Model, Effect(Msg)) {
 
     permissions.Capabilities -> #(
       model,
-      api.list_capabilities(CapabilitiesFetched),
+      api_org.list_capabilities(CapabilitiesFetched),
     )
 
     permissions.Members ->
@@ -845,8 +864,8 @@ fn refresh_section(model: Model) -> #(Model, Effect(Msg)) {
           #(
             model,
             effect.batch([
-              api.list_project_members(project_id, MembersFetched),
-              api.list_org_users("", OrgUsersCacheFetched),
+              api_projects.list_project_members(project_id, MembersFetched),
+              api_org.list_org_users("", OrgUsersCacheFetched),
             ]),
           )
         }
@@ -862,7 +881,7 @@ fn refresh_section(model: Model) -> #(Model, Effect(Msg)) {
               task_types: Loading,
               task_types_project_id: opt.Some(project_id),
             )
-          #(model, api.list_task_types(project_id, TaskTypesFetched))
+          #(model, api_tasks.list_task_types(project_id, TaskTypesFetched))
         }
       }
   }
@@ -910,7 +929,7 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
         _ -> {
           let filters = case model.member_section {
             member_section.MyBar ->
-              api.TaskFilters(
+              TaskFilters(
                 status: opt.Some("claimed"),
                 type_id: opt.None,
                 capability_id: opt.None,
@@ -918,7 +937,7 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
               )
 
             member_section.Pool ->
-              api.TaskFilters(
+              TaskFilters(
                 status: opt.None,
                 type_id: update_helpers.empty_to_int_opt(
                   model.member_filters_type_id,
@@ -930,7 +949,7 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
               )
 
             _ ->
-              api.TaskFilters(
+              TaskFilters(
                 status: update_helpers.empty_to_opt(model.member_filters_status),
                 type_id: update_helpers.empty_to_int_opt(
                   model.member_filters_type_id,
@@ -943,21 +962,21 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
           }
 
           let positions_effect =
-            api.list_me_task_positions(
+            api_tasks.list_me_task_positions(
               model.selected_project_id,
               MemberPositionsFetched,
             )
 
           let task_effects =
             list.map(project_ids, fn(project_id) {
-              api.list_project_tasks(project_id, filters, fn(result) {
+              api_tasks.list_project_tasks(project_id, filters, fn(result) {
                 MemberProjectTasksFetched(project_id, result)
               })
             })
 
           let task_type_effects =
             list.map(project_ids, fn(project_id) {
-              api.list_task_types(project_id, fn(result) {
+              api_tasks.list_task_types(project_id, fn(result) {
                 MemberTaskTypesFetched(project_id, result)
               })
             })
@@ -1130,7 +1149,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
         accept_invite.Register(token: token, password: password) -> #(
           model,
-          api.register_with_invite_link(token, password, fn(result) {
+          api_auth.register_with_invite_link(token, password, fn(result) {
             AcceptInviteMsg(accept_invite.Registered(result))
           }),
         )
@@ -1180,7 +1199,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
         reset_password.Consume(token: token, password: password) -> #(
           model,
-          api.consume_password_reset_token(token, password, fn(result) {
+          api_auth.consume_password_reset_token(token, password, fn(result) {
             ResetPasswordMsg(reset_password.Consumed(result))
           }),
         )
@@ -1291,7 +1310,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           let #(model, fx) = member_refresh(model)
 
           let pause_fx = case should_pause {
-            True -> api.pause_me_active_task(MemberActiveTaskPaused)
+            True -> api_tasks.pause_me_active_task(MemberActiveTaskPaused)
             False -> effect.none()
           }
 
@@ -1710,12 +1729,12 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           case over_my_tasks {
             True -> {
               case update_helpers.find_task_by_id(model.member_tasks, task_id) {
-                opt.Some(api.Task(version: version, ..)) ->
+                opt.Some(Task(version: version, ..)) ->
                   case model.member_task_mutation_in_flight {
                     True -> #(model, effect.none())
                     False -> #(
                       Model(..model, member_task_mutation_in_flight: True),
-                      api.claim_task(task_id, version, MemberTaskClaimed),
+                      api_tasks.claim_task(task_id, version, MemberTaskClaimed),
                     )
                   }
 
@@ -1733,7 +1752,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
               #(
                 model,
-                api.upsert_me_task_position(task_id, x, y, MemberPositionSaved),
+                api_tasks.upsert_me_task_position(task_id, x, y, MemberPositionSaved),
               )
             }
           }
@@ -1856,7 +1875,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     AdminMetricsProjectTasksFetched(Ok(payload)) -> {
-      let api.OrgMetricsProjectTasksPayload(project_id: project_id, ..) =
+      let OrgMetricsProjectTasksPayload(project_id: project_id, ..) =
         payload
 
       #(
@@ -1951,7 +1970,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               member_my_capabilities_in_flight: True,
               member_my_capabilities_error: opt.None,
             )
-          #(model, api.put_me_capability_ids(ids, MemberMyCapabilityIdsSaved))
+          #(model, api_tasks.put_me_capability_ids(ids, MemberMyCapabilityIdsSaved))
         }
       }
     }
@@ -1987,7 +2006,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             member_my_capabilities_error: opt.Some(err.message),
             toast: opt.Some(err.message),
           ),
-          api.get_me_capability_ids(MemberMyCapabilityIdsFetched),
+          api_tasks.get_me_capability_ids(MemberMyCapabilityIdsFetched),
         )
       }
     }
@@ -2073,7 +2092,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                     )
                   #(
                     model,
-                    api.upsert_me_task_position(
+                    api_tasks.upsert_me_task_position(
                       task_id,
                       x,
                       y,
@@ -2097,7 +2116,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     MemberPositionSaved(Ok(pos)) -> {
-      let api.TaskPosition(task_id: task_id, x: x, y: y, ..) = pos
+      let TaskPosition(task_id: task_id, x: x, y: y, ..) = pos
 
       #(
         Model(
@@ -2134,7 +2153,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             member_position_edit_error: opt.Some(err.message),
             toast: opt.Some(err.message),
           ),
-          api.list_me_task_positions(
+          api_tasks.list_me_task_positions(
             model.selected_project_id,
             MemberPositionsFetched,
           ),
@@ -2149,7 +2168,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         member_notes: Loading,
         member_note_error: opt.None,
       ),
-      api.list_task_notes(task_id, MemberNotesFetched),
+      api_tasks.list_task_notes(task_id, MemberNotesFetched),
     )
 
     MemberTaskDetailsClosed -> #(
@@ -2215,7 +2234,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                       member_note_in_flight: True,
                       member_note_error: opt.None,
                     )
-                  #(model, api.add_task_note(task_id, content, MemberNoteAdded))
+                  #(model, api_tasks.add_task_note(task_id, content, MemberNoteAdded))
                 }
               }
             }
@@ -2265,7 +2284,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           case model.member_notes_task_id {
             opt.Some(task_id) -> #(
               model,
-              api.list_task_notes(task_id, MemberNotesFetched),
+              api_tasks.list_task_notes(task_id, MemberNotesFetched),
             )
             opt.None -> #(model, effect.none())
           }

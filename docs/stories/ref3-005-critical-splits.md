@@ -1,6 +1,6 @@
 # Story ref3-005: Splits críticos (>500 líneas) — Phase 5
 
-## Status: Draft
+## Status: Done (completed via ref3-005A..F)
 
 ## Story
 **As a** maintainer,

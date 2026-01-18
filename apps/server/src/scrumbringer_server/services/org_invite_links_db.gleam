@@ -1,3 +1,16 @@
+//// Database operations for organization invite links.
+////
+//// ## Mission
+////
+//// Manages reusable invite links for organization membership.
+////
+//// ## Responsibilities
+////
+//// - Generate secure invite link tokens
+//// - Validate and consume invite links
+//// - Track invite link state (active, used, invalidated)
+//// - Support link regeneration by admins
+
 import gleam/bit_array
 import gleam/crypto
 import gleam/dynamic/decode

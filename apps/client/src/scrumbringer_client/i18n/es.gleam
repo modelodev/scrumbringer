@@ -1,3 +1,7 @@
+//// Spanish translations for Scrumbringer UI.
+////
+//// Provides Spanish (es) translations for all UI text keys defined in text.gleam.
+
 import gleam/int
 
 import scrumbringer_client/i18n/text.{type Text}

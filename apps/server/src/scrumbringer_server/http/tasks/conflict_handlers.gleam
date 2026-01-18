@@ -16,9 +16,9 @@
 
 import gleam/option.{Some}
 import pog
-import scrumbringer_server/domain/task_status.{Available, Claimed, Completed}
+import domain/task_status.{Available, Claimed, Completed}
 import scrumbringer_server/http/api
-import scrumbringer_server/services/tasks_db
+import scrumbringer_server/persistence/tasks/queries as tasks_queries
 import wisp
 
 // =============================================================================
@@ -30,8 +30,8 @@ import wisp
 /// ## Example
 ///
 /// ```gleam
-/// case tasks_db.claim_task(...) {
-///   Error(tasks_db.NotFound) -> handle_claim_conflict(db, task_id, user_id)
+/// case tasks_queries.claim_task(...) {
+///   Error(tasks_queries.NotFound) -> handle_claim_conflict(db, task_id, user_id)
 ///   ...
 /// }
 /// ```
@@ -40,8 +40,8 @@ pub fn handle_claim_conflict(
   task_id: Int,
   user_id: Int,
 ) -> wisp.Response {
-  case tasks_db.get_task_for_user(db, task_id, user_id) {
-    Error(tasks_db.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
+  case tasks_queries.get_task_for_user(db, task_id, user_id) {
+    Error(tasks_queries.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
     Error(_) -> api.error(500, "INTERNAL", "Database error")
 
     Ok(current) ->
@@ -58,8 +58,8 @@ pub fn handle_claim_conflict(
 /// ## Example
 ///
 /// ```gleam
-/// case tasks_db.release_task(...) {
-///   Error(tasks_db.NotFound) ->
+/// case tasks_queries.release_task(...) {
+///   Error(tasks_queries.NotFound) ->
 ///     handle_version_or_claim_conflict(db, task_id, user_id)
 ///   ...
 /// }
@@ -69,8 +69,8 @@ pub fn handle_version_or_claim_conflict(
   task_id: Int,
   user_id: Int,
 ) -> wisp.Response {
-  case tasks_db.get_task_for_user(db, task_id, user_id) {
-    Error(tasks_db.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
+  case tasks_queries.get_task_for_user(db, task_id, user_id) {
+    Error(tasks_queries.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
     Error(_) -> api.error(500, "INTERNAL", "Database error")
 
     Ok(current) ->

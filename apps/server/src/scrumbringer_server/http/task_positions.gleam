@@ -1,3 +1,15 @@
+//// HTTP handlers for task position management (kanban ordering).
+////
+//// ## Mission
+////
+//// Provides endpoints for retrieving and updating task positions on boards.
+////
+//// ## Responsibilities
+////
+//// - List task positions for the current user
+//// - Update task positions when cards are moved
+//// - Validate task access before position changes
+
 import gleam/dynamic/decode
 import gleam/http
 import gleam/int
@@ -8,9 +20,9 @@ import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
+import scrumbringer_server/persistence/tasks/queries as tasks_queries
 import scrumbringer_server/services/projects_db
 import scrumbringer_server/services/task_positions_db
-import scrumbringer_server/services/tasks_db
 import wisp
 
 pub fn handle_me_task_positions(
@@ -203,9 +215,10 @@ fn require_task_access(
   task_id: Int,
   user_id: Int,
 ) -> Result(Nil, wisp.Response) {
-  case tasks_db.get_task_for_user(db, task_id, user_id) {
+  case tasks_queries.get_task_for_user(db, task_id, user_id) {
     Ok(_) -> Ok(Nil)
-    Error(tasks_db.NotFound) -> Error(api.error(404, "NOT_FOUND", "Not found"))
+    Error(tasks_queries.NotFound) ->
+      Error(api.error(404, "NOT_FOUND", "Not found"))
     Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
   }
 }

@@ -1,0 +1,12 @@
+name = "shared"
+version = "0.1.0"
+target = "erlang"
+
+# This package compiles to both targets (erlang for server, javascript for client)
+# Each app specifies its own target when importing
+
+[dependencies]
+gleam_stdlib = ">= 0.34.0 and < 2.0.0"
+
+[dev-dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"

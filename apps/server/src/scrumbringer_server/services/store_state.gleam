@@ -1,20 +1,29 @@
+//// In-memory state types for the application store.
+////
+//// Defines the data structures used by the in-memory store during
+//// development and testing. Production uses the PostgreSQL database.
+
 import gleam/dict
 import gleam/option.{type Option, None}
 import scrumbringer_domain/org_role.{type OrgRole}
 
+/// An organization in the system.
 pub type Organization {
   Organization(id: Int, name: String, created_at: String)
 }
 
+/// A project within an organization.
 pub type Project {
   Project(id: Int, org_id: Int, name: String, created_at: String)
 }
 
+/// A user's role within a project.
 pub type ProjectRole {
   Admin
   Member
 }
 
+/// A user's membership in a project.
 pub type ProjectMember {
   ProjectMember(
     project_id: Int,
@@ -24,6 +33,7 @@ pub type ProjectMember {
   )
 }
 
+/// An organization invitation stored in memory.
 pub type OrgInvite {
   OrgInvite(
     code: String,
@@ -35,6 +45,7 @@ pub type OrgInvite {
   )
 }
 
+/// A user stored in memory with credentials.
 pub type StoredUser {
   StoredUser(
     id: Int,
@@ -46,6 +57,7 @@ pub type StoredUser {
   )
 }
 
+/// The complete in-memory application state.
 pub type State {
   State(
     org: Option(Organization),
@@ -60,6 +72,7 @@ pub type State {
   )
 }
 
+/// Creates a fresh initial state with no data.
 pub fn initial() -> State {
   State(
     org: None,

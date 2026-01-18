@@ -22,7 +22,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
-import scrumbringer_server/domain/task_status.{type TaskStatus}
+import domain/task_status.{type TaskStatus}
 import scrumbringer_server/http/api
 import wisp
 

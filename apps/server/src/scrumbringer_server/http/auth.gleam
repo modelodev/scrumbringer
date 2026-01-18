@@ -1,3 +1,23 @@
+//// HTTP handlers for authentication.
+////
+//// ## Mission
+////
+//// Provides HTTP endpoints for user authentication: register, login, logout, me.
+////
+//// ## Responsibilities
+////
+//// - User registration with invite token validation
+//// - Login with JWT issuance
+//// - Logout with cookie clearing
+//// - Current user endpoint
+//// - Invite link validation
+////
+//// ## Non-responsibilities
+////
+//// - Password hashing (see `services/password.gleam`)
+//// - JWT operations (see `services/jwt.gleam`)
+//// - Database operations (see `persistence/auth/`)
+
 import gleam/bit_array
 import gleam/crypto
 import gleam/dynamic/decode
@@ -12,7 +32,8 @@ import pog
 import scrumbringer_domain/org_role
 import scrumbringer_server/http/api
 import scrumbringer_server/http/csrf
-import scrumbringer_server/services/auth_db
+import scrumbringer_server/persistence/auth/login as auth_login
+import scrumbringer_server/persistence/auth/registration as auth_registration
 import scrumbringer_server/services/auth_logic
 import scrumbringer_server/services/jwt
 import scrumbringer_server/services/org_invite_links_db
@@ -129,7 +150,7 @@ pub fn handle_register(req: wisp.Request, ctx: Ctx) -> wisp.Response {
               let Ctx(db: db, jwt_secret: jwt_secret) = ctx
 
               case
-                auth_db.register(
+                auth_registration.register(
                   db,
                   email,
                   password,
@@ -198,7 +219,7 @@ pub fn handle_login(req: wisp.Request, ctx: Ctx) -> wisp.Response {
     Ok(#(email, password)) -> {
       let Ctx(db: db, jwt_secret: jwt_secret) = ctx
 
-      case auth_db.login(db, email, password) {
+      case auth_login.login(db, email, password) {
         Ok(user) -> ok_with_auth(user, jwt_secret)
         Error(_) -> api.error(403, "FORBIDDEN", "Invalid credentials")
       }
@@ -259,7 +280,7 @@ pub fn require_current_user(
     |> result.replace_error(Nil),
   )
 
-  auth_db.get_user(db, claims.user_id)
+  auth_login.get_user(db, claims.user_id)
 }
 
 fn get_cookie(req: wisp.Request, name: String) -> Result(String, Nil) {

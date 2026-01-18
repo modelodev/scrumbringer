@@ -1,0 +1,288 @@
+//// Task database queries for Scrumbringer server.
+////
+//// ## Mission
+////
+//// Provides database access for tasks including CRUD operations,
+//// state transitions (claim, release, complete), and listing with filters.
+////
+//// ## Responsibilities
+////
+//// - Execute SQL queries via squirrel-generated modules
+//// - Handle transactions for multi-step operations
+//// - Record task events for audit trail
+////
+//// ## Non-responsibilities
+////
+//// - Row-to-domain mapping (see `mappers.gleam`)
+//// - HTTP handling (see `http/tasks.gleam`)
+//// - Business validation (see `services/task_workflow_actor.gleam`)
+////
+//// ## Relations
+////
+//// - **mappers.gleam**: Converts query results to Task records
+//// - **sql.gleam**: Squirrel-generated query functions
+//// - **task_events_db.gleam**: Records audit events
+
+import gleam/list
+import gleam/result
+import pog
+import scrumbringer_server/persistence/tasks/mappers.{type Task}
+import scrumbringer_server/services/now_working_db
+import scrumbringer_server/services/task_events_db
+import scrumbringer_server/sql
+
+/// Error when task creation fails.
+pub type CreateTaskError {
+  InvalidTypeId
+  CreateDbError(pog.QueryError)
+}
+
+/// Error when task not found or DB error.
+pub type NotFoundOrDbError {
+  NotFound
+  DbError(pog.QueryError)
+}
+
+/// List tasks for a project with optional filters.
+pub fn list_tasks_for_project(
+  db: pog.Connection,
+  project_id: Int,
+  _user_id: Int,
+  status: String,
+  type_id: Int,
+  capability_id: Int,
+  q: String,
+) -> Result(List(Task), pog.QueryError) {
+  use returned <- result.try(sql.tasks_list(
+    db,
+    project_id,
+    status,
+    type_id,
+    capability_id,
+    q,
+  ))
+
+  returned.rows
+  |> list.map(mappers.from_list_row)
+  |> Ok
+}
+
+/// Create a new task in the database.
+pub fn create_task(
+  db: pog.Connection,
+  org_id: Int,
+  type_id: Int,
+  project_id: Int,
+  title: String,
+  description: String,
+  priority: Int,
+  created_by: Int,
+) -> Result(Task, CreateTaskError) {
+  pog.transaction(db, fn(tx) {
+    case
+      sql.tasks_create(
+        tx,
+        type_id,
+        project_id,
+        title,
+        description,
+        priority,
+        created_by,
+      )
+    {
+      Ok(pog.Returned(rows: [row, ..], ..)) -> {
+        let task = mappers.from_create_row(row)
+
+        use _ <- result.try(
+          task_events_db.insert(
+            tx,
+            org_id,
+            task.project_id,
+            task.id,
+            created_by,
+            "task_created",
+          )
+          |> result.map_error(CreateDbError),
+        )
+
+        Ok(task)
+      }
+
+      Ok(pog.Returned(rows: [], ..)) -> Error(InvalidTypeId)
+      Error(e) -> Error(CreateDbError(e))
+    }
+  })
+  |> result.map_error(transaction_error_to_create_task_error)
+}
+
+/// Get a task by ID for a specific user.
+pub fn get_task_for_user(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+) -> Result(Task, NotFoundOrDbError) {
+  case sql.tasks_get_for_user(db, task_id, user_id) {
+    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(mappers.from_get_row(row))
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Error(e) -> Error(DbError(e))
+  }
+}
+
+/// Update a task that is claimed by the user.
+pub fn update_task_claimed_by_user(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  title: String,
+  description: String,
+  priority: Int,
+  type_id: Int,
+  version: Int,
+) -> Result(Task, NotFoundOrDbError) {
+  case
+    sql.tasks_update(
+      db,
+      task_id,
+      user_id,
+      title,
+      description,
+      priority,
+      type_id,
+      version,
+    )
+  {
+    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(mappers.from_update_row(row))
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Error(e) -> Error(DbError(e))
+  }
+}
+
+/// Claim an available task for a user.
+pub fn claim_task(
+  db: pog.Connection,
+  org_id: Int,
+  task_id: Int,
+  user_id: Int,
+  version: Int,
+) -> Result(Task, NotFoundOrDbError) {
+  pog.transaction(db, fn(tx) {
+    case sql.tasks_claim(tx, task_id, user_id, version) {
+      Ok(pog.Returned(rows: [row, ..], ..)) -> {
+        let task = mappers.from_claim_row(row)
+
+        use _ <- result.try(
+          task_events_db.insert(
+            tx,
+            org_id,
+            task.project_id,
+            task.id,
+            user_id,
+            "task_claimed",
+          )
+          |> result.map_error(DbError),
+        )
+
+        Ok(task)
+      }
+      Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+      Error(e) -> Error(DbError(e))
+    }
+  })
+  |> result.map_error(transaction_error_to_not_found_or_db_error)
+}
+
+/// Release a claimed task back to available.
+pub fn release_task(
+  db: pog.Connection,
+  org_id: Int,
+  task_id: Int,
+  user_id: Int,
+  version: Int,
+) -> Result(Task, NotFoundOrDbError) {
+  pog.transaction(db, fn(tx) {
+    // Best effort: if this task was "now working", clear it before release.
+    let _ = now_working_db.pause_if_matches(tx, user_id, task_id)
+
+    case sql.tasks_release(tx, task_id, user_id, version) {
+      Ok(pog.Returned(rows: [row, ..], ..)) -> {
+        let task = mappers.from_release_row(row)
+
+        use _ <- result.try(
+          task_events_db.insert(
+            tx,
+            org_id,
+            task.project_id,
+            task.id,
+            user_id,
+            "task_released",
+          )
+          |> result.map_error(DbError),
+        )
+
+        Ok(task)
+      }
+      Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+      Error(e) -> Error(DbError(e))
+    }
+  })
+  |> result.map_error(transaction_error_to_not_found_or_db_error)
+}
+
+/// Complete a claimed task.
+pub fn complete_task(
+  db: pog.Connection,
+  org_id: Int,
+  task_id: Int,
+  user_id: Int,
+  version: Int,
+) -> Result(Task, NotFoundOrDbError) {
+  pog.transaction(db, fn(tx) {
+    // Best effort: if this task was "now working", clear it before complete.
+    let _ = now_working_db.pause_if_matches(tx, user_id, task_id)
+
+    case sql.tasks_complete(tx, task_id, user_id, version) {
+      Ok(pog.Returned(rows: [row, ..], ..)) -> {
+        let task = mappers.from_complete_row(row)
+
+        use _ <- result.try(
+          task_events_db.insert(
+            tx,
+            org_id,
+            task.project_id,
+            task.id,
+            user_id,
+            "task_completed",
+          )
+          |> result.map_error(DbError),
+        )
+
+        Ok(task)
+      }
+      Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+      Error(e) -> Error(DbError(e))
+    }
+  })
+  |> result.map_error(transaction_error_to_not_found_or_db_error)
+}
+
+// =============================================================================
+// Transaction Error Helpers
+// =============================================================================
+
+fn transaction_error_to_create_task_error(
+  error: pog.TransactionError(CreateTaskError),
+) -> CreateTaskError {
+  case error {
+    pog.TransactionRolledBack(err) -> err
+    pog.TransactionQueryError(err) -> CreateDbError(err)
+  }
+}
+
+fn transaction_error_to_not_found_or_db_error(
+  error: pog.TransactionError(NotFoundOrDbError),
+) -> NotFoundOrDbError {
+  case error {
+    pog.TransactionRolledBack(err) -> err
+    pog.TransactionQueryError(err) -> DbError(err)
+  }
+}

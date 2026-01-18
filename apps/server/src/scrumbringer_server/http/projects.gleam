@@ -1,3 +1,20 @@
+//// HTTP handlers for project management.
+////
+//// ## Mission
+////
+//// Provides HTTP endpoints for CRUD operations on projects and project members.
+////
+//// ## Responsibilities
+////
+//// - List projects for authenticated user
+//// - Create projects (org admin only)
+//// - List, add, and remove project members (project admin only)
+////
+//// ## Non-responsibilities
+////
+//// - Database operations (see `services/projects_db.gleam`)
+//// - Authentication (see `http/auth.gleam`)
+
 import gleam/dynamic/decode
 import gleam/http
 import gleam/int

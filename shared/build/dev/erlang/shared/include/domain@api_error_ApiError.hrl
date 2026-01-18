@@ -1,0 +1,1 @@
+-record(api_error, {status :: integer(), code :: binary(), message :: binary()}).

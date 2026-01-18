@@ -1,3 +1,16 @@
+//// Authentication business logic for user registration and login.
+////
+//// ## Mission
+////
+//// Provides core authentication workflows independent of storage backend.
+////
+//// ## Responsibilities
+////
+//// - User registration with invite validation
+//// - Login credential verification
+//// - Organization creation for new users
+//// - Password hashing and validation
+
 import gleam/dict
 import gleam/option.{type Option, None, Some}
 import gleam/result

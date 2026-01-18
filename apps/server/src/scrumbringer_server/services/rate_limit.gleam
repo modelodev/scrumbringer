@@ -1,7 +1,21 @@
-// Returns True when the request is allowed.
-//
-// This rate limiter is best-effort and in-memory. It is intended as an MVP
-// abuse-control, not a hard security boundary.
+//// In-memory rate limiting for abuse control.
+////
+//// This rate limiter is best-effort and in-memory. It is intended as an MVP
+//// abuse-control mechanism, not a hard security boundary. State is not
+//// persisted across restarts.
+
+/// Checks if a request should be allowed based on rate limits.
+///
+/// Returns `True` when the request is allowed, `False` when rate limited.
+///
+/// ## Example
+/// ```gleam
+/// let now = time.now_unix_seconds()
+/// case rate_limit.allow("login:" <> user_id, 5, 60, now) {
+///   True -> process_login(request)
+///   False -> Error(TooManyRequests)
+/// }
+/// ```
 pub fn allow(
   key: String,
   limit: Int,

@@ -26,37 +26,11 @@ import lustre/effect.{type Effect}
 import scrumbringer_client/api/core.{type ApiResult}
 import scrumbringer_client/client_ffi
 
-// =============================================================================
-// Types
-// =============================================================================
-
-/// A user in the organization.
-pub type OrgUser {
-  OrgUser(id: Int, email: String, org_role: String, created_at: String)
+// Import types from shared domain
+import domain/org.{
+  type InviteLink, type OrgInvite, type OrgUser, InviteLink, OrgInvite, OrgUser,
 }
-
-/// A capability that can be assigned to task types.
-pub type Capability {
-  Capability(id: Int, name: String)
-}
-
-/// An organization invite code.
-pub type OrgInvite {
-  OrgInvite(code: String, created_at: String, expires_at: String)
-}
-
-/// An invite link for a specific email.
-pub type InviteLink {
-  InviteLink(
-    email: String,
-    token: String,
-    url_path: String,
-    state: String,
-    created_at: String,
-    used_at: option.Option(String),
-    invalidated_at: option.Option(String),
-  )
-}
+import domain/capability.{type Capability, Capability}
 
 // =============================================================================
 // Decoders

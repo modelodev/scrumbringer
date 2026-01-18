@@ -1,9 +1,15 @@
+//// TEA module for the accept-invite page.
+////
+//// Handles the flow of validating an invite token, collecting
+//// a password, and registering the new user account.
+
 import gleam/option
 import gleam/string
 
-import scrumbringer_client/api
+import domain/api_error.{type ApiResult}
 import scrumbringer_domain/user.{type User}
 
+/// Token validation and registration state.
 pub type State {
   NoToken
   Validating
@@ -13,6 +19,7 @@ pub type State {
   Done
 }
 
+/// Component model for the accept-invite form.
 pub type Model {
   Model(
     token: String,
@@ -23,14 +30,16 @@ pub type Model {
   )
 }
 
+/// Messages handled by this module.
 pub type Msg {
-  TokenValidated(api.ApiResult(String))
+  TokenValidated(ApiResult(String))
   PasswordChanged(String)
   Submitted
-  Registered(api.ApiResult(User))
+  Registered(ApiResult(User))
   ErrorDismissed
 }
 
+/// Side effects to perform after an update.
 pub type Action {
   NoOp
   ValidateToken(String)
@@ -38,6 +47,7 @@ pub type Action {
   Authed(User)
 }
 
+/// Initializes the model, triggering token validation if provided.
 pub fn init(token: String) -> #(Model, Action) {
   case token {
     "" -> #(
@@ -64,6 +74,7 @@ pub fn init(token: String) -> #(Model, Action) {
   }
 }
 
+/// Handles messages and returns updated model with any actions.
 pub fn update(model: Model, msg: Msg) -> #(Model, Action) {
   case msg {
     TokenValidated(Ok(email)) -> #(

@@ -20,7 +20,7 @@
 ////
 //// ## Non-responsibilities
 ////
-//// - HTTP requests and API logic (see `api.gleam`)
+//// - HTTP requests and API logic (see `api/` modules)
 //// - Routing logic and URL parsing (see `router.gleam`)
 //// - View rendering and HTML generation (see `scrumbringer_client.gleam`)
 //// - Update logic and effect handling (see `scrumbringer_client.gleam`)
@@ -36,11 +36,18 @@
 ////
 //// Use `default_model()` for initialization to get sensible defaults.
 ////
+//// ## Line Count Justification
+////
+//// ~750 lines: Contains all Model, Msg, Page, Remote types for the SPA.
+//// Splitting by feature would scatter related types and break the TEA
+//// pattern's expectation of a unified Model definition. Gleam's exhaustive
+//// pattern matching ensures type safety across this large variant set.
+////
 //// ## Relations
 ////
 //// - **scrumbringer_client.gleam**: Main module that uses these types for
 ////   init, update, and view functions
-//// - **api.gleam**: Provides API types used in `Model` and `Msg`
+//// - **api/***: Provides API types used in `Model` and `Msg`
 //// - **router.gleam**: Provides `Route` type used in `NavigateTo` message
 //// - **accept_invite.gleam**: Child component with its own `Model` and `Msg`
 //// - **reset_password.gleam**: Child component with its own `Model` and `Msg`
@@ -56,7 +63,21 @@ import gleam/option.{type Option}
 import scrumbringer_domain/user.{type User}
 
 import scrumbringer_client/accept_invite
-import scrumbringer_client/api
+// API types from domain modules
+import domain/api_error.{type ApiError, type ApiResult}
+import domain/project.{type Project, type ProjectMember}
+import domain/capability.{type Capability}
+import domain/org.{type InviteLink, type OrgUser}
+import domain/task.{
+  type ActiveTaskPayload, type Task,
+  type TaskNote, type TaskPosition,
+}
+import domain/task_type.{type TaskType}
+import domain/metrics.{
+  type MyMetrics, type OrgMetricsOverview,
+  type OrgMetricsProjectTasksPayload,
+}
+import scrumbringer_client/api/auth.{type PasswordReset}
 import scrumbringer_client/hydration
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/member_section
@@ -81,7 +102,7 @@ pub type Remote(a) {
   NotAsked
   Loading
   Loaded(a)
-  Failed(api.ApiError)
+  Failed(ApiError)
 }
 
 // ----------------------------------------------------------------------------
@@ -193,40 +214,40 @@ pub type Model {
     forgot_password_open: Bool,
     forgot_password_email: String,
     forgot_password_in_flight: Bool,
-    forgot_password_result: Option(api.PasswordReset),
+    forgot_password_result: Option(PasswordReset),
     forgot_password_error: Option(String),
     forgot_password_copy_status: Option(String),
     // Child components
     accept_invite: accept_invite.Model,
     reset_password: reset_password.Model,
     // Projects
-    projects: Remote(List(api.Project)),
+    projects: Remote(List(Project)),
     selected_project_id: Option(Int),
     // Invite links
-    invite_links: Remote(List(api.InviteLink)),
+    invite_links: Remote(List(InviteLink)),
     invite_link_email: String,
     invite_link_in_flight: Bool,
     invite_link_error: Option(String),
-    invite_link_last: Option(api.InviteLink),
+    invite_link_last: Option(InviteLink),
     invite_link_copy_status: Option(String),
     // Project creation
     projects_create_name: String,
     projects_create_in_flight: Bool,
     projects_create_error: Option(String),
     // Capabilities
-    capabilities: Remote(List(api.Capability)),
+    capabilities: Remote(List(Capability)),
     capabilities_create_name: String,
     capabilities_create_in_flight: Bool,
     capabilities_create_error: Option(String),
     // Members
-    members: Remote(List(api.ProjectMember)),
+    members: Remote(List(ProjectMember)),
     members_project_id: Option(Int),
     // Org users
-    org_users_cache: Remote(List(api.OrgUser)),
-    org_settings_users: Remote(List(api.OrgUser)),
+    org_users_cache: Remote(List(OrgUser)),
+    org_settings_users: Remote(List(OrgUser)),
     // Admin metrics
-    admin_metrics_overview: Remote(api.OrgMetricsOverview),
-    admin_metrics_project_tasks: Remote(api.OrgMetricsProjectTasksPayload),
+    admin_metrics_overview: Remote(OrgMetricsOverview),
+    admin_metrics_project_tasks: Remote(OrgMetricsProjectTasksPayload),
     admin_metrics_project_id: Option(Int),
     // Org settings
     org_settings_role_drafts: Dict(Int, String),
@@ -235,19 +256,19 @@ pub type Model {
     org_settings_error_user_id: Option(Int),
     // Member add dialog
     members_add_dialog_open: Bool,
-    members_add_selected_user: Option(api.OrgUser),
+    members_add_selected_user: Option(OrgUser),
     members_add_role: String,
     members_add_in_flight: Bool,
     members_add_error: Option(String),
     // Member remove dialog
-    members_remove_confirm: Option(api.OrgUser),
+    members_remove_confirm: Option(OrgUser),
     members_remove_in_flight: Bool,
     members_remove_error: Option(String),
     // Org user search
     org_users_search_query: String,
-    org_users_search_results: Remote(List(api.OrgUser)),
+    org_users_search_results: Remote(List(OrgUser)),
     // Task types
-    task_types: Remote(List(api.TaskType)),
+    task_types: Remote(List(TaskType)),
     task_types_project_id: Option(Int),
     task_types_create_name: String,
     task_types_create_icon: String,
@@ -257,8 +278,8 @@ pub type Model {
     task_types_icon_preview: IconPreview,
     // Member section
     member_section: member_section.MemberSection,
-    member_active_task: Remote(api.ActiveTaskPayload),
-    member_metrics: Remote(api.MyMetrics),
+    member_active_task: Remote(ActiveTaskPayload),
+    member_metrics: Remote(MyMetrics),
     member_now_working_in_flight: Bool,
     member_now_working_error: Option(String),
     // Now working timer
@@ -266,12 +287,12 @@ pub type Model {
     now_working_tick_running: Bool,
     now_working_server_offset_ms: Int,
     // Member tasks
-    member_tasks: Remote(List(api.Task)),
+    member_tasks: Remote(List(Task)),
     member_tasks_pending: Int,
-    member_tasks_by_project: Dict(Int, List(api.Task)),
-    member_task_types: Remote(List(api.TaskType)),
+    member_tasks_by_project: Dict(Int, List(Task)),
+    member_task_types: Remote(List(TaskType)),
     member_task_types_pending: Int,
-    member_task_types_by_project: Dict(Int, List(api.TaskType)),
+    member_task_types_by_project: Dict(Int, List(TaskType)),
     member_task_mutation_in_flight: Bool,
     // Member filters
     member_filters_status: String,
@@ -310,7 +331,7 @@ pub type Model {
     member_position_edit_error: Option(String),
     // Member notes
     member_notes_task_id: Option(Int),
-    member_notes: Remote(List(api.TaskNote)),
+    member_notes: Remote(List(TaskNote)),
     member_note_content: String,
     member_note_in_flight: Bool,
     member_note_error: Option(String),
@@ -342,7 +363,7 @@ pub type Msg {
   NavigateTo(router.Route, NavMode)
 
   // Auth
-  MeFetched(api.ApiResult(User))
+  MeFetched(ApiResult(User))
   AcceptInviteMsg(accept_invite.Msg)
   ResetPasswordMsg(reset_password.Msg)
 
@@ -351,20 +372,20 @@ pub type Msg {
   LoginPasswordChanged(String)
   LoginSubmitted
   LoginDomValuesRead(String, String)
-  LoginFinished(api.ApiResult(User))
+  LoginFinished(ApiResult(User))
 
   // Forgot password
   ForgotPasswordClicked
   ForgotPasswordEmailChanged(String)
   ForgotPasswordSubmitted
-  ForgotPasswordFinished(api.ApiResult(api.PasswordReset))
+  ForgotPasswordFinished(ApiResult(PasswordReset))
   ForgotPasswordCopyClicked
   ForgotPasswordCopyFinished(Bool)
   ForgotPasswordDismissed
 
   // Logout
   LogoutClicked
-  LogoutFinished(api.ApiResult(Nil))
+  LogoutFinished(ApiResult(Nil))
 
   // Toast
   ToastDismissed
@@ -377,34 +398,34 @@ pub type Msg {
   ProjectSelected(String)
 
   // Projects CRUD
-  ProjectsFetched(api.ApiResult(List(api.Project)))
+  ProjectsFetched(ApiResult(List(Project)))
   ProjectCreateNameChanged(String)
   ProjectCreateSubmitted
-  ProjectCreated(api.ApiResult(api.Project))
+  ProjectCreated(ApiResult(Project))
 
   // Invite links
   InviteLinkEmailChanged(String)
   InviteLinkCreateSubmitted
-  InviteLinkCreated(api.ApiResult(api.InviteLink))
-  InviteLinksFetched(api.ApiResult(List(api.InviteLink)))
+  InviteLinkCreated(ApiResult(InviteLink))
+  InviteLinksFetched(ApiResult(List(InviteLink)))
   InviteLinkRegenerateClicked(String)
-  InviteLinkRegenerated(api.ApiResult(api.InviteLink))
+  InviteLinkRegenerated(ApiResult(InviteLink))
   InviteLinkCopyClicked(String)
   InviteLinkCopyFinished(Bool)
 
   // Capabilities
-  CapabilitiesFetched(api.ApiResult(List(api.Capability)))
+  CapabilitiesFetched(ApiResult(List(Capability)))
   CapabilityCreateNameChanged(String)
   CapabilityCreateSubmitted
-  CapabilityCreated(api.ApiResult(api.Capability))
+  CapabilityCreated(ApiResult(Capability))
 
   // Members
-  MembersFetched(api.ApiResult(List(api.ProjectMember)))
-  OrgUsersCacheFetched(api.ApiResult(List(api.OrgUser)))
-  OrgSettingsUsersFetched(api.ApiResult(List(api.OrgUser)))
+  MembersFetched(ApiResult(List(ProjectMember)))
+  OrgUsersCacheFetched(ApiResult(List(OrgUser)))
+  OrgSettingsUsersFetched(ApiResult(List(OrgUser)))
   OrgSettingsRoleChanged(Int, String)
   OrgSettingsSaveClicked(Int)
-  OrgSettingsSaved(Int, api.ApiResult(api.OrgUser))
+  OrgSettingsSaved(Int, ApiResult(OrgUser))
 
   // Member add dialog
   MemberAddDialogOpened
@@ -412,28 +433,28 @@ pub type Msg {
   MemberAddRoleChanged(String)
   MemberAddUserSelected(Int)
   MemberAddSubmitted
-  MemberAdded(api.ApiResult(api.ProjectMember))
+  MemberAdded(ApiResult(ProjectMember))
 
   // Member remove
   MemberRemoveClicked(Int)
   MemberRemoveCancelled
   MemberRemoveConfirmed
-  MemberRemoved(api.ApiResult(Nil))
+  MemberRemoved(ApiResult(Nil))
 
   // Org user search
   OrgUsersSearchChanged(String)
   OrgUsersSearchDebounced(String)
-  OrgUsersSearchResults(api.ApiResult(List(api.OrgUser)))
+  OrgUsersSearchResults(ApiResult(List(OrgUser)))
 
   // Task types
-  TaskTypesFetched(api.ApiResult(List(api.TaskType)))
+  TaskTypesFetched(ApiResult(List(TaskType)))
   TaskTypeCreateNameChanged(String)
   TaskTypeCreateIconChanged(String)
   TaskTypeIconLoaded
   TaskTypeIconErrored
   TaskTypeCreateCapabilityChanged(String)
   TaskTypeCreateSubmitted
-  TaskTypeCreated(api.ApiResult(api.TaskType))
+  TaskTypeCreated(ApiResult(TaskType))
 
   // Pool filters
   MemberPoolStatusChanged(String)
@@ -449,8 +470,8 @@ pub type Msg {
   GlobalKeyDown(pool_prefs.KeyEvent)
 
   // Member tasks
-  MemberProjectTasksFetched(Int, api.ApiResult(List(api.Task)))
-  MemberTaskTypesFetched(Int, api.ApiResult(List(api.TaskType)))
+  MemberProjectTasksFetched(Int, ApiResult(List(Task)))
+  MemberTaskTypesFetched(Int, ApiResult(List(TaskType)))
 
   // Drag-and-drop
   MemberCanvasRectFetched(Int, Int)
@@ -466,52 +487,52 @@ pub type Msg {
   MemberCreatePriorityChanged(String)
   MemberCreateTypeIdChanged(String)
   MemberCreateSubmitted
-  MemberTaskCreated(api.ApiResult(api.Task))
+  MemberTaskCreated(ApiResult(Task))
 
   // Task actions
   MemberClaimClicked(Int, Int)
   MemberReleaseClicked(Int, Int)
   MemberCompleteClicked(Int, Int)
-  MemberTaskClaimed(api.ApiResult(api.Task))
-  MemberTaskReleased(api.ApiResult(api.Task))
-  MemberTaskCompleted(api.ApiResult(api.Task))
+  MemberTaskClaimed(ApiResult(Task))
+  MemberTaskReleased(ApiResult(Task))
+  MemberTaskCompleted(ApiResult(Task))
 
   // Now working
   MemberNowWorkingStartClicked(Int)
   MemberNowWorkingPauseClicked
-  MemberActiveTaskFetched(api.ApiResult(api.ActiveTaskPayload))
-  MemberActiveTaskStarted(api.ApiResult(api.ActiveTaskPayload))
-  MemberActiveTaskPaused(api.ApiResult(api.ActiveTaskPayload))
-  MemberActiveTaskHeartbeated(api.ApiResult(api.ActiveTaskPayload))
-  MemberMetricsFetched(api.ApiResult(api.MyMetrics))
-  AdminMetricsOverviewFetched(api.ApiResult(api.OrgMetricsOverview))
+  MemberActiveTaskFetched(ApiResult(ActiveTaskPayload))
+  MemberActiveTaskStarted(ApiResult(ActiveTaskPayload))
+  MemberActiveTaskPaused(ApiResult(ActiveTaskPayload))
+  MemberActiveTaskHeartbeated(ApiResult(ActiveTaskPayload))
+  MemberMetricsFetched(ApiResult(MyMetrics))
+  AdminMetricsOverviewFetched(ApiResult(OrgMetricsOverview))
   AdminMetricsProjectTasksFetched(
-    api.ApiResult(api.OrgMetricsProjectTasksPayload),
+    ApiResult(OrgMetricsProjectTasksPayload),
   )
   NowWorkingTicked
 
   // Member capabilities
-  MemberMyCapabilityIdsFetched(api.ApiResult(List(Int)))
+  MemberMyCapabilityIdsFetched(ApiResult(List(Int)))
   MemberToggleCapability(Int)
   MemberSaveCapabilitiesClicked
-  MemberMyCapabilityIdsSaved(api.ApiResult(List(Int)))
+  MemberMyCapabilityIdsSaved(ApiResult(List(Int)))
 
   // Position editing
-  MemberPositionsFetched(api.ApiResult(List(api.TaskPosition)))
+  MemberPositionsFetched(ApiResult(List(TaskPosition)))
   MemberPositionEditOpened(Int)
   MemberPositionEditClosed
   MemberPositionEditXChanged(String)
   MemberPositionEditYChanged(String)
   MemberPositionEditSubmitted
-  MemberPositionSaved(api.ApiResult(api.TaskPosition))
+  MemberPositionSaved(ApiResult(TaskPosition))
 
   // Task details and notes
   MemberTaskDetailsOpened(Int)
   MemberTaskDetailsClosed
-  MemberNotesFetched(api.ApiResult(List(api.TaskNote)))
+  MemberNotesFetched(ApiResult(List(TaskNote)))
   MemberNoteContentChanged(String)
   MemberNoteSubmitted
-  MemberNoteAdded(api.ApiResult(api.TaskNote))
+  MemberNoteAdded(ApiResult(TaskNote))
 }
 
 // ----------------------------------------------------------------------------

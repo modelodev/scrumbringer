@@ -1,3 +1,8 @@
+//// HTTP handlers for organization invite management.
+////
+//// Provides endpoints for creating invite codes that allow new users
+//// to join an organization. Only organization admins can create invites.
+
 import gleam/dynamic/decode
 import gleam/http
 import gleam/json
@@ -8,8 +13,12 @@ import scrumbringer_server/http/csrf
 import scrumbringer_server/services/org_invites_db
 import wisp
 
+/// Default invite expiration (7 days).
 const default_expires_in_hours = 168
 
+/// Handles POST /api/org-invites to create a new invite code.
+///
+/// Requires admin role. Returns the generated invite code with expiration.
 pub fn handle_create(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
 

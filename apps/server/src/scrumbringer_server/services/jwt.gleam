@@ -1,3 +1,8 @@
+//// JWT (JSON Web Token) signing and verification.
+////
+//// Implements HS256 JWT tokens for session authentication.
+//// Tokens contain user ID, org ID, role, and expiration.
+
 import gleam/bit_array
 import gleam/crypto
 import gleam/dynamic/decode
@@ -7,6 +12,7 @@ import gleam/string
 import scrumbringer_domain/org_role
 import scrumbringer_server/services/time
 
+/// JWT payload claims.
 pub type Claims {
   Claims(
     user_id: Int,
@@ -17,6 +23,7 @@ pub type Claims {
   )
 }
 
+/// Errors that can occur during JWT operations.
 pub type JwtError {
   InvalidFormat
   InvalidSignature
@@ -26,6 +33,7 @@ pub type JwtError {
   Expired
 }
 
+/// Signs claims into a JWT string using HS256.
 pub fn sign(claims: Claims, secret: BitArray) -> String {
   let header =
     json.object([
@@ -61,6 +69,7 @@ pub fn sign(claims: Claims, secret: BitArray) -> String {
   signing_input <> "." <> signature_b64
 }
 
+/// Verifies a JWT and returns its claims if valid.
 pub fn verify(token: String, secret: BitArray) -> Result(Claims, JwtError) {
   case string.split(token, ".") {
     [header_b64, payload_b64, signature_b64] -> {
@@ -129,6 +138,7 @@ fn decode_claims(payload_b64: String) -> Result(Claims, JwtError) {
   }
 }
 
+/// Creates new claims with 24-hour expiration.
 pub fn new_claims(
   user_id: Int,
   org_id: Int,

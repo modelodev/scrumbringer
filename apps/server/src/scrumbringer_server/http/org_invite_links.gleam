@@ -1,3 +1,8 @@
+//// HTTP handlers for organization invite links management.
+////
+//// Provides endpoints for listing and creating/regenerating invite links.
+//// Admin-only operations requiring CSRF protection.
+
 import gleam/dynamic/decode
 import gleam/http
 import gleam/json
@@ -10,6 +15,15 @@ import scrumbringer_server/http/csrf
 import scrumbringer_server/services/org_invite_links_db
 import wisp
 
+/// Routes /api/org/invite-links requests (GET list, POST upsert).
+///
+/// ## Example
+///
+/// ```gleam
+/// handle_invite_links(req, ctx)
+/// // GET -> list all invite links for org
+/// // POST -> create or regenerate invite link
+/// ```
 pub fn handle_invite_links(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   case req.method {
     http.Get -> handle_list(req, ctx)
@@ -18,6 +32,7 @@ pub fn handle_invite_links(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   }
 }
 
+/// Handles POST /api/org/invite-links/regenerate to regenerate a link.
 pub fn handle_regenerate(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
   handle_upsert(req, ctx)

@@ -1,7 +1,7 @@
 import gleam/option
 import gleeunit/should
 
-import scrumbringer_client/api
+import domain/api_error.{ApiError}
 import scrumbringer_client/reset_password
 
 pub fn init_without_token_stays_no_token_test() {
@@ -115,7 +115,7 @@ pub fn consume_failure_sets_invalid_state_test() {
 
   let #(model, _) = reset_password.update(model, reset_password.Submitted)
 
-  let err = api.ApiError(status: 403, code: "RESET_TOKEN_USED", message: "Used")
+  let err = ApiError(status: 403, code: "RESET_TOKEN_USED", message: "Used")
 
   let #(next, action) =
     reset_password.update(model, reset_password.Consumed(Error(err)))

@@ -1,0 +1,374 @@
+//// Task workflow message handlers.
+////
+//// ## Mission
+////
+//// Handles task workflow messages by coordinating validation, authorization,
+//// and database operations. This is the main entry point for task business logic.
+////
+//// ## Responsibilities
+////
+//// - Route messages to appropriate handlers
+//// - Coordinate validation and authorization
+//// - Execute database operations
+//// - Map database errors to domain errors
+////
+//// ## Non-responsibilities
+////
+//// - HTTP request parsing (see `http/tasks.gleam`)
+//// - JSON serialization (see `http/tasks/presenters.gleam`)
+//// - Pure SQL queries (see `persistence/tasks/queries.gleam`)
+////
+//// ## Relations
+////
+//// - **types.gleam**: Message, Response, Error types
+//// - **validation.gleam**: Input validation helpers
+//// - **authorization.gleam**: Authorization checks
+
+import gleam/option.{type Option, Some}
+import pog
+import domain/task_status.{Available, Claimed, Completed}
+import scrumbringer_server/persistence/tasks/queries as tasks_queries
+import scrumbringer_server/services/task_types_db
+import scrumbringer_server/services/workflows/authorization
+import scrumbringer_server/services/workflows/types.{
+  type Error, type Message, type Response, type TaskFilters, type TaskUpdates,
+  AlreadyClaimed, ClaimOwnershipConflict, ClaimTask, CompleteTask, CreateTask,
+  CreateTaskType, DbError, GetTask, InvalidTransition, ListTaskTypes, ListTasks,
+  NotAuthorized, NotFound, ReleaseTask, TaskResult, TaskTypeAlreadyExists,
+  TaskTypeCreated, TaskTypesList, TasksList, UpdateTask, ValidationError,
+  VersionConflict,
+}
+import scrumbringer_server/services/workflows/validation
+
+// =============================================================================
+// Main Handler
+// =============================================================================
+
+/// Handle a task workflow message and return a domain result.
+pub fn handle(db: pog.Connection, message: Message) -> Result(Response, Error) {
+  case message {
+    ListTaskTypes(project_id, user_id) ->
+      handle_list_task_types(db, project_id, user_id)
+
+    CreateTaskType(project_id, user_id, org_id, name, icon, capability_id) ->
+      handle_create_task_type(
+        db,
+        project_id,
+        user_id,
+        org_id,
+        name,
+        icon,
+        capability_id,
+      )
+
+    ListTasks(project_id, user_id, filters) ->
+      handle_list_tasks(db, project_id, user_id, filters)
+
+    CreateTask(
+      project_id,
+      user_id,
+      org_id,
+      title,
+      description,
+      priority,
+      type_id,
+    ) ->
+      handle_create_task(
+        db,
+        project_id,
+        user_id,
+        org_id,
+        title,
+        description,
+        priority,
+        type_id,
+      )
+
+    GetTask(task_id, user_id) -> handle_get_task(db, task_id, user_id)
+
+    UpdateTask(task_id, user_id, version, updates) ->
+      handle_update_task(db, task_id, user_id, version, updates)
+
+    ClaimTask(task_id, user_id, org_id, version) ->
+      handle_claim_task(db, task_id, user_id, org_id, version)
+
+    ReleaseTask(task_id, user_id, org_id, version) ->
+      handle_release_task(db, task_id, user_id, org_id, version)
+
+    CompleteTask(task_id, user_id, org_id, version) ->
+      handle_complete_task(db, task_id, user_id, org_id, version)
+  }
+}
+
+// =============================================================================
+// Message Handlers
+// =============================================================================
+
+fn handle_list_task_types(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+) -> Result(Response, Error) {
+  use _ <- authorization.require_project_member(db, project_id, user_id)
+
+  case task_types_db.list_task_types_for_project(db, project_id) {
+    Ok(task_types) -> Ok(TaskTypesList(task_types))
+    Error(e) -> Error(DbError(e))
+  }
+}
+
+fn handle_create_task_type(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+  org_id: Int,
+  name: String,
+  icon: String,
+  capability_id: Option(Int),
+) -> Result(Response, Error) {
+  use _ <- authorization.require_project_admin(db, project_id, user_id)
+  use _ <- validation.validate_capability_in_org(db, capability_id, org_id)
+
+  case
+    task_types_db.create_task_type(db, project_id, name, icon, capability_id)
+  {
+    Ok(task_type) -> Ok(TaskTypeCreated(task_type))
+    Error(task_types_db.AlreadyExists) -> Error(TaskTypeAlreadyExists)
+    Error(task_types_db.InvalidCapabilityId) ->
+      Error(ValidationError("Invalid capability_id"))
+    Error(task_types_db.DbError(e)) -> Error(DbError(e))
+    Error(task_types_db.NoRowReturned) ->
+      Error(ValidationError("Failed to create task type"))
+  }
+}
+
+fn handle_list_tasks(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+  filters: TaskFilters,
+) -> Result(Response, Error) {
+  use _ <- authorization.require_project_member(db, project_id, user_id)
+
+  case
+    tasks_queries.list_tasks_for_project(
+      db,
+      project_id,
+      user_id,
+      filters.status,
+      filters.type_id,
+      filters.capability_id,
+      filters.q,
+    )
+  {
+    Ok(tasks) -> Ok(TasksList(tasks))
+    Error(e) -> Error(DbError(e))
+  }
+}
+
+fn handle_create_task(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+  org_id: Int,
+  title: String,
+  description: String,
+  priority: Int,
+  type_id: Int,
+) -> Result(Response, Error) {
+  use _ <- authorization.require_project_member(db, project_id, user_id)
+  use validated_title <- validation.validate_task_title(title)
+  use _ <- validation.validate_priority(priority)
+  use _ <- validation.validate_task_type_in_project(db, type_id, project_id)
+
+  case
+    tasks_queries.create_task(
+      db,
+      org_id,
+      type_id,
+      project_id,
+      validated_title,
+      description,
+      priority,
+      user_id,
+    )
+  {
+    Ok(task) -> Ok(TaskResult(task))
+    Error(tasks_queries.InvalidTypeId) ->
+      Error(ValidationError("Invalid type_id"))
+    Error(tasks_queries.CreateDbError(e)) -> Error(DbError(e))
+  }
+}
+
+fn handle_get_task(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+) -> Result(Response, Error) {
+  case tasks_queries.get_task_for_user(db, task_id, user_id) {
+    Ok(task) -> Ok(TaskResult(task))
+    Error(tasks_queries.NotFound) -> Error(NotFound)
+    Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+  }
+}
+
+fn handle_update_task(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  version: Int,
+  updates: TaskUpdates,
+) -> Result(Response, Error) {
+  use _ <- validation.validate_optional_priority(updates.priority)
+
+  case tasks_queries.get_task_for_user(db, task_id, user_id) {
+    Error(tasks_queries.NotFound) -> Error(NotFound)
+    Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+
+    Ok(current) ->
+      case current.status {
+        Available | Completed -> Error(NotAuthorized)
+
+        Claimed(_) ->
+          case current.claimed_by {
+            Some(id) if id == user_id -> {
+              use _ <- validation.validate_type_update(
+                db,
+                updates.type_id,
+                current.project_id,
+              )
+
+              case
+                tasks_queries.update_task_claimed_by_user(
+                  db,
+                  task_id,
+                  user_id,
+                  updates.title,
+                  updates.description,
+                  updates.priority,
+                  updates.type_id,
+                  version,
+                )
+              {
+                Ok(task) -> Ok(TaskResult(task))
+                Error(tasks_queries.NotFound) -> Error(VersionConflict)
+                Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+              }
+            }
+
+            _ -> Error(NotAuthorized)
+          }
+      }
+  }
+}
+
+fn handle_claim_task(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+) -> Result(Response, Error) {
+  case tasks_queries.get_task_for_user(db, task_id, user_id) {
+    Error(tasks_queries.NotFound) -> Error(NotFound)
+    Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+
+    Ok(current) ->
+      case current.status {
+        Claimed(_) -> Error(AlreadyClaimed)
+        Completed -> Error(InvalidTransition)
+
+        Available ->
+          case tasks_queries.claim_task(db, org_id, task_id, user_id, version) {
+            Ok(task) -> Ok(TaskResult(task))
+            Error(tasks_queries.NotFound) -> detect_conflict(db, task_id, user_id)
+            Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+          }
+      }
+  }
+}
+
+fn handle_release_task(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+) -> Result(Response, Error) {
+  case tasks_queries.get_task_for_user(db, task_id, user_id) {
+    Error(tasks_queries.NotFound) -> Error(NotFound)
+    Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+
+    Ok(current) ->
+      case current.status {
+        Available | Completed -> Error(InvalidTransition)
+
+        Claimed(_) ->
+          case current.claimed_by {
+            Some(id) if id == user_id ->
+              case
+                tasks_queries.release_task(db, org_id, task_id, user_id, version)
+              {
+                Ok(task) -> Ok(TaskResult(task))
+                Error(tasks_queries.NotFound) -> Error(VersionConflict)
+                Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+              }
+
+            _ -> Error(NotAuthorized)
+          }
+      }
+  }
+}
+
+fn handle_complete_task(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+) -> Result(Response, Error) {
+  case tasks_queries.get_task_for_user(db, task_id, user_id) {
+    Error(tasks_queries.NotFound) -> Error(NotFound)
+    Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+
+    Ok(current) ->
+      case current.status {
+        Available | Completed -> Error(InvalidTransition)
+
+        Claimed(_) ->
+          case current.claimed_by {
+            Some(id) if id == user_id ->
+              case
+                tasks_queries.complete_task(db, org_id, task_id, user_id, version)
+              {
+                Ok(task) -> Ok(TaskResult(task))
+                Error(tasks_queries.NotFound) -> Error(VersionConflict)
+                Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+              }
+
+            _ -> Error(NotAuthorized)
+          }
+      }
+  }
+}
+
+// =============================================================================
+// Conflict Detection
+// =============================================================================
+
+fn detect_conflict(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+) -> Result(Response, Error) {
+  case tasks_queries.get_task_for_user(db, task_id, user_id) {
+    Error(tasks_queries.NotFound) -> Error(NotFound)
+    Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+
+    Ok(current) ->
+      case current.status {
+        Claimed(_) -> Error(ClaimOwnershipConflict(current.claimed_by))
+        _ -> Error(VersionConflict)
+      }
+  }
+}

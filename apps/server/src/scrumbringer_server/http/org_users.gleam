@@ -1,3 +1,15 @@
+//// HTTP handlers for organization user management.
+////
+//// ## Mission
+////
+//// Provides endpoints for listing and managing organization members.
+////
+//// ## Responsibilities
+////
+//// - List users in an organization
+//// - Update user roles (admin only)
+//// - Remove users from organizations
+
 import gleam/dynamic/decode
 import gleam/http
 import gleam/int

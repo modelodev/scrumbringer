@@ -1,3 +1,8 @@
+//// In-memory store actor for auth state (used in tests).
+////
+//// Provides an OTP actor-based store for user registration, login,
+//// and invite handling without requiring a real database.
+
 import gleam/erlang/process
 import gleam/option.{type Option}
 import gleam/otp/actor
@@ -5,6 +10,7 @@ import gleam/result
 import scrumbringer_server/services/auth_logic
 import scrumbringer_server/services/store_state as ss
 
+/// Opaque store handle wrapping an actor subject.
 pub opaque type Store {
   Store(subject: process.Subject(Message))
 }
@@ -33,6 +39,13 @@ type Message {
   DebugSnapshot(reply_with: process.Subject(ss.State))
 }
 
+/// Starts a new store actor with empty initial state.
+///
+/// ## Example
+///
+/// ```gleam
+/// let store = start()
+/// ```
 pub fn start() -> Store {
   let assert Ok(started) =
     actor.new(ss.initial())
@@ -42,6 +55,13 @@ pub fn start() -> Store {
   Store(started.data)
 }
 
+/// Registers a new user in the store.
+///
+/// ## Example
+///
+/// ```gleam
+/// register(store, "user@example.com", "password123", None, None, "2024-01-01T00:00:00Z", 1704067200)
+/// ```
 pub fn register(
   store: Store,
   email: String,
@@ -64,6 +84,13 @@ pub fn register(
   })
 }
 
+/// Authenticates a user by email and password.
+///
+/// ## Example
+///
+/// ```gleam
+/// login(store, "user@example.com", "password123")
+/// ```
 pub fn login(
   store: Store,
   email: String,
@@ -74,18 +101,21 @@ pub fn login(
   })
 }
 
+/// Retrieves a user by ID from the store.
 pub fn get_user(store: Store, user_id: Int) -> Result(ss.StoredUser, Nil) {
   actor.call(store.subject, waiting: 5000, sending: fn(reply_with) {
     GetUser(user_id: user_id, reply_with: reply_with)
   })
 }
 
+/// Inserts an organization invite into the store.
 pub fn insert_invite(store: Store, invite: ss.OrgInvite) -> Nil {
   actor.call(store.subject, waiting: 5000, sending: fn(reply_with) {
     InsertInvite(invite: invite, reply_with: reply_with)
   })
 }
 
+/// Returns a snapshot of the current store state (for debugging).
 pub fn debug_snapshot(store: Store) -> ss.State {
   actor.call(store.subject, waiting: 5000, sending: fn(reply_with) {
     DebugSnapshot(reply_with: reply_with)

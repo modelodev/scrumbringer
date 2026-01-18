@@ -38,29 +38,12 @@ import lustre/effect.{type Effect}
 
 import scrumbringer_client/client_ffi
 
-// =============================================================================
-// Types
-// =============================================================================
+// Import types from shared domain
+import domain/api_error.{type ApiError, type ApiResult as SharedApiResult, ApiError}
 
-/// Represents an API error with HTTP status, error code, and message.
-///
-/// ## Example
-///
-/// ```gleam
-/// case result {
-///   Ok(data) -> use_data(data)
-///   Error(ApiError(status: 404, code: "NOT_FOUND", message: msg)) ->
-///     show_not_found(msg)
-///   Error(err) -> show_error(err.message)
-/// }
-/// ```
-pub type ApiError {
-  ApiError(status: Int, code: String, message: String)
-}
-
-/// Result type for API operations.
+// Re-export ApiResult for backwards compatibility
 pub type ApiResult(a) =
-  Result(a, ApiError)
+  SharedApiResult(a)
 
 // =============================================================================
 // CSRF Handling

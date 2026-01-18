@@ -16,11 +16,11 @@
 
 import gleam/json
 import gleam/option.{type Option, None, Some}
-import scrumbringer_server/domain/task_status.{
+import domain/task_status.{
   type TaskStatus, Available, Claimed, Completed, Ongoing, Taken,
 }
+import scrumbringer_server/persistence/tasks/mappers.{type Task, Task}
 import scrumbringer_server/services/task_types_db
-import scrumbringer_server/services/tasks_db
 
 // =============================================================================
 // Task Type JSON
@@ -63,8 +63,8 @@ pub fn task_type_json(task_type: task_types_db.TaskType) -> json.Json {
 /// ```gleam
 /// let json = task_json(task)
 /// ```
-pub fn task_json(task: tasks_db.Task) -> json.Json {
-  let tasks_db.Task(
+pub fn task_json(task: Task) -> json.Json {
+  let Task(
     id: id,
     project_id: project_id,
     type_id: type_id,

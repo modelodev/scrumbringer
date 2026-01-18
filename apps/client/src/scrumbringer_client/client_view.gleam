@@ -17,7 +17,7 @@
 ////
 //// - State management (see `client_update.gleam`)
 //// - Type definitions (see `client_state.gleam`)
-//// - API calls (see `api.gleam`)
+//// - API calls (see `api/` modules)
 ////
 //// ## Relations
 ////
@@ -25,6 +25,17 @@
 //// - **client_update.gleam**: Provides update function
 //// - **scrumbringer_client.gleam**: Entry point that uses this view
 //// - **update_helpers.gleam**: Provides i18n_t, format helpers
+////
+//// ## Line Count Justification
+////
+//// ~1800 lines: Contains pool canvas views and task card rendering that are
+//// tightly coupled to drag-drop state, mouse event handlers, and canvas
+//// positioning. Extracting pool/view.gleam and tasks/view.gleam was deferred
+//// (see ref3-005F story) due to:
+//// - High technical risk from threading drag state through multiple modules
+//// - Mouse event handlers (mousemove/mouseup/mouseleave) coordination
+//// - Canvas positioning logic interleaved with task rendering
+//// Follow-up: Planned for Sprint 4 after comprehensive drag-drop refactor.
 
 import gleam/dict
 import gleam/dynamic/decode
@@ -32,13 +43,12 @@ import gleam/float
 import gleam/int
 import gleam/list
 import gleam/option as opt
-import gleam/order
 import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{
-  button, div, form, h1, h2, h3, hr, img, input, label, option, p, select, span,
+  button, div, h2, h3, input, label, option, p, select, span,
   style, table, tbody, td, text, th, thead, tr,
 }
 import lustre/event
@@ -46,52 +56,59 @@ import lustre/event
 import scrumbringer_domain/org_role
 import scrumbringer_domain/user.{type User}
 
-import scrumbringer_client/accept_invite
-import scrumbringer_client/api
+// Domain types from shared
+import domain/project.{type Project, Project}
+import domain/task.{type Task, Task, TaskNote}
+import domain/task_type.{type TaskTypeInline}
+import domain/task_status.{Available, Claimed, Taken, task_status_to_string}
+import domain/metrics.{
+  type MetricsProjectTask, type OrgMetricsBucket,
+  type OrgMetricsOverview, type OrgMetricsProjectOverview,
+  type OrgMetricsProjectTasksPayload, MetricsProjectTask,
+  OrgMetricsBucket, OrgMetricsOverview, OrgMetricsProjectOverview,
+  OrgMetricsProjectTasksPayload,
+}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/member_section
 import scrumbringer_client/member_visuals
 import scrumbringer_client/permissions
 import scrumbringer_client/pool_prefs
-import scrumbringer_client/reset_password
 import scrumbringer_client/router
 import scrumbringer_client/styles
 import scrumbringer_client/theme
+import scrumbringer_client/ui/layout as ui_layout
+import scrumbringer_client/ui/remote as ui_remote
+import scrumbringer_client/ui/toast as ui_toast
 import scrumbringer_client/update_helpers
+import scrumbringer_client/features/admin/view as admin_view
+import scrumbringer_client/features/auth/view as auth_view
+import scrumbringer_client/features/invites/view as invites_view
+import scrumbringer_client/features/my_bar/view as my_bar_view
+import scrumbringer_client/features/now_working/view as now_working_view
+import scrumbringer_client/features/projects/view as projects_view
 
 import scrumbringer_client/i18n/i18n
-import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/i18n/text as i18n_text
 
 import scrumbringer_client/client_state.{
-  type Model, type Msg, type Remote, AcceptInvite as AcceptInvitePage,
-  AcceptInviteMsg, Admin, CapabilityCreateNameChanged, CapabilityCreateSubmitted,
-  Failed, ForgotPasswordClicked, ForgotPasswordCopyClicked,
-  ForgotPasswordDismissed, ForgotPasswordEmailChanged, ForgotPasswordSubmitted,
-  IconError, IconOk, InviteLinkCopyClicked, InviteLinkCreateSubmitted,
-  InviteLinkEmailChanged, InviteLinkRegenerateClicked, Loaded, Loading,
-  LocaleSelected, Login, LoginEmailChanged, LoginPasswordChanged, LoginSubmitted,
-  LogoutClicked, Member, MemberAddDialogClosed, MemberAddDialogOpened,
-  MemberAddRoleChanged, MemberAddSubmitted, MemberAddUserSelected,
-  MemberClaimClicked, MemberCompleteClicked, MemberCreateDescriptionChanged,
-  MemberCreateDialogClosed, MemberCreateDialogOpened,
-  MemberCreatePriorityChanged, MemberCreateSubmitted, MemberCreateTitleChanged,
-  MemberCreateTypeIdChanged, MemberDragEnded, MemberDragMoved, MemberDragStarted,
-  MemberNoteContentChanged, MemberNoteSubmitted, MemberNowWorkingPauseClicked,
-  MemberNowWorkingStartClicked, MemberPoolCapabilityChanged,
-  MemberPoolFiltersToggled, MemberPoolSearchChanged, MemberPoolSearchDebounced,
-  MemberPoolTypeChanged, MemberPoolViewModeSet, MemberPositionEditClosed,
-  MemberPositionEditSubmitted, MemberPositionEditXChanged,
-  MemberPositionEditYChanged, MemberReleaseClicked, MemberRemoveCancelled,
-  MemberRemoveClicked, MemberRemoveConfirmed, MemberSaveCapabilitiesClicked,
-  MemberTaskDetailsClosed, MemberToggleCapability,
-  MemberToggleMyCapabilitiesQuick, NavigateTo, NotAsked, OrgSettingsRoleChanged,
-  OrgSettingsSaveClicked, OrgUsersSearchChanged, OrgUsersSearchDebounced,
-  ProjectCreateNameChanged, ProjectCreateSubmitted, ProjectSelected, Push,
-  ResetPassword as ResetPasswordPage, ResetPasswordMsg,
-  TaskTypeCreateCapabilityChanged, TaskTypeCreateIconChanged,
-  TaskTypeCreateNameChanged, TaskTypeCreateSubmitted, TaskTypeIconErrored,
-  TaskTypeIconLoaded, ThemeSelected, ToastDismissed,
+  type Model, type Msg, AcceptInvite as AcceptInvitePage,
+  Admin, Failed, Loaded, Loading,
+  LocaleSelected, Login, LogoutClicked, Member,
+  MemberClaimClicked, MemberCompleteClicked,
+  MemberCreateDescriptionChanged, MemberCreateDialogClosed,
+  MemberCreateDialogOpened, MemberCreatePriorityChanged, MemberCreateSubmitted,
+  MemberCreateTitleChanged, MemberCreateTypeIdChanged, MemberDragEnded,
+  MemberDragMoved, MemberDragStarted, MemberNoteContentChanged,
+  MemberNoteSubmitted,
+  MemberPoolCapabilityChanged, MemberPoolFiltersToggled, MemberPoolSearchChanged,
+  MemberPoolSearchDebounced, MemberPoolTypeChanged, MemberPoolViewModeSet,
+  MemberPositionEditClosed, MemberPositionEditSubmitted, MemberPositionEditXChanged,
+  MemberPositionEditYChanged, MemberReleaseClicked,
+  MemberSaveCapabilitiesClicked,
+  MemberTaskDetailsClosed, MemberToggleCapability, MemberToggleMyCapabilitiesQuick,
+  NavigateTo, NotAsked,
+  ProjectSelected, Push, ResetPassword as ResetPasswordPage,
+  ThemeSelected, ToastDismissed,
 }
 
 // =============================================================================
@@ -122,27 +139,6 @@ pub fn now_working_elapsed_from_ms_for_test(
   )
 }
 
-fn now_working_elapsed(model: Model) -> String {
-  case update_helpers.now_working_active_task(model) {
-    opt.None -> "00:00"
-
-    opt.Some(api.ActiveTask(
-      started_at: started_at,
-      accumulated_s: accumulated_s,
-      ..,
-    )) -> {
-      let started_ms = client_ffi.parse_iso_ms(started_at)
-      let local_now_ms = client_ffi.now_ms()
-      let server_now_ms = local_now_ms - model.now_working_server_offset_ms
-      update_helpers.now_working_elapsed_from_ms(
-        accumulated_s,
-        started_ms,
-        server_now_ms,
-      )
-    }
-  }
-}
-
 pub fn view(model: Model) -> Element(Msg) {
   div(
     [
@@ -151,11 +147,15 @@ pub fn view(model: Model) -> Element(Msg) {
     ],
     [
       style([], styles.base_css()),
-      view_toast(model),
+      ui_toast.view(
+        model.toast,
+        update_helpers.i18n_t(model, i18n_text.Dismiss),
+        ToastDismissed,
+      ),
       case model.page {
-        Login -> view_login(model)
-        AcceptInvitePage -> view_accept_invite(model)
-        ResetPasswordPage -> view_reset_password(model)
+        Login -> auth_view.view_login(model)
+        AcceptInvitePage -> auth_view.view_accept_invite(model)
+        ResetPasswordPage -> auth_view.view_reset_password(model)
         Admin -> view_admin(model)
         Member -> view_member(model)
       },
@@ -163,346 +163,9 @@ pub fn view(model: Model) -> Element(Msg) {
   )
 }
 
-fn view_toast(model: Model) -> Element(Msg) {
-  case model.toast {
-    opt.None -> div([], [])
-    opt.Some(message) ->
-      div([attribute.class("toast")], [
-        span([], [text(message)]),
-        button(
-          [
-            attribute.class("toast-dismiss btn-xs"),
-            attribute.attribute(
-              "aria-label",
-              update_helpers.i18n_t(model, i18n_text.Dismiss),
-            ),
-            event.on_click(ToastDismissed),
-          ],
-          [text("×")],
-        ),
-      ])
-  }
-}
-
-fn view_accept_invite(model: Model) -> Element(Msg) {
-  let accept_invite.Model(
-    state: state,
-    password: password,
-    password_error: password_error,
-    submit_error: submit_error,
-    ..,
-  ) = model.accept_invite
-
-  let content = case state {
-    accept_invite.NoToken ->
-      div([attribute.class("error")], [
-        text(update_helpers.i18n_t(model, i18n_text.MissingInviteToken)),
-      ])
-
-    accept_invite.Validating ->
-      div([attribute.class("loading")], [
-        text(update_helpers.i18n_t(model, i18n_text.ValidatingInvite)),
-      ])
-
-    accept_invite.Invalid(code: _, message: message) ->
-      div([attribute.class("error")], [text(message)])
-
-    accept_invite.Ready(email) ->
-      view_accept_invite_form(model, email, password, False, password_error)
-
-    accept_invite.Registering(email) ->
-      view_accept_invite_form(model, email, password, True, password_error)
-
-    accept_invite.Done ->
-      div([attribute.class("loading")], [
-        text(update_helpers.i18n_t(model, i18n_text.SignedIn)),
-      ])
-  }
-
-  div([attribute.class("page")], [
-    h1([], [text(update_helpers.i18n_t(model, i18n_text.AppName))]),
-    h2([], [text(update_helpers.i18n_t(model, i18n_text.AcceptInviteTitle))]),
-    case submit_error {
-      opt.Some(err) ->
-        div([attribute.class("error")], [
-          span([], [text(err)]),
-          button(
-            [event.on_click(AcceptInviteMsg(accept_invite.ErrorDismissed))],
-            [text(update_helpers.i18n_t(model, i18n_text.Dismiss))],
-          ),
-        ])
-      opt.None -> div([], [])
-    },
-    content,
-  ])
-}
-
-fn view_accept_invite_form(
-  model: Model,
-  email: String,
-  password: String,
-  in_flight: Bool,
-  password_error: opt.Option(String),
-) -> Element(Msg) {
-  let submit_label = case in_flight {
-    True -> update_helpers.i18n_t(model, i18n_text.Registering)
-    False -> update_helpers.i18n_t(model, i18n_text.Register)
-  }
-
-  form([event.on_submit(fn(_) { AcceptInviteMsg(accept_invite.Submitted) })], [
-    div([attribute.class("field")], [
-      label([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
-      input([
-        attribute.type_("email"),
-        attribute.value(email),
-        attribute.disabled(True),
-      ]),
-    ]),
-    div([attribute.class("field")], [
-      label([], [text(update_helpers.i18n_t(model, i18n_text.PasswordLabel))]),
-      input([
-        attribute.type_("password"),
-        attribute.value(password),
-        event.on_input(fn(value) {
-          AcceptInviteMsg(accept_invite.PasswordChanged(value))
-        }),
-        attribute.required(True),
-      ]),
-      case password_error {
-        opt.Some(err) -> div([attribute.class("error")], [text(err)])
-        opt.None -> div([], [])
-      },
-      p([], [
-        text(update_helpers.i18n_t(model, i18n_text.MinimumPasswordLength)),
-      ]),
-    ]),
-    button([attribute.type_("submit"), attribute.disabled(in_flight)], [
-      text(submit_label),
-    ]),
-  ])
-}
-
-fn view_reset_password(model: Model) -> Element(Msg) {
-  let reset_password.Model(
-    state: state,
-    password: password,
-    password_error: password_error,
-    submit_error: submit_error,
-    ..,
-  ) = model.reset_password
-
-  let content = case state {
-    reset_password.NoToken ->
-      div([attribute.class("error")], [
-        text(update_helpers.i18n_t(model, i18n_text.MissingResetToken)),
-      ])
-
-    reset_password.Validating ->
-      div([attribute.class("loading")], [
-        text(update_helpers.i18n_t(model, i18n_text.ValidatingResetToken)),
-      ])
-
-    reset_password.Invalid(code: _, message: message) ->
-      div([attribute.class("error")], [text(message)])
-
-    reset_password.Ready(email) ->
-      view_reset_password_form(model, email, password, False, password_error)
-
-    reset_password.Consuming(email) ->
-      view_reset_password_form(model, email, password, True, password_error)
-
-    reset_password.Done ->
-      div([attribute.class("loading")], [
-        text(update_helpers.i18n_t(model, i18n_text.PasswordUpdated)),
-      ])
-  }
-
-  div([attribute.class("page")], [
-    h1([], [text(update_helpers.i18n_t(model, i18n_text.AppName))]),
-    h2([], [text(update_helpers.i18n_t(model, i18n_text.ResetPasswordTitle))]),
-    case submit_error {
-      opt.Some(err) ->
-        div([attribute.class("error")], [
-          span([], [text(err)]),
-          button(
-            [event.on_click(ResetPasswordMsg(reset_password.ErrorDismissed))],
-            [text(update_helpers.i18n_t(model, i18n_text.Dismiss))],
-          ),
-        ])
-      opt.None -> div([], [])
-    },
-    content,
-  ])
-}
-
-fn view_reset_password_form(
-  model: Model,
-  email: String,
-  password: String,
-  in_flight: Bool,
-  password_error: opt.Option(String),
-) -> Element(Msg) {
-  let submit_label = case in_flight {
-    True -> update_helpers.i18n_t(model, i18n_text.Saving)
-    False -> update_helpers.i18n_t(model, i18n_text.SaveNewPassword)
-  }
-
-  form([event.on_submit(fn(_) { ResetPasswordMsg(reset_password.Submitted) })], [
-    div([attribute.class("field")], [
-      label([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
-      input([
-        attribute.type_("email"),
-        attribute.value(email),
-        attribute.disabled(True),
-      ]),
-    ]),
-    div([attribute.class("field")], [
-      label([], [text(update_helpers.i18n_t(model, i18n_text.NewPasswordLabel))]),
-      input([
-        attribute.type_("password"),
-        attribute.value(password),
-        event.on_input(fn(value) {
-          ResetPasswordMsg(reset_password.PasswordChanged(value))
-        }),
-        attribute.required(True),
-      ]),
-      case password_error {
-        opt.Some(err) -> div([attribute.class("error")], [text(err)])
-        opt.None -> div([], [])
-      },
-      p([], [
-        text(update_helpers.i18n_t(model, i18n_text.MinimumPasswordLength)),
-      ]),
-    ]),
-    button([attribute.type_("submit"), attribute.disabled(in_flight)], [
-      text(submit_label),
-    ]),
-  ])
-}
-
-fn view_forgot_password(model: Model) -> Element(Msg) {
-  let submit_label = case model.forgot_password_in_flight {
-    True -> update_helpers.i18n_t(model, i18n_text.Working)
-    False -> update_helpers.i18n_t(model, i18n_text.GenerateResetLink)
-  }
-
-  let origin = client_ffi.location_origin()
-
-  let link = case model.forgot_password_result {
-    opt.Some(reset) -> origin <> reset.url_path
-    opt.None -> ""
-  }
-
-  div([attribute.class("section")], [
-    p([], [text(update_helpers.i18n_t(model, i18n_text.NoEmailIntegrationNote))]),
-    case model.forgot_password_error {
-      opt.Some(err) ->
-        div([attribute.class("error")], [
-          span([], [text(err)]),
-          button([event.on_click(ForgotPasswordDismissed)], [
-            text(update_helpers.i18n_t(model, i18n_text.Dismiss)),
-          ]),
-        ])
-      opt.None -> div([], [])
-    },
-    form([event.on_submit(fn(_) { ForgotPasswordSubmitted })], [
-      div([attribute.class("field")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
-        input([
-          attribute.type_("email"),
-          attribute.value(model.forgot_password_email),
-          event.on_input(ForgotPasswordEmailChanged),
-          attribute.required(True),
-        ]),
-      ]),
-      button(
-        [
-          attribute.type_("submit"),
-          attribute.disabled(model.forgot_password_in_flight),
-        ],
-        [text(submit_label)],
-      ),
-    ]),
-    case link == "" {
-      True -> div([], [])
-
-      False ->
-        div([attribute.class("field")], [
-          label([], [text(update_helpers.i18n_t(model, i18n_text.ResetLink))]),
-          div([attribute.class("copy")], [
-            input([
-              attribute.type_("text"),
-              attribute.value(link),
-              attribute.readonly(True),
-            ]),
-            button([event.on_click(ForgotPasswordCopyClicked)], [
-              text(update_helpers.i18n_t(model, i18n_text.Copy)),
-            ]),
-          ]),
-          case model.forgot_password_copy_status {
-            opt.Some(msg) -> div([attribute.class("hint")], [text(msg)])
-            opt.None -> div([], [])
-          },
-        ])
-    },
-  ])
-}
-
-fn view_login(model: Model) -> Element(Msg) {
-  let submit_label = case model.login_in_flight {
-    True -> update_helpers.i18n_t(model, i18n_text.LoggingIn)
-    False -> update_helpers.i18n_t(model, i18n_text.LoginTitle)
-  }
-
-  div([attribute.class("page")], [
-    h1([], [text(update_helpers.i18n_t(model, i18n_text.AppName))]),
-    p([], [text(update_helpers.i18n_t(model, i18n_text.LoginSubtitle))]),
-    case model.login_error {
-      opt.Some(err) -> div([attribute.class("error")], [text(err)])
-      opt.None -> div([], [])
-    },
-    form([event.on_submit(fn(_) { LoginSubmitted })], [
-      div([attribute.class("field")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
-        input([
-          attribute.attribute("id", "login-email"),
-          attribute.type_("email"),
-          attribute.value(model.login_email),
-          event.on_input(LoginEmailChanged),
-          attribute.required(True),
-        ]),
-      ]),
-      div([attribute.class("field")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.PasswordLabel))]),
-        input([
-          attribute.attribute("id", "login-password"),
-          attribute.type_("password"),
-          attribute.value(model.login_password),
-          event.on_input(LoginPasswordChanged),
-          attribute.required(True),
-        ]),
-      ]),
-      button(
-        [
-          attribute.type_("submit"),
-          attribute.disabled(model.login_in_flight),
-        ],
-        [text(submit_label)],
-      ),
-    ]),
-    button([event.on_click(ForgotPasswordClicked)], [
-      text(update_helpers.i18n_t(model, i18n_text.ForgotPassword)),
-    ]),
-    case model.forgot_password_open {
-      True -> view_forgot_password(model)
-      False -> div([], [])
-    },
-  ])
-}
-
 fn view_admin(model: Model) -> Element(Msg) {
   case model.user {
-    opt.None -> view_login(model)
+    opt.None -> auth_view.view_login(model)
 
     opt.Some(user) -> {
       let projects = update_helpers.active_projects(model)
@@ -523,39 +186,11 @@ fn view_admin(model: Model) -> Element(Msg) {
 }
 
 fn view_theme_switch(model: Model) -> Element(Msg) {
-  let current = theme.serialize(model.theme)
-
-  label([attribute.class("theme-switch")], [
-    text(i18n.t(model.locale, i18n_text.ThemeLabel)),
-    select([attribute.value(current), event.on_input(ThemeSelected)], [
-      option(
-        [attribute.value("default")],
-        i18n.t(model.locale, i18n_text.ThemeDefault),
-      ),
-      option(
-        [attribute.value("dark")],
-        i18n.t(model.locale, i18n_text.ThemeDark),
-      ),
-    ]),
-  ])
+  ui_layout.theme_switch(model.locale, model.theme, ThemeSelected)
 }
 
 fn view_locale_switch(model: Model) -> Element(Msg) {
-  let current = i18n_locale.serialize(model.locale)
-
-  label([attribute.class("theme-switch")], [
-    text(i18n.t(model.locale, i18n_text.LanguageLabel)),
-    select([attribute.value(current), event.on_input(LocaleSelected)], [
-      option(
-        [attribute.value("es")],
-        i18n.t(model.locale, i18n_text.LanguageEs),
-      ),
-      option(
-        [attribute.value("en")],
-        i18n.t(model.locale, i18n_text.LanguageEn),
-      ),
-    ]),
-  ])
+  ui_layout.locale_switch(model.locale, LocaleSelected)
 }
 
 fn view_topbar(model: Model, user: User) -> Element(Msg) {
@@ -686,8 +321,8 @@ fn view_nav(
 fn view_section(
   model: Model,
   user: User,
-  projects: List(api.Project),
-  selected: opt.Option(api.Project),
+  projects: List(Project),
+  selected: opt.Option(Project),
 ) -> Element(Msg) {
   let allowed =
     permissions.can_access_section(
@@ -706,18 +341,18 @@ fn view_section(
 
     True ->
       case model.active_section {
-        permissions.Invites -> view_invites(model)
-        permissions.OrgSettings -> view_org_settings(model)
-        permissions.Projects -> view_projects(model)
+        permissions.Invites -> invites_view.view_invites(model)
+        permissions.OrgSettings -> admin_view.view_org_settings(model)
+        permissions.Projects -> projects_view.view_projects(model)
         permissions.Metrics -> view_metrics(model, selected)
-        permissions.Capabilities -> view_capabilities(model)
-        permissions.Members -> view_members(model, selected)
-        permissions.TaskTypes -> view_task_types(model, selected)
+        permissions.Capabilities -> admin_view.view_capabilities(model)
+        permissions.Members -> admin_view.view_members(model, selected)
+        permissions.TaskTypes -> admin_view.view_task_types(model, selected)
       }
   }
 }
 
-fn view_metrics(model: Model, selected: opt.Option(api.Project)) -> Element(Msg) {
+fn view_metrics(model: Model, selected: opt.Option(Project)) -> Element(Msg) {
   div([attribute.class("section")], [
     view_metrics_overview_panel(model),
     view_metrics_project_panel(model, selected),
@@ -725,30 +360,19 @@ fn view_metrics(model: Model, selected: opt.Option(api.Project)) -> Element(Msg)
 }
 
 fn view_metrics_overview_panel(model: Model) -> Element(Msg) {
-  case model.admin_metrics_overview {
-    NotAsked | Loading ->
-      div([attribute.class("panel")], [
-        h2([], [text(update_helpers.i18n_t(model, i18n_text.MetricsOverview))]),
-        div([attribute.class("loading")], [
-          text(update_helpers.i18n_t(model, i18n_text.LoadingOverview)),
-        ]),
-      ])
-
-    Failed(err) ->
-      div([attribute.class("panel")], [
-        h2([], [text(update_helpers.i18n_t(model, i18n_text.MetricsOverview))]),
-        div([attribute.class("error")], [text(err.message)]),
-      ])
-
-    Loaded(overview) -> view_metrics_overview_loaded(model, overview)
-  }
+  ui_remote.view_remote_panel(
+    remote: model.admin_metrics_overview,
+    title: update_helpers.i18n_t(model, i18n_text.MetricsOverview),
+    loading_msg: update_helpers.i18n_t(model, i18n_text.LoadingOverview),
+    loaded: fn(overview) { view_metrics_overview_loaded(model, overview) },
+  )
 }
 
 fn view_metrics_overview_loaded(
   model: Model,
-  overview: api.OrgMetricsOverview,
+  overview: OrgMetricsOverview,
 ) -> Element(Msg) {
-  let api.OrgMetricsOverview(
+  let OrgMetricsOverview(
     window_days: window_days,
     claimed_count: claimed_count,
     released_count: released_count,
@@ -820,7 +444,7 @@ fn view_metrics_time_to_first_claim(
   model: Model,
   p50_ms: opt.Option(Int),
   sample_size: Int,
-  buckets: List(api.OrgMetricsBucket),
+  buckets: List(OrgMetricsBucket),
 ) -> Element(Msg) {
   div([], [
     h3([], [text(update_helpers.i18n_t(model, i18n_text.TimeToFirstClaim))]),
@@ -838,7 +462,7 @@ fn view_metrics_time_to_first_claim(
 
 fn view_metrics_release_rate_buckets(
   model: Model,
-  buckets: List(api.OrgMetricsBucket),
+  buckets: List(OrgMetricsBucket),
 ) -> Element(Msg) {
   div([], [
     h3([], [
@@ -850,7 +474,7 @@ fn view_metrics_release_rate_buckets(
 
 fn view_metrics_bucket_table(
   model: Model,
-  buckets: List(api.OrgMetricsBucket),
+  buckets: List(OrgMetricsBucket),
 ) -> Element(Msg) {
   table([attribute.class("table")], [
     thead([], [
@@ -862,7 +486,7 @@ fn view_metrics_bucket_table(
     tbody(
       [],
       list.map(buckets, fn(b) {
-        let api.OrgMetricsBucket(bucket: bucket, count: count) = b
+        let OrgMetricsBucket(bucket: bucket, count: count) = b
         tr([], [td([], [text(bucket)]), td([], [text(int.to_string(count))])])
       }),
     ),
@@ -871,7 +495,7 @@ fn view_metrics_bucket_table(
 
 fn view_metrics_by_project_table(
   model: Model,
-  by_project: List(api.OrgMetricsProjectOverview),
+  by_project: List(OrgMetricsProjectOverview),
 ) -> Element(Msg) {
   div([], [
     h3([], [text(update_helpers.i18n_t(model, i18n_text.ByProject))]),
@@ -894,9 +518,9 @@ fn view_metrics_by_project_table(
 
 fn view_metrics_project_row(
   model: Model,
-  p: api.OrgMetricsProjectOverview,
+  p: OrgMetricsProjectOverview,
 ) -> Element(Msg) {
-  let api.OrgMetricsProjectOverview(
+  let OrgMetricsProjectOverview(
     project_id: project_id,
     project_name: project_name,
     claimed_count: claimed,
@@ -930,7 +554,7 @@ fn view_metrics_project_row(
 
 fn view_metrics_project_panel(
   model: Model,
-  selected: opt.Option(api.Project),
+  selected: opt.Option(Project),
 ) -> Element(Msg) {
   case selected {
     opt.None ->
@@ -944,7 +568,7 @@ fn view_metrics_project_panel(
         ]),
       ])
 
-    opt.Some(api.Project(name: project_name, ..)) ->
+    opt.Some(Project(name: project_name, ..)) ->
       view_metrics_project_tasks_panel(model, project_name)
   }
 }
@@ -953,14 +577,11 @@ fn view_metrics_project_tasks_panel(
   model: Model,
   project_name: String,
 ) -> Element(Msg) {
-  let body = case model.admin_metrics_project_tasks {
-    NotAsked | Loading ->
-      div([attribute.class("loading")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingTasks)),
-      ])
-    Failed(err) -> div([attribute.class("error")], [text(err.message)])
-    Loaded(payload) -> view_metrics_project_tasks_table(model, payload)
-  }
+  let body = ui_remote.view_remote_inline(
+    remote: model.admin_metrics_project_tasks,
+    loading_msg: update_helpers.i18n_t(model, i18n_text.LoadingTasks),
+    loaded: fn(payload) { view_metrics_project_tasks_table(model, payload) },
+  )
 
   div([attribute.class("panel")], [
     h3([], [
@@ -972,9 +593,9 @@ fn view_metrics_project_tasks_panel(
 
 fn view_metrics_project_tasks_table(
   model: Model,
-  payload: api.OrgMetricsProjectTasksPayload,
+  payload: OrgMetricsProjectTasksPayload,
 ) -> Element(Msg) {
-  let api.OrgMetricsProjectTasksPayload(tasks: tasks, ..) = payload
+  let OrgMetricsProjectTasksPayload(tasks: tasks, ..) = payload
 
   table([attribute.class("table")], [
     thead([], [
@@ -991,9 +612,9 @@ fn view_metrics_project_tasks_table(
   ])
 }
 
-fn view_metrics_task_row(t: api.MetricsProjectTask) -> Element(Msg) {
-  let api.MetricsProjectTask(
-    task: api.Task(title: title, status: status, ..),
+fn view_metrics_task_row(t: MetricsProjectTask) -> Element(Msg) {
+  let MetricsProjectTask(
+    task: Task(title: title, status: status, ..),
     claim_count: claim_count,
     release_count: release_count,
     complete_count: complete_count,
@@ -1002,7 +623,7 @@ fn view_metrics_task_row(t: api.MetricsProjectTask) -> Element(Msg) {
 
   tr([], [
     td([], [text(title)]),
-    td([], [text(api.task_status_to_string(status))]),
+    td([], [text(task_status_to_string(status))]),
     td([], [text(int.to_string(claim_count))]),
     td([], [text(int.to_string(release_count))]),
     td([], [text(int.to_string(complete_count))]),
@@ -1031,1031 +652,18 @@ fn option_string_label(value: opt.Option(String)) -> String {
   }
 }
 
-fn view_org_settings(model: Model) -> Element(Msg) {
-  div([attribute.class("section")], [
-    p([], [text(update_helpers.i18n_t(model, i18n_text.OrgSettingsHelp))]),
-    case model.org_settings_users {
-      NotAsked ->
-        div([], [
-          text(update_helpers.i18n_t(
-            model,
-            i18n_text.OpenThisSectionToLoadUsers,
-          )),
-        ])
-      Loading ->
-        div(
-          [
-            attribute.class("loading"),
-          ],
-          [text(update_helpers.i18n_t(model, i18n_text.LoadingUsers))],
-        )
-
-      Failed(err) -> div([attribute.class("error")], [text(err.message)])
-
-      Loaded(users) -> {
-        table([attribute.class("table")], [
-          thead([], [
-            tr([], [
-              th([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
-              th([], [text(update_helpers.i18n_t(model, i18n_text.Role))]),
-              th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
-            ]),
-          ]),
-          tbody(
-            [],
-            list.map(users, fn(u) {
-              let draft = case dict.get(model.org_settings_role_drafts, u.id) {
-                Ok(role) -> role
-                Error(_) -> u.org_role
-              }
-
-              let inline_error = case
-                model.org_settings_error_user_id,
-                model.org_settings_error
-              {
-                opt.Some(id), opt.Some(message) if id == u.id -> message
-                _, _ -> ""
-              }
-
-              tr([], [
-                td([], [text(u.email)]),
-                td([], [
-                  select(
-                    [
-                      attribute.value(draft),
-                      attribute.disabled(model.org_settings_save_in_flight),
-                      event.on_input(fn(value) {
-                        OrgSettingsRoleChanged(u.id, value)
-                      }),
-                    ],
-                    [
-                      option(
-                        [attribute.value("admin")],
-                        update_helpers.i18n_t(model, i18n_text.RoleAdmin),
-                      ),
-                      option(
-                        [attribute.value("member")],
-                        update_helpers.i18n_t(model, i18n_text.RoleMember),
-                      ),
-                    ],
-                  ),
-                  case inline_error == "" {
-                    True -> div([], [])
-                    False ->
-                      div([attribute.class("error")], [text(inline_error)])
-                  },
-                ]),
-                td([], [
-                  button(
-                    [
-                      attribute.disabled(model.org_settings_save_in_flight),
-                      event.on_click(OrgSettingsSaveClicked(u.id)),
-                    ],
-                    [text(update_helpers.i18n_t(model, i18n_text.Save))],
-                  ),
-                ]),
-              ])
-            }),
-          ),
-        ])
-      }
-    },
-  ])
-}
-
-fn view_invites(model: Model) -> Element(Msg) {
-  let create_label = case model.invite_link_in_flight {
-    True -> update_helpers.i18n_t(model, i18n_text.Working)
-    False -> update_helpers.i18n_t(model, i18n_text.CreateInviteLink)
-  }
-
-  let origin = client_ffi.location_origin()
-
-  div([attribute.class("section")], [
-    p([], [text(update_helpers.i18n_t(model, i18n_text.InviteLinksHelp))]),
-    case model.invite_link_error {
-      opt.Some(err) -> div([attribute.class("error")], [text(err)])
-      opt.None -> div([], [])
-    },
-    form([event.on_submit(fn(_) { InviteLinkCreateSubmitted })], [
-      div([attribute.class("field")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
-        input([
-          attribute.type_("email"),
-          attribute.value(model.invite_link_email),
-          event.on_input(InviteLinkEmailChanged),
-          attribute.required(True),
-        ]),
-      ]),
-      button(
-        [
-          attribute.type_("submit"),
-          attribute.disabled(model.invite_link_in_flight),
-        ],
-        [text(create_label)],
-      ),
-    ]),
-    case model.invite_link_last {
-      opt.None -> div([], [])
-
-      opt.Some(link) -> {
-        let full = build_full_url(origin, link.url_path)
-
-        div([attribute.class("invite-result")], [
-          h3([], [
-            text(update_helpers.i18n_t(model, i18n_text.LatestInviteLink)),
-          ]),
-          div([attribute.class("field")], [
-            label([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
-            input([
-              attribute.type_("text"),
-              attribute.value(link.email),
-              attribute.readonly(True),
-            ]),
-          ]),
-          div([attribute.class("field")], [
-            label([], [text(update_helpers.i18n_t(model, i18n_text.Link))]),
-            input([
-              attribute.type_("text"),
-              attribute.value(full),
-              attribute.readonly(True),
-            ]),
-          ]),
-          button([event.on_click(InviteLinkCopyClicked(full))], [
-            text(update_helpers.i18n_t(model, i18n_text.Copy)),
-          ]),
-          case model.invite_link_copy_status {
-            opt.Some(status) -> div([attribute.class("hint")], [text(status)])
-            opt.None -> div([], [])
-          },
-        ])
-      }
-    },
-    hr([]),
-    h3([], [text(update_helpers.i18n_t(model, i18n_text.InviteLinks))]),
-    view_invite_links_list(model, origin),
-  ])
-}
-
-fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
-  case model.invite_links {
-    NotAsked | Loading ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
-      ])
-
-    Failed(err) ->
-      div([attribute.class("error")], [
-        text(
-          update_helpers.i18n_t(model, i18n_text.FailedToLoadInviteLinksPrefix)
-          <> err.message,
-        ),
-      ])
-
-    Loaded(links) ->
-      case links {
-        [] ->
-          div([attribute.class("empty")], [
-            text(update_helpers.i18n_t(model, i18n_text.NoInviteLinksYet)),
-          ])
-
-        _ ->
-          table([attribute.class("table")], [
-            thead([], [
-              tr([], [
-                th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.EmailLabel)),
-                ]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.State))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.CreatedAt))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Link))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
-              ]),
-            ]),
-            tbody(
-              [],
-              list.map(links, fn(link) {
-                let full = build_full_url(origin, link.url_path)
-
-                tr([], [
-                  td([], [text(link.email)]),
-                  td([], [text(link.state)]),
-                  td([], [text(link.created_at)]),
-                  td([], [text(full)]),
-                  td([], [
-                    button(
-                      [
-                        attribute.disabled(model.invite_link_in_flight),
-                        event.on_click(InviteLinkCopyClicked(full)),
-                      ],
-                      [text(update_helpers.i18n_t(model, i18n_text.Copy))],
-                    ),
-                    button(
-                      [
-                        attribute.disabled(model.invite_link_in_flight),
-                        event.on_click(InviteLinkRegenerateClicked(link.email)),
-                      ],
-                      [text(update_helpers.i18n_t(model, i18n_text.Regenerate))],
-                    ),
-                  ]),
-                ])
-              }),
-            ),
-          ])
-      }
-  }
-}
-
-fn build_full_url(origin: String, url_path: String) -> String {
-  case origin {
-    "" -> url_path
-    _ -> origin <> url_path
-  }
-}
-
-fn view_projects(model: Model) -> Element(Msg) {
-  div([attribute.class("section")], [
-    h2([], [text(update_helpers.i18n_t(model, i18n_text.Projects))]),
-    view_projects_list(model, model.projects),
-    hr([]),
-    h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateProject))]),
-    case model.projects_create_error {
-      opt.Some(err) -> div([attribute.class("error")], [text(err)])
-      opt.None -> div([], [])
-    },
-    form([event.on_submit(fn(_) { ProjectCreateSubmitted })], [
-      div([attribute.class("field")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
-        input([
-          attribute.type_("text"),
-          attribute.value(model.projects_create_name),
-          event.on_input(ProjectCreateNameChanged),
-          attribute.required(True),
-        ]),
-      ]),
-      button(
-        [
-          attribute.type_("submit"),
-          attribute.disabled(model.projects_create_in_flight),
-        ],
-        [
-          text(case model.projects_create_in_flight {
-            True -> update_helpers.i18n_t(model, i18n_text.Creating)
-            False -> update_helpers.i18n_t(model, i18n_text.Create)
-          }),
-        ],
-      ),
-    ]),
-  ])
-}
-
-fn view_projects_list(
-  model: Model,
-  projects: Remote(List(api.Project)),
-) -> Element(Msg) {
-  case projects {
-    NotAsked | Loading ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
-      ])
-
-    Failed(err) ->
-      case err.status == 403 {
-        True ->
-          div(
-            [
-              attribute.class("not-permitted"),
-            ],
-            [text(update_helpers.i18n_t(model, i18n_text.NotPermitted))],
-          )
-        False -> div([attribute.class("error")], [text(err.message)])
-      }
-
-    Loaded(projects) ->
-      case projects {
-        [] ->
-          div([attribute.class("empty")], [
-            text(update_helpers.i18n_t(model, i18n_text.NoProjectsYet)),
-          ])
-        _ ->
-          table([attribute.class("table")], [
-            thead([], [
-              tr([], [
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.MyRole))]),
-              ]),
-            ]),
-            tbody(
-              [],
-              list.map(projects, fn(p) {
-                tr([], [td([], [text(p.name)]), td([], [text(p.my_role)])])
-              }),
-            ),
-          ])
-      }
-  }
-}
-
-fn view_capabilities(model: Model) -> Element(Msg) {
-  div([attribute.class("section")], [
-    h2([], [text(update_helpers.i18n_t(model, i18n_text.Capabilities))]),
-    view_capabilities_list(model, model.capabilities),
-    hr([]),
-    h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateCapability))]),
-    case model.capabilities_create_error {
-      opt.Some(err) -> div([attribute.class("error")], [text(err)])
-      opt.None -> div([], [])
-    },
-    form([event.on_submit(fn(_) { CapabilityCreateSubmitted })], [
-      div([attribute.class("field")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
-        input([
-          attribute.type_("text"),
-          attribute.value(model.capabilities_create_name),
-          event.on_input(CapabilityCreateNameChanged),
-          attribute.required(True),
-        ]),
-      ]),
-      button(
-        [
-          attribute.type_("submit"),
-          attribute.disabled(model.capabilities_create_in_flight),
-        ],
-        [
-          text(case model.capabilities_create_in_flight {
-            True -> update_helpers.i18n_t(model, i18n_text.Creating)
-            False -> update_helpers.i18n_t(model, i18n_text.Create)
-          }),
-        ],
-      ),
-    ]),
-  ])
-}
-
-fn view_capabilities_list(
-  model: Model,
-  capabilities: Remote(List(api.Capability)),
-) -> Element(Msg) {
-  case capabilities {
-    NotAsked | Loading ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
-      ])
-
-    Failed(err) ->
-      case err.status == 403 {
-        True ->
-          div(
-            [
-              attribute.class("not-permitted"),
-            ],
-            [text(update_helpers.i18n_t(model, i18n_text.NotPermitted))],
-          )
-        False -> div([attribute.class("error")], [text(err.message)])
-      }
-
-    Loaded(capabilities) ->
-      case capabilities {
-        [] ->
-          div([attribute.class("empty")], [
-            text(update_helpers.i18n_t(model, i18n_text.NoCapabilitiesYet)),
-          ])
-        _ ->
-          table([attribute.class("table")], [
-            thead([], [
-              tr([], [
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
-              ]),
-            ]),
-            tbody(
-              [],
-              list.map(capabilities, fn(c) { tr([], [td([], [text(c.name)])]) }),
-            ),
-          ])
-      }
-  }
-}
-
-fn view_members(
-  model: Model,
-  selected_project: opt.Option(api.Project),
-) -> Element(Msg) {
-  case selected_project {
-    opt.None ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(
-          model,
-          i18n_text.SelectProjectToManageMembers,
-        )),
-      ])
-
-    opt.Some(project) ->
-      div([attribute.class("section")], [
-        h2([], [
-          text(update_helpers.i18n_t(
-            model,
-            i18n_text.MembersTitle(project.name),
-          )),
-        ]),
-        button([event.on_click(MemberAddDialogOpened)], [
-          text(update_helpers.i18n_t(model, i18n_text.AddMember)),
-        ]),
-        case model.members_remove_error {
-          opt.Some(err) -> div([attribute.class("error")], [text(err)])
-          opt.None -> div([], [])
-        },
-        view_members_table(model, model.members, model.org_users_cache),
-        case model.members_add_dialog_open {
-          True -> view_add_member_dialog(model)
-          False -> div([], [])
-        },
-        case model.members_remove_confirm {
-          opt.Some(user) -> view_remove_member_dialog(model, project.name, user)
-          opt.None -> div([], [])
-        },
-      ])
-  }
-}
-
-fn view_members_table(
-  model: Model,
-  members: Remote(List(api.ProjectMember)),
-  cache: Remote(List(api.OrgUser)),
-) -> Element(Msg) {
-  case members {
-    NotAsked | Loading ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
-      ])
-
-    Failed(err) ->
-      case err.status == 403 {
-        True ->
-          div([attribute.class("not-permitted")], [
-            text(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-          ])
-        False -> div([attribute.class("error")], [text(err.message)])
-      }
-
-    Loaded(members) ->
-      case members {
-        [] ->
-          div([attribute.class("empty")], [
-            text(update_helpers.i18n_t(model, i18n_text.NoMembersYet)),
-          ])
-        _ ->
-          table([attribute.class("table")], [
-            thead([], [
-              tr([], [
-                th([], [text(update_helpers.i18n_t(model, i18n_text.User))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.UserId))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Role))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.CreatedAt))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
-              ]),
-            ]),
-            tbody(
-              [],
-              list.map(members, fn(m) {
-                let email = case
-                  update_helpers.resolve_org_user(cache, m.user_id)
-                {
-                  opt.Some(user) -> user.email
-                  opt.None ->
-                    update_helpers.i18n_t(
-                      model,
-                      i18n_text.UserNumber(m.user_id),
-                    )
-                }
-
-                tr([], [
-                  td([], [text(email)]),
-                  td([], [text(int.to_string(m.user_id))]),
-                  td([], [text(m.role)]),
-                  td([], [text(m.created_at)]),
-                  td([], [
-                    button([event.on_click(MemberRemoveClicked(m.user_id))], [
-                      text(update_helpers.i18n_t(model, i18n_text.Remove)),
-                    ]),
-                  ]),
-                ])
-              }),
-            ),
-          ])
-      }
-  }
-}
-
-fn view_add_member_dialog(model: Model) -> Element(Msg) {
-  div([attribute.class("modal")], [
-    div([attribute.class("modal-content")], [
-      h3([], [text(update_helpers.i18n_t(model, i18n_text.AddMember))]),
-      case model.members_add_error {
-        opt.Some(err) -> div([attribute.class("error")], [text(err)])
-        opt.None -> div([], [])
-      },
-      div([attribute.class("field")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.SearchByEmail))]),
-        input([
-          attribute.type_("text"),
-          attribute.value(model.org_users_search_query),
-          event.on_input(OrgUsersSearchChanged),
-          event.debounce(event.on_input(OrgUsersSearchDebounced), 350),
-          attribute.placeholder(update_helpers.i18n_t(
-            model,
-            i18n_text.EmailPlaceholderExample,
-          )),
-        ]),
-      ]),
-      view_org_users_search_results(model, model.org_users_search_results),
-      div([attribute.class("field")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.Role))]),
-        select(
-          [
-            attribute.value(model.members_add_role),
-            event.on_input(MemberAddRoleChanged),
-          ],
-          [
-            option(
-              [attribute.value("member")],
-              update_helpers.i18n_t(model, i18n_text.RoleMember),
-            ),
-            option(
-              [attribute.value("admin")],
-              update_helpers.i18n_t(model, i18n_text.RoleAdmin),
-            ),
-          ],
-        ),
-      ]),
-      div([attribute.class("actions")], [
-        button([event.on_click(MemberAddDialogClosed)], [
-          text(update_helpers.i18n_t(model, i18n_text.Cancel)),
-        ]),
-        button(
-          [
-            event.on_click(MemberAddSubmitted),
-            attribute.disabled(
-              model.members_add_in_flight
-              || model.members_add_selected_user == opt.None,
-            ),
-          ],
-          [
-            text(case model.members_add_in_flight {
-              True -> update_helpers.i18n_t(model, i18n_text.Working)
-              False -> update_helpers.i18n_t(model, i18n_text.AddMember)
-            }),
-          ],
-        ),
-      ]),
-    ]),
-  ])
-}
-
-fn view_org_users_search_results(
-  model: Model,
-  results: Remote(List(api.OrgUser)),
-) -> Element(Msg) {
-  case results {
-    NotAsked ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.TypeAnEmailToSearch)),
-      ])
-
-    Loading ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.Searching)),
-      ])
-
-    Failed(err) ->
-      case err.status == 403 {
-        True ->
-          div(
-            [
-              attribute.class("not-permitted"),
-            ],
-            [text(update_helpers.i18n_t(model, i18n_text.NotPermitted))],
-          )
-        False -> div([attribute.class("error")], [text(err.message)])
-      }
-
-    Loaded(users) ->
-      case users {
-        [] ->
-          div([attribute.class("empty")], [
-            text(update_helpers.i18n_t(model, i18n_text.NoResults)),
-          ])
-
-        _ ->
-          table([attribute.class("table")], [
-            thead([], [
-              tr([], [
-                th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.EmailLabel)),
-                ]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.OrgRole))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Created))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Select))]),
-              ]),
-            ]),
-            tbody(
-              [],
-              list.map(users, fn(u) {
-                tr([], [
-                  td([], [text(u.email)]),
-                  td([], [text(u.org_role)]),
-                  td([], [text(u.created_at)]),
-                  td([], [
-                    button([event.on_click(MemberAddUserSelected(u.id))], [
-                      text(update_helpers.i18n_t(model, i18n_text.Select)),
-                    ]),
-                  ]),
-                ])
-              }),
-            ),
-          ])
-      }
-  }
-}
-
-fn view_remove_member_dialog(
-  model: Model,
-  project_name: String,
-  user: api.OrgUser,
-) -> Element(Msg) {
-  div([attribute.class("modal")], [
-    div([attribute.class("modal-content")], [
-      h3([], [text(update_helpers.i18n_t(model, i18n_text.RemoveMemberTitle))]),
-      p([], [
-        text(update_helpers.i18n_t(
-          model,
-          i18n_text.RemoveMemberConfirm(user.email, project_name),
-        )),
-      ]),
-      case model.members_remove_error {
-        opt.Some(err) -> div([attribute.class("error")], [text(err)])
-        opt.None -> div([], [])
-      },
-      div([attribute.class("actions")], [
-        button([event.on_click(MemberRemoveCancelled)], [
-          text(update_helpers.i18n_t(model, i18n_text.Cancel)),
-        ]),
-        button(
-          [
-            event.on_click(MemberRemoveConfirmed),
-            attribute.disabled(model.members_remove_in_flight),
-          ],
-          [
-            text(case model.members_remove_in_flight {
-              True -> update_helpers.i18n_t(model, i18n_text.Removing)
-              False -> update_helpers.i18n_t(model, i18n_text.Remove)
-            }),
-          ],
-        ),
-      ]),
-    ]),
-  ])
-}
-
-fn view_task_types(
-  model: Model,
-  selected_project: opt.Option(api.Project),
-) -> Element(Msg) {
-  case selected_project {
-    opt.None ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(
-          model,
-          i18n_text.SelectProjectToManageTaskTypes,
-        )),
-      ])
-
-    opt.Some(project) ->
-      div([attribute.class("section")], [
-        h2([], [
-          text(update_helpers.i18n_t(
-            model,
-            i18n_text.TaskTypesTitle(project.name),
-          )),
-        ]),
-        view_task_types_list(model, model.task_types, model.theme),
-        hr([]),
-        h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateTaskType))]),
-        case model.task_types_create_error {
-          opt.Some(err) -> div([attribute.class("error")], [text(err)])
-          opt.None -> div([], [])
-        },
-        form([event.on_submit(fn(_) { TaskTypeCreateSubmitted })], [
-          div([attribute.class("field")], [
-            label([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
-            input([
-              attribute.type_("text"),
-              attribute.value(model.task_types_create_name),
-              event.on_input(TaskTypeCreateNameChanged),
-              attribute.required(True),
-            ]),
-          ]),
-          div([attribute.class("field")], [
-            label([], [text(update_helpers.i18n_t(model, i18n_text.Icon))]),
-            div([attribute.class("icon-row")], [
-              input([
-                attribute.type_("text"),
-                attribute.value(model.task_types_create_icon),
-                event.on_input(TaskTypeCreateIconChanged),
-                attribute.required(True),
-                attribute.placeholder(update_helpers.i18n_t(
-                  model,
-                  i18n_text.HeroiconSearchPlaceholder,
-                )),
-              ]),
-              view_icon_preview(model.task_types_create_icon),
-            ]),
-            view_icon_picker(model.task_types_create_icon),
-            case model.task_types_icon_preview {
-              IconError ->
-                div([attribute.class("error")], [
-                  text(update_helpers.i18n_t(model, i18n_text.UnknownIcon)),
-                ])
-              _ -> div([], [])
-            },
-          ]),
-          div([attribute.class("field")], [
-            label([], [
-              text(update_helpers.i18n_t(model, i18n_text.CapabilityOptional)),
-            ]),
-            view_capability_selector(
-              model,
-              model.capabilities,
-              model.task_types_create_capability_id,
-            ),
-          ]),
-          button(
-            [
-              attribute.type_("submit"),
-              attribute.disabled(
-                model.task_types_create_in_flight
-                || model.task_types_icon_preview != IconOk,
-              ),
-            ],
-            [
-              text(case model.task_types_create_in_flight {
-                True -> update_helpers.i18n_t(model, i18n_text.Creating)
-                False -> update_helpers.i18n_t(model, i18n_text.Create)
-              }),
-            ],
-          ),
-        ]),
-      ])
-  }
-}
-
-fn heroicon_outline_url(name: String) -> String {
-  "https://unpkg.com/heroicons@2.1.0/24/outline/" <> name <> ".svg"
-}
-
-fn view_heroicon_inline(
-  name: String,
-  size: Int,
-  theme: theme.Theme,
-) -> Element(Msg) {
-  let url = heroicon_outline_url(name)
-
-  let style = case theme {
-    theme.Dark ->
-      "vertical-align:middle; opacity:0.9; filter: invert(1) brightness(1.2);"
-    theme.Default -> "vertical-align:middle; opacity:0.85;"
-  }
-
-  img([
-    attribute.attribute("src", url),
-    attribute.attribute("alt", name <> " icon"),
-    attribute.attribute("width", int.to_string(size)),
-    attribute.attribute("height", int.to_string(size)),
-    attribute.attribute("style", style),
-  ])
-}
-
-fn view_task_type_icon_inline(
-  icon: String,
-  size: Int,
-  theme: theme.Theme,
-) -> Element(Msg) {
-  case string.contains(icon, "-") {
-    True -> view_heroicon_inline(icon, size, theme)
-    False ->
-      span(
-        [
-          attribute.attribute(
-            "style",
-            "font-size:" <> int.to_string(size) <> "px;",
-          ),
-        ],
-        [text(icon)],
-      )
-  }
-}
-
-fn view_icon_preview(icon_name: String) -> Element(Msg) {
-  let name = string.trim(icon_name)
-
-  case name == "" {
-    True -> div([attribute.class("icon-preview")], [text("-")])
-
-    False -> {
-      let url = heroicon_outline_url(name)
-
-      div([attribute.class("icon-preview")], [
-        img([
-          attribute.attribute("src", url),
-          attribute.attribute("alt", name <> " icon"),
-          attribute.attribute("width", "24"),
-          attribute.attribute("height", "24"),
-          event.on("load", decode.success(TaskTypeIconLoaded)),
-          event.on("error", decode.success(TaskTypeIconErrored)),
-        ]),
-      ])
-    }
-  }
-}
-
-fn view_icon_picker(current_icon: String) -> Element(Msg) {
-  let current = string.trim(current_icon)
-
-  let icons = [
-    "bug-ant",
-    "sparkles",
-    "wrench-screwdriver",
-    "clipboard-document-check",
-    "light-bulb",
-    "bolt",
-    "beaker",
-    "chat-bubble-left-right",
-    "document-text",
-    "flag",
-    "exclamation-triangle",
-    "check-circle",
-    "arrow-path",
-    "rocket-launch",
-    "pencil-square",
-    "cog-6-tooth",
-  ]
-
-  let has_current = current != "" && list.contains(icons, current)
-
-  let options = [option([attribute.value("")], "Pick a common icon…")]
-
-  let options = case current != "" && !has_current {
-    True -> [
-      option([attribute.value(current)], "Custom: " <> current),
-      ..options
-    ]
-    False -> options
-  }
-
-  let options =
-    list.append(
-      options,
-      list.map(icons, fn(name) { option([attribute.value(name)], name) }),
-    )
-
-  let selected = case current != "" && !has_current {
-    True -> current
-    False ->
-      case has_current {
-        True -> current
-        False -> ""
-      }
-  }
-
-  div([attribute.class("icon-picker")], [
-    select(
-      [
-        attribute.value(selected),
-        event.on_input(TaskTypeCreateIconChanged),
-      ],
-      options,
-    ),
-  ])
-}
-
-fn view_capability_selector(
-  model: Model,
-  capabilities: Remote(List(api.Capability)),
-  selected: opt.Option(String),
-) -> Element(Msg) {
-  case capabilities {
-    Loaded(capabilities) -> {
-      let selected_value = opt.unwrap(selected, "")
-
-      select(
-        [
-          attribute.value(selected_value),
-          event.on_input(TaskTypeCreateCapabilityChanged),
-        ],
-        [
-          option(
-            [attribute.value("")],
-            update_helpers.i18n_t(model, i18n_text.NoneOption),
-          ),
-          ..list.map(capabilities, fn(c) {
-            option([attribute.value(int.to_string(c.id))], c.name)
-          })
-        ],
-      )
-    }
-
-    _ ->
-      div(
-        [
-          attribute.class("empty"),
-        ],
-        [text(update_helpers.i18n_t(model, i18n_text.LoadingCapabilities))],
-      )
-  }
-}
-
-fn view_task_types_list(
-  model: Model,
-  task_types: Remote(List(api.TaskType)),
-  theme: theme.Theme,
-) -> Element(Msg) {
-  case task_types {
-    NotAsked | Loading ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
-      ])
-
-    Failed(err) ->
-      case err.status == 403 {
-        True ->
-          div(
-            [
-              attribute.class("not-permitted"),
-            ],
-            [text(update_helpers.i18n_t(model, i18n_text.NotPermitted))],
-          )
-        False -> div([attribute.class("error")], [text(err.message)])
-      }
-
-    Loaded(task_types) ->
-      case task_types {
-        [] ->
-          div([attribute.class("empty")], [
-            h2([], [
-              text(update_helpers.i18n_t(model, i18n_text.NoTaskTypesYet)),
-            ]),
-            p([], [
-              text(update_helpers.i18n_t(model, i18n_text.TaskTypesExplain)),
-            ]),
-            p([], [
-              text(update_helpers.i18n_t(
-                model,
-                i18n_text.CreateFirstTaskTypeHint,
-              )),
-            ]),
-          ])
-        _ ->
-          table([attribute.class("table")], [
-            thead([], [
-              tr([], [
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Icon))]),
-                th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.CapabilityLabel)),
-                ]),
-              ]),
-            ]),
-            tbody(
-              [],
-              list.map(task_types, fn(tt) {
-                tr([], [
-                  td([], [text(tt.name)]),
-                  td([], [view_task_type_icon_inline(tt.icon, 20, theme)]),
-                  td([], [
-                    case tt.capability_id {
-                      opt.Some(id) -> text(int.to_string(id))
-                      opt.None -> text("-")
-                    },
-                  ]),
-                ])
-              }),
-            ),
-          ])
-      }
-  }
-}
-
 // --- Member UI (Story 1.8) ---
 
 fn view_member(model: Model) -> Element(Msg) {
   case model.user {
-    opt.None -> view_login(model)
+    opt.None -> auth_view.view_login(model)
 
     opt.Some(user) ->
       case model.is_mobile {
         True ->
           div([attribute.class("member")], [
             view_member_topbar(model, user),
-            view_now_working_panel(model, user),
+            now_working_view.view_panel(model),
             div([attribute.class("content")], [view_member_section(model, user)]),
           ])
 
@@ -2089,7 +697,7 @@ fn view_member(model: Model) -> Element(Msg) {
 
               _ ->
                 div([], [
-                  view_now_working_panel(model, user),
+                  now_working_view.view_panel(model),
                   div([attribute.class("body")], [
                     view_member_nav(model),
                     div([attribute.class("content")], [
@@ -2138,120 +746,6 @@ fn view_member_topbar(model: Model, user: User) -> Element(Msg) {
   ])
 }
 
-/// Render the "Now Working" panel showing active task timer and controls.
-///
-/// ## Size Justification (~130 lines)
-///
-/// Handles 4 distinct states (Loading, Loaded with/without task, Failed, NotAsked)
-/// plus conditional rendering for:
-/// - Timer display with elapsed time calculation
-/// - Start/pause/resume buttons
-/// - Error messages
-/// - Loading indicators
-///
-/// The view logic is tightly coupled to the active task state machine and
-/// splitting would fragment related UI elements that change together.
-fn view_now_working_panel(model: Model, _user: User) -> Element(Msg) {
-  let error = case model.member_now_working_error {
-    opt.Some(err) -> div([attribute.class("now-working-error")], [text(err)])
-    opt.None -> div([], [])
-  }
-
-  case model.member_active_task {
-    Loading ->
-      div([attribute.class("now-working")], [
-        text(update_helpers.i18n_t(model, i18n_text.NowWorkingLoading)),
-      ])
-
-    Failed(err) ->
-      div([attribute.class("now-working")], [
-        div([attribute.class("now-working-error")], [
-          text(
-            update_helpers.i18n_t(model, i18n_text.NowWorkingErrorPrefix)
-            <> err.message,
-          ),
-        ]),
-      ])
-
-    NotAsked | Loaded(_) -> {
-      let active = update_helpers.now_working_active_task(model)
-
-      case active {
-        opt.None ->
-          div([attribute.class("now-working")], [
-            div([attribute.class("now-working-empty")], [
-              text(update_helpers.i18n_t(model, i18n_text.NowWorkingNone)),
-            ]),
-            error,
-          ])
-
-        opt.Some(api.ActiveTask(task_id: task_id, ..)) -> {
-          let title = case
-            update_helpers.find_task_by_id(model.member_tasks, task_id)
-          {
-            opt.Some(api.Task(title: title, ..)) -> title
-            opt.None ->
-              update_helpers.i18n_t(model, i18n_text.TaskNumber(task_id))
-          }
-
-          let disable_actions =
-            model.member_task_mutation_in_flight
-            || model.member_now_working_in_flight
-
-          let pause_action =
-            button(
-              [
-                attribute.class("btn-xs"),
-                attribute.disabled(disable_actions),
-                event.on_click(MemberNowWorkingPauseClicked),
-              ],
-              [text(update_helpers.i18n_t(model, i18n_text.Pause))],
-            )
-
-          let task_actions = case
-            update_helpers.find_task_by_id(model.member_tasks, task_id)
-          {
-            opt.Some(api.Task(version: version, ..)) -> [
-              button(
-                [
-                  attribute.class("btn-xs"),
-                  attribute.disabled(disable_actions),
-                  event.on_click(MemberCompleteClicked(task_id, version)),
-                ],
-                [text(update_helpers.i18n_t(model, i18n_text.Complete))],
-              ),
-              button(
-                [
-                  attribute.class("btn-xs"),
-                  attribute.disabled(disable_actions),
-                  event.on_click(MemberReleaseClicked(task_id, version)),
-                ],
-                [text(update_helpers.i18n_t(model, i18n_text.Release))],
-              ),
-            ]
-
-            opt.None -> []
-          }
-
-          div([attribute.class("now-working")], [
-            div([], [
-              div([attribute.class("now-working-title")], [text(title)]),
-              div([attribute.class("now-working-timer")], [
-                text(now_working_elapsed(model)),
-              ]),
-            ]),
-            div([attribute.class("now-working-actions")], [
-              pause_action,
-              ..task_actions
-            ]),
-            error,
-          ])
-        }
-      }
-    }
-  }
-}
-
 fn view_pool_right_panel(model: Model, user: User) -> Element(Msg) {
   let dropzone_class = case
     model.member_pool_drag_to_claim_armed,
@@ -2266,17 +760,17 @@ fn view_pool_right_panel(model: Model, user: User) -> Element(Msg) {
     Loaded(tasks) ->
       tasks
       |> list.filter(fn(t) {
-        let api.Task(status: status, claimed_by: claimed_by, ..) = t
-        status == api.Claimed(api.Taken) && claimed_by == opt.Some(user.id)
+        let Task(status: status, claimed_by: claimed_by, ..) = t
+        status == Claimed(Taken) && claimed_by == opt.Some(user.id)
       })
-      |> list.sort(by: compare_member_bar_tasks)
+      |> list.sort(by: my_bar_view.compare_member_bar_tasks)
 
     _ -> []
   }
 
   div([], [
     h3([], [text(update_helpers.i18n_t(model, i18n_text.NowWorking))]),
-    view_now_working_panel(model, user),
+    now_working_view.view_panel(model),
     h3([], [text(update_helpers.i18n_t(model, i18n_text.MyTasks))]),
     // Drop-to-claim target (optional UX): we wrap the My Tasks area so we can
     // measure it and highlight it while dragging.
@@ -2306,7 +800,7 @@ fn view_pool_right_panel(model: Model, user: User) -> Element(Msg) {
             div(
               [attribute.class("task-list")],
               list.map(claimed_tasks, fn(t) {
-                view_member_bar_task_row(model, user, t)
+                my_bar_view.view_member_bar_task_row(model, user, t)
               }),
             )
         },
@@ -2360,7 +854,7 @@ fn view_member_nav_button(
 fn view_member_section(model: Model, user: User) -> Element(Msg) {
   case model.member_section {
     member_section.Pool -> view_member_pool_main(model, user)
-    member_section.MyBar -> view_member_bar(model, user)
+    member_section.MyBar -> my_bar_view.view_bar(model, user)
     member_section.MySkills -> view_member_skills(model)
   }
 }
@@ -2682,8 +1176,8 @@ fn view_member_tasks(model: Model) -> Element(Msg) {
       let available_tasks =
         tasks
         |> list.filter(fn(t) {
-          let api.Task(status: status, ..) = t
-          status == api.Available
+          let Task(status: status, ..) = t
+          status == Available
         })
 
       case available_tasks {
@@ -2735,7 +1229,7 @@ fn view_member_tasks(model: Model) -> Element(Msg) {
   }
 }
 
-fn view_member_tasks_canvas(model: Model, tasks: List(api.Task)) -> Element(Msg) {
+fn view_member_tasks_canvas(model: Model, tasks: List(Task)) -> Element(Msg) {
   div(
     [
       attribute.attribute("id", "member-canvas"),
@@ -2748,15 +1242,15 @@ fn view_member_tasks_canvas(model: Model, tasks: List(api.Task)) -> Element(Msg)
   )
 }
 
-fn view_member_tasks_list(model: Model, tasks: List(api.Task)) -> Element(Msg) {
+fn view_member_tasks_list(model: Model, tasks: List(Task)) -> Element(Msg) {
   div(
     [attribute.class("task-list")],
     list.map(tasks, fn(task) { view_member_pool_task_row(model, task) }),
   )
 }
 
-fn view_member_pool_task_row(model: Model, task: api.Task) -> Element(Msg) {
-  let api.Task(
+fn view_member_pool_task_row(model: Model, task: Task) -> Element(Msg) {
+  let Task(
     id: id,
     title: title,
     type_id: _type_id,
@@ -2799,7 +1293,7 @@ fn view_member_pool_task_row(model: Model, task: api.Task) -> Element(Msg) {
         case type_icon {
           opt.Some(icon) ->
             span([attribute.attribute("style", "margin-right:4px;")], [
-              view_task_type_icon_inline(icon, 16, model.theme),
+              admin_view.view_task_type_icon_inline(icon, 16, model.theme),
             ])
         },
         text(type_label),
@@ -2831,8 +1325,8 @@ fn view_member_pool_task_row(model: Model, task: api.Task) -> Element(Msg) {
 /// rendering logic across helpers with no clear boundaries. The card
 /// elements are interdependent (actions depend on status, layout depends
 /// on all elements present).
-fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
-  let api.Task(
+fn view_member_task_card(model: Model, task: Task) -> Element(Msg) {
+  let Task(
     id: id,
     type_id: _type_id,
     task_type: task_type,
@@ -2901,7 +1395,7 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
   // Make the primary action visible even on tiny cards (the card size is
   // priority-driven and content is overflow-hidden).
   let primary_action = case status, is_mine {
-    api.Available, _ ->
+    Available, _ ->
       button(
         [
           attribute.class("btn-xs btn-icon"),
@@ -2919,7 +1413,7 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
         [text("✋")],
       )
 
-    api.Claimed(_), True ->
+    Claimed(_), True ->
       button(
         [
           attribute.class("btn-xs btn-icon"),
@@ -2964,7 +1458,7 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
     )
 
   let complete_action = case status, is_mine {
-    api.Claimed(_), True ->
+    Claimed(_), True ->
       button(
         [
           attribute.class("btn-xs btn-icon secondary-action"),
@@ -3008,7 +1502,7 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
           case type_icon {
             opt.Some(icon) ->
               div([attribute.class("task-card-center-icon")], [
-                view_task_type_icon_inline(icon, 22, model.theme),
+                admin_view.view_task_type_icon_inline(icon, 22, model.theme),
               ])
           },
           div(
@@ -3049,10 +1543,10 @@ fn view_member_task_card(model: Model, task: api.Task) -> Element(Msg) {
                 [
                   attribute.class(
                     "task-preview-badge task-preview-badge-"
-                    <> api.task_status_to_string(status),
+                    <> task_status_to_string(status),
                   ),
                 ],
-                [text(api.task_status_to_string(status))],
+                [text(task_status_to_string(status))],
               ),
             ]),
           ]),
@@ -3139,324 +1633,6 @@ fn view_member_create_dialog(model: Model) -> Element(Msg) {
         ),
       ]),
     ]),
-  ])
-}
-
-fn member_bar_status_rank(status: api.TaskStatus) -> Int {
-  case status {
-    api.Claimed(api.Ongoing) -> 0
-    api.Claimed(api.Taken) -> 1
-    api.Available -> 2
-    api.Completed -> 3
-  }
-}
-
-fn compare_member_bar_tasks(a: api.Task, b: api.Task) -> order.Order {
-  let api.Task(
-    priority: priority_a,
-    status: status_a,
-    created_at: created_at_a,
-    ..,
-  ) = a
-  let api.Task(
-    priority: priority_b,
-    status: status_b,
-    created_at: created_at_b,
-    ..,
-  ) = b
-
-  case int.compare(priority_b, priority_a) {
-    order.Eq ->
-      case
-        int.compare(
-          member_bar_status_rank(status_a),
-          member_bar_status_rank(status_b),
-        )
-      {
-        order.Eq -> string.compare(created_at_b, created_at_a)
-        other -> other
-      }
-
-    other -> other
-  }
-}
-
-fn view_member_metrics_panel(model: Model) -> Element(Msg) {
-  case model.member_metrics {
-    NotAsked | Loading ->
-      div([attribute.class("panel")], [
-        h3([], [text(update_helpers.i18n_t(model, i18n_text.MyMetrics))]),
-        div(
-          [
-            attribute.class("loading"),
-          ],
-          [text(update_helpers.i18n_t(model, i18n_text.LoadingMetrics))],
-        ),
-      ])
-
-    Failed(err) ->
-      div([attribute.class("panel")], [
-        h3([], [text(update_helpers.i18n_t(model, i18n_text.MyMetrics))]),
-        div([attribute.class("error")], [text(err.message)]),
-      ])
-
-    Loaded(metrics) -> {
-      let api.MyMetrics(
-        window_days: window_days,
-        claimed_count: claimed_count,
-        released_count: released_count,
-        completed_count: completed_count,
-      ) = metrics
-
-      div([attribute.class("panel")], [
-        h3([], [text(update_helpers.i18n_t(model, i18n_text.MyMetrics))]),
-        p([], [
-          text(update_helpers.i18n_t(model, i18n_text.WindowDays(window_days))),
-        ]),
-        table([attribute.class("table")], [
-          thead([], [
-            tr([], [
-              th([], [text(update_helpers.i18n_t(model, i18n_text.Claimed))]),
-              th([], [text(update_helpers.i18n_t(model, i18n_text.Released))]),
-              th([], [text(update_helpers.i18n_t(model, i18n_text.Completed))]),
-            ]),
-          ]),
-          tbody([], [
-            tr([], [
-              td([], [text(int.to_string(claimed_count))]),
-              td([], [text(int.to_string(released_count))]),
-              td([], [text(int.to_string(completed_count))]),
-            ]),
-          ]),
-        ]),
-      ])
-    }
-  }
-}
-
-fn view_member_bar(model: Model, user: User) -> Element(Msg) {
-  case update_helpers.active_projects(model) {
-    [] ->
-      div([attribute.class("empty")], [
-        h2([], [text(update_helpers.i18n_t(model, i18n_text.NoProjectsYet))]),
-        p([], [text(update_helpers.i18n_t(model, i18n_text.NoProjectsBody))]),
-      ])
-
-    _ ->
-      case model.member_tasks {
-        NotAsked | Loading ->
-          div([attribute.class("empty")], [
-            text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
-          ])
-
-        Failed(err) -> div([attribute.class("error")], [text(err.message)])
-
-        Loaded(tasks) -> {
-          let mine =
-            tasks
-            |> list.filter(fn(t) {
-              let api.Task(claimed_by: claimed_by, ..) = t
-              claimed_by == opt.Some(user.id)
-            })
-            |> list.sort(by: compare_member_bar_tasks)
-
-          div([attribute.class("section")], [
-            view_member_metrics_panel(model),
-            case mine {
-              [] ->
-                div([attribute.class("empty")], [
-                  text(update_helpers.i18n_t(model, i18n_text.NoClaimedTasks)),
-                ])
-
-              _ ->
-                div(
-                  [attribute.class("task-list")],
-                  list.map(mine, fn(t) {
-                    view_member_bar_task_row(model, user, t)
-                  }),
-                )
-            },
-          ])
-        }
-      }
-  }
-}
-
-/// Render a task row for the bar/list view mode.
-///
-/// ## Size Justification (~140 lines)
-///
-/// Renders a task list row with:
-/// - Type icon and title
-/// - Priority and status badges
-/// - Assignee information
-/// - Action buttons (claim, start, notes)
-/// - Responsive column layout
-/// - Conditional actions based on user permissions and task state
-///
-/// Similar to view_member_task_card, this is a cohesive row unit where
-/// all elements are rendered together. The bar view is an alternative
-/// presentation of the same task data with different layout but
-/// similar complexity.
-fn view_member_bar_task_row(
-  model: Model,
-  user: User,
-  task: api.Task,
-) -> Element(Msg) {
-  let api.Task(
-    id: id,
-    type_id: _type_id,
-    task_type: task_type,
-    title: title,
-    priority: priority,
-    status: status,
-    created_at: _created_at,
-    version: version,
-    claimed_by: claimed_by,
-    ..,
-  ) = task
-
-  let is_mine = claimed_by == opt.Some(user.id)
-
-  let type_label = task_type.name
-
-  let type_icon = opt.Some(task_type.icon)
-
-  let disable_actions =
-    model.member_task_mutation_in_flight || model.member_now_working_in_flight
-
-  let claim_action =
-    button(
-      [
-        attribute.class("btn-xs btn-icon"),
-        attribute.attribute(
-          "title",
-          update_helpers.i18n_t(model, i18n_text.Claim),
-        ),
-        attribute.attribute(
-          "aria-label",
-          update_helpers.i18n_t(model, i18n_text.Claim),
-        ),
-        event.on_click(MemberClaimClicked(id, version)),
-        attribute.disabled(disable_actions),
-      ],
-      [text("✋")],
-    )
-
-  let release_action =
-    button(
-      [
-        attribute.class("btn-xs btn-icon"),
-        attribute.attribute(
-          "data-tooltip",
-          update_helpers.i18n_t(model, i18n_text.Release),
-        ),
-        attribute.attribute(
-          "title",
-          update_helpers.i18n_t(model, i18n_text.Release),
-        ),
-        attribute.attribute(
-          "aria-label",
-          update_helpers.i18n_t(model, i18n_text.Release),
-        ),
-        event.on_click(MemberReleaseClicked(id, version)),
-        attribute.disabled(disable_actions),
-      ],
-      [text("⟲")],
-    )
-
-  let complete_action =
-    button(
-      [
-        attribute.class("btn-xs btn-icon"),
-        attribute.attribute(
-          "data-tooltip",
-          update_helpers.i18n_t(model, i18n_text.Complete),
-        ),
-        attribute.attribute(
-          "title",
-          update_helpers.i18n_t(model, i18n_text.Complete),
-        ),
-        attribute.attribute(
-          "aria-label",
-          update_helpers.i18n_t(model, i18n_text.Complete),
-        ),
-        event.on_click(MemberCompleteClicked(id, version)),
-        attribute.disabled(disable_actions),
-      ],
-      [text("☑")],
-    )
-
-  let start_action =
-    button(
-      [
-        attribute.class("btn-xs"),
-        attribute.attribute(
-          "title",
-          update_helpers.i18n_t(model, i18n_text.StartNowWorking),
-        ),
-        attribute.attribute(
-          "aria-label",
-          update_helpers.i18n_t(model, i18n_text.StartNowWorking),
-        ),
-        event.on_click(MemberNowWorkingStartClicked(id)),
-        attribute.disabled(disable_actions),
-      ],
-      [text(update_helpers.i18n_t(model, i18n_text.Start))],
-    )
-
-  let pause_action =
-    button(
-      [
-        attribute.class("btn-xs"),
-        attribute.attribute(
-          "title",
-          update_helpers.i18n_t(model, i18n_text.PauseNowWorking),
-        ),
-        attribute.attribute(
-          "aria-label",
-          update_helpers.i18n_t(model, i18n_text.PauseNowWorking),
-        ),
-        event.on_click(MemberNowWorkingPauseClicked),
-        attribute.disabled(disable_actions),
-      ],
-      [text(update_helpers.i18n_t(model, i18n_text.Pause))],
-    )
-
-  let is_active =
-    update_helpers.now_working_active_task_id(model) == opt.Some(id)
-
-  let now_working_action = case is_active {
-    True -> pause_action
-    False -> start_action
-  }
-
-  let actions = case status, is_mine {
-    api.Available, _ -> [claim_action]
-    api.Claimed(_), True -> [
-      now_working_action,
-      release_action,
-      complete_action,
-    ]
-    _, _ -> []
-  }
-
-  div([attribute.class("task-row")], [
-    div([], [
-      div([attribute.class("task-row-title")], [text(title)]),
-      div([attribute.class("task-row-meta")], [
-        text(update_helpers.i18n_t(model, i18n_text.PriorityShort(priority))),
-        text(" · "),
-        case type_icon {
-          opt.Some(icon) ->
-            span([attribute.attribute("style", "margin-right:4px;")], [
-              view_task_type_icon_inline(icon, 16, model.theme),
-            ])
-        },
-        text(type_label),
-      ]),
-    ]),
-    div([attribute.class("task-row-actions")], actions),
   ])
 }
 
@@ -3594,7 +1770,7 @@ fn view_member_notes(model: Model, _task_id: Int) -> Element(Msg) {
         div(
           [],
           list.map(notes, fn(n) {
-            let api.TaskNote(
+            let TaskNote(
               user_id: user_id,
               content: content,
               created_at: created_at,
@@ -3655,7 +1831,7 @@ fn decay_to_visuals(age_days: Int) -> #(Float, Float) {
 
 fn member_should_highlight_task(
   model: Model,
-  _task_type: opt.Option(api.TaskTypeInline),
+  _task_type: opt.Option(TaskTypeInline),
 ) -> Bool {
   case model.member_quick_my_caps {
     False -> False

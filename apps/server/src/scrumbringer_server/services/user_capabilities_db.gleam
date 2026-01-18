@@ -1,13 +1,27 @@
+//// Database operations for user capability selections.
+////
+//// Manages the many-to-many relationship between users and capabilities,
+//// allowing users to select which capabilities they have within an organization.
+
 import gleam/list
 import gleam/result
 import pog
 import scrumbringer_server/sql
 
+/// Errors that can occur when setting user capabilities.
 pub type SetCapabilitiesError {
   InvalidCapabilityId(Int)
   DbError(pog.QueryError)
 }
 
+/// Returns the list of capability IDs selected by a user in an organization.
+///
+/// ## Example
+///
+/// ```gleam
+/// get_selected_capability_ids(db, user_id: 1, org_id: 1)
+/// // -> Ok([1, 3, 5])
+/// ```
 pub fn get_selected_capability_ids(
   db: pog.Connection,
   user_id: Int,
@@ -20,6 +34,17 @@ pub fn get_selected_capability_ids(
   |> Ok
 }
 
+/// Replaces the user's selected capabilities with the given list.
+///
+/// Validates all capability IDs belong to the organization before
+/// committing the change in a transaction.
+///
+/// ## Example
+///
+/// ```gleam
+/// set_selected_capability_ids(db, user_id: 1, org_id: 1, capability_ids: [2, 4])
+/// // -> Ok([2, 4])
+/// ```
 pub fn set_selected_capability_ids(
   db: pog.Connection,
   user_id: Int,

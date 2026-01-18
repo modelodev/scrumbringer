@@ -1,3 +1,8 @@
+//// Application entrypoint for ScrumBringer server.
+////
+//// Configures logging, reads environment variables, and starts the
+//// HTTP server using Mist on the configured port.
+
 import gleam/bit_array
 import gleam/crypto
 import gleam/erlang/charlist
@@ -9,6 +14,7 @@ import scrumbringer_server
 import wisp
 import wisp/wisp_mist
 
+/// Starts the ScrumBringer server.
 pub fn main() {
   wisp.configure_logger()
 

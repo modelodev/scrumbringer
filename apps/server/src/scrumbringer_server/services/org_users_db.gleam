@@ -1,3 +1,15 @@
+//// Database operations for organization user membership.
+////
+//// ## Mission
+////
+//// Provides data access layer for users within organizations.
+////
+//// ## Responsibilities
+////
+//// - List users belonging to an organization
+//// - Update user organization roles
+//// - Validate role changes (prevent demoting last admin)
+
 import gleam/dynamic/decode
 import gleam/list
 import gleam/option as opt

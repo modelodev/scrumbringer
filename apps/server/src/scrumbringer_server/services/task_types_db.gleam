@@ -1,3 +1,8 @@
+//// Database operations for task types within projects.
+////
+//// Provides CRUD operations for task types including listing,
+//// creating, and verifying task type membership in projects.
+
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -5,6 +10,7 @@ import gleam/string
 import pog
 import scrumbringer_server/sql
 
+/// A task type that categorizes tasks within a project.
 pub type TaskType {
   TaskType(
     id: Int,
@@ -15,6 +21,7 @@ pub type TaskType {
   )
 }
 
+/// Errors that can occur when creating a task type.
 pub type CreateTaskTypeError {
   AlreadyExists
   InvalidCapabilityId
@@ -22,6 +29,14 @@ pub type CreateTaskTypeError {
   NoRowReturned
 }
 
+/// Lists all task types for a given project.
+///
+/// ## Example
+///
+/// ```gleam
+/// list_task_types_for_project(db, project_id: 1)
+/// // -> Ok([TaskType(id: 1, name: "Bug", ...)])
+/// ```
 pub fn list_task_types_for_project(
   db: pog.Connection,
   project_id: Int,
@@ -41,6 +56,14 @@ pub fn list_task_types_for_project(
   |> Ok
 }
 
+/// Creates a new task type in a project.
+///
+/// ## Example
+///
+/// ```gleam
+/// create_task_type(db, project_id: 1, name: "Feature", icon: "star", capability_id: None)
+/// // -> Ok(TaskType(...))
+/// ```
 pub fn create_task_type(
   db: pog.Connection,
   project_id: Int,
@@ -82,6 +105,14 @@ pub fn create_task_type(
   }
 }
 
+/// Checks if a task type belongs to a specific project.
+///
+/// ## Example
+///
+/// ```gleam
+/// is_task_type_in_project(db, type_id: 1, project_id: 2)
+/// // -> Ok(True)
+/// ```
 pub fn is_task_type_in_project(
   db: pog.Connection,
   type_id: Int,

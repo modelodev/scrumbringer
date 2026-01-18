@@ -1,3 +1,8 @@
+//// Main application module for the ScrumBringer server.
+////
+//// Handles database pool initialization, request routing, and
+//// dispatches to specialized HTTP handlers for each API endpoint.
+
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/atom
 import gleam/erlang/process
@@ -20,15 +25,25 @@ import scrumbringer_server/http/task_positions
 import scrumbringer_server/http/tasks
 import wisp
 
+/// Errors that can occur during server startup.
 pub type StartupError {
   InvalidDatabaseUrl
   DbPoolStartFailed
 }
 
+/// Application state holding database connection and JWT secret.
 pub type App {
   App(db: pog.Connection, jwt_secret: BitArray)
 }
 
+/// Creates a new App instance with database pool and JWT secret.
+///
+/// ## Example
+///
+/// ```gleam
+/// new_app("secret", "postgres://localhost/scrumbringer")
+/// // -> Ok(App(db: ..., jwt_secret: ...))
+/// ```
 pub fn new_app(
   jwt_secret: String,
   database_url: String,
@@ -37,6 +52,14 @@ pub fn new_app(
   Ok(App(db: db, jwt_secret: <<jwt_secret:utf8>>))
 }
 
+/// Returns a request handler function for the given App.
+///
+/// ## Example
+///
+/// ```gleam
+/// let handle = handler(app)
+/// wisp.serve(handle, on: 8080)
+/// ```
 pub fn handler(app: App) -> fn(wisp.Request) -> wisp.Response {
   fn(req) { handle_request(req, app) }
 }

@@ -1,3 +1,8 @@
+//// HTTP handlers for organization capabilities (skills).
+////
+//// Provides endpoints for listing and creating capabilities,
+//// as well as managing user capability selections.
+
 import gleam/dynamic/decode
 import gleam/http
 import gleam/json
@@ -9,6 +14,7 @@ import scrumbringer_server/services/capabilities_db
 import scrumbringer_server/services/user_capabilities_db
 import wisp
 
+/// Routes /api/capabilities requests (GET list, POST create).
 pub fn handle_capabilities(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   case req.method {
     http.Get -> handle_list(req, ctx)
@@ -17,6 +23,7 @@ pub fn handle_capabilities(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   }
 }
 
+/// Routes /api/me/capabilities requests (GET/PUT user selections).
 pub fn handle_me_capabilities(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   case req.method {
     http.Get -> handle_get_me(req, ctx)

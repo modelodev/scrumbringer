@@ -3,8 +3,8 @@
 //// ## Mission
 ////
 //// Provides pure helper functions and Model accessors used by the update
-//// function and its handlers. Extracted to reduce coupling and enable
-//// future domain-based handler extraction.
+//// function and its handlers. Acts as a facade re-exporting domain-specific
+//// helpers from specialized modules for backward compatibility.
 ////
 //// ## Responsibilities
 ////
@@ -12,17 +12,30 @@
 //// - Model accessor functions (active_projects, selected_project, etc.)
 //// - Time formatting helpers (format_seconds, elapsed time calculation)
 //// - Remote data lookup helpers (find_task_by_id, resolve_org_user)
+//// - Re-exports from:
+////   - `features/auth/helpers.gleam` (auth error handling)
+////   - `shared/i18n_helpers.gleam` (translation wrapper)
 ////
 //// ## Non-responsibilities
 ////
-//// - Effect creation (see scrumbringer_client.gleam)
-//// - API calls (see api.gleam)
-//// - View rendering (see scrumbringer_client.gleam)
+//// - Effect creation (see app/effects.gleam)
+//// - API calls (see api/ modules)
+//// - View rendering (see features/*/view.gleam)
+////
+//// ## Line Count Justification
+////
+//// ~520 lines: Contains Model accessor functions and pure helpers used
+//// throughout the update layer. Domain-specific helpers have been extracted
+//// to specialized modules (auth, i18n) and are re-exported for backward
+//// compatibility. Splitting remaining helpers further would create many
+//// small modules with unclear ownership.
 ////
 //// ## Relations
 ////
 //// - **client_state.gleam**: Provides Model, Remote types
-//// - **api.gleam**: Provides data types (Task, TaskPosition, OrgUser, etc.)
+//// - **domain/***: Provides data types (Task, TaskPosition, OrgUser, etc.)
+//// - **features/auth/helpers.gleam**: Auth-related helpers (re-exported)
+//// - **shared/i18n_helpers.gleam**: i18n translation wrapper (re-exported)
 //// - **scrumbringer_client.gleam**: Main consumer of these helpers
 
 import gleam/dict.{type Dict}
@@ -33,11 +46,16 @@ import gleam/string
 
 import lustre/effect.{type Effect}
 
-import scrumbringer_client/api
-import scrumbringer_client/client_state.{type Model, type Msg, type Remote, Loaded, Login, Model}
-import scrumbringer_client/i18n/i18n
+// Domain types from shared
+import domain/api_error.{type ApiError}
+import domain/project.{type Project}
+import domain/org.{type OrgUser}
+import domain/task.{type ActiveTask, type Task, type TaskPosition, ActiveTask, ActiveTaskPayload, Task, TaskPosition}
+import domain/task_type.{type TaskType}
+import scrumbringer_client/client_state.{type Model, type Msg, type Remote, Loaded, Model}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
+import scrumbringer_client/shared/i18n_helpers
 
 // =============================================================================
 // Pure Data Transformations
@@ -84,11 +102,11 @@ pub fn bool_dict_to_ids(values: Dict(Int, Bool)) -> List(Int) {
 /// // dict.from_list([#(1, #(100, 200))])
 /// ```
 pub fn positions_to_dict(
-  positions: List(api.TaskPosition),
+  positions: List(TaskPosition),
 ) -> Dict(Int, #(Int, Int)) {
   positions
   |> list.fold(dict.new(), fn(acc, pos) {
-    let api.TaskPosition(task_id: task_id, x: x, y: y, ..) = pos
+    let TaskPosition(task_id: task_id, x: x, y: y, ..) = pos
     dict.insert(acc, task_id, #(x, y))
   })
 }
@@ -144,14 +162,14 @@ pub fn empty_to_int_opt(value: String) -> Option(Int) {
 /// // Some(task1)
 /// ```
 pub fn find_task_by_id(
-  tasks: Remote(List(api.Task)),
+  tasks: Remote(List(Task)),
   task_id: Int,
-) -> Option(api.Task) {
+) -> Option(Task) {
   case tasks {
     Loaded(tasks) ->
       case
         list.find(tasks, fn(t) {
-          let api.Task(id: id, ..) = t
+          let Task(id: id, ..) = t
           id == task_id
         })
       {
@@ -172,9 +190,9 @@ pub fn find_task_by_id(
 /// // Some(user1)
 /// ```
 pub fn resolve_org_user(
-  cache: Remote(List(api.OrgUser)),
+  cache: Remote(List(OrgUser)),
   user_id: Int,
-) -> Option(api.OrgUser) {
+) -> Option(OrgUser) {
   case cache {
     Loaded(users) ->
       case list.find(users, fn(u) { u.id == user_id }) {
@@ -198,7 +216,7 @@ pub fn resolve_org_user(
 /// active_projects(model)
 /// // [project1, project2] or []
 /// ```
-pub fn active_projects(model: Model) -> List(api.Project) {
+pub fn active_projects(model: Model) -> List(Project) {
   case model.projects {
     Loaded(projects) -> projects
     _ -> []
@@ -213,7 +231,7 @@ pub fn active_projects(model: Model) -> List(api.Project) {
 /// selected_project(model)
 /// // Some(project) or None
 /// ```
-pub fn selected_project(model: Model) -> Option(api.Project) {
+pub fn selected_project(model: Model) -> Option(Project) {
   case model.selected_project_id, model.projects {
     Some(id), Loaded(projects) ->
       case list.find(projects, fn(p) { p.id == id }) {
@@ -233,9 +251,9 @@ pub fn selected_project(model: Model) -> Option(api.Project) {
 /// now_working_active_task(model)
 /// // Some(active_task) or None
 /// ```
-pub fn now_working_active_task(model: Model) -> Option(api.ActiveTask) {
+pub fn now_working_active_task(model: Model) -> Option(ActiveTask) {
   case model.member_active_task {
-    Loaded(api.ActiveTaskPayload(active_task: active_task, ..)) -> active_task
+    Loaded(ActiveTaskPayload(active_task: active_task, ..)) -> active_task
     _ -> None
   }
 }
@@ -250,7 +268,7 @@ pub fn now_working_active_task(model: Model) -> Option(api.ActiveTask) {
 /// ```
 pub fn now_working_active_task_id(model: Model) -> Option(Int) {
   case now_working_active_task(model) {
-    Some(api.ActiveTask(task_id: task_id, ..)) -> Some(task_id)
+    Some(ActiveTask(task_id: task_id, ..)) -> Some(task_id)
     None -> None
   }
 }
@@ -317,8 +335,8 @@ pub fn now_working_elapsed_from_ms(
 /// // [t1, t2, t3]
 /// ```
 pub fn flatten_tasks(
-  tasks_by_project: Dict(Int, List(api.Task)),
-) -> List(api.Task) {
+  tasks_by_project: Dict(Int, List(Task)),
+) -> List(Task) {
   tasks_by_project
   |> dict.to_list
   |> list.fold([], fn(acc, pair) {
@@ -336,8 +354,8 @@ pub fn flatten_tasks(
 /// // [tt1, tt2, tt3]
 /// ```
 pub fn flatten_task_types(
-  task_types_by_project: Dict(Int, List(api.TaskType)),
-) -> List(api.TaskType) {
+  task_types_by_project: Dict(Int, List(TaskType)),
+) -> List(TaskType) {
   task_types_by_project
   |> dict.to_list
   |> list.fold([], fn(acc, pair) {
@@ -347,21 +365,13 @@ pub fn flatten_task_types(
 }
 
 // =============================================================================
-// Internationalization
+// Internationalization (re-exported from shared/i18n_helpers.gleam)
 // =============================================================================
 
 /// Translate text using the model's current locale.
-///
-/// Convenience wrapper around `i18n.t` that extracts locale from model.
-///
-/// ## Example
-///
-/// ```gleam
-/// i18n_t(model, i18n_text.Welcome)
-/// // "Welcome" or "Bienvenido" depending on locale
-/// ```
+/// Re-exported from shared/i18n_helpers.gleam for backward compatibility.
 pub fn i18n_t(model: Model, text: i18n_text.Text) -> String {
-  i18n.t(model.locale, text)
+  i18n_helpers.i18n_t(model, text)
 }
 
 // =============================================================================
@@ -381,7 +391,7 @@ pub fn i18n_t(model: Model, text: i18n_text.Text) -> String {
 /// ```
 pub fn ensure_selected_project(
   selected: Option(Int),
-  projects: List(api.Project),
+  projects: List(Project),
 ) -> Option(Int) {
   case selected {
     Some(id) ->
@@ -433,73 +443,30 @@ pub fn ensure_default_section(model: Model) -> Model {
 }
 
 // =============================================================================
-// Drag State Management
+// Auth Helpers (re-exported from features/auth/helpers.gleam)
 // =============================================================================
+
+import scrumbringer_client/features/auth/helpers as auth_helpers
 
 /// Clear all drag-related state from the model.
-///
-/// Used when transitioning away from pages with drag functionality
-/// (e.g., on logout or auth errors).
-///
-/// ## Example
-///
-/// ```gleam
-/// clear_drag_state(model)
-/// // Model with member_drag: None, drag flags: False
-/// ```
+/// Re-exported from features/auth/helpers.gleam for backward compatibility.
 pub fn clear_drag_state(model: Model) -> Model {
-  Model(
-    ..model,
-    member_drag: None,
-    member_pool_drag_to_claim_armed: False,
-    member_pool_drag_over_my_tasks: False,
-  )
+  auth_helpers.clear_drag_state(model)
 }
 
-// =============================================================================
-// Auth Error Handling
-// =============================================================================
-
 /// Reset model to login page, clearing user and drag state.
-///
-/// Used for 401 unauthorized responses across all handlers.
-///
-/// ## Example
-///
-/// ```gleam
-/// reset_to_login(model)
-/// // #(Model with page: Login, user: None, cleared drag, effect.none())
-/// ```
+/// Re-exported from features/auth/helpers.gleam for backward compatibility.
 pub fn reset_to_login(model: Model) -> #(Model, Effect(Msg)) {
-  #(clear_drag_state(Model(..model, page: Login, user: None)), effect.none())
+  auth_helpers.reset_to_login(model)
 }
 
 /// Handle common API auth errors (401/403).
-///
-/// Returns Some with result for 401 (redirect to login) or 403 (toast).
-/// Returns None for other errors that need custom handling.
-///
-/// ## Example
-///
-/// ```gleam
-/// case handle_auth_error(model, err) {
-///   Some(result) -> result
-///   None -> #(Model(..model, my_error: Some(err.message)), effect.none())
-/// }
-/// ```
+/// Re-exported from features/auth/helpers.gleam for backward compatibility.
 pub fn handle_auth_error(
   model: Model,
-  err: api.ApiError,
+  err: ApiError,
 ) -> Option(#(Model, Effect(Msg))) {
-  case err.status {
-    401 -> Some(reset_to_login(model))
-    403 ->
-      Some(#(
-        Model(..model, toast: Some(i18n_t(model, i18n_text.NotPermitted))),
-        effect.none(),
-      ))
-    _ -> None
-  }
+  auth_helpers.handle_auth_error(model, err)
 }
 
 // =============================================================================
