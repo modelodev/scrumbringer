@@ -2,7 +2,7 @@ import gleam/option
 import gleeunit/should
 import domain/project.{Project}
 import scrumbringer_client/permissions
-import scrumbringer_domain/org_role
+import domain/org_role
 
 pub fn visible_sections_org_admin_test() {
   let projects = [Project(id: 1, name: "P1", my_role: "member")]

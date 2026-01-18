@@ -6,7 +6,7 @@
 import gleam/dynamic/decode
 import gleam/http
 import gleam/json
-import scrumbringer_domain/org_role
+import domain/org_role
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf

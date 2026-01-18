@@ -27,6 +27,25 @@
 //// - **Update**: `client_update.update` handles state transitions
 //// - **View**: `client_view.view` renders the UI
 ////
+//// ## Flags Decision
+////
+//// The application uses `Nil` for Lustre flags rather than a typed `Flags`
+//// record. This is intentional:
+////
+//// 1. **No base_url needed**: API uses relative URLs (`/api/...`), allowing
+////    the client to work with any deployment origin without configuration.
+////
+//// 2. **No feature_flags needed**: Single deployment target with no runtime
+////    feature toggling requirements at this stage.
+////
+//// 3. **Runtime config via localStorage**: User preferences (theme, locale,
+////    pool view mode) are loaded from localStorage in `init`, not passed as
+////    flags from the host page.
+////
+//// If future requirements need external configuration (e.g., multi-tenant
+//// base URLs, A/B testing flags), add a `type Flags` record and update
+//// `lustre.application(init, ...)` to `lustre.application(init_with_flags, ...)`.
+////
 //// ## Relations
 ////
 //// - **client_state.gleam**: Provides Model, Msg, and state types
@@ -234,6 +253,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       members_remove_in_flight: False,
       members_remove_error: opt.None,
       org_users_search_query: "",
+      org_users_search_token: 0,
       org_users_search_results: NotAsked,
       task_types: NotAsked,
       task_types_project_id: opt.None,
@@ -258,6 +278,8 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       member_task_types_pending: 0,
       member_task_types_by_project: dict.new(),
       member_task_mutation_in_flight: False,
+      member_task_mutation_task_id: opt.None,
+      member_tasks_snapshot: opt.None,
       member_filters_status: "",
       member_filters_type_id: "",
       member_filters_capability_id: "",
@@ -306,6 +328,8 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
     router.Parsed(_) -> effect.none()
   }
 
+  let title_fx = router.update_page_title(route, active_locale)
+
   #(
     model,
     effect.batch([
@@ -313,6 +337,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       client_update.register_keydown_effect(),
       redirect_fx,
       base_effect,
+      title_fx,
     ]),
   )
 }

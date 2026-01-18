@@ -73,7 +73,7 @@ fn now_working_elapsed(model: Model) -> String {
 pub fn view_panel(model: Model) -> Element(Msg) {
   let error = case model.member_now_working_error {
     opt.Some(err) -> div([attribute.class("now-working-error")], [text(err)])
-    opt.None -> div([], [])
+    opt.None -> element.none()
   }
 
   case model.member_active_task {

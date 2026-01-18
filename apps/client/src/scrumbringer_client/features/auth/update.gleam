@@ -26,8 +26,8 @@ import gleam/string
 
 import lustre/effect.{type Effect}
 
-import scrumbringer_domain/org_role
-import scrumbringer_domain/user.{type User}
+import domain/org_role
+import domain/user.{type User}
 
 // API modules
 import scrumbringer_client/api/auth as api_auth

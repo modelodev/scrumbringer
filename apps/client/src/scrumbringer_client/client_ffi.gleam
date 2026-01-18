@@ -46,6 +46,17 @@ pub fn history_replace_state(_path: String) -> Nil {
   Nil
 }
 
+/// Set the browser document title.
+///
+/// Example:
+/// ```gleam
+/// set_document_title("Projects - Scrumbringer")
+/// ```
+@external(javascript, "./fetch.ffi.mjs", "set_document_title")
+pub fn set_document_title(_title: String) -> Nil {
+  Nil
+}
+
 /// Register a callback for browser back/forward navigation.
 ///
 /// Example:

@@ -51,7 +51,7 @@ pub fn view(
   on_dismiss: msg,
 ) -> Element(msg) {
   case toast {
-    opt.None -> div([], [])
+    opt.None -> element.none()
     opt.Some(message) ->
       div([attribute.class("toast")], [
         span([], [text(message)]),

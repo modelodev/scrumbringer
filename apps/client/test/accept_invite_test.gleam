@@ -3,8 +3,8 @@ import gleeunit/should
 
 import domain/api_error.{ApiError}
 import scrumbringer_client/accept_invite
-import scrumbringer_domain/org_role
-import scrumbringer_domain/user
+import domain/org_role
+import domain/user
 
 pub fn init_with_missing_token_stays_in_no_token_state_test() {
   let #(model, action) = accept_invite.init("")

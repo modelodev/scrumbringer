@@ -23,7 +23,7 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import pog
-import scrumbringer_domain/org_role
+import domain/org_role
 import scrumbringer_server/services/auth_logic
 import scrumbringer_server/services/store_state.{type StoredUser, StoredUser}
 

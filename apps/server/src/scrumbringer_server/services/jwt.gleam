@@ -9,7 +9,7 @@ import gleam/dynamic/decode
 import gleam/json
 import gleam/result
 import gleam/string
-import scrumbringer_domain/org_role
+import domain/org_role
 import scrumbringer_server/services/time
 
 /// JWT payload claims.

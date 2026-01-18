@@ -30,8 +30,8 @@ import lustre/effect.{type Effect}
 
 import scrumbringer_client/api/core.{type ApiResult}
 import scrumbringer_client/client_ffi
-import scrumbringer_domain/org_role
-import scrumbringer_domain/user.{type User, User}
+import domain/org_role
+import domain/user.{type User, User}
 
 // =============================================================================
 // Decoders

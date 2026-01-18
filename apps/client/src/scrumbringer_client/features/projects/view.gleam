@@ -20,9 +20,10 @@ import gleam/option as opt
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{
-  button, div, form, h2, h3, hr, input, label, table, tbody, td, text, th, thead,
+  button, div, form, h2, h3, hr, input, label, table, td, text, th, thead,
   tr,
 }
+import lustre/element/keyed
 import lustre/event
 
 import domain/project.{type Project}
@@ -46,7 +47,7 @@ pub fn view_projects(model: Model) -> Element(Msg) {
     h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateProject))]),
     case model.projects_create_error {
       opt.Some(err) -> div([attribute.class("error")], [text(err)])
-      opt.None -> div([], [])
+      opt.None -> element.none()
     },
     form([event.on_submit(fn(_) { ProjectCreateSubmitted })], [
       div([attribute.class("field")], [
@@ -114,10 +115,10 @@ fn view_projects_list(
                 th([], [text(update_helpers.i18n_t(model, i18n_text.MyRole))]),
               ]),
             ]),
-            tbody(
+            keyed.tbody(
               [],
               list.map(projects, fn(p) {
-                tr([], [td([], [text(p.name)]), td([], [text(p.my_role)])])
+                #(p.name, tr([], [td([], [text(p.name)]), td([], [text(p.my_role)])]))
               }),
             ),
           ])

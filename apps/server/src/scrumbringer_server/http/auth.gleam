@@ -29,7 +29,7 @@ import gleam/option as opt
 import gleam/result
 import gleam/string
 import pog
-import scrumbringer_domain/org_role
+import domain/org_role
 import scrumbringer_server/http/api
 import scrumbringer_server/http/csrf
 import scrumbringer_server/persistence/auth/login as auth_login

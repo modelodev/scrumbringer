@@ -83,7 +83,7 @@ pub fn locale_switch(
 ///
 /// Useful for conditional rendering where an empty element is needed.
 pub fn empty() -> Element(msg) {
-  div([], [])
+  element.none()
 }
 
 /// Renders a section container with optional title.

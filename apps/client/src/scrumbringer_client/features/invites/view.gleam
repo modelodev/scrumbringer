@@ -26,9 +26,10 @@ import gleam/option as opt
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{
-  button, div, form, h3, hr, input, label, p, table, tbody, td, text, th, thead,
+  button, div, form, h3, hr, input, label, p, table, td, text, th, thead,
   tr,
 }
+import lustre/element/keyed
 import lustre/event
 
 import scrumbringer_client/client_ffi
@@ -56,7 +57,7 @@ pub fn view_invites(model: Model) -> Element(Msg) {
     p([], [text(update_helpers.i18n_t(model, i18n_text.InviteLinksHelp))]),
     case model.invite_link_error {
       opt.Some(err) -> div([attribute.class("error")], [text(err)])
-      opt.None -> div([], [])
+      opt.None -> element.none()
     },
     form([event.on_submit(fn(_) { InviteLinkCreateSubmitted })], [
       div([attribute.class("field")], [
@@ -77,7 +78,7 @@ pub fn view_invites(model: Model) -> Element(Msg) {
       ),
     ]),
     case model.invite_link_last {
-      opt.None -> div([], [])
+      opt.None -> element.none()
 
       opt.Some(link) -> {
         let full = build_full_url(origin, link.url_path)
@@ -107,7 +108,7 @@ pub fn view_invites(model: Model) -> Element(Msg) {
           ]),
           case model.invite_link_copy_status {
             opt.Some(status) -> div([attribute.class("hint")], [text(status)])
-            opt.None -> div([], [])
+            opt.None -> element.none()
           },
         ])
       }
@@ -157,12 +158,12 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
                 th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
               ]),
             ]),
-            tbody(
+            keyed.tbody(
               [],
               list.map(links, fn(link) {
                 let full = build_full_url(origin, link.url_path)
 
-                tr([], [
+                #(link.email, tr([], [
                   td([], [text(link.email)]),
                   td([], [text(link.state)]),
                   td([], [text(link.created_at)]),
@@ -183,7 +184,7 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
                       [text(update_helpers.i18n_t(model, i18n_text.Regenerate))],
                     ),
                   ]),
-                ])
+                ]))
               }),
             ),
           ])

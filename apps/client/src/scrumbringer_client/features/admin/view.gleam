@@ -35,8 +35,9 @@ import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{
   button, div, form, h2, h3, hr, img, input, label, option, p, select, span,
-  table, tbody, td, text, th, thead, tr,
+  table, td, text, th, thead, tr,
 }
+import lustre/element/keyed
 import lustre/event
 
 import gleam/dynamic/decode
@@ -96,7 +97,7 @@ pub fn view_org_settings(model: Model) -> Element(Msg) {
               th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
             ]),
           ]),
-          tbody(
+          keyed.tbody(
             [],
             list.map(users, fn(u) {
               let draft = case dict.get(model.org_settings_role_drafts, u.id) {
@@ -112,7 +113,7 @@ pub fn view_org_settings(model: Model) -> Element(Msg) {
                 _, _ -> ""
               }
 
-              tr([], [
+              #(int.to_string(u.id), tr([], [
                 td([], [text(u.email)]),
                 td([], [
                   select(
@@ -135,7 +136,7 @@ pub fn view_org_settings(model: Model) -> Element(Msg) {
                     ],
                   ),
                   case inline_error == "" {
-                    True -> div([], [])
+                    True -> element.none()
                     False ->
                       div([attribute.class("error")], [text(inline_error)])
                   },
@@ -149,7 +150,7 @@ pub fn view_org_settings(model: Model) -> Element(Msg) {
                     [text(update_helpers.i18n_t(model, i18n_text.Save))],
                   ),
                 ]),
-              ])
+              ]))
             }),
           ),
         ])
@@ -167,7 +168,7 @@ pub fn view_capabilities(model: Model) -> Element(Msg) {
     h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateCapability))]),
     case model.capabilities_create_error {
       opt.Some(err) -> div([attribute.class("error")], [text(err)])
-      opt.None -> div([], [])
+      opt.None -> element.none()
     },
     form([event.on_submit(fn(_) { CapabilityCreateSubmitted })], [
       div([attribute.class("field")], [
@@ -222,16 +223,16 @@ pub fn view_members(
         ]),
         case model.members_remove_error {
           opt.Some(err) -> div([attribute.class("error")], [text(err)])
-          opt.None -> div([], [])
+          opt.None -> element.none()
         },
         view_members_table(model, model.members, model.org_users_cache),
         case model.members_add_dialog_open {
           True -> view_add_member_dialog(model)
-          False -> div([], [])
+          False -> element.none()
         },
         case model.members_remove_confirm {
           opt.Some(user) -> view_remove_member_dialog(model, project.name, user)
-          opt.None -> div([], [])
+          opt.None -> element.none()
         },
       ])
   }
@@ -264,7 +265,7 @@ pub fn view_task_types(
         h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateTaskType))]),
         case model.task_types_create_error {
           opt.Some(err) -> div([attribute.class("error")], [text(err)])
-          opt.None -> div([], [])
+          opt.None -> element.none()
         },
         form([event.on_submit(fn(_) { TaskTypeCreateSubmitted })], [
           div([attribute.class("field")], [
@@ -297,7 +298,7 @@ pub fn view_task_types(
                 div([attribute.class("error")], [
                   text(update_helpers.i18n_t(model, i18n_text.UnknownIcon)),
                 ])
-              _ -> div([], [])
+              _ -> element.none()
             },
           ]),
           div([attribute.class("field")], [
@@ -366,9 +367,11 @@ fn view_capabilities_list(
                 th([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
               ]),
             ]),
-            tbody(
+            keyed.tbody(
               [],
-              list.map(capabilities, fn(c) { tr([], [td([], [text(c.name)])]) }),
+              list.map(capabilities, fn(c) {
+                #(int.to_string(c.id), tr([], [td([], [text(c.name)])]))
+              }),
             ),
           ])
       }
@@ -416,7 +419,7 @@ fn view_members_table(
                 th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
               ]),
             ]),
-            tbody(
+            keyed.tbody(
               [],
               list.map(members, fn(m) {
                 let email = case
@@ -430,7 +433,7 @@ fn view_members_table(
                     )
                 }
 
-                tr([], [
+                #(int.to_string(m.user_id), tr([], [
                   td([], [text(email)]),
                   td([], [text(int.to_string(m.user_id))]),
                   td([], [text(m.role)]),
@@ -440,7 +443,7 @@ fn view_members_table(
                       text(update_helpers.i18n_t(model, i18n_text.Remove)),
                     ]),
                   ]),
-                ])
+                ]))
               }),
             ),
           ])
@@ -454,7 +457,7 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
       h3([], [text(update_helpers.i18n_t(model, i18n_text.AddMember))]),
       case model.members_add_error {
         opt.Some(err) -> div([attribute.class("error")], [text(err)])
-        opt.None -> div([], [])
+        opt.None -> element.none()
       },
       div([attribute.class("field")], [
         label([], [text(update_helpers.i18n_t(model, i18n_text.SearchByEmail))]),
@@ -559,10 +562,10 @@ fn view_org_users_search_results(
                 th([], [text(update_helpers.i18n_t(model, i18n_text.Select))]),
               ]),
             ]),
-            tbody(
+            keyed.tbody(
               [],
               list.map(users, fn(u) {
-                tr([], [
+                #(int.to_string(u.id), tr([], [
                   td([], [text(u.email)]),
                   td([], [text(u.org_role)]),
                   td([], [text(u.created_at)]),
@@ -571,7 +574,7 @@ fn view_org_users_search_results(
                       text(update_helpers.i18n_t(model, i18n_text.Select)),
                     ]),
                   ]),
-                ])
+                ]))
               }),
             ),
           ])
@@ -595,7 +598,7 @@ fn view_remove_member_dialog(
       ]),
       case model.members_remove_error {
         opt.Some(err) -> div([attribute.class("error")], [text(err)])
-        opt.None -> div([], [])
+        opt.None -> element.none()
       },
       div([attribute.class("actions")], [
         button([event.on_click(MemberRemoveCancelled)], [
@@ -840,10 +843,10 @@ fn view_task_types_list(
                 ]),
               ]),
             ]),
-            tbody(
+            keyed.tbody(
               [],
               list.map(task_types, fn(tt) {
-                tr([], [
+                #(int.to_string(tt.id), tr([], [
                   td([], [text(tt.name)]),
                   td([], [view_task_type_icon_inline(tt.icon, 20, theme)]),
                   td([], [
@@ -852,7 +855,7 @@ fn view_task_types_list(
                       opt.None -> text("-")
                     },
                   ]),
-                ])
+                ]))
               }),
             ),
           ])

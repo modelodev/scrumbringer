@@ -2,21 +2,23 @@
 ////
 //// ## Mission
 ////
-//// Provides URL parsing and formatting for client-side navigation. Handles
-//// both modern path-based URLs and legacy hash-based URLs for backwards
-//// compatibility.
+//// Provides URL parsing, formatting, and navigation effects for client-side
+//// routing. Handles both modern path-based URLs and legacy hash-based URLs
+//// for backwards compatibility.
 ////
 //// ## Responsibilities
 ////
 //// - Route type definitions (Login, Admin, Member, etc.)
 //// - URL parsing (`parse`) with legacy hash support
 //// - URL formatting (`format`)
+//// - Navigation effects (`push`, `replace`)
+//// - Page title updates (`update_page_title`)
 //// - Mobile-specific routing rules (`apply_mobile_rules`)
 ////
 //// ## Non-responsibilities
 ////
-//// - Model state changes (see scrumbringer_client.gleam)
-//// - Navigation effects (see scrumbringer_client.gleam)
+//// - Model state changes (see client_update.gleam)
+//// - Hydration effects (see hydration.gleam)
 ////
 //// ## Usage
 ////
@@ -32,6 +34,15 @@
 //// // Format URL
 //// let url = router.format(router.Admin(permissions.Members, Some(5)))
 //// // "/admin/members?project=5"
+////
+//// // Navigate with push (adds history entry)
+//// router.push(router.Admin(permissions.Projects, None))
+////
+//// // Navigate with replace (no history entry)
+//// router.replace(router.Login)
+////
+//// // Update browser title
+//// router.update_page_title(route, locale)
 //// ```
 
 import gleam/int
@@ -39,6 +50,12 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
 
+import lustre/effect.{type Effect}
+
+import scrumbringer_client/client_ffi
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale as i18n_locale
+import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/member_section.{type MemberSection}
 import scrumbringer_client/permissions
 
@@ -317,4 +334,100 @@ pub fn apply_mobile_rules(result: ParseResult, is_mobile: Bool) -> ParseResult {
           }
       }
   }
+}
+
+// =============================================================================
+// Navigation Effects
+// =============================================================================
+
+/// Push a new URL to browser history (adds back button entry).
+///
+/// ## Example
+///
+/// ```gleam
+/// router.push(router.Admin(permissions.Projects, Some(5)))
+/// // Navigates to "/admin/projects?project=5" with history entry
+/// ```
+pub fn push(route: Route) -> Effect(msg) {
+  let url = format(route)
+  effect.from(fn(_dispatch) { client_ffi.history_push_state(url) })
+}
+
+/// Replace the current URL in browser history (no back button entry).
+///
+/// ## Example
+///
+/// ```gleam
+/// router.replace(router.Login)
+/// // Replaces current URL with "/" without history entry
+/// ```
+pub fn replace(route: Route) -> Effect(msg) {
+  let url = format(route)
+  effect.from(fn(_dispatch) { client_ffi.history_replace_state(url) })
+}
+
+/// Update the browser document title based on the current route.
+///
+/// Sets the title in the format "Section - Scrumbringer" for authenticated
+/// pages, or just "Scrumbringer" for login/public pages.
+///
+/// ## Example
+///
+/// ```gleam
+/// router.update_page_title(router.Admin(permissions.Projects, None), locale)
+/// // Sets document title to "Projects - Scrumbringer"
+/// ```
+pub fn update_page_title(route: Route, locale: i18n_locale.Locale) -> Effect(msg) {
+  let title = page_title_for_route(route, locale)
+  effect.from(fn(_dispatch) { client_ffi.set_document_title(title) })
+}
+
+/// Get the page title string for a route.
+///
+/// Returns the full title string (e.g., "Projects - Scrumbringer").
+pub fn page_title_for_route(route: Route, locale: i18n_locale.Locale) -> String {
+  let section_title = case route {
+    Login -> None
+    AcceptInvite(_) -> None
+    ResetPassword(_) -> None
+
+    Admin(section, _) -> Some(admin_section_title(section, locale))
+
+    Member(section, _) -> Some(member_section_title(section, locale))
+  }
+
+  case section_title {
+    None -> "Scrumbringer"
+    Some(title) -> title <> " - Scrumbringer"
+  }
+}
+
+/// Get the i18n text key for an admin section title.
+fn admin_section_title(
+  section: permissions.AdminSection,
+  locale: i18n_locale.Locale,
+) -> String {
+  let text = case section {
+    permissions.Invites -> i18n_text.AdminInvites
+    permissions.OrgSettings -> i18n_text.AdminOrgSettings
+    permissions.Projects -> i18n_text.AdminProjects
+    permissions.Metrics -> i18n_text.AdminMetrics
+    permissions.Members -> i18n_text.AdminMembers
+    permissions.Capabilities -> i18n_text.AdminCapabilities
+    permissions.TaskTypes -> i18n_text.AdminTaskTypes
+  }
+  i18n.t(locale, text)
+}
+
+/// Get the i18n text key for a member section title.
+fn member_section_title(
+  section: MemberSection,
+  locale: i18n_locale.Locale,
+) -> String {
+  let text = case section {
+    member_section.Pool -> i18n_text.Pool
+    member_section.MyBar -> i18n_text.MyBar
+    member_section.MySkills -> i18n_text.MySkills
+  }
+  i18n.t(locale, text)
 }

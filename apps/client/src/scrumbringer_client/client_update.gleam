@@ -30,11 +30,10 @@ import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option as opt
-import gleam/string
 
 import lustre/effect.{type Effect}
 
-import scrumbringer_domain/org_role
+import domain/org_role
 
 import scrumbringer_client/accept_invite
 // API modules
@@ -44,8 +43,7 @@ import scrumbringer_client/api/tasks as api_tasks
 import scrumbringer_client/api/org as api_org
 import scrumbringer_client/api/metrics as api_metrics
 // Domain types
-import domain/task.{Task, TaskFilters, TaskPosition}
-import domain/metrics.{OrgMetricsProjectTasksPayload}
+import domain/task.{TaskFilters}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/hydration
 import scrumbringer_client/member_section
@@ -78,7 +76,7 @@ import scrumbringer_client/client_state.{
   MemberCanvasRectFetched, MemberClaimClicked, MemberCompleteClicked,
   MemberCreateDescriptionChanged, MemberCreateDialogClosed,
   MemberCreateDialogOpened, MemberCreatePriorityChanged, MemberCreateSubmitted,
-  MemberCreateTitleChanged, MemberCreateTypeIdChanged, MemberDrag,
+  MemberCreateTitleChanged, MemberCreateTypeIdChanged,
   MemberDragEnded, MemberDragMoved, MemberDragStarted, MemberMetricsFetched,
   MemberMyCapabilityIdsFetched, MemberMyCapabilityIdsSaved, MemberNoteAdded,
   MemberNoteContentChanged, MemberNoteSubmitted, MemberNotesFetched,
@@ -104,7 +102,7 @@ import scrumbringer_client/client_state.{
   TaskTypeCreateCapabilityChanged, TaskTypeCreateIconChanged,
   TaskTypeCreateNameChanged, TaskTypeCreateSubmitted, TaskTypeCreated,
   TaskTypeIconErrored, TaskTypeIconLoaded, TaskTypesFetched, ThemeSelected,
-  ToastDismissed, UrlChanged, rect_contains_point,
+  ToastDismissed, UrlChanged,
 }
 
 import scrumbringer_client/features/admin/update as admin_workflow
@@ -112,8 +110,11 @@ import scrumbringer_client/features/auth/update as auth_workflow
 import scrumbringer_client/features/capabilities/update as capabilities_workflow
 import scrumbringer_client/features/i18n/update as i18n_workflow
 import scrumbringer_client/features/invites/update as invite_links_workflow
+import scrumbringer_client/features/metrics/update as metrics_workflow
 import scrumbringer_client/features/now_working/update as now_working_workflow
+import scrumbringer_client/features/pool/update as pool_workflow
 import scrumbringer_client/features/projects/update as projects_workflow
+import scrumbringer_client/features/skills/update as skills_workflow
 import scrumbringer_client/features/task_types/update as task_types_workflow
 import scrumbringer_client/features/tasks/update as tasks_workflow
 
@@ -141,13 +142,8 @@ fn current_route(model: Model) -> router.Route {
   }
 }
 
-fn url_for_model(model: Model) -> String {
-  router.format(current_route(model))
-}
-
 fn replace_url(model: Model) -> Effect(Msg) {
-  let path = url_for_model(model)
-  effect.from(fn(_dispatch) { client_ffi.history_replace_state(path) })
+  router.replace(current_route(model))
 }
 
 pub fn accept_invite_effect(action: accept_invite.Action) -> Effect(Msg) {
@@ -196,94 +192,16 @@ pub fn register_keydown_effect() -> Effect(Msg) {
   })
 }
 
-fn focus_element_effect(id: String) -> Effect(Msg) {
-  effect.from(fn(_dispatch) {
-    client_ffi.set_timeout(0, fn(_) {
-      client_ffi.focus_element(id)
-      Nil
-    })
-    Nil
-  })
-}
 
-fn save_pool_filters_visible_effect(visible: Bool) -> Effect(Msg) {
-  effect.from(fn(_dispatch) {
-    theme.local_storage_set(
-      pool_prefs.filters_visible_storage_key,
-      pool_prefs.serialize_bool(visible),
-    )
-  })
-}
 
-fn save_pool_view_mode_effect(mode: pool_prefs.ViewMode) -> Effect(Msg) {
-  effect.from(fn(_dispatch) {
-    theme.local_storage_set(
-      pool_prefs.view_mode_storage_key,
-      pool_prefs.serialize_view_mode(mode),
-    )
-  })
-}
-
-fn handle_pool_keydown(
-  model: Model,
-  event: pool_prefs.KeyEvent,
-) -> #(Model, Effect(Msg)) {
-  case model.page == Member && model.member_section == member_section.Pool {
-    False -> #(model, effect.none())
-    True -> {
-      case pool_prefs.shortcut_action(event) {
-        pool_prefs.NoAction -> #(model, effect.none())
-
-        pool_prefs.ToggleFilters -> {
-          let next = !model.member_pool_filters_visible
-          #(
-            Model(..model, member_pool_filters_visible: next),
-            save_pool_filters_visible_effect(next),
-          )
-        }
-
-        pool_prefs.FocusSearch -> {
-          let should_show = !model.member_pool_filters_visible
-
-          let model = Model(..model, member_pool_filters_visible: True)
-
-          let show_fx = case should_show {
-            True -> save_pool_filters_visible_effect(True)
-            False -> effect.none()
-          }
-
-          #(
-            model,
-            effect.batch([
-              show_fx,
-              focus_element_effect("pool-filter-q"),
-            ]),
-          )
-        }
-
-        pool_prefs.OpenCreate -> {
-          case model.member_create_dialog_open {
-            True -> #(model, effect.none())
-            False -> #(
-              Model(..model, member_create_dialog_open: True),
-              effect.none(),
-            )
-          }
-        }
-      }
-    }
-  }
-}
-
+/// Write URL to browser history using the appropriate navigation mode.
+///
+/// Delegates to `router.push` or `router.replace` based on mode.
 pub fn write_url(mode: NavMode, route: router.Route) -> Effect(Msg) {
-  let url = router.format(route)
-
-  effect.from(fn(_dispatch) {
-    case mode {
-      Push -> client_ffi.history_push_state(url)
-      Replace -> client_ffi.history_replace_state(url)
-    }
-  })
+  case mode {
+    Push -> router.push(route)
+    Replace -> router.replace(route)
+  }
 }
 
 fn apply_route_fields(
@@ -708,6 +626,7 @@ fn handle_url_changed(model: Model) -> #(Model, Effect(Msg)) {
   }
 
   let current = current_route(model)
+  let title_fx = router.update_page_title(route, model.locale)
 
   case parsed {
     router.Parsed(_) ->
@@ -717,14 +636,14 @@ fn handle_url_changed(model: Model) -> #(Model, Effect(Msg)) {
         False -> {
           let #(model, route_fx) = apply_route_fields(model, route)
           let #(model, hyd_fx) = hydrate_model(model)
-          #(model, effect.batch([route_fx, hyd_fx]))
+          #(model, effect.batch([route_fx, hyd_fx, title_fx]))
         }
       }
 
     router.Redirect(_) -> {
       let #(model, route_fx) = apply_route_fields(model, route)
       let #(model, hyd_fx) = hydrate_model(model)
-      #(model, effect.batch([write_url(Replace, route), route_fx, hyd_fx]))
+      #(model, effect.batch([write_url(Replace, route), route_fx, hyd_fx, title_fx]))
     }
   }
 }
@@ -748,10 +667,11 @@ fn handle_navigate_to(
     False -> {
       let #(model, route_fx) = apply_route_fields(model, next_route)
       let #(model, hyd_fx) = hydrate_model(model)
+      let title_fx = router.update_page_title(next_route, model.locale)
 
       #(
         model,
-        effect.batch([write_url(next_mode, next_route), route_fx, hyd_fx]),
+        effect.batch([write_url(next_mode, next_route), route_fx, hyd_fx, title_fx]),
       )
     }
   }
@@ -1477,10 +1397,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     OrgUsersSearchDebounced(query) ->
       admin_workflow.handle_org_users_search_debounced(model, query)
-    OrgUsersSearchResults(Ok(users)) ->
-      admin_workflow.handle_org_users_search_results_ok(model, users)
-    OrgUsersSearchResults(Error(err)) ->
-      admin_workflow.handle_org_users_search_results_error(model, err)
+    OrgUsersSearchResults(token, Ok(users)) ->
+      admin_workflow.handle_org_users_search_results_ok(model, token, users)
+    OrgUsersSearchResults(token, Error(err)) ->
+      admin_workflow.handle_org_users_search_results_error(model, token, err)
 
     TaskTypesFetched(Ok(task_types)) ->
       task_types_workflow.handle_task_types_fetched_ok(model, task_types)
@@ -1502,50 +1422,26 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     TaskTypeCreated(Error(err)) ->
       task_types_workflow.handle_task_type_created_error(model, err)
 
-    MemberPoolStatusChanged(v) -> {
-      let model = Model(..model, member_filters_status: v)
-      member_refresh(model)
-    }
+    MemberPoolStatusChanged(v) ->
+      pool_workflow.handle_pool_status_changed(model, v, member_refresh)
+    MemberPoolTypeChanged(v) ->
+      pool_workflow.handle_pool_type_changed(model, v, member_refresh)
+    MemberPoolCapabilityChanged(v) ->
+      pool_workflow.handle_pool_capability_changed(model, v, member_refresh)
 
-    MemberPoolTypeChanged(v) -> {
-      let model = Model(..model, member_filters_type_id: v)
-      member_refresh(model)
-    }
+    MemberToggleMyCapabilitiesQuick ->
+      pool_workflow.handle_toggle_my_capabilities_quick(model)
+    MemberPoolFiltersToggled ->
+      pool_workflow.handle_pool_filters_toggled(model)
+    MemberPoolViewModeSet(mode) ->
+      pool_workflow.handle_pool_view_mode_set(model, mode)
+    GlobalKeyDown(event) ->
+      pool_workflow.handle_global_keydown(model, event)
 
-    MemberPoolCapabilityChanged(v) -> {
-      let model = Model(..model, member_filters_capability_id: v)
-      member_refresh(model)
-    }
-
-    MemberToggleMyCapabilitiesQuick -> #(
-      Model(..model, member_quick_my_caps: !model.member_quick_my_caps),
-      effect.none(),
-    )
-
-    MemberPoolFiltersToggled -> {
-      let next = !model.member_pool_filters_visible
-      #(
-        Model(..model, member_pool_filters_visible: next),
-        save_pool_filters_visible_effect(next),
-      )
-    }
-
-    MemberPoolViewModeSet(mode) -> #(
-      Model(..model, member_pool_view_mode: mode),
-      save_pool_view_mode_effect(mode),
-    )
-
-    GlobalKeyDown(event) -> handle_pool_keydown(model, event)
-
-    MemberPoolSearchChanged(v) -> #(
-      Model(..model, member_filters_q: v),
-      effect.none(),
-    )
-
-    MemberPoolSearchDebounced(v) -> {
-      let model = Model(..model, member_filters_q: v)
-      member_refresh(model)
-    }
+    MemberPoolSearchChanged(v) ->
+      pool_workflow.handle_pool_search_changed(model, v)
+    MemberPoolSearchDebounced(v) ->
+      pool_workflow.handle_pool_search_debounced(model, v, member_refresh)
 
     MemberProjectTasksFetched(project_id, Ok(tasks)) -> {
       let tasks_by_project =
@@ -1641,124 +1537,13 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
     }
 
-    MemberCanvasRectFetched(left, top) -> #(
-      Model(..model, member_canvas_left: left, member_canvas_top: top),
-      effect.none(),
-    )
-
-    MemberDragStarted(task_id, offset_x, offset_y) -> {
-      let model =
-        Model(
-          ..model,
-          member_drag: opt.Some(MemberDrag(
-            task_id: task_id,
-            offset_x: offset_x,
-            offset_y: offset_y,
-          )),
-          member_pool_drag_to_claim_armed: True,
-          member_pool_drag_over_my_tasks: False,
-        )
-
-      #(
-        model,
-        effect.from(fn(dispatch) {
-          let #(left, top) = client_ffi.element_client_offset("member-canvas")
-          dispatch(MemberCanvasRectFetched(left, top))
-
-          let #(dz_left, dz_top, dz_width, dz_height) =
-            client_ffi.element_client_rect("pool-my-tasks")
-          dispatch(MemberPoolMyTasksRectFetched(
-            dz_left,
-            dz_top,
-            dz_width,
-            dz_height,
-          ))
-        }),
-      )
-    }
-
-    MemberDragMoved(client_x, client_y) -> {
-      case model.member_drag {
-        opt.None -> #(model, effect.none())
-
-        opt.Some(drag) -> {
-          let MemberDrag(task_id: task_id, offset_x: ox, offset_y: oy) = drag
-
-          let x = client_x - model.member_canvas_left - ox
-          let y = client_y - model.member_canvas_top - oy
-
-          let over_my_tasks = case model.member_pool_my_tasks_rect {
-            opt.Some(rect) if model.member_pool_drag_to_claim_armed ->
-              rect_contains_point(rect, client_x, client_y)
-            _ -> False
-          }
-
-          #(
-            Model(
-              ..model,
-              member_positions_by_task: dict.insert(
-                model.member_positions_by_task,
-                task_id,
-                #(x, y),
-              ),
-              member_pool_drag_over_my_tasks: over_my_tasks,
-            ),
-            effect.none(),
-          )
-        }
-      }
-    }
-
-    MemberDragEnded -> {
-      case model.member_drag {
-        opt.None -> #(model, effect.none())
-
-        opt.Some(drag) -> {
-          let MemberDrag(task_id: task_id, ..) = drag
-
-          let over_my_tasks = model.member_pool_drag_over_my_tasks
-
-          let model =
-            Model(
-              ..model,
-              member_drag: opt.None,
-              member_pool_drag_to_claim_armed: False,
-              member_pool_drag_over_my_tasks: False,
-            )
-
-          case over_my_tasks {
-            True -> {
-              case update_helpers.find_task_by_id(model.member_tasks, task_id) {
-                opt.Some(Task(version: version, ..)) ->
-                  case model.member_task_mutation_in_flight {
-                    True -> #(model, effect.none())
-                    False -> #(
-                      Model(..model, member_task_mutation_in_flight: True),
-                      api_tasks.claim_task(task_id, version, MemberTaskClaimed),
-                    )
-                  }
-
-                opt.None -> #(model, effect.none())
-              }
-            }
-
-            False -> {
-              let #(x, y) = case
-                dict.get(model.member_positions_by_task, task_id)
-              {
-                Ok(xy) -> xy
-                Error(_) -> #(0, 0)
-              }
-
-              #(
-                model,
-                api_tasks.upsert_me_task_position(task_id, x, y, MemberPositionSaved),
-              )
-            }
-          }
-        }
-      }
-    }
+    MemberCanvasRectFetched(left, top) ->
+      pool_workflow.handle_canvas_rect_fetched(model, left, top)
+    MemberDragStarted(task_id, offset_x, offset_y) ->
+      pool_workflow.handle_drag_started(model, task_id, offset_x, offset_y)
+    MemberDragMoved(client_x, client_y) ->
+      pool_workflow.handle_drag_moved(model, client_x, client_y)
+    MemberDragEnded -> pool_workflow.handle_drag_ended(model)
 
     MemberCreateDialogOpened ->
       tasks_workflow.handle_create_dialog_opened(model)
@@ -1827,469 +1612,77 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     MemberActiveTaskHeartbeated(Error(err)) ->
       now_working_workflow.handle_heartbeated_error(model, err)
 
-    MemberMetricsFetched(Ok(metrics)) -> #(
-      Model(..model, member_metrics: Loaded(metrics)),
-      effect.none(),
-    )
+    MemberMetricsFetched(Ok(metrics)) ->
+      metrics_workflow.handle_member_metrics_fetched_ok(model, metrics)
+    MemberMetricsFetched(Error(err)) ->
+      metrics_workflow.handle_member_metrics_fetched_error(model, err)
 
-    MemberMetricsFetched(Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        _ -> #(Model(..model, member_metrics: Failed(err)), effect.none())
-      }
-    }
+    AdminMetricsOverviewFetched(Ok(overview)) ->
+      metrics_workflow.handle_admin_overview_fetched_ok(model, overview)
+    AdminMetricsOverviewFetched(Error(err)) ->
+      metrics_workflow.handle_admin_overview_fetched_error(model, err)
 
-    AdminMetricsOverviewFetched(Ok(overview)) -> #(
-      Model(..model, admin_metrics_overview: Loaded(overview)),
-      effect.none(),
-    )
-
-    AdminMetricsOverviewFetched(Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        _ -> #(
-          Model(..model, admin_metrics_overview: Failed(err)),
-          effect.none(),
-        )
-      }
-    }
-
-    AdminMetricsProjectTasksFetched(Ok(payload)) -> {
-      let OrgMetricsProjectTasksPayload(project_id: project_id, ..) =
-        payload
-
-      #(
-        Model(
-          ..model,
-          admin_metrics_project_tasks: Loaded(payload),
-          admin_metrics_project_id: opt.Some(project_id),
-        ),
-        effect.none(),
-      )
-    }
-
-    AdminMetricsProjectTasksFetched(Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        _ -> #(
-          Model(..model, admin_metrics_project_tasks: Failed(err)),
-          effect.none(),
-        )
-      }
-    }
+    AdminMetricsProjectTasksFetched(Ok(payload)) ->
+      metrics_workflow.handle_admin_project_tasks_fetched_ok(model, payload)
+    AdminMetricsProjectTasksFetched(Error(err)) ->
+      metrics_workflow.handle_admin_project_tasks_fetched_error(model, err)
 
     NowWorkingTicked -> now_working_workflow.handle_ticked(model)
 
-    MemberMyCapabilityIdsFetched(Ok(ids)) -> #(
-      Model(
-        ..model,
-        member_my_capability_ids: Loaded(ids),
-        member_my_capability_ids_edit: update_helpers.ids_to_bool_dict(ids),
-      ),
-      effect.none(),
-    )
+    MemberMyCapabilityIdsFetched(Ok(ids)) ->
+      skills_workflow.handle_my_capability_ids_fetched_ok(model, ids)
+    MemberMyCapabilityIdsFetched(Error(err)) ->
+      skills_workflow.handle_my_capability_ids_fetched_error(model, err)
 
-    MemberMyCapabilityIdsFetched(Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        _ -> #(
-          Model(..model, member_my_capability_ids: Failed(err)),
-          effect.none(),
-        )
-      }
-    }
+    MemberToggleCapability(id) ->
+      skills_workflow.handle_toggle_capability(model, id)
+    MemberSaveCapabilitiesClicked ->
+      skills_workflow.handle_save_capabilities_clicked(model)
 
-    MemberToggleCapability(id) -> {
-      let next = case dict.get(model.member_my_capability_ids_edit, id) {
-        Ok(v) -> !v
-        Error(_) -> True
-      }
+    MemberMyCapabilityIdsSaved(Ok(ids)) ->
+      skills_workflow.handle_save_capabilities_ok(model, ids)
+    MemberMyCapabilityIdsSaved(Error(err)) ->
+      skills_workflow.handle_save_capabilities_error(model, err)
 
-      #(
-        Model(
-          ..model,
-          member_my_capability_ids_edit: dict.insert(
-            model.member_my_capability_ids_edit,
-            id,
-            next,
-          ),
-        ),
-        effect.none(),
-      )
-    }
+    MemberPositionsFetched(Ok(positions)) ->
+      pool_workflow.handle_positions_fetched_ok(model, positions)
+    MemberPositionsFetched(Error(err)) ->
+      pool_workflow.handle_positions_fetched_error(model, err)
 
-    MemberSaveCapabilitiesClicked -> {
-      case model.member_my_capabilities_in_flight {
-        True -> #(model, effect.none())
-        False -> {
-          let ids =
-            update_helpers.bool_dict_to_ids(model.member_my_capability_ids_edit)
-          let model =
-            Model(
-              ..model,
-              member_my_capabilities_in_flight: True,
-              member_my_capabilities_error: opt.None,
-            )
-          #(model, api_tasks.put_me_capability_ids(ids, MemberMyCapabilityIdsSaved))
-        }
-      }
-    }
+    MemberPositionEditOpened(task_id) ->
+      pool_workflow.handle_position_edit_opened(model, task_id)
+    MemberPositionEditClosed ->
+      pool_workflow.handle_position_edit_closed(model)
+    MemberPositionEditXChanged(v) ->
+      pool_workflow.handle_position_edit_x_changed(model, v)
+    MemberPositionEditYChanged(v) ->
+      pool_workflow.handle_position_edit_y_changed(model, v)
+    MemberPositionEditSubmitted ->
+      pool_workflow.handle_position_edit_submitted(model)
 
-    MemberMyCapabilityIdsSaved(Ok(ids)) -> #(
-      Model(
-        ..model,
-        member_my_capabilities_in_flight: False,
-        member_my_capability_ids: Loaded(ids),
-        member_my_capability_ids_edit: update_helpers.ids_to_bool_dict(ids),
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.SkillsSaved)),
-      ),
-      effect.none(),
-    )
+    MemberPositionSaved(Ok(pos)) ->
+      pool_workflow.handle_position_saved_ok(model, pos)
+    MemberPositionSaved(Error(err)) ->
+      pool_workflow.handle_position_saved_error(model, err)
 
-    MemberMyCapabilityIdsSaved(Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        _ -> #(
-          Model(
-            ..model,
-            member_my_capabilities_in_flight: False,
-            member_my_capabilities_error: opt.Some(err.message),
-            toast: opt.Some(err.message),
-          ),
-          api_tasks.get_me_capability_ids(MemberMyCapabilityIdsFetched),
-        )
-      }
-    }
+    MemberTaskDetailsOpened(task_id) ->
+      tasks_workflow.handle_task_details_opened(model, task_id)
+    MemberTaskDetailsClosed ->
+      tasks_workflow.handle_task_details_closed(model)
 
-    MemberPositionsFetched(Ok(positions)) -> #(
-      Model(
-        ..model,
-        member_positions_by_task: update_helpers.positions_to_dict(positions),
-      ),
-      effect.none(),
-    )
+    MemberNotesFetched(Ok(notes)) ->
+      tasks_workflow.handle_notes_fetched_ok(model, notes)
+    MemberNotesFetched(Error(err)) ->
+      tasks_workflow.handle_notes_fetched_error(model, err)
 
-    MemberPositionsFetched(Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        _ -> #(model, effect.none())
-      }
-    }
+    MemberNoteContentChanged(v) ->
+      tasks_workflow.handle_note_content_changed(model, v)
+    MemberNoteSubmitted ->
+      tasks_workflow.handle_note_submitted(model)
 
-    MemberPositionEditOpened(task_id) -> {
-      let #(x, y) = case dict.get(model.member_positions_by_task, task_id) {
-        Ok(xy) -> xy
-        Error(_) -> #(0, 0)
-      }
-
-      #(
-        Model(
-          ..model,
-          member_position_edit_task: opt.Some(task_id),
-          member_position_edit_x: int.to_string(x),
-          member_position_edit_y: int.to_string(y),
-          member_position_edit_error: opt.None,
-        ),
-        effect.none(),
-      )
-    }
-
-    MemberPositionEditClosed -> #(
-      Model(
-        ..model,
-        member_position_edit_task: opt.None,
-        member_position_edit_error: opt.None,
-      ),
-      effect.none(),
-    )
-
-    MemberPositionEditXChanged(v) -> #(
-      Model(..model, member_position_edit_x: v),
-      effect.none(),
-    )
-    MemberPositionEditYChanged(v) -> #(
-      Model(..model, member_position_edit_y: v),
-      effect.none(),
-    )
-
-    MemberPositionEditSubmitted -> {
-      case model.member_position_edit_in_flight {
-        True -> #(model, effect.none())
-        False ->
-          case model.member_position_edit_task {
-            opt.None -> #(model, effect.none())
-            opt.Some(task_id) ->
-              case
-                int.parse(model.member_position_edit_x),
-                int.parse(model.member_position_edit_y)
-              {
-                Ok(x), Ok(y) -> {
-                  let model =
-                    Model(
-                      ..model,
-                      member_position_edit_in_flight: True,
-                      member_position_edit_error: opt.None,
-                    )
-                  #(
-                    model,
-                    api_tasks.upsert_me_task_position(
-                      task_id,
-                      x,
-                      y,
-                      MemberPositionSaved,
-                    ),
-                  )
-                }
-                _, _ -> #(
-                  Model(
-                    ..model,
-                    member_position_edit_error: opt.Some(update_helpers.i18n_t(
-                      model,
-                      i18n_text.InvalidXY,
-                    )),
-                  ),
-                  effect.none(),
-                )
-              }
-          }
-      }
-    }
-
-    MemberPositionSaved(Ok(pos)) -> {
-      let TaskPosition(task_id: task_id, x: x, y: y, ..) = pos
-
-      #(
-        Model(
-          ..model,
-          member_position_edit_in_flight: False,
-          member_position_edit_task: opt.None,
-          member_positions_by_task: dict.insert(
-            model.member_positions_by_task,
-            task_id,
-            #(x, y),
-          ),
-        ),
-        effect.none(),
-      )
-    }
-
-    MemberPositionSaved(Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        _ -> #(
-          Model(
-            ..model,
-            member_position_edit_in_flight: False,
-            member_position_edit_error: opt.Some(err.message),
-            toast: opt.Some(err.message),
-          ),
-          api_tasks.list_me_task_positions(
-            model.selected_project_id,
-            MemberPositionsFetched,
-          ),
-        )
-      }
-    }
-
-    MemberTaskDetailsOpened(task_id) -> #(
-      Model(
-        ..model,
-        member_notes_task_id: opt.Some(task_id),
-        member_notes: Loading,
-        member_note_error: opt.None,
-      ),
-      api_tasks.list_task_notes(task_id, MemberNotesFetched),
-    )
-
-    MemberTaskDetailsClosed -> #(
-      Model(
-        ..model,
-        member_notes_task_id: opt.None,
-        member_notes: NotAsked,
-        member_note_content: "",
-        member_note_error: opt.None,
-      ),
-      effect.none(),
-    )
-
-    MemberNotesFetched(Ok(notes)) -> #(
-      Model(..model, member_notes: Loaded(notes)),
-      effect.none(),
-    )
-    MemberNotesFetched(Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        _ -> #(Model(..model, member_notes: Failed(err)), effect.none())
-      }
-    }
-
-    MemberNoteContentChanged(v) -> #(
-      Model(..model, member_note_content: v),
-      effect.none(),
-    )
-
-    MemberNoteSubmitted -> {
-      case model.member_note_in_flight {
-        True -> #(model, effect.none())
-        False ->
-          case model.member_notes_task_id {
-            opt.None -> #(model, effect.none())
-            opt.Some(task_id) -> {
-              let content = string.trim(model.member_note_content)
-              case content == "" {
-                True -> #(
-                  Model(
-                    ..model,
-                    member_note_error: opt.Some(update_helpers.i18n_t(
-                      model,
-                      i18n_text.ContentRequired,
-                    )),
-                  ),
-                  effect.none(),
-                )
-                False -> {
-                  let model =
-                    Model(
-                      ..model,
-                      member_note_in_flight: True,
-                      member_note_error: opt.None,
-                    )
-                  #(model, api_tasks.add_task_note(task_id, content, MemberNoteAdded))
-                }
-              }
-            }
-          }
-      }
-    }
-
-    MemberNoteAdded(Ok(note)) -> {
-      let updated = case model.member_notes {
-        Loaded(notes) -> [note, ..notes]
-        _ -> [note]
-      }
-
-      #(
-        Model(
-          ..model,
-          member_note_in_flight: False,
-          member_note_content: "",
-          member_notes: Loaded(updated),
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NoteAdded)),
-        ),
-        effect.none(),
-      )
-    }
-
-    MemberNoteAdded(Error(err)) -> {
-      case err.status {
-        401 -> #(
-          Model(
-            ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
-          ),
-          effect.none(),
-        )
-        _ -> {
-          let model =
-            Model(
-              ..model,
-              member_note_in_flight: False,
-              member_note_error: opt.Some(err.message),
-            )
-
-          case model.member_notes_task_id {
-            opt.Some(task_id) -> #(
-              model,
-              api_tasks.list_task_notes(task_id, MemberNotesFetched),
-            )
-            opt.None -> #(model, effect.none())
-          }
-        }
-      }
-    }
+    MemberNoteAdded(Ok(note)) ->
+      tasks_workflow.handle_note_added_ok(model, note)
+    MemberNoteAdded(Error(err)) ->
+      tasks_workflow.handle_note_added_error(model, err)
   }
 }

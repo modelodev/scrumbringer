@@ -5,7 +5,7 @@
 
 import gleam/dict
 import gleam/option.{type Option, None}
-import scrumbringer_domain/org_role.{type OrgRole}
+import domain/org_role.{type OrgRole}
 
 /// An organization in the system.
 pub type Organization {

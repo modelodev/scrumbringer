@@ -60,7 +60,7 @@
 import gleam/dict.{type Dict}
 import gleam/option.{type Option}
 
-import scrumbringer_domain/user.{type User}
+import domain/user.{type User}
 
 import scrumbringer_client/accept_invite
 // API types from domain modules
@@ -266,6 +266,7 @@ pub type Model {
     members_remove_error: Option(String),
     // Org user search
     org_users_search_query: String,
+    org_users_search_token: Int,
     org_users_search_results: Remote(List(OrgUser)),
     // Task types
     task_types: Remote(List(TaskType)),
@@ -294,6 +295,8 @@ pub type Model {
     member_task_types_pending: Int,
     member_task_types_by_project: Dict(Int, List(TaskType)),
     member_task_mutation_in_flight: Bool,
+    member_task_mutation_task_id: Option(Int),
+    member_tasks_snapshot: Option(List(Task)),
     // Member filters
     member_filters_status: String,
     member_filters_type_id: String,
@@ -444,7 +447,7 @@ pub type Msg {
   // Org user search
   OrgUsersSearchChanged(String)
   OrgUsersSearchDebounced(String)
-  OrgUsersSearchResults(ApiResult(List(OrgUser)))
+  OrgUsersSearchResults(Int, ApiResult(List(OrgUser)))
 
   // Task types
   TaskTypesFetched(ApiResult(List(TaskType)))
@@ -680,6 +683,7 @@ pub fn default_model() -> Model {
     members_remove_error: option.None,
     // Org user search
     org_users_search_query: "",
+    org_users_search_token: 0,
     org_users_search_results: NotAsked,
     // Task types
     task_types: NotAsked,
@@ -708,6 +712,8 @@ pub fn default_model() -> Model {
     member_task_types_pending: 0,
     member_task_types_by_project: dict.new(),
     member_task_mutation_in_flight: False,
+    member_task_mutation_task_id: option.None,
+    member_tasks_snapshot: option.None,
     // Member filters
     member_filters_status: "",
     member_filters_type_id: "",

@@ -6,7 +6,7 @@
 import gleam/list
 import gleam/option.{type Option, None, Some}
 
-import scrumbringer_domain/org_role.{type OrgRole, Admin}
+import domain/org_role.{type OrgRole, Admin}
 
 import domain/project.{type Project, Project}
 

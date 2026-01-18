@@ -38,6 +38,7 @@ import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{button, div, h2, h3, p, span, table, tbody, td, text, th, thead, tr}
+import lustre/element/keyed
 import lustre/event
 
 import domain/metrics.{MyMetrics}
@@ -45,7 +46,7 @@ import domain/task.{type Task, Task}
 import domain/task_status.{
   type TaskStatus, Available, Claimed, Completed, Ongoing, Taken,
 }
-import scrumbringer_domain/user.{type User}
+import domain/user.{type User}
 
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, Loading, MemberClaimClicked,
@@ -95,10 +96,11 @@ pub fn view_bar(model: Model, user: User) -> Element(Msg) {
                 ])
 
               _ ->
-                div(
+                keyed.div(
                   [attribute.class("task-list")],
                   list.map(mine, fn(t) {
-                    view_member_bar_task_row(model, user, t)
+                    let Task(id: task_id, ..) = t
+                    #(int.to_string(task_id), view_member_bar_task_row(model, user, t))
                   }),
                 )
             },

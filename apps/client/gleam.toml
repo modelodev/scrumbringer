@@ -6,7 +6,6 @@ target = "javascript"
 gleam_stdlib = "~> 0.68"
 gleam_json = "~> 3.0"
 lustre = "~> 5.0"
-scrumbringer_domain = { path = "../../packages/domain" }
 shared = { path = "../../shared" }
 
 [dev-dependencies]

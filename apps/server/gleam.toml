@@ -18,7 +18,6 @@ mist = "5.0.4"
 # Crypto
 # NOTE: Argon2 implementation is provided via an Erlang dependency in src/services/password.gleam.
 gleam_crypto = "~> 1.0"
-scrumbringer_domain = { path = "../../packages/domain" }
 shared = { path = "../../shared" }
 argon2 = ">= 1.2.0 and < 2.0.0"
 birl = { path = "../../packages/birl" }

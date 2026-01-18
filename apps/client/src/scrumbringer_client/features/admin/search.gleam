@@ -8,7 +8,13 @@
 ////
 //// - Search query input handling
 //// - Debounced search execution
-//// - Search results handling
+//// - Search results handling with stale response protection
+////
+//// ## Stale Response Protection
+////
+//// Each search request is assigned a token (incrementing integer).
+//// When results arrive, the token is compared with the current expected token.
+//// Results with outdated tokens are ignored to prevent stale data display.
 ////
 //// ## Relations
 ////
@@ -43,6 +49,7 @@ pub fn handle_org_users_search_changed(
 }
 
 /// Handle org users search debounced.
+/// Generates a new token for this request to detect stale responses.
 pub fn handle_org_users_search_debounced(
   model: Model,
   query: String,
@@ -53,8 +60,18 @@ pub fn handle_org_users_search_debounced(
       effect.none(),
     )
     False -> {
-      let model = Model(..model, org_users_search_results: Loading)
-      #(model, api_org.list_org_users(query, OrgUsersSearchResults))
+      // Generate new token for this request
+      let token = model.org_users_search_token + 1
+      let model =
+        Model(
+          ..model,
+          org_users_search_results: Loading,
+          org_users_search_token: token,
+        )
+      // Pass token to API call so it's included in the response message
+      #(model, api_org.list_org_users(query, fn(result) {
+        OrgUsersSearchResults(token, result)
+      }))
     }
   }
 }
@@ -64,23 +81,36 @@ pub fn handle_org_users_search_debounced(
 // =============================================================================
 
 /// Handle org users search results success.
+/// Ignores stale responses by checking token.
 pub fn handle_org_users_search_results_ok(
   model: Model,
+  token: Int,
   users: List(OrgUser),
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, org_users_search_results: Loaded(users)), effect.none())
+  // Ignore stale results (token doesn't match current expected token)
+  case token == model.org_users_search_token {
+    True -> #(Model(..model, org_users_search_results: Loaded(users)), effect.none())
+    False -> #(model, effect.none())
+  }
 }
 
 /// Handle org users search results error.
+/// Ignores stale responses by checking token.
 pub fn handle_org_users_search_results_error(
   model: Model,
+  token: Int,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status == 401 {
-    True -> #(Model(..model, page: Login, user: opt.None), effect.none())
-    False -> #(
-      Model(..model, org_users_search_results: Failed(err)),
-      effect.none(),
-    )
+  // Ignore stale results
+  case token == model.org_users_search_token {
+    True ->
+      case err.status == 401 {
+        True -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        False -> #(
+          Model(..model, org_users_search_results: Failed(err)),
+          effect.none(),
+        )
+      }
+    False -> #(model, effect.none())
   }
 }

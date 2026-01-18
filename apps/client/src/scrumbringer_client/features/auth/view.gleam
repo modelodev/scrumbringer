@@ -62,7 +62,7 @@ pub fn view_login(model: Model) -> Element(Msg) {
     p([], [text(update_helpers.i18n_t(model, i18n_text.LoginSubtitle))]),
     case model.login_error {
       opt.Some(err) -> div([attribute.class("error")], [text(err)])
-      opt.None -> div([], [])
+      opt.None -> element.none()
     },
     form([event.on_submit(fn(_) { LoginSubmitted })], [
       div([attribute.class("field")], [
@@ -95,7 +95,7 @@ pub fn view_login(model: Model) -> Element(Msg) {
     ]),
     case model.forgot_password_open {
       True -> view_forgot_password(model)
-      False -> div([], [])
+      False -> element.none()
     },
   ])
 }
@@ -124,7 +124,7 @@ pub fn view_forgot_password(model: Model) -> Element(Msg) {
             text(update_helpers.i18n_t(model, i18n_text.Dismiss)),
           ]),
         ])
-      opt.None -> div([], [])
+      opt.None -> element.none()
     },
     form([event.on_submit(fn(_) { ForgotPasswordSubmitted })], [
       div([attribute.class("field")], [
@@ -145,7 +145,7 @@ pub fn view_forgot_password(model: Model) -> Element(Msg) {
       ),
     ]),
     case link == "" {
-      True -> div([], [])
+      True -> element.none()
 
       False ->
         div([attribute.class("field")], [
@@ -162,7 +162,7 @@ pub fn view_forgot_password(model: Model) -> Element(Msg) {
           ]),
           case model.forgot_password_copy_status {
             opt.Some(msg) -> div([attribute.class("hint")], [text(msg)])
-            opt.None -> div([], [])
+            opt.None -> element.none()
           },
         ])
     },
@@ -217,7 +217,7 @@ pub fn view_accept_invite(model: Model) -> Element(Msg) {
             [text(update_helpers.i18n_t(model, i18n_text.Dismiss))],
           ),
         ])
-      opt.None -> div([], [])
+      opt.None -> element.none()
     },
     content,
   ])
@@ -256,7 +256,7 @@ fn view_accept_invite_form(
       ]),
       case password_error {
         opt.Some(err) -> div([attribute.class("error")], [text(err)])
-        opt.None -> div([], [])
+        opt.None -> element.none()
       },
       p([], [
         text(update_helpers.i18n_t(model, i18n_text.MinimumPasswordLength)),
@@ -316,7 +316,7 @@ pub fn view_reset_password(model: Model) -> Element(Msg) {
             [text(update_helpers.i18n_t(model, i18n_text.Dismiss))],
           ),
         ])
-      opt.None -> div([], [])
+      opt.None -> element.none()
     },
     content,
   ])
@@ -355,7 +355,7 @@ fn view_reset_password_form(
       ]),
       case password_error {
         opt.Some(err) -> div([attribute.class("error")], [text(err)])
-        opt.None -> div([], [])
+        opt.None -> element.none()
       },
       p([], [
         text(update_helpers.i18n_t(model, i18n_text.MinimumPasswordLength)),

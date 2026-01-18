@@ -22,7 +22,7 @@ import gleam/option.{type Option, None, Some}
 import scrumbringer_client/member_section
 import scrumbringer_client/permissions
 import scrumbringer_client/router
-import scrumbringer_domain/org_role.{type OrgRole, Admin}
+import domain/org_role.{type OrgRole, Admin}
 
 /// Loading state for a resource (simplified from Remote for snapshot comparison).
 pub type ResourceState {

@@ -377,3 +377,56 @@ refactor: extract task validation to separate module
 docs: add API documentation for task endpoints
 test: add tests for claim conflict scenarios
 ```
+
+---
+
+## Project Best Practices (Mandatory)
+
+### Lustre (TEA) Practices
+
+- **View purity:** `view` functions must be pure (no effects).
+- **Effects in update:** all side effects originate from `update` or `app/effects`.
+- **Keyed lists:** dynamic lists use `lustre/element/keyed` to preserve DOM stability.
+- **Small handlers:** prefer small `handle_*` functions per feature over monolithic `update` cases.
+- **Router boundary:** URL parsing/formatting/push/replace/title updates live in `router.gleam` only.
+- **Explicit TEA split:** keep `model`, `msg`, `update`, `view` in their own modules or clearly separated sections.
+- **SSR/hydration safety:** initial model and SSR HTML must match client hydration; avoid browser APIs in shared view code.
+- **Client-only effects:** isolate `window`/`document` calls behind effect modules (e.g., `effects/window`, `effects/document`).
+- **Avoid heavy view recompute:** use `lustre/lazy` for expensive subtrees where possible.
+
+### Bulletproof Type Safety (Andrey Fadeev)
+
+- **Shared domain is canonical:** domain ADTs live only in `shared/src/domain` and are imported everywhere else.
+- **No duplicate types:** never redefine shared domain records or ADTs in client/server.
+- **Explicit mappers:** persistence layer must map DB rows → domain ADTs; avoid leaking raw DB records.
+- **Typed errors:** use domain error ADTs instead of strings; avoid `Dynamic` leakage.
+- **SQL stays in SQL:** keep queries as `.sql` files and generate typed bindings; naming should follow `verb_table[_condition]`.
+- **Codec in shared:** encode/decode JSON for shared types in `shared` so client/server share the same shape.
+- **Prefer Option over sentinel values:** model nullability with `Option`, not empty strings or magic values.
+
+### Lessons from `gloogle`
+
+- **Layered frontend:** keep `view/`, `update/`, and `data/model/msg` responsibilities separated.
+- **Router cohesion:** `frontend/router.gleam` (or equivalent) owns parse/format/navigation/title.
+- **Small update handlers:** prefer many small handlers to reduce cognitive load.
+- **Pure route parsing:** parse URIs in router only; keep update functions route-agnostic.
+- **Guarded updates:** early guard clauses prevent duplicate effects (e.g., ignore submit while loading).
+- **Dedicated effect modules:** keep HTTP, window, and document effects in `frontend/effects/*`.
+- **State updates in model module:** updates should be pure helpers (`model.update_*`) and chained via pipelines.
+
+### Lessons from `estimated-done`
+
+- **Shared package for types:** maintain a single shared package for domain types (no shadow copies).
+- **Thin orchestrators:** entrypoints should only wire components and delegate logic.
+- **Componentized views:** split large views by component (navbar/footer/body) in `ui/`.
+- **Actor model for long-lived state:** when domain state is continuous (e.g., now_working), isolate in actors/supervisors.
+- **Typed message codecs:** WebSocket/JSON messages use typed codecs and tagged variants (no ad-hoc strings).
+- **Validate user input at the edge:** enforce input patterns and constraints in UI components before submitting.
+- **Route init effect:** router init should emit a route-changed message and keep URL changes centralized.
+- **Actor membership safety:** track member PIDs with monitors and cleanly handle process-down events.
+
+### DRY & Maintainability Rules
+
+- **Co-locate feature logic:** each feature owns its view/update/handlers in `features/*`.
+- **No cross-feature imports without justification:** shared helpers live in `shared/` or `app/`.
+- **Document deviations:** any exception to these rules must be stated in module docs (`////`).

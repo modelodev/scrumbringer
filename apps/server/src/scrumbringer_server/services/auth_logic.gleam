@@ -15,7 +15,7 @@ import gleam/dict
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
-import scrumbringer_domain/org_role.{Admin, Member}
+import domain/org_role.{Admin, Member}
 import scrumbringer_server/services/password
 import scrumbringer_server/services/store_state as ss
 

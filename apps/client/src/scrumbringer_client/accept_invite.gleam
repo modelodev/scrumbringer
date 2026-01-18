@@ -7,7 +7,7 @@ import gleam/option
 import gleam/string
 
 import domain/api_error.{type ApiResult}
-import scrumbringer_domain/user.{type User}
+import domain/user.{type User}
 
 /// Token validation and registration state.
 pub type State {

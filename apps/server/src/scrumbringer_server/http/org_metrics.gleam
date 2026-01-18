@@ -23,7 +23,7 @@ import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 
-import scrumbringer_domain/org_role
+import domain/org_role
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/metrics_presenters

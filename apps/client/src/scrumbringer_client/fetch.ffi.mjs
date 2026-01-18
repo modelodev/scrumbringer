@@ -230,6 +230,16 @@ export function history_replace_state(path) {
   return undefined
 }
 
+export function set_document_title(title) {
+  if (typeof document === "undefined") return undefined
+  try {
+    document.title = String(title)
+  } catch {
+    // ignore
+  }
+  return undefined
+}
+
 export function register_popstate(callback) {
   if (typeof window === "undefined") return undefined
   try {
