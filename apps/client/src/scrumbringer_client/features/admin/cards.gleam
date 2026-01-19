@@ -55,6 +55,13 @@ pub fn handle_cards_fetched_error(
   }
 }
 
+fn validate_card_title(model: Model, title: String) -> Result(String, String) {
+  case title {
+    "" -> Error(update_helpers.i18n_t(model, i18n_text.TitleRequired))
+    _ -> Ok(title)
+  }
+}
+
 // =============================================================================
 // Create Handlers
 // =============================================================================
@@ -82,18 +89,12 @@ pub fn handle_card_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
     False -> {
       case model.selected_project_id {
         opt.Some(project_id) -> {
-          case model.cards_create_title {
-            "" -> #(
-              Model(
-                ..model,
-                cards_create_error: opt.Some(update_helpers.i18n_t(
-                  model,
-                  i18n_text.TitleRequired,
-                )),
-              ),
+          case validate_card_title(model, model.cards_create_title) {
+            Error(error_msg) -> #(
+              Model(..model, cards_create_error: opt.Some(error_msg)),
               effect.none(),
             )
-            title -> {
+            Ok(title) -> {
               let model =
                 Model(
                   ..model,
@@ -128,10 +129,7 @@ pub fn handle_card_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
 }
 
 /// Handle card created success.
-pub fn handle_card_created_ok(
-  model: Model,
-  card: Card,
-) -> #(Model, Effect(Msg)) {
+pub fn handle_card_created_ok(model: Model, card: Card) -> #(Model, Effect(Msg)) {
   let cards = case model.cards {
     Loaded(existing) -> Loaded([card, ..existing])
     _ -> Loaded([card])
@@ -212,18 +210,12 @@ pub fn handle_card_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
     False -> {
       case model.cards_edit_id {
         opt.Some(card_id) -> {
-          case model.cards_edit_title {
-            "" -> #(
-              Model(
-                ..model,
-                cards_edit_error: opt.Some(update_helpers.i18n_t(
-                  model,
-                  i18n_text.TitleRequired,
-                )),
-              ),
+          case validate_card_title(model, model.cards_edit_title) {
+            Error(error_msg) -> #(
+              Model(..model, cards_edit_error: opt.Some(error_msg)),
               effect.none(),
             )
-            title -> {
+            Ok(title) -> {
               let model =
                 Model(
                   ..model,
@@ -322,7 +314,11 @@ pub fn handle_card_delete_clicked(
   card: Card,
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(..model, cards_delete_confirm: opt.Some(card), cards_delete_error: opt.None),
+    Model(
+      ..model,
+      cards_delete_confirm: opt.Some(card),
+      cards_delete_error: opt.None,
+    ),
     effect.none(),
   )
 }

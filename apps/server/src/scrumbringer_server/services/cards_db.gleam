@@ -64,18 +64,16 @@ pub fn list_cards(
   let cards =
     returned.rows
     |> list.map(fn(row) {
-      let state =
-        derive_card_state(row.task_count, row.completed_count, row.available_count)
-      Card(
-        id: row.id,
-        project_id: row.project_id,
-        title: row.title,
-        description: row.description,
-        state: state,
-        task_count: row.task_count,
-        completed_count: row.completed_count,
-        created_by: row.created_by,
-        created_at: row.created_at,
+      card_from_counts(
+        row.id,
+        row.project_id,
+        row.title,
+        row.description,
+        row.created_by,
+        row.created_at,
+        row.task_count,
+        row.completed_count,
+        row.available_count,
       )
     })
 
@@ -83,29 +81,49 @@ pub fn list_cards(
 }
 
 /// Get a single card by ID with derived state.
-pub fn get_card(
-  db: pog.Connection,
-  card_id: Int,
-) -> Result(Card, CardError) {
+pub fn get_card(db: pog.Connection, card_id: Int) -> Result(Card, CardError) {
   case sql.cards_get(db, card_id) {
     Error(e) -> Error(DbError(e))
     Ok(pog.Returned(rows: [], ..)) -> Error(CardNotFound)
-    Ok(pog.Returned(rows: [row, ..], ..)) -> {
-      let state =
-        derive_card_state(row.task_count, row.completed_count, row.available_count)
-      Ok(Card(
-        id: row.id,
-        project_id: row.project_id,
-        title: row.title,
-        description: row.description,
-        state: state,
-        task_count: row.task_count,
-        completed_count: row.completed_count,
-        created_by: row.created_by,
-        created_at: row.created_at,
+    Ok(pog.Returned(rows: [row, ..], ..)) ->
+      Ok(card_from_counts(
+        row.id,
+        row.project_id,
+        row.title,
+        row.description,
+        row.created_by,
+        row.created_at,
+        row.task_count,
+        row.completed_count,
+        row.available_count,
       ))
-    }
   }
+}
+
+fn card_from_counts(
+  id: Int,
+  project_id: Int,
+  title: String,
+  description: String,
+  created_by: Int,
+  created_at: String,
+  task_count: Int,
+  completed_count: Int,
+  available_count: Int,
+) -> Card {
+  let state = derive_card_state(task_count, completed_count, available_count)
+
+  Card(
+    id: id,
+    project_id: project_id,
+    title: title,
+    description: description,
+    state: state,
+    task_count: task_count,
+    completed_count: completed_count,
+    created_by: created_by,
+    created_at: created_at,
+  )
 }
 
 /// Create a new card.
@@ -118,7 +136,13 @@ pub fn create_card(
 ) -> Result(Card, pog.QueryError) {
   let desc = option.unwrap(description, "")
 
-  use returned <- result.try(sql.cards_create(db, project_id, title, desc, created_by))
+  use returned <- result.try(sql.cards_create(
+    db,
+    project_id,
+    title,
+    desc,
+    created_by,
+  ))
 
   case returned.rows {
     [row, ..] -> {
@@ -183,10 +207,7 @@ pub fn update_card(
 }
 
 /// Delete a card (only if it has no tasks).
-pub fn delete_card(
-  db: pog.Connection,
-  card_id: Int,
-) -> Result(Nil, CardError) {
+pub fn delete_card(db: pog.Connection, card_id: Int) -> Result(Nil, CardError) {
   // First check if card has tasks
   case sql.cards_task_count(db, card_id) {
     Error(e) -> Error(DbError(e))
