@@ -65,7 +65,8 @@ fn handle_list(
         False -> api.error(403, "FORBIDDEN", "Not a member of this project")
         True -> {
           case cards_db.list_cards(db, project_id) {
-            Ok(cards) -> api.ok(cards_to_json(cards))
+            Ok(cards) ->
+              api.ok(json.object([#("cards", cards_to_json(cards))]))
             Error(_) -> api.error(500, "INTERNAL", "Database error")
           }
         }
@@ -115,7 +116,8 @@ fn handle_create(
                     s -> Some(s)
                   }
                   case cards_db.create_card(db, project_id, title, desc_opt, user.id) {
-                    Ok(card) -> api.ok(card_to_json(card))
+                    Ok(card) ->
+                      api.ok(json.object([#("card", card_to_json(card))]))
                     Error(_) -> api.error(500, "INTERNAL", "Database error")
                   }
                 }
@@ -165,7 +167,7 @@ fn handle_get(
           case auth.is_project_member(db, user.id, card.project_id) {
             False ->
               api.error(403, "FORBIDDEN", "Not a member of this project")
-            True -> api.ok(card_to_json(card))
+            True -> api.ok(json.object([#("card", card_to_json(card))]))
           }
         }
       }
@@ -222,7 +224,8 @@ fn handle_update(
                         s -> Some(s)
                       }
                       case cards_db.update_card(db, card_id, title, desc_opt) {
-                        Ok(updated) -> api.ok(card_to_json(updated))
+                        Ok(updated) ->
+                          api.ok(json.object([#("card", card_to_json(updated))]))
                         Error(cards_db.CardNotFound) ->
                           api.error(404, "NOT_FOUND", "Card not found")
                         Error(_) ->
