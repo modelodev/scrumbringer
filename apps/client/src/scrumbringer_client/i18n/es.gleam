@@ -329,5 +329,65 @@ pub fn translate(text: Text) -> String {
     text.NoCardsYet -> "Aún no hay fichas"
     text.CardTaskCount(completed, total) ->
       int.to_string(completed) <> "/" <> int.to_string(total)
+
+    // Workflows
+    text.AdminWorkflows -> "Automatizaciones"
+    text.WorkflowsTitle -> "Automatizaciones"
+    text.WorkflowsOrgTitle -> "Automatizaciones de la organización"
+    text.WorkflowsProjectTitle(project_name) ->
+      "Automatizaciones - " <> project_name
+    text.WorkflowName -> "Nombre"
+    text.WorkflowDescription -> "Descripción"
+    text.WorkflowScope -> "Alcance"
+    text.WorkflowScopeOrg -> "Organización"
+    text.WorkflowScopeProject -> "Proyecto"
+    text.WorkflowRules -> "Reglas"
+    text.WorkflowActive -> "Activo"
+    text.WorkflowCreated -> "Automatización creada"
+    text.WorkflowUpdated -> "Automatización actualizada"
+    text.CreateWorkflow -> "Crear automatización"
+    text.EditWorkflow -> "Editar automatización"
+    text.DeleteWorkflow -> "Eliminar automatización"
+    text.NoWorkflowsYet -> "Aún no hay automatizaciones"
+    text.WorkflowDeleted -> "Automatización eliminada"
+
+    // Rules
+    text.RulesTitle(workflow_name) -> "Reglas - " <> workflow_name
+    text.RuleName -> "Nombre"
+    text.RuleGoal -> "Objetivo"
+    text.RuleResourceType -> "Tipo recurso"
+    text.RuleResourceTypeTask -> "Tarea"
+    text.RuleResourceTypeCard -> "Ficha"
+    text.RuleToState -> "Estado destino"
+    text.RuleTaskType -> "Tipo de tarea"
+    text.RuleActive -> "Activo"
+    text.RuleTemplates -> "Plantillas"
+    text.CreateRule -> "Crear regla"
+    text.EditRule -> "Editar regla"
+    text.DeleteRule -> "Eliminar regla"
+    text.NoRulesYet -> "Aún no hay reglas"
+    text.RuleDeleted -> "Regla eliminada"
+    text.AttachTemplate -> "Asociar plantilla"
+    text.DetachTemplate -> "Quitar plantilla"
+
+    // Task Templates
+    text.AdminTaskTemplates -> "Plantillas de tarea"
+    text.TaskTemplatesTitle -> "Plantillas de tarea"
+    text.TaskTemplatesOrgTitle -> "Plantillas de la organización"
+    text.TaskTemplatesProjectTitle(project_name) ->
+      "Plantillas - " <> project_name
+    text.TaskTemplateName -> "Nombre"
+    text.TaskTemplateDescription -> "Descripción"
+    text.TaskTemplateType -> "Tipo"
+    text.TaskTemplatePriority -> "Prioridad"
+    text.TaskTemplateScope -> "Alcance"
+    text.TaskTemplateCreated -> "Plantilla creada"
+    text.CreateTaskTemplate -> "Crear plantilla"
+    text.EditTaskTemplate -> "Editar plantilla"
+    text.DeleteTaskTemplate -> "Eliminar plantilla"
+    text.NoTaskTemplatesYet -> "Aún no hay plantillas de tarea"
+    text.TaskTemplateDeleted -> "Plantilla eliminada"
+    text.TaskTemplateVariablesHelp ->
+      "Variables: {{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}"
   }
 }

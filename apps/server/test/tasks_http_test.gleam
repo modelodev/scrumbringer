@@ -1437,7 +1437,6 @@ pub fn me_active_task_heartbeat_updates_last_heartbeat_at_test() {
 
   // last_heartbeat_at should have been updated (>= before, allows for same-second update)
   let _ = should.be_true(heartbeat_after >= heartbeat_before)
-
   // Note: In the new multi-session model, accumulated_s is flushed to
   // user_task_work_total only when the session is paused/closed, not on heartbeat.
   // The API returns accumulated_s from user_task_work_total (previous sessions)
@@ -1652,10 +1651,7 @@ fn decode_active_task(body: String) -> #(option.Option(Int), String, Int) {
     use as_of <- decode.field("as_of", decode.string)
 
     let #(active_task_id, accumulated_s) = case sessions {
-      [#(task_id, accumulated), ..] -> #(
-        option.Some(task_id),
-        accumulated,
-      )
+      [#(task_id, accumulated), ..] -> #(option.Some(task_id), accumulated)
       [] -> #(option.None, 0)
     }
 
@@ -2027,6 +2023,7 @@ fn bootstrap_app() -> scrumbringer_server.App {
   let scrumbringer_server.App(db: db, ..) = app
 
   reset_db(db)
+  reset_workflow_tables(db)
 
   let res =
     handler(bootstrap_request("admin@example.com", "passwordpassword", "Acme"))
@@ -2087,6 +2084,16 @@ fn reset_db(db: pog.Connection) {
   let assert Ok(_) =
     pog.query(
       "TRUNCATE project_members, org_invite_links, org_invites, users, projects, organizations RESTART IDENTITY CASCADE",
+    )
+    |> pog.execute(db)
+
+  Nil
+}
+
+fn reset_workflow_tables(db: pog.Connection) {
+  let assert Ok(_) =
+    pog.query(
+      "TRUNCATE rule_templates, rule_executions, rules, workflows, task_templates RESTART IDENTITY CASCADE",
     )
     |> pog.execute(db)
 

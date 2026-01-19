@@ -39,6 +39,7 @@ import scrumbringer_client/features/admin/member_add
 import scrumbringer_client/features/admin/member_remove
 import scrumbringer_client/features/admin/org_settings
 import scrumbringer_client/features/admin/search
+import scrumbringer_client/features/admin/workflows
 
 // =============================================================================
 // Re-exports: Org Settings
@@ -170,3 +171,199 @@ pub const handle_card_deleted_ok = cards.handle_card_deleted_ok
 pub const handle_card_deleted_error = cards.handle_card_deleted_error
 
 pub const fetch_cards_for_project = cards.fetch_cards_for_project
+
+// =============================================================================
+// Re-exports: Workflows
+// =============================================================================
+
+pub const handle_workflows_org_fetched_ok = workflows.handle_workflows_org_fetched_ok
+
+pub const handle_workflows_org_fetched_error = workflows.handle_workflows_org_fetched_error
+
+pub const handle_workflows_project_fetched_ok = workflows.handle_workflows_project_fetched_ok
+
+pub const handle_workflows_project_fetched_error = workflows.handle_workflows_project_fetched_error
+
+pub const handle_workflow_create_name_changed = workflows.handle_workflow_create_name_changed
+
+pub const handle_workflow_create_description_changed = workflows.handle_workflow_create_description_changed
+
+pub const handle_workflow_create_active_changed = workflows.handle_workflow_create_active_changed
+
+pub const handle_workflow_create_submitted = workflows.handle_workflow_create_submitted
+
+pub const handle_workflow_created_ok = workflows.handle_workflow_created_ok
+
+pub const handle_workflow_created_error = workflows.handle_workflow_created_error
+
+pub const handle_workflow_edit_clicked = workflows.handle_workflow_edit_clicked
+
+pub const handle_workflow_edit_name_changed = workflows.handle_workflow_edit_name_changed
+
+pub const handle_workflow_edit_description_changed = workflows.handle_workflow_edit_description_changed
+
+pub const handle_workflow_edit_active_changed = workflows.handle_workflow_edit_active_changed
+
+pub const handle_workflow_edit_submitted = workflows.handle_workflow_edit_submitted
+
+pub const handle_workflow_edit_cancelled = workflows.handle_workflow_edit_cancelled
+
+pub const handle_workflow_updated_ok = workflows.handle_workflow_updated_ok
+
+pub const handle_workflow_updated_error = workflows.handle_workflow_updated_error
+
+pub const handle_workflow_delete_clicked = workflows.handle_workflow_delete_clicked
+
+pub const handle_workflow_delete_cancelled = workflows.handle_workflow_delete_cancelled
+
+pub const handle_workflow_delete_confirmed = workflows.handle_workflow_delete_confirmed
+
+pub const handle_workflow_deleted_ok = workflows.handle_workflow_deleted_ok
+
+pub const handle_workflow_deleted_error = workflows.handle_workflow_deleted_error
+
+pub const handle_workflow_rules_clicked = workflows.handle_workflow_rules_clicked
+
+// =============================================================================
+// Re-exports: Rules
+// =============================================================================
+
+pub const handle_rules_fetched_ok = workflows.handle_rules_fetched_ok
+
+pub const handle_rules_fetched_error = workflows.handle_rules_fetched_error
+
+pub const handle_rules_back_clicked = workflows.handle_rules_back_clicked
+
+pub const handle_rule_create_name_changed = workflows.handle_rule_create_name_changed
+
+pub const handle_rule_create_goal_changed = workflows.handle_rule_create_goal_changed
+
+pub const handle_rule_create_resource_type_changed = workflows.handle_rule_create_resource_type_changed
+
+pub const handle_rule_create_task_type_id_changed = workflows.handle_rule_create_task_type_id_changed
+
+pub const handle_rule_create_to_state_changed = workflows.handle_rule_create_to_state_changed
+
+pub const handle_rule_create_active_changed = workflows.handle_rule_create_active_changed
+
+pub const handle_rule_create_submitted = workflows.handle_rule_create_submitted
+
+pub const handle_rule_created_ok = workflows.handle_rule_created_ok
+
+pub const handle_rule_created_error = workflows.handle_rule_created_error
+
+pub const handle_rule_edit_clicked = workflows.handle_rule_edit_clicked
+
+pub const handle_rule_edit_name_changed = workflows.handle_rule_edit_name_changed
+
+pub const handle_rule_edit_goal_changed = workflows.handle_rule_edit_goal_changed
+
+pub const handle_rule_edit_resource_type_changed = workflows.handle_rule_edit_resource_type_changed
+
+pub const handle_rule_edit_task_type_id_changed = workflows.handle_rule_edit_task_type_id_changed
+
+pub const handle_rule_edit_to_state_changed = workflows.handle_rule_edit_to_state_changed
+
+pub const handle_rule_edit_active_changed = workflows.handle_rule_edit_active_changed
+
+pub const handle_rule_edit_submitted = workflows.handle_rule_edit_submitted
+
+pub const handle_rule_edit_cancelled = workflows.handle_rule_edit_cancelled
+
+pub const handle_rule_updated_ok = workflows.handle_rule_updated_ok
+
+pub const handle_rule_updated_error = workflows.handle_rule_updated_error
+
+pub const handle_rule_delete_clicked = workflows.handle_rule_delete_clicked
+
+pub const handle_rule_delete_cancelled = workflows.handle_rule_delete_cancelled
+
+pub const handle_rule_delete_confirmed = workflows.handle_rule_delete_confirmed
+
+pub const handle_rule_deleted_ok = workflows.handle_rule_deleted_ok
+
+pub const handle_rule_deleted_error = workflows.handle_rule_deleted_error
+
+// =============================================================================
+// Re-exports: Rule Templates
+// =============================================================================
+
+pub const handle_rule_templates_fetched_ok = workflows.handle_rule_templates_fetched_ok
+
+pub const handle_rule_templates_fetched_error = workflows.handle_rule_templates_fetched_error
+
+pub const handle_rule_attach_template_selected = workflows.handle_rule_attach_template_selected
+
+pub const handle_rule_attach_template_submitted = workflows.handle_rule_attach_template_submitted
+
+pub const handle_rule_template_attached_ok = workflows.handle_rule_template_attached_ok
+
+pub const handle_rule_template_attached_error = workflows.handle_rule_template_attached_error
+
+pub const handle_rule_template_detach_clicked = workflows.handle_rule_template_detach_clicked
+
+pub const handle_rule_template_detached_ok = workflows.handle_rule_template_detached_ok
+
+pub const handle_rule_template_detached_error = workflows.handle_rule_template_detached_error
+
+// =============================================================================
+// Re-exports: Task Templates
+// =============================================================================
+
+pub const handle_task_templates_org_fetched_ok = workflows.handle_task_templates_org_fetched_ok
+
+pub const handle_task_templates_org_fetched_error = workflows.handle_task_templates_org_fetched_error
+
+pub const handle_task_templates_project_fetched_ok = workflows.handle_task_templates_project_fetched_ok
+
+pub const handle_task_templates_project_fetched_error = workflows.handle_task_templates_project_fetched_error
+
+pub const handle_task_template_create_name_changed = workflows.handle_task_template_create_name_changed
+
+pub const handle_task_template_create_description_changed = workflows.handle_task_template_create_description_changed
+
+pub const handle_task_template_create_type_id_changed = workflows.handle_task_template_create_type_id_changed
+
+pub const handle_task_template_create_priority_changed = workflows.handle_task_template_create_priority_changed
+
+pub const handle_task_template_create_submitted = workflows.handle_task_template_create_submitted
+
+pub const handle_task_template_created_ok = workflows.handle_task_template_created_ok
+
+pub const handle_task_template_created_error = workflows.handle_task_template_created_error
+
+pub const handle_task_template_edit_clicked = workflows.handle_task_template_edit_clicked
+
+pub const handle_task_template_edit_name_changed = workflows.handle_task_template_edit_name_changed
+
+pub const handle_task_template_edit_description_changed = workflows.handle_task_template_edit_description_changed
+
+pub const handle_task_template_edit_type_id_changed = workflows.handle_task_template_edit_type_id_changed
+
+pub const handle_task_template_edit_priority_changed = workflows.handle_task_template_edit_priority_changed
+
+pub const handle_task_template_edit_submitted = workflows.handle_task_template_edit_submitted
+
+pub const handle_task_template_edit_cancelled = workflows.handle_task_template_edit_cancelled
+
+pub const handle_task_template_updated_ok = workflows.handle_task_template_updated_ok
+
+pub const handle_task_template_updated_error = workflows.handle_task_template_updated_error
+
+pub const handle_task_template_delete_clicked = workflows.handle_task_template_delete_clicked
+
+pub const handle_task_template_delete_cancelled = workflows.handle_task_template_delete_cancelled
+
+pub const handle_task_template_delete_confirmed = workflows.handle_task_template_delete_confirmed
+
+pub const handle_task_template_deleted_ok = workflows.handle_task_template_deleted_ok
+
+pub const handle_task_template_deleted_error = workflows.handle_task_template_deleted_error
+
+// =============================================================================
+// Fetch Helpers
+// =============================================================================
+
+pub const fetch_workflows = workflows.fetch_workflows
+
+pub const fetch_task_templates = workflows.fetch_task_templates

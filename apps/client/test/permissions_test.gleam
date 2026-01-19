@@ -14,6 +14,8 @@ pub fn visible_sections_org_admin_test() {
     permissions.Projects,
     permissions.Metrics,
     permissions.Capabilities,
+    permissions.Workflows,
+    permissions.TaskTemplates,
   ])
 }
 
@@ -30,6 +32,8 @@ pub fn visible_sections_org_admin_and_project_admin_test() {
     permissions.Capabilities,
     permissions.TaskTypes,
     permissions.Cards,
+    permissions.Workflows,
+    permissions.TaskTemplates,
   ])
 }
 
@@ -37,7 +41,13 @@ pub fn visible_sections_project_admin_only_test() {
   let projects = [Project(id: 1, name: "P1", my_role: "admin")]
 
   permissions.visible_sections(org_role.Member, projects)
-  |> should.equal([permissions.Members, permissions.TaskTypes, permissions.Cards])
+  |> should.equal([
+    permissions.Members,
+    permissions.TaskTypes,
+    permissions.Cards,
+    permissions.Workflows,
+    permissions.TaskTemplates,
+  ])
 }
 
 pub fn can_access_members_requires_selected_project_or_any_admin_test() {

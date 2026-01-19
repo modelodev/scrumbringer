@@ -21,10 +21,13 @@ import scrumbringer_server/http/org_metrics
 import scrumbringer_server/http/org_users
 import scrumbringer_server/http/password_resets
 import scrumbringer_server/http/projects
+import scrumbringer_server/http/rules
 import scrumbringer_server/http/task_notes
 import scrumbringer_server/http/task_positions
+import scrumbringer_server/http/task_templates
 import scrumbringer_server/http/tasks
 import scrumbringer_server/http/work_sessions
+import scrumbringer_server/http/workflows
 import wisp
 
 /// Context required for routing, including database and JWT secret.
@@ -93,6 +96,30 @@ pub fn route(req: wisp.Request, ctx: RouterCtx) -> wisp.Response {
       tasks.handle_task_types(req, auth_ctx(ctx), project_id)
     ["api", "v1", "projects", project_id, "tasks"] ->
       tasks.handle_project_tasks(req, auth_ctx(ctx), project_id)
+    ["api", "v1", "projects", project_id, "task-templates"] ->
+      task_templates.handle_project_templates(req, auth_ctx(ctx), project_id)
+    ["api", "v1", "projects", project_id, "workflows"] ->
+      workflows.handle_project_workflows(req, auth_ctx(ctx), project_id)
+
+    // Task templates (org scoped)
+    ["api", "v1", "task-templates"] ->
+      task_templates.handle_org_templates(req, auth_ctx(ctx))
+    ["api", "v1", "task-templates", template_id] ->
+      task_templates.handle_template(req, auth_ctx(ctx), template_id)
+
+    // Workflows (org scoped)
+    ["api", "v1", "workflows"] ->
+      workflows.handle_org_workflows(req, auth_ctx(ctx))
+    ["api", "v1", "workflows", workflow_id] ->
+      workflows.handle_workflow(req, auth_ctx(ctx), workflow_id)
+
+    // Rules
+    ["api", "v1", "workflows", workflow_id, "rules"] ->
+      rules.handle_workflow_rules(req, auth_ctx(ctx), workflow_id)
+    ["api", "v1", "rules", rule_id] ->
+      rules.handle_rule(req, auth_ctx(ctx), rule_id)
+    ["api", "v1", "rules", rule_id, "templates", template_id] ->
+      rules.handle_rule_template(req, auth_ctx(ctx), rule_id, template_id)
 
     // Card routes (project-scoped)
     ["api", "v1", "projects", project_id, "cards"] ->

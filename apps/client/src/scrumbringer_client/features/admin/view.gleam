@@ -29,6 +29,7 @@ import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option as opt
+import gleam/result
 import gleam/string
 
 import lustre/attribute
@@ -47,6 +48,7 @@ import domain/capability.{type Capability}
 import domain/org.{type OrgUser}
 import domain/project.{type Project, type ProjectMember}
 import domain/task_type.{type TaskType}
+import domain/workflow.{type Rule, type TaskTemplate, type Workflow}
 
 import scrumbringer_client/client_state.{
   type Model, type Msg, type Remote, CapabilityCreateNameChanged,
@@ -61,6 +63,26 @@ import scrumbringer_client/client_state.{
   OrgUsersSearchChanged, OrgUsersSearchDebounced, TaskTypeCreateCapabilityChanged,
   TaskTypeCreateIconChanged, TaskTypeCreateNameChanged, TaskTypeCreateSubmitted,
   TaskTypeIconErrored, TaskTypeIconLoaded,
+  // Workflows
+  RuleCreateActiveChanged, RuleCreateGoalChanged, RuleCreateNameChanged,
+  RuleCreateResourceTypeChanged, RuleCreateSubmitted,
+  RuleCreateToStateChanged, RuleDeleteCancelled, RuleDeleteClicked,
+  RuleDeleteConfirmed, RuleEditActiveChanged, RuleEditCancelled, RuleEditClicked,
+  RuleEditGoalChanged, RuleEditNameChanged, RuleEditResourceTypeChanged,
+  RuleEditSubmitted, RuleEditToStateChanged,
+  RulesBackClicked, WorkflowCreateActiveChanged, WorkflowCreateDescriptionChanged,
+  WorkflowCreateNameChanged, WorkflowCreateSubmitted, WorkflowDeleteCancelled,
+  WorkflowDeleteClicked, WorkflowDeleteConfirmed, WorkflowEditActiveChanged,
+  WorkflowEditCancelled, WorkflowEditClicked, WorkflowEditDescriptionChanged,
+  WorkflowEditNameChanged, WorkflowEditSubmitted, WorkflowRulesClicked,
+  // Task Templates
+  TaskTemplateCreateDescriptionChanged, TaskTemplateCreateNameChanged,
+  TaskTemplateCreatePriorityChanged, TaskTemplateCreateSubmitted,
+  TaskTemplateCreateTypeIdChanged, TaskTemplateDeleteCancelled,
+  TaskTemplateDeleteClicked, TaskTemplateDeleteConfirmed, TaskTemplateEditCancelled,
+  TaskTemplateEditClicked, TaskTemplateEditDescriptionChanged,
+  TaskTemplateEditNameChanged, TaskTemplateEditPriorityChanged,
+  TaskTemplateEditSubmitted, TaskTemplateEditTypeIdChanged,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme
@@ -1096,6 +1118,945 @@ fn view_delete_card_dialog(model: Model, card: Card) -> Element(Msg) {
             text(case model.cards_delete_in_flight {
               True -> update_helpers.i18n_t(model, i18n_text.Removing)
               False -> update_helpers.i18n_t(model, i18n_text.DeleteCard)
+            }),
+          ],
+        ),
+      ]),
+    ]),
+  ])
+}
+
+// =============================================================================
+// Workflows Views
+// =============================================================================
+
+/// Workflows management view.
+pub fn view_workflows(
+  model: Model,
+  selected_project: opt.Option(Project),
+) -> Element(Msg) {
+  // If we're viewing rules for a specific workflow, show rules view
+  case model.rules_workflow_id {
+    opt.Some(workflow_id) -> view_workflow_rules(model, workflow_id)
+    opt.None -> view_workflows_list(model, selected_project)
+  }
+}
+
+fn view_workflows_list(
+  model: Model,
+  selected_project: opt.Option(Project),
+) -> Element(Msg) {
+  div([attribute.class("section")], [
+    // Org workflows section
+    h2([], [text(update_helpers.i18n_t(model, i18n_text.WorkflowsOrgTitle))]),
+    view_workflows_table(model, model.workflows_org, opt.None),
+    // Project workflows section (if project selected)
+    case selected_project {
+      opt.Some(project) ->
+        div([], [
+          hr([]),
+          h2([], [
+            text(update_helpers.i18n_t(
+              model,
+              i18n_text.WorkflowsProjectTitle(project.name),
+            )),
+          ]),
+          view_workflows_table(model, model.workflows_project, opt.Some(project)),
+        ])
+      opt.None -> element.none()
+    },
+    // Create workflow form
+    hr([]),
+    h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateWorkflow))]),
+    case model.workflows_create_error {
+      opt.Some(err) -> div([attribute.class("error")], [text(err)])
+      opt.None -> element.none()
+    },
+    form([event.on_submit(fn(_) { WorkflowCreateSubmitted })], [
+      div([attribute.class("field")], [
+        label([], [text(update_helpers.i18n_t(model, i18n_text.WorkflowName))]),
+        input([
+          attribute.type_("text"),
+          attribute.value(model.workflows_create_name),
+          event.on_input(WorkflowCreateNameChanged),
+          attribute.required(True),
+        ]),
+      ]),
+      div([attribute.class("field")], [
+        label([], [
+          text(update_helpers.i18n_t(model, i18n_text.WorkflowDescription)),
+        ]),
+        input([
+          attribute.type_("text"),
+          attribute.value(model.workflows_create_description),
+          event.on_input(WorkflowCreateDescriptionChanged),
+        ]),
+      ]),
+      div([attribute.class("field")], [
+        label([], [
+          input([
+            attribute.type_("checkbox"),
+            attribute.checked(model.workflows_create_active),
+            event.on_check(WorkflowCreateActiveChanged),
+          ]),
+          text(" " <> update_helpers.i18n_t(model, i18n_text.WorkflowActive)),
+        ]),
+      ]),
+      button(
+        [
+          attribute.type_("submit"),
+          attribute.disabled(model.workflows_create_in_flight),
+        ],
+        [
+          text(case model.workflows_create_in_flight {
+            True -> update_helpers.i18n_t(model, i18n_text.Creating)
+            False -> update_helpers.i18n_t(model, i18n_text.Create)
+          }),
+        ],
+      ),
+    ]),
+    // Edit dialog
+    case model.workflows_edit_id {
+      opt.Some(_) -> view_edit_workflow_dialog(model)
+      opt.None -> element.none()
+    },
+    // Delete dialog
+    case model.workflows_delete_confirm {
+      opt.Some(workflow) -> view_delete_workflow_dialog(model, workflow)
+      opt.None -> element.none()
+    },
+  ])
+}
+
+fn view_workflows_table(
+  model: Model,
+  workflows: Remote(List(Workflow)),
+  _project: opt.Option(Project),
+) -> Element(Msg) {
+  case workflows {
+    NotAsked | Loading ->
+      div([attribute.class("empty")], [
+        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+      ])
+
+    Failed(err) ->
+      case err.status == 403 {
+        True ->
+          div([attribute.class("not-permitted")], [
+            text(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+          ])
+        False -> div([attribute.class("error")], [text(err.message)])
+      }
+
+    Loaded(workflows) ->
+      case workflows {
+        [] ->
+          div([attribute.class("empty")], [
+            text(update_helpers.i18n_t(model, i18n_text.NoWorkflowsYet)),
+          ])
+        _ ->
+          table([attribute.class("table")], [
+            thead([], [
+              tr([], [
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.WorkflowName)),
+                ]),
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.WorkflowActive)),
+                ]),
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.WorkflowRules)),
+                ]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
+              ]),
+            ]),
+            keyed.tbody(
+              [],
+              list.map(workflows, fn(w) {
+                #(int.to_string(w.id), tr([], [
+                  td([], [text(w.name)]),
+                  td([], [
+                    text(case w.active {
+                      True -> "✓"
+                      False -> "✗"
+                    }),
+                  ]),
+                  td([], [text(int.to_string(w.rule_count))]),
+                  td([], [
+                    button([event.on_click(WorkflowRulesClicked(w.id))], [
+                      text(update_helpers.i18n_t(model, i18n_text.WorkflowRules)),
+                    ]),
+                    button([event.on_click(WorkflowEditClicked(w))], [
+                      text(update_helpers.i18n_t(model, i18n_text.EditWorkflow)),
+                    ]),
+                    button([event.on_click(WorkflowDeleteClicked(w))], [
+                      text(update_helpers.i18n_t(
+                        model,
+                        i18n_text.DeleteWorkflow,
+                      )),
+                    ]),
+                  ]),
+                ]))
+              }),
+            ),
+          ])
+      }
+  }
+}
+
+fn view_edit_workflow_dialog(model: Model) -> Element(Msg) {
+  div([attribute.class("modal")], [
+    div([attribute.class("modal-content")], [
+      h3([], [text(update_helpers.i18n_t(model, i18n_text.EditWorkflow))]),
+      case model.workflows_edit_error {
+        opt.Some(err) -> div([attribute.class("error")], [text(err)])
+        opt.None -> element.none()
+      },
+      form([event.on_submit(fn(_) { WorkflowEditSubmitted })], [
+        div([attribute.class("field")], [
+          label([], [
+            text(update_helpers.i18n_t(model, i18n_text.WorkflowName)),
+          ]),
+          input([
+            attribute.type_("text"),
+            attribute.value(model.workflows_edit_name),
+            event.on_input(WorkflowEditNameChanged),
+            attribute.required(True),
+          ]),
+        ]),
+        div([attribute.class("field")], [
+          label([], [
+            text(update_helpers.i18n_t(model, i18n_text.WorkflowDescription)),
+          ]),
+          input([
+            attribute.type_("text"),
+            attribute.value(model.workflows_edit_description),
+            event.on_input(WorkflowEditDescriptionChanged),
+          ]),
+        ]),
+        div([attribute.class("field")], [
+          label([], [
+            input([
+              attribute.type_("checkbox"),
+              attribute.checked(model.workflows_edit_active),
+              event.on_check(WorkflowEditActiveChanged),
+            ]),
+            text(" " <> update_helpers.i18n_t(model, i18n_text.WorkflowActive)),
+          ]),
+        ]),
+        div([attribute.class("actions")], [
+          button(
+            [attribute.type_("button"), event.on_click(WorkflowEditCancelled)],
+            [text(update_helpers.i18n_t(model, i18n_text.Cancel))],
+          ),
+          button(
+            [
+              attribute.type_("submit"),
+              attribute.disabled(model.workflows_edit_in_flight),
+            ],
+            [
+              text(case model.workflows_edit_in_flight {
+                True -> update_helpers.i18n_t(model, i18n_text.Working)
+                False -> update_helpers.i18n_t(model, i18n_text.Save)
+              }),
+            ],
+          ),
+        ]),
+      ]),
+    ]),
+  ])
+}
+
+fn view_delete_workflow_dialog(model: Model, workflow: Workflow) -> Element(Msg) {
+  div([attribute.class("modal")], [
+    div([attribute.class("modal-content")], [
+      h3([], [text(update_helpers.i18n_t(model, i18n_text.DeleteWorkflow))]),
+      p([], [text("Delete workflow \"" <> workflow.name <> "\"?")]),
+      case model.workflows_delete_error {
+        opt.Some(err) -> div([attribute.class("error")], [text(err)])
+        opt.None -> element.none()
+      },
+      div([attribute.class("actions")], [
+        button([event.on_click(WorkflowDeleteCancelled)], [
+          text(update_helpers.i18n_t(model, i18n_text.Cancel)),
+        ]),
+        button(
+          [
+            event.on_click(WorkflowDeleteConfirmed),
+            attribute.disabled(model.workflows_delete_in_flight),
+          ],
+          [
+            text(case model.workflows_delete_in_flight {
+              True -> update_helpers.i18n_t(model, i18n_text.Removing)
+              False -> update_helpers.i18n_t(model, i18n_text.DeleteWorkflow)
+            }),
+          ],
+        ),
+      ]),
+    ]),
+  ])
+}
+
+// =============================================================================
+// Rules Views
+// =============================================================================
+
+fn view_workflow_rules(model: Model, workflow_id: Int) -> Element(Msg) {
+  // Find the workflow name
+  let workflow_name =
+    find_workflow_name(model.workflows_org, workflow_id)
+    |> opt.lazy_or(fn() {
+      find_workflow_name(model.workflows_project, workflow_id)
+    })
+    |> opt.unwrap("Workflow #" <> int.to_string(workflow_id))
+
+  div([attribute.class("section")], [
+    button([event.on_click(RulesBackClicked)], [text("← Back to Workflows")]),
+    h2([], [
+      text(update_helpers.i18n_t(model, i18n_text.RulesTitle(workflow_name))),
+    ]),
+    view_rules_table(model, model.rules),
+    // Create rule form
+    hr([]),
+    h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateRule))]),
+    case model.rules_create_error {
+      opt.Some(err) -> div([attribute.class("error")], [text(err)])
+      opt.None -> element.none()
+    },
+    form([event.on_submit(fn(_) { RuleCreateSubmitted })], [
+      div([attribute.class("field")], [
+        label([], [text(update_helpers.i18n_t(model, i18n_text.RuleName))]),
+        input([
+          attribute.type_("text"),
+          attribute.value(model.rules_create_name),
+          event.on_input(RuleCreateNameChanged),
+          attribute.required(True),
+        ]),
+      ]),
+      div([attribute.class("field")], [
+        label([], [text(update_helpers.i18n_t(model, i18n_text.RuleGoal))]),
+        input([
+          attribute.type_("text"),
+          attribute.value(model.rules_create_goal),
+          event.on_input(RuleCreateGoalChanged),
+        ]),
+      ]),
+      div([attribute.class("field")], [
+        label([], [
+          text(update_helpers.i18n_t(model, i18n_text.RuleResourceType)),
+        ]),
+        select(
+          [
+            attribute.value(model.rules_create_resource_type),
+            event.on_input(RuleCreateResourceTypeChanged),
+          ],
+          [
+            option(
+              [attribute.value("task")],
+              update_helpers.i18n_t(model, i18n_text.RuleResourceTypeTask),
+            ),
+            option(
+              [attribute.value("card")],
+              update_helpers.i18n_t(model, i18n_text.RuleResourceTypeCard),
+            ),
+          ],
+        ),
+      ]),
+      div([attribute.class("field")], [
+        label([], [text(update_helpers.i18n_t(model, i18n_text.RuleToState))]),
+        select(
+          [
+            attribute.value(model.rules_create_to_state),
+            event.on_input(RuleCreateToStateChanged),
+          ],
+          [
+            option([attribute.value("available")], "available"),
+            option([attribute.value("claimed")], "claimed"),
+            option([attribute.value("completed")], "completed"),
+            option([attribute.value("pendiente")], "pendiente"),
+            option([attribute.value("en_curso")], "en_curso"),
+            option([attribute.value("cerrada")], "cerrada"),
+          ],
+        ),
+      ]),
+      div([attribute.class("field")], [
+        label([], [
+          input([
+            attribute.type_("checkbox"),
+            attribute.checked(model.rules_create_active),
+            event.on_check(RuleCreateActiveChanged),
+          ]),
+          text(" " <> update_helpers.i18n_t(model, i18n_text.RuleActive)),
+        ]),
+      ]),
+      button(
+        [
+          attribute.type_("submit"),
+          attribute.disabled(model.rules_create_in_flight),
+        ],
+        [
+          text(case model.rules_create_in_flight {
+            True -> update_helpers.i18n_t(model, i18n_text.Creating)
+            False -> update_helpers.i18n_t(model, i18n_text.Create)
+          }),
+        ],
+      ),
+    ]),
+    // Edit dialog
+    case model.rules_edit_id {
+      opt.Some(_) -> view_edit_rule_dialog(model)
+      opt.None -> element.none()
+    },
+    // Delete dialog
+    case model.rules_delete_confirm {
+      opt.Some(rule) -> view_delete_rule_dialog(model, rule)
+      opt.None -> element.none()
+    },
+  ])
+}
+
+fn find_workflow_name(
+  workflows: Remote(List(Workflow)),
+  workflow_id: Int,
+) -> opt.Option(String) {
+  case workflows {
+    Loaded(list) ->
+      list
+      |> list.find(fn(w) { w.id == workflow_id })
+      |> result.map(fn(w) { w.name })
+      |> opt.from_result
+    _ -> opt.None
+  }
+}
+
+fn view_rules_table(model: Model, rules: Remote(List(Rule))) -> Element(Msg) {
+  case rules {
+    NotAsked | Loading ->
+      div([attribute.class("empty")], [
+        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+      ])
+
+    Failed(err) ->
+      case err.status == 403 {
+        True ->
+          div([attribute.class("not-permitted")], [
+            text(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+          ])
+        False -> div([attribute.class("error")], [text(err.message)])
+      }
+
+    Loaded(rules) ->
+      case rules {
+        [] ->
+          div([attribute.class("empty")], [
+            text(update_helpers.i18n_t(model, i18n_text.NoRulesYet)),
+          ])
+        _ ->
+          table([attribute.class("table")], [
+            thead([], [
+              tr([], [
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.RuleName)),
+                ]),
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.RuleResourceType)),
+                ]),
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.RuleToState)),
+                ]),
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.RuleActive)),
+                ]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
+              ]),
+            ]),
+            keyed.tbody(
+              [],
+              list.map(rules, fn(r) {
+                #(int.to_string(r.id), tr([], [
+                  td([], [text(r.name)]),
+                  td([], [text(r.resource_type)]),
+                  td([], [text(r.to_state)]),
+                  td([], [
+                    text(case r.active {
+                      True -> "✓"
+                      False -> "✗"
+                    }),
+                  ]),
+                  td([], [
+                    button([event.on_click(RuleEditClicked(r))], [
+                      text(update_helpers.i18n_t(model, i18n_text.EditRule)),
+                    ]),
+                    button([event.on_click(RuleDeleteClicked(r))], [
+                      text(update_helpers.i18n_t(model, i18n_text.DeleteRule)),
+                    ]),
+                  ]),
+                ]))
+              }),
+            ),
+          ])
+      }
+  }
+}
+
+fn view_edit_rule_dialog(model: Model) -> Element(Msg) {
+  div([attribute.class("modal")], [
+    div([attribute.class("modal-content")], [
+      h3([], [text(update_helpers.i18n_t(model, i18n_text.EditRule))]),
+      case model.rules_edit_error {
+        opt.Some(err) -> div([attribute.class("error")], [text(err)])
+        opt.None -> element.none()
+      },
+      form([event.on_submit(fn(_) { RuleEditSubmitted })], [
+        div([attribute.class("field")], [
+          label([], [text(update_helpers.i18n_t(model, i18n_text.RuleName))]),
+          input([
+            attribute.type_("text"),
+            attribute.value(model.rules_edit_name),
+            event.on_input(RuleEditNameChanged),
+            attribute.required(True),
+          ]),
+        ]),
+        div([attribute.class("field")], [
+          label([], [text(update_helpers.i18n_t(model, i18n_text.RuleGoal))]),
+          input([
+            attribute.type_("text"),
+            attribute.value(model.rules_edit_goal),
+            event.on_input(RuleEditGoalChanged),
+          ]),
+        ]),
+        div([attribute.class("field")], [
+          label([], [
+            text(update_helpers.i18n_t(model, i18n_text.RuleResourceType)),
+          ]),
+          select(
+            [
+              attribute.value(model.rules_edit_resource_type),
+              event.on_input(RuleEditResourceTypeChanged),
+            ],
+            [
+              option(
+                [attribute.value("task")],
+                update_helpers.i18n_t(model, i18n_text.RuleResourceTypeTask),
+              ),
+              option(
+                [attribute.value("card")],
+                update_helpers.i18n_t(model, i18n_text.RuleResourceTypeCard),
+              ),
+            ],
+          ),
+        ]),
+        div([attribute.class("field")], [
+          label([], [text(update_helpers.i18n_t(model, i18n_text.RuleToState))]),
+          select(
+            [
+              attribute.value(model.rules_edit_to_state),
+              event.on_input(RuleEditToStateChanged),
+            ],
+            [
+              option([attribute.value("available")], "available"),
+              option([attribute.value("claimed")], "claimed"),
+              option([attribute.value("completed")], "completed"),
+              option([attribute.value("pendiente")], "pendiente"),
+              option([attribute.value("en_curso")], "en_curso"),
+              option([attribute.value("cerrada")], "cerrada"),
+            ],
+          ),
+        ]),
+        div([attribute.class("field")], [
+          label([], [
+            input([
+              attribute.type_("checkbox"),
+              attribute.checked(model.rules_edit_active),
+              event.on_check(RuleEditActiveChanged),
+            ]),
+            text(" " <> update_helpers.i18n_t(model, i18n_text.RuleActive)),
+          ]),
+        ]),
+        div([attribute.class("actions")], [
+          button(
+            [attribute.type_("button"), event.on_click(RuleEditCancelled)],
+            [text(update_helpers.i18n_t(model, i18n_text.Cancel))],
+          ),
+          button(
+            [
+              attribute.type_("submit"),
+              attribute.disabled(model.rules_edit_in_flight),
+            ],
+            [
+              text(case model.rules_edit_in_flight {
+                True -> update_helpers.i18n_t(model, i18n_text.Working)
+                False -> update_helpers.i18n_t(model, i18n_text.Save)
+              }),
+            ],
+          ),
+        ]),
+      ]),
+    ]),
+  ])
+}
+
+fn view_delete_rule_dialog(model: Model, rule: Rule) -> Element(Msg) {
+  div([attribute.class("modal")], [
+    div([attribute.class("modal-content")], [
+      h3([], [text(update_helpers.i18n_t(model, i18n_text.DeleteRule))]),
+      p([], [text("Delete rule \"" <> rule.name <> "\"?")]),
+      case model.rules_delete_error {
+        opt.Some(err) -> div([attribute.class("error")], [text(err)])
+        opt.None -> element.none()
+      },
+      div([attribute.class("actions")], [
+        button([event.on_click(RuleDeleteCancelled)], [
+          text(update_helpers.i18n_t(model, i18n_text.Cancel)),
+        ]),
+        button(
+          [
+            event.on_click(RuleDeleteConfirmed),
+            attribute.disabled(model.rules_delete_in_flight),
+          ],
+          [
+            text(case model.rules_delete_in_flight {
+              True -> update_helpers.i18n_t(model, i18n_text.Removing)
+              False -> update_helpers.i18n_t(model, i18n_text.DeleteRule)
+            }),
+          ],
+        ),
+      ]),
+    ]),
+  ])
+}
+
+// =============================================================================
+// Task Templates Views
+// =============================================================================
+
+/// Task templates management view.
+pub fn view_task_templates(
+  model: Model,
+  selected_project: opt.Option(Project),
+) -> Element(Msg) {
+  div([attribute.class("section")], [
+    // Org templates section
+    h2([], [text(update_helpers.i18n_t(model, i18n_text.TaskTemplatesOrgTitle))]),
+    p([], [
+      text(update_helpers.i18n_t(model, i18n_text.TaskTemplateVariablesHelp)),
+    ]),
+    view_task_templates_table(model, model.task_templates_org),
+    // Project templates section (if project selected)
+    case selected_project {
+      opt.Some(project) ->
+        div([], [
+          hr([]),
+          h2([], [
+            text(update_helpers.i18n_t(
+              model,
+              i18n_text.TaskTemplatesProjectTitle(project.name),
+            )),
+          ]),
+          view_task_templates_table(model, model.task_templates_project),
+        ])
+      opt.None -> element.none()
+    },
+    // Create template form
+    hr([]),
+    h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateTaskTemplate))]),
+    case model.task_templates_create_error {
+      opt.Some(err) -> div([attribute.class("error")], [text(err)])
+      opt.None -> element.none()
+    },
+    form([event.on_submit(fn(_) { TaskTemplateCreateSubmitted })], [
+      div([attribute.class("field")], [
+        label([], [
+          text(update_helpers.i18n_t(model, i18n_text.TaskTemplateName)),
+        ]),
+        input([
+          attribute.type_("text"),
+          attribute.value(model.task_templates_create_name),
+          event.on_input(TaskTemplateCreateNameChanged),
+          attribute.required(True),
+        ]),
+      ]),
+      div([attribute.class("field")], [
+        label([], [
+          text(update_helpers.i18n_t(model, i18n_text.TaskTemplateDescription)),
+        ]),
+        input([
+          attribute.type_("text"),
+          attribute.value(model.task_templates_create_description),
+          event.on_input(TaskTemplateCreateDescriptionChanged),
+        ]),
+      ]),
+      div([attribute.class("field")], [
+        label([], [
+          text(update_helpers.i18n_t(model, i18n_text.TaskTemplateType)),
+        ]),
+        view_task_type_selector_for_templates(
+          model,
+          model.task_types,
+          case model.task_templates_create_type_id {
+            opt.Some(id) -> int.to_string(id)
+            opt.None -> ""
+          },
+          TaskTemplateCreateTypeIdChanged,
+        ),
+      ]),
+      div([attribute.class("field")], [
+        label([], [
+          text(update_helpers.i18n_t(model, i18n_text.TaskTemplatePriority)),
+        ]),
+        select(
+          [
+            attribute.value(model.task_templates_create_priority),
+            event.on_input(TaskTemplateCreatePriorityChanged),
+          ],
+          [
+            option([attribute.value("1")], "1"),
+            option([attribute.value("2")], "2"),
+            option([attribute.value("3")], "3"),
+            option([attribute.value("4")], "4"),
+            option([attribute.value("5")], "5"),
+          ],
+        ),
+      ]),
+      button(
+        [
+          attribute.type_("submit"),
+          attribute.disabled(model.task_templates_create_in_flight),
+        ],
+        [
+          text(case model.task_templates_create_in_flight {
+            True -> update_helpers.i18n_t(model, i18n_text.Creating)
+            False -> update_helpers.i18n_t(model, i18n_text.Create)
+          }),
+        ],
+      ),
+    ]),
+    // Edit dialog
+    case model.task_templates_edit_id {
+      opt.Some(_) -> view_edit_task_template_dialog(model)
+      opt.None -> element.none()
+    },
+    // Delete dialog
+    case model.task_templates_delete_confirm {
+      opt.Some(template) -> view_delete_task_template_dialog(model, template)
+      opt.None -> element.none()
+    },
+  ])
+}
+
+fn view_task_templates_table(
+  model: Model,
+  templates: Remote(List(TaskTemplate)),
+) -> Element(Msg) {
+  case templates {
+    NotAsked | Loading ->
+      div([attribute.class("empty")], [
+        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+      ])
+
+    Failed(err) ->
+      case err.status == 403 {
+        True ->
+          div([attribute.class("not-permitted")], [
+            text(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+          ])
+        False -> div([attribute.class("error")], [text(err.message)])
+      }
+
+    Loaded(templates) ->
+      case templates {
+        [] ->
+          div([attribute.class("empty")], [
+            text(update_helpers.i18n_t(model, i18n_text.NoTaskTemplatesYet)),
+          ])
+        _ ->
+          table([attribute.class("table")], [
+            thead([], [
+              tr([], [
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.TaskTemplateName)),
+                ]),
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.TaskTemplateType)),
+                ]),
+                th([], [
+                  text(update_helpers.i18n_t(
+                    model,
+                    i18n_text.TaskTemplatePriority,
+                  )),
+                ]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
+              ]),
+            ]),
+            keyed.tbody(
+              [],
+              list.map(templates, fn(t) {
+                #(int.to_string(t.id), tr([], [
+                  td([], [text(t.name)]),
+                  td([], [text(t.type_name)]),
+                  td([], [text(int.to_string(t.priority))]),
+                  td([], [
+                    button([event.on_click(TaskTemplateEditClicked(t))], [
+                      text(update_helpers.i18n_t(
+                        model,
+                        i18n_text.EditTaskTemplate,
+                      )),
+                    ]),
+                    button([event.on_click(TaskTemplateDeleteClicked(t))], [
+                      text(update_helpers.i18n_t(
+                        model,
+                        i18n_text.DeleteTaskTemplate,
+                      )),
+                    ]),
+                  ]),
+                ]))
+              }),
+            ),
+          ])
+      }
+  }
+}
+
+fn view_task_type_selector_for_templates(
+  model: Model,
+  task_types: Remote(List(TaskType)),
+  selected: String,
+  on_change: fn(String) -> Msg,
+) -> Element(Msg) {
+  case task_types {
+    Loaded(types) ->
+      select(
+        [attribute.value(selected), event.on_input(on_change)],
+        [
+          option(
+            [attribute.value("")],
+            update_helpers.i18n_t(model, i18n_text.SelectType),
+          ),
+          ..list.map(types, fn(tt) {
+            option([attribute.value(int.to_string(tt.id))], tt.name)
+          })
+        ],
+      )
+    _ ->
+      div([attribute.class("empty")], [
+        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+      ])
+  }
+}
+
+fn view_edit_task_template_dialog(model: Model) -> Element(Msg) {
+  div([attribute.class("modal")], [
+    div([attribute.class("modal-content")], [
+      h3([], [text(update_helpers.i18n_t(model, i18n_text.EditTaskTemplate))]),
+      case model.task_templates_edit_error {
+        opt.Some(err) -> div([attribute.class("error")], [text(err)])
+        opt.None -> element.none()
+      },
+      form([event.on_submit(fn(_) { TaskTemplateEditSubmitted })], [
+        div([attribute.class("field")], [
+          label([], [
+            text(update_helpers.i18n_t(model, i18n_text.TaskTemplateName)),
+          ]),
+          input([
+            attribute.type_("text"),
+            attribute.value(model.task_templates_edit_name),
+            event.on_input(TaskTemplateEditNameChanged),
+            attribute.required(True),
+          ]),
+        ]),
+        div([attribute.class("field")], [
+          label([], [
+            text(update_helpers.i18n_t(model, i18n_text.TaskTemplateDescription)),
+          ]),
+          input([
+            attribute.type_("text"),
+            attribute.value(model.task_templates_edit_description),
+            event.on_input(TaskTemplateEditDescriptionChanged),
+          ]),
+        ]),
+        div([attribute.class("field")], [
+          label([], [
+            text(update_helpers.i18n_t(model, i18n_text.TaskTemplateType)),
+          ]),
+          view_task_type_selector_for_templates(
+            model,
+            model.task_types,
+            case model.task_templates_edit_type_id {
+              opt.Some(id) -> int.to_string(id)
+              opt.None -> ""
+            },
+            TaskTemplateEditTypeIdChanged,
+          ),
+        ]),
+        div([attribute.class("field")], [
+          label([], [
+            text(update_helpers.i18n_t(model, i18n_text.TaskTemplatePriority)),
+          ]),
+          select(
+            [
+              attribute.value(model.task_templates_edit_priority),
+              event.on_input(TaskTemplateEditPriorityChanged),
+            ],
+            [
+              option([attribute.value("1")], "1"),
+              option([attribute.value("2")], "2"),
+              option([attribute.value("3")], "3"),
+              option([attribute.value("4")], "4"),
+              option([attribute.value("5")], "5"),
+            ],
+          ),
+        ]),
+        div([attribute.class("actions")], [
+          button(
+            [
+              attribute.type_("button"),
+              event.on_click(TaskTemplateEditCancelled),
+            ],
+            [text(update_helpers.i18n_t(model, i18n_text.Cancel))],
+          ),
+          button(
+            [
+              attribute.type_("submit"),
+              attribute.disabled(model.task_templates_edit_in_flight),
+            ],
+            [
+              text(case model.task_templates_edit_in_flight {
+                True -> update_helpers.i18n_t(model, i18n_text.Working)
+                False -> update_helpers.i18n_t(model, i18n_text.Save)
+              }),
+            ],
+          ),
+        ]),
+      ]),
+    ]),
+  ])
+}
+
+fn view_delete_task_template_dialog(
+  model: Model,
+  template: TaskTemplate,
+) -> Element(Msg) {
+  div([attribute.class("modal")], [
+    div([attribute.class("modal-content")], [
+      h3([], [text(update_helpers.i18n_t(model, i18n_text.DeleteTaskTemplate))]),
+      p([], [text("Delete template \"" <> template.name <> "\"?")]),
+      case model.task_templates_delete_error {
+        opt.Some(err) -> div([attribute.class("error")], [text(err)])
+        opt.None -> element.none()
+      },
+      div([attribute.class("actions")], [
+        button([event.on_click(TaskTemplateDeleteCancelled)], [
+          text(update_helpers.i18n_t(model, i18n_text.Cancel)),
+        ]),
+        button(
+          [
+            event.on_click(TaskTemplateDeleteConfirmed),
+            attribute.disabled(model.task_templates_delete_in_flight),
+          ],
+          [
+            text(case model.task_templates_delete_in_flight {
+              True -> update_helpers.i18n_t(model, i18n_text.Removing)
+              False -> update_helpers.i18n_t(model, i18n_text.DeleteTaskTemplate)
             }),
           ],
         ),

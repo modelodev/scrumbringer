@@ -5,6 +5,7 @@
 ////
 
 import gleam/dynamic/decode
+import gleam/option.{type Option}
 import pog
 
 /// A row you get from running the `capabilities_create` query
@@ -465,6 +466,76 @@ RETURNING
   |> pog.parameter(pog.int(arg_1))
   |> pog.parameter(pog.text(arg_2))
   |> pog.parameter(pog.text(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `engine_get_project_name` query
+/// defined in `./src/scrumbringer_server/sql/engine_get_project_name.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type EngineGetProjectNameRow {
+  EngineGetProjectNameRow(name: String)
+}
+
+/// name: engine_get_project_name
+/// Get project name for variable substitution.
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn engine_get_project_name(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(EngineGetProjectNameRow), pog.QueryError) {
+  let decoder = {
+    use name <- decode.field(0, decode.string)
+    decode.success(EngineGetProjectNameRow(name:))
+  }
+
+  "-- name: engine_get_project_name
+-- Get project name for variable substitution.
+select name from projects where id = $1;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `engine_get_user_name` query
+/// defined in `./src/scrumbringer_server/sql/engine_get_user_name.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type EngineGetUserNameRow {
+  EngineGetUserNameRow(display_name: String)
+}
+
+/// name: engine_get_user_name
+/// Get user email for variable substitution.
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn engine_get_user_name(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(EngineGetUserNameRow), pog.QueryError) {
+  let decoder = {
+    use display_name <- decode.field(0, decode.string)
+    decode.success(EngineGetUserNameRow(display_name:))
+  }
+
+  "-- name: engine_get_user_name
+-- Get user email for variable substitution.
+select email as display_name from users where id = $1;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -1734,6 +1805,903 @@ where id = $1;
   |> pog.execute(db)
 }
 
+/// A row you get from running the `rule_executions_check` query
+/// defined in `./src/scrumbringer_server/sql/rule_executions_check.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RuleExecutionsCheckRow {
+  RuleExecutionsCheckRow(id: Int, outcome: String, suppression_reason: String)
+}
+
+/// name: rule_executions_check
+/// Check if a rule has already been executed for a given origin (idempotency).
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rule_executions_check(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: String,
+  arg_3: Int,
+) -> Result(pog.Returned(RuleExecutionsCheckRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use outcome <- decode.field(1, decode.string)
+    use suppression_reason <- decode.field(2, decode.string)
+    decode.success(RuleExecutionsCheckRow(id:, outcome:, suppression_reason:))
+  }
+
+  "-- name: rule_executions_check
+-- Check if a rule has already been executed for a given origin (idempotency).
+select
+  id,
+  outcome,
+  coalesce(suppression_reason, '') as suppression_reason
+from rule_executions
+where rule_id = $1
+  and origin_type = $2
+  and origin_id = $3
+limit 1;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `rule_executions_log` query
+/// defined in `./src/scrumbringer_server/sql/rule_executions_log.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RuleExecutionsLogRow {
+  RuleExecutionsLogRow(
+    id: Int,
+    rule_id: Int,
+    origin_type: String,
+    origin_id: Int,
+    outcome: String,
+    suppression_reason: String,
+    user_id: Int,
+    created_at: String,
+  )
+}
+
+/// name: rule_executions_log
+/// Log a rule execution for idempotency tracking and metrics.
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rule_executions_log(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: String,
+  arg_3: Int,
+  arg_4: String,
+  arg_5: String,
+  arg_6: Int,
+) -> Result(pog.Returned(RuleExecutionsLogRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use rule_id <- decode.field(1, decode.int)
+    use origin_type <- decode.field(2, decode.string)
+    use origin_id <- decode.field(3, decode.int)
+    use outcome <- decode.field(4, decode.string)
+    use suppression_reason <- decode.field(5, decode.string)
+    use user_id <- decode.field(6, decode.int)
+    use created_at <- decode.field(7, decode.string)
+    decode.success(RuleExecutionsLogRow(
+      id:,
+      rule_id:,
+      origin_type:,
+      origin_id:,
+      outcome:,
+      suppression_reason:,
+      user_id:,
+      created_at:,
+    ))
+  }
+
+  "-- name: rule_executions_log
+-- Log a rule execution for idempotency tracking and metrics.
+insert into rule_executions (rule_id, origin_type, origin_id, outcome, suppression_reason, user_id)
+values ($1, $2, $3, $4, nullif($5, ''), $6)
+on conflict (rule_id, origin_type, origin_id) do nothing
+returning
+  id,
+  rule_id,
+  origin_type,
+  origin_id,
+  outcome,
+  coalesce(suppression_reason, '') as suppression_reason,
+  coalesce(user_id, 0) as user_id,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.parameter(pog.text(arg_4))
+  |> pog.parameter(pog.text(arg_5))
+  |> pog.parameter(pog.int(arg_6))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `rule_templates_attach` query
+/// defined in `./src/scrumbringer_server/sql/rule_templates_attach.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RuleTemplatesAttachRow {
+  RuleTemplatesAttachRow(rule_id: Int)
+}
+
+/// name: attach_rule_template
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rule_templates_attach(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Int,
+) -> Result(pog.Returned(RuleTemplatesAttachRow), pog.QueryError) {
+  let decoder = {
+    use rule_id <- decode.field(0, decode.int)
+    decode.success(RuleTemplatesAttachRow(rule_id:))
+  }
+
+  "-- name: attach_rule_template
+INSERT INTO rule_templates (rule_id, template_id, execution_order)
+VALUES ($1, $2, $3)
+ON CONFLICT (rule_id, template_id)
+DO NOTHING
+RETURNING rule_id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `rule_templates_detach` query
+/// defined in `./src/scrumbringer_server/sql/rule_templates_detach.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RuleTemplatesDetachRow {
+  RuleTemplatesDetachRow(rule_id: Int)
+}
+
+/// name: detach_rule_template
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rule_templates_detach(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(RuleTemplatesDetachRow), pog.QueryError) {
+  let decoder = {
+    use rule_id <- decode.field(0, decode.int)
+    decode.success(RuleTemplatesDetachRow(rule_id:))
+  }
+
+  "-- name: detach_rule_template
+DELETE FROM rule_templates
+WHERE rule_id = $1
+  AND template_id = $2
+RETURNING rule_id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `rule_templates_list_for_rule` query
+/// defined in `./src/scrumbringer_server/sql/rule_templates_list_for_rule.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RuleTemplatesListForRuleRow {
+  RuleTemplatesListForRuleRow(
+    id: Int,
+    org_id: Int,
+    project_id: Int,
+    name: String,
+    description: String,
+    type_id: Int,
+    type_name: String,
+    priority: Int,
+    created_by: Int,
+    created_at: String,
+    execution_order: Int,
+  )
+}
+
+/// name: list_rule_templates_for_rule
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rule_templates_list_for_rule(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(RuleTemplatesListForRuleRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use org_id <- decode.field(1, decode.int)
+    use project_id <- decode.field(2, decode.int)
+    use name <- decode.field(3, decode.string)
+    use description <- decode.field(4, decode.string)
+    use type_id <- decode.field(5, decode.int)
+    use type_name <- decode.field(6, decode.string)
+    use priority <- decode.field(7, decode.int)
+    use created_by <- decode.field(8, decode.int)
+    use created_at <- decode.field(9, decode.string)
+    use execution_order <- decode.field(10, decode.int)
+    decode.success(RuleTemplatesListForRuleRow(
+      id:,
+      org_id:,
+      project_id:,
+      name:,
+      description:,
+      type_id:,
+      type_name:,
+      priority:,
+      created_by:,
+      created_at:,
+      execution_order:,
+    ))
+  }
+
+  "-- name: list_rule_templates_for_rule
+SELECT
+  t.id,
+  t.org_id,
+  coalesce(t.project_id, 0) as project_id,
+  t.name,
+  coalesce(t.description, '') as description,
+  t.type_id,
+  tt.name as type_name,
+  t.priority,
+  t.created_by,
+  to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  rt.execution_order
+FROM rule_templates rt
+JOIN task_templates t ON t.id = rt.template_id
+JOIN task_types tt ON tt.id = t.type_id
+WHERE rt.rule_id = $1
+ORDER BY rt.execution_order ASC, t.created_at ASC;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `rules_create` query
+/// defined in `./src/scrumbringer_server/sql/rules_create.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RulesCreateRow {
+  RulesCreateRow(
+    id: Int,
+    workflow_id: Int,
+    name: String,
+    goal: String,
+    resource_type: String,
+    task_type_id: Int,
+    to_state: String,
+    active: Bool,
+    created_at: String,
+  )
+}
+
+/// name: create_rule
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rules_create(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: String,
+  arg_3: String,
+  arg_4: String,
+  arg_5: Int,
+  arg_6: String,
+  arg_7: Bool,
+) -> Result(pog.Returned(RulesCreateRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use workflow_id <- decode.field(1, decode.int)
+    use name <- decode.field(2, decode.string)
+    use goal <- decode.field(3, decode.string)
+    use resource_type <- decode.field(4, decode.string)
+    use task_type_id <- decode.field(5, decode.int)
+    use to_state <- decode.field(6, decode.string)
+    use active <- decode.field(7, decode.bool)
+    use created_at <- decode.field(8, decode.string)
+    decode.success(RulesCreateRow(
+      id:,
+      workflow_id:,
+      name:,
+      goal:,
+      resource_type:,
+      task_type_id:,
+      to_state:,
+      active:,
+      created_at:,
+    ))
+  }
+
+  "-- name: create_rule
+INSERT INTO rules (
+  workflow_id,
+  name,
+  goal,
+  resource_type,
+  task_type_id,
+  to_state,
+  active
+)
+VALUES (
+  $1,
+  $2,
+  nullif($3, ''),
+  $4,
+  CASE WHEN $5 <= 0 THEN null ELSE $5 END,
+  $6,
+  $7
+)
+RETURNING
+  id,
+  workflow_id,
+  name,
+  coalesce(goal, '') as goal,
+  resource_type,
+  coalesce(task_type_id, 0) as task_type_id,
+  to_state,
+  active,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.parameter(pog.text(arg_3))
+  |> pog.parameter(pog.text(arg_4))
+  |> pog.parameter(pog.int(arg_5))
+  |> pog.parameter(pog.text(arg_6))
+  |> pog.parameter(pog.bool(arg_7))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `rules_delete` query
+/// defined in `./src/scrumbringer_server/sql/rules_delete.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RulesDeleteRow {
+  RulesDeleteRow(id: Int)
+}
+
+/// name: delete_rule
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rules_delete(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(RulesDeleteRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(RulesDeleteRow(id:))
+  }
+
+  "-- name: delete_rule
+DELETE FROM rules
+WHERE id = $1
+RETURNING id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `rules_find_matching` query
+/// defined in `./src/scrumbringer_server/sql/rules_find_matching.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RulesFindMatchingRow {
+  RulesFindMatchingRow(
+    id: Int,
+    workflow_id: Int,
+    name: String,
+    goal: String,
+    resource_type: String,
+    task_type_id: Int,
+    to_state: String,
+    active: Bool,
+    created_at: String,
+    workflow_org_id: Int,
+    workflow_project_id: Int,
+  )
+}
+
+/// name: rules_find_matching
+/// Find active rules that match a state change event.
+/// For task events, filters by task_type_id if specified.
+/// For card events, task_type_id filter is ignored.
+/// Params: $1=resource_type, $2=to_state, $3=project_id, $4=org_id, $5=task_type_id (-1 means no filter)
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rules_find_matching(
+  db: pog.Connection,
+  arg_1: String,
+  arg_2: String,
+  arg_3: Int,
+  arg_4: Int,
+  arg_5: Int,
+) -> Result(pog.Returned(RulesFindMatchingRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use workflow_id <- decode.field(1, decode.int)
+    use name <- decode.field(2, decode.string)
+    use goal <- decode.field(3, decode.string)
+    use resource_type <- decode.field(4, decode.string)
+    use task_type_id <- decode.field(5, decode.int)
+    use to_state <- decode.field(6, decode.string)
+    use active <- decode.field(7, decode.bool)
+    use created_at <- decode.field(8, decode.string)
+    use workflow_org_id <- decode.field(9, decode.int)
+    use workflow_project_id <- decode.field(10, decode.int)
+    decode.success(RulesFindMatchingRow(
+      id:,
+      workflow_id:,
+      name:,
+      goal:,
+      resource_type:,
+      task_type_id:,
+      to_state:,
+      active:,
+      created_at:,
+      workflow_org_id:,
+      workflow_project_id:,
+    ))
+  }
+
+  "-- name: rules_find_matching
+-- Find active rules that match a state change event.
+-- For task events, filters by task_type_id if specified.
+-- For card events, task_type_id filter is ignored.
+-- Params: $1=resource_type, $2=to_state, $3=project_id, $4=org_id, $5=task_type_id (-1 means no filter)
+select
+  r.id,
+  r.workflow_id,
+  r.name,
+  coalesce(r.goal, '') as goal,
+  r.resource_type,
+  coalesce(r.task_type_id, 0) as task_type_id,
+  r.to_state,
+  r.active,
+  to_char(r.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  w.org_id as workflow_org_id,
+  coalesce(w.project_id, 0) as workflow_project_id
+from rules r
+join workflows w on w.id = r.workflow_id
+where r.active = true
+  and w.active = true
+  and r.resource_type = $1
+  and r.to_state = $2
+  -- Scope: org-wide workflows apply to all projects in org
+  -- Project-scoped workflows only apply to their project
+  and w.org_id = $4
+  and (w.project_id is null or w.project_id = $3)
+  -- Task type filter: only for task events, ignore if task_type_id is null or -1
+  and (
+    $1 != 'task'
+    or r.task_type_id is null
+    or $5 < 0
+    or r.task_type_id = $5
+  )
+order by w.project_id nulls last, r.id;
+"
+  |> pog.query
+  |> pog.parameter(pog.text(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.parameter(pog.int(arg_4))
+  |> pog.parameter(pog.int(arg_5))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `rules_get` query
+/// defined in `./src/scrumbringer_server/sql/rules_get.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RulesGetRow {
+  RulesGetRow(
+    id: Int,
+    workflow_id: Int,
+    name: String,
+    goal: String,
+    resource_type: String,
+    task_type_id: Int,
+    to_state: String,
+    active: Bool,
+    created_at: String,
+  )
+}
+
+/// name: get_rule
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rules_get(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(RulesGetRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use workflow_id <- decode.field(1, decode.int)
+    use name <- decode.field(2, decode.string)
+    use goal <- decode.field(3, decode.string)
+    use resource_type <- decode.field(4, decode.string)
+    use task_type_id <- decode.field(5, decode.int)
+    use to_state <- decode.field(6, decode.string)
+    use active <- decode.field(7, decode.bool)
+    use created_at <- decode.field(8, decode.string)
+    decode.success(RulesGetRow(
+      id:,
+      workflow_id:,
+      name:,
+      goal:,
+      resource_type:,
+      task_type_id:,
+      to_state:,
+      active:,
+      created_at:,
+    ))
+  }
+
+  "-- name: get_rule
+SELECT
+  r.id,
+  r.workflow_id,
+  r.name,
+  coalesce(r.goal, '') as goal,
+  r.resource_type,
+  coalesce(r.task_type_id, 0) as task_type_id,
+  r.to_state,
+  r.active,
+  to_char(r.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+FROM rules r
+WHERE r.id = $1;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `rules_get_templates_for_execution` query
+/// defined in `./src/scrumbringer_server/sql/rules_get_templates_for_execution.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RulesGetTemplatesForExecutionRow {
+  RulesGetTemplatesForExecutionRow(
+    id: Int,
+    org_id: Int,
+    project_id: Int,
+    name: String,
+    description: String,
+    type_id: Int,
+    priority: Int,
+    created_by: Int,
+    created_at: String,
+    execution_order: Int,
+  )
+}
+
+/// name: rules_get_templates_for_execution
+/// Get templates attached to a rule for execution, ordered by execution_order.
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rules_get_templates_for_execution(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(RulesGetTemplatesForExecutionRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use org_id <- decode.field(1, decode.int)
+    use project_id <- decode.field(2, decode.int)
+    use name <- decode.field(3, decode.string)
+    use description <- decode.field(4, decode.string)
+    use type_id <- decode.field(5, decode.int)
+    use priority <- decode.field(6, decode.int)
+    use created_by <- decode.field(7, decode.int)
+    use created_at <- decode.field(8, decode.string)
+    use execution_order <- decode.field(9, decode.int)
+    decode.success(RulesGetTemplatesForExecutionRow(
+      id:,
+      org_id:,
+      project_id:,
+      name:,
+      description:,
+      type_id:,
+      priority:,
+      created_by:,
+      created_at:,
+      execution_order:,
+    ))
+  }
+
+  "-- name: rules_get_templates_for_execution
+-- Get templates attached to a rule for execution, ordered by execution_order.
+select
+  t.id,
+  t.org_id,
+  coalesce(t.project_id, 0) as project_id,
+  t.name,
+  coalesce(t.description, '') as description,
+  t.type_id,
+  t.priority,
+  t.created_by,
+  to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  rt.execution_order
+from rule_templates rt
+join task_templates t on t.id = rt.template_id
+where rt.rule_id = $1
+order by rt.execution_order, t.id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `rules_list_for_workflow` query
+/// defined in `./src/scrumbringer_server/sql/rules_list_for_workflow.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RulesListForWorkflowRow {
+  RulesListForWorkflowRow(
+    id: Int,
+    workflow_id: Int,
+    name: String,
+    goal: String,
+    resource_type: String,
+    task_type_id: Int,
+    to_state: String,
+    active: Bool,
+    created_at: String,
+  )
+}
+
+/// name: list_rules_for_workflow
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rules_list_for_workflow(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(RulesListForWorkflowRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use workflow_id <- decode.field(1, decode.int)
+    use name <- decode.field(2, decode.string)
+    use goal <- decode.field(3, decode.string)
+    use resource_type <- decode.field(4, decode.string)
+    use task_type_id <- decode.field(5, decode.int)
+    use to_state <- decode.field(6, decode.string)
+    use active <- decode.field(7, decode.bool)
+    use created_at <- decode.field(8, decode.string)
+    decode.success(RulesListForWorkflowRow(
+      id:,
+      workflow_id:,
+      name:,
+      goal:,
+      resource_type:,
+      task_type_id:,
+      to_state:,
+      active:,
+      created_at:,
+    ))
+  }
+
+  "-- name: list_rules_for_workflow
+SELECT
+  r.id,
+  r.workflow_id,
+  r.name,
+  coalesce(r.goal, '') as goal,
+  r.resource_type,
+  coalesce(r.task_type_id, 0) as task_type_id,
+  r.to_state,
+  r.active,
+  to_char(r.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+FROM rules r
+WHERE r.workflow_id = $1
+ORDER BY r.created_at ASC;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `rules_set_active_for_workflow` query
+/// defined in `./src/scrumbringer_server/sql/rules_set_active_for_workflow.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RulesSetActiveForWorkflowRow {
+  RulesSetActiveForWorkflowRow(id: Int)
+}
+
+/// name: set_rules_active_for_workflow
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rules_set_active_for_workflow(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Bool,
+) -> Result(pog.Returned(RulesSetActiveForWorkflowRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(RulesSetActiveForWorkflowRow(id:))
+  }
+
+  "-- name: set_rules_active_for_workflow
+UPDATE rules
+SET active = $2
+WHERE workflow_id = $1
+RETURNING id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.bool(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `rules_update` query
+/// defined in `./src/scrumbringer_server/sql/rules_update.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RulesUpdateRow {
+  RulesUpdateRow(
+    id: Int,
+    workflow_id: Int,
+    name: String,
+    goal: String,
+    resource_type: String,
+    task_type_id: Int,
+    to_state: String,
+    active: Bool,
+    created_at: String,
+  )
+}
+
+/// name: update_rule
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rules_update(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: String,
+  arg_3: String,
+  arg_4: String,
+  arg_5: Int,
+  arg_6: String,
+  arg_7: Int,
+) -> Result(pog.Returned(RulesUpdateRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use workflow_id <- decode.field(1, decode.int)
+    use name <- decode.field(2, decode.string)
+    use goal <- decode.field(3, decode.string)
+    use resource_type <- decode.field(4, decode.string)
+    use task_type_id <- decode.field(5, decode.int)
+    use to_state <- decode.field(6, decode.string)
+    use active <- decode.field(7, decode.bool)
+    use created_at <- decode.field(8, decode.string)
+    decode.success(RulesUpdateRow(
+      id:,
+      workflow_id:,
+      name:,
+      goal:,
+      resource_type:,
+      task_type_id:,
+      to_state:,
+      active:,
+      created_at:,
+    ))
+  }
+
+  "-- name: update_rule
+UPDATE rules
+SET
+  name = case when $2 = '__unset__' then name else $2 end,
+  goal = case when $3 = '__unset__' then goal else nullif($3, '') end,
+  resource_type = case when $4 = '__unset__' then resource_type else $4 end,
+  task_type_id = case
+    when $5 = -1 then task_type_id
+    when $5 <= 0 then null
+    else $5
+  end,
+  to_state = case when $6 = '__unset__' then to_state else $6 end,
+  active = case when $7 = -1 then active else ($7 = 1) end
+WHERE id = $1
+RETURNING
+  id,
+  workflow_id,
+  name,
+  coalesce(goal, '') as goal,
+  resource_type,
+  coalesce(task_type_id, 0) as task_type_id,
+  to_state,
+  active,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.parameter(pog.text(arg_3))
+  |> pog.parameter(pog.text(arg_4))
+  |> pog.parameter(pog.int(arg_5))
+  |> pog.parameter(pog.text(arg_6))
+  |> pog.parameter(pog.int(arg_7))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `task_events_insert` query
 /// defined in `./src/scrumbringer_server/sql/task_events_insert.sql`.
 ///
@@ -2030,6 +2998,516 @@ returning
   |> pog.parameter(pog.int(arg_2))
   |> pog.parameter(pog.int(arg_3))
   |> pog.parameter(pog.int(arg_4))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `task_templates_create` query
+/// defined in `./src/scrumbringer_server/sql/task_templates_create.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskTemplatesCreateRow {
+  TaskTemplatesCreateRow(
+    id: Int,
+    org_id: Int,
+    project_id: Option(Int),
+    name: String,
+    description: String,
+    type_id: Int,
+    priority: Int,
+    created_by: Int,
+    created_at: String,
+    type_name: String,
+  )
+}
+
+/// name: create_task_template
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_templates_create(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Int,
+  arg_4: String,
+  arg_5: String,
+  arg_6: Int,
+  arg_7: Int,
+) -> Result(pog.Returned(TaskTemplatesCreateRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use org_id <- decode.field(1, decode.int)
+    use project_id <- decode.field(2, decode.optional(decode.int))
+    use name <- decode.field(3, decode.string)
+    use description <- decode.field(4, decode.string)
+    use type_id <- decode.field(5, decode.int)
+    use priority <- decode.field(6, decode.int)
+    use created_by <- decode.field(7, decode.int)
+    use created_at <- decode.field(8, decode.string)
+    use type_name <- decode.field(9, decode.string)
+    decode.success(TaskTemplatesCreateRow(
+      id:,
+      org_id:,
+      project_id:,
+      name:,
+      description:,
+      type_id:,
+      priority:,
+      created_by:,
+      created_at:,
+      type_name:,
+    ))
+  }
+
+  "-- name: create_task_template
+WITH type_ok AS (
+  SELECT tt.id
+  FROM task_types tt
+  JOIN projects p ON p.id = tt.project_id
+  WHERE tt.id = $3
+    AND (
+      CASE
+        WHEN $2 <= 0 THEN p.org_id = $1
+        ELSE tt.project_id = $2
+      END
+    )
+), inserted AS (
+  INSERT INTO task_templates (org_id, project_id, name, description, type_id, priority, created_by)
+  SELECT
+    $1,
+    CASE WHEN $2 <= 0 THEN null ELSE $2 END,
+    $4,
+    nullif($5, ''),
+    type_ok.id,
+    $6,
+    $7
+  FROM type_ok
+  RETURNING
+    id,
+    org_id,
+    project_id,
+    name,
+    coalesce(description, '') as description,
+    type_id,
+    priority,
+    created_by,
+    to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+)
+SELECT
+  inserted.*,
+  tt.name as type_name
+FROM inserted
+JOIN task_types tt on tt.id = inserted.type_id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.parameter(pog.text(arg_4))
+  |> pog.parameter(pog.text(arg_5))
+  |> pog.parameter(pog.int(arg_6))
+  |> pog.parameter(pog.int(arg_7))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `task_templates_delete` query
+/// defined in `./src/scrumbringer_server/sql/task_templates_delete.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskTemplatesDeleteRow {
+  TaskTemplatesDeleteRow(id: Int)
+}
+
+/// name: delete_task_template
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_templates_delete(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(TaskTemplatesDeleteRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(TaskTemplatesDeleteRow(id:))
+  }
+
+  "-- name: delete_task_template
+DELETE FROM task_templates
+WHERE id = $1
+  AND org_id = $2
+RETURNING id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `task_templates_get` query
+/// defined in `./src/scrumbringer_server/sql/task_templates_get.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskTemplatesGetRow {
+  TaskTemplatesGetRow(
+    id: Int,
+    org_id: Int,
+    project_id: Int,
+    name: String,
+    description: String,
+    type_id: Int,
+    type_name: String,
+    priority: Int,
+    created_by: Int,
+    created_at: String,
+  )
+}
+
+/// name: get_task_template
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_templates_get(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(TaskTemplatesGetRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use org_id <- decode.field(1, decode.int)
+    use project_id <- decode.field(2, decode.int)
+    use name <- decode.field(3, decode.string)
+    use description <- decode.field(4, decode.string)
+    use type_id <- decode.field(5, decode.int)
+    use type_name <- decode.field(6, decode.string)
+    use priority <- decode.field(7, decode.int)
+    use created_by <- decode.field(8, decode.int)
+    use created_at <- decode.field(9, decode.string)
+    decode.success(TaskTemplatesGetRow(
+      id:,
+      org_id:,
+      project_id:,
+      name:,
+      description:,
+      type_id:,
+      type_name:,
+      priority:,
+      created_by:,
+      created_at:,
+    ))
+  }
+
+  "-- name: get_task_template
+SELECT
+  t.id,
+  t.org_id,
+  coalesce(t.project_id, 0) as project_id,
+  t.name,
+  coalesce(t.description, '') as description,
+  t.type_id,
+  tt.name as type_name,
+  t.priority,
+  t.created_by,
+  to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+FROM task_templates t
+JOIN task_types tt on tt.id = t.type_id
+WHERE t.id = $1;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `task_templates_list_for_org` query
+/// defined in `./src/scrumbringer_server/sql/task_templates_list_for_org.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskTemplatesListForOrgRow {
+  TaskTemplatesListForOrgRow(
+    id: Int,
+    org_id: Int,
+    project_id: Int,
+    name: String,
+    description: String,
+    type_id: Int,
+    type_name: String,
+    priority: Int,
+    created_by: Int,
+    created_at: String,
+  )
+}
+
+/// name: list_task_templates_for_org
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_templates_list_for_org(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(TaskTemplatesListForOrgRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use org_id <- decode.field(1, decode.int)
+    use project_id <- decode.field(2, decode.int)
+    use name <- decode.field(3, decode.string)
+    use description <- decode.field(4, decode.string)
+    use type_id <- decode.field(5, decode.int)
+    use type_name <- decode.field(6, decode.string)
+    use priority <- decode.field(7, decode.int)
+    use created_by <- decode.field(8, decode.int)
+    use created_at <- decode.field(9, decode.string)
+    decode.success(TaskTemplatesListForOrgRow(
+      id:,
+      org_id:,
+      project_id:,
+      name:,
+      description:,
+      type_id:,
+      type_name:,
+      priority:,
+      created_by:,
+      created_at:,
+    ))
+  }
+
+  "-- name: list_task_templates_for_org
+SELECT
+  t.id,
+  t.org_id,
+  coalesce(t.project_id, 0) as project_id,
+  t.name,
+  coalesce(t.description, '') as description,
+  t.type_id,
+  tt.name as type_name,
+  t.priority,
+  t.created_by,
+  to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+FROM task_templates t
+JOIN task_types tt on tt.id = t.type_id
+WHERE t.org_id = $1
+  AND t.project_id is null
+ORDER BY t.created_at DESC;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `task_templates_list_for_project` query
+/// defined in `./src/scrumbringer_server/sql/task_templates_list_for_project.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskTemplatesListForProjectRow {
+  TaskTemplatesListForProjectRow(
+    id: Int,
+    org_id: Int,
+    project_id: Int,
+    name: String,
+    description: String,
+    type_id: Int,
+    type_name: String,
+    priority: Int,
+    created_by: Int,
+    created_at: String,
+  )
+}
+
+/// name: list_task_templates_for_project
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_templates_list_for_project(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(TaskTemplatesListForProjectRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use org_id <- decode.field(1, decode.int)
+    use project_id <- decode.field(2, decode.int)
+    use name <- decode.field(3, decode.string)
+    use description <- decode.field(4, decode.string)
+    use type_id <- decode.field(5, decode.int)
+    use type_name <- decode.field(6, decode.string)
+    use priority <- decode.field(7, decode.int)
+    use created_by <- decode.field(8, decode.int)
+    use created_at <- decode.field(9, decode.string)
+    decode.success(TaskTemplatesListForProjectRow(
+      id:,
+      org_id:,
+      project_id:,
+      name:,
+      description:,
+      type_id:,
+      type_name:,
+      priority:,
+      created_by:,
+      created_at:,
+    ))
+  }
+
+  "-- name: list_task_templates_for_project
+SELECT
+  t.id,
+  t.org_id,
+  coalesce(t.project_id, 0) as project_id,
+  t.name,
+  coalesce(t.description, '') as description,
+  t.type_id,
+  tt.name as type_name,
+  t.priority,
+  t.created_by,
+  to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+FROM task_templates t
+JOIN task_types tt on tt.id = t.type_id
+WHERE t.project_id = $1
+ORDER BY t.created_at DESC;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `task_templates_update` query
+/// defined in `./src/scrumbringer_server/sql/task_templates_update.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskTemplatesUpdateRow {
+  TaskTemplatesUpdateRow(
+    id: Int,
+    org_id: Int,
+    project_id: Option(Int),
+    name: String,
+    description: String,
+    type_id: Int,
+    priority: Int,
+    created_by: Int,
+    created_at: String,
+    type_name: String,
+  )
+}
+
+/// name: update_task_template
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_templates_update(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Int,
+  arg_4: String,
+  arg_5: String,
+  arg_6: Int,
+  arg_7: Int,
+) -> Result(pog.Returned(TaskTemplatesUpdateRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use org_id <- decode.field(1, decode.int)
+    use project_id <- decode.field(2, decode.optional(decode.int))
+    use name <- decode.field(3, decode.string)
+    use description <- decode.field(4, decode.string)
+    use type_id <- decode.field(5, decode.int)
+    use priority <- decode.field(6, decode.int)
+    use created_by <- decode.field(7, decode.int)
+    use created_at <- decode.field(8, decode.string)
+    use type_name <- decode.field(9, decode.string)
+    decode.success(TaskTemplatesUpdateRow(
+      id:,
+      org_id:,
+      project_id:,
+      name:,
+      description:,
+      type_id:,
+      priority:,
+      created_by:,
+      created_at:,
+      type_name:,
+    ))
+  }
+
+  "-- name: update_task_template
+WITH current AS (
+  SELECT id, type_id
+  FROM task_templates
+  WHERE id = $1
+    AND org_id = $3
+), type_ok AS (
+  SELECT
+    CASE
+      WHEN $6 = -1 THEN current.type_id
+      ELSE (
+        SELECT tt.id
+        FROM task_types tt
+        JOIN projects p ON p.id = tt.project_id
+        WHERE tt.id = $6
+          AND (
+            CASE
+              WHEN $2 <= 0 THEN p.org_id = $3
+              ELSE tt.project_id = $2
+            END
+          )
+      )
+    END as type_id
+  FROM current
+), updated AS (
+  UPDATE task_templates
+  SET
+    name = case when $4 = '__unset__' then name else $4 end,
+    description = case when $5 = '__unset__' then description else nullif($5, '') end,
+    type_id = type_ok.type_id,
+    priority = case when $7 = -1 then priority else $7 end
+  FROM type_ok
+  WHERE task_templates.id = $1
+    AND task_templates.org_id = $3
+    AND type_ok.type_id is not null
+  RETURNING
+    task_templates.id,
+    task_templates.org_id,
+    task_templates.project_id,
+    task_templates.name,
+    coalesce(task_templates.description, '') as description,
+    task_templates.type_id,
+    task_templates.priority,
+    task_templates.created_by,
+    to_char(task_templates.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+)
+SELECT
+  updated.*,
+  tt.name as type_name
+FROM updated
+JOIN task_types tt on tt.id = updated.type_id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.parameter(pog.text(arg_4))
+  |> pog.parameter(pog.text(arg_5))
+  |> pog.parameter(pog.int(arg_6))
+  |> pog.parameter(pog.int(arg_7))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -3271,6 +4749,509 @@ where id = $1;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `workflows_create` query
+/// defined in `./src/scrumbringer_server/sql/workflows_create.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type WorkflowsCreateRow {
+  WorkflowsCreateRow(
+    id: Int,
+    org_id: Int,
+    project_id: Option(Int),
+    name: String,
+    description: String,
+    active: Bool,
+    created_by: Int,
+    created_at: String,
+  )
+}
+
+/// name: create_workflow
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn workflows_create(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: String,
+  arg_4: String,
+  arg_5: Bool,
+  arg_6: Int,
+) -> Result(pog.Returned(WorkflowsCreateRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use org_id <- decode.field(1, decode.int)
+    use project_id <- decode.field(2, decode.optional(decode.int))
+    use name <- decode.field(3, decode.string)
+    use description <- decode.field(4, decode.string)
+    use active <- decode.field(5, decode.bool)
+    use created_by <- decode.field(6, decode.int)
+    use created_at <- decode.field(7, decode.string)
+    decode.success(WorkflowsCreateRow(
+      id:,
+      org_id:,
+      project_id:,
+      name:,
+      description:,
+      active:,
+      created_by:,
+      created_at:,
+    ))
+  }
+
+  "-- name: create_workflow
+INSERT INTO workflows (org_id, project_id, name, description, active, created_by)
+VALUES (
+  $1,
+  CASE WHEN $2 <= 0 THEN null ELSE $2 END,
+  $3,
+  nullif($4, ''),
+  $5,
+  $6
+)
+RETURNING
+  id,
+  org_id,
+  project_id,
+  name,
+  coalesce(description, '') as description,
+  active,
+  created_by,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.text(arg_3))
+  |> pog.parameter(pog.text(arg_4))
+  |> pog.parameter(pog.bool(arg_5))
+  |> pog.parameter(pog.int(arg_6))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `workflows_delete` query
+/// defined in `./src/scrumbringer_server/sql/workflows_delete.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type WorkflowsDeleteRow {
+  WorkflowsDeleteRow(id: Int)
+}
+
+/// name: delete_workflow
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn workflows_delete(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Int,
+) -> Result(pog.Returned(WorkflowsDeleteRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(WorkflowsDeleteRow(id:))
+  }
+
+  "-- name: delete_workflow
+DELETE FROM workflows
+WHERE id = $1
+  AND org_id = $2
+  AND (
+    CASE
+      WHEN $3 <= 0 THEN project_id is null
+      ELSE project_id = $3
+    END
+  )
+RETURNING id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `workflows_get` query
+/// defined in `./src/scrumbringer_server/sql/workflows_get.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type WorkflowsGetRow {
+  WorkflowsGetRow(
+    id: Int,
+    org_id: Int,
+    project_id: Int,
+    name: String,
+    description: String,
+    active: Bool,
+    created_by: Int,
+    created_at: String,
+    rule_count: Int,
+  )
+}
+
+/// name: get_workflow
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn workflows_get(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(WorkflowsGetRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use org_id <- decode.field(1, decode.int)
+    use project_id <- decode.field(2, decode.int)
+    use name <- decode.field(3, decode.string)
+    use description <- decode.field(4, decode.string)
+    use active <- decode.field(5, decode.bool)
+    use created_by <- decode.field(6, decode.int)
+    use created_at <- decode.field(7, decode.string)
+    use rule_count <- decode.field(8, decode.int)
+    decode.success(WorkflowsGetRow(
+      id:,
+      org_id:,
+      project_id:,
+      name:,
+      description:,
+      active:,
+      created_by:,
+      created_at:,
+      rule_count:,
+    ))
+  }
+
+  "-- name: get_workflow
+SELECT
+  w.id,
+  w.org_id,
+  coalesce(w.project_id, 0) as project_id,
+  w.name,
+  coalesce(w.description, '') as description,
+  w.active,
+  w.created_by,
+  to_char(w.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  coalesce(r.rule_count, 0) as rule_count
+FROM workflows w
+LEFT JOIN (
+  SELECT workflow_id, count(*)::int as rule_count
+  FROM rules
+  GROUP BY workflow_id
+) r ON r.workflow_id = w.id
+WHERE w.id = $1;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `workflows_list_for_org` query
+/// defined in `./src/scrumbringer_server/sql/workflows_list_for_org.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type WorkflowsListForOrgRow {
+  WorkflowsListForOrgRow(
+    id: Int,
+    org_id: Int,
+    project_id: Int,
+    name: String,
+    description: String,
+    active: Bool,
+    created_by: Int,
+    created_at: String,
+    rule_count: Int,
+  )
+}
+
+/// name: list_workflows_for_org
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn workflows_list_for_org(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(WorkflowsListForOrgRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use org_id <- decode.field(1, decode.int)
+    use project_id <- decode.field(2, decode.int)
+    use name <- decode.field(3, decode.string)
+    use description <- decode.field(4, decode.string)
+    use active <- decode.field(5, decode.bool)
+    use created_by <- decode.field(6, decode.int)
+    use created_at <- decode.field(7, decode.string)
+    use rule_count <- decode.field(8, decode.int)
+    decode.success(WorkflowsListForOrgRow(
+      id:,
+      org_id:,
+      project_id:,
+      name:,
+      description:,
+      active:,
+      created_by:,
+      created_at:,
+      rule_count:,
+    ))
+  }
+
+  "-- name: list_workflows_for_org
+SELECT
+  w.id,
+  w.org_id,
+  coalesce(w.project_id, 0) as project_id,
+  w.name,
+  coalesce(w.description, '') as description,
+  w.active,
+  w.created_by,
+  to_char(w.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  coalesce(r.rule_count, 0) as rule_count
+FROM workflows w
+LEFT JOIN (
+  SELECT workflow_id, count(*)::int as rule_count
+  FROM rules
+  GROUP BY workflow_id
+) r ON r.workflow_id = w.id
+WHERE w.org_id = $1
+  AND w.project_id is null
+ORDER BY w.created_at DESC;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `workflows_list_for_project` query
+/// defined in `./src/scrumbringer_server/sql/workflows_list_for_project.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type WorkflowsListForProjectRow {
+  WorkflowsListForProjectRow(
+    id: Int,
+    org_id: Int,
+    project_id: Int,
+    name: String,
+    description: String,
+    active: Bool,
+    created_by: Int,
+    created_at: String,
+    rule_count: Int,
+  )
+}
+
+/// name: list_workflows_for_project
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn workflows_list_for_project(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(WorkflowsListForProjectRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use org_id <- decode.field(1, decode.int)
+    use project_id <- decode.field(2, decode.int)
+    use name <- decode.field(3, decode.string)
+    use description <- decode.field(4, decode.string)
+    use active <- decode.field(5, decode.bool)
+    use created_by <- decode.field(6, decode.int)
+    use created_at <- decode.field(7, decode.string)
+    use rule_count <- decode.field(8, decode.int)
+    decode.success(WorkflowsListForProjectRow(
+      id:,
+      org_id:,
+      project_id:,
+      name:,
+      description:,
+      active:,
+      created_by:,
+      created_at:,
+      rule_count:,
+    ))
+  }
+
+  "-- name: list_workflows_for_project
+SELECT
+  w.id,
+  w.org_id,
+  coalesce(w.project_id, 0) as project_id,
+  w.name,
+  coalesce(w.description, '') as description,
+  w.active,
+  w.created_by,
+  to_char(w.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  coalesce(r.rule_count, 0) as rule_count
+FROM workflows w
+LEFT JOIN (
+  SELECT workflow_id, count(*)::int as rule_count
+  FROM rules
+  GROUP BY workflow_id
+) r ON r.workflow_id = w.id
+WHERE w.project_id = $1
+ORDER BY w.created_at DESC;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `workflows_set_active` query
+/// defined in `./src/scrumbringer_server/sql/workflows_set_active.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type WorkflowsSetActiveRow {
+  WorkflowsSetActiveRow(id: Int)
+}
+
+/// name: set_workflow_active
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn workflows_set_active(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Int,
+  arg_4: Bool,
+) -> Result(pog.Returned(WorkflowsSetActiveRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(WorkflowsSetActiveRow(id:))
+  }
+
+  "-- name: set_workflow_active
+UPDATE workflows
+SET active = $4
+WHERE id = $1
+  AND org_id = $2
+  AND (
+    CASE
+      WHEN $3 <= 0 THEN project_id is null
+      ELSE project_id = $3
+    END
+  )
+RETURNING id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.parameter(pog.bool(arg_4))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `workflows_update` query
+/// defined in `./src/scrumbringer_server/sql/workflows_update.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type WorkflowsUpdateRow {
+  WorkflowsUpdateRow(
+    id: Int,
+    org_id: Int,
+    project_id: Option(Int),
+    name: String,
+    description: String,
+    active: Bool,
+    created_by: Int,
+    created_at: String,
+  )
+}
+
+/// name: update_workflow
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn workflows_update(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Int,
+  arg_4: String,
+  arg_5: String,
+  arg_6: Int,
+) -> Result(pog.Returned(WorkflowsUpdateRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use org_id <- decode.field(1, decode.int)
+    use project_id <- decode.field(2, decode.optional(decode.int))
+    use name <- decode.field(3, decode.string)
+    use description <- decode.field(4, decode.string)
+    use active <- decode.field(5, decode.bool)
+    use created_by <- decode.field(6, decode.int)
+    use created_at <- decode.field(7, decode.string)
+    decode.success(WorkflowsUpdateRow(
+      id:,
+      org_id:,
+      project_id:,
+      name:,
+      description:,
+      active:,
+      created_by:,
+      created_at:,
+    ))
+  }
+
+  "-- name: update_workflow
+UPDATE workflows
+SET
+  name = case when $4 = '__unset__' then name else $4 end,
+  description = case when $5 = '__unset__' then description else nullif($5, '') end,
+  active = case when $6 = -1 then active else ($6 = 1) end
+WHERE id = $1
+  AND org_id = $2
+  AND (
+    CASE
+      WHEN $3 <= 0 THEN project_id is null
+      ELSE project_id = $3
+    END
+  )
+RETURNING
+  id,
+  org_id,
+  project_id,
+  name,
+  coalesce(description, '') as description,
+  active,
+  created_by,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.parameter(pog.text(arg_4))
+  |> pog.parameter(pog.text(arg_5))
+  |> pog.parameter(pog.int(arg_6))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

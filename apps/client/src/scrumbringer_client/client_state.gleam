@@ -75,6 +75,7 @@ import domain/task.{
 }
 import domain/task_type.{type TaskType}
 import domain/card.{type Card}
+import domain/workflow.{type Rule, type RuleTemplate, type TaskTemplate, type Workflow}
 import domain/metrics.{
   type MyMetrics, type OrgMetricsOverview,
   type OrgMetricsProjectTasksPayload,
@@ -294,6 +295,70 @@ pub type Model {
     cards_delete_confirm: Option(Card),
     cards_delete_in_flight: Bool,
     cards_delete_error: Option(String),
+    // Workflows
+    workflows_org: Remote(List(Workflow)),
+    workflows_project: Remote(List(Workflow)),
+    workflows_create_name: String,
+    workflows_create_description: String,
+    workflows_create_active: Bool,
+    workflows_create_in_flight: Bool,
+    workflows_create_error: Option(String),
+    workflows_edit_id: Option(Int),
+    workflows_edit_name: String,
+    workflows_edit_description: String,
+    workflows_edit_active: Bool,
+    workflows_edit_in_flight: Bool,
+    workflows_edit_error: Option(String),
+    workflows_delete_confirm: Option(Workflow),
+    workflows_delete_in_flight: Bool,
+    workflows_delete_error: Option(String),
+    // Rules (for selected workflow)
+    rules_workflow_id: Option(Int),
+    rules: Remote(List(Rule)),
+    rules_create_name: String,
+    rules_create_goal: String,
+    rules_create_resource_type: String,
+    rules_create_task_type_id: Option(Int),
+    rules_create_to_state: String,
+    rules_create_active: Bool,
+    rules_create_in_flight: Bool,
+    rules_create_error: Option(String),
+    rules_edit_id: Option(Int),
+    rules_edit_name: String,
+    rules_edit_goal: String,
+    rules_edit_resource_type: String,
+    rules_edit_task_type_id: Option(Int),
+    rules_edit_to_state: String,
+    rules_edit_active: Bool,
+    rules_edit_in_flight: Bool,
+    rules_edit_error: Option(String),
+    rules_delete_confirm: Option(Rule),
+    rules_delete_in_flight: Bool,
+    rules_delete_error: Option(String),
+    // Rule templates (attached templates)
+    rules_templates: Remote(List(RuleTemplate)),
+    rules_attach_template_id: Option(Int),
+    rules_attach_in_flight: Bool,
+    rules_attach_error: Option(String),
+    // Task templates
+    task_templates_org: Remote(List(TaskTemplate)),
+    task_templates_project: Remote(List(TaskTemplate)),
+    task_templates_create_name: String,
+    task_templates_create_description: String,
+    task_templates_create_type_id: Option(Int),
+    task_templates_create_priority: String,
+    task_templates_create_in_flight: Bool,
+    task_templates_create_error: Option(String),
+    task_templates_edit_id: Option(Int),
+    task_templates_edit_name: String,
+    task_templates_edit_description: String,
+    task_templates_edit_type_id: Option(Int),
+    task_templates_edit_priority: String,
+    task_templates_edit_in_flight: Bool,
+    task_templates_edit_error: Option(String),
+    task_templates_delete_confirm: Option(TaskTemplate),
+    task_templates_delete_in_flight: Bool,
+    task_templates_delete_error: Option(String),
     // Member section
     member_section: member_section.MemberSection,
     member_active_task: Remote(ActiveTaskPayload),
@@ -494,6 +559,84 @@ pub type Msg {
   CardDeleteCancelled
   CardDeleteConfirmed
   CardDeleted(ApiResult(Nil))
+
+  // Workflows
+  WorkflowsOrgFetched(ApiResult(List(Workflow)))
+  WorkflowsProjectFetched(ApiResult(List(Workflow)))
+  WorkflowCreateNameChanged(String)
+  WorkflowCreateDescriptionChanged(String)
+  WorkflowCreateActiveChanged(Bool)
+  WorkflowCreateSubmitted
+  WorkflowCreated(ApiResult(Workflow))
+  WorkflowEditClicked(Workflow)
+  WorkflowEditNameChanged(String)
+  WorkflowEditDescriptionChanged(String)
+  WorkflowEditActiveChanged(Bool)
+  WorkflowEditSubmitted
+  WorkflowUpdated(ApiResult(Workflow))
+  WorkflowEditCancelled
+  WorkflowDeleteClicked(Workflow)
+  WorkflowDeleteCancelled
+  WorkflowDeleteConfirmed
+  WorkflowDeleted(ApiResult(Nil))
+  WorkflowRulesClicked(Int)
+
+  // Rules
+  RulesFetched(ApiResult(List(Rule)))
+  RulesBackClicked
+  RuleCreateNameChanged(String)
+  RuleCreateGoalChanged(String)
+  RuleCreateResourceTypeChanged(String)
+  RuleCreateTaskTypeIdChanged(String)
+  RuleCreateToStateChanged(String)
+  RuleCreateActiveChanged(Bool)
+  RuleCreateSubmitted
+  RuleCreated(ApiResult(Rule))
+  RuleEditClicked(Rule)
+  RuleEditNameChanged(String)
+  RuleEditGoalChanged(String)
+  RuleEditResourceTypeChanged(String)
+  RuleEditTaskTypeIdChanged(String)
+  RuleEditToStateChanged(String)
+  RuleEditActiveChanged(Bool)
+  RuleEditSubmitted
+  RuleUpdated(ApiResult(Rule))
+  RuleEditCancelled
+  RuleDeleteClicked(Rule)
+  RuleDeleteCancelled
+  RuleDeleteConfirmed
+  RuleDeleted(ApiResult(Nil))
+  RuleTemplatesClicked(Int)
+
+  // Rule templates
+  RuleTemplatesFetched(ApiResult(List(RuleTemplate)))
+  RuleAttachTemplateSelected(String)
+  RuleAttachTemplateSubmitted
+  RuleTemplateAttached(ApiResult(List(RuleTemplate)))
+  RuleTemplateDetachClicked(Int)
+  RuleTemplateDetached(ApiResult(Nil))
+
+  // Task templates
+  TaskTemplatesOrgFetched(ApiResult(List(TaskTemplate)))
+  TaskTemplatesProjectFetched(ApiResult(List(TaskTemplate)))
+  TaskTemplateCreateNameChanged(String)
+  TaskTemplateCreateDescriptionChanged(String)
+  TaskTemplateCreateTypeIdChanged(String)
+  TaskTemplateCreatePriorityChanged(String)
+  TaskTemplateCreateSubmitted
+  TaskTemplateCreated(ApiResult(TaskTemplate))
+  TaskTemplateEditClicked(TaskTemplate)
+  TaskTemplateEditNameChanged(String)
+  TaskTemplateEditDescriptionChanged(String)
+  TaskTemplateEditTypeIdChanged(String)
+  TaskTemplateEditPriorityChanged(String)
+  TaskTemplateEditSubmitted
+  TaskTemplateUpdated(ApiResult(TaskTemplate))
+  TaskTemplateEditCancelled
+  TaskTemplateDeleteClicked(TaskTemplate)
+  TaskTemplateDeleteCancelled
+  TaskTemplateDeleteConfirmed
+  TaskTemplateDeleted(ApiResult(Nil))
 
   // Pool filters
   MemberPoolStatusChanged(String)
@@ -751,6 +894,70 @@ pub fn default_model() -> Model {
     cards_delete_confirm: option.None,
     cards_delete_in_flight: False,
     cards_delete_error: option.None,
+    // Workflows
+    workflows_org: NotAsked,
+    workflows_project: NotAsked,
+    workflows_create_name: "",
+    workflows_create_description: "",
+    workflows_create_active: True,
+    workflows_create_in_flight: False,
+    workflows_create_error: option.None,
+    workflows_edit_id: option.None,
+    workflows_edit_name: "",
+    workflows_edit_description: "",
+    workflows_edit_active: True,
+    workflows_edit_in_flight: False,
+    workflows_edit_error: option.None,
+    workflows_delete_confirm: option.None,
+    workflows_delete_in_flight: False,
+    workflows_delete_error: option.None,
+    // Rules
+    rules_workflow_id: option.None,
+    rules: NotAsked,
+    rules_create_name: "",
+    rules_create_goal: "",
+    rules_create_resource_type: "task",
+    rules_create_task_type_id: option.None,
+    rules_create_to_state: "completed",
+    rules_create_active: True,
+    rules_create_in_flight: False,
+    rules_create_error: option.None,
+    rules_edit_id: option.None,
+    rules_edit_name: "",
+    rules_edit_goal: "",
+    rules_edit_resource_type: "task",
+    rules_edit_task_type_id: option.None,
+    rules_edit_to_state: "completed",
+    rules_edit_active: True,
+    rules_edit_in_flight: False,
+    rules_edit_error: option.None,
+    rules_delete_confirm: option.None,
+    rules_delete_in_flight: False,
+    rules_delete_error: option.None,
+    // Rule templates
+    rules_templates: NotAsked,
+    rules_attach_template_id: option.None,
+    rules_attach_in_flight: False,
+    rules_attach_error: option.None,
+    // Task templates
+    task_templates_org: NotAsked,
+    task_templates_project: NotAsked,
+    task_templates_create_name: "",
+    task_templates_create_description: "",
+    task_templates_create_type_id: option.None,
+    task_templates_create_priority: "3",
+    task_templates_create_in_flight: False,
+    task_templates_create_error: option.None,
+    task_templates_edit_id: option.None,
+    task_templates_edit_name: "",
+    task_templates_edit_description: "",
+    task_templates_edit_type_id: option.None,
+    task_templates_edit_priority: "3",
+    task_templates_edit_in_flight: False,
+    task_templates_edit_error: option.None,
+    task_templates_delete_confirm: option.None,
+    task_templates_delete_in_flight: False,
+    task_templates_delete_error: option.None,
     // Member section
     member_section: member_section.Pool,
     member_active_task: NotAsked,

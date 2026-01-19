@@ -244,6 +244,9 @@ fn view_section(
         permissions.Members -> admin_view.view_members(model, selected)
         permissions.TaskTypes -> admin_view.view_task_types(model, selected)
         permissions.Cards -> admin_view.view_cards(model, selected)
+        permissions.Workflows -> admin_view.view_workflows(model, selected)
+        permissions.TaskTemplates ->
+          admin_view.view_task_templates(model, selected)
       }
   }
 }
@@ -455,5 +458,7 @@ fn admin_section_label(section: permissions.AdminSection) -> i18n_text.Text {
     permissions.Capabilities -> i18n_text.AdminCapabilities
     permissions.TaskTypes -> i18n_text.AdminTaskTypes
     permissions.Cards -> i18n_text.AdminCards
+    permissions.Workflows -> i18n_text.AdminWorkflows
+    permissions.TaskTemplates -> i18n_text.AdminTaskTemplates
   }
 }

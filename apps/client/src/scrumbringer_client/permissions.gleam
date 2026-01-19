@@ -20,6 +20,8 @@ pub type AdminSection {
   Capabilities
   TaskTypes
   Cards
+  Workflows
+  TaskTemplates
 }
 
 /// Returns true if the role has organization admin privileges.
@@ -54,6 +56,9 @@ pub fn can_access_section(
   case section {
     Invites | OrgSettings | Projects | Capabilities | Metrics -> org_admin
 
+    // Workflows and TaskTemplates: org admin can see org-scoped, project admin can see project-scoped
+    Workflows | TaskTemplates -> org_admin || any_admin
+
     Members | TaskTypes | Cards -> {
       case selected_project {
         Some(project) -> is_project_admin(project)
@@ -80,9 +85,19 @@ pub fn visible_sections(
       Capabilities,
       TaskTypes,
       Cards,
+      Workflows,
+      TaskTemplates,
     ]
-    True, False -> [Invites, OrgSettings, Projects, Metrics, Capabilities]
-    False, True -> [Members, TaskTypes, Cards]
+    True, False -> [
+      Invites,
+      OrgSettings,
+      Projects,
+      Metrics,
+      Capabilities,
+      Workflows,
+      TaskTemplates,
+    ]
+    False, True -> [Members, TaskTypes, Cards, Workflows, TaskTemplates]
     False, False -> []
   }
 }

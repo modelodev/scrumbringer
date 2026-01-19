@@ -109,6 +109,36 @@ import scrumbringer_client/client_state.{
   TaskTypeCreateNameChanged, TaskTypeCreateSubmitted, TaskTypeCreated,
   TaskTypeIconErrored, TaskTypeIconLoaded, TaskTypesFetched, ThemeSelected,
   ToastDismissed, UrlChanged,
+  // Workflows
+  WorkflowsOrgFetched, WorkflowsProjectFetched, WorkflowCreateNameChanged,
+  WorkflowCreateDescriptionChanged, WorkflowCreateActiveChanged,
+  WorkflowCreateSubmitted, WorkflowCreated, WorkflowEditClicked,
+  WorkflowEditNameChanged, WorkflowEditDescriptionChanged,
+  WorkflowEditActiveChanged, WorkflowEditSubmitted, WorkflowEditCancelled,
+  WorkflowUpdated, WorkflowDeleteClicked, WorkflowDeleteCancelled,
+  WorkflowDeleteConfirmed, WorkflowDeleted, WorkflowRulesClicked,
+  // Rules
+  RulesFetched, RulesBackClicked, RuleCreateNameChanged, RuleCreateGoalChanged,
+  RuleCreateResourceTypeChanged, RuleCreateTaskTypeIdChanged,
+  RuleCreateToStateChanged, RuleCreateActiveChanged, RuleCreateSubmitted,
+  RuleCreated, RuleEditClicked, RuleEditNameChanged, RuleEditGoalChanged,
+  RuleEditResourceTypeChanged, RuleEditTaskTypeIdChanged, RuleEditToStateChanged,
+  RuleEditActiveChanged, RuleEditSubmitted, RuleEditCancelled, RuleUpdated,
+  RuleDeleteClicked, RuleDeleteCancelled, RuleDeleteConfirmed, RuleDeleted,
+  // Rule templates
+  RuleTemplatesClicked, RuleTemplatesFetched, RuleAttachTemplateSelected,
+  RuleAttachTemplateSubmitted, RuleTemplateAttached, RuleTemplateDetachClicked,
+  RuleTemplateDetached,
+  // Task templates
+  TaskTemplatesOrgFetched, TaskTemplatesProjectFetched,
+  TaskTemplateCreateNameChanged, TaskTemplateCreateDescriptionChanged,
+  TaskTemplateCreateTypeIdChanged, TaskTemplateCreatePriorityChanged,
+  TaskTemplateCreateSubmitted, TaskTemplateCreated, TaskTemplateEditClicked,
+  TaskTemplateEditNameChanged, TaskTemplateEditDescriptionChanged,
+  TaskTemplateEditTypeIdChanged, TaskTemplateEditPriorityChanged,
+  TaskTemplateEditSubmitted, TaskTemplateEditCancelled, TaskTemplateUpdated,
+  TaskTemplateDeleteClicked, TaskTemplateDeleteCancelled,
+  TaskTemplateDeleteConfirmed, TaskTemplateDeleted,
 }
 
 import scrumbringer_client/features/admin/update as admin_workflow
@@ -812,6 +842,10 @@ fn refresh_section(model: Model) -> #(Model, Effect(Msg)) {
       }
 
     permissions.Cards -> admin_workflow.fetch_cards_for_project(model)
+
+    permissions.Workflows -> admin_workflow.fetch_workflows(model)
+
+    permissions.TaskTemplates -> admin_workflow.fetch_task_templates(model)
   }
 }
 
@@ -1746,5 +1780,188 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     CardDeleted(Ok(_)) -> admin_workflow.handle_card_deleted_ok(model)
     CardDeleted(Error(err)) ->
       admin_workflow.handle_card_deleted_error(model, err)
+
+    // Workflows handlers
+    WorkflowsOrgFetched(Ok(workflows)) ->
+      admin_workflow.handle_workflows_org_fetched_ok(model, workflows)
+    WorkflowsOrgFetched(Error(err)) ->
+      admin_workflow.handle_workflows_org_fetched_error(model, err)
+    WorkflowsProjectFetched(Ok(workflows)) ->
+      admin_workflow.handle_workflows_project_fetched_ok(model, workflows)
+    WorkflowsProjectFetched(Error(err)) ->
+      admin_workflow.handle_workflows_project_fetched_error(model, err)
+
+    WorkflowCreateNameChanged(name) ->
+      admin_workflow.handle_workflow_create_name_changed(model, name)
+    WorkflowCreateDescriptionChanged(description) ->
+      admin_workflow.handle_workflow_create_description_changed(model, description)
+    WorkflowCreateActiveChanged(active) ->
+      admin_workflow.handle_workflow_create_active_changed(model, active)
+    WorkflowCreateSubmitted ->
+      admin_workflow.handle_workflow_create_submitted(model)
+    WorkflowCreated(Ok(workflow)) ->
+      admin_workflow.handle_workflow_created_ok(model, workflow)
+    WorkflowCreated(Error(err)) ->
+      admin_workflow.handle_workflow_created_error(model, err)
+
+    WorkflowEditClicked(workflow) ->
+      admin_workflow.handle_workflow_edit_clicked(model, workflow)
+    WorkflowEditNameChanged(name) ->
+      admin_workflow.handle_workflow_edit_name_changed(model, name)
+    WorkflowEditDescriptionChanged(description) ->
+      admin_workflow.handle_workflow_edit_description_changed(model, description)
+    WorkflowEditActiveChanged(active) ->
+      admin_workflow.handle_workflow_edit_active_changed(model, active)
+    WorkflowEditSubmitted ->
+      admin_workflow.handle_workflow_edit_submitted(model)
+    WorkflowEditCancelled ->
+      admin_workflow.handle_workflow_edit_cancelled(model)
+    WorkflowUpdated(Ok(workflow)) ->
+      admin_workflow.handle_workflow_updated_ok(model, workflow)
+    WorkflowUpdated(Error(err)) ->
+      admin_workflow.handle_workflow_updated_error(model, err)
+
+    WorkflowDeleteClicked(workflow) ->
+      admin_workflow.handle_workflow_delete_clicked(model, workflow)
+    WorkflowDeleteCancelled ->
+      admin_workflow.handle_workflow_delete_cancelled(model)
+    WorkflowDeleteConfirmed ->
+      admin_workflow.handle_workflow_delete_confirmed(model)
+    WorkflowDeleted(Ok(_)) -> admin_workflow.handle_workflow_deleted_ok(model)
+    WorkflowDeleted(Error(err)) ->
+      admin_workflow.handle_workflow_deleted_error(model, err)
+
+    WorkflowRulesClicked(workflow_id) ->
+      admin_workflow.handle_workflow_rules_clicked(model, workflow_id)
+
+    // Rules handlers
+    RulesFetched(Ok(rules)) ->
+      admin_workflow.handle_rules_fetched_ok(model, rules)
+    RulesFetched(Error(err)) ->
+      admin_workflow.handle_rules_fetched_error(model, err)
+    RulesBackClicked -> admin_workflow.handle_rules_back_clicked(model)
+
+    RuleCreateNameChanged(name) ->
+      admin_workflow.handle_rule_create_name_changed(model, name)
+    RuleCreateGoalChanged(goal) ->
+      admin_workflow.handle_rule_create_goal_changed(model, goal)
+    RuleCreateResourceTypeChanged(resource_type) ->
+      admin_workflow.handle_rule_create_resource_type_changed(model, resource_type)
+    RuleCreateTaskTypeIdChanged(task_type_id) ->
+      admin_workflow.handle_rule_create_task_type_id_changed(model, task_type_id)
+    RuleCreateToStateChanged(to_state) ->
+      admin_workflow.handle_rule_create_to_state_changed(model, to_state)
+    RuleCreateActiveChanged(active) ->
+      admin_workflow.handle_rule_create_active_changed(model, active)
+    RuleCreateSubmitted -> admin_workflow.handle_rule_create_submitted(model)
+    RuleCreated(Ok(rule)) -> admin_workflow.handle_rule_created_ok(model, rule)
+    RuleCreated(Error(err)) ->
+      admin_workflow.handle_rule_created_error(model, err)
+
+    RuleEditClicked(rule) -> admin_workflow.handle_rule_edit_clicked(model, rule)
+    RuleEditNameChanged(name) ->
+      admin_workflow.handle_rule_edit_name_changed(model, name)
+    RuleEditGoalChanged(goal) ->
+      admin_workflow.handle_rule_edit_goal_changed(model, goal)
+    RuleEditResourceTypeChanged(resource_type) ->
+      admin_workflow.handle_rule_edit_resource_type_changed(model, resource_type)
+    RuleEditTaskTypeIdChanged(task_type_id) ->
+      admin_workflow.handle_rule_edit_task_type_id_changed(model, task_type_id)
+    RuleEditToStateChanged(to_state) ->
+      admin_workflow.handle_rule_edit_to_state_changed(model, to_state)
+    RuleEditActiveChanged(active) ->
+      admin_workflow.handle_rule_edit_active_changed(model, active)
+    RuleEditSubmitted -> admin_workflow.handle_rule_edit_submitted(model)
+    RuleEditCancelled -> admin_workflow.handle_rule_edit_cancelled(model)
+    RuleUpdated(Ok(rule)) -> admin_workflow.handle_rule_updated_ok(model, rule)
+    RuleUpdated(Error(err)) ->
+      admin_workflow.handle_rule_updated_error(model, err)
+
+    RuleDeleteClicked(rule) ->
+      admin_workflow.handle_rule_delete_clicked(model, rule)
+    RuleDeleteCancelled -> admin_workflow.handle_rule_delete_cancelled(model)
+    RuleDeleteConfirmed -> admin_workflow.handle_rule_delete_confirmed(model)
+    RuleDeleted(Ok(_)) -> admin_workflow.handle_rule_deleted_ok(model)
+    RuleDeleted(Error(err)) ->
+      admin_workflow.handle_rule_deleted_error(model, err)
+
+    // Rule templates handlers
+    RuleTemplatesClicked(_rule_id) -> #(model, effect.none())
+    RuleTemplatesFetched(Ok(templates)) ->
+      admin_workflow.handle_rule_templates_fetched_ok(model, templates)
+    RuleTemplatesFetched(Error(err)) ->
+      admin_workflow.handle_rule_templates_fetched_error(model, err)
+    RuleAttachTemplateSelected(template_id) ->
+      admin_workflow.handle_rule_attach_template_selected(model, template_id)
+    RuleAttachTemplateSubmitted -> #(model, effect.none())
+    RuleTemplateAttached(Ok(templates)) ->
+      admin_workflow.handle_rule_template_attached_ok(model, templates)
+    RuleTemplateAttached(Error(err)) ->
+      admin_workflow.handle_rule_template_attached_error(model, err)
+    RuleTemplateDetachClicked(_template_id) -> #(model, effect.none())
+    RuleTemplateDetached(Ok(_)) -> #(model, effect.none())
+    RuleTemplateDetached(Error(err)) ->
+      admin_workflow.handle_rule_template_detached_error(model, err)
+
+    // Task templates handlers
+    TaskTemplatesOrgFetched(Ok(templates)) ->
+      admin_workflow.handle_task_templates_org_fetched_ok(model, templates)
+    TaskTemplatesOrgFetched(Error(err)) ->
+      admin_workflow.handle_task_templates_org_fetched_error(model, err)
+    TaskTemplatesProjectFetched(Ok(templates)) ->
+      admin_workflow.handle_task_templates_project_fetched_ok(model, templates)
+    TaskTemplatesProjectFetched(Error(err)) ->
+      admin_workflow.handle_task_templates_project_fetched_error(model, err)
+
+    TaskTemplateCreateNameChanged(name) ->
+      admin_workflow.handle_task_template_create_name_changed(model, name)
+    TaskTemplateCreateDescriptionChanged(description) ->
+      admin_workflow.handle_task_template_create_description_changed(
+        model,
+        description,
+      )
+    TaskTemplateCreateTypeIdChanged(type_id) ->
+      admin_workflow.handle_task_template_create_type_id_changed(model, type_id)
+    TaskTemplateCreatePriorityChanged(priority) ->
+      admin_workflow.handle_task_template_create_priority_changed(model, priority)
+    TaskTemplateCreateSubmitted ->
+      admin_workflow.handle_task_template_create_submitted(model)
+    TaskTemplateCreated(Ok(template)) ->
+      admin_workflow.handle_task_template_created_ok(model, template)
+    TaskTemplateCreated(Error(err)) ->
+      admin_workflow.handle_task_template_created_error(model, err)
+
+    TaskTemplateEditClicked(template) ->
+      admin_workflow.handle_task_template_edit_clicked(model, template)
+    TaskTemplateEditNameChanged(name) ->
+      admin_workflow.handle_task_template_edit_name_changed(model, name)
+    TaskTemplateEditDescriptionChanged(description) ->
+      admin_workflow.handle_task_template_edit_description_changed(
+        model,
+        description,
+      )
+    TaskTemplateEditTypeIdChanged(type_id) ->
+      admin_workflow.handle_task_template_edit_type_id_changed(model, type_id)
+    TaskTemplateEditPriorityChanged(priority) ->
+      admin_workflow.handle_task_template_edit_priority_changed(model, priority)
+    TaskTemplateEditSubmitted ->
+      admin_workflow.handle_task_template_edit_submitted(model)
+    TaskTemplateEditCancelled ->
+      admin_workflow.handle_task_template_edit_cancelled(model)
+    TaskTemplateUpdated(Ok(template)) ->
+      admin_workflow.handle_task_template_updated_ok(model, template)
+    TaskTemplateUpdated(Error(err)) ->
+      admin_workflow.handle_task_template_updated_error(model, err)
+
+    TaskTemplateDeleteClicked(template) ->
+      admin_workflow.handle_task_template_delete_clicked(model, template)
+    TaskTemplateDeleteCancelled ->
+      admin_workflow.handle_task_template_delete_cancelled(model)
+    TaskTemplateDeleteConfirmed ->
+      admin_workflow.handle_task_template_delete_confirmed(model)
+    TaskTemplateDeleted(Ok(_)) ->
+      admin_workflow.handle_task_template_deleted_ok(model)
+    TaskTemplateDeleted(Error(err)) ->
+      admin_workflow.handle_task_template_deleted_error(model, err)
   }
 }

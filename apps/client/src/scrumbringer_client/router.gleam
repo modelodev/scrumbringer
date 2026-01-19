@@ -285,6 +285,9 @@ fn admin_section_from_slug(slug: String) -> permissions.AdminSection {
     "capabilities" -> permissions.Capabilities
     "task-types" -> permissions.TaskTypes
     "invites" -> permissions.Invites
+    "cards" -> permissions.Cards
+    "workflows" -> permissions.Workflows
+    "task-templates" -> permissions.TaskTemplates
     _ -> permissions.Invites
   }
 }
@@ -299,6 +302,8 @@ fn admin_section_slug(section: permissions.AdminSection) -> String {
     permissions.Capabilities -> "capabilities"
     permissions.TaskTypes -> "task-types"
     permissions.Cards -> "cards"
+    permissions.Workflows -> "workflows"
+    permissions.TaskTemplates -> "task-templates"
   }
 }
 
@@ -417,6 +422,8 @@ fn admin_section_title(
     permissions.Capabilities -> i18n_text.AdminCapabilities
     permissions.TaskTypes -> i18n_text.AdminTaskTypes
     permissions.Cards -> i18n_text.AdminCards
+    permissions.Workflows -> i18n_text.AdminWorkflows
+    permissions.TaskTemplates -> i18n_text.AdminTaskTemplates
   }
   i18n.t(locale, text)
 }

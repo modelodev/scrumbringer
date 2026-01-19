@@ -300,4 +300,61 @@ pub type Text {
   CardDeleteConfirm(card_title: String)
   NoCardsYet
   CardTaskCount(completed: Int, total: Int)
+
+  // Workflows
+  AdminWorkflows
+  WorkflowsTitle
+  WorkflowsOrgTitle
+  WorkflowsProjectTitle(project_name: String)
+  WorkflowName
+  WorkflowDescription
+  WorkflowScope
+  WorkflowScopeOrg
+  WorkflowScopeProject
+  WorkflowRules
+  WorkflowActive
+  WorkflowCreated
+  WorkflowUpdated
+  CreateWorkflow
+  EditWorkflow
+  DeleteWorkflow
+  NoWorkflowsYet
+  WorkflowDeleted
+
+  // Rules
+  RulesTitle(workflow_name: String)
+  RuleName
+  RuleGoal
+  RuleResourceType
+  RuleResourceTypeTask
+  RuleResourceTypeCard
+  RuleToState
+  RuleTaskType
+  RuleActive
+  RuleTemplates
+  CreateRule
+  EditRule
+  DeleteRule
+  NoRulesYet
+  RuleDeleted
+  AttachTemplate
+  DetachTemplate
+
+  // Task Templates
+  AdminTaskTemplates
+  TaskTemplatesTitle
+  TaskTemplatesOrgTitle
+  TaskTemplatesProjectTitle(project_name: String)
+  TaskTemplateName
+  TaskTemplateDescription
+  TaskTemplateType
+  TaskTemplatePriority
+  TaskTemplateScope
+  TaskTemplateCreated
+  CreateTaskTemplate
+  EditTaskTemplate
+  DeleteTaskTemplate
+  NoTaskTemplatesYet
+  TaskTemplateDeleted
+  TaskTemplateVariablesHelp
 }

@@ -24,10 +24,12 @@
 //// - **validation.gleam**: Input validation helpers
 //// - **authorization.gleam**: Authorization checks
 
-import gleam/option.{type Option, Some}
+import gleam/option.{type Option, None, Some}
 import pog
 import domain/task_status.{Available, Claimed, Completed}
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
+import scrumbringer_server/services/cards_db
+import scrumbringer_server/services/rules_engine
 import scrumbringer_server/services/task_types_db
 import scrumbringer_server/services/work_sessions_db
 import scrumbringer_server/services/workflows/authorization
@@ -198,7 +200,13 @@ fn handle_create_task(
       card_id,
     )
   {
-    Ok(task) -> Ok(TaskResult(task))
+    Ok(task) -> {
+      // Trigger rules engine for task creation (null → available)
+      let _ = evaluate_task_rules_created(
+        db, task.id, project_id, org_id, user_id, type_id,
+      )
+      Ok(TaskResult(task))
+    }
     Error(tasks_queries.InvalidTypeId) ->
       Error(ValidationError("Invalid type_id"))
     Error(tasks_queries.InvalidCardId) ->
@@ -287,7 +295,19 @@ fn handle_claim_task(
 
         Available ->
           case tasks_queries.claim_task(db, org_id, task_id, user_id, version) {
-            Ok(task) -> Ok(TaskResult(task))
+            Ok(task) -> {
+              // Trigger rules engine for task state change
+              let _ = evaluate_task_rules(
+                db, task_id, current.project_id, org_id, user_id,
+                "available", "claimed", current.type_id,
+              )
+
+              // Check for card state change if task belongs to a card
+              let _ = maybe_evaluate_card_rules(
+                db, current.card_id, current.project_id, org_id, user_id,
+              )
+              Ok(TaskResult(task))
+            }
             Error(tasks_queries.NotFound) -> detect_conflict(db, task_id, user_id)
             Error(tasks_queries.DbError(e)) -> Error(DbError(e))
           }
@@ -321,7 +341,19 @@ fn handle_release_task(
               case
                 tasks_queries.release_task(db, org_id, task_id, user_id, version)
               {
-                Ok(task) -> Ok(TaskResult(task))
+                Ok(task) -> {
+                  // Trigger rules engine for task state change
+                  let _ = evaluate_task_rules(
+                    db, task_id, current.project_id, org_id, user_id,
+                    "claimed", "available", current.type_id,
+                  )
+
+                  // Check for card state change if task belongs to a card
+                  let _ = maybe_evaluate_card_rules(
+                    db, current.card_id, current.project_id, org_id, user_id,
+                  )
+                  Ok(TaskResult(task))
+                }
                 Error(tasks_queries.NotFound) -> Error(VersionConflict)
                 Error(tasks_queries.DbError(e)) -> Error(DbError(e))
               }
@@ -359,7 +391,19 @@ fn handle_complete_task(
               case
                 tasks_queries.complete_task(db, org_id, task_id, user_id, version)
               {
-                Ok(task) -> Ok(TaskResult(task))
+                Ok(task) -> {
+                  // Trigger rules engine for task state change
+                  let _ = evaluate_task_rules(
+                    db, task_id, current.project_id, org_id, user_id,
+                    "claimed", "completed", current.type_id,
+                  )
+
+                  // Check for card state change if task belongs to a card
+                  let _ = maybe_evaluate_card_rules(
+                    db, current.card_id, current.project_id, org_id, user_id,
+                  )
+                  Ok(TaskResult(task))
+                }
                 Error(tasks_queries.NotFound) -> Error(VersionConflict)
                 Error(tasks_queries.DbError(e)) -> Error(DbError(e))
               }
@@ -389,5 +433,106 @@ fn detect_conflict(
         Claimed(_) -> Error(ClaimOwnershipConflict(current.claimed_by))
         _ -> Error(VersionConflict)
       }
+  }
+}
+
+// =============================================================================
+// Rules Engine Integration
+// =============================================================================
+
+/// Evaluate task rules after a state change.
+/// This is a fire-and-forget call - errors are silently ignored to not block
+/// the main operation.
+fn evaluate_task_rules(
+  db: pog.Connection,
+  task_id: Int,
+  project_id: Int,
+  org_id: Int,
+  user_id: Int,
+  from_state: String,
+  to_state: String,
+  type_id: Int,
+) -> Nil {
+  let event = rules_engine.StateChangeEvent(
+    resource_type: rules_engine.Task,
+    resource_id: task_id,
+    from_state: Some(from_state),
+    to_state: to_state,
+    project_id: project_id,
+    org_id: org_id,
+    user_id: user_id,
+    user_triggered: True,
+    task_type_id: Some(type_id),
+  )
+
+  // Fire and forget - don't block on rules engine
+  let _ = rules_engine.evaluate_rules(db, event)
+  Nil
+}
+
+/// Evaluate task rules for a newly created task (null → available).
+fn evaluate_task_rules_created(
+  db: pog.Connection,
+  task_id: Int,
+  project_id: Int,
+  org_id: Int,
+  user_id: Int,
+  type_id: Int,
+) -> Nil {
+  let event = rules_engine.StateChangeEvent(
+    resource_type: rules_engine.Task,
+    resource_id: task_id,
+    from_state: None,
+    to_state: "available",
+    project_id: project_id,
+    org_id: org_id,
+    user_id: user_id,
+    user_triggered: True,
+    task_type_id: Some(type_id),
+  )
+
+  // Fire and forget - don't block on rules engine
+  let _ = rules_engine.evaluate_rules(db, event)
+  Nil
+}
+
+/// Evaluate card rules if task belongs to a card and its state might have changed.
+/// Card states: pendiente (no progress), en_curso (some progress), cerrada (all complete)
+fn maybe_evaluate_card_rules(
+  db: pog.Connection,
+  card_id: Option(Int),
+  project_id: Int,
+  org_id: Int,
+  user_id: Int,
+) -> Nil {
+  case card_id {
+    None -> Nil
+    Some(cid) -> {
+      // Get current card state after task change
+      case cards_db.get_card(db, cid) {
+        Error(_) -> Nil
+        Ok(card) -> {
+          // Derive current state string
+          let state_str = cards_db.state_to_string(card.state)
+
+          // We evaluate rules for the current state
+          // The rules engine tracks idempotency per (rule, card, state)
+          let event = rules_engine.StateChangeEvent(
+            resource_type: rules_engine.Card,
+            resource_id: cid,
+            from_state: None,
+            to_state: state_str,
+            project_id: project_id,
+            org_id: org_id,
+            user_id: user_id,
+            user_triggered: True,
+            task_type_id: None,
+          )
+
+          let _ = rules_engine.evaluate_rules(db, event)
+          Nil
+        }
+      }
+    }
   }
 }

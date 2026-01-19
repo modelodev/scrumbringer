@@ -322,5 +322,64 @@ pub fn translate(text: Text) -> String {
     text.NoCardsYet -> "No cards yet"
     text.CardTaskCount(completed, total) ->
       int.to_string(completed) <> "/" <> int.to_string(total)
+
+    // Workflows
+    text.AdminWorkflows -> "Workflows"
+    text.WorkflowsTitle -> "Workflows"
+    text.WorkflowsOrgTitle -> "Organization Workflows"
+    text.WorkflowsProjectTitle(project_name) -> "Workflows - " <> project_name
+    text.WorkflowName -> "Name"
+    text.WorkflowDescription -> "Description"
+    text.WorkflowScope -> "Scope"
+    text.WorkflowScopeOrg -> "Organization"
+    text.WorkflowScopeProject -> "Project"
+    text.WorkflowRules -> "Rules"
+    text.WorkflowActive -> "Active"
+    text.WorkflowCreated -> "Workflow created"
+    text.WorkflowUpdated -> "Workflow updated"
+    text.CreateWorkflow -> "Create Workflow"
+    text.EditWorkflow -> "Edit Workflow"
+    text.DeleteWorkflow -> "Delete Workflow"
+    text.NoWorkflowsYet -> "No workflows yet"
+    text.WorkflowDeleted -> "Workflow deleted"
+
+    // Rules
+    text.RulesTitle(workflow_name) -> "Rules - " <> workflow_name
+    text.RuleName -> "Name"
+    text.RuleGoal -> "Goal"
+    text.RuleResourceType -> "Resource Type"
+    text.RuleResourceTypeTask -> "Task"
+    text.RuleResourceTypeCard -> "Card"
+    text.RuleToState -> "Target State"
+    text.RuleTaskType -> "Task Type"
+    text.RuleActive -> "Active"
+    text.RuleTemplates -> "Templates"
+    text.CreateRule -> "Create Rule"
+    text.EditRule -> "Edit Rule"
+    text.DeleteRule -> "Delete Rule"
+    text.NoRulesYet -> "No rules yet"
+    text.RuleDeleted -> "Rule deleted"
+    text.AttachTemplate -> "Attach Template"
+    text.DetachTemplate -> "Detach Template"
+
+    // Task Templates
+    text.AdminTaskTemplates -> "Task Templates"
+    text.TaskTemplatesTitle -> "Task Templates"
+    text.TaskTemplatesOrgTitle -> "Organization Templates"
+    text.TaskTemplatesProjectTitle(project_name) ->
+      "Templates - " <> project_name
+    text.TaskTemplateName -> "Name"
+    text.TaskTemplateDescription -> "Description"
+    text.TaskTemplateType -> "Type"
+    text.TaskTemplatePriority -> "Priority"
+    text.TaskTemplateScope -> "Scope"
+    text.TaskTemplateCreated -> "Template created"
+    text.CreateTaskTemplate -> "Create Template"
+    text.EditTaskTemplate -> "Edit Template"
+    text.DeleteTaskTemplate -> "Delete Template"
+    text.NoTaskTemplatesYet -> "No task templates yet"
+    text.TaskTemplateDeleted -> "Template deleted"
+    text.TaskTemplateVariablesHelp ->
+      "Variables: {{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}"
   }
 }
