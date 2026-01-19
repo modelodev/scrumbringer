@@ -29,7 +29,8 @@ select
   coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as claimed_at,
   coalesce(to_char(t.completed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as completed_at,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
-  t.version
+  t.version,
+  coalesce(t.card_id, 0) as card_id
 from tasks t
 join task_types tt on tt.id = t.type_id
 where t.project_id = $1

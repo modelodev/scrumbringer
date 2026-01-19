@@ -73,6 +73,7 @@ pub fn handle(db: pog.Connection, message: Message) -> Result(Response, Error) {
       description,
       priority,
       type_id,
+      card_id,
     ) ->
       handle_create_task(
         db,
@@ -83,6 +84,7 @@ pub fn handle(db: pog.Connection, message: Message) -> Result(Response, Error) {
         description,
         priority,
         type_id,
+        card_id,
       )
 
     GetTask(task_id, user_id) -> handle_get_task(db, task_id, user_id)
@@ -176,6 +178,7 @@ fn handle_create_task(
   description: String,
   priority: Int,
   type_id: Int,
+  card_id: Int,
 ) -> Result(Response, Error) {
   use _ <- authorization.require_project_member(db, project_id, user_id)
   use validated_title <- validation.validate_task_title(title)
@@ -192,11 +195,14 @@ fn handle_create_task(
       description,
       priority,
       user_id,
+      card_id,
     )
   {
     Ok(task) -> Ok(TaskResult(task))
     Error(tasks_queries.InvalidTypeId) ->
       Error(ValidationError("Invalid type_id"))
+    Error(tasks_queries.InvalidCardId) ->
+      Error(ValidationError("Invalid card_id"))
     Error(tasks_queries.CreateDbError(e)) -> Error(DbError(e))
   }
 }

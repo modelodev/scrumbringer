@@ -74,6 +74,7 @@ import domain/task.{
   type WorkSessionsPayload,
 }
 import domain/task_type.{type TaskType}
+import domain/card.{type Card}
 import domain/metrics.{
   type MyMetrics, type OrgMetricsOverview,
   type OrgMetricsProjectTasksPayload,
@@ -278,6 +279,21 @@ pub type Model {
     task_types_create_in_flight: Bool,
     task_types_create_error: Option(String),
     task_types_icon_preview: IconPreview,
+    // Cards
+    cards: Remote(List(Card)),
+    cards_project_id: Option(Int),
+    cards_create_title: String,
+    cards_create_description: String,
+    cards_create_in_flight: Bool,
+    cards_create_error: Option(String),
+    cards_edit_id: Option(Int),
+    cards_edit_title: String,
+    cards_edit_description: String,
+    cards_edit_in_flight: Bool,
+    cards_edit_error: Option(String),
+    cards_delete_confirm: Option(Card),
+    cards_delete_in_flight: Bool,
+    cards_delete_error: Option(String),
     // Member section
     member_section: member_section.MemberSection,
     member_active_task: Remote(ActiveTaskPayload),
@@ -461,6 +477,23 @@ pub type Msg {
   TaskTypeCreateCapabilityChanged(String)
   TaskTypeCreateSubmitted
   TaskTypeCreated(ApiResult(TaskType))
+
+  // Cards
+  CardsFetched(ApiResult(List(Card)))
+  CardCreateTitleChanged(String)
+  CardCreateDescriptionChanged(String)
+  CardCreateSubmitted
+  CardCreated(ApiResult(Card))
+  CardEditClicked(Card)
+  CardEditTitleChanged(String)
+  CardEditDescriptionChanged(String)
+  CardEditSubmitted
+  CardUpdated(ApiResult(Card))
+  CardEditCancelled
+  CardDeleteClicked(Card)
+  CardDeleteCancelled
+  CardDeleteConfirmed
+  CardDeleted(ApiResult(Nil))
 
   // Pool filters
   MemberPoolStatusChanged(String)
@@ -703,6 +736,21 @@ pub fn default_model() -> Model {
     task_types_create_in_flight: False,
     task_types_create_error: option.None,
     task_types_icon_preview: IconIdle,
+    // Cards
+    cards: NotAsked,
+    cards_project_id: option.None,
+    cards_create_title: "",
+    cards_create_description: "",
+    cards_create_in_flight: False,
+    cards_create_error: option.None,
+    cards_edit_id: option.None,
+    cards_edit_title: "",
+    cards_edit_description: "",
+    cards_edit_in_flight: False,
+    cards_edit_error: option.None,
+    cards_delete_confirm: option.None,
+    cards_delete_in_flight: False,
+    cards_delete_error: option.None,
     // Member section
     member_section: member_section.Pool,
     member_active_task: NotAsked,

@@ -52,6 +52,7 @@ pub type Message {
     description: String,
     priority: Int,
     type_id: Int,
+    card_id: Int,
   )
 
   /// Get a single task.

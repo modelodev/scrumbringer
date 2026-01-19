@@ -7,11 +7,13 @@
 //// (database pool, middleware, server lifecycle) while owning the full route
 //// table and request dispatch logic.
 
+import gleam/int
 import gleam/json
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/capabilities
+import scrumbringer_server/http/cards
 import scrumbringer_server/http/me_metrics
 import scrumbringer_server/http/org_invite_links
 import scrumbringer_server/http/org_invites
@@ -91,6 +93,20 @@ pub fn route(req: wisp.Request, ctx: RouterCtx) -> wisp.Response {
       tasks.handle_task_types(req, auth_ctx(ctx), project_id)
     ["api", "v1", "projects", project_id, "tasks"] ->
       tasks.handle_project_tasks(req, auth_ctx(ctx), project_id)
+
+    // Card routes (project-scoped)
+    ["api", "v1", "projects", project_id, "cards"] ->
+      case int.parse(project_id) {
+        Ok(pid) -> cards.handle_project_cards(req, auth_ctx(ctx), pid)
+        Error(_) -> wisp.not_found()
+      }
+
+    // Card routes (card-scoped)
+    ["api", "v1", "cards", card_id] ->
+      case int.parse(card_id) {
+        Ok(cid) -> cards.handle_card(req, auth_ctx(ctx), cid)
+        Error(_) -> wisp.not_found()
+      }
 
     // Task routes
     ["api", "v1", "tasks", task_id, "claim"] ->

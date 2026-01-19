@@ -40,6 +40,7 @@ import scrumbringer_server/services/org_invite_links_db
 import scrumbringer_server/services/rate_limit
 import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/time
+import scrumbringer_server/sql
 import wisp
 
 pub type Ctx {
@@ -323,4 +324,24 @@ fn auth_error_response(error: auth_logic.AuthError) -> wisp.Response {
 fn new_csrf_token() -> String {
   crypto.strong_random_bytes(32)
   |> bit_array.base64_url_encode(False)
+}
+
+// =============================================================================
+// Authorization Helpers
+// =============================================================================
+
+/// Check if user is a member of the given project.
+pub fn is_project_member(db: pog.Connection, user_id: Int, project_id: Int) -> Bool {
+  case sql.project_members_is_member(db, project_id, user_id) {
+    Ok(pog.Returned(rows: [row, ..], ..)) -> row.is_member
+    _ -> False
+  }
+}
+
+/// Check if user is an admin of the given project.
+pub fn is_project_admin(db: pog.Connection, user_id: Int, project_id: Int) -> Bool {
+  case sql.project_members_is_admin(db, project_id, user_id) {
+    Ok(pog.Returned(rows: [row, ..], ..)) -> row.is_admin
+    _ -> False
+  }
 }

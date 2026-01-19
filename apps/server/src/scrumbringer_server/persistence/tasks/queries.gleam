@@ -34,6 +34,7 @@ import scrumbringer_server/sql
 /// Error when task creation fails.
 pub type CreateTaskError {
   InvalidTypeId
+  InvalidCardId
   CreateDbError(pog.QueryError)
 }
 
@@ -77,6 +78,7 @@ pub fn create_task(
   description: String,
   priority: Int,
   created_by: Int,
+  card_id: Int,
 ) -> Result(Task, CreateTaskError) {
   pog.transaction(db, fn(tx) {
     case
@@ -88,6 +90,7 @@ pub fn create_task(
         description,
         priority,
         created_by,
+        card_id,
       )
     {
       Ok(pog.Returned(rows: [row, ..], ..)) -> {

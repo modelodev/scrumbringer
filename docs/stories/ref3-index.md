@@ -34,6 +34,6 @@
 
 - [3.0.sprint-3-kickoff-i18n-hover-timer.md](./3.0.sprint-3-kickoff-i18n-hover-timer.md) — Sprint 3 kickoff: i18n, hover, timer **[Done]**
 - [3.0b.time-tracking-clean-sessions.md](./3.0b.time-tracking-clean-sessions.md) — Time tracking: Clean sessions model **[Done]**
-- [3.1.fichas-v1.md](./3.1.fichas-v1.md) — Cards (Fichas) v1: Task containers **[Ready for Dev]**
+- [3.1.fichas-v1.md](./3.1.fichas-v1.md) — Cards (Fichas) v1: Task containers **[Done]**
 - [3.2.workflows-engine-v1.md](./3.2.workflows-engine-v1.md) — Workflows Engine v1: Rules & Templates **[Ready for Dev]**
 - [3.3.workflows-admin-metrics.md](./3.3.workflows-admin-metrics.md) — Workflows Admin: Rule Metrics **[Ready for Dev]**

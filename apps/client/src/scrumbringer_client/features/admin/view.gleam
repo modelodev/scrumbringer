@@ -42,6 +42,7 @@ import lustre/event
 
 import gleam/dynamic/decode
 
+import domain/card.{type Card}
 import domain/capability.{type Capability}
 import domain/org.{type OrgUser}
 import domain/project.{type Project, type ProjectMember}
@@ -49,14 +50,17 @@ import domain/task_type.{type TaskType}
 
 import scrumbringer_client/client_state.{
   type Model, type Msg, type Remote, CapabilityCreateNameChanged,
-  CapabilityCreateSubmitted, Failed, IconError, IconOk, Loaded, Loading,
-  MemberAddDialogClosed, MemberAddDialogOpened, MemberAddRoleChanged,
-  MemberAddSubmitted, MemberAddUserSelected, MemberRemoveCancelled,
-  MemberRemoveClicked, MemberRemoveConfirmed, NotAsked, OrgSettingsRoleChanged,
-  OrgSettingsSaveClicked, OrgUsersSearchChanged, OrgUsersSearchDebounced,
-  TaskTypeCreateCapabilityChanged, TaskTypeCreateIconChanged,
-  TaskTypeCreateNameChanged, TaskTypeCreateSubmitted, TaskTypeIconErrored,
-  TaskTypeIconLoaded,
+  CapabilityCreateSubmitted, CardCreateDescriptionChanged,
+  CardCreateSubmitted, CardCreateTitleChanged, CardDeleteCancelled,
+  CardDeleteClicked, CardDeleteConfirmed, CardEditCancelled, CardEditClicked,
+  CardEditDescriptionChanged, CardEditSubmitted, CardEditTitleChanged, Failed,
+  IconError, IconOk, Loaded, Loading, MemberAddDialogClosed,
+  MemberAddDialogOpened, MemberAddRoleChanged, MemberAddSubmitted,
+  MemberAddUserSelected, MemberRemoveCancelled, MemberRemoveClicked,
+  MemberRemoveConfirmed, NotAsked, OrgSettingsRoleChanged, OrgSettingsSaveClicked,
+  OrgUsersSearchChanged, OrgUsersSearchDebounced, TaskTypeCreateCapabilityChanged,
+  TaskTypeCreateIconChanged, TaskTypeCreateNameChanged, TaskTypeCreateSubmitted,
+  TaskTypeIconErrored, TaskTypeIconLoaded,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme
@@ -861,4 +865,241 @@ fn view_task_types_list(
           ])
       }
   }
+}
+
+// =============================================================================
+// Cards (Fichas) Views
+// =============================================================================
+
+/// Cards management view.
+pub fn view_cards(
+  model: Model,
+  selected_project: opt.Option(Project),
+) -> Element(Msg) {
+  case selected_project {
+    opt.None ->
+      div([attribute.class("empty")], [
+        text(update_helpers.i18n_t(
+          model,
+          i18n_text.SelectProjectToManageCards,
+        )),
+      ])
+
+    opt.Some(project) ->
+      div([attribute.class("section")], [
+        h2([], [
+          text(update_helpers.i18n_t(
+            model,
+            i18n_text.CardsTitle(project.name),
+          )),
+        ]),
+        view_cards_list(model, model.cards),
+        hr([]),
+        h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateCard))]),
+        case model.cards_create_error {
+          opt.Some(err) -> div([attribute.class("error")], [text(err)])
+          opt.None -> element.none()
+        },
+        form([event.on_submit(fn(_) { CardCreateSubmitted })], [
+          div([attribute.class("field")], [
+            label([], [text(update_helpers.i18n_t(model, i18n_text.CardTitle))]),
+            input([
+              attribute.type_("text"),
+              attribute.value(model.cards_create_title),
+              event.on_input(CardCreateTitleChanged),
+              attribute.required(True),
+            ]),
+          ]),
+          div([attribute.class("field")], [
+            label([], [
+              text(update_helpers.i18n_t(model, i18n_text.CardDescription)),
+            ]),
+            input([
+              attribute.type_("text"),
+              attribute.value(model.cards_create_description),
+              event.on_input(CardCreateDescriptionChanged),
+            ]),
+          ]),
+          button(
+            [
+              attribute.type_("submit"),
+              attribute.disabled(model.cards_create_in_flight),
+            ],
+            [
+              text(case model.cards_create_in_flight {
+                True -> update_helpers.i18n_t(model, i18n_text.Creating)
+                False -> update_helpers.i18n_t(model, i18n_text.Create)
+              }),
+            ],
+          ),
+        ]),
+        case model.cards_edit_id {
+          opt.Some(_) -> view_edit_card_dialog(model)
+          opt.None -> element.none()
+        },
+        case model.cards_delete_confirm {
+          opt.Some(card) -> view_delete_card_dialog(model, card)
+          opt.None -> element.none()
+        },
+      ])
+  }
+}
+
+fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
+  case cards {
+    NotAsked | Loading ->
+      div([attribute.class("empty")], [
+        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+      ])
+
+    Failed(err) ->
+      case err.status == 403 {
+        True ->
+          div([attribute.class("not-permitted")], [
+            text(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+          ])
+        False -> div([attribute.class("error")], [text(err.message)])
+      }
+
+    Loaded(cards) ->
+      case cards {
+        [] ->
+          div([attribute.class("empty")], [
+            text(update_helpers.i18n_t(model, i18n_text.NoCardsYet)),
+          ])
+        _ ->
+          table([attribute.class("table")], [
+            thead([], [
+              tr([], [
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.CardTitle)),
+                ]),
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.CardState)),
+                ]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.CardTasks))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
+              ]),
+            ]),
+            keyed.tbody(
+              [],
+              list.map(cards, fn(c) {
+                #(int.to_string(c.id), tr([], [
+                  td([], [text(c.title)]),
+                  td([], [text(view_card_state_label(model, c.state))]),
+                  td([], [
+                    text(update_helpers.i18n_t(
+                      model,
+                      i18n_text.CardTaskCount(c.completed_count, c.task_count),
+                    )),
+                  ]),
+                  td([], [
+                    button([event.on_click(CardEditClicked(c))], [
+                      text(update_helpers.i18n_t(model, i18n_text.EditCard)),
+                    ]),
+                    button([event.on_click(CardDeleteClicked(c))], [
+                      text(update_helpers.i18n_t(model, i18n_text.DeleteCard)),
+                    ]),
+                  ]),
+                ]))
+              }),
+            ),
+          ])
+      }
+  }
+}
+
+fn view_card_state_label(model: Model, state: card.CardState) -> String {
+  case state {
+    card.Pendiente ->
+      update_helpers.i18n_t(model, i18n_text.CardStatePendiente)
+    card.EnCurso -> update_helpers.i18n_t(model, i18n_text.CardStateEnCurso)
+    card.Cerrada -> update_helpers.i18n_t(model, i18n_text.CardStateCerrada)
+  }
+}
+
+fn view_edit_card_dialog(model: Model) -> Element(Msg) {
+  div([attribute.class("modal")], [
+    div([attribute.class("modal-content")], [
+      h3([], [text(update_helpers.i18n_t(model, i18n_text.EditCard))]),
+      case model.cards_edit_error {
+        opt.Some(err) -> div([attribute.class("error")], [text(err)])
+        opt.None -> element.none()
+      },
+      form([event.on_submit(fn(_) { CardEditSubmitted })], [
+        div([attribute.class("field")], [
+          label([], [text(update_helpers.i18n_t(model, i18n_text.CardTitle))]),
+          input([
+            attribute.type_("text"),
+            attribute.value(model.cards_edit_title),
+            event.on_input(CardEditTitleChanged),
+            attribute.required(True),
+          ]),
+        ]),
+        div([attribute.class("field")], [
+          label([], [
+            text(update_helpers.i18n_t(model, i18n_text.CardDescription)),
+          ]),
+          input([
+            attribute.type_("text"),
+            attribute.value(model.cards_edit_description),
+            event.on_input(CardEditDescriptionChanged),
+          ]),
+        ]),
+        div([attribute.class("actions")], [
+          button(
+            [attribute.type_("button"), event.on_click(CardEditCancelled)],
+            [text(update_helpers.i18n_t(model, i18n_text.Cancel))],
+          ),
+          button(
+            [
+              attribute.type_("submit"),
+              attribute.disabled(model.cards_edit_in_flight),
+            ],
+            [
+              text(case model.cards_edit_in_flight {
+                True -> update_helpers.i18n_t(model, i18n_text.Working)
+                False -> update_helpers.i18n_t(model, i18n_text.Save)
+              }),
+            ],
+          ),
+        ]),
+      ]),
+    ]),
+  ])
+}
+
+fn view_delete_card_dialog(model: Model, card: Card) -> Element(Msg) {
+  div([attribute.class("modal")], [
+    div([attribute.class("modal-content")], [
+      h3([], [text(update_helpers.i18n_t(model, i18n_text.DeleteCard))]),
+      p([], [
+        text(update_helpers.i18n_t(
+          model,
+          i18n_text.CardDeleteConfirm(card.title),
+        )),
+      ]),
+      case model.cards_delete_error {
+        opt.Some(err) -> div([attribute.class("error")], [text(err)])
+        opt.None -> element.none()
+      },
+      div([attribute.class("actions")], [
+        button([event.on_click(CardDeleteCancelled)], [
+          text(update_helpers.i18n_t(model, i18n_text.Cancel)),
+        ]),
+        button(
+          [
+            event.on_click(CardDeleteConfirmed),
+            attribute.disabled(model.cards_delete_in_flight),
+          ],
+          [
+            text(case model.cards_delete_in_flight {
+              True -> update_helpers.i18n_t(model, i18n_text.Removing)
+              False -> update_helpers.i18n_t(model, i18n_text.DeleteCard)
+            }),
+          ],
+        ),
+      ]),
+    ]),
+  ])
 }

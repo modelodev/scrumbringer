@@ -347,13 +347,14 @@ fn handle_tasks_create(
                 )
                 use priority <- decode.field("priority", decode.int)
                 use type_id <- decode.field("type_id", decode.int)
-                decode.success(#(title, description, priority, type_id))
+                use card_id <- decode.optional_field("card_id", 0, decode.int)
+                decode.success(#(title, description, priority, type_id, card_id))
               }
 
               case decode.run(data, decoder) {
                 Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
 
-                Ok(#(title, description, priority, type_id)) ->
+                Ok(#(title, description, priority, type_id, card_id)) ->
                   case
                     workflow.handle(
                       db,
@@ -365,6 +366,7 @@ fn handle_tasks_create(
                         description,
                         priority,
                         type_id,
+                        card_id,
                       ),
                     )
                   {

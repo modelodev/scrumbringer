@@ -277,4 +277,27 @@ pub type Text {
   PopoverCreated
   PopoverStatus
   CreatedAgoDays(days: Int)
+
+  // Cards (fichas)
+  AdminCards
+  CardsTitle(project_name: String)
+  SelectProjectToManageCards
+  CreateCard
+  EditCard
+  DeleteCard
+  CardTitle
+  CardDescription
+  CardState
+  CardStatePendiente
+  CardStateEnCurso
+  CardStateCerrada
+  CardTasks
+  CardProgress
+  CardCreated
+  CardUpdated
+  CardDeleted
+  CardDeleteBlocked
+  CardDeleteConfirm(card_title: String)
+  NoCardsYet
+  CardTaskCount(completed: Int, total: Int)
 }

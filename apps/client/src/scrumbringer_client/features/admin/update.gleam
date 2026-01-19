@@ -34,6 +34,7 @@ import scrumbringer_client/client_state.{
 }
 
 // Re-export from split modules
+import scrumbringer_client/features/admin/cards
 import scrumbringer_client/features/admin/member_add
 import scrumbringer_client/features/admin/member_remove
 import scrumbringer_client/features/admin/org_settings
@@ -125,3 +126,47 @@ pub fn handle_members_fetched_error(
     False -> #(Model(..model, members: Failed(err)), effect.none())
   }
 }
+
+// =============================================================================
+// Re-exports: Cards
+// =============================================================================
+
+pub const handle_cards_fetched_ok = cards.handle_cards_fetched_ok
+
+pub const handle_cards_fetched_error = cards.handle_cards_fetched_error
+
+pub const handle_card_create_title_changed = cards.handle_card_create_title_changed
+
+pub const handle_card_create_description_changed = cards.handle_card_create_description_changed
+
+pub const handle_card_create_submitted = cards.handle_card_create_submitted
+
+pub const handle_card_created_ok = cards.handle_card_created_ok
+
+pub const handle_card_created_error = cards.handle_card_created_error
+
+pub const handle_card_edit_clicked = cards.handle_card_edit_clicked
+
+pub const handle_card_edit_title_changed = cards.handle_card_edit_title_changed
+
+pub const handle_card_edit_description_changed = cards.handle_card_edit_description_changed
+
+pub const handle_card_edit_submitted = cards.handle_card_edit_submitted
+
+pub const handle_card_edit_cancelled = cards.handle_card_edit_cancelled
+
+pub const handle_card_updated_ok = cards.handle_card_updated_ok
+
+pub const handle_card_updated_error = cards.handle_card_updated_error
+
+pub const handle_card_delete_clicked = cards.handle_card_delete_clicked
+
+pub const handle_card_delete_cancelled = cards.handle_card_delete_cancelled
+
+pub const handle_card_delete_confirmed = cards.handle_card_delete_confirmed
+
+pub const handle_card_deleted_ok = cards.handle_card_deleted_ok
+
+pub const handle_card_deleted_error = cards.handle_card_deleted_error
+
+pub const fetch_cards_for_project = cards.fetch_cards_for_project

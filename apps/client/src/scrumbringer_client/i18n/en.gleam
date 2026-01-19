@@ -298,5 +298,29 @@ pub fn translate(text: Text) -> String {
         _ -> int.to_string(days) <> " days ago"
       }
     }
+
+    // Cards
+    text.AdminCards -> "Cards"
+    text.CardsTitle(project_name) -> "Cards - " <> project_name
+    text.SelectProjectToManageCards -> "Select a project to manage cards."
+    text.CreateCard -> "Create Card"
+    text.EditCard -> "Edit Card"
+    text.DeleteCard -> "Delete Card"
+    text.CardTitle -> "Title"
+    text.CardDescription -> "Description"
+    text.CardState -> "State"
+    text.CardStatePendiente -> "Pending"
+    text.CardStateEnCurso -> "In Progress"
+    text.CardStateCerrada -> "Closed"
+    text.CardTasks -> "Tasks"
+    text.CardProgress -> "Progress"
+    text.CardCreated -> "Card created"
+    text.CardUpdated -> "Card updated"
+    text.CardDeleted -> "Card deleted"
+    text.CardDeleteBlocked -> "Cannot delete: has tasks"
+    text.CardDeleteConfirm(card_title) -> "Delete card \"" <> card_title <> "\"?"
+    text.NoCardsYet -> "No cards yet"
+    text.CardTaskCount(completed, total) ->
+      int.to_string(completed) <> "/" <> int.to_string(total)
   }
 }

@@ -48,6 +48,7 @@ pub type Task {
     completed_at: Option(String),
     created_at: String,
     version: Int,
+    card_id: Option(Int),
   )
 }
 
@@ -71,6 +72,7 @@ pub fn from_list_row(row: sql.TasksListRow) -> Task {
     completed_at: row.completed_at,
     created_at: row.created_at,
     version: row.version,
+    card_id: row.card_id,
   )
 }
 
@@ -94,6 +96,7 @@ pub fn from_get_row(row: sql.TasksGetForUserRow) -> Task {
     completed_at: row.completed_at,
     created_at: row.created_at,
     version: row.version,
+    card_id: row.card_id,
   )
 }
 
@@ -117,6 +120,7 @@ pub fn from_create_row(row: sql.TasksCreateRow) -> Task {
     completed_at: row.completed_at,
     created_at: row.created_at,
     version: row.version,
+    card_id: row.card_id,
   )
 }
 
@@ -140,6 +144,7 @@ pub fn from_update_row(row: sql.TasksUpdateRow) -> Task {
     completed_at: row.completed_at,
     created_at: row.created_at,
     version: row.version,
+    card_id: row.card_id,
   )
 }
 
@@ -163,6 +168,7 @@ pub fn from_claim_row(row: sql.TasksClaimRow) -> Task {
     completed_at: row.completed_at,
     created_at: row.created_at,
     version: row.version,
+    card_id: row.card_id,
   )
 }
 
@@ -186,6 +192,7 @@ pub fn from_release_row(row: sql.TasksReleaseRow) -> Task {
     completed_at: row.completed_at,
     created_at: row.created_at,
     version: row.version,
+    card_id: row.card_id,
   )
 }
 
@@ -209,6 +216,7 @@ pub fn from_complete_row(row: sql.TasksCompleteRow) -> Task {
     completed_at: row.completed_at,
     created_at: row.created_at,
     version: row.version,
+    card_id: row.card_id,
   )
 }
 
@@ -231,6 +239,7 @@ fn from_fields(
   completed_at completed_at: String,
   created_at created_at: String,
   version version: Int,
+  card_id card_id: Int,
 ) -> Task {
   Task(
     id: id,
@@ -249,6 +258,7 @@ fn from_fields(
     completed_at: string_option(completed_at),
     created_at: created_at,
     version: version,
+    card_id: int_option(card_id),
   )
 }
 

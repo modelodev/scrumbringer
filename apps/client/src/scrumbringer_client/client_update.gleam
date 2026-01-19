@@ -61,8 +61,12 @@ import scrumbringer_client/client_state.{
   AcceptInvite as AcceptInvitePage, AcceptInviteMsg, Admin,
   AdminMetricsOverviewFetched, AdminMetricsProjectTasksFetched,
   CapabilitiesFetched, CapabilityCreateNameChanged, CapabilityCreateSubmitted,
-  CapabilityCreated, Failed, ForgotPasswordClicked, ForgotPasswordCopyClicked,
-  ForgotPasswordCopyFinished, ForgotPasswordDismissed,
+  CapabilityCreated, CardCreateDescriptionChanged, CardCreateSubmitted,
+  CardCreateTitleChanged, CardCreated, CardDeleteCancelled, CardDeleteClicked,
+  CardDeleteConfirmed, CardDeleted, CardEditCancelled, CardEditClicked,
+  CardEditDescriptionChanged, CardEditSubmitted, CardEditTitleChanged,
+  CardUpdated, CardsFetched, Failed, ForgotPasswordClicked,
+  ForgotPasswordCopyClicked, ForgotPasswordCopyFinished, ForgotPasswordDismissed,
   ForgotPasswordEmailChanged, ForgotPasswordFinished, ForgotPasswordSubmitted,
   GlobalKeyDown, InviteLinkCopyClicked,
   InviteLinkCopyFinished, InviteLinkCreateSubmitted, InviteLinkCreated,
@@ -806,6 +810,8 @@ fn refresh_section(model: Model) -> #(Model, Effect(Msg)) {
           #(model, api_tasks.list_task_types(project_id, TaskTypesFetched))
         }
       }
+
+    permissions.Cards -> admin_workflow.fetch_cards_for_project(model)
   }
 }
 
@@ -1707,5 +1713,38 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       tasks_workflow.handle_note_added_ok(model, note)
     MemberNoteAdded(Error(err)) ->
       tasks_workflow.handle_note_added_error(model, err)
+
+    // Cards (Fichas) handlers
+    CardsFetched(Ok(cards)) -> admin_workflow.handle_cards_fetched_ok(model, cards)
+    CardsFetched(Error(err)) ->
+      admin_workflow.handle_cards_fetched_error(model, err)
+
+    CardCreateTitleChanged(title) ->
+      admin_workflow.handle_card_create_title_changed(model, title)
+    CardCreateDescriptionChanged(description) ->
+      admin_workflow.handle_card_create_description_changed(model, description)
+    CardCreateSubmitted -> admin_workflow.handle_card_create_submitted(model)
+    CardCreated(Ok(card)) -> admin_workflow.handle_card_created_ok(model, card)
+    CardCreated(Error(err)) ->
+      admin_workflow.handle_card_created_error(model, err)
+
+    CardEditClicked(card) -> admin_workflow.handle_card_edit_clicked(model, card)
+    CardEditTitleChanged(title) ->
+      admin_workflow.handle_card_edit_title_changed(model, title)
+    CardEditDescriptionChanged(description) ->
+      admin_workflow.handle_card_edit_description_changed(model, description)
+    CardEditSubmitted -> admin_workflow.handle_card_edit_submitted(model)
+    CardEditCancelled -> admin_workflow.handle_card_edit_cancelled(model)
+    CardUpdated(Ok(card)) -> admin_workflow.handle_card_updated_ok(model, card)
+    CardUpdated(Error(err)) ->
+      admin_workflow.handle_card_updated_error(model, err)
+
+    CardDeleteClicked(card) ->
+      admin_workflow.handle_card_delete_clicked(model, card)
+    CardDeleteCancelled -> admin_workflow.handle_card_delete_cancelled(model)
+    CardDeleteConfirmed -> admin_workflow.handle_card_delete_confirmed(model)
+    CardDeleted(Ok(_)) -> admin_workflow.handle_card_deleted_ok(model)
+    CardDeleted(Error(err)) ->
+      admin_workflow.handle_card_deleted_error(model, err)
   }
 }

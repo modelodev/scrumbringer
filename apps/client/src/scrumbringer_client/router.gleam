@@ -298,6 +298,7 @@ fn admin_section_slug(section: permissions.AdminSection) -> String {
     permissions.Members -> "members"
     permissions.Capabilities -> "capabilities"
     permissions.TaskTypes -> "task-types"
+    permissions.Cards -> "cards"
   }
 }
 
@@ -415,6 +416,7 @@ fn admin_section_title(
     permissions.Members -> i18n_text.AdminMembers
     permissions.Capabilities -> i18n_text.AdminCapabilities
     permissions.TaskTypes -> i18n_text.AdminTaskTypes
+    permissions.Cards -> i18n_text.AdminCards
   }
   i18n.t(locale, text)
 }

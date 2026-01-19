@@ -81,6 +81,7 @@ pub fn task_json(task: Task) -> json.Json {
     completed_at: completed_at,
     created_at: created_at,
     version: version,
+    card_id: card_id,
   ) = task
 
   json.object([
@@ -107,6 +108,7 @@ pub fn task_json(task: Task) -> json.Json {
     #("completed_at", option_string_json(completed_at)),
     #("created_at", json.string(created_at)),
     #("version", json.int(version)),
+    #("card_id", option_int_json(card_id)),
   ])
 }
 

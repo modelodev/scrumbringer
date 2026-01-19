@@ -316,6 +316,21 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       member_note_content: "",
       member_note_in_flight: False,
       member_note_error: opt.None,
+      // Cards (Fichas)
+      cards: NotAsked,
+      cards_project_id: opt.None,
+      cards_create_title: "",
+      cards_create_description: "",
+      cards_create_in_flight: False,
+      cards_create_error: opt.None,
+      cards_edit_id: opt.None,
+      cards_edit_title: "",
+      cards_edit_description: "",
+      cards_edit_in_flight: False,
+      cards_edit_error: opt.None,
+      cards_delete_confirm: opt.None,
+      cards_delete_in_flight: False,
+      cards_delete_error: opt.None,
     )
 
   let base_effect = case page {

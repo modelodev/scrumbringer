@@ -303,5 +303,31 @@ pub fn translate(text: Text) -> String {
         _ -> "hace " <> int.to_string(days) <> " días"
       }
     }
+
+    // Cards
+    text.AdminCards -> "Fichas"
+    text.CardsTitle(project_name) -> "Fichas - " <> project_name
+    text.SelectProjectToManageCards ->
+      "Selecciona un proyecto para gestionar fichas."
+    text.CreateCard -> "Crear ficha"
+    text.EditCard -> "Editar ficha"
+    text.DeleteCard -> "Eliminar ficha"
+    text.CardTitle -> "Título"
+    text.CardDescription -> "Descripción"
+    text.CardState -> "Estado"
+    text.CardStatePendiente -> "Pendiente"
+    text.CardStateEnCurso -> "En curso"
+    text.CardStateCerrada -> "Cerrada"
+    text.CardTasks -> "Tareas"
+    text.CardProgress -> "Progreso"
+    text.CardCreated -> "Ficha creada"
+    text.CardUpdated -> "Ficha actualizada"
+    text.CardDeleted -> "Ficha eliminada"
+    text.CardDeleteBlocked -> "No se puede eliminar: tiene tareas"
+    text.CardDeleteConfirm(card_title) ->
+      "¿Eliminar la ficha \"" <> card_title <> "\"?"
+    text.NoCardsYet -> "Aún no hay fichas"
+    text.CardTaskCount(completed, total) ->
+      int.to_string(completed) <> "/" <> int.to_string(total)
   }
 }
