@@ -71,6 +71,8 @@ import scrumbringer_client/client_state.{
   LoginEmailChanged, LoginFinished, LoginPasswordChanged, LoginSubmitted,
   LogoutClicked, LogoutFinished, MeFetched, Member, MemberActiveTaskFetched,
   MemberActiveTaskHeartbeated, MemberActiveTaskPaused, MemberActiveTaskStarted,
+  MemberWorkSessionsFetched, MemberWorkSessionStarted, MemberWorkSessionPaused,
+  MemberWorkSessionHeartbeated,
   MemberAddDialogClosed, MemberAddDialogOpened, MemberAddRoleChanged,
   MemberAddSubmitted, MemberAddUserSelected, MemberAdded,
   MemberCanvasRectFetched, MemberClaimClicked, MemberCompleteClicked,
@@ -1611,6 +1613,27 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       now_working_workflow.handle_heartbeated_ok(model, payload)
     MemberActiveTaskHeartbeated(Error(err)) ->
       now_working_workflow.handle_heartbeated_error(model, err)
+
+    // Work sessions (multi-session) - delegate to workflow
+    MemberWorkSessionsFetched(Ok(payload)) ->
+      now_working_workflow.handle_sessions_fetched_ok(model, payload)
+    MemberWorkSessionsFetched(Error(err)) ->
+      now_working_workflow.handle_sessions_fetched_error(model, err)
+
+    MemberWorkSessionStarted(Ok(payload)) ->
+      now_working_workflow.handle_session_started_ok(model, payload)
+    MemberWorkSessionStarted(Error(err)) ->
+      now_working_workflow.handle_session_started_error(model, err)
+
+    MemberWorkSessionPaused(Ok(payload)) ->
+      now_working_workflow.handle_session_paused_ok(model, payload)
+    MemberWorkSessionPaused(Error(err)) ->
+      now_working_workflow.handle_session_paused_error(model, err)
+
+    MemberWorkSessionHeartbeated(Ok(payload)) ->
+      now_working_workflow.handle_session_heartbeated_ok(model, payload)
+    MemberWorkSessionHeartbeated(Error(err)) ->
+      now_working_workflow.handle_session_heartbeated_error(model, err)
 
     MemberMetricsFetched(Ok(metrics)) ->
       metrics_workflow.handle_member_metrics_fetched_ok(model, metrics)

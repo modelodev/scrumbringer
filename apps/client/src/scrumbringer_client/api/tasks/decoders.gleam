@@ -20,7 +20,9 @@ import gleam/option
 
 import domain/task.{
   type ActiveTask, type ActiveTaskPayload, type Task, type TaskNote,
-  type TaskPosition, ActiveTask, ActiveTaskPayload, Task, TaskNote, TaskPosition,
+  type TaskPosition, type WorkSession, type WorkSessionsPayload,
+  ActiveTask, ActiveTaskPayload, Task, TaskNote, TaskPosition, WorkSession,
+  WorkSessionsPayload,
 }
 import domain/task_status.{
   type OngoingBy, type WorkState, Available, OngoingBy, WorkAvailable,
@@ -246,4 +248,40 @@ pub fn active_task_payload_decoder() -> decode.Decoder(ActiveTaskPayload) {
   )
   use as_of <- decode.field("as_of", decode.string)
   decode.success(ActiveTaskPayload(active_task: active_task, as_of: as_of))
+}
+
+// =============================================================================
+// Work Sessions Decoders (Multi-Session Model)
+// =============================================================================
+
+/// Decoder for WorkSession.
+pub fn work_session_decoder() -> decode.Decoder(WorkSession) {
+  use task_id <- decode.field("task_id", decode.int)
+  use started_at <- decode.field("started_at", decode.string)
+  use accumulated <- decode.optional_field(
+    "accumulated_s",
+    option.None,
+    decode.optional(decode.int),
+  )
+
+  let accumulated_s = case accumulated {
+    option.Some(v) -> v
+    option.None -> 0
+  }
+
+  decode.success(WorkSession(
+    task_id: task_id,
+    started_at: started_at,
+    accumulated_s: accumulated_s,
+  ))
+}
+
+/// Decoder for work sessions payload.
+pub fn work_sessions_payload_decoder() -> decode.Decoder(WorkSessionsPayload) {
+  use active_sessions <- decode.field(
+    "active_sessions",
+    decode.list(work_session_decoder()),
+  )
+  use as_of <- decode.field("as_of", decode.string)
+  decode.success(WorkSessionsPayload(active_sessions: active_sessions, as_of: as_of))
 }

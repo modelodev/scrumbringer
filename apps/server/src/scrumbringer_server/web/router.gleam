@@ -12,7 +12,6 @@ import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/capabilities
-import scrumbringer_server/http/me_active_task
 import scrumbringer_server/http/me_metrics
 import scrumbringer_server/http/org_invite_links
 import scrumbringer_server/http/org_invites
@@ -23,6 +22,7 @@ import scrumbringer_server/http/projects
 import scrumbringer_server/http/task_notes
 import scrumbringer_server/http/task_positions
 import scrumbringer_server/http/tasks
+import scrumbringer_server/http/work_sessions
 import wisp
 
 /// Context required for routing, including database and JWT secret.
@@ -115,14 +115,25 @@ pub fn route(req: wisp.Request, ctx: RouterCtx) -> wisp.Response {
       task_positions.handle_me_task_positions(req, auth_ctx(ctx))
     ["api", "v1", "me", "task-positions", task_id] ->
       task_positions.handle_me_task_position(req, auth_ctx(ctx), task_id)
+    // Work sessions (new multi-session endpoints)
+    ["api", "v1", "me", "work-sessions", "active"] ->
+      work_sessions.handle_get_active(req, auth_ctx(ctx))
+    ["api", "v1", "me", "work-sessions", "start"] ->
+      work_sessions.handle_start(req, auth_ctx(ctx))
+    ["api", "v1", "me", "work-sessions", "pause"] ->
+      work_sessions.handle_pause(req, auth_ctx(ctx))
+    ["api", "v1", "me", "work-sessions", "heartbeat"] ->
+      work_sessions.handle_heartbeat(req, auth_ctx(ctx))
+
+    // Legacy single-session endpoints (redirect to new endpoints)
     ["api", "v1", "me", "active-task"] ->
-      me_active_task.handle_me_active_task(req, auth_ctx(ctx))
+      work_sessions.handle_get_active(req, auth_ctx(ctx))
     ["api", "v1", "me", "active-task", "start"] ->
-      me_active_task.handle_me_active_task_start(req, auth_ctx(ctx))
+      work_sessions.handle_start(req, auth_ctx(ctx))
     ["api", "v1", "me", "active-task", "pause"] ->
-      me_active_task.handle_me_active_task_pause(req, auth_ctx(ctx))
+      work_sessions.handle_pause(req, auth_ctx(ctx))
     ["api", "v1", "me", "active-task", "heartbeat"] ->
-      me_active_task.handle_me_active_task_heartbeat(req, auth_ctx(ctx))
+      work_sessions.handle_heartbeat(req, auth_ctx(ctx))
     ["api", "v1", "me", "metrics"] ->
       me_metrics.handle_me_metrics(req, auth_ctx(ctx))
 

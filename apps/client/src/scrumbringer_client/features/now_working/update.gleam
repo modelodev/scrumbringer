@@ -33,7 +33,10 @@ import lustre/effect.{type Effect}
 import scrumbringer_client/api/tasks as api_tasks
 // Domain types
 import domain/api_error.{type ApiError}
-import domain/task.{type ActiveTaskPayload, ActiveTaskPayload}
+import domain/task.{
+  type ActiveTaskPayload, type WorkSessionsPayload, ActiveTaskPayload,
+  WorkSessionsPayload,
+}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, MemberActiveTaskHeartbeated,
@@ -263,6 +266,164 @@ pub fn start_tick_if_needed(model: Model) -> #(Model, Effect(Msg)) {
           tick_effect(),
         )
         opt.None -> #(model, effect.none())
+      }
+  }
+}
+
+// =============================================================================
+// Work Sessions Handlers (Multi-Session Model)
+// =============================================================================
+
+/// Handle successful work sessions fetch response.
+pub fn handle_sessions_fetched_ok(
+  model: Model,
+  payload: WorkSessionsPayload,
+) -> #(Model, Effect(Msg)) {
+  let WorkSessionsPayload(as_of: as_of, ..) = payload
+  let server_ms = client_ffi.parse_iso_ms(as_of)
+  let offset = client_ffi.now_ms() - server_ms
+
+  Model(
+    ..model,
+    member_work_sessions: Loaded(payload),
+    now_working_server_offset_ms: offset,
+  )
+  |> start_tick_if_sessions_needed
+}
+
+/// Handle failed work sessions fetch response.
+pub fn handle_sessions_fetched_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  case err.status {
+    401 -> update_helpers.reset_to_login(model)
+    _ -> #(Model(..model, member_work_sessions: Failed(err)), effect.none())
+  }
+}
+
+/// Handle successful work session start response.
+pub fn handle_session_started_ok(
+  model: Model,
+  payload: WorkSessionsPayload,
+) -> #(Model, Effect(Msg)) {
+  let WorkSessionsPayload(as_of: as_of, ..) = payload
+  let server_ms = client_ffi.parse_iso_ms(as_of)
+  let offset = client_ffi.now_ms() - server_ms
+
+  Model(
+    ..model,
+    member_now_working_in_flight: False,
+    member_work_sessions: Loaded(payload),
+    now_working_server_offset_ms: offset,
+  )
+  |> start_tick_if_sessions_needed
+}
+
+/// Handle failed work session start response.
+pub fn handle_session_started_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  let model = Model(..model, member_now_working_in_flight: False)
+
+  case err.status {
+    401 -> update_helpers.reset_to_login(model)
+    _ -> #(
+      Model(
+        ..model,
+        member_now_working_error: opt.Some(err.message),
+        toast: opt.Some(err.message),
+      ),
+      effect.none(),
+    )
+  }
+}
+
+/// Handle successful work session pause response.
+pub fn handle_session_paused_ok(
+  model: Model,
+  payload: WorkSessionsPayload,
+) -> #(Model, Effect(Msg)) {
+  let WorkSessionsPayload(as_of: as_of, active_sessions: sessions) = payload
+  let server_ms = client_ffi.parse_iso_ms(as_of)
+  let offset = client_ffi.now_ms() - server_ms
+
+  let model =
+    Model(
+      ..model,
+      member_now_working_in_flight: False,
+      member_work_sessions: Loaded(payload),
+      now_working_server_offset_ms: offset,
+    )
+
+  // Stop tick if no more active sessions
+  case sessions {
+    [] -> #(Model(..model, now_working_tick_running: False), effect.none())
+    _ -> #(model, effect.none())
+  }
+}
+
+/// Handle failed work session pause response.
+pub fn handle_session_paused_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  let model = Model(..model, member_now_working_in_flight: False)
+
+  case err.status {
+    401 -> update_helpers.reset_to_login(model)
+    _ -> #(
+      Model(
+        ..model,
+        member_now_working_error: opt.Some(err.message),
+        toast: opt.Some(err.message),
+      ),
+      effect.none(),
+    )
+  }
+}
+
+/// Handle successful work session heartbeat response.
+pub fn handle_session_heartbeated_ok(
+  model: Model,
+  payload: WorkSessionsPayload,
+) -> #(Model, Effect(Msg)) {
+  let WorkSessionsPayload(as_of: as_of, ..) = payload
+  let server_ms = client_ffi.parse_iso_ms(as_of)
+  let offset = client_ffi.now_ms() - server_ms
+
+  Model(
+    ..model,
+    member_work_sessions: Loaded(payload),
+    now_working_server_offset_ms: offset,
+  )
+  |> start_tick_if_sessions_needed
+}
+
+/// Handle failed work session heartbeat response.
+pub fn handle_session_heartbeated_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  case err.status {
+    401 -> update_helpers.reset_to_login(model)
+    _ -> #(model, effect.none())
+  }
+}
+
+/// Start tick timer if not already running and there are active sessions.
+fn start_tick_if_sessions_needed(model: Model) -> #(Model, Effect(Msg)) {
+  case model.now_working_tick_running {
+    True -> #(model, effect.none())
+
+    False ->
+      case model.member_work_sessions {
+        Loaded(WorkSessionsPayload(active_sessions: [_, ..], ..)) -> #(
+          Model(..model, now_working_tick_running: True),
+          tick_effect(),
+        )
+        _ -> #(model, effect.none())
       }
   }
 }

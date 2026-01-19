@@ -13,15 +13,15 @@ select
     t.status = 'claimed'
     and exists(
       select 1
-      from user_now_working unw
-      where unw.task_id = t.id
+      from user_task_work_session ws
+      where ws.task_id = t.id and ws.ended_at is null
     )
   ) as is_ongoing,
   coalesce((
-    select unw.user_id
-    from user_now_working unw
-    where unw.task_id = t.id
-    order by unw.updated_at desc
+    select ws.user_id
+    from user_task_work_session ws
+    where ws.task_id = t.id and ws.ended_at is null
+    order by ws.started_at desc
     limit 1
   ), 0) as ongoing_by_user_id,
   t.created_by,

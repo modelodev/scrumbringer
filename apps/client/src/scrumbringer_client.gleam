@@ -265,6 +265,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       task_types_icon_preview: IconIdle,
       member_section: member_section,
       member_active_task: NotAsked,
+      member_work_sessions: NotAsked,
       member_metrics: NotAsked,
       member_now_working_in_flight: False,
       member_now_working_error: opt.None,

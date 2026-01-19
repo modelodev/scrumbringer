@@ -98,7 +98,7 @@ pub type TaskPosition {
   TaskPosition(task_id: Int, user_id: Int, x: Int, y: Int, updated_at: String)
 }
 
-/// Currently active task for a user.
+/// Currently active task for a user (legacy single-session type).
 ///
 /// ## Example
 ///
@@ -114,7 +114,7 @@ pub type ActiveTask {
   )
 }
 
-/// Payload containing active task and server timestamp.
+/// Payload containing active task and server timestamp (legacy single-session).
 ///
 /// ## Example
 ///
@@ -123,6 +123,32 @@ pub type ActiveTask {
 /// ```
 pub type ActiveTaskPayload {
   ActiveTaskPayload(active_task: Option(ActiveTask), as_of: String)
+}
+
+/// An active work session on a task (multi-session model).
+///
+/// ## Example
+///
+/// ```gleam
+/// WorkSession(task_id: 1, started_at: "2024-01-17T12:00:00Z", accumulated_s: 3600)
+/// ```
+pub type WorkSession {
+  WorkSession(
+    task_id: Int,
+    started_at: String,
+    accumulated_s: Int,
+  )
+}
+
+/// Payload containing multiple active work sessions and server timestamp.
+///
+/// ## Example
+///
+/// ```gleam
+/// WorkSessionsPayload(active_sessions: [session1, session2], as_of: "2024-01-17T12:00:00Z")
+/// ```
+pub type WorkSessionsPayload {
+  WorkSessionsPayload(active_sessions: List(WorkSession), as_of: String)
 }
 
 /// Filters for listing tasks.

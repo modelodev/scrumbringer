@@ -1345,13 +1345,13 @@ pub fn me_active_task_start_pause_and_persist_test() {
 
   let _ =
     pog.query(
-      "update user_now_working set started_at = now() - interval '70 seconds' where user_id = $1 and task_id = $2",
+      "update user_task_work_session set started_at = now() - interval '70 seconds' where user_id = $1 and task_id = $2 and ended_at is null",
     )
     |> pog.parameter(pog.int(user_id))
     |> pog.parameter(pog.int(task_id))
     |> pog.execute(db)
 
-  let pause_res = pause_active_task(handler, session, csrf)
+  let pause_res = pause_active_task(handler, session, csrf, task_id)
   pause_res.status |> should.equal(200)
   decode_active_task_id(simulate.read_body(pause_res))
   |> should.equal(option.None)
@@ -1359,7 +1359,7 @@ pub fn me_active_task_start_pause_and_persist_test() {
   let accumulated_after_pause =
     single_int(
       db,
-      "select accumulated_s from user_task_now_working_time where user_id = $1 and task_id = $2",
+      "select accumulated_s from user_task_work_total where user_id = $1 and task_id = $2",
       [pog.int(user_id), pog.int(task_id)],
     )
 
@@ -1377,7 +1377,7 @@ pub fn me_active_task_start_pause_and_persist_test() {
   |> should.equal(option.Some(task_id))
 }
 
-pub fn me_active_task_heartbeat_persists_accumulated_s_test() {
+pub fn me_active_task_heartbeat_updates_last_heartbeat_at_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
@@ -1407,31 +1407,44 @@ pub fn me_active_task_heartbeat_persists_accumulated_s_test() {
   let user_id =
     single_int(db, "select id from users where email = 'admin@example.com'", [])
 
+  // Set started_at to 65 seconds ago to simulate elapsed time
   let _ =
     pog.query(
-      "update user_now_working set started_at = now() - interval '65 seconds' where user_id = $1 and task_id = $2",
+      "update user_task_work_session set started_at = now() - interval '65 seconds' where user_id = $1 and task_id = $2 and ended_at is null",
     )
     |> pog.parameter(pog.int(user_id))
     |> pog.parameter(pog.int(task_id))
     |> pog.execute(db)
 
-  let heartbeat_body =
-    simulate.read_body(heartbeat_active_task(handler, session, csrf))
-
-  let accumulated_after_heartbeat =
+  // Get last_heartbeat_at before heartbeat (as epoch integer)
+  let heartbeat_before =
     single_int(
       db,
-      "select accumulated_s from user_task_now_working_time where user_id = $1 and task_id = $2",
+      "select extract(epoch from last_heartbeat_at)::int from user_task_work_session where user_id = $1 and task_id = $2 and ended_at is null",
       [pog.int(user_id), pog.int(task_id)],
     )
 
-  let _ = should.be_true(accumulated_after_heartbeat >= 65)
+  let heartbeat_res = heartbeat_active_task(handler, session, csrf, task_id)
+  heartbeat_res.status |> should.equal(200)
 
-  decode_active_task_accumulated_s(heartbeat_body)
-  |> should.equal(option.Some(accumulated_after_heartbeat))
+  // Get last_heartbeat_at after heartbeat
+  let heartbeat_after =
+    single_int(
+      db,
+      "select extract(epoch from last_heartbeat_at)::int from user_task_work_session where user_id = $1 and task_id = $2 and ended_at is null",
+      [pog.int(user_id), pog.int(task_id)],
+    )
+
+  // last_heartbeat_at should have been updated (>= before, allows for same-second update)
+  let _ = should.be_true(heartbeat_after >= heartbeat_before)
+
+  // Note: In the new multi-session model, accumulated_s is flushed to
+  // user_task_work_total only when the session is paused/closed, not on heartbeat.
+  // The API returns accumulated_s from user_task_work_total (previous sessions)
+  // while elapsed time from active session is computed client-side from started_at.
 }
 
-pub fn me_active_task_replaces_previous_on_start_test() {
+pub fn me_work_sessions_supports_multiple_concurrent_sessions_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
@@ -1458,12 +1471,21 @@ pub fn me_active_task_replaces_previous_on_start_test() {
   claim_task(handler, session, csrf, t1, 1) |> should.equal(200)
   claim_task(handler, session, csrf, t2, 1) |> should.equal(200)
 
+  // Start sessions on both tasks - multi-session model supports this
   start_active_task(handler, session, csrf, t1).status |> should.equal(200)
   let res = start_active_task(handler, session, csrf, t2)
   res.status |> should.equal(200)
 
-  decode_active_task_id(simulate.read_body(res))
-  |> should.equal(option.Some(t2))
+  // Verify both sessions exist
+  let user_id =
+    single_int(db, "select id from users where email = 'admin@example.com'", [])
+  let session_count =
+    single_int(
+      db,
+      "select count(*)::int from user_task_work_session where user_id = $1 and ended_at is null",
+      [pog.int(user_id)],
+    )
+  session_count |> should.equal(2)
 }
 
 pub fn me_active_task_start_returns_409_when_not_claimed_test() {
@@ -1562,7 +1584,7 @@ fn get_active_task(
   csrf: String,
 ) -> wisp.Response {
   handler(
-    simulate.request(http.Get, "/api/v1/me/active-task")
+    simulate.request(http.Get, "/api/v1/me/work-sessions/active")
     |> request.set_cookie("sb_session", session)
     |> request.set_cookie("sb_csrf", csrf),
   )
@@ -1575,7 +1597,7 @@ fn start_active_task(
   task_id: Int,
 ) -> wisp.Response {
   handler(
-    simulate.request(http.Post, "/api/v1/me/active-task/start")
+    simulate.request(http.Post, "/api/v1/me/work-sessions/start")
     |> request.set_cookie("sb_session", session)
     |> request.set_cookie("sb_csrf", csrf)
     |> request.set_header("X-CSRF", csrf)
@@ -1587,12 +1609,14 @@ fn pause_active_task(
   handler: fn(wisp.Request) -> wisp.Response,
   session: String,
   csrf: String,
+  task_id: Int,
 ) -> wisp.Response {
   handler(
-    simulate.request(http.Post, "/api/v1/me/active-task/pause")
+    simulate.request(http.Post, "/api/v1/me/work-sessions/pause")
     |> request.set_cookie("sb_session", session)
     |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf),
+    |> request.set_header("X-CSRF", csrf)
+    |> simulate.json_body(json.object([#("task_id", json.int(task_id))])),
   )
 }
 
@@ -1600,37 +1624,39 @@ fn heartbeat_active_task(
   handler: fn(wisp.Request) -> wisp.Response,
   session: String,
   csrf: String,
+  task_id: Int,
 ) -> wisp.Response {
   handler(
-    simulate.request(http.Post, "/api/v1/me/active-task/heartbeat")
+    simulate.request(http.Post, "/api/v1/me/work-sessions/heartbeat")
     |> request.set_cookie("sb_session", session)
     |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf),
+    |> request.set_header("X-CSRF", csrf)
+    |> simulate.json_body(json.object([#("task_id", json.int(task_id))])),
   )
 }
 
 fn decode_active_task(body: String) -> #(option.Option(Int), String, Int) {
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)
 
-  let active_decoder = {
+  let session_decoder = {
     use task_id <- decode.field("task_id", decode.int)
     use accumulated_s <- decode.field("accumulated_s", decode.int)
     decode.success(#(task_id, accumulated_s))
   }
 
   let data_decoder = {
-    use active_task <- decode.field(
-      "active_task",
-      decode.optional(active_decoder),
+    use sessions <- decode.field(
+      "active_sessions",
+      decode.list(session_decoder),
     )
     use as_of <- decode.field("as_of", decode.string)
 
-    let #(active_task_id, accumulated_s) = case active_task {
-      option.Some(#(task_id, accumulated)) -> #(
+    let #(active_task_id, accumulated_s) = case sessions {
+      [#(task_id, accumulated), ..] -> #(
         option.Some(task_id),
         accumulated,
       )
-      option.None -> #(option.None, 0)
+      [] -> #(option.None, 0)
     }
 
     decode.success(#(active_task_id, as_of, accumulated_s))

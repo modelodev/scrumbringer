@@ -29,6 +29,7 @@ import pog
 import domain/task_status.{Available, Claimed, Completed}
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
 import scrumbringer_server/services/task_types_db
+import scrumbringer_server/services/work_sessions_db
 import scrumbringer_server/services/workflows/authorization
 import scrumbringer_server/services/workflows/types.{
   type Error, type Message, type Response, type TaskFilters, type TaskUpdates,
@@ -305,7 +306,12 @@ fn handle_release_task(
 
         Claimed(_) ->
           case current.claimed_by {
-            Some(id) if id == user_id ->
+            Some(id) if id == user_id -> {
+              // Close any active work session before releasing
+              let _ = work_sessions_db.close_session_for_task(
+                db, user_id, task_id, "task_released"
+              )
+
               case
                 tasks_queries.release_task(db, org_id, task_id, user_id, version)
               {
@@ -313,6 +319,7 @@ fn handle_release_task(
                 Error(tasks_queries.NotFound) -> Error(VersionConflict)
                 Error(tasks_queries.DbError(e)) -> Error(DbError(e))
               }
+            }
 
             _ -> Error(NotAuthorized)
           }
@@ -337,7 +344,12 @@ fn handle_complete_task(
 
         Claimed(_) ->
           case current.claimed_by {
-            Some(id) if id == user_id ->
+            Some(id) if id == user_id -> {
+              // Close any active work session before completing
+              let _ = work_sessions_db.close_session_for_task(
+                db, user_id, task_id, "task_completed"
+              )
+
               case
                 tasks_queries.complete_task(db, org_id, task_id, user_id, version)
               {
@@ -345,6 +357,7 @@ fn handle_complete_task(
                 Error(tasks_queries.NotFound) -> Error(VersionConflict)
                 Error(tasks_queries.DbError(e)) -> Error(DbError(e))
               }
+            }
 
             _ -> Error(NotAuthorized)
           }

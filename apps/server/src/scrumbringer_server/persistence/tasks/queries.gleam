@@ -27,8 +27,8 @@ import gleam/list
 import gleam/result
 import pog
 import scrumbringer_server/persistence/tasks/mappers.{type Task}
-import scrumbringer_server/services/now_working_db
 import scrumbringer_server/services/task_events_db
+import scrumbringer_server/services/work_sessions_db
 import scrumbringer_server/sql
 
 /// Error when task creation fails.
@@ -200,8 +200,8 @@ pub fn release_task(
   version: Int,
 ) -> Result(Task, NotFoundOrDbError) {
   pog.transaction(db, fn(tx) {
-    // Best effort: if this task was "now working", clear it before release.
-    let _ = now_working_db.pause_if_matches(tx, user_id, task_id)
+    // Best effort: close any active work session before release.
+    let _ = work_sessions_db.close_session_for_task(tx, user_id, task_id, "task_released")
 
     case sql.tasks_release(tx, task_id, user_id, version) {
       Ok(pog.Returned(rows: [row, ..], ..)) -> {
@@ -237,8 +237,8 @@ pub fn complete_task(
   version: Int,
 ) -> Result(Task, NotFoundOrDbError) {
   pog.transaction(db, fn(tx) {
-    // Best effort: if this task was "now working", clear it before complete.
-    let _ = now_working_db.pause_if_matches(tx, user_id, task_id)
+    // Best effort: close any active work session before complete.
+    let _ = work_sessions_db.close_session_for_task(tx, user_id, task_id, "task_completed")
 
     case sql.tasks_complete(tx, task_id, user_id, version) {
       Ok(pog.Returned(rows: [row, ..], ..)) -> {

@@ -71,6 +71,7 @@ import domain/org.{type InviteLink, type OrgUser}
 import domain/task.{
   type ActiveTaskPayload, type Task,
   type TaskNote, type TaskPosition,
+  type WorkSessionsPayload,
 }
 import domain/task_type.{type TaskType}
 import domain/metrics.{
@@ -280,6 +281,8 @@ pub type Model {
     // Member section
     member_section: member_section.MemberSection,
     member_active_task: Remote(ActiveTaskPayload),
+    // Work sessions (multi-session model)
+    member_work_sessions: Remote(WorkSessionsPayload),
     member_metrics: Remote(MyMetrics),
     member_now_working_in_flight: Bool,
     member_now_working_error: Option(String),
@@ -500,13 +503,19 @@ pub type Msg {
   MemberTaskReleased(ApiResult(Task))
   MemberTaskCompleted(ApiResult(Task))
 
-  // Now working
+  // Now working (legacy single-session)
   MemberNowWorkingStartClicked(Int)
   MemberNowWorkingPauseClicked
   MemberActiveTaskFetched(ApiResult(ActiveTaskPayload))
   MemberActiveTaskStarted(ApiResult(ActiveTaskPayload))
   MemberActiveTaskPaused(ApiResult(ActiveTaskPayload))
   MemberActiveTaskHeartbeated(ApiResult(ActiveTaskPayload))
+  // Work sessions (multi-session)
+  MemberWorkSessionsFetched(ApiResult(WorkSessionsPayload))
+  MemberWorkSessionStarted(ApiResult(WorkSessionsPayload))
+  MemberWorkSessionPaused(ApiResult(WorkSessionsPayload))
+  MemberWorkSessionHeartbeated(ApiResult(WorkSessionsPayload))
+  // Metrics
   MemberMetricsFetched(ApiResult(MyMetrics))
   AdminMetricsOverviewFetched(ApiResult(OrgMetricsOverview))
   AdminMetricsProjectTasksFetched(
@@ -697,6 +706,7 @@ pub fn default_model() -> Model {
     // Member section
     member_section: member_section.Pool,
     member_active_task: NotAsked,
+    member_work_sessions: NotAsked,
     member_metrics: NotAsked,
     member_now_working_in_flight: False,
     member_now_working_error: option.None,
