@@ -20,6 +20,7 @@
 //// - POST /api/v1/me/work-sessions/pause
 //// - POST /api/v1/me/work-sessions/heartbeat
 
+import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/http
 import gleam/int
@@ -46,6 +47,18 @@ fn heartbeat_rate_limit_ok(user_id: Int, task_id: Int) -> Bool {
     heartbeat_rate_limit_window_seconds,
     time.now_unix_seconds(),
   )
+}
+
+fn decode_task_id_data(data: dynamic.Dynamic) -> Result(Int, wisp.Response) {
+  let decoder = {
+    use task_id <- decode.field("task_id", decode.int)
+    decode.success(task_id)
+  }
+
+  case decode.run(data, decoder) {
+    Ok(task_id) -> Ok(task_id)
+    Error(_) -> Error(api.error(422, "VALIDATION_ERROR", "Invalid JSON"))
+  }
 }
 
 // =============================================================================
@@ -87,13 +100,8 @@ pub fn handle_start(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
         Ok(Nil) -> {
           use data <- wisp.require_json(req)
 
-          let decoder = {
-            use task_id <- decode.field("task_id", decode.int)
-            decode.success(task_id)
-          }
-
-          case decode.run(data, decoder) {
-            Error(_) -> api.error(422, "VALIDATION_ERROR", "Invalid JSON")
+          case decode_task_id_data(data) {
+            Error(resp) -> resp
 
             Ok(task_id) -> {
               let auth.Ctx(db: db, ..) = ctx
@@ -144,13 +152,8 @@ pub fn handle_pause(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
         Ok(Nil) -> {
           use data <- wisp.require_json(req)
 
-          let decoder = {
-            use task_id <- decode.field("task_id", decode.int)
-            decode.success(task_id)
-          }
-
-          case decode.run(data, decoder) {
-            Error(_) -> api.error(422, "VALIDATION_ERROR", "Invalid JSON")
+          case decode_task_id_data(data) {
+            Error(resp) -> resp
 
             Ok(task_id) -> {
               let auth.Ctx(db: db, ..) = ctx
@@ -184,15 +187,10 @@ pub fn handle_heartbeat(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
         Ok(Nil) -> {
           use data <- wisp.require_json(req)
 
-          let decoder = {
-            use task_id <- decode.field("task_id", decode.int)
-            decode.success(task_id)
-          }
+          case decode_task_id_data(data) {
+            Error(resp) -> resp
 
-          case decode.run(data, decoder) {
-            Error(_) -> api.error(422, "VALIDATION_ERROR", "Invalid JSON")
-
-            Ok(task_id) -> {
+            Ok(task_id) ->
               case heartbeat_rate_limit_ok(user.id, task_id) {
                 False -> api.error(429, "RATE_LIMITED", "Too many heartbeats")
 
@@ -218,7 +216,6 @@ pub fn handle_heartbeat(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
                   }
                 }
               }
-            }
           }
         }
       }
