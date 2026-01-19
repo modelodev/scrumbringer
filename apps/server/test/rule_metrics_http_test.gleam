@@ -376,16 +376,6 @@ fn get_workflow_metrics_with_dates(
   )
 }
 
-fn get_rule_metrics(handler, session, rule_id: Int) {
-  handler(
-    simulate.request(
-      http.Get,
-      "/api/v1/rules/" <> int.to_string(rule_id) <> "/metrics",
-    )
-    |> fixtures.with_auth(session),
-  )
-}
-
 fn get_rule_metrics_with_dates(
   handler,
   session,
