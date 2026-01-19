@@ -23,6 +23,7 @@ argon2 = ">= 1.2.0 and < 2.0.0"
 birl = { path = "../../packages/birl" }
 # DB
 pog = "~> 4.0"
+gleam_time = ">= 1.7.0 and < 2.0.0"
 
 [dev-dependencies]
 gleeunit = "~> 1.0"

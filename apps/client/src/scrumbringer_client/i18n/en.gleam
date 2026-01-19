@@ -361,6 +361,8 @@ pub fn translate(text: Text) -> String {
     text.RuleDeleted -> "Rule deleted"
     text.AttachTemplate -> "Attach Template"
     text.DetachTemplate -> "Detach Template"
+    text.RuleMetricsApplied -> "Applied"
+    text.RuleMetricsSuppressed -> "Suppressed"
 
     // Task Templates
     text.AdminTaskTemplates -> "Task Templates"
@@ -381,5 +383,33 @@ pub fn translate(text: Text) -> String {
     text.TaskTemplateDeleted -> "Template deleted"
     text.TaskTemplateVariablesHelp ->
       "Variables: {{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}"
+
+    // Rule Metrics Tab
+    text.AdminRuleMetrics -> "Rule Metrics"
+    text.RuleMetricsTitle -> "Rule Metrics"
+    text.RuleMetricsHelp ->
+      "View rule execution metrics for workflows. Select a date range (max 90 days) to see applied and suppressed counts."
+    text.RuleMetricsFrom -> "From"
+    text.RuleMetricsTo -> "To"
+    text.RuleMetricsRefresh -> "Refresh"
+    text.RuleMetricsSelectRange -> "Select a date range and click Refresh"
+    text.RuleMetricsNoData -> "No metrics data for the selected range"
+    text.RuleMetricsRuleCount -> "Rules"
+    text.RuleMetricsEvaluated -> "Evaluated"
+    text.RuleMetricsNoRules -> "No rules in this workflow"
+    text.ViewDetails -> "View Details"
+    text.RuleMetricsDrilldown -> "Rule Metrics Details"
+    text.SuppressionBreakdown -> "Suppression Breakdown"
+    text.SuppressionIdempotent -> "Idempotent (already applied)"
+    text.SuppressionNotUserTriggered -> "Not user triggered"
+    text.SuppressionNotMatching -> "Conditions not matching"
+    text.SuppressionInactive -> "Rule inactive"
+    text.RecentExecutions -> "Recent Executions"
+    text.NoExecutions -> "No executions found"
+    text.Origin -> "Origin"
+    text.Outcome -> "Outcome"
+    text.Timestamp -> "Timestamp"
+    text.OutcomeApplied -> "Applied"
+    text.OutcomeSuppressed -> "Suppressed"
   }
 }

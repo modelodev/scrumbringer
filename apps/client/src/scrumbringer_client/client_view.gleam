@@ -240,6 +240,7 @@ fn view_section(
         permissions.OrgSettings -> admin_view.view_org_settings(model)
         permissions.Projects -> projects_view.view_projects(model)
         permissions.Metrics -> metrics_view.view_metrics(model, selected)
+        permissions.RuleMetrics -> admin_view.view_rule_metrics(model)
         permissions.Capabilities -> admin_view.view_capabilities(model)
         permissions.Members -> admin_view.view_members(model, selected)
         permissions.TaskTypes -> admin_view.view_task_types(model, selected)
@@ -454,6 +455,7 @@ fn admin_section_label(section: permissions.AdminSection) -> i18n_text.Text {
     permissions.OrgSettings -> i18n_text.AdminOrgSettings
     permissions.Projects -> i18n_text.AdminProjects
     permissions.Metrics -> i18n_text.AdminMetrics
+    permissions.RuleMetrics -> i18n_text.AdminRuleMetrics
     permissions.Members -> i18n_text.AdminMembers
     permissions.Capabilities -> i18n_text.AdminCapabilities
     permissions.TaskTypes -> i18n_text.AdminTaskTypes

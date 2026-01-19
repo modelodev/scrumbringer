@@ -76,6 +76,7 @@ import domain/task.{
 import domain/task_type.{type TaskType}
 import domain/card.{type Card}
 import domain/workflow.{type Rule, type RuleTemplate, type TaskTemplate, type Workflow}
+import scrumbringer_client/api/workflows as api_workflows
 import domain/metrics.{
   type MyMetrics, type OrgMetricsOverview,
   type OrgMetricsProjectTasksPayload,
@@ -252,6 +253,17 @@ pub type Model {
     admin_metrics_overview: Remote(OrgMetricsOverview),
     admin_metrics_project_tasks: Remote(OrgMetricsProjectTasksPayload),
     admin_metrics_project_id: Option(Int),
+    // Rule metrics tab
+    admin_rule_metrics: Remote(List(api_workflows.OrgWorkflowMetricsSummary)),
+    admin_rule_metrics_from: String,
+    admin_rule_metrics_to: String,
+    // Rule metrics drill-down
+    admin_rule_metrics_expanded_workflow: Option(Int),
+    admin_rule_metrics_workflow_details: Remote(api_workflows.WorkflowMetrics),
+    admin_rule_metrics_drilldown_rule_id: Option(Int),
+    admin_rule_metrics_rule_details: Remote(api_workflows.RuleMetricsDetailed),
+    admin_rule_metrics_executions: Remote(api_workflows.RuleExecutionsResponse),
+    admin_rule_metrics_exec_offset: Int,
     // Org settings
     org_settings_role_drafts: Dict(Int, String),
     org_settings_save_in_flight: Bool,
@@ -340,6 +352,8 @@ pub type Model {
     rules_attach_template_id: Option(Int),
     rules_attach_in_flight: Bool,
     rules_attach_error: Option(String),
+    // Rule metrics (inline display)
+    rules_metrics: Remote(api_workflows.WorkflowMetrics),
     // Task templates
     task_templates_org: Remote(List(TaskTemplate)),
     task_templates_project: Remote(List(TaskTemplate)),
@@ -616,6 +630,9 @@ pub type Msg {
   RuleTemplateDetachClicked(Int)
   RuleTemplateDetached(ApiResult(Nil))
 
+  // Rule metrics (inline display)
+  RuleMetricsFetched(ApiResult(api_workflows.WorkflowMetrics))
+
   // Task templates
   TaskTemplatesOrgFetched(ApiResult(List(TaskTemplate)))
   TaskTemplatesProjectFetched(ApiResult(List(TaskTemplate)))
@@ -698,6 +715,24 @@ pub type Msg {
     ApiResult(OrgMetricsProjectTasksPayload),
   )
   NowWorkingTicked
+
+  // Rule metrics tab
+  AdminRuleMetricsFetched(ApiResult(List(api_workflows.OrgWorkflowMetricsSummary)))
+  AdminRuleMetricsFromChanged(String)
+  AdminRuleMetricsToChanged(String)
+  AdminRuleMetricsRefreshClicked
+  // Rule metrics drill-down
+  AdminRuleMetricsWorkflowExpanded(Int)
+  AdminRuleMetricsWorkflowDetailsFetched(ApiResult(api_workflows.WorkflowMetrics))
+  AdminRuleMetricsDrilldownClicked(Int)
+  AdminRuleMetricsDrilldownClosed
+  AdminRuleMetricsRuleDetailsFetched(
+    ApiResult(api_workflows.RuleMetricsDetailed),
+  )
+  AdminRuleMetricsExecutionsFetched(
+    ApiResult(api_workflows.RuleExecutionsResponse),
+  )
+  AdminRuleMetricsExecPageChanged(Int)
 
   // Member capabilities
   MemberMyCapabilityIdsFetched(ApiResult(List(Int)))
@@ -851,6 +886,17 @@ pub fn default_model() -> Model {
     admin_metrics_overview: NotAsked,
     admin_metrics_project_tasks: NotAsked,
     admin_metrics_project_id: option.None,
+    // Rule metrics tab (default: last 30 days)
+    admin_rule_metrics: NotAsked,
+    admin_rule_metrics_from: "",
+    admin_rule_metrics_to: "",
+    // Rule metrics drill-down
+    admin_rule_metrics_expanded_workflow: option.None,
+    admin_rule_metrics_workflow_details: NotAsked,
+    admin_rule_metrics_drilldown_rule_id: option.None,
+    admin_rule_metrics_rule_details: NotAsked,
+    admin_rule_metrics_executions: NotAsked,
+    admin_rule_metrics_exec_offset: 0,
     // Org settings
     org_settings_role_drafts: dict.new(),
     org_settings_save_in_flight: False,
@@ -939,6 +985,8 @@ pub fn default_model() -> Model {
     rules_attach_template_id: option.None,
     rules_attach_in_flight: False,
     rules_attach_error: option.None,
+    // Rule metrics (inline display)
+    rules_metrics: NotAsked,
     // Task templates
     task_templates_org: NotAsked,
     task_templates_project: NotAsked,

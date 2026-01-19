@@ -21,6 +21,7 @@ import scrumbringer_server/http/org_metrics
 import scrumbringer_server/http/org_users
 import scrumbringer_server/http/password_resets
 import scrumbringer_server/http/projects
+import scrumbringer_server/http/rule_metrics
 import scrumbringer_server/http/rules
 import scrumbringer_server/http/task_notes
 import scrumbringer_server/http/task_positions
@@ -120,6 +121,18 @@ pub fn route(req: wisp.Request, ctx: RouterCtx) -> wisp.Response {
       rules.handle_rule(req, auth_ctx(ctx), rule_id)
     ["api", "v1", "rules", rule_id, "templates", template_id] ->
       rules.handle_rule_template(req, auth_ctx(ctx), rule_id, template_id)
+
+    // Rule Metrics
+    ["api", "v1", "workflows", workflow_id, "metrics"] ->
+      rule_metrics.handle_workflow_metrics(req, auth_ctx(ctx), workflow_id)
+    ["api", "v1", "rules", rule_id, "metrics"] ->
+      rule_metrics.handle_rule_metrics(req, auth_ctx(ctx), rule_id)
+    ["api", "v1", "rules", rule_id, "executions"] ->
+      rule_metrics.handle_rule_executions(req, auth_ctx(ctx), rule_id)
+    ["api", "v1", "org", "rule-metrics"] ->
+      rule_metrics.handle_org_metrics(req, auth_ctx(ctx))
+    ["api", "v1", "projects", project_id, "rule-metrics"] ->
+      rule_metrics.handle_project_metrics(req, auth_ctx(ctx), project_id)
 
     // Card routes (project-scoped)
     ["api", "v1", "projects", project_id, "cards"] ->

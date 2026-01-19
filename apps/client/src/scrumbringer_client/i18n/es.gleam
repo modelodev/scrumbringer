@@ -369,6 +369,8 @@ pub fn translate(text: Text) -> String {
     text.RuleDeleted -> "Regla eliminada"
     text.AttachTemplate -> "Asociar plantilla"
     text.DetachTemplate -> "Quitar plantilla"
+    text.RuleMetricsApplied -> "Aplicadas"
+    text.RuleMetricsSuppressed -> "Suprimidas"
 
     // Task Templates
     text.AdminTaskTemplates -> "Plantillas de tarea"
@@ -389,5 +391,33 @@ pub fn translate(text: Text) -> String {
     text.TaskTemplateDeleted -> "Plantilla eliminada"
     text.TaskTemplateVariablesHelp ->
       "Variables: {{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}"
+
+    // Rule Metrics Tab
+    text.AdminRuleMetrics -> "Métricas de reglas"
+    text.RuleMetricsTitle -> "Métricas de reglas"
+    text.RuleMetricsHelp ->
+      "Ver métricas de ejecución de reglas por workflow. Selecciona un rango de fechas (máx 90 días) para ver conteos de aplicadas y suprimidas."
+    text.RuleMetricsFrom -> "Desde"
+    text.RuleMetricsTo -> "Hasta"
+    text.RuleMetricsRefresh -> "Actualizar"
+    text.RuleMetricsSelectRange -> "Selecciona un rango de fechas y haz clic en Actualizar"
+    text.RuleMetricsNoData -> "Sin datos de métricas para el rango seleccionado"
+    text.RuleMetricsRuleCount -> "Reglas"
+    text.RuleMetricsEvaluated -> "Evaluadas"
+    text.RuleMetricsNoRules -> "No hay reglas en este workflow"
+    text.ViewDetails -> "Ver detalles"
+    text.RuleMetricsDrilldown -> "Detalles de métricas de regla"
+    text.SuppressionBreakdown -> "Desglose de supresiones"
+    text.SuppressionIdempotent -> "Idempotente (ya aplicada)"
+    text.SuppressionNotUserTriggered -> "No disparada por usuario"
+    text.SuppressionNotMatching -> "Condiciones no coinciden"
+    text.SuppressionInactive -> "Regla inactiva"
+    text.RecentExecutions -> "Ejecuciones recientes"
+    text.NoExecutions -> "No se encontraron ejecuciones"
+    text.Origin -> "Origen"
+    text.Outcome -> "Resultado"
+    text.Timestamp -> "Fecha/Hora"
+    text.OutcomeApplied -> "Aplicada"
+    text.OutcomeSuppressed -> "Suprimida"
   }
 }

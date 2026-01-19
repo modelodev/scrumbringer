@@ -1,0 +1,79 @@
+# Quality Gate: 3.3 - Métricas del motor de reglas v1
+schema: 1
+story: "3.3"
+story_title: "Métricas del motor de reglas v1 (validación del motor)"
+gate: PASS
+status_reason: "All identified issues resolved. Decoder contract fixed, date validation added, Rule Metrics tab completed with drill-down, and decode tests added."
+reviewer: "Quinn (Test Architect)"
+updated: "2026-01-19T14:00:00Z"
+
+waiver: { active: false }
+
+top_issues:
+  - id: "CONTRACT-001"
+    severity: high
+    finding: "Client decoder for get_workflow_metrics expects nested 'metrics' key but server sends data directly in envelope"
+    status: RESOLVED
+    resolution: "Removed decode.field('metrics', ...) wrapper - decoder now matches server response"
+    refs: ["apps/client/src/scrumbringer_client/api/workflows.gleam:603"]
+
+  - id: "VALIDATION-001"
+    severity: medium
+    finding: "Server does not reject from > to date range with 422"
+    status: RESOLVED
+    resolution: "Added timestamp comparison returning 422 INVALID_DATE_RANGE when from > to"
+    refs: ["apps/server/src/scrumbringer_server/http/rule_metrics.gleam:473-503"]
+
+  - id: "INCOMPLETE-001"
+    severity: medium
+    finding: "Rule Metrics tab shows workflow summaries only, missing per-rule drill-down with suppression breakdown"
+    status: RESOLVED
+    resolution: "Implemented expandable workflow rows with per-rule metrics and drill-down modal showing suppression breakdown and paginated executions"
+    refs: ["apps/client/src/scrumbringer_client/features/admin/view.gleam:2153-2580"]
+
+  - id: "TEST-001"
+    severity: low
+    finding: "Missing client decode tests for metrics payloads"
+    status: RESOLVED
+    resolution: "Added 8 decode tests to workflows_decode_test.gleam covering WorkflowMetrics, OrgWorkflowMetricsSummary, RuleMetricsDetailed, and RuleExecutionsResponse"
+    refs: ["apps/client/test/workflows_decode_test.gleam"]
+
+quality_score: 100  # All issues resolved
+
+evidence:
+  tests_reviewed: 17  # 9 original + 8 new decode tests
+  risks_identified: 0
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    ac_gaps: []
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: "Admin gating properly enforced for org/project scopes"
+  performance:
+    status: PASS
+    notes: "Pagination and date range limits prevent DoS"
+  reliability:
+    status: PASS
+    notes: "Proper error handling with status codes"
+  maintainability:
+    status: PASS
+    notes: "Decoder contracts now match, comprehensive test coverage"
+
+recommendations:
+  immediate: []
+  future:
+    - action: "Consider adding E2E tests for the drill-down UI flow"
+      refs: []
+
+history:
+  - at: "2026-01-19T10:00:00Z"
+    gate: FAIL
+    note: "Initial review - decoder contract mismatch, incomplete AC coverage"
+  - at: "2026-01-19T12:00:00Z"
+    gate: CONCERNS
+    note: "Follow-up review - core functionality confirmed working, issues documented as addressable"
+  - at: "2026-01-19T14:00:00Z"
+    gate: PASS
+    note: "All issues resolved - decoder fixed, date validation added, drill-down implemented, decode tests added"

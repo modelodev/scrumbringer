@@ -339,6 +339,8 @@ pub type Text {
   RuleDeleted
   AttachTemplate
   DetachTemplate
+  RuleMetricsApplied
+  RuleMetricsSuppressed
 
   // Task Templates
   AdminTaskTemplates
@@ -357,4 +359,31 @@ pub type Text {
   NoTaskTemplatesYet
   TaskTemplateDeleted
   TaskTemplateVariablesHelp
+
+  // Rule Metrics Tab
+  AdminRuleMetrics
+  RuleMetricsTitle
+  RuleMetricsHelp
+  RuleMetricsFrom
+  RuleMetricsTo
+  RuleMetricsRefresh
+  RuleMetricsSelectRange
+  RuleMetricsNoData
+  RuleMetricsRuleCount
+  RuleMetricsEvaluated
+  RuleMetricsNoRules
+  ViewDetails
+  RuleMetricsDrilldown
+  SuppressionBreakdown
+  SuppressionIdempotent
+  SuppressionNotUserTriggered
+  SuppressionNotMatching
+  SuppressionInactive
+  RecentExecutions
+  NoExecutions
+  Origin
+  Outcome
+  Timestamp
+  OutcomeApplied
+  OutcomeSuppressed
 }

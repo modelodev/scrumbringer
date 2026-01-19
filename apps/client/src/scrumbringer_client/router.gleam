@@ -298,6 +298,7 @@ fn admin_section_slug(section: permissions.AdminSection) -> String {
     permissions.OrgSettings -> "org-settings"
     permissions.Projects -> "projects"
     permissions.Metrics -> "metrics"
+    permissions.RuleMetrics -> "rule-metrics"
     permissions.Members -> "members"
     permissions.Capabilities -> "capabilities"
     permissions.TaskTypes -> "task-types"
@@ -418,6 +419,7 @@ fn admin_section_title(
     permissions.OrgSettings -> i18n_text.AdminOrgSettings
     permissions.Projects -> i18n_text.AdminProjects
     permissions.Metrics -> i18n_text.AdminMetrics
+    permissions.RuleMetrics -> i18n_text.AdminRuleMetrics
     permissions.Members -> i18n_text.AdminMembers
     permissions.Capabilities -> i18n_text.AdminCapabilities
     permissions.TaskTypes -> i18n_text.AdminTaskTypes

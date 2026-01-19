@@ -240,6 +240,17 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       admin_metrics_overview: NotAsked,
       admin_metrics_project_tasks: NotAsked,
       admin_metrics_project_id: opt.None,
+      // Rule metrics tab
+      admin_rule_metrics: NotAsked,
+      admin_rule_metrics_from: "",
+      admin_rule_metrics_to: "",
+      // Rule metrics drill-down
+      admin_rule_metrics_expanded_workflow: opt.None,
+      admin_rule_metrics_workflow_details: NotAsked,
+      admin_rule_metrics_drilldown_rule_id: opt.None,
+      admin_rule_metrics_rule_details: NotAsked,
+      admin_rule_metrics_executions: NotAsked,
+      admin_rule_metrics_exec_offset: 0,
       org_settings_role_drafts: dict.new(),
       org_settings_save_in_flight: False,
       org_settings_error: opt.None,
@@ -376,6 +387,8 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       rules_attach_template_id: opt.None,
       rules_attach_in_flight: False,
       rules_attach_error: opt.None,
+      // Rule metrics (inline display)
+      rules_metrics: NotAsked,
       // Task templates
       task_templates_org: NotAsked,
       task_templates_project: NotAsked,

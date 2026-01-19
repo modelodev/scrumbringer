@@ -27,7 +27,7 @@ import domain/api_error.{type ApiError}
 import domain/workflow.{type Rule, type RuleTemplate, type TaskTemplate, type Workflow}
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, Loading, Model, NotAsked,
-  RuleCreated, RuleDeleted, RulesFetched, RuleTemplateAttached,
+  RuleCreated, RuleDeleted, RulesFetched, RuleMetricsFetched, RuleTemplateAttached,
   RuleTemplateDetached, RuleUpdated, TaskTemplateCreated,
   TaskTemplateDeleted, TaskTemplatesOrgFetched, TaskTemplatesProjectFetched,
   TaskTemplateUpdated, WorkflowCreated, WorkflowDeleted, WorkflowsOrgFetched,
@@ -486,8 +486,19 @@ pub fn handle_workflow_rules_clicked(
   workflow_id: Int,
 ) -> #(Model, Effect(Msg)) {
   let model =
-    Model(..model, rules_workflow_id: opt.Some(workflow_id), rules: Loading)
-  #(model, api_workflows.list_rules(workflow_id, RulesFetched))
+    Model(
+      ..model,
+      rules_workflow_id: opt.Some(workflow_id),
+      rules: Loading,
+      rules_metrics: Loading,
+    )
+  #(
+    model,
+    effect.batch([
+      api_workflows.list_rules(workflow_id, RulesFetched),
+      api_workflows.get_workflow_metrics(workflow_id, RuleMetricsFetched),
+    ]),
+  )
 }
 
 // =============================================================================
@@ -513,10 +524,34 @@ pub fn handle_rules_fetched_error(
   }
 }
 
+/// Handle rule metrics fetch success.
+pub fn handle_rule_metrics_fetched_ok(
+  model: Model,
+  metrics: api_workflows.WorkflowMetrics,
+) -> #(Model, Effect(Msg)) {
+  #(Model(..model, rules_metrics: Loaded(metrics)), effect.none())
+}
+
+/// Handle rule metrics fetch error.
+pub fn handle_rule_metrics_fetched_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  case err.status {
+    401 -> update_helpers.reset_to_login(model)
+    _ -> #(Model(..model, rules_metrics: Failed(err)), effect.none())
+  }
+}
+
 /// Handle rules back clicked (return to workflows view).
 pub fn handle_rules_back_clicked(model: Model) -> #(Model, Effect(Msg)) {
   #(
-    Model(..model, rules_workflow_id: opt.None, rules: NotAsked),
+    Model(
+      ..model,
+      rules_workflow_id: opt.None,
+      rules: NotAsked,
+      rules_metrics: NotAsked,
+    ),
     effect.none(),
   )
 }

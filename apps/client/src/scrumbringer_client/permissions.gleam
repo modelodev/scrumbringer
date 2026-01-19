@@ -16,6 +16,7 @@ pub type AdminSection {
   OrgSettings
   Projects
   Metrics
+  RuleMetrics
   Members
   Capabilities
   TaskTypes
@@ -54,7 +55,8 @@ pub fn can_access_section(
   let any_admin = any_project_admin(projects)
 
   case section {
-    Invites | OrgSettings | Projects | Capabilities | Metrics -> org_admin
+    Invites | OrgSettings | Projects | Capabilities | Metrics | RuleMetrics ->
+      org_admin
 
     // Workflows and TaskTemplates: org admin can see org-scoped, project admin can see project-scoped
     Workflows | TaskTemplates -> org_admin || any_admin
@@ -81,6 +83,7 @@ pub fn visible_sections(
       OrgSettings,
       Projects,
       Metrics,
+      RuleMetrics,
       Members,
       Capabilities,
       TaskTypes,
@@ -93,6 +96,7 @@ pub fn visible_sections(
       OrgSettings,
       Projects,
       Metrics,
+      RuleMetrics,
       Capabilities,
       Workflows,
       TaskTemplates,

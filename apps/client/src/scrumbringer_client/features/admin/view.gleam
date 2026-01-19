@@ -50,6 +50,7 @@ import domain/project.{type Project, type ProjectMember}
 import domain/task_type.{type TaskType}
 import domain/workflow.{type Rule, type TaskTemplate, type Workflow}
 
+import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/client_state.{
   type Model, type Msg, type Remote, CapabilityCreateNameChanged,
   CapabilityCreateSubmitted, CardCreateDescriptionChanged,
@@ -83,6 +84,11 @@ import scrumbringer_client/client_state.{
   TaskTemplateEditClicked, TaskTemplateEditDescriptionChanged,
   TaskTemplateEditNameChanged, TaskTemplateEditPriorityChanged,
   TaskTemplateEditSubmitted, TaskTemplateEditTypeIdChanged,
+  // Rule Metrics Tab
+  AdminRuleMetricsDrilldownClicked, AdminRuleMetricsDrilldownClosed,
+  AdminRuleMetricsExecPageChanged, AdminRuleMetricsFromChanged,
+  AdminRuleMetricsRefreshClicked, AdminRuleMetricsToChanged,
+  AdminRuleMetricsWorkflowExpanded,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme
@@ -1415,7 +1421,7 @@ fn view_workflow_rules(model: Model, workflow_id: Int) -> Element(Msg) {
     h2([], [
       text(update_helpers.i18n_t(model, i18n_text.RulesTitle(workflow_name))),
     ]),
-    view_rules_table(model, model.rules),
+    view_rules_table(model, model.rules, model.rules_metrics),
     // Create rule form
     hr([]),
     h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateRule))]),
@@ -1529,7 +1535,11 @@ fn find_workflow_name(
   }
 }
 
-fn view_rules_table(model: Model, rules: Remote(List(Rule))) -> Element(Msg) {
+fn view_rules_table(
+  model: Model,
+  rules: Remote(List(Rule)),
+  metrics: Remote(api_workflows.WorkflowMetrics),
+) -> Element(Msg) {
   case rules {
     NotAsked | Loading ->
       div([attribute.class("empty")], [
@@ -1567,12 +1577,19 @@ fn view_rules_table(model: Model, rules: Remote(List(Rule))) -> Element(Msg) {
                 th([], [
                   text(update_helpers.i18n_t(model, i18n_text.RuleActive)),
                 ]),
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.RuleMetricsApplied)),
+                ]),
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.RuleMetricsSuppressed)),
+                ]),
                 th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
               ]),
             ]),
             keyed.tbody(
               [],
               list.map(rules, fn(r) {
+                let #(applied, suppressed) = get_rule_metrics(metrics, r.id)
                 #(int.to_string(r.id), tr([], [
                   td([], [text(r.name)]),
                   td([], [text(r.resource_type)]),
@@ -1582,6 +1599,16 @@ fn view_rules_table(model: Model, rules: Remote(List(Rule))) -> Element(Msg) {
                       True -> "✓"
                       False -> "✗"
                     }),
+                  ]),
+                  td([attribute.class("metric-cell")], [
+                    span([attribute.class("metric applied")], [
+                      text(int.to_string(applied)),
+                    ]),
+                  ]),
+                  td([attribute.class("metric-cell")], [
+                    span([attribute.class("metric suppressed")], [
+                      text(int.to_string(suppressed)),
+                    ]),
                   ]),
                   td([], [
                     button([event.on_click(RuleEditClicked(r))], [
@@ -1596,6 +1623,22 @@ fn view_rules_table(model: Model, rules: Remote(List(Rule))) -> Element(Msg) {
             ),
           ])
       }
+  }
+}
+
+/// Get metrics for a specific rule from the workflow metrics.
+fn get_rule_metrics(
+  metrics: Remote(api_workflows.WorkflowMetrics),
+  rule_id: Int,
+) -> #(Int, Int) {
+  case metrics {
+    Loaded(wm) -> {
+      case list.find(wm.rules, fn(rm) { rm.rule_id == rule_id }) {
+        Ok(rm) -> #(rm.applied_count, rm.suppressed_count)
+        Error(_) -> #(0, 0)
+      }
+    }
+    _ -> #(0, 0)
   }
 }
 
@@ -2063,4 +2106,483 @@ fn view_delete_task_template_dialog(
       ]),
     ]),
   ])
+}
+
+// =============================================================================
+// Rule Metrics Tab Views
+// =============================================================================
+
+/// Rule metrics tab view.
+pub fn view_rule_metrics(model: Model) -> Element(Msg) {
+  div([attribute.class("section")], [
+    h2([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsTitle))]),
+    p([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsHelp))]),
+    // Date range inputs
+    div([attribute.class("field-row")], [
+      div([attribute.class("field")], [
+        label([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsFrom))]),
+        input([
+          attribute.type_("date"),
+          attribute.value(model.admin_rule_metrics_from),
+          event.on_input(AdminRuleMetricsFromChanged),
+        ]),
+      ]),
+      div([attribute.class("field")], [
+        label([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsTo))]),
+        input([
+          attribute.type_("date"),
+          attribute.value(model.admin_rule_metrics_to),
+          event.on_input(AdminRuleMetricsToChanged),
+        ]),
+      ]),
+      button(
+        [
+          event.on_click(AdminRuleMetricsRefreshClicked),
+          attribute.disabled(
+            model.admin_rule_metrics_from == ""
+            || model.admin_rule_metrics_to == "",
+          ),
+        ],
+        [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsRefresh))],
+      ),
+    ]),
+    hr([]),
+    // Metrics table
+    view_rule_metrics_table(model, model.admin_rule_metrics),
+  ])
+}
+
+fn view_rule_metrics_table(
+  model: Model,
+  metrics: Remote(List(api_workflows.OrgWorkflowMetricsSummary)),
+) -> Element(Msg) {
+  case metrics {
+    NotAsked ->
+      div([attribute.class("empty")], [
+        text(update_helpers.i18n_t(model, i18n_text.RuleMetricsSelectRange)),
+      ])
+
+    Loading ->
+      div([attribute.class("loading")], [
+        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+      ])
+
+    Failed(err) ->
+      div([attribute.class("error")], [text(err.message)])
+
+    Loaded(workflows) ->
+      case workflows {
+        [] ->
+          div([attribute.class("empty")], [
+            text(update_helpers.i18n_t(model, i18n_text.RuleMetricsNoData)),
+          ])
+        _ ->
+          div([], [
+            table([attribute.class("table")], [
+              thead([], [
+                tr([], [
+                  th([], []),
+                  th([], [text(update_helpers.i18n_t(model, i18n_text.WorkflowName))]),
+                  th([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsRuleCount))]),
+                  th([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsEvaluated))]),
+                  th([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsApplied))]),
+                  th([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsSuppressed))]),
+                ]),
+              ]),
+              keyed.tbody(
+                [],
+                list.flat_map(workflows, fn(w) {
+                  view_workflow_row(model, w)
+                }),
+              ),
+            ]),
+            // Drill-down modal
+            view_rule_drilldown_modal(model),
+          ])
+      }
+  }
+}
+
+/// Render a workflow row with optional expansion for per-rule metrics.
+fn view_workflow_row(
+  model: Model,
+  w: api_workflows.OrgWorkflowMetricsSummary,
+) -> List(#(String, Element(Msg))) {
+  let is_expanded =
+    model.admin_rule_metrics_expanded_workflow == opt.Some(w.workflow_id)
+  let expand_icon = case is_expanded {
+    True -> "[-]"
+    False -> "[+]"
+  }
+
+  let main_row =
+    #(
+      "wf-" <> int.to_string(w.workflow_id),
+      tr(
+        [
+          attribute.class("workflow-row clickable"),
+          event.on_click(AdminRuleMetricsWorkflowExpanded(w.workflow_id)),
+        ],
+        [
+          td([attribute.class("expand-col")], [text(expand_icon)]),
+          td([], [text(w.workflow_name)]),
+          td([], [text(int.to_string(w.rule_count))]),
+          td([], [text(int.to_string(w.evaluated_count))]),
+          td([attribute.class("metric-cell")], [
+            span([attribute.class("metric applied")], [
+              text(int.to_string(w.applied_count)),
+            ]),
+          ]),
+          td([attribute.class("metric-cell")], [
+            span([attribute.class("metric suppressed")], [
+              text(int.to_string(w.suppressed_count)),
+            ]),
+          ]),
+        ],
+      ),
+    )
+
+  case is_expanded {
+    False -> [main_row]
+    True -> [main_row, view_workflow_rules_expansion(model, w.workflow_id)]
+  }
+}
+
+/// Render the expansion row with per-rule metrics.
+fn view_workflow_rules_expansion(
+  model: Model,
+  _workflow_id: Int,
+) -> #(String, Element(Msg)) {
+  let content = case model.admin_rule_metrics_workflow_details {
+    NotAsked | Loading ->
+      div([attribute.class("loading")], [
+        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+      ])
+
+    Failed(err) -> div([attribute.class("error")], [text(err.message)])
+
+    Loaded(details) ->
+      case details.rules {
+        [] ->
+          div([attribute.class("empty")], [
+            text(update_helpers.i18n_t(model, i18n_text.RuleMetricsNoRules)),
+          ])
+        rules ->
+          table([attribute.class("table nested-table")], [
+            thead([], [
+              tr([], [
+                th([], [text(update_helpers.i18n_t(model, i18n_text.RuleName))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsEvaluated))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsApplied))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsSuppressed))]),
+                th([], []),
+              ]),
+            ]),
+            keyed.tbody(
+              [],
+              list.map(rules, fn(r) {
+                #(
+                  "rule-" <> int.to_string(r.rule_id),
+                  tr([], [
+                    td([], [text(r.rule_name)]),
+                    td([], [text(int.to_string(r.evaluated_count))]),
+                    td([attribute.class("metric-cell")], [
+                      span([attribute.class("metric applied")], [
+                        text(int.to_string(r.applied_count)),
+                      ]),
+                    ]),
+                    td([attribute.class("metric-cell")], [
+                      button(
+                        [
+                          attribute.class("btn-link metric suppressed"),
+                          event.on_click(
+                            AdminRuleMetricsDrilldownClicked(r.rule_id),
+                          ),
+                        ],
+                        [text(int.to_string(r.suppressed_count))],
+                      ),
+                    ]),
+                    td([], [
+                      button(
+                        [
+                          attribute.class("btn-small"),
+                          event.on_click(
+                            AdminRuleMetricsDrilldownClicked(r.rule_id),
+                          ),
+                        ],
+                        [text(update_helpers.i18n_t(model, i18n_text.ViewDetails))],
+                      ),
+                    ]),
+                  ]),
+                )
+              }),
+            ),
+          ])
+      }
+  }
+
+  #(
+    "expansion",
+    tr([attribute.class("expansion-row")], [
+      td([attribute.attribute("colspan", "6")], [
+        div([attribute.class("expansion-content")], [content]),
+      ]),
+    ]),
+  )
+}
+
+/// Render the drill-down modal for rule details and executions.
+fn view_rule_drilldown_modal(model: Model) -> Element(Msg) {
+  case model.admin_rule_metrics_drilldown_rule_id {
+    opt.None -> element.none()
+    opt.Some(_rule_id) ->
+      div([attribute.class("modal drilldown-modal")], [
+        div([attribute.class("modal-content")], [
+          div([attribute.class("modal-header")], [
+            h3([], [
+              text(
+                update_helpers.i18n_t(model, i18n_text.RuleMetricsDrilldown),
+              ),
+            ]),
+            button(
+              [
+                attribute.class("btn-close"),
+                event.on_click(AdminRuleMetricsDrilldownClosed),
+              ],
+              [text("X")],
+            ),
+          ]),
+          div([attribute.class("modal-body")], [
+            view_drilldown_details(model),
+            hr([]),
+            view_drilldown_executions(model),
+          ]),
+        ]),
+      ])
+  }
+}
+
+/// Render the suppression breakdown in the drill-down modal.
+fn view_drilldown_details(model: Model) -> Element(Msg) {
+  case model.admin_rule_metrics_rule_details {
+    NotAsked | Loading ->
+      div([attribute.class("loading")], [
+        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+      ])
+
+    Failed(err) -> div([attribute.class("error")], [text(err.message)])
+
+    Loaded(details) ->
+      div([attribute.class("drilldown-details")], [
+        h3([], [text(details.rule_name)]),
+        div([attribute.class("metrics-summary")], [
+          div([attribute.class("metric-box")], [
+            span([attribute.class("metric-label")], [
+              text(update_helpers.i18n_t(model, i18n_text.RuleMetricsEvaluated)),
+            ]),
+            span([attribute.class("metric-value")], [
+              text(int.to_string(details.evaluated_count)),
+            ]),
+          ]),
+          div([attribute.class("metric-box applied")], [
+            span([attribute.class("metric-label")], [
+              text(update_helpers.i18n_t(model, i18n_text.RuleMetricsApplied)),
+            ]),
+            span([attribute.class("metric-value")], [
+              text(int.to_string(details.applied_count)),
+            ]),
+          ]),
+          div([attribute.class("metric-box suppressed")], [
+            span([attribute.class("metric-label")], [
+              text(update_helpers.i18n_t(model, i18n_text.RuleMetricsSuppressed)),
+            ]),
+            span([attribute.class("metric-value")], [
+              text(int.to_string(details.suppressed_count)),
+            ]),
+          ]),
+        ]),
+        // Suppression breakdown
+        h3([], [
+          text(update_helpers.i18n_t(model, i18n_text.SuppressionBreakdown)),
+        ]),
+        div([attribute.class("suppression-breakdown")], [
+          div([attribute.class("breakdown-item")], [
+            span([attribute.class("breakdown-label")], [
+              text(update_helpers.i18n_t(model, i18n_text.SuppressionIdempotent)),
+            ]),
+            span([attribute.class("breakdown-value")], [
+              text(int.to_string(details.suppression_breakdown.idempotent)),
+            ]),
+          ]),
+          div([attribute.class("breakdown-item")], [
+            span([attribute.class("breakdown-label")], [
+              text(
+                update_helpers.i18n_t(model, i18n_text.SuppressionNotUserTriggered),
+              ),
+            ]),
+            span([attribute.class("breakdown-value")], [
+              text(int.to_string(details.suppression_breakdown.not_user_triggered)),
+            ]),
+          ]),
+          div([attribute.class("breakdown-item")], [
+            span([attribute.class("breakdown-label")], [
+              text(update_helpers.i18n_t(model, i18n_text.SuppressionNotMatching)),
+            ]),
+            span([attribute.class("breakdown-value")], [
+              text(int.to_string(details.suppression_breakdown.not_matching)),
+            ]),
+          ]),
+          div([attribute.class("breakdown-item")], [
+            span([attribute.class("breakdown-label")], [
+              text(update_helpers.i18n_t(model, i18n_text.SuppressionInactive)),
+            ]),
+            span([attribute.class("breakdown-value")], [
+              text(int.to_string(details.suppression_breakdown.inactive)),
+            ]),
+          ]),
+        ]),
+      ])
+  }
+}
+
+/// Render the executions list in the drill-down modal.
+fn view_drilldown_executions(model: Model) -> Element(Msg) {
+  case model.admin_rule_metrics_executions {
+    NotAsked | Loading ->
+      div([attribute.class("loading")], [
+        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+      ])
+
+    Failed(err) -> div([attribute.class("error")], [text(err.message)])
+
+    Loaded(response) ->
+      div([attribute.class("drilldown-executions")], [
+        h3([], [
+          text(update_helpers.i18n_t(model, i18n_text.RecentExecutions)),
+        ]),
+        case response.executions {
+          [] ->
+            div([attribute.class("empty")], [
+              text(update_helpers.i18n_t(model, i18n_text.NoExecutions)),
+            ])
+          executions ->
+            div([], [
+              table([attribute.class("table executions-table")], [
+                thead([], [
+                  tr([], [
+                    th([], [text(update_helpers.i18n_t(model, i18n_text.Origin))]),
+                    th([], [text(update_helpers.i18n_t(model, i18n_text.Outcome))]),
+                    th([], [text(update_helpers.i18n_t(model, i18n_text.User))]),
+                    th([], [text(update_helpers.i18n_t(model, i18n_text.Timestamp))]),
+                  ]),
+                ]),
+                keyed.tbody(
+                  [],
+                  list.map(executions, fn(exec) {
+                    let outcome_class = case exec.outcome {
+                      "applied" -> "outcome-applied"
+                      "suppressed" -> "outcome-suppressed"
+                      _ -> ""
+                    }
+                    let outcome_text = case exec.outcome {
+                      "applied" ->
+                        update_helpers.i18n_t(model, i18n_text.OutcomeApplied)
+                      "suppressed" ->
+                        update_helpers.i18n_t(model, i18n_text.OutcomeSuppressed)
+                          <> case exec.suppression_reason {
+                            "" -> ""
+                            reason -> " (" <> reason <> ")"
+                          }
+                      _ -> exec.outcome
+                    }
+                    #(
+                      int.to_string(exec.id),
+                      tr([], [
+                        td([], [
+                          text(exec.origin_type <> " #" <> int.to_string(exec.origin_id)),
+                        ]),
+                        td([attribute.class(outcome_class)], [text(outcome_text)]),
+                        td([], [
+                          text(case exec.user_email {
+                            "" -> "-"
+                            email -> email
+                          }),
+                        ]),
+                        td([], [text(exec.created_at)]),
+                      ]),
+                    )
+                  }),
+                ),
+              ]),
+              // Pagination
+              view_executions_pagination(model, response.pagination),
+            ])
+        },
+      ])
+  }
+}
+
+/// Render pagination controls for executions.
+fn view_executions_pagination(
+  _model: Model,
+  pagination: api_workflows.Pagination,
+) -> Element(Msg) {
+  let current_page = pagination.offset / pagination.limit + 1
+  let total_pages = { pagination.total + pagination.limit - 1 } / pagination.limit
+
+  case total_pages <= 1 {
+    True -> element.none()
+    False ->
+      div([attribute.class("pagination")], [
+        button(
+          [
+            attribute.class("btn-small"),
+            attribute.disabled(pagination.offset == 0),
+            event.on_click(AdminRuleMetricsExecPageChanged(0)),
+          ],
+          [text("<<")],
+        ),
+        button(
+          [
+            attribute.class("btn-small"),
+            attribute.disabled(pagination.offset == 0),
+            event.on_click(AdminRuleMetricsExecPageChanged(
+              int.max(0, pagination.offset - pagination.limit),
+            )),
+          ],
+          [text("<")],
+        ),
+        span([attribute.class("page-info")], [
+          text(
+            int.to_string(current_page)
+              <> " / "
+              <> int.to_string(total_pages),
+          ),
+        ]),
+        button(
+          [
+            attribute.class("btn-small"),
+            attribute.disabled(
+              pagination.offset + pagination.limit >= pagination.total,
+            ),
+            event.on_click(AdminRuleMetricsExecPageChanged(
+              pagination.offset + pagination.limit,
+            )),
+          ],
+          [text(">")],
+        ),
+        button(
+          [
+            attribute.class("btn-small"),
+            attribute.disabled(
+              pagination.offset + pagination.limit >= pagination.total,
+            ),
+            event.on_click(AdminRuleMetricsExecPageChanged(
+              { total_pages - 1 } * pagination.limit,
+            )),
+          ],
+          [text(">>")],
+        ),
+      ])
+  }
 }

@@ -6,6 +6,7 @@
 
 import gleam/dynamic/decode
 import gleam/option.{type Option}
+import gleam/time/timestamp.{type Timestamp}
 import pog
 
 /// A row you get from running the `capabilities_create` query
@@ -1854,6 +1855,132 @@ limit 1;
   |> pog.execute(db)
 }
 
+/// A row you get from running the `rule_executions_count` query
+/// defined in `./src/scrumbringer_server/sql/rule_executions_count.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RuleExecutionsCountRow {
+  RuleExecutionsCountRow(total: Int)
+}
+
+/// name: rule_executions_count
+/// Count total executions for a rule (for pagination).
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rule_executions_count(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Timestamp,
+  arg_3: Timestamp,
+) -> Result(pog.Returned(RuleExecutionsCountRow), pog.QueryError) {
+  let decoder = {
+    use total <- decode.field(0, decode.int)
+    decode.success(RuleExecutionsCountRow(total:))
+  }
+
+  "-- name: rule_executions_count
+-- Count total executions for a rule (for pagination).
+select count(*)::int as total
+from rule_executions
+where rule_id = $1
+    and created_at >= $2::timestamp
+    and created_at <= $3::timestamp;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.timestamp(arg_2))
+  |> pog.parameter(pog.timestamp(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `rule_executions_list` query
+/// defined in `./src/scrumbringer_server/sql/rule_executions_list.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RuleExecutionsListRow {
+  RuleExecutionsListRow(
+    id: Int,
+    origin_type: String,
+    origin_id: Int,
+    outcome: String,
+    suppression_reason: String,
+    user_id: Int,
+    user_email: String,
+    created_at: String,
+  )
+}
+
+/// name: rule_executions_list
+/// Get paginated list of executions for a rule (drill-down).
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rule_executions_list(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Timestamp,
+  arg_3: Timestamp,
+  arg_4: Int,
+  arg_5: Int,
+) -> Result(pog.Returned(RuleExecutionsListRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use origin_type <- decode.field(1, decode.string)
+    use origin_id <- decode.field(2, decode.int)
+    use outcome <- decode.field(3, decode.string)
+    use suppression_reason <- decode.field(4, decode.string)
+    use user_id <- decode.field(5, decode.int)
+    use user_email <- decode.field(6, decode.string)
+    use created_at <- decode.field(7, decode.string)
+    decode.success(RuleExecutionsListRow(
+      id:,
+      origin_type:,
+      origin_id:,
+      outcome:,
+      suppression_reason:,
+      user_id:,
+      user_email:,
+      created_at:,
+    ))
+  }
+
+  "-- name: rule_executions_list
+-- Get paginated list of executions for a rule (drill-down).
+select
+    re.id,
+    re.origin_type,
+    re.origin_id,
+    re.outcome,
+    coalesce(re.suppression_reason, '') as suppression_reason,
+    coalesce(re.user_id, 0) as user_id,
+    coalesce(u.email, '') as user_email,
+    to_char(re.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+from rule_executions re
+left join users u on u.id = re.user_id
+where re.rule_id = $1
+    and re.created_at >= $2::timestamp
+    and re.created_at <= $3::timestamp
+order by re.created_at desc
+limit $4 offset $5;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.timestamp(arg_2))
+  |> pog.parameter(pog.timestamp(arg_3))
+  |> pog.parameter(pog.int(arg_4))
+  |> pog.parameter(pog.int(arg_5))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `rule_executions_log` query
 /// defined in `./src/scrumbringer_server/sql/rule_executions_log.sql`.
 ///
@@ -1931,6 +2058,307 @@ returning
   |> pog.parameter(pog.text(arg_4))
   |> pog.parameter(pog.text(arg_5))
   |> pog.parameter(pog.int(arg_6))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `rule_metrics_by_rule` query
+/// defined in `./src/scrumbringer_server/sql/rule_metrics_by_rule.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RuleMetricsByRuleRow {
+  RuleMetricsByRuleRow(
+    rule_id: Int,
+    rule_name: String,
+    evaluated_count: Int,
+    applied_count: Int,
+    suppressed_count: Int,
+    suppressed_idempotent: Int,
+    suppressed_not_user: Int,
+    suppressed_not_matching: Int,
+    suppressed_inactive: Int,
+  )
+}
+
+/// name: rule_metrics_by_rule
+/// Get detailed metrics for a single rule with suppression breakdown.
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rule_metrics_by_rule(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Timestamp,
+  arg_3: Timestamp,
+) -> Result(pog.Returned(RuleMetricsByRuleRow), pog.QueryError) {
+  let decoder = {
+    use rule_id <- decode.field(0, decode.int)
+    use rule_name <- decode.field(1, decode.string)
+    use evaluated_count <- decode.field(2, decode.int)
+    use applied_count <- decode.field(3, decode.int)
+    use suppressed_count <- decode.field(4, decode.int)
+    use suppressed_idempotent <- decode.field(5, decode.int)
+    use suppressed_not_user <- decode.field(6, decode.int)
+    use suppressed_not_matching <- decode.field(7, decode.int)
+    use suppressed_inactive <- decode.field(8, decode.int)
+    decode.success(RuleMetricsByRuleRow(
+      rule_id:,
+      rule_name:,
+      evaluated_count:,
+      applied_count:,
+      suppressed_count:,
+      suppressed_idempotent:,
+      suppressed_not_user:,
+      suppressed_not_matching:,
+      suppressed_inactive:,
+    ))
+  }
+
+  "-- name: rule_metrics_by_rule
+-- Get detailed metrics for a single rule with suppression breakdown.
+select
+    r.id as rule_id,
+    r.name as rule_name,
+    count(re.id)::int as evaluated_count,
+    count(re.id) filter (where re.outcome = 'applied')::int as applied_count,
+    count(re.id) filter (where re.outcome = 'suppressed')::int as suppressed_count,
+    count(re.id) filter (where re.suppression_reason = 'idempotent')::int as suppressed_idempotent,
+    count(re.id) filter (where re.suppression_reason = 'not_user_triggered')::int as suppressed_not_user,
+    count(re.id) filter (where re.suppression_reason = 'not_matching')::int as suppressed_not_matching,
+    count(re.id) filter (where re.suppression_reason = 'inactive')::int as suppressed_inactive
+from rules r
+left join rule_executions re on re.rule_id = r.id
+    and re.created_at >= $2::timestamp
+    and re.created_at <= $3::timestamp
+where r.id = $1
+group by r.id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.timestamp(arg_2))
+  |> pog.parameter(pog.timestamp(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `rule_metrics_by_workflow` query
+/// defined in `./src/scrumbringer_server/sql/rule_metrics_by_workflow.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RuleMetricsByWorkflowRow {
+  RuleMetricsByWorkflowRow(
+    rule_id: Int,
+    rule_name: String,
+    active: Bool,
+    evaluated_count: Int,
+    applied_count: Int,
+    suppressed_count: Int,
+  )
+}
+
+/// name: rule_metrics_by_workflow
+/// Get aggregated metrics for all rules in a workflow.
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rule_metrics_by_workflow(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Timestamp,
+  arg_3: Timestamp,
+) -> Result(pog.Returned(RuleMetricsByWorkflowRow), pog.QueryError) {
+  let decoder = {
+    use rule_id <- decode.field(0, decode.int)
+    use rule_name <- decode.field(1, decode.string)
+    use active <- decode.field(2, decode.bool)
+    use evaluated_count <- decode.field(3, decode.int)
+    use applied_count <- decode.field(4, decode.int)
+    use suppressed_count <- decode.field(5, decode.int)
+    decode.success(RuleMetricsByWorkflowRow(
+      rule_id:,
+      rule_name:,
+      active:,
+      evaluated_count:,
+      applied_count:,
+      suppressed_count:,
+    ))
+  }
+
+  "-- name: rule_metrics_by_workflow
+-- Get aggregated metrics for all rules in a workflow.
+select
+    r.id as rule_id,
+    r.name as rule_name,
+    r.active,
+    count(re.id)::int as evaluated_count,
+    count(re.id) filter (where re.outcome = 'applied')::int as applied_count,
+    count(re.id) filter (where re.outcome = 'suppressed')::int as suppressed_count
+from rules r
+left join rule_executions re on re.rule_id = r.id
+    and re.created_at >= $2::timestamp
+    and re.created_at <= $3::timestamp
+where r.workflow_id = $1
+group by r.id
+order by r.name;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.timestamp(arg_2))
+  |> pog.parameter(pog.timestamp(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `rule_metrics_org_summary` query
+/// defined in `./src/scrumbringer_server/sql/rule_metrics_org_summary.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RuleMetricsOrgSummaryRow {
+  RuleMetricsOrgSummaryRow(
+    workflow_id: Int,
+    workflow_name: String,
+    project_id: Int,
+    rule_count: Int,
+    evaluated_count: Int,
+    applied_count: Int,
+    suppressed_count: Int,
+  )
+}
+
+/// name: rule_metrics_org_summary
+/// Get org-wide rule metrics summary.
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rule_metrics_org_summary(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Timestamp,
+  arg_3: Timestamp,
+) -> Result(pog.Returned(RuleMetricsOrgSummaryRow), pog.QueryError) {
+  let decoder = {
+    use workflow_id <- decode.field(0, decode.int)
+    use workflow_name <- decode.field(1, decode.string)
+    use project_id <- decode.field(2, decode.int)
+    use rule_count <- decode.field(3, decode.int)
+    use evaluated_count <- decode.field(4, decode.int)
+    use applied_count <- decode.field(5, decode.int)
+    use suppressed_count <- decode.field(6, decode.int)
+    decode.success(RuleMetricsOrgSummaryRow(
+      workflow_id:,
+      workflow_name:,
+      project_id:,
+      rule_count:,
+      evaluated_count:,
+      applied_count:,
+      suppressed_count:,
+    ))
+  }
+
+  "-- name: rule_metrics_org_summary
+-- Get org-wide rule metrics summary.
+select
+    w.id as workflow_id,
+    w.name as workflow_name,
+    coalesce(w.project_id, 0) as project_id,
+    count(distinct r.id)::int as rule_count,
+    count(re.id)::int as evaluated_count,
+    count(re.id) filter (where re.outcome = 'applied')::int as applied_count,
+    count(re.id) filter (where re.outcome = 'suppressed')::int as suppressed_count
+from workflows w
+left join rules r on r.workflow_id = w.id
+left join rule_executions re on re.rule_id = r.id
+    and re.created_at >= $2::timestamp
+    and re.created_at <= $3::timestamp
+where w.org_id = $1
+group by w.id
+order by w.name;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.timestamp(arg_2))
+  |> pog.parameter(pog.timestamp(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `rule_metrics_project_summary` query
+/// defined in `./src/scrumbringer_server/sql/rule_metrics_project_summary.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type RuleMetricsProjectSummaryRow {
+  RuleMetricsProjectSummaryRow(
+    workflow_id: Int,
+    workflow_name: String,
+    rule_count: Int,
+    evaluated_count: Int,
+    applied_count: Int,
+    suppressed_count: Int,
+  )
+}
+
+/// name: rule_metrics_project_summary
+/// Get project-scoped rule metrics summary.
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn rule_metrics_project_summary(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Timestamp,
+  arg_3: Timestamp,
+) -> Result(pog.Returned(RuleMetricsProjectSummaryRow), pog.QueryError) {
+  let decoder = {
+    use workflow_id <- decode.field(0, decode.int)
+    use workflow_name <- decode.field(1, decode.string)
+    use rule_count <- decode.field(2, decode.int)
+    use evaluated_count <- decode.field(3, decode.int)
+    use applied_count <- decode.field(4, decode.int)
+    use suppressed_count <- decode.field(5, decode.int)
+    decode.success(RuleMetricsProjectSummaryRow(
+      workflow_id:,
+      workflow_name:,
+      rule_count:,
+      evaluated_count:,
+      applied_count:,
+      suppressed_count:,
+    ))
+  }
+
+  "-- name: rule_metrics_project_summary
+-- Get project-scoped rule metrics summary.
+select
+    w.id as workflow_id,
+    w.name as workflow_name,
+    count(distinct r.id)::int as rule_count,
+    count(re.id)::int as evaluated_count,
+    count(re.id) filter (where re.outcome = 'applied')::int as applied_count,
+    count(re.id) filter (where re.outcome = 'suppressed')::int as suppressed_count
+from workflows w
+left join rules r on r.workflow_id = w.id
+left join rule_executions re on re.rule_id = r.id
+    and re.created_at >= $2::timestamp
+    and re.created_at <= $3::timestamp
+where w.project_id = $1
+group by w.id
+order by w.name;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.timestamp(arg_2))
+  |> pog.parameter(pog.timestamp(arg_3))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

@@ -60,6 +60,11 @@ import scrumbringer_client/client_state.{
   type Model, type Msg, type NavMode, type Remote,
   AcceptInvite as AcceptInvitePage, AcceptInviteMsg, Admin,
   AdminMetricsOverviewFetched, AdminMetricsProjectTasksFetched,
+  AdminRuleMetricsDrilldownClicked, AdminRuleMetricsDrilldownClosed,
+  AdminRuleMetricsExecPageChanged, AdminRuleMetricsExecutionsFetched,
+  AdminRuleMetricsFetched, AdminRuleMetricsFromChanged, AdminRuleMetricsRefreshClicked,
+  AdminRuleMetricsRuleDetailsFetched, AdminRuleMetricsToChanged,
+  AdminRuleMetricsWorkflowDetailsFetched, AdminRuleMetricsWorkflowExpanded,
   CapabilitiesFetched, CapabilityCreateNameChanged, CapabilityCreateSubmitted,
   CapabilityCreated, CardCreateDescriptionChanged, CardCreateSubmitted,
   CardCreateTitleChanged, CardCreated, CardDeleteCancelled, CardDeleteClicked,
@@ -118,7 +123,7 @@ import scrumbringer_client/client_state.{
   WorkflowUpdated, WorkflowDeleteClicked, WorkflowDeleteCancelled,
   WorkflowDeleteConfirmed, WorkflowDeleted, WorkflowRulesClicked,
   // Rules
-  RulesFetched, RulesBackClicked, RuleCreateNameChanged, RuleCreateGoalChanged,
+  RulesFetched, RuleMetricsFetched, RulesBackClicked, RuleCreateNameChanged, RuleCreateGoalChanged,
   RuleCreateResourceTypeChanged, RuleCreateTaskTypeIdChanged,
   RuleCreateToStateChanged, RuleCreateActiveChanged, RuleCreateSubmitted,
   RuleCreated, RuleEditClicked, RuleEditNameChanged, RuleEditGoalChanged,
@@ -799,6 +804,11 @@ fn refresh_section(model: Model) -> #(Model, Effect(Msg)) {
           #(model, effect.batch([overview_fx, tasks_fx]))
         }
       }
+    }
+
+    permissions.RuleMetrics -> {
+      // Don't auto-fetch - user needs to select date range first
+      #(model, effect.none())
     }
 
     permissions.Capabilities -> #(
@@ -1690,6 +1700,45 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     AdminMetricsProjectTasksFetched(Error(err)) ->
       metrics_workflow.handle_admin_project_tasks_fetched_error(model, err)
 
+    // Rule metrics tab
+    AdminRuleMetricsFetched(Ok(metrics)) ->
+      admin_workflow.handle_rule_metrics_tab_fetched_ok(model, metrics)
+    AdminRuleMetricsFetched(Error(err)) ->
+      admin_workflow.handle_rule_metrics_tab_fetched_error(model, err)
+    AdminRuleMetricsFromChanged(from) ->
+      admin_workflow.handle_rule_metrics_tab_from_changed(model, from)
+    AdminRuleMetricsToChanged(to) ->
+      admin_workflow.handle_rule_metrics_tab_to_changed(model, to)
+    AdminRuleMetricsRefreshClicked ->
+      admin_workflow.handle_rule_metrics_tab_refresh_clicked(model)
+    // Rule metrics drill-down
+    AdminRuleMetricsWorkflowExpanded(workflow_id) ->
+      admin_workflow.handle_rule_metrics_workflow_expanded(model, workflow_id)
+    AdminRuleMetricsWorkflowDetailsFetched(Ok(details)) ->
+      admin_workflow.handle_rule_metrics_workflow_details_fetched_ok(
+        model,
+        details,
+      )
+    AdminRuleMetricsWorkflowDetailsFetched(Error(err)) ->
+      admin_workflow.handle_rule_metrics_workflow_details_fetched_error(
+        model,
+        err,
+      )
+    AdminRuleMetricsDrilldownClicked(rule_id) ->
+      admin_workflow.handle_rule_metrics_drilldown_clicked(model, rule_id)
+    AdminRuleMetricsDrilldownClosed ->
+      admin_workflow.handle_rule_metrics_drilldown_closed(model)
+    AdminRuleMetricsRuleDetailsFetched(Ok(details)) ->
+      admin_workflow.handle_rule_metrics_rule_details_fetched_ok(model, details)
+    AdminRuleMetricsRuleDetailsFetched(Error(err)) ->
+      admin_workflow.handle_rule_metrics_rule_details_fetched_error(model, err)
+    AdminRuleMetricsExecutionsFetched(Ok(response)) ->
+      admin_workflow.handle_rule_metrics_executions_fetched_ok(model, response)
+    AdminRuleMetricsExecutionsFetched(Error(err)) ->
+      admin_workflow.handle_rule_metrics_executions_fetched_error(model, err)
+    AdminRuleMetricsExecPageChanged(offset) ->
+      admin_workflow.handle_rule_metrics_exec_page_changed(model, offset)
+
     NowWorkingTicked -> now_working_workflow.handle_ticked(model)
 
     MemberMyCapabilityIdsFetched(Ok(ids)) ->
@@ -1840,6 +1889,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     RulesFetched(Error(err)) ->
       admin_workflow.handle_rules_fetched_error(model, err)
     RulesBackClicked -> admin_workflow.handle_rules_back_clicked(model)
+    RuleMetricsFetched(Ok(metrics)) ->
+      admin_workflow.handle_rule_metrics_fetched_ok(model, metrics)
+    RuleMetricsFetched(Error(err)) ->
+      admin_workflow.handle_rule_metrics_fetched_error(model, err)
 
     RuleCreateNameChanged(name) ->
       admin_workflow.handle_rule_create_name_changed(model, name)
