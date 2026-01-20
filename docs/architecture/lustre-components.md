@@ -1,6 +1,6 @@
 # Lustre Components Architecture
 
-> **Version:** 1.0
+> **Version:** 1.2
 > **Parent:** [Architecture](../architecture.md)
 > **Reference:** [Lustre Component API](https://hexdocs.pm/lustre/lustre/component.html)
 
@@ -9,6 +9,32 @@
 ## Overview
 
 Lustre Components provide Shadow DOM-based encapsulation for self-contained UI features. This document establishes patterns for when and how to extract features into components.
+
+---
+
+## Design Philosophy
+
+### Encapsulation Over Generalization
+
+**Key Principle**: Componentize to *encapsulate state*, not to *abstract patterns*.
+
+After UX analysis of CRUD dialog candidates, we established that:
+
+1. **Each component should be self-contained** - Not instances of a generic template
+2. **Avoid config-based forms** - View functions are more readable than configuration objects
+3. **Accept structural differences** - Components with different interaction patterns should remain separate
+
+### Why Not a Generic `<admin-crud-dialog>`?
+
+| Factor | Generic Component | Separate Components |
+|--------|------------------|---------------------|
+| **Reuse sites** | Each dialog used 1× | N/A |
+| **Readability** | Config-based (opaque) | View functions (clear) |
+| **Maintenance** | One change affects all | Changes isolated |
+| **Complexity** | Must handle all cases | Low per component |
+| **Conditional fields** | Requires special handling | Natural in view |
+
+**Conclusion**: The overhead of a generic component exceeds its benefits when each candidate is used exactly once and has unique interaction patterns.
 
 ---
 
@@ -42,10 +68,15 @@ Apply componentization when ALL of the following are true:
 ```
 apps/client/src/scrumbringer_client/
 ├── components/
-│   ├── card_detail_modal.gleam    # Component module
-│   └── card_crud_dialog.gleam     # Future component
-├── component.ffi.mjs              # Shared FFI for custom events
+│   ├── card_detail_modal.gleam         # DONE - Story 3.6
+│   ├── card_crud_dialog.gleam          # Planned - Priority 1
+│   ├── workflow_crud_dialog.gleam      # Planned - Priority 2
+│   ├── task_template_crud_dialog.gleam # Planned - Priority 3
+│   └── rule_crud_dialog.gleam          # Planned - Priority 4
+├── component.ffi.mjs                   # Shared FFI for custom events
 ```
+
+Each component is **self-contained** - not an instance of a generic dialog.
 
 ### Module Template
 
@@ -239,10 +270,25 @@ pub type Msg {
 ```javascript
 // component.ffi.mjs
 export function emit_custom_event(name, detail) {
-  const component = globalThis.__LUSTRE_CURRENT_COMPONENT__
+  // Strategy 1: Use Lustre's global (works during render/update cycle)
+  let component = globalThis.__LUSTRE_CURRENT_COMPONENT__
+
+  // Strategy 2: Fallback to querySelector for known component tags
+  // This works for effects that run outside the render cycle
+  if (!component || !component.dispatchEvent) {
+    const knownComponents = ['card-detail-modal']  // Add new components here
+
+    for (const tag of knownComponents) {
+      const el = document.querySelector(tag)
+      if (el && el.dispatchEvent) {
+        component = el
+        break
+      }
+    }
+  }
 
   if (!component || !component.dispatchEvent) {
-    console.warn(`[component.ffi] Cannot emit "${name}": no component context`)
+    console.warn(`[component.ffi] Cannot emit "${name}": no component found`)
     return
   }
 
@@ -255,6 +301,8 @@ export function emit_custom_event(name, detail) {
   component.dispatchEvent(event)
 }
 ```
+
+> **Note**: The fallback strategy is necessary because `__LUSTRE_CURRENT_COMPONENT__` is only set during the render/update cycle, but effects execute asynchronously after. When adding new components, register them in the `knownComponents` array.
 
 ---
 
@@ -354,25 +402,41 @@ pub fn main() {
 
 ## Componentization Candidates
 
-Based on current codebase analysis:
+Based on codebase analysis and UX review:
 
-| Candidate | Model Fields | Msg Variants | Priority | Status |
-|-----------|-------------|--------------|----------|--------|
-| Card Detail Modal | 11 | 12 | - | DONE |
-| Admin Cards CRUD | 13 | 17 | HIGH | Planned |
-| Workflows CRUD | 10 | 14 | HIGH | Planned |
-| Task Templates CRUD | 11 | 15 | HIGH | Planned |
-| Rules CRUD | 16 | 23 | MEDIUM | Planned |
-| Task Types | 8 | 8 | LOW | - |
-| Capabilities | 6 | 5 | - | Too small |
+| Candidate | Model Fields | Msg Variants | Complexity | Priority | Status |
+|-----------|-------------|--------------|------------|----------|--------|
+| Card Detail Modal | 11 | 12 | Low | - | **DONE** |
+| Admin Cards CRUD | 17 | 20 | Low | **1** | Planned |
+| Workflows CRUD | 15 | 18 | Low | **2** | Planned |
+| Task Templates CRUD | 17 | 20 | Medium | **3** | Planned |
+| Rules CRUD | 21 | 24 | **High** | **4** | Planned |
+| Task Types | 8 | 8 | Low | - | Deferred |
+| Capabilities | 6 | 5 | Low | - | Too small |
+
+### UX Complexity Analysis
+
+| Dialog | Size | Conditional Fields | Dynamic Options | Custom Controls |
+|--------|------|-------------------|-----------------|-----------------|
+| Cards | Md | No | No | color_picker |
+| Workflows | Md | No | No | checkbox |
+| Task Templates | Md | No | No | 2× select |
+| **Rules** | **Lg** | **Yes** (task_type) | **Yes** (states) | 3× select |
+
+**Priority Rationale**: Rules moved to last position due to:
+- Conditional field visibility (task_type only when resource_type == "task")
+- Dynamic options (state values depend on resource_type)
+- Larger dialog size requiring different layout
 
 ### Estimated Impact
 
 | Phase | Components | Model Reduction | Msg Reduction |
 |-------|------------|-----------------|---------------|
-| 1 | Cards, Workflows, TaskTemplates | ~34 fields | ~46 variants |
-| 2 | Rules | ~16 fields | ~23 variants |
-| **Total** | 4 components | **~50 fields** | **~69 variants** |
+| 1 | Cards CRUD | 17 fields | 20 variants |
+| 2 | Workflows CRUD | 15 fields | 18 variants |
+| 3 | Task Templates CRUD | 17 fields | 20 variants |
+| 4 | Rules CRUD | 21 fields | 24 variants |
+| **Total** | 4 components | **70 fields** | **82 variants** |
 
 ---
 
@@ -427,3 +491,13 @@ This allows components to use theme colors defined in the parent document:
 - [Lustre Component API](https://hexdocs.pm/lustre/lustre/component.html)
 - [Story 3.6: Card Detail Modal](../stories/3.6.card-detail-component.md) - First implementation
 - [Coding Standards](./coding-standards.md) - Module structure guidelines
+
+---
+
+## Revision History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0 | 2026-01-19 | Initial document |
+| 1.1 | 2026-01-20 | Added Design Philosophy section based on UX analysis; Updated candidate priorities; Documented FFI fallback strategy |
+| 1.2 | 2026-01-20 | Updated field/variant counts with precise values from ref5 stories (Architect validation) |

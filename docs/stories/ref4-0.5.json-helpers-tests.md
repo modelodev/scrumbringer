@@ -1,6 +1,6 @@
 # Story ref4-0.5: Tests para JSON Helpers y Mappers
 
-## Status: Ready
+## Status: Done
 
 ## Story
 
@@ -20,16 +20,16 @@
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create unit tests for JSON presenters (AC: 1, 2, 3, 4)
-  - [ ] Create `apps/server/test/unit/presenters_test.gleam`
-  - [ ] Test: `option_int_json_returns_null_for_none_test`
-  - [ ] Test: `option_int_json_returns_int_for_some_test`
-  - [ ] Test: `option_string_json_returns_null_for_none_test`
-  - [ ] Test: `option_string_json_returns_string_for_some_test`
+- [x] Task 1: Create unit tests for JSON presenters (AC: 1, 2, 3, 4)
+  - [x] Create `apps/server/test/unit/presenters_test.gleam`
+  - [x] Test: `option_int_json_returns_null_for_none_test`
+  - [x] Test: `option_int_json_returns_int_for_some_test`
+  - [x] Test: `option_string_json_returns_null_for_none_test`
+  - [x] Test: `option_string_json_returns_string_for_some_test`
 
-- [ ] Task 2: Verify CI passes (AC: 5)
-  - [ ] Run `make test` and verify all tests pass
-  - [ ] Fix any test failures
+- [x] Task 2: Verify CI passes (AC: 5)
+  - [x] Run `make test` and verify all tests pass (143 server, 183 client, 9 shared)
+  - [x] Fix any test failures (none required)
 
 **Deferred to Fase 1**: Tests for `int_to_option` and `string_to_option` will be created when these functions are extracted to `shared/src/helpers/option.gleam` and made public (story ref4-1.2).
 
@@ -178,10 +178,100 @@ After Fase 1 extracts `option_int_json` and `option_string_json` to shared modul
 
 ### Agent Model Used
 
+claude-opus-4-5-20251101
+
 ### Debug Log References
+
+N/A
 
 ### Completion Notes List
 
+1. **Task 1 (JSON presenter tests)**: Created `apps/server/test/unit/presenters_test.gleam` with 4 tests:
+   - `option_int_json_returns_null_for_none_test` - Verifies None returns json.null()
+   - `option_int_json_returns_int_for_some_test` - Verifies Some(42) returns "42"
+   - `option_string_json_returns_null_for_none_test` - Verifies None returns json.null()
+   - `option_string_json_returns_string_for_some_test` - Verifies Some("hello") returns "\"hello\""
+
+2. **Test approach**: Pure unit tests with no database dependency. Tests convert JSON values to strings and verify expected output.
+
+3. **Test structure**: Clear Given-When-Then comments with AC section headers.
+
 ### File List
 
+- `apps/server/test/unit/presenters_test.gleam` (created) - 4 JSON presenter tests
+
+## Change Log
+
+| Date | Version | Description | Author |
+|------|---------|-------------|--------|
+| 2026-01-20 | 0.1 | Story created from refactoring roadmap Fase 0.5 | po |
+| 2026-01-20 | 0.2 | Implementation complete, moved to Review | dev |
+| 2026-01-20 | 0.3 | QA review passed, moved to Done | qa |
+
 ## QA Results
+
+### Review Date: 2026-01-20
+
+### Reviewed By: Quinn (Test Architect)
+
+### Code Quality Assessment
+
+Implementation quality is **excellent**. The test file is clean, well-structured, and follows established patterns:
+
+**Strengths:**
+- Clear AC section headers mapping directly to acceptance criteria
+- Proper Given-When-Then comments in each test function
+- Pure unit tests with no external dependencies (no DB, no mocks needed)
+- Idiomatic Gleam code with pipe operators
+- Module documentation explains purpose concisely
+- Correct import ordering (alphabetical)
+
+**Test Design:**
+- Appropriate test level (unit tests for pure functions)
+- Smart verification strategy using `json.to_string()` for comparison
+- 4 tests cover all 4 acceptance criteria exactly
+
+### Refactoring Performed
+
+None required - code quality is high and follows established patterns.
+
+### Compliance Check
+
+- Coding Standards: ✓ Follows Gleam conventions, proper naming, clear documentation
+- Project Structure: ✓ File in correct location (test/unit/)
+- Testing Strategy: ✓ Pure unit tests for pure functions, Given-When-Then pattern
+- All ACs Met: ✓ All 5 acceptance criteria verified
+
+### AC Traceability
+
+| AC | Test | Verification |
+|----|------|--------------|
+| AC1 | `option_int_json_returns_null_for_none_test` | ✓ None → "null" |
+| AC2 | `option_int_json_returns_int_for_some_test` | ✓ Some(42) → "42" |
+| AC3 | `option_string_json_returns_null_for_none_test` | ✓ None → "null" |
+| AC4 | `option_string_json_returns_string_for_some_test` | ✓ Some("hello") → "\"hello\"" |
+| AC5 | CI verification | ✓ 143 server + 183 client + 9 shared tests pass |
+
+### Improvements Checklist
+
+- [N/A] All tests are well-implemented, no changes needed
+
+### Security Review
+
+No security concerns - test infrastructure only.
+
+### Performance Considerations
+
+No performance concerns - test code only.
+
+### Files Modified During Review
+
+None.
+
+### Gate Status
+
+Gate: **PASS** → docs/qa/gates/ref4-0.5-json-helpers-tests.yml
+
+### Recommended Status
+
+✓ **Ready for Done** - All 5 acceptance criteria verified with clean implementation.

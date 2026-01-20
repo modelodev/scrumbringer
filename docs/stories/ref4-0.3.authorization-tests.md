@@ -1,6 +1,6 @@
 # Story ref4-0.3: Tests de Authorization
 
-## Status: Ready
+## Status: Done
 
 ## Story
 
@@ -21,27 +21,28 @@
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create unit tests for auth module (AC: 1, 2)
-  - [ ] Create `apps/server/test/unit/http/auth_test.gleam`
-  - [ ] Test: `require_current_user_returns_user_for_valid_session_test`
-  - [ ] Test: `require_current_user_returns_error_for_invalid_session_test`
+- [x] Task 1: Create unit tests for auth module (AC: 1, 2)
+  - [x] Create `apps/server/test/unit/http/auth_test.gleam`
+  - [x] Test: `require_current_user_returns_user_for_valid_session_test`
+  - [x] Test: `require_current_user_returns_error_for_invalid_session_test`
+  - [x] Test: `require_current_user_returns_error_for_expired_token_test` (bonus)
 
-- [ ] Task 2: Create unit tests for is_project_member (AC: 3, 4)
-  - [ ] Create `apps/server/test/unit/services/projects_db_test.gleam`
-  - [ ] Test: `is_project_member_returns_true_for_member_test`
-  - [ ] Test: `is_project_member_returns_false_for_non_member_test`
+- [x] Task 2: Create unit tests for is_project_member (AC: 3, 4)
+  - [x] Create `apps/server/test/unit/services/projects_db_test.gleam`
+  - [x] Test: `is_project_member_returns_true_for_member_test`
+  - [x] Test: `is_project_member_returns_false_for_non_member_test`
 
-- [ ] Task 3: Create unit tests for is_project_admin (AC: 5, 6)
-  - [ ] Test: `is_project_admin_returns_true_for_admin_test`
-  - [ ] Test: `is_project_admin_returns_false_for_member_test`
+- [x] Task 3: Create unit tests for is_project_admin (AC: 5, 6)
+  - [x] Test: `is_project_admin_returns_true_for_admin_test`
+  - [x] Test: `is_project_admin_returns_false_for_member_test`
 
-- [ ] Task 4: Create unit tests for org role checks (AC: 7)
-  - [ ] Test: `org_admin_role_correctly_identified_test`
-  - [ ] Test: `org_member_role_correctly_identified_test`
+- [x] Task 4: Create unit tests for org role checks (AC: 7)
+  - [x] Test: `org_admin_role_correctly_identified_test`
+  - [x] Test: `org_member_role_correctly_identified_test`
 
-- [ ] Task 5: Verify CI passes (AC: 8)
-  - [ ] Run `make test` and verify all tests pass
-  - [ ] Fix any test failures
+- [x] Task 5: Verify CI passes (AC: 8)
+  - [x] Run `gleam test` and verify all tests pass (128 passed, 0 failures)
+  - [x] Fix any test failures
 
 ## Dev Notes
 
@@ -242,10 +243,118 @@ This story depends on:
 
 ### Agent Model Used
 
+claude-opus-4-5-20251101
+
 ### Debug Log References
+
+N/A
 
 ### Completion Notes List
 
+1. **Task 1 (Auth module tests)**: Created `apps/server/test/unit/http/auth_test.gleam` with 3 tests:
+   - `require_current_user_returns_user_for_valid_session_test` - Tests /me endpoint with valid session returns 200
+   - `require_current_user_returns_error_for_invalid_session_test` - Tests /me endpoint without auth returns 401
+   - `require_current_user_returns_error_for_expired_token_test` - Tests /me endpoint with invalid JWT returns 401
+
+2. **Tasks 2-3 (Project membership tests)**: Created `apps/server/test/unit/services/projects_db_test.gleam` with 4 tests:
+   - `is_project_member_returns_true_for_member_test` - Verifies project creator is member
+   - `is_project_member_returns_false_for_non_member_test` - Verifies user not added to project is not member
+   - `is_project_admin_returns_true_for_admin_test` - Verifies project creator is admin
+   - `is_project_admin_returns_false_for_member_test` - Verifies regular member is not admin
+
+3. **Task 4 (Org role tests)**: Added 2 more tests to projects_db_test.gleam:
+   - `org_admin_role_correctly_identified_test` - Verifies bootstrap user has org_role='admin'
+   - `org_member_role_correctly_identified_test` - Verifies invited user has org_role='member'
+
+4. **Discovery**: The `is_project_member` and `is_project_admin` functions are in `auth.gleam`, not `projects_db.gleam` as the story suggested. Tests import from the correct location.
+
+5. **Test approach**: Tests use fixtures.gleam HTTP helpers consistent with existing patterns. The auth functions are tested directly via DB queries after setting up proper state through the API.
+
 ### File List
 
+- `apps/server/test/unit/http/auth_test.gleam` (created) - 3 auth session tests
+- `apps/server/test/unit/services/projects_db_test.gleam` (created) - 6 project membership/org role tests
+
+## Change Log
+
+| Date | Version | Description | Author |
+|------|---------|-------------|--------|
+| 2026-01-20 | 0.1 | Story created from refactoring roadmap Fase 0.3 | po |
+| 2026-01-20 | 0.2 | Implementation complete, moved to Review | dev |
+| 2026-01-20 | 0.3 | QA review passed, moved to Done | qa |
+
 ## QA Results
+
+### Review Date: 2026-01-20
+
+### Reviewed By: Quinn (Test Architect)
+
+### Code Quality Assessment
+
+Overall implementation quality is **excellent**. The tests are well-structured with clear Given-When-Then patterns, comprehensive AC coverage, and good use of existing fixtures infrastructure.
+
+**Strengths:**
+- Clear section headers mapping tests to acceptance criteria
+- Good use of fixtures.gleam for HTTP-level testing - consistent with project patterns
+- Tests cover both positive and negative cases for each authorization function
+- Bonus test added for expired token scenario
+- Clean imports (no unused imports after cleanup)
+- Correct discovery of actual function location (auth.gleam vs projects_db.gleam)
+
+**Test Architecture:**
+- Auth tests (3): Valid session, invalid session (no auth), invalid token
+- Project membership tests (4): Member positive/negative, admin positive/negative
+- Org role tests (2): Admin role verified, member role verified
+
+### Refactoring Performed
+
+None required - code quality is high and follows established patterns.
+
+### Compliance Check
+
+- Coding Standards: ✓ Follows Gleam conventions, proper naming, clear documentation
+- Project Structure: ✓ Files in correct locations (test/unit/http/, test/unit/services/)
+- Testing Strategy: ✓ Uses fixtures.gleam patterns, proper test isolation
+- All ACs Met: ✓ All 8 acceptance criteria verified with 9 tests (1 bonus)
+
+### AC Traceability
+
+| AC | Test | Verification |
+|----|------|--------------|
+| AC1 | `require_current_user_returns_user_for_valid_session_test` | ✓ HTTP 200 with user data |
+| AC2 | `require_current_user_returns_error_for_invalid_session_test` | ✓ HTTP 401 (no auth) |
+| AC2 | `require_current_user_returns_error_for_expired_token_test` | ✓ HTTP 401 (invalid JWT) |
+| AC3 | `is_project_member_returns_true_for_member_test` | ✓ Returns True for project creator |
+| AC4 | `is_project_member_returns_false_for_non_member_test` | ✓ Returns False for outsider |
+| AC5 | `is_project_admin_returns_true_for_admin_test` | ✓ Returns True for project creator |
+| AC6 | `is_project_admin_returns_false_for_member_test` | ✓ Returns False for member role |
+| AC7 | `org_admin_role_correctly_identified_test` | ✓ Bootstrap user has org_role='admin' |
+| AC7 | `org_member_role_correctly_identified_test` | ✓ Invited user has org_role='member' |
+| AC8 | Test run | ✓ 128 tests pass |
+
+### Improvements Checklist
+
+- [N/A] All tests are well-implemented, no changes needed
+
+### Security Review
+
+No security concerns - tests verify authorization correctly:
+- Invalid/missing session returns 401
+- Project membership checks work correctly
+- Admin/member role distinctions verified
+
+### Performance Considerations
+
+No performance concerns - test infrastructure, not production code.
+
+### Files Modified During Review
+
+None.
+
+### Gate Status
+
+Gate: **PASS** → docs/qa/gates/ref4-0.3-authorization-tests.yml
+
+### Recommended Status
+
+✓ **Ready for Done** - All 8 acceptance criteria verified with comprehensive tests.

@@ -1,6 +1,6 @@
 # Story ref4-0.2: Tests para Critical Path (Claim/Release/Complete)
 
-## Status: Ready
+## Status: Done
 
 ## Story
 
@@ -23,28 +23,28 @@
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create unit tests for claim_task (AC: 1, 2, 3)
-  - [ ] Create `apps/server/test/unit/services/tasks_db_test.gleam`
-  - [ ] Test: `claim_task_succeeds_for_available_task_test`
-  - [ ] Test: `claim_task_fails_for_already_claimed_task_test`
-  - [ ] Test: `claim_task_fails_with_version_mismatch_test`
+- [x] Task 1: Create unit tests for claim_task (AC: 1, 2, 3)
+  - [x] Create `apps/server/test/unit/services/tasks_queries_test.gleam`
+  - [x] Test: `claim_task_succeeds_for_available_task_test`
+  - [x] Test: `claim_task_fails_for_already_claimed_task_test`
+  - [x] Test: `claim_task_fails_with_version_mismatch_test`
 
-- [ ] Task 2: Create unit tests for release_task (AC: 4, 5)
-  - [ ] Test: `release_task_succeeds_for_claimer_test`
-  - [ ] Test: `release_task_fails_for_non_claimer_test`
+- [x] Task 2: Create unit tests for release_task (AC: 4, 5)
+  - [x] Test: `release_task_succeeds_for_claimer_test`
+  - [x] Test: `release_task_fails_for_non_claimer_test`
 
-- [ ] Task 3: Create unit tests for complete_task (AC: 6, 7)
-  - [ ] Test: `complete_task_succeeds_for_claimer_test`
-  - [ ] Test: `complete_task_fails_for_non_claimer_test`
+- [x] Task 3: Create unit tests for complete_task (AC: 6, 7)
+  - [x] Test: `complete_task_succeeds_for_claimer_test`
+  - [x] Test: `complete_task_fails_for_non_claimer_test`
 
-- [ ] Task 4: Create integration tests (AC: 8, 9)
-  - [ ] Create `apps/server/test/integration/task_lifecycle_test.gleam`
-  - [ ] Test: `full_lifecycle_create_claim_complete_test`
-  - [ ] Test: `full_lifecycle_create_claim_release_claim_test`
+- [x] Task 4: Create integration tests (AC: 8, 9)
+  - [x] Create `apps/server/test/integration/task_lifecycle_test.gleam`
+  - [x] Test: `full_lifecycle_create_claim_complete_test`
+  - [x] Test: `full_lifecycle_create_claim_release_claim_test`
 
-- [ ] Task 5: Verify CI passes (AC: 10)
-  - [ ] Run `make test` and verify all tests pass
-  - [ ] Fix any test failures
+- [x] Task 5: Verify CI passes (AC: 10)
+  - [x] Run `gleam test` and verify all tests pass (119 passed, 0 failures)
+  - [x] Fix any test failures
 
 ## Dev Notes
 
@@ -231,10 +231,109 @@ This story depends on:
 
 ### Agent Model Used
 
+claude-opus-4-5-20251101
+
 ### Debug Log References
+
+N/A
 
 ### Completion Notes List
 
+1. **Task 1-3 (Unit tests)**: Created `apps/server/test/unit/services/tasks_queries_test.gleam` with 7 tests covering all claim/release/complete scenarios via HTTP API with fixtures.
+
+2. **Task 4 (Integration tests)**: Created `apps/server/test/integration/task_lifecycle_test.gleam` with 2 full lifecycle tests that verify:
+   - Complete lifecycle: create -> claim -> complete with status and claimed_by verification
+   - Release lifecycle: create -> claim -> release -> claim (by different user) with multi-user handoff
+
+3. **Task 5 (CI verification)**: All 119 tests pass with `DATABASE_URL="postgres://scrumbringer:scrumbringer@localhost:5432/scrumbringer_dev" gleam test`.
+
+4. **Schema discovery**: The `tasks` table does not have a `completed_by` column. When a task is completed, the `claimed_by` field stays set (as the claimer is the one who completes). Tests verify `completed_at` timestamp is set instead.
+
+5. **Test approach**: Tests use fixtures.gleam HTTP helpers rather than direct query calls because the queries require proper FK relationships (org_id, project_id, type_id, etc.) that are complex to set up without the full bootstrap.
+
 ### File List
 
+- `apps/server/test/unit/services/tasks_queries_test.gleam` (created) - 7 unit tests for claim/release/complete
+- `apps/server/test/integration/task_lifecycle_test.gleam` (created) - 2 integration lifecycle tests
+
+## Change Log
+
+| Date | Version | Description | Author |
+|------|---------|-------------|--------|
+| 2026-01-20 | 0.1 | Story created from refactoring roadmap Fase 0.2 | po |
+| 2026-01-20 | 0.2 | Implementation complete, moved to Review | dev |
+| 2026-01-20 | 0.3 | QA review passed, moved to Done | qa |
+
 ## QA Results
+
+### Review Date: 2026-01-20
+
+### Reviewed By: Quinn (Test Architect)
+
+### Code Quality Assessment
+
+Overall implementation quality is **excellent**. The tests are well-structured, follow clear Given-When-Then patterns, and provide comprehensive coverage of the critical path business logic.
+
+**Strengths:**
+- Clear test organization with section headers for each AC
+- Good use of fixtures.gleam for test setup - reuses existing infrastructure
+- Proper multi-user test scenarios for auth failure cases
+- Integration tests verify full state machine transitions with DB queries
+- Version tracking correctly tests optimistic locking behavior
+
+**Test Architecture:**
+- Unit tests (7) cover individual operations: claim success/conflict/version, release success/auth, complete success/auth
+- Integration tests (2) cover full workflows: create->claim->complete and create->claim->release->claim
+- Tests verify both HTTP status codes AND database state
+
+### Refactoring Performed
+
+None required - code quality is high.
+
+### Compliance Check
+
+- Coding Standards: ✓ Follows Gleam conventions, proper naming, clear documentation
+- Project Structure: ✓ Files in correct locations (unit/services/, integration/)
+- Testing Strategy: ✓ Uses fixtures.gleam patterns, proper test isolation
+- All ACs Met: ✓ All 10 acceptance criteria verified
+
+### AC Traceability
+
+| AC | Test | Verification |
+|----|------|--------------|
+| AC1 | `claim_task_succeeds_for_available_task_test` | ✓ HTTP 200 + DB status="claimed" |
+| AC2 | `claim_task_fails_for_already_claimed_task_test` | ✓ HTTP 409 conflict |
+| AC3 | `claim_task_fails_with_version_mismatch_test` | ✓ HTTP 409 conflict |
+| AC4 | `release_task_succeeds_for_claimer_test` | ✓ HTTP 200 |
+| AC5 | `release_task_fails_for_non_claimer_test` | ✓ HTTP 403 forbidden |
+| AC6 | `complete_task_succeeds_for_claimer_test` | ✓ HTTP 200 |
+| AC7 | `complete_task_fails_for_non_claimer_test` | ✓ HTTP 403 forbidden |
+| AC8 | `full_lifecycle_create_claim_complete_test` | ✓ Status transitions verified |
+| AC9 | `full_lifecycle_create_claim_release_claim_test` | ✓ Multi-user handoff verified |
+| AC10 | Test run | ✓ 119 tests pass |
+
+### Improvements Checklist
+
+- [N/A] All tests are well-implemented, no changes needed
+
+### Security Review
+
+No security concerns - tests verify authorization correctly:
+- Non-claimer cannot release (403)
+- Non-claimer cannot complete (403)
+
+### Performance Considerations
+
+No performance concerns - test infrastructure, not production code.
+
+### Files Modified During Review
+
+None.
+
+### Gate Status
+
+Gate: **PASS** → docs/qa/gates/ref4-0.2-critical-path-tests.yml
+
+### Recommended Status
+
+✓ **Ready for Done** - All 10 acceptance criteria verified with comprehensive tests.

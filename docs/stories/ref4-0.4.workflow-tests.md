@@ -1,6 +1,6 @@
 # Story ref4-0.4: Tests de Workflows y Rules Engine
 
-## Status: Ready
+## Status: Done
 
 ## Story
 
@@ -22,29 +22,30 @@
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create unit tests for workflows_db CRUD (AC: 1, 2, 3)
-  - [ ] Create `apps/server/test/unit/services/workflows_db_test.gleam`
-  - [ ] Test: `create_workflow_succeeds_with_valid_data_test`
-  - [ ] Test: `create_workflow_fails_for_duplicate_name_test`
-  - [ ] Test: `update_workflow_succeeds_for_existing_workflow_test`
+- [x] Task 1: Create unit tests for workflows_db CRUD (AC: 1, 2, 3)
+  - [x] Create `apps/server/test/unit/services/workflows_db_test.gleam`
+  - [x] Test: `create_workflow_succeeds_with_valid_data_test`
+  - [x] Test: `create_workflow_fails_for_duplicate_name_test`
+  - [x] Test: `update_workflow_succeeds_for_existing_workflow_test`
 
-- [ ] Task 2: Create unit tests for cascade behavior (AC: 4)
-  - [ ] Test: `set_active_cascade_deactivates_children_test`
-  - [ ] Test: `set_active_cascade_activates_children_test`
+- [x] Task 2: Create unit tests for cascade behavior (AC: 4)
+  - [x] Test: `set_active_cascade_deactivates_children_test`
+  - [x] Test: `set_active_cascade_activates_children_test`
 
-- [ ] Task 3: Create unit tests for delete behavior (AC: 5)
-  - [ ] Test: `delete_workflow_succeeds_if_no_rules_test`
-  - [ ] Test: `delete_workflow_cascades_deletes_rules_test`
+- [x] Task 3: Create unit tests for delete behavior (AC: 5)
+  - [x] Test: `delete_workflow_succeeds_if_no_rules_test`
+  - [x] Test: `delete_workflow_cascades_deletes_rules_test`
 
-- [ ] Task 4: Create unit tests for rules_engine evaluation (AC: 6, 7, 8)
-  - [ ] Create `apps/server/test/unit/services/rules_engine_test.gleam`
-  - [ ] Test: `evaluate_rule_applies_matching_rule_test`
-  - [ ] Test: `evaluate_rule_skips_inactive_rule_test`
-  - [ ] Test: `evaluate_rule_handles_idempotent_suppression_test`
+- [x] Task 4: Create unit tests for rules_engine evaluation (AC: 6, 7, 8)
+  - [x] Create `apps/server/test/unit/services/rules_engine_test.gleam`
+  - [x] Test: `evaluate_rule_applies_matching_rule_test`
+  - [x] Test: `evaluate_rule_skips_inactive_rule_test`
+  - [x] Test: `evaluate_rule_handles_idempotent_suppression_test`
+  - [x] Test: `evaluate_rule_skips_when_workflow_inactive_test` (bonus)
 
-- [ ] Task 5: Verify CI passes (AC: 9)
-  - [ ] Run `make test` and verify all tests pass
-  - [ ] Fix any test failures
+- [x] Task 5: Verify CI passes (AC: 9)
+  - [x] Run `gleam test` and verify all tests pass (139 passed, 0 failures)
+  - [x] Fix any test failures
 
 ## Dev Notes
 
@@ -330,10 +331,121 @@ This story depends on:
 
 ### Agent Model Used
 
+claude-opus-4-5-20251101
+
 ### Debug Log References
+
+N/A
 
 ### Completion Notes List
 
+1. **Task 1-3 (Workflow DB tests)**: Created `apps/server/test/unit/services/workflows_db_test.gleam` with 7 tests:
+   - CRUD tests: create success, create duplicate fail, update success
+   - Cascade tests: deactivate cascades to rules, activate cascades to rules
+   - Delete tests: delete empty workflow, delete workflow cascades to rules
+
+2. **Task 4 (Rules engine tests)**: Created `apps/server/test/unit/services/rules_engine_test.gleam` with 4 tests:
+   - `evaluate_rule_applies_matching_rule_test` - Verifies matching rule fires
+   - `evaluate_rule_skips_inactive_rule_test` - Verifies inactive rules don't fire
+   - `evaluate_rule_handles_idempotent_suppression_test` - Verifies second fire is suppressed
+   - `evaluate_rule_skips_when_workflow_inactive_test` - Verifies inactive workflow stops rules
+
+3. **Discovery**: Extensive workflow and rules engine tests already existed in:
+   - `test/workflows_http_test.gleam` - HTTP CRUD and cascade tests
+   - `test/rules_engine_test.gleam` - Comprehensive engine tests with variable substitution
+
+4. **Fixtures enhancement**: Added helpers to `fixtures.gleam`:
+   - `set_workflow_active_cascade` - HTTP API helper for cascade behavior
+   - `delete_workflow` - HTTP API helper for workflow deletion
+
+5. **Test approach**: Tests use fixtures.gleam HTTP helpers, leveraging `set_workflow_active_cascade` for proper cascade behavior through the API layer.
+
 ### File List
 
+- `apps/server/test/unit/services/workflows_db_test.gleam` (created) - 7 workflow CRUD and cascade tests
+- `apps/server/test/unit/services/rules_engine_test.gleam` (created) - 4 rules engine evaluation tests
+- `apps/server/test/fixtures.gleam` (modified) - Added `set_workflow_active_cascade` and `delete_workflow` helpers
+
+## Change Log
+
+| Date | Version | Description | Author |
+|------|---------|-------------|--------|
+| 2026-01-20 | 0.1 | Story created from refactoring roadmap Fase 0.4 | po |
+| 2026-01-20 | 0.2 | Implementation complete, moved to Review | dev |
+| 2026-01-20 | 0.3 | QA review passed, moved to Done | qa |
+
 ## QA Results
+
+### Review Date: 2026-01-20
+
+### Reviewed By: Quinn (Test Architect)
+
+### Code Quality Assessment
+
+Overall implementation quality is **excellent**. The tests are well-structured with clear Given-When-Then patterns, comprehensive AC coverage, and proper use of fixtures infrastructure.
+
+**Strengths:**
+- Clear section headers mapping tests to acceptance criteria
+- Good use of HTTP API helpers for cascade behavior (correctly identified that direct DB update doesn't cascade)
+- Tests verify both DB state AND API responses
+- Bonus test added for inactive workflow scenario
+- Proper DB verification using `query_int` helpers for state assertions
+
+**Test Architecture:**
+- Workflow tests (7): CRUD (3) + Cascade (2) + Delete (2)
+- Rules engine tests (4): Apply matching, skip inactive, idempotent suppression, inactive workflow
+
+**Fixtures Enhancement:**
+- `set_workflow_active_cascade` - Correctly uses HTTP PATCH for cascade behavior
+- `delete_workflow` - Clean HTTP DELETE helper
+
+### Refactoring Performed
+
+None required - code quality is high and follows established patterns.
+
+### Compliance Check
+
+- Coding Standards: ✓ Follows Gleam conventions, proper naming, clear documentation
+- Project Structure: ✓ Files in correct locations (test/unit/services/)
+- Testing Strategy: ✓ Uses fixtures.gleam patterns, proper test isolation
+- All ACs Met: ✓ All 9 acceptance criteria verified with 11 tests (2 bonus)
+
+### AC Traceability
+
+| AC | Test | Verification |
+|----|------|--------------|
+| AC1 | `create_workflow_succeeds_with_valid_data_test` | ✓ DB count=1, active=1 |
+| AC2 | `create_workflow_fails_for_duplicate_name_test` | ✓ Returns error |
+| AC3 | `update_workflow_succeeds_for_existing_workflow_test` | ✓ active=0 after update |
+| AC4 | `set_active_cascade_deactivates_children_test` | ✓ Rule active=0 after workflow deactivate |
+| AC4 | `set_active_cascade_activates_children_test` | ✓ Rule active=1 after workflow activate |
+| AC5 | `delete_workflow_succeeds_if_no_rules_test` | ✓ Workflow count=0 |
+| AC5 | `delete_workflow_cascades_deletes_rules_test` | ✓ Rule count=0 after cascade |
+| AC6 | `evaluate_rule_applies_matching_rule_test` | ✓ Applied outcome |
+| AC7 | `evaluate_rule_skips_inactive_rule_test` | ✓ Empty result |
+| AC8 | `evaluate_rule_handles_idempotent_suppression_test` | ✓ Suppressed("idempotent") |
+| AC9 | Test run | ✓ 139 tests pass |
+
+### Improvements Checklist
+
+- [N/A] All tests are well-implemented, no changes needed
+
+### Security Review
+
+No security concerns - test infrastructure only.
+
+### Performance Considerations
+
+No performance concerns - test code only.
+
+### Files Modified During Review
+
+None.
+
+### Gate Status
+
+Gate: **PASS** → docs/qa/gates/ref4-0.4-workflow-tests.yml
+
+### Recommended Status
+
+✓ **Ready for Done** - All 9 acceptance criteria verified with comprehensive tests.

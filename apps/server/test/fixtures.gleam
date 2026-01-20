@@ -796,7 +796,7 @@ pub fn card_event_full(
 // State Mutation Helpers
 // =============================================================================
 
-/// Set the active status of a workflow.
+/// Set the active status of a workflow (direct DB, NO cascade).
 pub fn set_workflow_active(
   db: pog.Connection,
   workflow_id: Int,
@@ -808,6 +808,29 @@ pub fn set_workflow_active(
   |> pog.execute(db)
   |> result.map(fn(_) { Nil })
   |> result.map_error(fn(e) { "set_workflow_active failed: " <> string.inspect(e) })
+}
+
+/// Set the active status of a workflow via HTTP API (WITH cascade to rules).
+pub fn set_workflow_active_cascade(
+  handler: Handler,
+  session: Session,
+  workflow_id: Int,
+  active: Bool,
+) -> Result(Nil, String) {
+  let active_int = case active {
+    True -> 1
+    False -> 0
+  }
+  let res = handler(
+    simulate.request(http.Patch, "/api/v1/workflows/" <> int.to_string(workflow_id))
+    |> with_auth(session)
+    |> simulate.json_body(json.object([#("active", json.int(active_int))])),
+  )
+
+  case res.status {
+    200 -> Ok(Nil)
+    _ -> Error("set_workflow_active_cascade failed: " <> int.to_string(res.status))
+  }
 }
 
 /// Set the active status of a rule.
@@ -822,6 +845,23 @@ pub fn set_rule_active(
   |> pog.execute(db)
   |> result.map(fn(_) { Nil })
   |> result.map_error(fn(e) { "set_rule_active failed: " <> string.inspect(e) })
+}
+
+/// Delete a workflow via HTTP API.
+pub fn delete_workflow(
+  handler: Handler,
+  session: Session,
+  workflow_id: Int,
+) -> Result(Nil, String) {
+  let res = handler(
+    simulate.request(http.Delete, "/api/v1/workflows/" <> int.to_string(workflow_id))
+    |> with_auth(session),
+  )
+
+  case res.status {
+    204 -> Ok(Nil)
+    _ -> Error("delete_workflow failed: " <> int.to_string(res.status))
+  }
 }
 
 // =============================================================================

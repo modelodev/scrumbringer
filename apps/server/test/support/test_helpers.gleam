@@ -18,6 +18,7 @@
 //// ```
 
 import domain/org_role
+import gleam/int
 import scrumbringer_server/services/store_state.{type StoredUser, StoredUser}
 
 /// Creates a test user with member role.
@@ -48,7 +49,7 @@ pub fn make_test_admin() -> StoredUser {
 pub fn make_test_user_with_id(id: Int) -> StoredUser {
   StoredUser(
     id: id,
-    email: "test" <> int_to_string(id) <> "@example.com",
+    email: "test" <> int.to_string(id) <> "@example.com",
     password_hash: "hashed_password",
     org_id: 1,
     org_role: org_role.Member,
@@ -60,26 +61,10 @@ pub fn make_test_user_with_id(id: Int) -> StoredUser {
 pub fn make_test_admin_with_id(id: Int) -> StoredUser {
   StoredUser(
     id: id,
-    email: "admin" <> int_to_string(id) <> "@example.com",
+    email: "admin" <> int.to_string(id) <> "@example.com",
     password_hash: "hashed_password",
     org_id: 1,
     org_role: org_role.Admin,
     created_at: "2026-01-20T00:00:00Z",
   )
-}
-
-fn int_to_string(n: Int) -> String {
-  case n {
-    0 -> "0"
-    1 -> "1"
-    2 -> "2"
-    3 -> "3"
-    4 -> "4"
-    5 -> "5"
-    6 -> "6"
-    7 -> "7"
-    8 -> "8"
-    9 -> "9"
-    _ -> "N"
-  }
 }
