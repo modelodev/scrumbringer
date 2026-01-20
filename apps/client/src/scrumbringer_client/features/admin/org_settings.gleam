@@ -23,6 +23,8 @@ import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError}
 import domain/org.{type OrgUser}
+import domain/org_role
+import domain/user.{User}
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, Login, Model, OrgSettingsSaved,
 }
@@ -186,9 +188,21 @@ pub fn handle_org_settings_saved_ok(
     other -> other
   }
 
+  // If the updated user is the current user, update model.user with new role
+  let user = case model.user {
+    opt.Some(current_user) if current_user.id == updated.id ->
+      case org_role.parse(updated.org_role) {
+        Ok(new_role) ->
+          opt.Some(User(..current_user, org_role: new_role))
+        Error(_) -> model.user
+      }
+    _ -> model.user
+  }
+
   #(
     Model(
       ..model,
+      user: user,
       org_settings_users: org_settings_users,
       org_users_cache: org_users_cache,
       org_settings_save_in_flight: False,
