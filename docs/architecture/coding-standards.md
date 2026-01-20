@@ -286,40 +286,158 @@ src/
 
 ## Testing
 
-### Test Organization
+### Test Directory Structure
 
 ```
-test/
-├── scrumbringer_test.gleam  # Main test entry
-├── task_service_test.gleam
-└── task_test.gleam
+apps/server/test/
+├── scrumbringer_server_test.gleam  # Main test entry
+├── fixtures.gleam                   # Shared test fixtures and bootstrap
+├── test_runner.gleam                # Custom sequential test runner
+├── support/                         # Test helpers
+│   ├── test_helpers.gleam           # Factory functions for domain objects
+│   └── test_db.gleam                # Transaction isolation helpers
+├── unit/                            # Unit tests (no HTTP, isolated)
+│   ├── services/                    # DB service tests
+│   └── http/                        # HTTP handler tests
+├── integration/                     # Full integration tests
+└── *_http_test.gleam                # HTTP endpoint tests (existing)
 ```
 
-### Test Naming
+### Test Naming Convention
+
+Test functions must end with `_test`. Name pattern: `<action>_<condition>_test`
 
 ```gleam
-// test/task_service_test.gleam
+pub fn claim_task_succeeds_for_available_task_test() { ... }
+pub fn claim_task_fails_for_already_claimed_task_test() { ... }
+pub fn claim_task_fails_with_version_mismatch_test() { ... }
+```
+
+### Running Tests
+
+```bash
+# Run all tests (requires DATABASE_URL)
+make test
+
+# Run server tests only
+cd apps/server && gleam test
+
+# With environment variable
+DATABASE_URL="postgres://localhost/scrumbringer" make test
+```
+
+### Test Patterns
+
+#### HTTP Integration Tests (using fixtures)
+
+For tests that need full HTTP request/response cycle:
+
+```gleam
+import fixtures
 import gleeunit/should
+import gleam/http
+import wisp/simulate
 
-pub fn claim_task_succeeds_when_available_test() {
-  let task = create_available_task()
-  let result = claim_task(task, user_id: 1)
+pub fn create_task_succeeds_test() {
+  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
 
-  result
-  |> should.be_ok
-  |> fn(t) { t.status }
-  |> should.equal(Claimed(by: 1))
-}
+  let res = handler(
+    simulate.request(http.Post, "/api/v1/projects/1/tasks")
+    |> fixtures.with_auth(session)
+    |> simulate.json_body(json.object([
+      #("title", json.string("Test Task")),
+    ])),
+  )
 
-pub fn claim_task_fails_when_already_claimed_test() {
-  let task = create_claimed_task(by: 2)
-  let result = claim_task(task, user_id: 1)
-
-  result
-  |> should.be_error
-  |> should.equal(TaskAlreadyClaimed)
+  res.status |> should.equal(200)
 }
 ```
+
+#### Unit Tests with Transaction Isolation
+
+For tests that need direct DB access with rollback:
+
+```gleam
+import support/test_db
+import fixtures
+import scrumbringer_server
+import gleeunit/should
+
+pub fn workflow_crud_test() {
+  let assert Ok(#(app, _, _)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+
+  test_db.with_test_transaction(db, fn(tx) {
+    // All operations here will be rolled back after the test
+    let result = workflows_db.create_workflow(tx, 1, None, "Test", "desc", True, 1)
+    result |> should.be_ok()
+  })
+}
+```
+
+#### Pure Unit Tests (no DB)
+
+For tests that don't need database access:
+
+```gleam
+import support/test_helpers
+import gleeunit/should
+
+pub fn make_test_user_has_correct_role_test() {
+  let user = test_helpers.make_test_user()
+  user.org_role |> should.equal(org_role.Member)
+}
+
+pub fn make_test_admin_has_admin_role_test() {
+  let admin = test_helpers.make_test_admin()
+  admin.org_role |> should.equal(org_role.Admin)
+}
+```
+
+### Factory Functions (support/test_helpers.gleam)
+
+```gleam
+import support/test_helpers
+
+// Create test users
+let user = test_helpers.make_test_user()           // Member role
+let admin = test_helpers.make_test_admin()         // Admin role
+let user2 = test_helpers.make_test_user_with_id(2) // Custom ID
+```
+
+### Fixtures Module (fixtures.gleam)
+
+The `fixtures.gleam` module provides:
+
+- `bootstrap()` - Creates app, handler, and admin session
+- `with_auth(req, session)` - Adds auth headers to request
+- `create_project/task/workflow/rule(...)` - Entity creation helpers
+- `extract_session(headers)` - Extract session from response
+- `query_int/query_string(db, sql, params)` - DB query helpers
+
+### Transaction Isolation (support/test_db.gleam)
+
+Use `with_test_transaction` to ensure test isolation:
+
+```gleam
+test_db.with_test_transaction(db, fn(tx) {
+  // Operations use tx, not db
+  // All changes are rolled back after this function returns
+})
+```
+
+### Test Framework
+
+- **Framework:** gleeunit
+- **Assertions:** `gleeunit/should` module
+- **HTTP simulation:** `wisp/simulate`
+
+### Test Requirements
+
+1. Tests must be deterministic (same result every run)
+2. Tests must clean up after themselves (use transaction isolation)
+3. Tests should be independent (no order dependencies)
+4. Test names should describe the scenario and expected outcome
 
 ---
 

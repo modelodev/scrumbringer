@@ -3,20 +3,36 @@
 // Provides JavaScript interop for custom element event emission.
 
 /**
- * Emit a custom event from the current Lustre component.
+ * Emit a custom event from a Lustre component.
  *
- * This uses the global `__LUSTRE_CURRENT_COMPONENT__` which Lustre sets
- * during component rendering/update cycles.
+ * Tries multiple strategies to find the component element:
+ * 1. Lustre's global __LUSTRE_CURRENT_COMPONENT__ (set during render/update)
+ * 2. Fallback to document.querySelector for known component tags
  *
  * @param {string} name - Event name (e.g., "close-requested")
  * @param {any} detail - Event detail payload (JSON-serializable)
  */
 export function emit_custom_event(name, detail) {
-  // Lustre components set this global during render/update
-  const component = globalThis.__LUSTRE_CURRENT_COMPONENT__
+  // Strategy 1: Use Lustre's global (works during render/update cycle)
+  let component = globalThis.__LUSTRE_CURRENT_COMPONENT__
+
+  // Strategy 2: Fallback to querySelector for known component tags
+  // This works for effects that run outside the render cycle
+  if (!component || !component.dispatchEvent) {
+    // List of known Lustre component tag names in this app
+    const knownComponents = ['card-detail-modal']
+
+    for (const tag of knownComponents) {
+      const el = document.querySelector(tag)
+      if (el && el.dispatchEvent) {
+        component = el
+        break
+      }
+    }
+  }
 
   if (!component || !component.dispatchEvent) {
-    console.warn(`[component.ffi] Cannot emit "${name}": no component context`)
+    console.warn(`[component.ffi] Cannot emit "${name}": no component found`)
     return
   }
 
