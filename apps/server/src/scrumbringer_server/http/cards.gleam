@@ -19,6 +19,7 @@
 //// - GET  /api/v1/cards/:card_id
 //// - PATCH /api/v1/cards/:card_id
 //// - DELETE /api/v1/cards/:card_id
+//// - GET  /api/v1/cards/:card_id/tasks
 
 import gleam/dynamic
 import gleam/dynamic/decode

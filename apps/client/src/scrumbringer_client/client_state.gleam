@@ -321,14 +321,8 @@ pub type Model {
     cards_delete_confirm: Option(Card),
     cards_delete_in_flight: Bool,
     cards_delete_error: Option(String),
-    // Card detail (member view)
+    // Card detail (member view) - only open state, component manages internal state
     card_detail_open: Option(Int),
-    card_detail_tasks: Remote(List(Task)),
-    card_add_task_open: Bool,
-    card_add_task_title: String,
-    card_add_task_priority: Int,
-    card_add_task_in_flight: Bool,
-    card_add_task_error: Option(String),
     // Workflows
     workflows_org: Remote(List(Workflow)),
     workflows_project: Remote(List(Workflow)),
@@ -621,16 +615,9 @@ pub type Msg {
   CardDeleteConfirmed
   CardDeleted(ApiResult(Nil))
 
-  // Card detail (member view)
+  // Card detail (member view) - component manages internal state
   OpenCardDetail(Int)
   CloseCardDetail
-  CardDetailTasksFetched(ApiResult(List(Task)))
-  ToggleAddTaskForm
-  CardAddTaskTitleInput(String)
-  CardAddTaskPrioritySelect(Int)
-  CancelAddTask
-  SubmitAddTask
-  CardAddTaskCreated(ApiResult(Task))
 
   // Workflows
   WorkflowsOrgFetched(ApiResult(List(Workflow)))
@@ -1019,14 +1006,8 @@ pub fn default_model() -> Model {
     cards_delete_confirm: option.None,
     cards_delete_in_flight: False,
     cards_delete_error: option.None,
-    // Card detail (member view)
+    // Card detail (member view) - only open state, component manages internal state
     card_detail_open: option.None,
-    card_detail_tasks: NotAsked,
-    card_add_task_open: False,
-    card_add_task_title: "",
-    card_add_task_priority: 3,
-    card_add_task_in_flight: False,
-    card_add_task_error: option.None,
     // Workflows
     workflows_org: NotAsked,
     workflows_project: NotAsked,

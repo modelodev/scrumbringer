@@ -12,6 +12,7 @@
 ////
 //// cards.list_cards(project_id, CardsFetched)
 //// cards.create_card(project_id, "Title", "Desc", CardCreated)
+//// cards.list_card_tasks(card_id, CardTasksFetched)
 //// ```
 
 import gleam/dynamic/decode
@@ -23,8 +24,10 @@ import gleam/option
 import lustre/effect.{type Effect}
 
 import scrumbringer_client/api/core.{type ApiResult}
+import scrumbringer_client/api/tasks/decoders as task_decoders
 
 import domain/card.{type Card, type CardState, Card, Cerrada, EnCurso, Pendiente}
+import domain/task.{type Task}
 
 // =============================================================================
 // Decoders
@@ -167,6 +170,22 @@ pub fn delete_card(
     "DELETE",
     "/api/v1/cards/" <> int.to_string(card_id),
     option.None,
+    to_msg,
+  )
+}
+
+/// List all tasks belonging to a card.
+pub fn list_card_tasks(
+  card_id: Int,
+  to_msg: fn(ApiResult(List(Task))) -> msg,
+) -> Effect(msg) {
+  let decoder =
+    decode.field("tasks", decode.list(task_decoders.task_decoder()), decode.success)
+  core.request(
+    "GET",
+    "/api/v1/cards/" <> int.to_string(card_id) <> "/tasks",
+    option.None,
+    decoder,
     to_msg,
   )
 }

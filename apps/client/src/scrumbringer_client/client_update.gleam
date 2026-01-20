@@ -30,17 +30,14 @@ import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option as opt
-import gleam/string
-
 import lustre/effect.{type Effect}
-
-import domain/card as domain_card
 import domain/org_role
 
 import scrumbringer_client/accept_invite
 
 // API modules
 import scrumbringer_client/api/auth as api_auth
+import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/api/metrics as api_metrics
 import scrumbringer_client/api/org as api_org
 import scrumbringer_client/api/projects as api_projects
@@ -75,12 +72,11 @@ import scrumbringer_client/client_state.{
   CardCreateColorChanged, CardCreateColorToggle, CardCreateDescriptionChanged,
   CardCreateDialogClosed, CardCreateDialogOpened,
   CardCreateSubmitted, CardCreateTitleChanged,
-  CardAddTaskCreated, CardAddTaskPrioritySelect, CardAddTaskTitleInput,
   CardCreated, CardDeleteCancelled, CardDeleteClicked, CardDeleteConfirmed,
-  CardDeleted, CardDetailTasksFetched, CardEditCancelled, CardEditClicked,
+  CardDeleted, CardEditCancelled, CardEditClicked,
   CardEditColorChanged, CardEditColorToggle, CardEditDescriptionChanged,
   CardEditSubmitted, CardEditTitleChanged,
-  CardUpdated, CardsFetched, CancelAddTask, CloseCardDetail, Failed,
+  CardUpdated, CardsFetched, CloseCardDetail, Failed,
   ForgotPasswordClicked, ForgotPasswordCopyClicked, ForgotPasswordCopyFinished,
   ForgotPasswordDismissed, ForgotPasswordEmailChanged, ForgotPasswordFinished,
   ForgotPasswordSubmitted, GlobalKeyDown, InviteLinkCopyClicked,
@@ -148,7 +144,7 @@ import scrumbringer_client/client_state.{
   TaskTypeCreateDialogOpened, TaskTypeCreateIconChanged,
   TaskTypeCreateNameChanged, TaskTypeCreateSubmitted, TaskTypeCreated,
   TaskTypeIconErrored, TaskTypeIconLoaded, TaskTypesFetched, ThemeSelected,
-  ToastDismissed, ToggleAddTaskForm, SubmitAddTask, UrlChanged,
+  ToastDismissed, UrlChanged,
   WorkflowCreateActiveChanged, WorkflowCreateDialogClosed,
   WorkflowCreateDialogOpened, WorkflowCreateDescriptionChanged,
   WorkflowCreateNameChanged, WorkflowCreateSubmitted, WorkflowCreated,
@@ -1000,10 +996,27 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
               })
             })
 
+          // Fetch cards when in Fichas section
+          let #(cards_effects, cards_model_update) = case
+            model.member_section,
+            model.selected_project_id
+          {
+            member_section.Fichas, opt.Some(project_id) -> #(
+              [api_cards.list_cards(project_id, CardsFetched)],
+              fn(m: Model) {
+                Model(..m, cards: Loading, cards_project_id: opt.Some(project_id))
+              },
+            )
+            _, _ -> #([], fn(m: Model) { m })
+          }
+
           let effects =
             list.append(
               task_effects,
-              list.append(task_type_effects, [positions_effect]),
+              list.append(
+                task_type_effects,
+                list.append([positions_effect], cards_effects),
+              ),
             )
 
           let model =
@@ -1016,6 +1029,7 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
               member_task_types_pending: list.length(project_ids),
               member_task_types_by_project: dict.new(),
             )
+            |> cards_model_update
 
           #(model, effect.batch(effects))
         }
@@ -1924,63 +1938,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     CardDeleted(Error(err)) ->
       admin_workflow.handle_card_deleted_error(model, err)
 
-    // Card detail (member view) handlers
+    // Card detail (member view) handlers - component manages internal state
     OpenCardDetail(card_id) ->
       #(Model(..model, card_detail_open: opt.Some(card_id)), effect.none())
     CloseCardDetail ->
-      #(
-        Model(
-          ..model,
-          card_detail_open: opt.None,
-          card_detail_tasks: NotAsked,
-          card_add_task_open: False,
-          card_add_task_title: "",
-          card_add_task_priority: 3,
-        ),
-        effect.none(),
-      )
-    CardDetailTasksFetched(Ok(tasks)) ->
-      #(Model(..model, card_detail_tasks: Loaded(tasks)), effect.none())
-    CardDetailTasksFetched(Error(err)) ->
-      #(Model(..model, card_detail_tasks: Failed(err)), effect.none())
-    ToggleAddTaskForm ->
-      #(Model(..model, card_add_task_open: !model.card_add_task_open), effect.none())
-    CardAddTaskTitleInput(title) ->
-      #(Model(..model, card_add_task_title: title), effect.none())
-    CardAddTaskPrioritySelect(priority) ->
-      #(Model(..model, card_add_task_priority: priority), effect.none())
-    CancelAddTask ->
-      #(
-        Model(
-          ..model,
-          card_add_task_open: False,
-          card_add_task_title: "",
-          card_add_task_priority: 3,
-        ),
-        effect.none(),
-      )
-    SubmitAddTask ->
-      handle_card_add_task_submit(model, member_refresh)
-    CardAddTaskCreated(Ok(_task)) ->
-      #(
-        Model(
-          ..model,
-          card_add_task_in_flight: False,
-          card_add_task_open: False,
-          card_add_task_title: "",
-          card_add_task_priority: 3,
-        ),
-        effect.none(),
-      )
-    CardAddTaskCreated(Error(err)) ->
-      #(
-        Model(
-          ..model,
-          card_add_task_in_flight: False,
-          card_add_task_error: opt.Some(err.message),
-        ),
-        effect.none(),
-      )
+      #(Model(..model, card_detail_open: opt.None), effect.none())
 
     // Workflows handlers
     WorkflowsOrgFetched(Ok(workflows)) ->
@@ -2204,137 +2166,4 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
 // =============================================================================
 // Card Add Task Handler
-// =============================================================================
-
-/// Handle card add task form submission.
-/// Validates input and creates task with card_id association.
-fn handle_card_add_task_submit(
-  model: Model,
-  member_refresh: fn(Model) -> #(Model, Effect(Msg)),
-) -> #(Model, Effect(Msg)) {
-  // Guard: already in flight
-  case model.card_add_task_in_flight {
-    True -> #(model, effect.none())
-    False -> validate_and_create_card_task(model, member_refresh)
-  }
-}
-
-fn validate_and_create_card_task(
-  model: Model,
-  _member_refresh: fn(Model) -> #(Model, Effect(Msg)),
-) -> #(Model, Effect(Msg)) {
-  // Get card_id from open card detail
-  case model.card_detail_open {
-    opt.None -> #(model, effect.none())
-    opt.Some(card_id) -> {
-      // Find the card to get project_id
-      case find_card_by_id(model, card_id) {
-        opt.None ->
-          #(
-            Model(
-              ..model,
-              card_add_task_error: opt.Some(
-                update_helpers.i18n_t(model, i18n_text.SelectProjectFirst),
-              ),
-            ),
-            effect.none(),
-          )
-        opt.Some(card) -> validate_card_task_title(model, card)
-      }
-    }
-  }
-}
-
-fn find_card_by_id(model: Model, card_id: Int) -> opt.Option(domain_card.Card) {
-  case model.cards {
-    client_state.Loaded(cards) ->
-      list.find(cards, fn(c) { c.id == card_id })
-      |> opt.from_result
-    _ -> opt.None
-  }
-}
-
-fn validate_card_task_title(
-  model: Model,
-  card: domain_card.Card,
-) -> #(Model, Effect(Msg)) {
-  let title = string.trim(model.card_add_task_title)
-  case title == "" {
-    True ->
-      #(
-        Model(
-          ..model,
-          card_add_task_error: opt.Some(
-            update_helpers.i18n_t(model, i18n_text.TitleRequired),
-          ),
-        ),
-        effect.none(),
-      )
-    False -> get_default_type_and_create(model, card, title)
-  }
-}
-
-fn get_default_type_and_create(
-  model: Model,
-  card: domain_card.Card,
-  title: String,
-) -> #(Model, Effect(Msg)) {
-  // Get task types for this project
-  let types_for_project =
-    dict.get(model.member_task_types_by_project, card.project_id)
-
-  case types_for_project {
-    Error(_) ->
-      #(
-        Model(
-          ..model,
-          card_add_task_error: opt.Some(
-            update_helpers.i18n_t(model, i18n_text.TypeRequired),
-          ),
-        ),
-        effect.none(),
-      )
-    Ok(types) ->
-      case list.first(types) {
-        Error(_) ->
-          #(
-            Model(
-              ..model,
-              card_add_task_error: opt.Some(
-                update_helpers.i18n_t(model, i18n_text.TypeRequired),
-              ),
-            ),
-            effect.none(),
-          )
-        Ok(first_type) ->
-          submit_card_task(model, card, title, first_type.id)
-      }
-  }
-}
-
-fn submit_card_task(
-  model: Model,
-  card: domain_card.Card,
-  title: String,
-  type_id: Int,
-) -> #(Model, Effect(Msg)) {
-  let model =
-    Model(
-      ..model,
-      card_add_task_in_flight: True,
-      card_add_task_error: opt.None,
-    )
-
-  #(
-    model,
-    api_tasks.create_task_with_card(
-      card.project_id,
-      title,
-      opt.None,
-      model.card_add_task_priority,
-      type_id,
-      opt.Some(card.id),
-      client_state.CardAddTaskCreated,
-    ),
-  )
-}
+// Card add task functionality moved to card_detail_modal component

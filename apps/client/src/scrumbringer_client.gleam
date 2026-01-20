@@ -81,6 +81,7 @@ import scrumbringer_client/client_state.{
 
 import scrumbringer_client/client_update
 import scrumbringer_client/client_view
+import scrumbringer_client/components/card_detail_modal
 
 // =============================================================================
 // Application Entry Point
@@ -101,7 +102,15 @@ pub fn app() -> lustre.App(Nil, Model, Msg) {
 /// Application entry point - starts the Lustre SPA.
 ///
 /// Mounts the application to the `#app` DOM element.
+/// Also registers custom element components.
 pub fn main() {
+  // Register custom element components
+  case card_detail_modal.register() {
+    Ok(_) -> Nil
+    Error(_) -> Nil
+  }
+
+  // Start the main application
   case lustre.start(app(), "#app", Nil) {
     Ok(_) -> Nil
     Error(_) -> Nil
@@ -356,14 +365,8 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       cards_delete_confirm: opt.None,
       cards_delete_in_flight: False,
       cards_delete_error: opt.None,
-      // Card detail (member view)
+      // Card detail (member view) - only open state, component manages internal state
       card_detail_open: opt.None,
-      card_detail_tasks: NotAsked,
-      card_add_task_open: False,
-      card_add_task_title: "",
-      card_add_task_priority: 3,
-      card_add_task_in_flight: False,
-      card_add_task_error: opt.None,
       // Workflows
       workflows_org: NotAsked,
       workflows_project: NotAsked,
