@@ -11,6 +11,8 @@
 //// let card = Card(id: 1, project_id: 10, title: "OAuth", ...)
 //// ```
 
+import gleam/option.{type Option}
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -36,6 +38,7 @@ pub type CardState {
 ///   project_id: 10,
 ///   title: "OAuth Implementation",
 ///   description: "Login with Google and GitHub",
+///   color: Some("blue"),
 ///   state: EnCurso,
 ///   task_count: 3,
 ///   completed_count: 1,
@@ -49,6 +52,7 @@ pub type Card {
     project_id: Int,
     title: String,
     description: String,
+    color: Option(String),
     state: CardState,
     task_count: Int,
     completed_count: Int,

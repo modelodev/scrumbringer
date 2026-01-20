@@ -148,6 +148,7 @@ pub type CardsCreateRow {
     project_id: Int,
     title: String,
     description: String,
+    color: String,
     created_by: Int,
     created_at: String,
   )
@@ -163,33 +164,37 @@ pub fn cards_create(
   arg_1: Int,
   arg_2: String,
   arg_3: String,
-  arg_4: Int,
+  arg_4: String,
+  arg_5: Int,
 ) -> Result(pog.Returned(CardsCreateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
     use project_id <- decode.field(1, decode.int)
     use title <- decode.field(2, decode.string)
     use description <- decode.field(3, decode.string)
-    use created_by <- decode.field(4, decode.int)
-    use created_at <- decode.field(5, decode.string)
+    use color <- decode.field(4, decode.string)
+    use created_by <- decode.field(5, decode.int)
+    use created_at <- decode.field(6, decode.string)
     decode.success(CardsCreateRow(
       id:,
       project_id:,
       title:,
       description:,
+      color:,
       created_by:,
       created_at:,
     ))
   }
 
   "-- name: create_card
-INSERT INTO cards (project_id, title, description, created_by)
-VALUES ($1, $2, $3, $4)
+INSERT INTO cards (project_id, title, description, color, created_by)
+VALUES ($1, $2, $3, NULLIF($4, ''), $5)
 RETURNING
     id,
     project_id,
     title,
     coalesce(description, '') as description,
+    coalesce(color, '') as color,
     created_by,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
 "
@@ -197,7 +202,8 @@ RETURNING
   |> pog.parameter(pog.int(arg_1))
   |> pog.parameter(pog.text(arg_2))
   |> pog.parameter(pog.text(arg_3))
-  |> pog.parameter(pog.int(arg_4))
+  |> pog.parameter(pog.text(arg_4))
+  |> pog.parameter(pog.int(arg_5))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -234,6 +240,7 @@ pub type CardsGetRow {
     project_id: Int,
     title: String,
     description: String,
+    color: String,
     created_by: Int,
     created_at: String,
     task_count: Int,
@@ -256,16 +263,18 @@ pub fn cards_get(
     use project_id <- decode.field(1, decode.int)
     use title <- decode.field(2, decode.string)
     use description <- decode.field(3, decode.string)
-    use created_by <- decode.field(4, decode.int)
-    use created_at <- decode.field(5, decode.string)
-    use task_count <- decode.field(6, decode.int)
-    use completed_count <- decode.field(7, decode.int)
-    use available_count <- decode.field(8, decode.int)
+    use color <- decode.field(4, decode.string)
+    use created_by <- decode.field(5, decode.int)
+    use created_at <- decode.field(6, decode.string)
+    use task_count <- decode.field(7, decode.int)
+    use completed_count <- decode.field(8, decode.int)
+    use available_count <- decode.field(9, decode.int)
     decode.success(CardsGetRow(
       id:,
       project_id:,
       title:,
       description:,
+      color:,
       created_by:,
       created_at:,
       task_count:,
@@ -280,6 +289,7 @@ SELECT
     c.project_id,
     c.title,
     coalesce(c.description, '') as description,
+    coalesce(c.color, '') as color,
     c.created_by,
     to_char(c.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     COUNT(t.id)::int AS task_count,
@@ -308,6 +318,7 @@ pub type CardsListRow {
     project_id: Int,
     title: String,
     description: String,
+    color: String,
     created_by: Int,
     created_at: String,
     task_count: Int,
@@ -330,16 +341,18 @@ pub fn cards_list(
     use project_id <- decode.field(1, decode.int)
     use title <- decode.field(2, decode.string)
     use description <- decode.field(3, decode.string)
-    use created_by <- decode.field(4, decode.int)
-    use created_at <- decode.field(5, decode.string)
-    use task_count <- decode.field(6, decode.int)
-    use completed_count <- decode.field(7, decode.int)
-    use available_count <- decode.field(8, decode.int)
+    use color <- decode.field(4, decode.string)
+    use created_by <- decode.field(5, decode.int)
+    use created_at <- decode.field(6, decode.string)
+    use task_count <- decode.field(7, decode.int)
+    use completed_count <- decode.field(8, decode.int)
+    use available_count <- decode.field(9, decode.int)
     decode.success(CardsListRow(
       id:,
       project_id:,
       title:,
       description:,
+      color:,
       created_by:,
       created_at:,
       task_count:,
@@ -354,6 +367,7 @@ SELECT
     c.project_id,
     c.title,
     coalesce(c.description, '') as description,
+    coalesce(c.color, '') as color,
     c.created_by,
     to_char(c.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     COUNT(t.id)::int AS task_count,
@@ -418,6 +432,7 @@ pub type CardsUpdateRow {
     project_id: Int,
     title: String,
     description: String,
+    color: String,
     created_by: Int,
     created_at: String,
   )
@@ -433,19 +448,22 @@ pub fn cards_update(
   arg_1: Int,
   arg_2: String,
   arg_3: String,
+  arg_4: String,
 ) -> Result(pog.Returned(CardsUpdateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
     use project_id <- decode.field(1, decode.int)
     use title <- decode.field(2, decode.string)
     use description <- decode.field(3, decode.string)
-    use created_by <- decode.field(4, decode.int)
-    use created_at <- decode.field(5, decode.string)
+    use color <- decode.field(4, decode.string)
+    use created_by <- decode.field(5, decode.int)
+    use created_at <- decode.field(6, decode.string)
     decode.success(CardsUpdateRow(
       id:,
       project_id:,
       title:,
       description:,
+      color:,
       created_by:,
       created_at:,
     ))
@@ -453,13 +471,14 @@ pub fn cards_update(
 
   "-- name: update_card
 UPDATE cards
-SET title = $2, description = $3
+SET title = $2, description = $3, color = NULLIF($4, '')
 WHERE id = $1
 RETURNING
     id,
     project_id,
     title,
     coalesce(description, '') as description,
+    coalesce(color, '') as color,
     created_by,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
 "
@@ -467,6 +486,7 @@ RETURNING
   |> pog.parameter(pog.int(arg_1))
   |> pog.parameter(pog.text(arg_2))
   |> pog.parameter(pog.text(arg_3))
+  |> pog.parameter(pog.text(arg_4))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

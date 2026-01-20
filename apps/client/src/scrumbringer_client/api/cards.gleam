@@ -17,6 +17,7 @@
 import gleam/dynamic/decode
 import gleam/int
 import gleam/json
+import gleam/list
 import gleam/option
 
 import lustre/effect.{type Effect}
@@ -38,11 +39,20 @@ fn card_state_decoder() -> decode.Decoder(CardState) {
   }
 }
 
+fn color_decoder() -> decode.Decoder(option.Option(String)) {
+  use color_str <- decode.then(decode.string)
+  case color_str {
+    "" -> decode.success(option.None)
+    c -> decode.success(option.Some(c))
+  }
+}
+
 fn card_decoder() -> decode.Decoder(Card) {
   use id <- decode.field("id", decode.int)
   use project_id <- decode.field("project_id", decode.int)
   use title <- decode.field("title", decode.string)
   use description <- decode.field("description", decode.string)
+  use color <- decode.field("color", color_decoder())
   use state <- decode.field("state", card_state_decoder())
   use task_count <- decode.field("task_count", decode.int)
   use completed_count <- decode.field("completed_count", decode.int)
@@ -53,6 +63,7 @@ fn card_decoder() -> decode.Decoder(Card) {
     project_id: project_id,
     title: title,
     description: description,
+    color: color,
     state: state,
     task_count: task_count,
     completed_count: completed_count,
@@ -86,13 +97,18 @@ pub fn create_card(
   project_id: Int,
   title: String,
   description: String,
+  color: option.Option(String),
   to_msg: fn(ApiResult(Card)) -> msg,
 ) -> Effect(msg) {
-  let body =
-    json.object([
-      #("title", json.string(title)),
-      #("description", json.string(description)),
-    ])
+  let base_fields = [
+    #("title", json.string(title)),
+    #("description", json.string(description)),
+  ]
+  let fields = case color {
+    option.Some(c) -> list.append(base_fields, [#("color", json.string(c))])
+    option.None -> base_fields
+  }
+  let body = json.object(fields)
   let decoder = decode.field("card", card_decoder(), decode.success)
   core.request(
     "POST",
@@ -115,18 +131,23 @@ pub fn get_card(card_id: Int, to_msg: fn(ApiResult(Card)) -> msg) -> Effect(msg)
   )
 }
 
-/// Update a card's title and description.
+/// Update a card's title, description, and color.
 pub fn update_card(
   card_id: Int,
   title: String,
   description: String,
+  color: option.Option(String),
   to_msg: fn(ApiResult(Card)) -> msg,
 ) -> Effect(msg) {
-  let body =
-    json.object([
-      #("title", json.string(title)),
-      #("description", json.string(description)),
-    ])
+  let base_fields = [
+    #("title", json.string(title)),
+    #("description", json.string(description)),
+  ]
+  let fields = case color {
+    option.Some(c) -> list.append(base_fields, [#("color", json.string(c))])
+    option.None -> base_fields
+  }
+  let body = json.object(fields)
   let decoder = decode.field("card", card_decoder(), decode.success)
   core.request(
     "PATCH",

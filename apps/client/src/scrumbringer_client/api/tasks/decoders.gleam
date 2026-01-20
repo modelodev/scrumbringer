@@ -150,6 +150,23 @@ pub fn task_decoder() -> decode.Decoder(Task) {
   use created_at <- decode.field("created_at", decode.string)
   use version <- decode.field("version", decode.int)
 
+  // Card (ficha) association - optional fields
+  use card_id <- decode.optional_field(
+    "card_id",
+    option.None,
+    decode.optional(decode.int),
+  )
+  use card_title <- decode.optional_field(
+    "card_title",
+    option.None,
+    decode.optional(decode.string),
+  )
+  use card_color <- decode.optional_field(
+    "card_color",
+    option.None,
+    decode.optional(decode.string),
+  )
+
   decode.success(Task(
     id: id,
     project_id: project_id,
@@ -167,6 +184,9 @@ pub fn task_decoder() -> decode.Decoder(Task) {
     completed_at: completed_at,
     created_at: created_at,
     version: version,
+    card_id: card_id,
+    card_title: card_title,
+    card_color: card_color,
   ))
 }
 

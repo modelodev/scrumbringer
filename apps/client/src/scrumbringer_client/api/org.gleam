@@ -151,6 +151,73 @@ pub fn update_org_user_role(
 }
 
 // =============================================================================
+// User Projects API Functions
+// =============================================================================
+
+import domain/project.{type Project, Project}
+
+fn user_project_decoder() -> decode.Decoder(Project) {
+  use id <- decode.field("id", decode.int)
+  use name <- decode.field("name", decode.string)
+  use my_role <- decode.field("role", decode.string)
+  decode.success(Project(id: id, name: name, my_role: my_role))
+}
+
+/// List projects that a user is a member of.
+pub fn list_user_projects(
+  user_id: Int,
+  to_msg: fn(ApiResult(List(Project))) -> msg,
+) -> Effect(msg) {
+  let decoder =
+    decode.field(
+      "projects",
+      decode.list(user_project_decoder()),
+      decode.success,
+    )
+  core.request(
+    "GET",
+    "/api/v1/org/users/" <> int.to_string(user_id) <> "/projects",
+    option.None,
+    decoder,
+    to_msg,
+  )
+}
+
+/// Add a user to a project.
+pub fn add_user_to_project(
+  user_id: Int,
+  project_id: Int,
+  to_msg: fn(ApiResult(Project)) -> msg,
+) -> Effect(msg) {
+  let body = json.object([#("project_id", json.int(project_id))])
+  let decoder = decode.field("project", user_project_decoder(), decode.success)
+  core.request(
+    "POST",
+    "/api/v1/org/users/" <> int.to_string(user_id) <> "/projects",
+    option.Some(body),
+    decoder,
+    to_msg,
+  )
+}
+
+/// Remove a user from a project.
+pub fn remove_user_from_project(
+  user_id: Int,
+  project_id: Int,
+  to_msg: fn(ApiResult(Nil)) -> msg,
+) -> Effect(msg) {
+  core.request_nil(
+    "DELETE",
+    "/api/v1/org/users/"
+      <> int.to_string(user_id)
+      <> "/projects/"
+      <> int.to_string(project_id),
+    option.None,
+    to_msg,
+  )
+}
+
+// =============================================================================
 // Capability API Functions
 // =============================================================================
 

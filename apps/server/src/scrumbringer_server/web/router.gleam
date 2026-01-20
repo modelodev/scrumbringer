@@ -78,6 +78,10 @@ pub fn route(req: wisp.Request, ctx: RouterCtx) -> wisp.Response {
       org_users.handle_org_users(req, auth_ctx(ctx))
     ["api", "v1", "org", "users", user_id] ->
       org_users.handle_org_user(req, auth_ctx(ctx), user_id)
+    ["api", "v1", "org", "users", user_id, "projects"] ->
+      org_users.handle_user_projects(req, auth_ctx(ctx), user_id)
+    ["api", "v1", "org", "users", user_id, "projects", project_id] ->
+      org_users.handle_user_project(req, auth_ctx(ctx), user_id, project_id)
     ["api", "v1", "org", "metrics", "overview"] ->
       org_metrics.handle_org_metrics_overview(req, auth_ctx(ctx))
     ["api", "v1", "org", "metrics", "projects", project_id, "tasks"] ->

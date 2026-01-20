@@ -56,22 +56,30 @@ import scrumbringer_client/client_state.{
   AdminRuleMetricsDrilldownClosed, AdminRuleMetricsExecPageChanged,
   AdminRuleMetricsFromChanged, AdminRuleMetricsRefreshClicked,
   AdminRuleMetricsToChanged, AdminRuleMetricsWorkflowExpanded,
+  CapabilityCreateDialogClosed, CapabilityCreateDialogOpened,
   CapabilityCreateNameChanged, CapabilityCreateSubmitted,
-  CardCreateDescriptionChanged, CardCreateSubmitted, CardCreateTitleChanged,
-  CardDeleteCancelled, CardDeleteClicked, CardDeleteConfirmed, CardEditCancelled,
-  CardEditClicked, CardEditDescriptionChanged, CardEditSubmitted,
-  CardEditTitleChanged, Failed, IconError, IconOk, Loaded, Loading,
+  CardCreateColorChanged, CardCreateColorToggle, CardCreateDescriptionChanged,
+  CardCreateDialogClosed, CardCreateDialogOpened,
+  CardCreateSubmitted, CardCreateTitleChanged, CardDeleteCancelled,
+  CardDeleteClicked, CardDeleteConfirmed, CardEditCancelled, CardEditClicked,
+  CardEditColorChanged, CardEditColorToggle, CardEditDescriptionChanged,
+  CardEditSubmitted, CardEditTitleChanged, Failed, IconError, IconOk, Loaded,
+  Loading,
   MemberAddDialogClosed, MemberAddDialogOpened, MemberAddRoleChanged,
   MemberAddSubmitted, MemberAddUserSelected, MemberRemoveCancelled,
   MemberRemoveClicked, MemberRemoveConfirmed, NotAsked, OrgSettingsRoleChanged,
   OrgSettingsSaveClicked, OrgUsersSearchChanged, OrgUsersSearchDebounced,
+  UserProjectsDialogOpened, UserProjectsDialogClosed, UserProjectsAddProjectChanged,
+  UserProjectsAddSubmitted, UserProjectRemoveClicked,
   RuleCreateActiveChanged, RuleCreateGoalChanged, RuleCreateNameChanged,
   RuleCreateResourceTypeChanged, RuleCreateSubmitted,
   RuleCreateTaskTypeIdChanged, RuleCreateToStateChanged, RuleDeleteCancelled,
   RuleDeleteClicked, RuleDeleteConfirmed, RuleEditActiveChanged,
   RuleEditCancelled, RuleEditClicked, RuleEditGoalChanged, RuleEditNameChanged,
   RuleEditResourceTypeChanged, RuleEditSubmitted, RuleEditTaskTypeIdChanged,
-  RuleEditToStateChanged, RulesBackClicked, TaskTemplateCreateDescriptionChanged,
+  RuleCreateDialogClosed, RuleCreateDialogOpened, RuleEditToStateChanged,
+  RulesBackClicked, TaskTemplateCreateDescriptionChanged,
+  TaskTemplateCreateDialogClosed, TaskTemplateCreateDialogOpened,
   TaskTemplateCreateNameChanged, TaskTemplateCreatePriorityChanged,
   TaskTemplateCreateSubmitted, TaskTemplateCreateTypeIdChanged,
   TaskTemplateDeleteCancelled, TaskTemplateDeleteClicked,
@@ -79,10 +87,12 @@ import scrumbringer_client/client_state.{
   TaskTemplateEditClicked, TaskTemplateEditDescriptionChanged,
   TaskTemplateEditNameChanged, TaskTemplateEditPriorityChanged,
   TaskTemplateEditSubmitted, TaskTemplateEditTypeIdChanged,
-  TaskTypeCreateCapabilityChanged, TaskTypeCreateIconChanged,
+  TaskTypeCreateCapabilityChanged, TaskTypeCreateDialogClosed,
+  TaskTypeCreateDialogOpened, TaskTypeCreateIconChanged,
   TaskTypeCreateNameChanged, TaskTypeCreateSubmitted, TaskTypeIconErrored,
   TaskTypeIconLoaded, WorkflowCreateActiveChanged,
-  WorkflowCreateDescriptionChanged, WorkflowCreateNameChanged,
+  WorkflowCreateDescriptionChanged, WorkflowCreateDialogClosed,
+  WorkflowCreateDialogOpened, WorkflowCreateNameChanged,
   WorkflowCreateSubmitted, WorkflowDeleteCancelled, WorkflowDeleteClicked,
   WorkflowDeleteConfirmed, WorkflowEditActiveChanged, WorkflowEditCancelled,
   WorkflowEditClicked, WorkflowEditDescriptionChanged, WorkflowEditNameChanged,
@@ -94,7 +104,51 @@ import scrumbringer_client/client_state.{
 // Rule Metrics Tab
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme
+import scrumbringer_client/ui/card_badge
+import scrumbringer_client/ui/color_picker
+import scrumbringer_client/ui/dialog
+import scrumbringer_client/ui/info_callout
 import scrumbringer_client/update_helpers
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+/// Render state options filtered by resource type.
+/// Task states: available, claimed, completed
+/// Card states: pendiente, en_curso, cerrada
+fn view_state_options(model: Model, resource_type: String) -> List(Element(Msg)) {
+  case resource_type {
+    "task" -> [
+      option(
+        [attribute.value("available")],
+        update_helpers.i18n_t(model, i18n_text.TaskStateAvailable),
+      ),
+      option(
+        [attribute.value("claimed")],
+        update_helpers.i18n_t(model, i18n_text.TaskStateClaimed),
+      ),
+      option(
+        [attribute.value("completed")],
+        update_helpers.i18n_t(model, i18n_text.TaskStateCompleted),
+      ),
+    ]
+    _ -> [
+      option(
+        [attribute.value("pendiente")],
+        update_helpers.i18n_t(model, i18n_text.CardStatePendiente),
+      ),
+      option(
+        [attribute.value("en_curso")],
+        update_helpers.i18n_t(model, i18n_text.CardStateEnCurso),
+      ),
+      option(
+        [attribute.value("cerrada")],
+        update_helpers.i18n_t(model, i18n_text.CardStateCerrada),
+      ),
+    ]
+  }
+}
 
 // =============================================================================
 // Public API
@@ -122,105 +176,318 @@ pub fn view_org_settings(model: Model) -> Element(Msg) {
 
       Failed(err) -> div([attribute.class("error")], [text(err.message)])
 
-      Loaded(users) -> {
-        table([attribute.class("table")], [
-          thead([], [
-            tr([], [
-              th([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
-              th([], [text(update_helpers.i18n_t(model, i18n_text.Role))]),
-              th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
+      Loaded(users) ->
+        div([], [
+          table([attribute.class("table")], [
+            thead([], [
+              tr([], [
+                th([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.Role))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.AdminProjects))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
+              ]),
             ]),
+            keyed.tbody(
+              [],
+              list.map(users, fn(u) {
+                let draft = case dict.get(model.org_settings_role_drafts, u.id) {
+                  Ok(role) -> role
+                  Error(_) -> u.org_role
+                }
+
+                let inline_error = case
+                  model.org_settings_error_user_id,
+                  model.org_settings_error
+                {
+                  opt.Some(id), opt.Some(message) if id == u.id -> message
+                  _, _ -> ""
+                }
+
+                #(
+                  int.to_string(u.id),
+                  tr([], [
+                    td([], [text(u.email)]),
+                    td([], [
+                      select(
+                        [
+                          attribute.value(draft),
+                          attribute.disabled(model.org_settings_save_in_flight),
+                          event.on_input(fn(value) {
+                            OrgSettingsRoleChanged(u.id, value)
+                          }),
+                        ],
+                        [
+                          option(
+                            [attribute.value("admin")],
+                            update_helpers.i18n_t(model, i18n_text.RoleAdmin),
+                          ),
+                          option(
+                            [attribute.value("member")],
+                            update_helpers.i18n_t(model, i18n_text.RoleMember),
+                          ),
+                        ],
+                      ),
+                      case inline_error == "" {
+                        True -> element.none()
+                        False ->
+                          div([attribute.class("error")], [text(inline_error)])
+                      },
+                    ]),
+                    td([], [
+                      button(
+                        [
+                          attribute.class("btn-secondary btn-sm"),
+                          event.on_click(UserProjectsDialogOpened(u)),
+                        ],
+                        [text(update_helpers.i18n_t(model, i18n_text.View))],
+                      ),
+                    ]),
+                    td([], [
+                      button(
+                        [
+                          attribute.disabled(model.org_settings_save_in_flight),
+                          event.on_click(OrgSettingsSaveClicked(u.id)),
+                        ],
+                        [text(update_helpers.i18n_t(model, i18n_text.Save))],
+                      ),
+                    ]),
+                  ]),
+                )
+              }),
+            ),
           ]),
-          keyed.tbody(
-            [],
-            list.map(users, fn(u) {
-              let draft = case dict.get(model.org_settings_role_drafts, u.id) {
-                Ok(role) -> role
-                Error(_) -> u.org_role
-              }
-
-              let inline_error = case
-                model.org_settings_error_user_id,
-                model.org_settings_error
-              {
-                opt.Some(id), opt.Some(message) if id == u.id -> message
-                _, _ -> ""
-              }
-
-              #(
-                int.to_string(u.id),
-                tr([], [
-                  td([], [text(u.email)]),
-                  td([], [
-                    select(
-                      [
-                        attribute.value(draft),
-                        attribute.disabled(model.org_settings_save_in_flight),
-                        event.on_input(fn(value) {
-                          OrgSettingsRoleChanged(u.id, value)
-                        }),
-                      ],
-                      [
-                        option(
-                          [attribute.value("admin")],
-                          update_helpers.i18n_t(model, i18n_text.RoleAdmin),
-                        ),
-                        option(
-                          [attribute.value("member")],
-                          update_helpers.i18n_t(model, i18n_text.RoleMember),
-                        ),
-                      ],
-                    ),
-                    case inline_error == "" {
-                      True -> element.none()
-                      False ->
-                        div([attribute.class("error")], [text(inline_error)])
-                    },
-                  ]),
-                  td([], [
-                    button(
-                      [
-                        attribute.disabled(model.org_settings_save_in_flight),
-                        event.on_click(OrgSettingsSaveClicked(u.id)),
-                      ],
-                      [text(update_helpers.i18n_t(model, i18n_text.Save))],
-                    ),
-                  ]),
-                ]),
-              )
-            }),
-          ),
+          // User projects dialog
+          view_user_projects_dialog(model),
         ])
-      }
     },
   ])
+}
+
+/// Dialog for viewing/managing user's project memberships.
+fn view_user_projects_dialog(model: Model) -> Element(Msg) {
+  case model.user_projects_dialog_open, model.user_projects_dialog_user {
+    True, opt.Some(user) -> {
+      dialog.view(
+        dialog.DialogConfig(
+          title: update_helpers.i18n_t(
+            model,
+            i18n_text.UserProjectsTitle(user.email),
+          ),
+          icon: opt.Some("\u{1F4C2}"),
+          size: dialog.DialogMd,
+          on_close: UserProjectsDialogClosed,
+        ),
+        True,
+        model.user_projects_error,
+        // Content: project list and add form
+        [
+          // Current projects list
+          case model.user_projects_list {
+            NotAsked | Loading ->
+              p([attribute.class("loading")], [
+                text(update_helpers.i18n_t(model, i18n_text.Loading)),
+              ])
+
+            Failed(err) ->
+              div([attribute.class("error")], [text(err.message)])
+
+            Loaded(projects) ->
+              case list.is_empty(projects) {
+                True ->
+                  p([attribute.class("empty")], [
+                    text(update_helpers.i18n_t(model, i18n_text.UserProjectsEmpty)),
+                  ])
+
+                False ->
+                  div([attribute.class("user-projects-list")], [
+                    table([attribute.class("table")], [
+                      thead([], [
+                        tr([], [
+                          th([], [
+                            text(update_helpers.i18n_t(model, i18n_text.Name)),
+                          ]),
+                          th([], [
+                            text(update_helpers.i18n_t(model, i18n_text.Role)),
+                          ]),
+                          th([], [
+                            text(update_helpers.i18n_t(model, i18n_text.Actions)),
+                          ]),
+                        ]),
+                      ]),
+                      keyed.tbody(
+                        [],
+                        list.map(projects, fn(p) {
+                          #(
+                            int.to_string(p.id),
+                            tr([], [
+                              td([], [text(p.name)]),
+                              td([], [text(p.my_role)]),
+                              td([], [
+                                button(
+                                  [
+                                    attribute.class("btn-danger btn-sm"),
+                                    attribute.disabled(
+                                      model.user_projects_in_flight,
+                                    ),
+                                    event.on_click(UserProjectRemoveClicked(p.id)),
+                                  ],
+                                  [
+                                    text(update_helpers.i18n_t(
+                                      model,
+                                      i18n_text.UserProjectRemove,
+                                    )),
+                                  ],
+                                ),
+                              ]),
+                            ]),
+                          )
+                        }),
+                      ),
+                    ]),
+                  ])
+              }
+          },
+          // Add to project form
+          hr([]),
+          div([attribute.class("add-project-form")], [
+            h3([], [
+              text(update_helpers.i18n_t(model, i18n_text.UserProjectsAdd)),
+            ]),
+            div([attribute.class("field-row")], [
+              select(
+                [
+                  attribute.value(
+                    case model.user_projects_add_project_id {
+                      opt.Some(id) -> int.to_string(id)
+                      opt.None -> ""
+                    },
+                  ),
+                  attribute.disabled(model.user_projects_in_flight),
+                  event.on_input(UserProjectsAddProjectChanged),
+                ],
+                [
+                  option([attribute.value("")], update_helpers.i18n_t(
+                    model,
+                    i18n_text.SelectProject,
+                  )),
+                  ..view_available_projects_options(model),
+                ],
+              ),
+              button(
+                [
+                  attribute.disabled(
+                    model.user_projects_in_flight
+                    || opt.is_none(model.user_projects_add_project_id),
+                  ),
+                  event.on_click(UserProjectsAddSubmitted),
+                ],
+                [text(update_helpers.i18n_t(model, i18n_text.Add))],
+              ),
+            ]),
+          ]),
+        ],
+        // Footer: close button
+        [
+          button([event.on_click(UserProjectsDialogClosed)], [
+            text(update_helpers.i18n_t(model, i18n_text.Close)),
+          ]),
+        ],
+      )
+    }
+
+    _, _ -> element.none()
+  }
+}
+
+/// Get available projects to add user to (exclude projects user is already in).
+fn view_available_projects_options(model: Model) -> List(Element(Msg)) {
+  // Get all org projects
+  let all_projects = case model.projects {
+    Loaded(projects) -> projects
+    _ -> []
+  }
+
+  // Get user's current projects
+  let user_project_ids = case model.user_projects_list {
+    Loaded(user_projects) -> list.map(user_projects, fn(p) { p.id })
+    _ -> []
+  }
+
+  // Filter to projects user is not already in
+  all_projects
+  |> list.filter(fn(p) { !list.contains(user_project_ids, p.id) })
+  |> list.map(fn(p) { option([attribute.value(int.to_string(p.id))], p.name) })
 }
 
 /// Capabilities management view.
 pub fn view_capabilities(model: Model) -> Element(Msg) {
   div([attribute.class("section")], [
-    h2([], [text(update_helpers.i18n_t(model, i18n_text.Capabilities))]),
-    view_capabilities_list(model, model.capabilities),
-    hr([]),
-    h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateCapability))]),
-    case model.capabilities_create_error {
-      opt.Some(err) -> div([attribute.class("error")], [text(err)])
-      opt.None -> element.none()
-    },
-    form([event.on_submit(fn(_) { CapabilityCreateSubmitted })], [
-      div([attribute.class("field")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
-        input([
-          attribute.type_("text"),
-          attribute.value(model.capabilities_create_name),
-          event.on_input(CapabilityCreateNameChanged),
-          attribute.required(True),
-        ]),
+    // Section header with add button
+    div([attribute.class("admin-section-header")], [
+      div([attribute.class("admin-section-title")], [
+        span([attribute.class("admin-section-icon")], [text("\u{1F3AF}")]),
+        text(update_helpers.i18n_t(model, i18n_text.Capabilities)),
       ]),
+      dialog.add_button(
+        model,
+        i18n_text.CreateCapability,
+        CapabilityCreateDialogOpened,
+      ),
+    ]),
+    // Capabilities list
+    view_capabilities_list(model, model.capabilities),
+    // Create capability dialog
+    view_capabilities_create_dialog(model),
+  ])
+}
+
+/// Dialog for creating a new capability.
+fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
+  dialog.view(
+    dialog.DialogConfig(
+      title: update_helpers.i18n_t(model, i18n_text.CreateCapability),
+      icon: opt.Some("\u{1F3AF}"),
+      size: dialog.DialogSm,
+      on_close: CapabilityCreateDialogClosed,
+    ),
+    model.capabilities_create_dialog_open,
+    model.capabilities_create_error,
+    // Form content
+    [
+      form(
+        [
+          event.on_submit(fn(_) { CapabilityCreateSubmitted }),
+          attribute.id("capability-create-form"),
+        ],
+        [
+          div([attribute.class("field")], [
+            label([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
+            input([
+              attribute.type_("text"),
+              attribute.value(model.capabilities_create_name),
+              event.on_input(CapabilityCreateNameChanged),
+              attribute.required(True),
+              attribute.placeholder(
+                update_helpers.i18n_t(model, i18n_text.CapabilityNamePlaceholder),
+              ),
+              attribute.attribute("aria-label", "Capability name"),
+            ]),
+          ]),
+        ],
+      ),
+    ],
+    // Footer buttons
+    [
+      dialog.cancel_button(model, CapabilityCreateDialogClosed),
       button(
         [
           attribute.type_("submit"),
+          attribute.form("capability-create-form"),
           attribute.disabled(model.capabilities_create_in_flight),
+          attribute.class(case model.capabilities_create_in_flight {
+            True -> "btn-loading"
+            False -> ""
+          }),
         ],
         [
           text(case model.capabilities_create_in_flight {
@@ -229,8 +496,8 @@ pub fn view_capabilities(model: Model) -> Element(Msg) {
           }),
         ],
       ),
-    ]),
-  ])
+    ],
+  )
 }
 
 /// Project members management view.
@@ -249,20 +516,33 @@ pub fn view_members(
 
     opt.Some(project) ->
       div([attribute.class("section")], [
-        h2([], [
-          text(update_helpers.i18n_t(
-            model,
-            i18n_text.MembersTitle(project.name),
-          )),
+        // Help callout for Members section
+        info_callout.simple(update_helpers.i18n_t(model, i18n_text.MembersHelp)),
+        // Card: Members list
+        div([attribute.class("admin-card")], [
+          div([attribute.class("admin-card-header")], [
+            text(update_helpers.i18n_t(
+              model,
+              i18n_text.MembersTitle(project.name),
+            )),
+          ]),
+          case model.members_remove_error {
+            opt.Some(err) -> div([attribute.class("error")], [text(err)])
+            opt.None -> element.none()
+          },
+          view_members_table(model, model.members, model.org_users_cache),
+          // Button styled as primary CTA
+          div([attribute.attribute("style", "margin-top: 16px;")], [
+            button(
+              [
+                attribute.type_("submit"),
+                event.on_click(MemberAddDialogOpened),
+                attribute.attribute("aria-label", "Add new member to project"),
+              ],
+              [text("+ " <> update_helpers.i18n_t(model, i18n_text.AddMember))],
+            ),
+          ]),
         ]),
-        button([event.on_click(MemberAddDialogOpened)], [
-          text(update_helpers.i18n_t(model, i18n_text.AddMember)),
-        ]),
-        case model.members_remove_error {
-          opt.Some(err) -> div([attribute.class("error")], [text(err)])
-          opt.None -> element.none()
-        },
-        view_members_table(model, model.members, model.org_users_cache),
         case model.members_add_dialog_open {
           True -> view_add_member_dialog(model)
           False -> element.none()
@@ -291,81 +571,150 @@ pub fn view_task_types(
 
     opt.Some(project) ->
       div([attribute.class("section")], [
-        h2([], [
-          text(update_helpers.i18n_t(
-            model,
-            i18n_text.TaskTypesTitle(project.name),
-          )),
-        ]),
-        view_task_types_list(model, model.task_types, model.theme),
-        hr([]),
-        h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateTaskType))]),
-        case model.task_types_create_error {
-          opt.Some(err) -> div([attribute.class("error")], [text(err)])
-          opt.None -> element.none()
-        },
-        form([event.on_submit(fn(_) { TaskTypeCreateSubmitted })], [
-          div([attribute.class("field")], [
-            label([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
-            input([
-              attribute.type_("text"),
-              attribute.value(model.task_types_create_name),
-              event.on_input(TaskTypeCreateNameChanged),
-              attribute.required(True),
-            ]),
-          ]),
-          div([attribute.class("field")], [
-            label([], [text(update_helpers.i18n_t(model, i18n_text.Icon))]),
-            div([attribute.class("icon-row")], [
-              input([
-                attribute.type_("text"),
-                attribute.value(model.task_types_create_icon),
-                event.on_input(TaskTypeCreateIconChanged),
-                attribute.required(True),
-                attribute.placeholder(update_helpers.i18n_t(
-                  model,
-                  i18n_text.HeroiconSearchPlaceholder,
-                )),
-              ]),
-              view_icon_preview(model.task_types_create_icon),
-            ]),
-            view_icon_picker(model.task_types_create_icon),
-            case model.task_types_icon_preview {
-              IconError ->
-                div([attribute.class("error")], [
-                  text(update_helpers.i18n_t(model, i18n_text.UnknownIcon)),
-                ])
-              _ -> element.none()
-            },
-          ]),
-          div([attribute.class("field")], [
-            label([], [
-              text(update_helpers.i18n_t(model, i18n_text.CapabilityOptional)),
-            ]),
-            view_capability_selector(
+        // Section header with add button
+        div([attribute.class("admin-section-header")], [
+          div([attribute.class("admin-section-title")], [
+            span([attribute.class("admin-section-icon")], [text("\u{1F3AF}")]),
+            text(update_helpers.i18n_t(
               model,
-              model.capabilities,
-              model.task_types_create_capability_id,
-            ),
+              i18n_text.TaskTypesTitle(project.name),
+            )),
           ]),
-          button(
-            [
-              attribute.type_("submit"),
-              attribute.disabled(
-                model.task_types_create_in_flight
-                || model.task_types_icon_preview != IconOk,
-              ),
-            ],
-            [
-              text(case model.task_types_create_in_flight {
-                True -> update_helpers.i18n_t(model, i18n_text.Creating)
-                False -> update_helpers.i18n_t(model, i18n_text.Create)
-              }),
-            ],
+          dialog.add_button(
+            model,
+            i18n_text.CreateTaskType,
+            TaskTypeCreateDialogOpened,
           ),
         ]),
+        // Task types list
+        view_task_types_list(model, model.task_types, model.theme),
+        // Create task type dialog
+        view_task_types_create_dialog(model),
       ])
   }
+}
+
+/// Dialog for creating a new task type.
+fn view_task_types_create_dialog(model: Model) -> Element(Msg) {
+  dialog.view(
+    dialog.DialogConfig(
+      title: update_helpers.i18n_t(model, i18n_text.CreateTaskType),
+      icon: opt.Some("\u{1F3AF}"),
+      size: dialog.DialogMd,
+      on_close: TaskTypeCreateDialogClosed,
+    ),
+    model.task_types_create_dialog_open,
+    model.task_types_create_error,
+    // Form content
+    [
+      form(
+        [
+          event.on_submit(fn(_) { TaskTypeCreateSubmitted }),
+          attribute.id("task-type-create-form"),
+        ],
+        [
+          // Section: Identity
+          div([attribute.class("form-section")], [
+            div([attribute.class("form-section-title")], [
+              text(update_helpers.i18n_t(model, i18n_text.IdentitySection)),
+            ]),
+            div([attribute.class("field")], [
+              label([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
+              input([
+                attribute.type_("text"),
+                attribute.value(model.task_types_create_name),
+                event.on_input(TaskTypeCreateNameChanged),
+                attribute.required(True),
+                attribute.attribute("aria-label", "Task type name"),
+              ]),
+            ]),
+          ]),
+          // Section: Appearance
+          div([attribute.class("form-section")], [
+            div([attribute.class("form-section-title")], [
+              text(update_helpers.i18n_t(model, i18n_text.AppearanceSection)),
+            ]),
+            div([attribute.class("field")], [
+              label([], [text(update_helpers.i18n_t(model, i18n_text.Icon))]),
+              div([attribute.class("icon-row")], [
+                input([
+                  attribute.type_("text"),
+                  attribute.value(model.task_types_create_icon),
+                  event.on_input(TaskTypeCreateIconChanged),
+                  attribute.required(True),
+                  attribute.placeholder(update_helpers.i18n_t(
+                    model,
+                    i18n_text.HeroiconSearchPlaceholder,
+                  )),
+                ]),
+                view_icon_preview(model.task_types_create_icon),
+              ]),
+              // Large icon preview
+              div([attribute.class("icon-preview-large")], [
+                case model.task_types_create_icon == "" {
+                  True -> text("-")
+                  False ->
+                    view_task_type_icon_inline(
+                      model.task_types_create_icon,
+                      28,
+                      model.theme,
+                    )
+                },
+              ]),
+              view_icon_picker(model.task_types_create_icon),
+              case model.task_types_icon_preview {
+                IconError ->
+                  div([attribute.class("field-error-msg")], [
+                    text(update_helpers.i18n_t(model, i18n_text.UnknownIcon)),
+                  ])
+                _ -> element.none()
+              },
+            ]),
+          ]),
+          // Section: Configuration
+          div([attribute.class("form-section")], [
+            div([attribute.class("form-section-title")], [
+              text(update_helpers.i18n_t(model, i18n_text.ConfigurationSection)),
+            ]),
+            div([attribute.class("field")], [
+              label([], [
+                text(update_helpers.i18n_t(model, i18n_text.CapabilityOptional)),
+              ]),
+              view_capability_selector(
+                model,
+                model.capabilities,
+                model.task_types_create_capability_id,
+              ),
+            ]),
+          ]),
+        ],
+      ),
+    ],
+    // Footer buttons
+    [
+      dialog.cancel_button(model, TaskTypeCreateDialogClosed),
+      button(
+        [
+          attribute.type_("submit"),
+          attribute.form("task-type-create-form"),
+          attribute.disabled(
+            model.task_types_create_in_flight
+            || model.task_types_icon_preview != IconOk,
+          ),
+          attribute.class(case model.task_types_create_in_flight {
+            True -> "btn-loading"
+            False -> ""
+          }),
+        ],
+        [
+          text(case model.task_types_create_in_flight {
+            True -> update_helpers.i18n_t(model, i18n_text.Creating)
+            False -> update_helpers.i18n_t(model, i18n_text.Create)
+          }),
+        ],
+      ),
+    ],
+  )
 }
 
 // =============================================================================
@@ -926,24 +1275,64 @@ pub fn view_cards(
 
     opt.Some(project) ->
       div([attribute.class("section")], [
-        h2([], [
-          text(update_helpers.i18n_t(model, i18n_text.CardsTitle(project.name))),
+        // Section header with add button
+        div([attribute.class("admin-section-header")], [
+          div([attribute.class("admin-section-title")], [
+            span([attribute.class("admin-section-icon")], [text("\u{1F0CF}")]),
+            text(update_helpers.i18n_t(
+              model,
+              i18n_text.CardsTitle(project.name),
+            )),
+          ]),
+          dialog.add_button(model, i18n_text.CreateCard, CardCreateDialogOpened),
         ]),
+        // Cards list
         view_cards_list(model, model.cards),
-        hr([]),
-        h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateCard))]),
-        case model.cards_create_error {
-          opt.Some(err) -> div([attribute.class("error")], [text(err)])
+        // Create card dialog
+        view_cards_create_dialog(model),
+        // Edit card dialog
+        case model.cards_edit_id {
+          opt.Some(_) -> view_edit_card_dialog(model)
           opt.None -> element.none()
         },
-        form([event.on_submit(fn(_) { CardCreateSubmitted })], [
+        // Delete card confirmation
+        case model.cards_delete_confirm {
+          opt.Some(card) -> view_delete_card_dialog(model, card)
+          opt.None -> element.none()
+        },
+      ])
+  }
+}
+
+/// Dialog for creating a new card.
+fn view_cards_create_dialog(model: Model) -> Element(Msg) {
+  dialog.view(
+    dialog.DialogConfig(
+      title: update_helpers.i18n_t(model, i18n_text.CreateCard),
+      icon: opt.Some("\u{1F0CF}"),
+      size: dialog.DialogMd,
+      on_close: CardCreateDialogClosed,
+    ),
+    model.cards_create_dialog_open,
+    model.cards_create_error,
+    // Form content
+    [
+      form(
+        [
+          event.on_submit(fn(_) { CardCreateSubmitted }),
+          attribute.id("card-create-form"),
+        ],
+        [
           div([attribute.class("field")], [
-            label([], [text(update_helpers.i18n_t(model, i18n_text.CardTitle))]),
+            label([], [
+              text(update_helpers.i18n_t(model, i18n_text.CardTitle)),
+            ]),
             input([
               attribute.type_("text"),
               attribute.value(model.cards_create_title),
               event.on_input(CardCreateTitleChanged),
               attribute.required(True),
+              attribute.attribute("aria-label", "Card title"),
             ]),
           ]),
           div([attribute.class("field")], [
@@ -954,31 +1343,57 @@ pub fn view_cards(
               attribute.type_("text"),
               attribute.value(model.cards_create_description),
               event.on_input(CardCreateDescriptionChanged),
+              attribute.attribute("aria-label", "Card description"),
             ]),
           ]),
-          button(
-            [
-              attribute.type_("submit"),
-              attribute.disabled(model.cards_create_in_flight),
-            ],
-            [
-              text(case model.cards_create_in_flight {
-                True -> update_helpers.i18n_t(model, i18n_text.Creating)
-                False -> update_helpers.i18n_t(model, i18n_text.Create)
-              }),
-            ],
-          ),
-        ]),
-        case model.cards_edit_id {
-          opt.Some(_) -> view_edit_card_dialog(model)
-          opt.None -> element.none()
-        },
-        case model.cards_delete_confirm {
-          opt.Some(card) -> view_delete_card_dialog(model, card)
-          opt.None -> element.none()
-        },
-      ])
-  }
+          div([attribute.class("field")], [
+            label([], [
+              text(update_helpers.i18n_t(model, i18n_text.ColorLabel)),
+            ]),
+            color_picker.view(
+              model,
+              case model.cards_create_color {
+                opt.None -> opt.None
+                opt.Some(c) -> color_picker.string_to_color(c)
+              },
+              model.cards_create_color_open,
+              CardCreateColorToggle,
+              fn(c) {
+                case c {
+                  opt.None -> CardCreateColorChanged(opt.None)
+                  opt.Some(color) ->
+                    CardCreateColorChanged(opt.Some(
+                      color_picker.color_to_string(color),
+                    ))
+                }
+              },
+            ),
+          ]),
+        ],
+      ),
+    ],
+    // Footer buttons
+    [
+      dialog.cancel_button(model, CardCreateDialogClosed),
+      button(
+        [
+          attribute.type_("submit"),
+          attribute.form("card-create-form"),
+          attribute.disabled(model.cards_create_in_flight),
+          attribute.class(case model.cards_create_in_flight {
+            True -> "btn-loading"
+            False -> ""
+          }),
+        ],
+        [
+          text(case model.cards_create_in_flight {
+            True -> update_helpers.i18n_t(model, i18n_text.Creating)
+            False -> update_helpers.i18n_t(model, i18n_text.Create)
+          }),
+        ],
+      ),
+    ],
+  )
 }
 
 fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
@@ -1000,8 +1415,17 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
     Loaded(cards) ->
       case cards {
         [] ->
-          div([attribute.class("empty")], [
-            text(update_helpers.i18n_t(model, i18n_text.NoCardsYet)),
+          // E08: Improved empty state with guidance
+          div([attribute.class("empty-state")], [
+            div([attribute.class("empty-state-icon")], [text("📋")]),
+            div([attribute.class("empty-state-title")], [
+              text(update_helpers.i18n_t(model, i18n_text.NoCardsYet)),
+            ]),
+            div([attribute.class("empty-state-description")], [
+              text(
+                "Las fichas agrupan tareas relacionadas. Crea tu primera ficha para organizar el trabajo.",
+              ),
+            ]),
           ])
         _ ->
           table([attribute.class("table")], [
@@ -1020,10 +1444,18 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
             keyed.tbody(
               [],
               list.map(cards, fn(c) {
+                let card_color = case c.color {
+                  opt.Some(s) -> color_picker.string_to_color(s)
+                  opt.None -> opt.None
+                }
                 #(
                   int.to_string(c.id),
                   tr([], [
-                    td([], [text(c.title)]),
+                    td([attribute.class("card-title-cell")], [
+                      // Card initials badge (DRY: uses shared card_badge component)
+                      card_badge.view(c.title, card_color, opt.None),
+                      text(c.title),
+                    ]),
                     td([], [text(view_card_state_label(model, c.state))]),
                     td([], [
                       text(update_helpers.i18n_t(
@@ -1083,6 +1515,29 @@ fn view_edit_card_dialog(model: Model) -> Element(Msg) {
             attribute.value(model.cards_edit_description),
             event.on_input(CardEditDescriptionChanged),
           ]),
+        ]),
+        div([attribute.class("field")], [
+          label([], [
+            text(update_helpers.i18n_t(model, i18n_text.ColorLabel)),
+          ]),
+          color_picker.view(
+            model,
+            case model.cards_edit_color {
+              opt.None -> opt.None
+              opt.Some(c) -> color_picker.string_to_color(c)
+            },
+            model.cards_edit_color_open,
+            CardEditColorToggle,
+            fn(c) {
+              case c {
+                opt.None -> CardEditColorChanged(opt.None)
+                opt.Some(color) ->
+                  CardEditColorChanged(opt.Some(
+                    color_picker.color_to_string(color),
+                  ))
+              }
+            },
+          ),
         ]),
         div([attribute.class("actions")], [
           button(
@@ -1163,8 +1618,15 @@ fn view_workflows_list(
   selected_project: opt.Option(Project),
 ) -> Element(Msg) {
   div([attribute.class("section")], [
-    // Org workflows section
-    h2([], [text(update_helpers.i18n_t(model, i18n_text.WorkflowsOrgTitle))]),
+    // Section header with add button
+    div([attribute.class("admin-section-header")], [
+      div([attribute.class("admin-section-title")], [
+        span([attribute.class("admin-section-icon")], [text("\u{2699}\u{FE0F}")]),
+        text(update_helpers.i18n_t(model, i18n_text.WorkflowsOrgTitle)),
+      ]),
+      dialog.add_button(model, i18n_text.CreateWorkflow, WorkflowCreateDialogOpened),
+    ]),
+    // Org workflows table
     view_workflows_table(model, model.workflows_org, opt.None),
     // Project workflows section (if project selected)
     case selected_project {
@@ -1185,56 +1647,8 @@ fn view_workflows_list(
         ])
       opt.None -> element.none()
     },
-    // Create workflow form
-    hr([]),
-    h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateWorkflow))]),
-    case model.workflows_create_error {
-      opt.Some(err) -> div([attribute.class("error")], [text(err)])
-      opt.None -> element.none()
-    },
-    form([event.on_submit(fn(_) { WorkflowCreateSubmitted })], [
-      div([attribute.class("field")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.WorkflowName))]),
-        input([
-          attribute.type_("text"),
-          attribute.value(model.workflows_create_name),
-          event.on_input(WorkflowCreateNameChanged),
-          attribute.required(True),
-        ]),
-      ]),
-      div([attribute.class("field")], [
-        label([], [
-          text(update_helpers.i18n_t(model, i18n_text.WorkflowDescription)),
-        ]),
-        input([
-          attribute.type_("text"),
-          attribute.value(model.workflows_create_description),
-          event.on_input(WorkflowCreateDescriptionChanged),
-        ]),
-      ]),
-      div([attribute.class("field")], [
-        label([], [
-          input([
-            attribute.type_("checkbox"),
-            attribute.checked(model.workflows_create_active),
-            event.on_check(WorkflowCreateActiveChanged),
-          ]),
-          text(" " <> update_helpers.i18n_t(model, i18n_text.WorkflowActive)),
-        ]),
-      ]),
-      button(
-        [
-          attribute.type_("submit"),
-          attribute.disabled(model.workflows_create_in_flight),
-        ],
-        [
-          text(case model.workflows_create_in_flight {
-            True -> update_helpers.i18n_t(model, i18n_text.Creating)
-            False -> update_helpers.i18n_t(model, i18n_text.Create)
-          }),
-        ],
-      ),
-    ]),
+    // Create dialog
+    view_workflow_create_dialog(model),
     // Edit dialog
     case model.workflows_edit_id {
       opt.Some(_) -> view_edit_workflow_dialog(model)
@@ -1246,6 +1660,62 @@ fn view_workflows_list(
       opt.None -> element.none()
     },
   ])
+}
+
+fn view_workflow_create_dialog(model: Model) -> Element(Msg) {
+  dialog.view(
+    dialog.DialogConfig(
+      title: update_helpers.i18n_t(model, i18n_text.CreateWorkflow),
+      icon: opt.Some("\u{2699}\u{FE0F}"),
+      size: dialog.DialogMd,
+      on_close: WorkflowCreateDialogClosed,
+    ),
+    model.workflows_create_dialog_open,
+    model.workflows_create_error,
+    [
+      form([event.on_submit(fn(_) { WorkflowCreateSubmitted })], [
+        div([attribute.class("field")], [
+          label([], [text(update_helpers.i18n_t(model, i18n_text.WorkflowName))]),
+          input([
+            attribute.type_("text"),
+            attribute.value(model.workflows_create_name),
+            event.on_input(WorkflowCreateNameChanged),
+            attribute.required(True),
+          ]),
+        ]),
+        div([attribute.class("field")], [
+          label([], [
+            text(update_helpers.i18n_t(model, i18n_text.WorkflowDescription)),
+          ]),
+          input([
+            attribute.type_("text"),
+            attribute.value(model.workflows_create_description),
+            event.on_input(WorkflowCreateDescriptionChanged),
+          ]),
+        ]),
+        div([attribute.class("field")], [
+          label([], [
+            input([
+              attribute.type_("checkbox"),
+              attribute.checked(model.workflows_create_active),
+              event.on_check(WorkflowCreateActiveChanged),
+            ]),
+            text(" " <> update_helpers.i18n_t(model, i18n_text.WorkflowActive)),
+          ]),
+        ]),
+        dialog.submit_button(
+          model,
+          model.workflows_create_in_flight,
+          False,
+          i18n_text.Create,
+          i18n_text.Creating,
+        ),
+      ]),
+    ],
+    [
+      dialog.cancel_button(model, WorkflowCreateDialogClosed),
+    ],
+  )
 }
 
 fn view_workflows_table(
@@ -1441,114 +1911,17 @@ fn view_workflow_rules(model: Model, workflow_id: Int) -> Element(Msg) {
 
   div([attribute.class("section")], [
     button([event.on_click(RulesBackClicked)], [text("← Back to Workflows")]),
-    h2([], [
-      text(update_helpers.i18n_t(model, i18n_text.RulesTitle(workflow_name))),
+    // Section header with add button
+    div([attribute.class("admin-section-header")], [
+      div([attribute.class("admin-section-title")], [
+        span([attribute.class("admin-section-icon")], [text("\u{1F4DC}")]),
+        text(update_helpers.i18n_t(model, i18n_text.RulesTitle(workflow_name))),
+      ]),
+      dialog.add_button(model, i18n_text.CreateRule, RuleCreateDialogOpened),
     ]),
     view_rules_table(model, model.rules, model.rules_metrics),
-    // Create rule form
-    hr([]),
-    h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateRule))]),
-    case model.rules_create_error {
-      opt.Some(err) -> div([attribute.class("error")], [text(err)])
-      opt.None -> element.none()
-    },
-    form([event.on_submit(fn(_) { RuleCreateSubmitted })], [
-      div([attribute.class("field")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.RuleName))]),
-        input([
-          attribute.type_("text"),
-          attribute.value(model.rules_create_name),
-          event.on_input(RuleCreateNameChanged),
-          attribute.required(True),
-        ]),
-      ]),
-      div([attribute.class("field")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.RuleGoal))]),
-        input([
-          attribute.type_("text"),
-          attribute.value(model.rules_create_goal),
-          event.on_input(RuleCreateGoalChanged),
-        ]),
-      ]),
-      div([attribute.class("field")], [
-        label([], [
-          text(update_helpers.i18n_t(model, i18n_text.RuleResourceType)),
-        ]),
-        select(
-          [
-            attribute.value(model.rules_create_resource_type),
-            event.on_input(RuleCreateResourceTypeChanged),
-          ],
-          [
-            option(
-              [attribute.value("task")],
-              update_helpers.i18n_t(model, i18n_text.RuleResourceTypeTask),
-            ),
-            option(
-              [attribute.value("card")],
-              update_helpers.i18n_t(model, i18n_text.RuleResourceTypeCard),
-            ),
-          ],
-        ),
-      ]),
-      case model.rules_create_resource_type == "task" {
-        True ->
-          div([attribute.class("field")], [
-            label([], [
-              text(update_helpers.i18n_t(model, i18n_text.RuleTaskType)),
-            ]),
-            view_task_type_selector_for_templates(
-              model,
-              model.task_types,
-              case model.rules_create_task_type_id {
-                opt.Some(id) -> int.to_string(id)
-                opt.None -> ""
-              },
-              RuleCreateTaskTypeIdChanged,
-            ),
-          ])
-        False -> element.none()
-      },
-      div([attribute.class("field")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.RuleToState))]),
-        select(
-          [
-            attribute.value(model.rules_create_to_state),
-            event.on_input(RuleCreateToStateChanged),
-          ],
-          [
-            option([attribute.value("available")], "available"),
-            option([attribute.value("claimed")], "claimed"),
-            option([attribute.value("completed")], "completed"),
-            option([attribute.value("pendiente")], "pendiente"),
-            option([attribute.value("en_curso")], "en_curso"),
-            option([attribute.value("cerrada")], "cerrada"),
-          ],
-        ),
-      ]),
-      div([attribute.class("field")], [
-        label([], [
-          input([
-            attribute.type_("checkbox"),
-            attribute.checked(model.rules_create_active),
-            event.on_check(RuleCreateActiveChanged),
-          ]),
-          text(" " <> update_helpers.i18n_t(model, i18n_text.RuleActive)),
-        ]),
-      ]),
-      button(
-        [
-          attribute.type_("submit"),
-          attribute.disabled(model.rules_create_in_flight),
-        ],
-        [
-          text(case model.rules_create_in_flight {
-            True -> update_helpers.i18n_t(model, i18n_text.Creating)
-            False -> update_helpers.i18n_t(model, i18n_text.Create)
-          }),
-        ],
-      ),
-    ]),
+    // Create dialog
+    view_rule_create_dialog(model),
     // Edit dialog
     case model.rules_edit_id {
       opt.Some(_) -> view_edit_rule_dialog(model)
@@ -1692,6 +2065,109 @@ fn get_rule_metrics(
   }
 }
 
+fn view_rule_create_dialog(model: Model) -> Element(Msg) {
+  dialog.view(
+    dialog.DialogConfig(
+      title: update_helpers.i18n_t(model, i18n_text.CreateRule),
+      icon: opt.Some("\u{1F4DC}"),
+      size: dialog.DialogLg,
+      on_close: RuleCreateDialogClosed,
+    ),
+    model.rules_create_dialog_open,
+    model.rules_create_error,
+    [
+      form([event.on_submit(fn(_) { RuleCreateSubmitted })], [
+        div([attribute.class("field")], [
+          label([], [text(update_helpers.i18n_t(model, i18n_text.RuleName))]),
+          input([
+            attribute.type_("text"),
+            attribute.value(model.rules_create_name),
+            event.on_input(RuleCreateNameChanged),
+            attribute.required(True),
+          ]),
+        ]),
+        div([attribute.class("field")], [
+          label([], [text(update_helpers.i18n_t(model, i18n_text.RuleGoal))]),
+          input([
+            attribute.type_("text"),
+            attribute.value(model.rules_create_goal),
+            event.on_input(RuleCreateGoalChanged),
+          ]),
+        ]),
+        div([attribute.class("field")], [
+          label([], [
+            text(update_helpers.i18n_t(model, i18n_text.RuleResourceType)),
+          ]),
+          select(
+            [
+              attribute.value(model.rules_create_resource_type),
+              event.on_input(RuleCreateResourceTypeChanged),
+            ],
+            [
+              option(
+                [attribute.value("task")],
+                update_helpers.i18n_t(model, i18n_text.RuleResourceTypeTask),
+              ),
+              option(
+                [attribute.value("card")],
+                update_helpers.i18n_t(model, i18n_text.RuleResourceTypeCard),
+              ),
+            ],
+          ),
+        ]),
+        case model.rules_create_resource_type == "task" {
+          True ->
+            div([attribute.class("field")], [
+              label([], [
+                text(update_helpers.i18n_t(model, i18n_text.RuleTaskType)),
+              ]),
+              view_task_type_selector_for_templates(
+                model,
+                model.task_types,
+                case model.rules_create_task_type_id {
+                  opt.Some(id) -> int.to_string(id)
+                  opt.None -> ""
+                },
+                RuleCreateTaskTypeIdChanged,
+              ),
+            ])
+          False -> element.none()
+        },
+        div([attribute.class("field")], [
+          label([], [text(update_helpers.i18n_t(model, i18n_text.RuleToState))]),
+          select(
+            [
+              attribute.value(model.rules_create_to_state),
+              event.on_input(RuleCreateToStateChanged),
+            ],
+            view_state_options(model, model.rules_create_resource_type),
+          ),
+        ]),
+        div([attribute.class("field")], [
+          label([], [
+            input([
+              attribute.type_("checkbox"),
+              attribute.checked(model.rules_create_active),
+              event.on_check(RuleCreateActiveChanged),
+            ]),
+            text(" " <> update_helpers.i18n_t(model, i18n_text.RuleActive)),
+          ]),
+        ]),
+        dialog.submit_button(
+          model,
+          model.rules_create_in_flight,
+          False,
+          i18n_text.Create,
+          i18n_text.Creating,
+        ),
+      ]),
+    ],
+    [
+      dialog.cancel_button(model, RuleCreateDialogClosed),
+    ],
+  )
+}
+
 fn view_edit_rule_dialog(model: Model) -> Element(Msg) {
   div([attribute.class("modal")], [
     div([attribute.class("modal-content")], [
@@ -1764,14 +2240,7 @@ fn view_edit_rule_dialog(model: Model) -> Element(Msg) {
               attribute.value(model.rules_edit_to_state),
               event.on_input(RuleEditToStateChanged),
             ],
-            [
-              option([attribute.value("available")], "available"),
-              option([attribute.value("claimed")], "claimed"),
-              option([attribute.value("completed")], "completed"),
-              option([attribute.value("pendiente")], "pendiente"),
-              option([attribute.value("en_curso")], "en_curso"),
-              option([attribute.value("cerrada")], "cerrada"),
-            ],
+            view_state_options(model, model.rules_edit_resource_type),
           ),
         ]),
         div([attribute.class("field")], [
@@ -1847,8 +2316,14 @@ pub fn view_task_templates(
   selected_project: opt.Option(Project),
 ) -> Element(Msg) {
   div([attribute.class("section")], [
-    // Org templates section
-    h2([], [text(update_helpers.i18n_t(model, i18n_text.TaskTemplatesOrgTitle))]),
+    // Section header with add button
+    div([attribute.class("admin-section-header")], [
+      div([attribute.class("admin-section-title")], [
+        span([attribute.class("admin-section-icon")], [text("\u{1F4CB}")]),
+        text(update_helpers.i18n_t(model, i18n_text.TaskTemplatesOrgTitle)),
+      ]),
+      dialog.add_button(model, i18n_text.CreateTaskTemplate, TaskTemplateCreateDialogOpened),
+    ]),
     p([], [
       text(update_helpers.i18n_t(model, i18n_text.TaskTemplateVariablesHelp)),
     ]),
@@ -1868,80 +2343,8 @@ pub fn view_task_templates(
         ])
       opt.None -> element.none()
     },
-    // Create template form
-    hr([]),
-    h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateTaskTemplate))]),
-    case model.task_templates_create_error {
-      opt.Some(err) -> div([attribute.class("error")], [text(err)])
-      opt.None -> element.none()
-    },
-    form([event.on_submit(fn(_) { TaskTemplateCreateSubmitted })], [
-      div([attribute.class("field")], [
-        label([], [
-          text(update_helpers.i18n_t(model, i18n_text.TaskTemplateName)),
-        ]),
-        input([
-          attribute.type_("text"),
-          attribute.value(model.task_templates_create_name),
-          event.on_input(TaskTemplateCreateNameChanged),
-          attribute.required(True),
-        ]),
-      ]),
-      div([attribute.class("field")], [
-        label([], [
-          text(update_helpers.i18n_t(model, i18n_text.TaskTemplateDescription)),
-        ]),
-        input([
-          attribute.type_("text"),
-          attribute.value(model.task_templates_create_description),
-          event.on_input(TaskTemplateCreateDescriptionChanged),
-        ]),
-      ]),
-      div([attribute.class("field")], [
-        label([], [
-          text(update_helpers.i18n_t(model, i18n_text.TaskTemplateType)),
-        ]),
-        view_task_type_selector_for_templates(
-          model,
-          model.task_types,
-          case model.task_templates_create_type_id {
-            opt.Some(id) -> int.to_string(id)
-            opt.None -> ""
-          },
-          TaskTemplateCreateTypeIdChanged,
-        ),
-      ]),
-      div([attribute.class("field")], [
-        label([], [
-          text(update_helpers.i18n_t(model, i18n_text.TaskTemplatePriority)),
-        ]),
-        select(
-          [
-            attribute.value(model.task_templates_create_priority),
-            event.on_input(TaskTemplateCreatePriorityChanged),
-          ],
-          [
-            option([attribute.value("1")], "1"),
-            option([attribute.value("2")], "2"),
-            option([attribute.value("3")], "3"),
-            option([attribute.value("4")], "4"),
-            option([attribute.value("5")], "5"),
-          ],
-        ),
-      ]),
-      button(
-        [
-          attribute.type_("submit"),
-          attribute.disabled(model.task_templates_create_in_flight),
-        ],
-        [
-          text(case model.task_templates_create_in_flight {
-            True -> update_helpers.i18n_t(model, i18n_text.Creating)
-            False -> update_helpers.i18n_t(model, i18n_text.Create)
-          }),
-        ],
-      ),
-    ]),
+    // Create dialog
+    view_task_template_create_dialog(model),
     // Edit dialog
     case model.task_templates_edit_id {
       opt.Some(_) -> view_edit_task_template_dialog(model)
@@ -1953,6 +2356,86 @@ pub fn view_task_templates(
       opt.None -> element.none()
     },
   ])
+}
+
+fn view_task_template_create_dialog(model: Model) -> Element(Msg) {
+  dialog.view(
+    dialog.DialogConfig(
+      title: update_helpers.i18n_t(model, i18n_text.CreateTaskTemplate),
+      icon: opt.Some("\u{1F4CB}"),
+      size: dialog.DialogMd,
+      on_close: TaskTemplateCreateDialogClosed,
+    ),
+    model.task_templates_create_dialog_open,
+    model.task_templates_create_error,
+    [
+      form([event.on_submit(fn(_) { TaskTemplateCreateSubmitted })], [
+        div([attribute.class("field")], [
+          label([], [
+            text(update_helpers.i18n_t(model, i18n_text.TaskTemplateName)),
+          ]),
+          input([
+            attribute.type_("text"),
+            attribute.value(model.task_templates_create_name),
+            event.on_input(TaskTemplateCreateNameChanged),
+            attribute.required(True),
+          ]),
+        ]),
+        div([attribute.class("field")], [
+          label([], [
+            text(update_helpers.i18n_t(model, i18n_text.TaskTemplateDescription)),
+          ]),
+          input([
+            attribute.type_("text"),
+            attribute.value(model.task_templates_create_description),
+            event.on_input(TaskTemplateCreateDescriptionChanged),
+          ]),
+        ]),
+        div([attribute.class("field")], [
+          label([], [
+            text(update_helpers.i18n_t(model, i18n_text.TaskTemplateType)),
+          ]),
+          view_task_type_selector_for_templates(
+            model,
+            model.task_types,
+            case model.task_templates_create_type_id {
+              opt.Some(id) -> int.to_string(id)
+              opt.None -> ""
+            },
+            TaskTemplateCreateTypeIdChanged,
+          ),
+        ]),
+        div([attribute.class("field")], [
+          label([], [
+            text(update_helpers.i18n_t(model, i18n_text.TaskTemplatePriority)),
+          ]),
+          select(
+            [
+              attribute.value(model.task_templates_create_priority),
+              event.on_input(TaskTemplateCreatePriorityChanged),
+            ],
+            [
+              option([attribute.value("1")], "1"),
+              option([attribute.value("2")], "2"),
+              option([attribute.value("3")], "3"),
+              option([attribute.value("4")], "4"),
+              option([attribute.value("5")], "5"),
+            ],
+          ),
+        ]),
+        dialog.submit_button(
+          model,
+          model.task_templates_create_in_flight,
+          False,
+          i18n_text.Create,
+          i18n_text.Creating,
+        ),
+      ]),
+    ],
+    [
+      dialog.cancel_button(model, TaskTemplateCreateDialogClosed),
+    ],
+  )
 }
 
 fn view_task_templates_table(
@@ -2184,42 +2667,76 @@ fn view_delete_task_template_dialog(
 /// Rule metrics tab view.
 pub fn view_rule_metrics(model: Model) -> Element(Msg) {
   div([attribute.class("section")], [
-    h2([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsTitle))]),
-    p([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsHelp))]),
-    // Date range inputs
-    div([attribute.class("field-row")], [
-      div([attribute.class("field")], [
-        label([], [
-          text(update_helpers.i18n_t(model, i18n_text.RuleMetricsFrom)),
-        ]),
-        input([
-          attribute.type_("date"),
-          attribute.value(model.admin_rule_metrics_from),
-          event.on_input(AdminRuleMetricsFromChanged),
+    // Card wrapper
+    div([attribute.class("admin-card")], [
+      div([attribute.class("admin-card-header")], [
+        text(update_helpers.i18n_t(model, i18n_text.RuleMetricsTitle)),
+      ]),
+      // E10: Info callout with instructions
+      div([attribute.class("info-callout")], [
+        div([attribute.class("info-callout-icon")], [text("💡")]),
+        div([attribute.class("info-callout-content")], [
+          div([attribute.class("info-callout-title")], [text("Como usar")]),
+          div([attribute.class("info-callout-text")], [
+            text(
+              "1. Selecciona un rango de fechas. 2. Pulsa \"Actualizar\" para cargar las metricas de ejecucion de tus automatizaciones.",
+            ),
+          ]),
         ]),
       ]),
-      div([attribute.class("field")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsTo))]),
-        input([
-          attribute.type_("date"),
-          attribute.value(model.admin_rule_metrics_to),
-          event.on_input(AdminRuleMetricsToChanged),
-        ]),
-      ]),
-      button(
+      // Date range inputs
+      div(
         [
-          event.on_click(AdminRuleMetricsRefreshClicked),
-          attribute.disabled(
-            model.admin_rule_metrics_from == ""
-            || model.admin_rule_metrics_to == "",
+          attribute.class("field-row"),
+          attribute.attribute(
+            "style",
+            "display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;",
           ),
         ],
-        [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsRefresh))],
+        [
+          div([attribute.class("field")], [
+            label([], [
+              text(update_helpers.i18n_t(model, i18n_text.RuleMetricsFrom)),
+            ]),
+            input([
+              attribute.type_("date"),
+              attribute.value(model.admin_rule_metrics_from),
+              event.on_input(AdminRuleMetricsFromChanged),
+              attribute.attribute("aria-label", "Start date"),
+            ]),
+          ]),
+          div([attribute.class("field")], [
+            label([], [
+              text(update_helpers.i18n_t(model, i18n_text.RuleMetricsTo)),
+            ]),
+            input([
+              attribute.type_("date"),
+              attribute.value(model.admin_rule_metrics_to),
+              event.on_input(AdminRuleMetricsToChanged),
+              attribute.attribute("aria-label", "End date"),
+            ]),
+          ]),
+          button(
+            [
+              attribute.type_("submit"),
+              event.on_click(AdminRuleMetricsRefreshClicked),
+              attribute.disabled(
+                model.admin_rule_metrics_from == ""
+                || model.admin_rule_metrics_to == "",
+              ),
+            ],
+            [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsRefresh))],
+          ),
+        ],
       ),
     ]),
-    hr([]),
-    // Metrics table
-    view_rule_metrics_table(model, model.admin_rule_metrics),
+    // Spacing
+    div([attribute.class("admin-section-gap")], []),
+    // Results card
+    div([attribute.class("admin-card")], [
+      div([attribute.class("admin-card-header")], [text("Resultados")]),
+      view_rule_metrics_table(model, model.admin_rule_metrics),
+    ]),
   ])
 }
 

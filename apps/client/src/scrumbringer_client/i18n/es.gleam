@@ -70,6 +70,9 @@ pub fn translate(text: Text) -> String {
     text.Copying -> "Copiando…"
     text.CopyFailed -> "Error al copiar"
 
+    // Accessibility
+    text.SkipToContent -> "Saltar al contenido"
+
     // Common
     text.Dismiss -> "Cerrar"
     text.Cancel -> "Cancelar"
@@ -108,8 +111,11 @@ pub fn translate(text: Text) -> String {
     text.Pool -> "Pool"
     text.MyBar -> "Mi barra"
     text.MySkills -> "Mis skills"
+    text.MySkillsHelp ->
+      "Selecciona las capacidades que tienes. El Pool destacará las tareas que coincidan."
     text.MyTasks -> "Mis tareas"
     text.NoClaimedTasks -> "No hay tareas reclamadas"
+    text.GoToPoolToClaimTasks -> "Ve al Pool para reclamar tareas"
     text.NoProjectsBody -> "Pide a un admin que te añada a un proyecto."
     text.You -> "Tú"
     text.Notes -> "Notas"
@@ -136,6 +142,7 @@ pub fn translate(text: Text) -> String {
     text.TypeLabel -> "Tipo"
     text.CapabilityLabel -> "Capacidad"
     text.MyCapabilitiesLabel -> "Mis capacidades"
+    text.MyCapabilitiesHint -> "Filtrar tareas que coinciden con mis capacidades"
     text.SearchLabel -> "Buscar"
     text.SearchPlaceholder -> "q"
     text.NoAvailableTasksRightNow -> "No hay tareas disponibles ahora"
@@ -178,6 +185,12 @@ pub fn translate(text: Text) -> String {
     text.NoAdminPermissions -> "Sin permisos de admin"
     text.NotPermitted -> "No permitido"
     text.NotPermittedBody -> "No tienes permiso para acceder a esta sección."
+
+    // Admin sidebar groups (SA01-SA05)
+    text.NavGroupOrganization -> "Organización"
+    text.NavGroupProjects -> "Proyectos"
+    text.NavGroupConfiguration -> "Configuración"
+    text.NavGroupContent -> "Contenido"
 
     // Project selector
     text.ProjectLabel -> "Proyecto"
@@ -259,12 +272,15 @@ pub fn translate(text: Text) -> String {
     // Capabilities
     text.Capabilities -> "Capacidades"
     text.CreateCapability -> "Crear capacidad"
+    text.CapabilityNamePlaceholder -> "ej., Frontend, Backend, UX..."
     text.NoCapabilitiesYet -> "Aún no hay capacidades"
 
     // Members
     text.SelectProjectToManageMembers ->
       "Selecciona un proyecto para gestionar miembros."
     text.MembersTitle(project_name) -> "Miembros - " <> project_name
+    text.MembersHelp ->
+      "Los miembros pueden ver y reclamar tareas de este proyecto. Gestiona quién tiene acceso y con qué rol."
     text.AddMember -> "Añadir miembro"
     text.NoMembersYet -> "Aún no hay miembros"
     text.RemoveMemberTitle -> "Quitar miembro"
@@ -272,11 +288,21 @@ pub fn translate(text: Text) -> String {
       "¿Quitar " <> user_email <> " de " <> project_name <> "?"
     text.Remove -> "Quitar"
 
+    // User Projects dialog
+    text.UserProjectsTitle(user_email) -> "Proyectos de " <> user_email
+    text.UserProjectsEmpty -> "Este usuario no pertenece a ningún proyecto."
+    text.UserProjectsAdd -> "Añadir a proyecto"
+    text.SelectProject -> "Seleccionar proyecto"
+    text.UserProjectRemove -> "Quitar"
+
     // Task types
     text.SelectProjectToManageTaskTypes ->
       "Selecciona un proyecto para gestionar tipos de tarea."
     text.TaskTypesTitle(project_name) -> "Tipos de tarea - " <> project_name
     text.CreateTaskType -> "Crear tipo de tarea"
+    text.IdentitySection -> "Identidad"
+    text.AppearanceSection -> "Apariencia"
+    text.ConfigurationSection -> "Configuración"
     text.Icon -> "Icono"
     text.UnknownIcon -> "Icono desconocido"
     text.CapabilityOptional -> "Capacidad (opcional)"
@@ -372,6 +398,11 @@ pub fn translate(text: Text) -> String {
     text.RuleMetricsApplied -> "Aplicadas"
     text.RuleMetricsSuppressed -> "Suprimidas"
 
+    // Task States (for Rules)
+    text.TaskStateAvailable -> "Disponible"
+    text.TaskStateClaimed -> "Reclamada"
+    text.TaskStateCompleted -> "Completada"
+
     // Task Templates
     text.AdminTaskTemplates -> "Plantillas de tarea"
     text.TaskTemplatesTitle -> "Plantillas de tarea"
@@ -419,5 +450,34 @@ pub fn translate(text: Text) -> String {
     text.Timestamp -> "Fecha/Hora"
     text.OutcomeApplied -> "Aplicada"
     text.OutcomeSuppressed -> "Suprimida"
+
+    // Story 3.4 - Member Card Views
+    text.MemberFichas -> "Fichas"
+    text.MemberFichasEmpty -> "No hay fichas"
+    text.MemberFichasEmptyHint -> "Las fichas agrupan tareas relacionadas"
+
+    // Color picker
+    text.ColorLabel -> "Color"
+    text.ColorNone -> "Ninguno"
+    text.ColorGray -> "Gris"
+    text.ColorRed -> "Rojo"
+    text.ColorOrange -> "Naranja"
+    text.ColorYellow -> "Amarillo"
+    text.ColorGreen -> "Verde"
+    text.ColorBlue -> "Azul"
+    text.ColorPurple -> "Morado"
+    text.ColorPink -> "Rosa"
+
+    // Card grouping
+    text.UngroupedTasks -> "Sin ficha"
+    text.CardProgressCount(completed, total) ->
+      int.to_string(completed) <> "/" <> int.to_string(total)
+
+    // Card detail (member)
+    text.CardAddTask -> "Añadir tarea"
+    text.CardTasksEmpty -> "No hay tareas"
+    text.CardTasksCompleted -> "completadas"
+    text.TaskType -> "Tipo de tarea"
+    text.TaskTitlePlaceholder -> "Título de la tarea..."
   }
 }

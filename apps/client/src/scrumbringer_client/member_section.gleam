@@ -16,6 +16,7 @@ pub type MemberSection {
   Pool
   MyBar
   MySkills
+  Fichas
 }
 
 /// Parses a URL slug into a MemberSection (defaults to Pool).
@@ -30,6 +31,7 @@ pub fn from_slug(slug: String) -> MemberSection {
   case slug {
     "my-bar" -> MyBar
     "my-skills" -> MySkills
+    "fichas" -> Fichas
     "pool" -> Pool
     _ -> Pool
   }
@@ -48,5 +50,6 @@ pub fn to_slug(section: MemberSection) -> String {
     Pool -> "pool"
     MyBar -> "my-bar"
     MySkills -> "my-skills"
+    Fichas -> "fichas"
   }
 }

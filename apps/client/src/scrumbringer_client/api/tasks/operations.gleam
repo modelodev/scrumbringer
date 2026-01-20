@@ -114,6 +114,27 @@ pub fn create_task(
   type_id: Int,
   to_msg: fn(core.ApiResult(Task)) -> msg,
 ) -> Effect(msg) {
+  create_task_with_card(
+    project_id,
+    title,
+    description,
+    priority,
+    type_id,
+    option.None,
+    to_msg,
+  )
+}
+
+/// Create a new task in a project, optionally associated with a card.
+pub fn create_task_with_card(
+  project_id: Int,
+  title: String,
+  description: option.Option(String),
+  priority: Int,
+  type_id: Int,
+  card_id: option.Option(Int),
+  to_msg: fn(core.ApiResult(Task)) -> msg,
+) -> Effect(msg) {
   let entries = [
     #("title", json.string(title)),
     #("priority", json.int(priority)),
@@ -123,6 +144,11 @@ pub fn create_task(
   let entries = case description {
     option.Some(desc) ->
       list.append(entries, [#("description", json.string(desc))])
+    option.None -> entries
+  }
+
+  let entries = case card_id {
+    option.Some(cid) -> list.append(entries, [#("card_id", json.int(cid))])
     option.None -> entries
   }
 

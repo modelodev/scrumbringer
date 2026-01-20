@@ -40,6 +40,7 @@ import scrumbringer_client/features/admin/member_remove
 import scrumbringer_client/features/admin/org_settings
 import scrumbringer_client/features/admin/rule_metrics
 import scrumbringer_client/features/admin/search
+import scrumbringer_client/features/admin/user_projects
 import scrumbringer_client/features/admin/workflows
 
 // =============================================================================
@@ -137,9 +138,17 @@ pub const handle_cards_fetched_ok = cards.handle_cards_fetched_ok
 
 pub const handle_cards_fetched_error = cards.handle_cards_fetched_error
 
+pub const handle_card_create_dialog_opened = cards.handle_card_create_dialog_opened
+
+pub const handle_card_create_dialog_closed = cards.handle_card_create_dialog_closed
+
 pub const handle_card_create_title_changed = cards.handle_card_create_title_changed
 
 pub const handle_card_create_description_changed = cards.handle_card_create_description_changed
+
+pub const handle_card_create_color_changed = cards.handle_card_create_color_changed
+
+pub const handle_card_create_color_toggle = cards.handle_card_create_color_toggle
 
 pub const handle_card_create_submitted = cards.handle_card_create_submitted
 
@@ -152,6 +161,10 @@ pub const handle_card_edit_clicked = cards.handle_card_edit_clicked
 pub const handle_card_edit_title_changed = cards.handle_card_edit_title_changed
 
 pub const handle_card_edit_description_changed = cards.handle_card_edit_description_changed
+
+pub const handle_card_edit_color_changed = cards.handle_card_edit_color_changed
+
+pub const handle_card_edit_color_toggle = cards.handle_card_edit_color_toggle
 
 pub const handle_card_edit_submitted = cards.handle_card_edit_submitted
 
@@ -184,6 +197,10 @@ pub const handle_workflows_org_fetched_error = workflows.handle_workflows_org_fe
 pub const handle_workflows_project_fetched_ok = workflows.handle_workflows_project_fetched_ok
 
 pub const handle_workflows_project_fetched_error = workflows.handle_workflows_project_fetched_error
+
+pub const handle_workflow_create_dialog_opened = workflows.handle_workflow_create_dialog_opened
+
+pub const handle_workflow_create_dialog_closed = workflows.handle_workflow_create_dialog_closed
 
 pub const handle_workflow_create_name_changed = workflows.handle_workflow_create_name_changed
 
@@ -238,6 +255,10 @@ pub const handle_rule_metrics_fetched_ok = workflows.handle_rule_metrics_fetched
 pub const handle_rule_metrics_fetched_error = workflows.handle_rule_metrics_fetched_error
 
 pub const handle_rules_back_clicked = workflows.handle_rules_back_clicked
+
+pub const handle_rule_create_dialog_opened = workflows.handle_rule_create_dialog_opened
+
+pub const handle_rule_create_dialog_closed = workflows.handle_rule_create_dialog_closed
 
 pub const handle_rule_create_name_changed = workflows.handle_rule_create_name_changed
 
@@ -323,6 +344,10 @@ pub const handle_task_templates_project_fetched_ok = workflows.handle_task_templ
 
 pub const handle_task_templates_project_fetched_error = workflows.handle_task_templates_project_fetched_error
 
+pub const handle_task_template_create_dialog_opened = workflows.handle_task_template_create_dialog_opened
+
+pub const handle_task_template_create_dialog_closed = workflows.handle_task_template_create_dialog_closed
+
 pub const handle_task_template_create_name_changed = workflows.handle_task_template_create_name_changed
 
 pub const handle_task_template_create_description_changed = workflows.handle_task_template_create_description_changed
@@ -407,3 +432,29 @@ pub const handle_rule_metrics_executions_fetched_ok = rule_metrics.handle_execut
 pub const handle_rule_metrics_executions_fetched_error = rule_metrics.handle_executions_fetched_error
 
 pub const handle_rule_metrics_exec_page_changed = rule_metrics.handle_exec_page_changed
+
+// =============================================================================
+// Re-exports: User Projects
+// =============================================================================
+
+pub const handle_user_projects_dialog_opened = user_projects.handle_user_projects_dialog_opened
+
+pub const handle_user_projects_dialog_closed = user_projects.handle_user_projects_dialog_closed
+
+pub const handle_user_projects_fetched_ok = user_projects.handle_user_projects_fetched_ok
+
+pub const handle_user_projects_fetched_error = user_projects.handle_user_projects_fetched_error
+
+pub const handle_user_projects_add_project_changed = user_projects.handle_user_projects_add_project_changed
+
+pub const handle_user_projects_add_submitted = user_projects.handle_user_projects_add_submitted
+
+pub const handle_user_project_added_ok = user_projects.handle_user_project_added_ok
+
+pub const handle_user_project_added_error = user_projects.handle_user_project_added_error
+
+pub const handle_user_project_remove_clicked = user_projects.handle_user_project_remove_clicked
+
+pub const handle_user_project_removed_ok = user_projects.handle_user_project_removed_ok
+
+pub const handle_user_project_removed_error = user_projects.handle_user_project_removed_error

@@ -25,6 +25,7 @@ import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
+import gleam/list
 import gleam/option.{type Option, None, Some}
 import pog
 import scrumbringer_server/http/api
@@ -86,23 +87,48 @@ fn require_project_admin(
   }
 }
 
+/// Valid card colors.
+const valid_colors = ["gray", "red", "orange", "yellow", "green", "blue", "purple", "pink"]
+
+fn validate_color(color: String) -> Result(Option(String), wisp.Response) {
+  case color {
+    "" -> Ok(None)
+    c -> {
+      case list.contains(valid_colors, c) {
+        True -> Ok(Some(c))
+        False -> Error(api.error(422, "VALIDATION_ERROR", "Invalid color value"))
+      }
+    }
+  }
+}
+
 fn decode_card_payload_data(
   data: dynamic.Dynamic,
-) -> Result(#(String, Option(String)), wisp.Response) {
+) -> Result(#(String, Option(String), Option(String)), wisp.Response) {
   let decoder = {
     use title <- decode.field("title", decode.string)
     use description <- decode.optional_field("description", "", decode.string)
-    decode.success(#(title, description))
+    use color <- decode.optional_field("color", "", decode.string)
+    decode.success(#(title, description, color))
   }
 
   case decode.run(data, decoder) {
-    Ok(#(title, description)) ->
-      Ok(
-        #(title, case description {
-          "" -> None
-          s -> Some(s)
-        }),
-      )
+    Ok(#(title, description, color)) -> {
+      case validate_color(color) {
+        Error(resp) -> Error(resp)
+        Ok(validated_color) ->
+          Ok(
+            #(
+              title,
+              case description {
+                "" -> None
+                s -> Some(s)
+              },
+              validated_color,
+            ),
+          )
+      }
+    }
     Error(_) -> Error(api.error(422, "VALIDATION_ERROR", "Invalid JSON body"))
   }
 }
@@ -129,13 +155,14 @@ fn handle_create(
 
               case decode_card_payload_data(data) {
                 Error(resp) -> resp
-                Ok(#(title, description)) -> {
+                Ok(#(title, description, color)) -> {
                   case
                     cards_db.create_card(
                       db,
                       project_id,
                       title,
                       description,
+                      color,
                       user.id,
                     )
                   {
@@ -221,9 +248,9 @@ fn handle_update(
 
                   case decode_card_payload_data(data) {
                     Error(resp) -> resp
-                    Ok(#(title, description)) -> {
+                    Ok(#(title, description, color)) -> {
                       case
-                        cards_db.update_card(db, card_id, title, description)
+                        cards_db.update_card(db, card_id, title, description, color)
                       {
                         Ok(updated) ->
                           api.ok(
@@ -301,6 +328,7 @@ fn card_to_json(card: cards_db.Card) -> json.Json {
     #("project_id", json.int(card.project_id)),
     #("title", json.string(card.title)),
     #("description", json.string(card.description)),
+    #("color", json.string(card.color)),
     #("state", json.string(cards_db.state_to_string(card.state))),
     #("task_count", json.int(card.task_count)),
     #("completed_count", json.int(card.completed_count)),

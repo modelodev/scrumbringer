@@ -60,6 +60,9 @@ pub type Text {
   InvalidXY
   ContentRequired
 
+  // Accessibility
+  SkipToContent
+
   // Buttons / common
   Dismiss
   Cancel
@@ -101,8 +104,10 @@ pub type Text {
   Pool
   MyBar
   MySkills
+  MySkillsHelp
   MyTasks
   NoClaimedTasks
+  GoToPoolToClaimTasks
   NoProjectsBody
   You
   Notes
@@ -127,6 +132,7 @@ pub type Text {
   TypeLabel
   CapabilityLabel
   MyCapabilitiesLabel
+  MyCapabilitiesHint
   MyCapabilitiesOn
   MyCapabilitiesOff
   SearchLabel
@@ -169,6 +175,12 @@ pub type Text {
   NoAdminPermissions
   NotPermitted
   NotPermittedBody
+
+  // Admin sidebar groups (SA01-SA05)
+  NavGroupOrganization
+  NavGroupProjects
+  NavGroupConfiguration
+  NavGroupContent
 
   // Project selector
   ProjectLabel
@@ -244,21 +256,33 @@ pub type Text {
   // Capabilities
   Capabilities
   CreateCapability
+  CapabilityNamePlaceholder
   NoCapabilitiesYet
 
   // Members
   SelectProjectToManageMembers
   MembersTitle(project_name: String)
+  MembersHelp
   AddMember
   NoMembersYet
   RemoveMemberTitle
   RemoveMemberConfirm(user_email: String, project_name: String)
   Remove
 
+  // User Projects dialog
+  UserProjectsTitle(user_email: String)
+  UserProjectsEmpty
+  UserProjectsAdd
+  SelectProject
+  UserProjectRemove
+
   // Task types
   SelectProjectToManageTaskTypes
   TaskTypesTitle(project_name: String)
   CreateTaskType
+  IdentitySection
+  AppearanceSection
+  ConfigurationSection
   Icon
   UnknownIcon
   CapabilityOptional
@@ -342,6 +366,11 @@ pub type Text {
   RuleMetricsApplied
   RuleMetricsSuppressed
 
+  // Task States (for Rules)
+  TaskStateAvailable
+  TaskStateClaimed
+  TaskStateCompleted
+
   // Task Templates
   AdminTaskTemplates
   TaskTemplatesTitle
@@ -386,4 +415,33 @@ pub type Text {
   Timestamp
   OutcomeApplied
   OutcomeSuppressed
+
+  // Story 3.4 - Member Card Views
+  // Member Fichas section
+  MemberFichas
+  MemberFichasEmpty
+  MemberFichasEmptyHint
+
+  // Color picker
+  ColorLabel
+  ColorNone
+  ColorGray
+  ColorRed
+  ColorOrange
+  ColorYellow
+  ColorGreen
+  ColorBlue
+  ColorPurple
+  ColorPink
+
+  // Card grouping
+  UngroupedTasks
+  CardProgressCount(completed: Int, total: Int)
+
+  // Card detail (member)
+  CardAddTask
+  CardTasksEmpty
+  CardTasksCompleted
+  TaskType
+  TaskTitlePlaceholder
 }

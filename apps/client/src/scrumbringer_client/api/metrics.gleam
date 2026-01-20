@@ -254,6 +254,10 @@ fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
       completed_at: completed_at,
       created_at: created_at,
       version: version,
+      // Card fields not available in metrics endpoint
+      card_id: option.None,
+      card_title: option.None,
+      card_color: option.None,
     )
 
   decode.success(MetricsProjectTask(

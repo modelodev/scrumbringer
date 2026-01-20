@@ -35,6 +35,7 @@ pub type Card {
     project_id: Int,
     title: String,
     description: String,
+    color: String,
     state: CardState,
     task_count: Int,
     completed_count: Int,
@@ -69,6 +70,7 @@ pub fn list_cards(
         row.project_id,
         row.title,
         row.description,
+        row.color,
         row.created_by,
         row.created_at,
         row.task_count,
@@ -91,6 +93,7 @@ pub fn get_card(db: pog.Connection, card_id: Int) -> Result(Card, CardError) {
         row.project_id,
         row.title,
         row.description,
+        row.color,
         row.created_by,
         row.created_at,
         row.task_count,
@@ -105,6 +108,7 @@ fn card_from_counts(
   project_id: Int,
   title: String,
   description: String,
+  color: String,
   created_by: Int,
   created_at: String,
   task_count: Int,
@@ -118,6 +122,7 @@ fn card_from_counts(
     project_id: project_id,
     title: title,
     description: description,
+    color: color,
     state: state,
     task_count: task_count,
     completed_count: completed_count,
@@ -132,15 +137,18 @@ pub fn create_card(
   project_id: Int,
   title: String,
   description: Option(String),
+  color: Option(String),
   created_by: Int,
 ) -> Result(Card, pog.QueryError) {
   let desc = option.unwrap(description, "")
+  let col = option.unwrap(color, "")
 
   use returned <- result.try(sql.cards_create(
     db,
     project_id,
     title,
     desc,
+    col,
     created_by,
   ))
 
@@ -151,6 +159,7 @@ pub fn create_card(
         project_id: row.project_id,
         title: row.title,
         description: row.description,
+        color: row.color,
         state: Pendiente,
         task_count: 0,
         completed_count: 0,
@@ -160,21 +169,23 @@ pub fn create_card(
     }
     _ -> {
       // Should not happen, but handle gracefully
-      Error(pog.UnexpectedArgumentCount(4, 0))
+      Error(pog.UnexpectedArgumentCount(5, 0))
     }
   }
 }
 
-/// Update a card's title and description.
+/// Update a card's title, description, and color.
 pub fn update_card(
   db: pog.Connection,
   card_id: Int,
   title: String,
   description: Option(String),
+  color: Option(String),
 ) -> Result(Card, CardError) {
   let desc = option.unwrap(description, "")
+  let col = option.unwrap(color, "")
 
-  case sql.cards_update(db, card_id, title, desc) {
+  case sql.cards_update(db, card_id, title, desc, col) {
     Error(e) -> Error(DbError(e))
     Ok(pog.Returned(rows: [], ..)) -> Error(CardNotFound)
     Ok(pog.Returned(rows: [row, ..], ..)) -> {
@@ -194,6 +205,7 @@ pub fn update_card(
             project_id: row.project_id,
             title: row.title,
             description: row.description,
+            color: row.color,
             state: state,
             task_count: full_row.task_count,
             completed_count: full_row.completed_count,

@@ -201,7 +201,7 @@ fn view_my_capabilities_toggle(
         attribute.class(button_class),
         attribute.attribute(
           "title",
-          update_helpers.i18n_t(model, i18n_text.MyCapabilitiesLabel),
+          update_helpers.i18n_t(model, i18n_text.MyCapabilitiesHint),
         ),
         attribute.attribute(
           "aria-label",

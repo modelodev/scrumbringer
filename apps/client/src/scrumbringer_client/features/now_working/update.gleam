@@ -40,8 +40,8 @@ import domain/task.{
 }
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, MemberActiveTaskHeartbeated,
-  MemberActiveTaskPaused, MemberActiveTaskStarted, Model, NowWorkingTicked,
+  type Model, type Msg, Failed, Loaded, MemberWorkSessionHeartbeated,
+  MemberWorkSessionPaused, MemberWorkSessionStarted, Model, NowWorkingTicked,
 }
 import scrumbringer_client/update_helpers
 
@@ -60,7 +60,7 @@ pub fn handle_start_clicked(model: Model, task_id: Int) -> #(Model, Effect(Msg))
           member_now_working_in_flight: True,
           member_now_working_error: opt.None,
         )
-      #(model, api_tasks.start_me_active_task(task_id, MemberActiveTaskStarted))
+      #(model, api_tasks.start_work_session(task_id, MemberWorkSessionStarted))
     }
   }
 }
@@ -70,14 +70,29 @@ pub fn handle_pause_clicked(model: Model) -> #(Model, Effect(Msg)) {
   case model.member_now_working_in_flight {
     True -> #(model, effect.none())
     False -> {
-      let model =
-        Model(
-          ..model,
-          member_now_working_in_flight: True,
-          member_now_working_error: opt.None,
-        )
-      #(model, api_tasks.pause_me_active_task(MemberActiveTaskPaused))
+      // Get active task_id from work sessions
+      case get_first_active_session_task_id(model) {
+        opt.None -> #(model, effect.none())
+        opt.Some(task_id) -> {
+          let model =
+            Model(
+              ..model,
+              member_now_working_in_flight: True,
+              member_now_working_error: opt.None,
+            )
+          #(model, api_tasks.pause_work_session(task_id, MemberWorkSessionPaused))
+        }
+      }
     }
+  }
+}
+
+/// Get task_id of first active work session.
+fn get_first_active_session_task_id(model: Model) -> opt.Option(Int) {
+  case model.member_work_sessions {
+    Loaded(WorkSessionsPayload(active_sessions: [first, ..], ..)) ->
+      opt.Some(first.task_id)
+    _ -> opt.None
   }
 }
 
@@ -222,16 +237,24 @@ pub fn handle_ticked(model: Model) -> #(Model, Effect(Msg)) {
   let next_tick = model.now_working_tick + 1
   let model = Model(..model, now_working_tick: next_tick)
 
+  // Check if there's an active work session
+  let active_task_id = get_first_active_session_task_id(model)
+
   let heartbeat_fx = case
     next_tick % 60 == 0
     && model.member_now_working_in_flight == False
-    && update_helpers.now_working_active_task(model) != opt.None
+    && active_task_id != opt.None
   {
-    True -> api_tasks.heartbeat_me_active_task(MemberActiveTaskHeartbeated)
+    True ->
+      case active_task_id {
+        opt.Some(task_id) ->
+          api_tasks.heartbeat_work_session(task_id, MemberWorkSessionHeartbeated)
+        opt.None -> effect.none()
+      }
     False -> effect.none()
   }
 
-  case update_helpers.now_working_active_task(model) {
+  case active_task_id {
     opt.Some(_) -> #(model, effect.batch([tick_effect(), heartbeat_fx]))
     opt.None -> #(
       Model(..model, now_working_tick_running: False),

@@ -37,7 +37,6 @@ import lustre/event
 
 import domain/task.{type Task, Task}
 import domain/task_status.{Available, Claimed, Taken, task_status_to_string}
-import domain/task_type
 import domain/user.{type User}
 
 import scrumbringer_client/client_ffi
@@ -49,12 +48,57 @@ import scrumbringer_client/client_state.{
 }
 import scrumbringer_client/features/admin/view as admin_view
 import scrumbringer_client/features/my_bar/view as my_bar_view
+import scrumbringer_client/features/now_working/panel as now_working_panel
 import scrumbringer_client/features/pool/dialogs as pool_dialogs
 import scrumbringer_client/features/pool/filters as pool_filters
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/member_visuals
 import scrumbringer_client/pool_prefs
+import scrumbringer_client/ui/card_badge
+import scrumbringer_client/ui/color_picker
+import scrumbringer_client/ui/empty_state
+import scrumbringer_client/ui/icons
 import scrumbringer_client/update_helpers
+
+// =============================================================================
+// Types
+// =============================================================================
+
+/// State of available tasks after filtering.
+///
+/// Makes the task loading/filtering state explicit for cleaner view rendering.
+type AvailableTasksState {
+  TasksLoading
+  TasksError(message: String)
+  TasksEmpty(has_filters: Bool)
+  TasksReady(tasks: List(Task))
+}
+
+/// Determines the current state of available tasks.
+fn get_available_tasks_state(model: Model) -> AvailableTasksState {
+  case model.member_tasks {
+    NotAsked | Loading -> TasksLoading
+    Failed(err) -> TasksError(err.message)
+    Loaded(tasks) -> {
+      let available =
+        list.filter(tasks, fn(t) {
+          let Task(status: status, ..) = t
+          status == Available
+        })
+      case available {
+        [] -> TasksEmpty(has_filters: has_active_filters(model))
+        _ -> TasksReady(available)
+      }
+    }
+  }
+}
+
+/// Checks if any filters are active.
+fn has_active_filters(model: Model) -> Bool {
+  string.trim(model.member_filters_type_id) != ""
+  || string.trim(model.member_filters_capability_id) != ""
+  || string.trim(model.member_filters_q) != ""
+}
 
 /// Renders the main pool section with filters, canvas/list toggle, and tasks.
 pub fn view_pool_main(model: Model, _user: User) -> Element(Msg) {
@@ -166,6 +210,9 @@ pub fn view_right_panel(model: Model, user: User) -> Element(Msg) {
   }
 
   div([], [
+    // Now Working section (unified)
+    now_working_panel.view(model),
+    // My Tasks section with dropzone
     h3([], [text(update_helpers.i18n_t(model, i18n_text.MyTasks))]),
     div(
       [
@@ -185,10 +232,12 @@ pub fn view_right_panel(model: Model, user: User) -> Element(Msg) {
           False -> element.none()
         },
         case claimed_tasks {
+          // P03: Improved empty state for claimed tasks
           [] ->
-            div([attribute.class("empty")], [
-              text(update_helpers.i18n_t(model, i18n_text.NoClaimedTasks)),
-            ])
+            empty_state.simple(
+              icons.Hand,
+              update_helpers.i18n_t(model, i18n_text.NoClaimedTasks),
+            )
           _ ->
             keyed.div(
               [attribute.class("task-list")],
@@ -229,67 +278,57 @@ pub fn view_pool_body(model: Model, user: User) -> Element(Msg) {
 }
 
 /// Renders the task list/canvas based on loading state and view mode.
+///
+/// Uses `AvailableTasksState` to flatten control flow from 5 levels to 1.
 fn view_tasks(model: Model) -> Element(Msg) {
-  case model.member_tasks {
-    NotAsked | Loading ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
-      ])
-    Failed(err) -> div([attribute.class("error")], [text(err.message)])
+  case get_available_tasks_state(model) {
+    TasksLoading -> view_tasks_loading(model)
+    TasksError(message) -> view_tasks_error(message)
+    TasksEmpty(has_filters: True) -> view_tasks_no_matches(model)
+    TasksEmpty(has_filters: False) -> view_tasks_onboarding(model)
+    TasksReady(tasks) -> view_tasks_collection(model, tasks)
+  }
+}
 
-    Loaded(tasks) -> {
-      let available_tasks =
-        tasks
-        |> list.filter(fn(t) {
-          let Task(status: status, ..) = t
-          status == Available
-        })
+/// Loading state view.
+fn view_tasks_loading(model: Model) -> Element(Msg) {
+  div([attribute.class("empty")], [
+    text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+  ])
+}
 
-      case available_tasks {
-        [] -> {
-          let no_filters =
-            string.trim(model.member_filters_type_id) == ""
-            && string.trim(model.member_filters_capability_id) == ""
-            && string.trim(model.member_filters_q) == ""
+/// Error state view.
+fn view_tasks_error(message: String) -> Element(Msg) {
+  div([attribute.class("error")], [text(message)])
+}
 
-          case no_filters {
-            True ->
-              div([attribute.class("empty")], [
-                h2([], [
-                  text(update_helpers.i18n_t(
-                    model,
-                    i18n_text.NoAvailableTasksRightNow,
-                  )),
-                ]),
-                p([], [
-                  text(update_helpers.i18n_t(
-                    model,
-                    i18n_text.CreateFirstTaskToStartUsingPool,
-                  )),
-                ]),
-                button([event.on_click(MemberCreateDialogOpened)], [
-                  text(update_helpers.i18n_t(model, i18n_text.NewTask)),
-                ]),
-              ])
+/// No matches for current filters.
+fn view_tasks_no_matches(model: Model) -> Element(Msg) {
+  empty_state.simple(
+    icons.Search,
+    update_helpers.i18n_t(model, i18n_text.NoTasksMatchYourFilters),
+  )
+}
 
-            False ->
-              div([attribute.class("empty")], [
-                text(update_helpers.i18n_t(
-                  model,
-                  i18n_text.NoTasksMatchYourFilters,
-                )),
-              ])
-          }
-        }
+/// Onboarding empty state with CTA.
+fn view_tasks_onboarding(model: Model) -> Element(Msg) {
+  empty_state.new(
+    icons.Target,
+    update_helpers.i18n_t(model, i18n_text.NoAvailableTasksRightNow),
+    update_helpers.i18n_t(model, i18n_text.CreateFirstTaskToStartUsingPool),
+  )
+  |> empty_state.with_action(
+    update_helpers.i18n_t(model, i18n_text.NewTask),
+    MemberCreateDialogOpened,
+  )
+  |> empty_state.view
+}
 
-        _ -> {
-          case model.member_pool_view_mode {
-            pool_prefs.Canvas -> view_tasks_canvas(model, available_tasks)
-            pool_prefs.List -> view_tasks_list(model, available_tasks)
-          }
-        }
-      }
-    }
+/// Renders task collection in the selected view mode.
+fn view_tasks_collection(model: Model, tasks: List(Task)) -> Element(Msg) {
+  case model.member_pool_view_mode {
+    pool_prefs.Canvas -> view_tasks_canvas(model, tasks)
+    pool_prefs.List -> view_tasks_list(model, tasks)
   }
 }
 
@@ -392,6 +431,8 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     claimed_by: claimed_by,
     created_at: created_at,
     version: version,
+    card_title: card_title,
+    card_color: card_color,
     ..,
   ) = task
 
@@ -406,7 +447,12 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
 
   let type_icon = opt.Some(task_type.icon)
 
-  let highlight = should_highlight_task(model, opt.Some(task_type))
+  // Card color for border styling
+  let card_color_opt = case card_color {
+    opt.None -> opt.None
+    opt.Some(c) -> color_picker.string_to_color(c)
+  }
+  let card_border_class = color_picker.border_class(card_color_opt)
 
   let #(x, y) = case dict.get(model.member_positions_by_task, id) {
     Ok(xy) -> xy
@@ -421,11 +467,14 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
 
   let prefer_left = x > 760
 
-  let card_classes = case highlight, prefer_left {
-    True, True -> "task-card highlight preview-left"
-    True, False -> "task-card highlight"
-    False, True -> "task-card preview-left"
-    False, False -> "task-card"
+  // Build CSS classes including card border color
+  let base_classes = case prefer_left {
+    True -> "task-card preview-left"
+    False -> "task-card"
+  }
+  let card_classes = case card_border_class {
+    "" -> base_classes
+    c -> base_classes <> " " <> c
   }
 
   let style =
@@ -540,6 +589,26 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     ],
     [
       div([attribute.class("task-card-top")], [
+        // Card initials badge if task belongs to a card
+        case card_title {
+          opt.Some(ct) -> card_badge.view(ct, card_color_opt, opt.Some(ct))
+          opt.None -> element.none()
+        },
+        // P02: Decay badge showing age
+        case age_days > 7 {
+          True ->
+            span(
+              [
+                attribute.class("decay-badge"),
+                attribute.attribute(
+                  "title",
+                  update_helpers.i18n_t(model, i18n_text.CreatedAgoDays(age_days)),
+                ),
+              ],
+              [text(int.to_string(age_days) <> "d")],
+            )
+          False -> element.none()
+        },
         div([attribute.class("task-card-actions")], [
           primary_action,
           drag_handle,
@@ -620,12 +689,3 @@ fn decay_to_visuals(age_days: Int) -> #(Float, Float) {
   }
 }
 
-fn should_highlight_task(
-  model: Model,
-  _task_type: opt.Option(task_type.TaskTypeInline),
-) -> Bool {
-  case model.member_quick_my_caps {
-    False -> False
-    True -> False
-  }
-}

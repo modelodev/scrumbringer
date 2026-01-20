@@ -30,9 +30,11 @@ import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option as opt
+import gleam/string
 
 import lustre/effect.{type Effect}
 
+import domain/card as domain_card
 import domain/org_role
 
 import scrumbringer_client/accept_invite
@@ -68,11 +70,17 @@ import scrumbringer_client/client_state.{
   AdminRuleMetricsRefreshClicked, AdminRuleMetricsRuleDetailsFetched,
   AdminRuleMetricsToChanged, AdminRuleMetricsWorkflowDetailsFetched,
   AdminRuleMetricsWorkflowExpanded, CapabilitiesFetched,
+  CapabilityCreateDialogClosed, CapabilityCreateDialogOpened,
   CapabilityCreateNameChanged, CapabilityCreateSubmitted, CapabilityCreated,
-  CardCreateDescriptionChanged, CardCreateSubmitted, CardCreateTitleChanged,
+  CardCreateColorChanged, CardCreateColorToggle, CardCreateDescriptionChanged,
+  CardCreateDialogClosed, CardCreateDialogOpened,
+  CardCreateSubmitted, CardCreateTitleChanged,
+  CardAddTaskCreated, CardAddTaskPrioritySelect, CardAddTaskTitleInput,
   CardCreated, CardDeleteCancelled, CardDeleteClicked, CardDeleteConfirmed,
-  CardDeleted, CardEditCancelled, CardEditClicked, CardEditDescriptionChanged,
-  CardEditSubmitted, CardEditTitleChanged, CardUpdated, CardsFetched, Failed,
+  CardDeleted, CardDetailTasksFetched, CardEditCancelled, CardEditClicked,
+  CardEditColorChanged, CardEditColorToggle, CardEditDescriptionChanged,
+  CardEditSubmitted, CardEditTitleChanged,
+  CardUpdated, CardsFetched, CancelAddTask, CloseCardDetail, Failed,
   ForgotPasswordClicked, ForgotPasswordCopyClicked, ForgotPasswordCopyFinished,
   ForgotPasswordDismissed, ForgotPasswordEmailChanged, ForgotPasswordFinished,
   ForgotPasswordSubmitted, GlobalKeyDown, InviteLinkCopyClicked,
@@ -95,7 +103,7 @@ import scrumbringer_client/client_state.{
   MemberPoolCapabilityChanged, MemberPoolDragToClaimArmed,
   MemberPoolFiltersToggled, MemberPoolMyTasksRectFetched,
   MemberPoolSearchChanged, MemberPoolSearchDebounced, MemberPoolStatusChanged,
-  MemberPoolTypeChanged, MemberPoolViewModeSet, MemberPositionEditClosed,
+  MemberPanelToggled, MemberPoolTypeChanged, MemberPoolViewModeSet, MemberPositionEditClosed,
   MemberPositionEditOpened, MemberPositionEditSubmitted,
   MemberPositionEditXChanged, MemberPositionEditYChanged, MemberPositionSaved,
   MemberPositionsFetched, MemberProjectTasksFetched, MemberReleaseClicked,
@@ -106,14 +114,18 @@ import scrumbringer_client/client_state.{
   MemberToggleCapability, MemberToggleMyCapabilitiesQuick,
   MemberWorkSessionHeartbeated, MemberWorkSessionPaused,
   MemberWorkSessionStarted, MemberWorkSessionsFetched, MembersFetched, Model,
-  NavigateTo, NotAsked, NowWorkingTicked, OrgSettingsRoleChanged,
+  NavigateTo, NotAsked, NowWorkingTicked, OpenCardDetail, OrgSettingsRoleChanged,
   OrgSettingsSaveClicked, OrgSettingsSaved, OrgSettingsUsersFetched,
   OrgUsersCacheFetched, OrgUsersSearchChanged, OrgUsersSearchDebounced,
+  UserProjectsDialogOpened, UserProjectsDialogClosed, UserProjectsFetched,
+  UserProjectsAddProjectChanged, UserProjectsAddSubmitted, UserProjectAdded,
+  UserProjectRemoveClicked, UserProjectRemoved,
   OrgUsersSearchResults, ProjectCreateNameChanged, ProjectCreateSubmitted,
   ProjectCreated, ProjectSelected, ProjectsFetched, Push, Rect, Replace,
   ResetPassword as ResetPasswordPage, ResetPasswordMsg,
   RuleAttachTemplateSelected, RuleAttachTemplateSubmitted,
-  RuleCreateActiveChanged, RuleCreateGoalChanged, RuleCreateNameChanged,
+  RuleCreateActiveChanged, RuleCreateDialogClosed, RuleCreateDialogOpened,
+  RuleCreateGoalChanged, RuleCreateNameChanged,
   RuleCreateResourceTypeChanged, RuleCreateSubmitted,
   RuleCreateTaskTypeIdChanged, RuleCreateToStateChanged, RuleCreated,
   RuleDeleteCancelled, RuleDeleteClicked, RuleDeleteConfirmed, RuleDeleted,
@@ -123,6 +135,7 @@ import scrumbringer_client/client_state.{
   RuleTemplateAttached, RuleTemplateDetachClicked, RuleTemplateDetached,
   RuleTemplatesClicked, RuleTemplatesFetched, RuleUpdated, RulesBackClicked,
   RulesFetched, TaskTemplateCreateDescriptionChanged,
+  TaskTemplateCreateDialogClosed, TaskTemplateCreateDialogOpened,
   TaskTemplateCreateNameChanged, TaskTemplateCreatePriorityChanged,
   TaskTemplateCreateSubmitted, TaskTemplateCreateTypeIdChanged,
   TaskTemplateCreated, TaskTemplateDeleteCancelled, TaskTemplateDeleteClicked,
@@ -131,12 +144,15 @@ import scrumbringer_client/client_state.{
   TaskTemplateEditNameChanged, TaskTemplateEditPriorityChanged,
   TaskTemplateEditSubmitted, TaskTemplateEditTypeIdChanged, TaskTemplateUpdated,
   TaskTemplatesOrgFetched, TaskTemplatesProjectFetched,
-  TaskTypeCreateCapabilityChanged, TaskTypeCreateIconChanged,
+  TaskTypeCreateCapabilityChanged, TaskTypeCreateDialogClosed,
+  TaskTypeCreateDialogOpened, TaskTypeCreateIconChanged,
   TaskTypeCreateNameChanged, TaskTypeCreateSubmitted, TaskTypeCreated,
   TaskTypeIconErrored, TaskTypeIconLoaded, TaskTypesFetched, ThemeSelected,
-  ToastDismissed, UrlChanged, WorkflowCreateActiveChanged,
-  WorkflowCreateDescriptionChanged, WorkflowCreateNameChanged,
-  WorkflowCreateSubmitted, WorkflowCreated, WorkflowDeleteCancelled,
+  ToastDismissed, ToggleAddTaskForm, SubmitAddTask, UrlChanged,
+  WorkflowCreateActiveChanged, WorkflowCreateDialogClosed,
+  WorkflowCreateDialogOpened, WorkflowCreateDescriptionChanged,
+  WorkflowCreateNameChanged, WorkflowCreateSubmitted, WorkflowCreated,
+  WorkflowDeleteCancelled,
   WorkflowDeleteClicked, WorkflowDeleteConfirmed, WorkflowDeleted,
   WorkflowEditActiveChanged, WorkflowEditCancelled, WorkflowEditClicked,
   WorkflowEditDescriptionChanged, WorkflowEditNameChanged, WorkflowEditSubmitted,
@@ -475,13 +491,13 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
             }
 
             hydration.FetchActiveTask -> {
-              case m.member_active_task {
+              case m.member_work_sessions {
                 Loading | Loaded(_) -> #(m, fx)
 
                 _ -> {
-                  let m = Model(..m, member_active_task: Loading)
+                  let m = Model(..m, member_work_sessions: Loading)
                   #(m, [
-                    api_tasks.get_me_active_task(MemberActiveTaskFetched),
+                    api_tasks.get_work_sessions(MemberWorkSessionsFetched),
                     ..fx
                   ])
                 }
@@ -1416,6 +1432,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       capabilities_workflow.handle_capabilities_fetched_ok(model, capabilities)
     CapabilitiesFetched(Error(err)) ->
       capabilities_workflow.handle_capabilities_fetched_error(model, err)
+    CapabilityCreateDialogOpened ->
+      capabilities_workflow.handle_capability_dialog_opened(model)
+    CapabilityCreateDialogClosed ->
+      capabilities_workflow.handle_capability_dialog_closed(model)
     CapabilityCreateNameChanged(name) ->
       capabilities_workflow.handle_capability_create_name_changed(model, name)
     CapabilityCreateSubmitted ->
@@ -1447,6 +1467,30 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       admin_workflow.handle_org_settings_saved_ok(model, updated)
     OrgSettingsSaved(user_id, Error(err)) ->
       admin_workflow.handle_org_settings_saved_error(model, user_id, err)
+
+    // User projects dialog handlers
+    UserProjectsDialogOpened(user) ->
+      admin_workflow.handle_user_projects_dialog_opened(model, user)
+    UserProjectsDialogClosed ->
+      admin_workflow.handle_user_projects_dialog_closed(model)
+    UserProjectsFetched(Ok(projects)) ->
+      admin_workflow.handle_user_projects_fetched_ok(model, projects)
+    UserProjectsFetched(Error(err)) ->
+      admin_workflow.handle_user_projects_fetched_error(model, err)
+    UserProjectsAddProjectChanged(project_id) ->
+      admin_workflow.handle_user_projects_add_project_changed(model, project_id)
+    UserProjectsAddSubmitted ->
+      admin_workflow.handle_user_projects_add_submitted(model)
+    UserProjectAdded(Ok(project)) ->
+      admin_workflow.handle_user_project_added_ok(model, project)
+    UserProjectAdded(Error(err)) ->
+      admin_workflow.handle_user_project_added_error(model, err)
+    UserProjectRemoveClicked(project_id) ->
+      admin_workflow.handle_user_project_remove_clicked(model, project_id)
+    UserProjectRemoved(Ok(_)) ->
+      admin_workflow.handle_user_project_removed_ok(model)
+    UserProjectRemoved(Error(err)) ->
+      admin_workflow.handle_user_project_removed_error(model, err)
 
     MemberAddDialogOpened ->
       admin_workflow.handle_member_add_dialog_opened(model)
@@ -1487,6 +1531,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       task_types_workflow.handle_task_types_fetched_ok(model, task_types)
     TaskTypesFetched(Error(err)) ->
       task_types_workflow.handle_task_types_fetched_error(model, err)
+    TaskTypeCreateDialogOpened ->
+      task_types_workflow.handle_task_type_dialog_opened(model)
+    TaskTypeCreateDialogClosed ->
+      task_types_workflow.handle_task_type_dialog_closed(model)
     TaskTypeCreateNameChanged(name) ->
       task_types_workflow.handle_task_type_create_name_changed(model, name)
     TaskTypeCreateIconChanged(icon) ->
@@ -1522,6 +1570,8 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     MemberPoolFiltersToggled -> pool_workflow.handle_pool_filters_toggled(model)
     MemberPoolViewModeSet(mode) ->
       pool_workflow.handle_pool_view_mode_set(model, mode)
+    MemberPanelToggled ->
+      #(Model(..model, member_panel_expanded: !model.member_panel_expanded), effect.none())
     GlobalKeyDown(event) -> pool_workflow.handle_global_keydown(model, event)
 
     MemberPoolSearchChanged(v) ->
@@ -1833,11 +1883,19 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       admin_workflow.handle_cards_fetched_ok(model, cards)
     CardsFetched(Error(err)) ->
       admin_workflow.handle_cards_fetched_error(model, err)
+    CardCreateDialogOpened ->
+      admin_workflow.handle_card_create_dialog_opened(model)
+    CardCreateDialogClosed ->
+      admin_workflow.handle_card_create_dialog_closed(model)
 
     CardCreateTitleChanged(title) ->
       admin_workflow.handle_card_create_title_changed(model, title)
     CardCreateDescriptionChanged(description) ->
       admin_workflow.handle_card_create_description_changed(model, description)
+    CardCreateColorChanged(color) ->
+      admin_workflow.handle_card_create_color_changed(model, color)
+    CardCreateColorToggle ->
+      admin_workflow.handle_card_create_color_toggle(model)
     CardCreateSubmitted -> admin_workflow.handle_card_create_submitted(model)
     CardCreated(Ok(card)) -> admin_workflow.handle_card_created_ok(model, card)
     CardCreated(Error(err)) ->
@@ -1849,6 +1907,9 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       admin_workflow.handle_card_edit_title_changed(model, title)
     CardEditDescriptionChanged(description) ->
       admin_workflow.handle_card_edit_description_changed(model, description)
+    CardEditColorChanged(color) ->
+      admin_workflow.handle_card_edit_color_changed(model, color)
+    CardEditColorToggle -> admin_workflow.handle_card_edit_color_toggle(model)
     CardEditSubmitted -> admin_workflow.handle_card_edit_submitted(model)
     CardEditCancelled -> admin_workflow.handle_card_edit_cancelled(model)
     CardUpdated(Ok(card)) -> admin_workflow.handle_card_updated_ok(model, card)
@@ -1863,6 +1924,64 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     CardDeleted(Error(err)) ->
       admin_workflow.handle_card_deleted_error(model, err)
 
+    // Card detail (member view) handlers
+    OpenCardDetail(card_id) ->
+      #(Model(..model, card_detail_open: opt.Some(card_id)), effect.none())
+    CloseCardDetail ->
+      #(
+        Model(
+          ..model,
+          card_detail_open: opt.None,
+          card_detail_tasks: NotAsked,
+          card_add_task_open: False,
+          card_add_task_title: "",
+          card_add_task_priority: 3,
+        ),
+        effect.none(),
+      )
+    CardDetailTasksFetched(Ok(tasks)) ->
+      #(Model(..model, card_detail_tasks: Loaded(tasks)), effect.none())
+    CardDetailTasksFetched(Error(err)) ->
+      #(Model(..model, card_detail_tasks: Failed(err)), effect.none())
+    ToggleAddTaskForm ->
+      #(Model(..model, card_add_task_open: !model.card_add_task_open), effect.none())
+    CardAddTaskTitleInput(title) ->
+      #(Model(..model, card_add_task_title: title), effect.none())
+    CardAddTaskPrioritySelect(priority) ->
+      #(Model(..model, card_add_task_priority: priority), effect.none())
+    CancelAddTask ->
+      #(
+        Model(
+          ..model,
+          card_add_task_open: False,
+          card_add_task_title: "",
+          card_add_task_priority: 3,
+        ),
+        effect.none(),
+      )
+    SubmitAddTask ->
+      handle_card_add_task_submit(model, member_refresh)
+    CardAddTaskCreated(Ok(_task)) ->
+      #(
+        Model(
+          ..model,
+          card_add_task_in_flight: False,
+          card_add_task_open: False,
+          card_add_task_title: "",
+          card_add_task_priority: 3,
+        ),
+        effect.none(),
+      )
+    CardAddTaskCreated(Error(err)) ->
+      #(
+        Model(
+          ..model,
+          card_add_task_in_flight: False,
+          card_add_task_error: opt.Some(err.message),
+        ),
+        effect.none(),
+      )
+
     // Workflows handlers
     WorkflowsOrgFetched(Ok(workflows)) ->
       admin_workflow.handle_workflows_org_fetched_ok(model, workflows)
@@ -1872,6 +1991,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       admin_workflow.handle_workflows_project_fetched_ok(model, workflows)
     WorkflowsProjectFetched(Error(err)) ->
       admin_workflow.handle_workflows_project_fetched_error(model, err)
+    WorkflowCreateDialogOpened ->
+      admin_workflow.handle_workflow_create_dialog_opened(model)
+    WorkflowCreateDialogClosed ->
+      admin_workflow.handle_workflow_create_dialog_closed(model)
 
     WorkflowCreateNameChanged(name) ->
       admin_workflow.handle_workflow_create_name_changed(model, name)
@@ -1932,6 +2055,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       admin_workflow.handle_rule_metrics_fetched_ok(model, metrics)
     RuleMetricsFetched(Error(err)) ->
       admin_workflow.handle_rule_metrics_fetched_error(model, err)
+    RuleCreateDialogOpened ->
+      admin_workflow.handle_rule_create_dialog_opened(model)
+    RuleCreateDialogClosed ->
+      admin_workflow.handle_rule_create_dialog_closed(model)
 
     RuleCreateNameChanged(name) ->
       admin_workflow.handle_rule_create_name_changed(model, name)
@@ -2014,6 +2141,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       admin_workflow.handle_task_templates_project_fetched_ok(model, templates)
     TaskTemplatesProjectFetched(Error(err)) ->
       admin_workflow.handle_task_templates_project_fetched_error(model, err)
+    TaskTemplateCreateDialogOpened ->
+      admin_workflow.handle_task_template_create_dialog_opened(model)
+    TaskTemplateCreateDialogClosed ->
+      admin_workflow.handle_task_template_create_dialog_closed(model)
 
     TaskTemplateCreateNameChanged(name) ->
       admin_workflow.handle_task_template_create_name_changed(model, name)
@@ -2069,4 +2200,141 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     TaskTemplateDeleted(Error(err)) ->
       admin_workflow.handle_task_template_deleted_error(model, err)
   }
+}
+
+// =============================================================================
+// Card Add Task Handler
+// =============================================================================
+
+/// Handle card add task form submission.
+/// Validates input and creates task with card_id association.
+fn handle_card_add_task_submit(
+  model: Model,
+  member_refresh: fn(Model) -> #(Model, Effect(Msg)),
+) -> #(Model, Effect(Msg)) {
+  // Guard: already in flight
+  case model.card_add_task_in_flight {
+    True -> #(model, effect.none())
+    False -> validate_and_create_card_task(model, member_refresh)
+  }
+}
+
+fn validate_and_create_card_task(
+  model: Model,
+  _member_refresh: fn(Model) -> #(Model, Effect(Msg)),
+) -> #(Model, Effect(Msg)) {
+  // Get card_id from open card detail
+  case model.card_detail_open {
+    opt.None -> #(model, effect.none())
+    opt.Some(card_id) -> {
+      // Find the card to get project_id
+      case find_card_by_id(model, card_id) {
+        opt.None ->
+          #(
+            Model(
+              ..model,
+              card_add_task_error: opt.Some(
+                update_helpers.i18n_t(model, i18n_text.SelectProjectFirst),
+              ),
+            ),
+            effect.none(),
+          )
+        opt.Some(card) -> validate_card_task_title(model, card)
+      }
+    }
+  }
+}
+
+fn find_card_by_id(model: Model, card_id: Int) -> opt.Option(domain_card.Card) {
+  case model.cards {
+    client_state.Loaded(cards) ->
+      list.find(cards, fn(c) { c.id == card_id })
+      |> opt.from_result
+    _ -> opt.None
+  }
+}
+
+fn validate_card_task_title(
+  model: Model,
+  card: domain_card.Card,
+) -> #(Model, Effect(Msg)) {
+  let title = string.trim(model.card_add_task_title)
+  case title == "" {
+    True ->
+      #(
+        Model(
+          ..model,
+          card_add_task_error: opt.Some(
+            update_helpers.i18n_t(model, i18n_text.TitleRequired),
+          ),
+        ),
+        effect.none(),
+      )
+    False -> get_default_type_and_create(model, card, title)
+  }
+}
+
+fn get_default_type_and_create(
+  model: Model,
+  card: domain_card.Card,
+  title: String,
+) -> #(Model, Effect(Msg)) {
+  // Get task types for this project
+  let types_for_project =
+    dict.get(model.member_task_types_by_project, card.project_id)
+
+  case types_for_project {
+    Error(_) ->
+      #(
+        Model(
+          ..model,
+          card_add_task_error: opt.Some(
+            update_helpers.i18n_t(model, i18n_text.TypeRequired),
+          ),
+        ),
+        effect.none(),
+      )
+    Ok(types) ->
+      case list.first(types) {
+        Error(_) ->
+          #(
+            Model(
+              ..model,
+              card_add_task_error: opt.Some(
+                update_helpers.i18n_t(model, i18n_text.TypeRequired),
+              ),
+            ),
+            effect.none(),
+          )
+        Ok(first_type) ->
+          submit_card_task(model, card, title, first_type.id)
+      }
+  }
+}
+
+fn submit_card_task(
+  model: Model,
+  card: domain_card.Card,
+  title: String,
+  type_id: Int,
+) -> #(Model, Effect(Msg)) {
+  let model =
+    Model(
+      ..model,
+      card_add_task_in_flight: True,
+      card_add_task_error: opt.None,
+    )
+
+  #(
+    model,
+    api_tasks.create_task_with_card(
+      card.project_id,
+      title,
+      opt.None,
+      model.card_add_task_priority,
+      type_id,
+      opt.Some(card.id),
+      client_state.CardAddTaskCreated,
+    ),
+  )
 }

@@ -161,7 +161,7 @@ pub fn task_template_payload_decoder() -> decode.Decoder(TaskTemplate) {
 /// Decoder for list of task templates.
 pub fn task_templates_payload_decoder() -> decode.Decoder(List(TaskTemplate)) {
   decode.field(
-    "task_templates",
+    "templates",
     decode.list(task_template_decoder()),
     decode.success,
   )
@@ -435,7 +435,7 @@ pub fn list_org_templates(
 ) -> Effect(msg) {
   let decoder =
     decode.field(
-      "task_templates",
+      "templates",
       decode.list(task_template_decoder()),
       decode.success,
     )
@@ -449,7 +449,7 @@ pub fn list_project_templates(
 ) -> Effect(msg) {
   let decoder =
     decode.field(
-      "task_templates",
+      "templates",
       decode.list(task_template_decoder()),
       decode.success,
     )

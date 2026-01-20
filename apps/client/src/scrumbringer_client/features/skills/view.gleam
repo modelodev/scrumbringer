@@ -22,21 +22,33 @@ import scrumbringer_client/client_state.{
   MemberToggleCapability,
 }
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/info_callout
 import scrumbringer_client/update_helpers
 
 /// Renders the My Skills section.
 pub fn view_skills(model: Model) -> Element(Msg) {
   div([attribute.class("section")], [
     h2([], [text(update_helpers.i18n_t(model, i18n_text.MySkills))]),
+    // MS01: Helper text explaining the section
+    info_callout.simple(update_helpers.i18n_t(model, i18n_text.MySkillsHelp)),
     case model.member_my_capabilities_error {
-      opt.Some(err) -> div([attribute.class("error")], [text(err)])
+      opt.Some(err) ->
+        div([attribute.class("error-banner")], [
+          span([attribute.class("error-banner-icon")], [text("⚠")]),
+          span([], [text(err)]),
+        ])
       opt.None -> element.none()
     },
     view_skills_list(model),
     button(
       [
+        attribute.type_("submit"),
         event.on_click(MemberSaveCapabilitiesClicked),
         attribute.disabled(model.member_my_capabilities_in_flight),
+        attribute.class(case model.member_my_capabilities_in_flight {
+          True -> "btn-loading"
+          False -> ""
+        }),
       ],
       [
         text(case model.member_my_capabilities_in_flight {

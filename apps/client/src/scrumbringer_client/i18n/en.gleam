@@ -69,6 +69,9 @@ pub fn translate(text: Text) -> String {
     text.Copying -> "Copying…"
     text.CopyFailed -> "Copy failed"
 
+    // Accessibility
+    text.SkipToContent -> "Skip to content"
+
     // Common
     text.Dismiss -> "Dismiss"
     text.Cancel -> "Cancel"
@@ -107,8 +110,11 @@ pub fn translate(text: Text) -> String {
     text.Pool -> "Pool"
     text.MyBar -> "My Bar"
     text.MySkills -> "My Skills"
+    text.MySkillsHelp ->
+      "Select the capabilities you have. The Pool will highlight matching tasks."
     text.MyTasks -> "My tasks"
     text.NoClaimedTasks -> "No claimed tasks"
+    text.GoToPoolToClaimTasks -> "Go to Pool to claim tasks"
     text.NoProjectsBody -> "Ask an admin to add you to a project."
     text.You -> "You"
     text.Notes -> "Notes"
@@ -135,6 +141,7 @@ pub fn translate(text: Text) -> String {
     text.TypeLabel -> "Type"
     text.CapabilityLabel -> "Capability"
     text.MyCapabilitiesLabel -> "My capabilities"
+    text.MyCapabilitiesHint -> "Filter tasks matching my capabilities"
     text.SearchLabel -> "Search"
     text.SearchPlaceholder -> "q"
     text.NoAvailableTasksRightNow -> "No available tasks right now"
@@ -177,6 +184,12 @@ pub fn translate(text: Text) -> String {
     text.NoAdminPermissions -> "No admin permissions"
     text.NotPermitted -> "Not permitted"
     text.NotPermittedBody -> "You don't have permission to access this section."
+
+    // Admin sidebar groups (SA01-SA05)
+    text.NavGroupOrganization -> "Organization"
+    text.NavGroupProjects -> "Projects"
+    text.NavGroupConfiguration -> "Configuration"
+    text.NavGroupContent -> "Content"
 
     // Project selector
     text.ProjectLabel -> "Project"
@@ -255,11 +268,14 @@ pub fn translate(text: Text) -> String {
     // Capabilities
     text.Capabilities -> "Capabilities"
     text.CreateCapability -> "Create Capability"
+    text.CapabilityNamePlaceholder -> "e.g., Frontend, Backend, UX..."
     text.NoCapabilitiesYet -> "No capabilities yet"
 
     // Members
     text.SelectProjectToManageMembers -> "Select a project to manage members."
     text.MembersTitle(project_name) -> "Members - " <> project_name
+    text.MembersHelp ->
+      "Members can view and claim tasks in this project. Manage who has access and with what role."
     text.AddMember -> "Add member"
     text.NoMembersYet -> "No members yet"
     text.RemoveMemberTitle -> "Remove member"
@@ -267,11 +283,21 @@ pub fn translate(text: Text) -> String {
       "Remove " <> user_email <> " from " <> project_name <> "?"
     text.Remove -> "Remove"
 
+    // User Projects dialog
+    text.UserProjectsTitle(user_email) -> "Projects for " <> user_email
+    text.UserProjectsEmpty -> "This user does not belong to any projects."
+    text.UserProjectsAdd -> "Add to project"
+    text.SelectProject -> "Select project"
+    text.UserProjectRemove -> "Remove"
+
     // Task types
     text.SelectProjectToManageTaskTypes ->
       "Select a project to manage task types."
     text.TaskTypesTitle(project_name) -> "Task Types - " <> project_name
     text.CreateTaskType -> "Create Task Type"
+    text.IdentitySection -> "Identity"
+    text.AppearanceSection -> "Appearance"
+    text.ConfigurationSection -> "Configuration"
     text.Icon -> "Icon"
     text.UnknownIcon -> "Unknown icon"
     text.CapabilityOptional -> "Capability (optional)"
@@ -364,6 +390,11 @@ pub fn translate(text: Text) -> String {
     text.RuleMetricsApplied -> "Applied"
     text.RuleMetricsSuppressed -> "Suppressed"
 
+    // Task States (for Rules)
+    text.TaskStateAvailable -> "Available"
+    text.TaskStateClaimed -> "Claimed"
+    text.TaskStateCompleted -> "Completed"
+
     // Task Templates
     text.AdminTaskTemplates -> "Task Templates"
     text.TaskTemplatesTitle -> "Task Templates"
@@ -411,5 +442,34 @@ pub fn translate(text: Text) -> String {
     text.Timestamp -> "Timestamp"
     text.OutcomeApplied -> "Applied"
     text.OutcomeSuppressed -> "Suppressed"
+
+    // Story 3.4 - Member Card Views
+    text.MemberFichas -> "Cards"
+    text.MemberFichasEmpty -> "No cards"
+    text.MemberFichasEmptyHint -> "Cards group related tasks"
+
+    // Color picker
+    text.ColorLabel -> "Color"
+    text.ColorNone -> "None"
+    text.ColorGray -> "Gray"
+    text.ColorRed -> "Red"
+    text.ColorOrange -> "Orange"
+    text.ColorYellow -> "Yellow"
+    text.ColorGreen -> "Green"
+    text.ColorBlue -> "Blue"
+    text.ColorPurple -> "Purple"
+    text.ColorPink -> "Pink"
+
+    // Card grouping
+    text.UngroupedTasks -> "No card"
+    text.CardProgressCount(completed, total) ->
+      int.to_string(completed) <> "/" <> int.to_string(total)
+
+    // Card detail (member)
+    text.CardAddTask -> "Add task"
+    text.CardTasksEmpty -> "No tasks"
+    text.CardTasksCompleted -> "completed"
+    text.TaskType -> "Task type"
+    text.TaskTitlePlaceholder -> "Task title..."
   }
 }

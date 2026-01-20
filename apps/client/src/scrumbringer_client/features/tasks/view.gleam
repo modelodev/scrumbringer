@@ -13,7 +13,7 @@
 //// - **features/pool/view.gleam**: Pool canvas with task cards and drag-drop
 //// - **features/pool/dialogs.gleam**: Task create dialog, task details modal
 //// - **features/my_bar/view.gleam**: Claimed tasks list (my_bar section)
-//// - **features/now_working/view.gleam**: Active task panel
+//// - **client_view.gleam**: Unified right panel with Now Working + My Tasks
 ////
 //// This design keeps task views co-located with their feature context and
 //// state management, following Lustre best practices.

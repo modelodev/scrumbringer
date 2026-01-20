@@ -61,6 +61,10 @@ pub type Task {
     completed_at: Option(String),
     created_at: String,
     version: Int,
+    // Card (ficha) association
+    card_id: Option(Int),
+    card_title: Option(String),
+    card_color: Option(String),
   )
 }
 

@@ -62,6 +62,31 @@ pub fn handle_task_types_fetched_error(
 }
 
 // =============================================================================
+// Task Type Dialog Handlers
+// =============================================================================
+
+/// Handle task type create dialog open.
+pub fn handle_task_type_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
+  #(Model(..model, task_types_create_dialog_open: True), effect.none())
+}
+
+/// Handle task type create dialog close.
+pub fn handle_task_type_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
+  #(
+    Model(
+      ..model,
+      task_types_create_dialog_open: False,
+      task_types_create_name: "",
+      task_types_create_icon: "",
+      task_types_create_capability_id: opt.None,
+      task_types_create_error: opt.None,
+      task_types_icon_preview: IconIdle,
+    ),
+    effect.none(),
+  )
+}
+
+// =============================================================================
 // Task Type Create Handlers
 // =============================================================================
 
@@ -209,6 +234,7 @@ pub fn handle_task_type_created_ok(
   let model =
     Model(
       ..model,
+      task_types_create_dialog_open: False,
       task_types_create_in_flight: False,
       task_types_create_name: "",
       task_types_create_icon: "",

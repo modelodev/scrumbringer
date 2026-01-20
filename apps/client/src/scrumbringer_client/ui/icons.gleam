@@ -2,10 +2,13 @@
 ////
 //// ## Mission
 ////
-//// Provide reusable icon rendering utilities for heroicons and task type icons.
+//// Provide type-safe icon definitions and rendering utilities.
+//// Centralizes all icon definitions to prevent typos and ensure consistency.
 ////
 //// ## Responsibilities
 ////
+//// - Type-safe emoji icon constants
+//// - Type-safe heroicon definitions for admin navigation
 //// - Render heroicon outline SVG icons
 //// - Render task type icons with theme awareness
 ////
@@ -19,6 +22,7 @@
 //// - **features/admin/view.gleam**: Uses for task type icons
 //// - **features/my_bar/view.gleam**: Uses for task type icons
 //// - **features/pool/view.gleam**: Uses for task type icons
+//// - **client_view.gleam**: Uses for admin navigation icons
 
 import gleam/int
 import gleam/string
@@ -28,7 +32,102 @@ import lustre/element.{type Element}
 import lustre/element/html.{img}
 
 import scrumbringer_client/client_state.{type Msg}
+import scrumbringer_client/permissions
 import scrumbringer_client/theme.{type Theme}
+
+// =============================================================================
+// Emoji Icons (Type-Safe)
+// =============================================================================
+
+/// Emoji icons used in UI components.
+pub type EmojiIcon {
+  Target
+  Search
+  Hand
+  Checkmark
+  Drag
+  Release
+  Lightbulb
+  Wave
+  Backpack
+  Clock
+  Inbox
+}
+
+/// Converts an emoji icon to its string representation.
+pub fn emoji_to_string(icon: EmojiIcon) -> String {
+  case icon {
+    Target -> "🎯"
+    Search -> "🔍"
+    Hand -> "✋"
+    Checkmark -> "☑"
+    Drag -> "⠿"
+    Release -> "⟲"
+    Lightbulb -> "💡"
+    Wave -> "👋"
+    Backpack -> "🎒"
+    Clock -> "⏱"
+    Inbox -> "📥"
+  }
+}
+
+// =============================================================================
+// Heroicons (Type-Safe)
+// =============================================================================
+
+/// Heroicon names for admin navigation.
+pub type HeroIcon {
+  Envelope
+  BuildingOffice
+  Folder
+  ChartBar
+  ChartPie
+  Users
+  PuzzlePiece
+  Tag
+  DocumentText
+  Cog6Tooth
+  DocumentDuplicate
+}
+
+/// Converts a heroicon to its name string.
+pub fn heroicon_name(icon: HeroIcon) -> String {
+  case icon {
+    Envelope -> "envelope"
+    BuildingOffice -> "building-office"
+    Folder -> "folder"
+    ChartBar -> "chart-bar"
+    ChartPie -> "chart-pie"
+    Users -> "users"
+    PuzzlePiece -> "puzzle-piece"
+    Tag -> "tag"
+    DocumentText -> "document-text"
+    Cog6Tooth -> "cog-6-tooth"
+    DocumentDuplicate -> "document-duplicate"
+  }
+}
+
+/// Maps admin section to its heroicon.
+pub fn section_icon(section: permissions.AdminSection) -> HeroIcon {
+  case section {
+    permissions.Invites -> Envelope
+    permissions.OrgSettings -> BuildingOffice
+    permissions.Projects -> Folder
+    permissions.Metrics -> ChartBar
+    permissions.RuleMetrics -> ChartPie
+    permissions.Members -> Users
+    permissions.Capabilities -> PuzzlePiece
+    permissions.TaskTypes -> Tag
+    permissions.Cards -> DocumentText
+    permissions.Workflows -> Cog6Tooth
+    permissions.TaskTemplates -> DocumentDuplicate
+  }
+}
+
+/// Build the URL for a typed heroicon.
+pub fn heroicon_typed_url(icon: HeroIcon) -> String {
+  heroicon_outline_url(heroicon_name(icon))
+}
 
 // =============================================================================
 // Heroicon Utilities

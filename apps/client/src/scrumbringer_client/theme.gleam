@@ -87,6 +87,15 @@ pub fn tokens(theme: Theme) -> List(#(String, String)) {
       #("--sb-warning", "#d97706"),
       #("--sb-success", "#16a34a"),
       #("--sb-info", "#0284c7"),
+      // Card colors (Story 3.4)
+      #("--sb-card-gray", "#6B7280"),
+      #("--sb-card-red", "#EF4444"),
+      #("--sb-card-orange", "#F97316"),
+      #("--sb-card-yellow", "#EAB308"),
+      #("--sb-card-green", "#22C55E"),
+      #("--sb-card-blue", "#3B82F6"),
+      #("--sb-card-purple", "#8B5CF6"),
+      #("--sb-card-pink", "#EC4899"),
     ]
 
     Dark -> [
@@ -105,6 +114,15 @@ pub fn tokens(theme: Theme) -> List(#(String, String)) {
       #("--sb-warning", "#fbbf24"),
       #("--sb-success", "#4ade80"),
       #("--sb-info", "#38bdf8"),
+      // Card colors (Story 3.4) - slightly brighter for dark theme
+      #("--sb-card-gray", "#9CA3AF"),
+      #("--sb-card-red", "#F87171"),
+      #("--sb-card-orange", "#FB923C"),
+      #("--sb-card-yellow", "#FACC15"),
+      #("--sb-card-green", "#4ADE80"),
+      #("--sb-card-blue", "#60A5FA"),
+      #("--sb-card-purple", "#A78BFA"),
+      #("--sb-card-pink", "#F472B6"),
     ]
   }
 }
@@ -118,4 +136,13 @@ pub fn css_vars(theme: Theme) -> String {
     })
 
   string.join(parts, ";") <> ";"
+}
+
+/// Returns a CSS filter value for icons based on theme.
+/// For dark theme, inverts the icon colors to be visible.
+pub fn icon_filter(theme: Theme) -> String {
+  case theme {
+    Default -> "none"
+    Dark -> "invert(0.9) hue-rotate(180deg)"
+  }
 }

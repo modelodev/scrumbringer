@@ -63,6 +63,31 @@ fn validate_card_title(model: Model, title: String) -> Result(String, String) {
 }
 
 // =============================================================================
+// Dialog Handlers
+// =============================================================================
+
+/// Handle card create dialog open.
+pub fn handle_card_create_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
+  #(Model(..model, cards_create_dialog_open: True), effect.none())
+}
+
+/// Handle card create dialog close.
+pub fn handle_card_create_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
+  #(
+    Model(
+      ..model,
+      cards_create_dialog_open: False,
+      cards_create_title: "",
+      cards_create_description: "",
+      cards_create_color: opt.None,
+      cards_create_color_open: False,
+      cards_create_error: opt.None,
+    ),
+    effect.none(),
+  )
+}
+
+// =============================================================================
 // Create Handlers
 // =============================================================================
 
@@ -80,6 +105,25 @@ pub fn handle_card_create_description_changed(
   description: String,
 ) -> #(Model, Effect(Msg)) {
   #(Model(..model, cards_create_description: description), effect.none())
+}
+
+/// Handle card create color change.
+pub fn handle_card_create_color_changed(
+  model: Model,
+  color: opt.Option(String),
+) -> #(Model, Effect(Msg)) {
+  #(
+    Model(..model, cards_create_color: color, cards_create_color_open: False),
+    effect.none(),
+  )
+}
+
+/// Handle card create color toggle.
+pub fn handle_card_create_color_toggle(model: Model) -> #(Model, Effect(Msg)) {
+  #(
+    Model(..model, cards_create_color_open: !model.cards_create_color_open),
+    effect.none(),
+  )
 }
 
 /// Handle card create form submission.
@@ -107,6 +151,7 @@ pub fn handle_card_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
                   project_id,
                   title,
                   model.cards_create_description,
+                  model.cards_create_color,
                   CardCreated,
                 ),
               )
@@ -138,8 +183,11 @@ pub fn handle_card_created_ok(model: Model, card: Card) -> #(Model, Effect(Msg))
     Model(
       ..model,
       cards: cards,
+      cards_create_dialog_open: False,
       cards_create_title: "",
       cards_create_description: "",
+      cards_create_color: opt.None,
+      cards_create_color_open: False,
       cards_create_in_flight: False,
       cards_create_error: opt.None,
       toast: opt.Some(update_helpers.i18n_t(model, i18n_text.CardCreated)),
@@ -181,6 +229,7 @@ pub fn handle_card_edit_clicked(
       cards_edit_id: opt.Some(card.id),
       cards_edit_title: card.title,
       cards_edit_description: card.description,
+      cards_edit_color: card.color,
       cards_edit_error: opt.None,
     ),
     effect.none(),
@@ -201,6 +250,25 @@ pub fn handle_card_edit_description_changed(
   description: String,
 ) -> #(Model, Effect(Msg)) {
   #(Model(..model, cards_edit_description: description), effect.none())
+}
+
+/// Handle card edit color change.
+pub fn handle_card_edit_color_changed(
+  model: Model,
+  color: opt.Option(String),
+) -> #(Model, Effect(Msg)) {
+  #(
+    Model(..model, cards_edit_color: color, cards_edit_color_open: False),
+    effect.none(),
+  )
+}
+
+/// Handle card edit color toggle.
+pub fn handle_card_edit_color_toggle(model: Model) -> #(Model, Effect(Msg)) {
+  #(
+    Model(..model, cards_edit_color_open: !model.cards_edit_color_open),
+    effect.none(),
+  )
 }
 
 /// Handle card edit form submission.
@@ -228,6 +296,7 @@ pub fn handle_card_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
                   card_id,
                   title,
                   model.cards_edit_description,
+                  model.cards_edit_color,
                   CardUpdated,
                 ),
               )
@@ -248,6 +317,8 @@ pub fn handle_card_edit_cancelled(model: Model) -> #(Model, Effect(Msg)) {
       cards_edit_id: opt.None,
       cards_edit_title: "",
       cards_edit_description: "",
+      cards_edit_color: opt.None,
+      cards_edit_color_open: False,
       cards_edit_error: opt.None,
     ),
     effect.none(),
@@ -278,6 +349,8 @@ pub fn handle_card_updated_ok(
       cards_edit_id: opt.None,
       cards_edit_title: "",
       cards_edit_description: "",
+      cards_edit_color: opt.None,
+      cards_edit_color_open: False,
       cards_edit_in_flight: False,
       cards_edit_error: opt.None,
       toast: opt.Some(update_helpers.i18n_t(model, i18n_text.CardUpdated)),

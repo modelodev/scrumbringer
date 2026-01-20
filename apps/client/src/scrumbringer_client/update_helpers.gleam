@@ -50,7 +50,10 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiError}
 import domain/project.{type Project}
 import domain/org.{type OrgUser}
-import domain/task.{type ActiveTask, type Task, type TaskPosition, ActiveTask, ActiveTaskPayload, Task, TaskPosition}
+import domain/task.{
+  type ActiveTask, type Task, type TaskPosition, type WorkSession, ActiveTask,
+  ActiveTaskPayload, Task, TaskPosition, WorkSessionsPayload,
+}
 import domain/task_type.{type TaskType}
 import scrumbringer_client/client_state.{type Model, type Msg, type Remote, Loaded, Model}
 import scrumbringer_client/i18n/text as i18n_text
@@ -243,7 +246,8 @@ pub fn selected_project(model: Model) -> Option(Project) {
   }
 }
 
-/// Get the currently active task from member_active_task, if any.
+/// Get the currently active task from work sessions, if any.
+/// Returns the first active work session converted to ActiveTask for compatibility.
 ///
 /// ## Example
 ///
@@ -252,10 +256,28 @@ pub fn selected_project(model: Model) -> Option(Project) {
 /// // Some(active_task) or None
 /// ```
 pub fn now_working_active_task(model: Model) -> Option(ActiveTask) {
-  case model.member_active_task {
-    Loaded(ActiveTaskPayload(active_task: active_task, ..)) -> active_task
-    _ -> None
+  // First check work sessions (new API)
+  case model.member_work_sessions {
+    Loaded(WorkSessionsPayload(active_sessions: [first, ..], ..)) ->
+      Some(work_session_to_active_task(first))
+    _ ->
+      // Fallback to legacy active_task
+      case model.member_active_task {
+        Loaded(ActiveTaskPayload(active_task: active_task, ..)) -> active_task
+        _ -> None
+      }
   }
+}
+
+/// Convert a WorkSession to an ActiveTask for backward compatibility.
+fn work_session_to_active_task(session: WorkSession) -> ActiveTask {
+  ActiveTask(
+    task_id: session.task_id,
+    project_id: 0,
+    // Not available in WorkSession, using 0 as placeholder
+    started_at: session.started_at,
+    accumulated_s: session.accumulated_s,
+  )
 }
 
 /// Get the task ID of the currently active task, if any.

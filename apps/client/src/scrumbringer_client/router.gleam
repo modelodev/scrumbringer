@@ -439,6 +439,7 @@ fn member_section_title(
     member_section.Pool -> i18n_text.Pool
     member_section.MyBar -> i18n_text.MyBar
     member_section.MySkills -> i18n_text.MySkills
+    member_section.Fichas -> i18n_text.MemberFichas
   }
   i18n.t(locale, text)
 }

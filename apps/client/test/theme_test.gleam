@@ -45,12 +45,21 @@ pub fn tokens_default_complete_test() {
     #("--sb-warning", "#d97706"),
     #("--sb-success", "#16a34a"),
     #("--sb-info", "#0284c7"),
+    // Card colors
+    #("--sb-card-gray", "#6B7280"),
+    #("--sb-card-red", "#EF4444"),
+    #("--sb-card-orange", "#F97316"),
+    #("--sb-card-yellow", "#EAB308"),
+    #("--sb-card-green", "#22C55E"),
+    #("--sb-card-blue", "#3B82F6"),
+    #("--sb-card-purple", "#8B5CF6"),
+    #("--sb-card-pink", "#EC4899"),
   ]
 
   let tokens = theme.tokens(theme.Default)
 
   list.length(tokens)
-  |> should.equal(15)
+  |> should.equal(23)
 
   tokens
   |> should.equal(expected)
@@ -73,12 +82,21 @@ pub fn tokens_dark_complete_test() {
     #("--sb-warning", "#fbbf24"),
     #("--sb-success", "#4ade80"),
     #("--sb-info", "#38bdf8"),
+    // Card colors (brighter for dark theme)
+    #("--sb-card-gray", "#9CA3AF"),
+    #("--sb-card-red", "#F87171"),
+    #("--sb-card-orange", "#FB923C"),
+    #("--sb-card-yellow", "#FACC15"),
+    #("--sb-card-green", "#4ADE80"),
+    #("--sb-card-blue", "#60A5FA"),
+    #("--sb-card-purple", "#A78BFA"),
+    #("--sb-card-pink", "#F472B6"),
   ]
 
   let tokens = theme.tokens(theme.Dark)
 
   list.length(tokens)
-  |> should.equal(15)
+  |> should.equal(23)
 
   tokens
   |> should.equal(expected)

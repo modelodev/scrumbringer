@@ -57,11 +57,22 @@ pub fn view_login(model: Model) -> Element(Msg) {
     False -> update_helpers.i18n_t(model, i18n_text.LoginTitle)
   }
 
+  // L01: Button class with loading state
+  let btn_class = case model.login_in_flight {
+    True -> "btn-loading"
+    False -> ""
+  }
+
   div([attribute.class("page")], [
     h1([], [text(update_helpers.i18n_t(model, i18n_text.AppName))]),
     p([], [text(update_helpers.i18n_t(model, i18n_text.LoginSubtitle))]),
+    // L03: Error banner with icon
     case model.login_error {
-      opt.Some(err) -> div([attribute.class("error")], [text(err)])
+      opt.Some(err) ->
+        div([attribute.class("error-banner")], [
+          span([attribute.class("error-banner-icon")], [text("⚠")]),
+          span([], [text(err)]),
+        ])
       opt.None -> element.none()
     },
     form([event.on_submit(fn(_) { LoginSubmitted })], [
@@ -73,6 +84,9 @@ pub fn view_login(model: Model) -> Element(Msg) {
           attribute.value(model.login_email),
           event.on_input(LoginEmailChanged),
           attribute.required(True),
+          // L02: Autofocus on first field
+          attribute.autofocus(True),
+          attribute.attribute("aria-label", "Email address"),
         ]),
       ]),
       div([attribute.class("field")], [
@@ -83,10 +97,16 @@ pub fn view_login(model: Model) -> Element(Msg) {
           attribute.value(model.login_password),
           event.on_input(LoginPasswordChanged),
           attribute.required(True),
+          attribute.attribute("aria-label", "Password"),
         ]),
       ]),
+      // L01: Submit button with loading class
       button(
-        [attribute.type_("submit"), attribute.disabled(model.login_in_flight)],
+        [
+          attribute.type_("submit"),
+          attribute.disabled(model.login_in_flight),
+          attribute.class(btn_class),
+        ],
         [text(submit_label)],
       ),
     ]),

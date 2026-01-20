@@ -59,6 +59,28 @@ pub fn handle_capabilities_fetched_error(
 }
 
 // =============================================================================
+// Capability Dialog Handlers
+// =============================================================================
+
+/// Handle capability create dialog open.
+pub fn handle_capability_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
+  #(Model(..model, capabilities_create_dialog_open: True), effect.none())
+}
+
+/// Handle capability create dialog close.
+pub fn handle_capability_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
+  #(
+    Model(
+      ..model,
+      capabilities_create_dialog_open: False,
+      capabilities_create_name: "",
+      capabilities_create_error: opt.None,
+    ),
+    effect.none(),
+  )
+}
+
+// =============================================================================
 // Capability Create Handlers
 // =============================================================================
 
@@ -116,6 +138,7 @@ pub fn handle_capability_created_ok(
     Model(
       ..model,
       capabilities: Loaded(updated),
+      capabilities_create_dialog_open: False,
       capabilities_create_in_flight: False,
       capabilities_create_name: "",
       toast: opt.Some(update_helpers.i18n_t(

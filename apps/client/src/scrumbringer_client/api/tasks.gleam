@@ -113,6 +113,8 @@ pub const list_project_tasks = operations.list_project_tasks
 
 pub const create_task = operations.create_task
 
+pub const create_task_with_card = operations.create_task_with_card
+
 pub const claim_task = operations.claim_task
 
 pub const release_task = operations.release_task
@@ -128,7 +130,19 @@ pub const list_task_notes = notes.list_task_notes
 pub const add_task_note = notes.add_task_note
 
 // =============================================================================
-// Re-export Functions: Active Task
+// Re-export Functions: Work Sessions (multi-session)
+// =============================================================================
+
+pub const get_work_sessions = active.get_work_sessions
+
+pub const start_work_session = active.start_work_session
+
+pub const pause_work_session = active.pause_work_session
+
+pub const heartbeat_work_session = active.heartbeat_work_session
+
+// =============================================================================
+// Re-export Functions: Active Task (legacy - deprecated)
 // =============================================================================
 
 pub const get_me_active_task = active.get_me_active_task

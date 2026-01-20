@@ -123,7 +123,7 @@ pub fn task_template_payload_decoder_decodes_with_project_id_test() {
 
 pub fn task_templates_payload_decoder_decodes_list_test() {
   let body =
-    "{\"data\":{\"task_templates\":[{\"id\":1,\"org_id\":1,\"project_id\":null,\"name\":\"Template A\",\"description\":\"First\",\"type_id\":1,\"type_name\":\"Bug\",\"priority\":3,\"created_by\":1,\"created_at\":\"2026-01-15T14:00:00Z\"},{\"id\":2,\"org_id\":1,\"project_id\":3,\"name\":\"Template B\",\"description\":null,\"type_id\":2,\"type_name\":\"Feature\",\"priority\":2,\"created_by\":1,\"created_at\":\"2026-01-15T15:00:00Z\"}]}}"
+    "{\"data\":{\"templates\":[{\"id\":1,\"org_id\":1,\"project_id\":null,\"name\":\"Template A\",\"description\":\"First\",\"type_id\":1,\"type_name\":\"Bug\",\"priority\":3,\"created_by\":1,\"created_at\":\"2026-01-15T14:00:00Z\"},{\"id\":2,\"org_id\":1,\"project_id\":3,\"name\":\"Template B\",\"description\":null,\"type_id\":2,\"type_name\":\"Feature\",\"priority\":2,\"created_by\":1,\"created_at\":\"2026-01-15T15:00:00Z\"}]}}"
 
   let decoder =
     decode.field(
@@ -176,7 +176,7 @@ pub fn rules_payload_decoder_decodes_empty_list_test() {
 }
 
 pub fn task_templates_payload_decoder_decodes_empty_list_test() {
-  let body = "{\"data\":{\"task_templates\":[]}}"
+  let body = "{\"data\":{\"templates\":[]}}"
 
   let decoder =
     decode.field(

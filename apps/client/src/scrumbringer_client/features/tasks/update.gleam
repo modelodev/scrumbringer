@@ -51,9 +51,9 @@ import domain/api_error.{type ApiError}
 import domain/task.{type Task, type TaskNote, Task}
 import domain/task_status.{Available, Claimed, Completed, Taken}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, Loading, MemberActiveTaskFetched,
-  MemberNoteAdded, MemberNotesFetched, MemberTaskClaimed, MemberTaskCompleted,
-  MemberTaskCreated, MemberTaskReleased, Model, NotAsked,
+  type Model, type Msg, Failed, Loaded, Loading, MemberNoteAdded,
+  MemberNotesFetched, MemberTaskClaimed, MemberTaskCompleted, MemberTaskCreated,
+  MemberTaskReleased, MemberWorkSessionsFetched, Model, NotAsked,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -515,7 +515,7 @@ pub fn handle_task_released_ok(
     )
 
   let #(model, fx) = member_refresh(model)
-  #(model, effect.batch([fx, api_tasks.get_me_active_task(MemberActiveTaskFetched)]))
+  #(model, effect.batch([fx, api_tasks.get_work_sessions(MemberWorkSessionsFetched)]))
 }
 
 /// Handle successful task completion.
@@ -532,7 +532,7 @@ pub fn handle_task_completed_ok(
     )
 
   let #(model, fx) = member_refresh(model)
-  #(model, effect.batch([fx, api_tasks.get_me_active_task(MemberActiveTaskFetched)]))
+  #(model, effect.batch([fx, api_tasks.get_work_sessions(MemberWorkSessionsFetched)]))
 }
 
 /// Handle task mutation error (claim/release/complete).

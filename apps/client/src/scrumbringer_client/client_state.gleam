@@ -240,6 +240,7 @@ pub type Model {
     projects_create_error: Option(String),
     // Capabilities
     capabilities: Remote(List(Capability)),
+    capabilities_create_dialog_open: Bool,
     capabilities_create_name: String,
     capabilities_create_in_flight: Bool,
     capabilities_create_error: Option(String),
@@ -269,6 +270,13 @@ pub type Model {
     org_settings_save_in_flight: Bool,
     org_settings_error: Option(String),
     org_settings_error_user_id: Option(Int),
+    // User projects dialog
+    user_projects_dialog_open: Bool,
+    user_projects_dialog_user: Option(OrgUser),
+    user_projects_list: Remote(List(Project)),
+    user_projects_add_project_id: Option(Int),
+    user_projects_in_flight: Bool,
+    user_projects_error: Option(String),
     // Member add dialog
     members_add_dialog_open: Bool,
     members_add_selected_user: Option(OrgUser),
@@ -286,6 +294,7 @@ pub type Model {
     // Task types
     task_types: Remote(List(TaskType)),
     task_types_project_id: Option(Int),
+    task_types_create_dialog_open: Bool,
     task_types_create_name: String,
     task_types_create_icon: String,
     task_types_create_capability_id: Option(String),
@@ -295,21 +304,35 @@ pub type Model {
     // Cards
     cards: Remote(List(Card)),
     cards_project_id: Option(Int),
+    cards_create_dialog_open: Bool,
     cards_create_title: String,
     cards_create_description: String,
+    cards_create_color: Option(String),
+    cards_create_color_open: Bool,
     cards_create_in_flight: Bool,
     cards_create_error: Option(String),
     cards_edit_id: Option(Int),
     cards_edit_title: String,
     cards_edit_description: String,
+    cards_edit_color: Option(String),
+    cards_edit_color_open: Bool,
     cards_edit_in_flight: Bool,
     cards_edit_error: Option(String),
     cards_delete_confirm: Option(Card),
     cards_delete_in_flight: Bool,
     cards_delete_error: Option(String),
+    // Card detail (member view)
+    card_detail_open: Option(Int),
+    card_detail_tasks: Remote(List(Task)),
+    card_add_task_open: Bool,
+    card_add_task_title: String,
+    card_add_task_priority: Int,
+    card_add_task_in_flight: Bool,
+    card_add_task_error: Option(String),
     // Workflows
     workflows_org: Remote(List(Workflow)),
     workflows_project: Remote(List(Workflow)),
+    workflows_create_dialog_open: Bool,
     workflows_create_name: String,
     workflows_create_description: String,
     workflows_create_active: Bool,
@@ -327,6 +350,7 @@ pub type Model {
     // Rules (for selected workflow)
     rules_workflow_id: Option(Int),
     rules: Remote(List(Rule)),
+    rules_create_dialog_open: Bool,
     rules_create_name: String,
     rules_create_goal: String,
     rules_create_resource_type: String,
@@ -357,6 +381,7 @@ pub type Model {
     // Task templates
     task_templates_org: Remote(List(TaskTemplate)),
     task_templates_project: Remote(List(TaskTemplate)),
+    task_templates_create_dialog_open: Bool,
     task_templates_create_name: String,
     task_templates_create_description: String,
     task_templates_create_type_id: Option(Int),
@@ -403,6 +428,8 @@ pub type Model {
     member_quick_my_caps: Bool,
     member_pool_filters_visible: Bool,
     member_pool_view_mode: pool_prefs.ViewMode,
+    // Mobile panel toggle
+    member_panel_expanded: Bool,
     // Member task creation
     member_create_dialog_open: Bool,
     member_create_title: String,
@@ -516,6 +543,8 @@ pub type Msg {
 
   // Capabilities
   CapabilitiesFetched(ApiResult(List(Capability)))
+  CapabilityCreateDialogOpened
+  CapabilityCreateDialogClosed
   CapabilityCreateNameChanged(String)
   CapabilityCreateSubmitted
   CapabilityCreated(ApiResult(Capability))
@@ -527,6 +556,16 @@ pub type Msg {
   OrgSettingsRoleChanged(Int, String)
   OrgSettingsSaveClicked(Int)
   OrgSettingsSaved(Int, ApiResult(OrgUser))
+
+  // User projects dialog
+  UserProjectsDialogOpened(OrgUser)
+  UserProjectsDialogClosed
+  UserProjectsFetched(ApiResult(List(Project)))
+  UserProjectsAddProjectChanged(String)
+  UserProjectsAddSubmitted
+  UserProjectAdded(ApiResult(Project))
+  UserProjectRemoveClicked(Int)
+  UserProjectRemoved(ApiResult(Nil))
 
   // Member add dialog
   MemberAddDialogOpened
@@ -549,6 +588,8 @@ pub type Msg {
 
   // Task types
   TaskTypesFetched(ApiResult(List(TaskType)))
+  TaskTypeCreateDialogOpened
+  TaskTypeCreateDialogClosed
   TaskTypeCreateNameChanged(String)
   TaskTypeCreateIconChanged(String)
   TaskTypeIconLoaded
@@ -559,13 +600,19 @@ pub type Msg {
 
   // Cards
   CardsFetched(ApiResult(List(Card)))
+  CardCreateDialogOpened
+  CardCreateDialogClosed
   CardCreateTitleChanged(String)
   CardCreateDescriptionChanged(String)
+  CardCreateColorChanged(Option(String))
+  CardCreateColorToggle
   CardCreateSubmitted
   CardCreated(ApiResult(Card))
   CardEditClicked(Card)
   CardEditTitleChanged(String)
   CardEditDescriptionChanged(String)
+  CardEditColorChanged(Option(String))
+  CardEditColorToggle
   CardEditSubmitted
   CardUpdated(ApiResult(Card))
   CardEditCancelled
@@ -574,9 +621,22 @@ pub type Msg {
   CardDeleteConfirmed
   CardDeleted(ApiResult(Nil))
 
+  // Card detail (member view)
+  OpenCardDetail(Int)
+  CloseCardDetail
+  CardDetailTasksFetched(ApiResult(List(Task)))
+  ToggleAddTaskForm
+  CardAddTaskTitleInput(String)
+  CardAddTaskPrioritySelect(Int)
+  CancelAddTask
+  SubmitAddTask
+  CardAddTaskCreated(ApiResult(Task))
+
   // Workflows
   WorkflowsOrgFetched(ApiResult(List(Workflow)))
   WorkflowsProjectFetched(ApiResult(List(Workflow)))
+  WorkflowCreateDialogOpened
+  WorkflowCreateDialogClosed
   WorkflowCreateNameChanged(String)
   WorkflowCreateDescriptionChanged(String)
   WorkflowCreateActiveChanged(Bool)
@@ -598,6 +658,8 @@ pub type Msg {
   // Rules
   RulesFetched(ApiResult(List(Rule)))
   RulesBackClicked
+  RuleCreateDialogOpened
+  RuleCreateDialogClosed
   RuleCreateNameChanged(String)
   RuleCreateGoalChanged(String)
   RuleCreateResourceTypeChanged(String)
@@ -636,6 +698,8 @@ pub type Msg {
   // Task templates
   TaskTemplatesOrgFetched(ApiResult(List(TaskTemplate)))
   TaskTemplatesProjectFetched(ApiResult(List(TaskTemplate)))
+  TaskTemplateCreateDialogOpened
+  TaskTemplateCreateDialogClosed
   TaskTemplateCreateNameChanged(String)
   TaskTemplateCreateDescriptionChanged(String)
   TaskTemplateCreateTypeIdChanged(String)
@@ -664,6 +728,7 @@ pub type Msg {
   MemberToggleMyCapabilitiesQuick
   MemberPoolFiltersToggled
   MemberPoolViewModeSet(pool_prefs.ViewMode)
+  MemberPanelToggled
 
   // Keyboard
   GlobalKeyDown(pool_prefs.KeyEvent)
@@ -873,6 +938,7 @@ pub fn default_model() -> Model {
     projects_create_error: option.None,
     // Capabilities
     capabilities: NotAsked,
+    capabilities_create_dialog_open: False,
     capabilities_create_name: "",
     capabilities_create_in_flight: False,
     capabilities_create_error: option.None,
@@ -902,6 +968,13 @@ pub fn default_model() -> Model {
     org_settings_save_in_flight: False,
     org_settings_error: option.None,
     org_settings_error_user_id: option.None,
+    // User projects dialog
+    user_projects_dialog_open: False,
+    user_projects_dialog_user: option.None,
+    user_projects_list: NotAsked,
+    user_projects_add_project_id: option.None,
+    user_projects_in_flight: False,
+    user_projects_error: option.None,
     // Member add dialog
     members_add_dialog_open: False,
     members_add_selected_user: option.None,
@@ -919,6 +992,7 @@ pub fn default_model() -> Model {
     // Task types
     task_types: NotAsked,
     task_types_project_id: option.None,
+    task_types_create_dialog_open: False,
     task_types_create_name: "",
     task_types_create_icon: "",
     task_types_create_capability_id: option.None,
@@ -928,21 +1002,35 @@ pub fn default_model() -> Model {
     // Cards
     cards: NotAsked,
     cards_project_id: option.None,
+    cards_create_dialog_open: False,
     cards_create_title: "",
     cards_create_description: "",
+    cards_create_color: option.None,
+    cards_create_color_open: False,
     cards_create_in_flight: False,
     cards_create_error: option.None,
     cards_edit_id: option.None,
     cards_edit_title: "",
     cards_edit_description: "",
+    cards_edit_color: option.None,
+    cards_edit_color_open: False,
     cards_edit_in_flight: False,
     cards_edit_error: option.None,
     cards_delete_confirm: option.None,
     cards_delete_in_flight: False,
     cards_delete_error: option.None,
+    // Card detail (member view)
+    card_detail_open: option.None,
+    card_detail_tasks: NotAsked,
+    card_add_task_open: False,
+    card_add_task_title: "",
+    card_add_task_priority: 3,
+    card_add_task_in_flight: False,
+    card_add_task_error: option.None,
     // Workflows
     workflows_org: NotAsked,
     workflows_project: NotAsked,
+    workflows_create_dialog_open: False,
     workflows_create_name: "",
     workflows_create_description: "",
     workflows_create_active: True,
@@ -960,6 +1048,7 @@ pub fn default_model() -> Model {
     // Rules
     rules_workflow_id: option.None,
     rules: NotAsked,
+    rules_create_dialog_open: False,
     rules_create_name: "",
     rules_create_goal: "",
     rules_create_resource_type: "task",
@@ -990,6 +1079,7 @@ pub fn default_model() -> Model {
     // Task templates
     task_templates_org: NotAsked,
     task_templates_project: NotAsked,
+    task_templates_create_dialog_open: False,
     task_templates_create_name: "",
     task_templates_create_description: "",
     task_templates_create_type_id: option.None,
@@ -1036,6 +1126,8 @@ pub fn default_model() -> Model {
     member_quick_my_caps: True,
     member_pool_filters_visible: False,
     member_pool_view_mode: pool_prefs.Canvas,
+    // Mobile panel toggle
+    member_panel_expanded: False,
     // Member task creation
     member_create_dialog_open: False,
     member_create_title: "",

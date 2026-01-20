@@ -84,6 +84,34 @@ pub fn handle_workflows_project_fetched_error(
 }
 
 // =============================================================================
+// Workflow Dialog Handlers
+// =============================================================================
+
+/// Handle workflow create dialog open.
+pub fn handle_workflow_create_dialog_opened(
+  model: Model,
+) -> #(Model, Effect(Msg)) {
+  #(Model(..model, workflows_create_dialog_open: True), effect.none())
+}
+
+/// Handle workflow create dialog close.
+pub fn handle_workflow_create_dialog_closed(
+  model: Model,
+) -> #(Model, Effect(Msg)) {
+  #(
+    Model(
+      ..model,
+      workflows_create_dialog_open: False,
+      workflows_create_name: "",
+      workflows_create_description: "",
+      workflows_create_active: True,
+      workflows_create_error: opt.None,
+    ),
+    effect.none(),
+  )
+}
+
+// =============================================================================
 // Workflow Create Handlers
 // =============================================================================
 
@@ -568,6 +596,33 @@ pub fn handle_rules_back_clicked(model: Model) -> #(Model, Effect(Msg)) {
 }
 
 // =============================================================================
+// Rule Dialog Handlers
+// =============================================================================
+
+/// Handle rule create dialog open.
+pub fn handle_rule_create_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
+  #(Model(..model, rules_create_dialog_open: True), effect.none())
+}
+
+/// Handle rule create dialog close.
+pub fn handle_rule_create_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
+  #(
+    Model(
+      ..model,
+      rules_create_dialog_open: False,
+      rules_create_name: "",
+      rules_create_goal: "",
+      rules_create_resource_type: "task",
+      rules_create_task_type_id: opt.None,
+      rules_create_to_state: "completed",
+      rules_create_active: True,
+      rules_create_error: opt.None,
+    ),
+    effect.none(),
+  )
+}
+
+// =============================================================================
 // Rule Create Handlers
 // =============================================================================
 
@@ -588,6 +643,7 @@ pub fn handle_rule_create_goal_changed(
 }
 
 /// Handle rule create resource type change.
+/// Resets to_state to a valid default for the new resource type (AC11).
 pub fn handle_rule_create_resource_type_changed(
   model: Model,
   resource_type: String,
@@ -596,11 +652,17 @@ pub fn handle_rule_create_resource_type_changed(
     "task" -> model.rules_create_task_type_id
     _ -> opt.None
   }
+  // Reset to_state to first valid option for the resource type
+  let to_state = case resource_type {
+    "task" -> "available"
+    _ -> "pendiente"
+  }
   #(
     Model(
       ..model,
       rules_create_resource_type: resource_type,
       rules_create_task_type_id: task_type_id,
+      rules_create_to_state: to_state,
     ),
     effect.none(),
   )
@@ -695,6 +757,7 @@ pub fn handle_rule_created_ok(model: Model, rule: Rule) -> #(Model, Effect(Msg))
     Model(
       ..model,
       rules: rules,
+      rules_create_dialog_open: False,
       rules_create_name: "",
       rules_create_goal: "",
       rules_create_resource_type: "task",
@@ -768,6 +831,7 @@ pub fn handle_rule_edit_goal_changed(
 }
 
 /// Handle rule edit resource type change.
+/// Resets to_state to a valid default for the new resource type (AC11).
 pub fn handle_rule_edit_resource_type_changed(
   model: Model,
   resource_type: String,
@@ -776,11 +840,17 @@ pub fn handle_rule_edit_resource_type_changed(
     "task" -> model.rules_edit_task_type_id
     _ -> opt.None
   }
+  // Reset to_state to first valid option for the resource type
+  let to_state = case resource_type {
+    "task" -> "available"
+    _ -> "pendiente"
+  }
   #(
     Model(
       ..model,
       rules_edit_resource_type: resource_type,
       rules_edit_task_type_id: task_type_id,
+      rules_edit_to_state: to_state,
     ),
     effect.none(),
   )
@@ -1242,6 +1312,35 @@ pub fn handle_task_templates_project_fetched_error(
 }
 
 // =============================================================================
+// Task Template Dialog Handlers
+// =============================================================================
+
+/// Handle task template create dialog open.
+pub fn handle_task_template_create_dialog_opened(
+  model: Model,
+) -> #(Model, Effect(Msg)) {
+  #(Model(..model, task_templates_create_dialog_open: True), effect.none())
+}
+
+/// Handle task template create dialog close.
+pub fn handle_task_template_create_dialog_closed(
+  model: Model,
+) -> #(Model, Effect(Msg)) {
+  #(
+    Model(
+      ..model,
+      task_templates_create_dialog_open: False,
+      task_templates_create_name: "",
+      task_templates_create_description: "",
+      task_templates_create_type_id: opt.None,
+      task_templates_create_priority: "3",
+      task_templates_create_error: opt.None,
+    ),
+    effect.none(),
+  )
+}
+
+// =============================================================================
 // Task Template Create Handlers
 // =============================================================================
 
@@ -1387,6 +1486,7 @@ pub fn handle_task_template_created_ok(
       ..model,
       task_templates_org: org,
       task_templates_project: project,
+      task_templates_create_dialog_open: False,
       task_templates_create_name: "",
       task_templates_create_description: "",
       task_templates_create_type_id: opt.None,
