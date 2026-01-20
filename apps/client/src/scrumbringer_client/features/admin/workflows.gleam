@@ -24,18 +24,21 @@ import gleam/result
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError}
-import domain/workflow.{type Rule, type RuleTemplate, type TaskTemplate, type Workflow}
+import domain/workflow.{
+  type Rule, type RuleTemplate, type TaskTemplate, type Workflow,
+}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, Loading, Model, NotAsked,
-  RuleCreated, RuleDeleted, RulesFetched, RuleMetricsFetched, RuleTemplateAttached,
-  RuleTemplateDetached, RuleUpdated, TaskTemplateCreated,
-  TaskTemplateDeleted, TaskTemplatesOrgFetched, TaskTemplatesProjectFetched,
-  TaskTemplateUpdated, WorkflowCreated, WorkflowDeleted, WorkflowsOrgFetched,
-  WorkflowsProjectFetched, WorkflowUpdated,
+  type Model, type Msg, Failed, Loaded, Loading, Model, NotAsked, RuleCreated,
+  RuleDeleted, RuleMetricsFetched, RuleTemplateAttached, RuleTemplateDetached,
+  RuleUpdated, RulesFetched, TaskTemplateCreated, TaskTemplateDeleted,
+  TaskTemplateUpdated, TaskTemplatesOrgFetched, TaskTemplatesProjectFetched,
+  TaskTypesFetched, WorkflowCreated, WorkflowDeleted, WorkflowUpdated,
+  WorkflowsOrgFetched, WorkflowsProjectFetched,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
 
+import scrumbringer_client/api/tasks as api_tasks
 import scrumbringer_client/api/workflows as api_workflows
 
 // =============================================================================
@@ -492,11 +495,19 @@ pub fn handle_workflow_rules_clicked(
       rules: Loading,
       rules_metrics: Loading,
     )
+
+  let task_types_effect = case model.selected_project_id {
+    opt.Some(project_id) ->
+      api_tasks.list_task_types(project_id, TaskTypesFetched)
+    opt.None -> effect.none()
+  }
+
   #(
     model,
     effect.batch([
       api_workflows.list_rules(workflow_id, RulesFetched),
       api_workflows.get_workflow_metrics(workflow_id, RuleMetricsFetched),
+      task_types_effect,
     ]),
   )
 }
@@ -581,7 +592,18 @@ pub fn handle_rule_create_resource_type_changed(
   model: Model,
   resource_type: String,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, rules_create_resource_type: resource_type), effect.none())
+  let task_type_id = case resource_type {
+    "task" -> model.rules_create_task_type_id
+    _ -> opt.None
+  }
+  #(
+    Model(
+      ..model,
+      rules_create_resource_type: resource_type,
+      rules_create_task_type_id: task_type_id,
+    ),
+    effect.none(),
+  )
 }
 
 /// Handle rule create task type id change.
@@ -750,7 +772,18 @@ pub fn handle_rule_edit_resource_type_changed(
   model: Model,
   resource_type: String,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, rules_edit_resource_type: resource_type), effect.none())
+  let task_type_id = case resource_type {
+    "task" -> model.rules_edit_task_type_id
+    _ -> opt.None
+  }
+  #(
+    Model(
+      ..model,
+      rules_edit_resource_type: resource_type,
+      rules_edit_task_type_id: task_type_id,
+    ),
+    effect.none(),
+  )
 }
 
 /// Handle rule edit task type id change.
@@ -925,11 +958,7 @@ pub fn handle_rule_delete_clicked(
 /// Handle rule delete cancelled.
 pub fn handle_rule_delete_cancelled(model: Model) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      rules_delete_confirm: opt.None,
-      rules_delete_error: opt.None,
-    ),
+    Model(..model, rules_delete_confirm: opt.None, rules_delete_error: opt.None),
     effect.none(),
   )
 }
@@ -1114,10 +1143,18 @@ pub fn handle_rule_template_detach_clicked(
     True -> #(model, effect.none())
     False -> {
       let model =
-        Model(..model, rules_attach_in_flight: True, rules_attach_error: opt.None)
+        Model(
+          ..model,
+          rules_attach_in_flight: True,
+          rules_attach_error: opt.None,
+        )
       #(
         model,
-        api_workflows.detach_template(rule_id, template_id, RuleTemplateDetached),
+        api_workflows.detach_template(
+          rule_id,
+          template_id,
+          RuleTemplateDetached,
+        ),
       )
     }
   }
@@ -1419,10 +1456,7 @@ pub fn handle_task_template_edit_description_changed(
   model: Model,
   description: String,
 ) -> #(Model, Effect(Msg)) {
-  #(
-    Model(..model, task_templates_edit_description: description),
-    effect.none(),
-  )
+  #(Model(..model, task_templates_edit_description: description), effect.none())
 }
 
 /// Handle task template edit type id change.
@@ -1654,8 +1688,7 @@ pub fn handle_task_template_deleted_ok(model: Model) -> #(Model, Effect(Msg)) {
   }
   let filter_list = fn(templates: List(TaskTemplate)) {
     case deleted_id {
-      opt.Some(id) ->
-        list.filter(templates, fn(t: TaskTemplate) { t.id != id })
+      opt.Some(id) -> list.filter(templates, fn(t: TaskTemplate) { t.id != id })
       opt.None -> templates
     }
   }
@@ -1714,8 +1747,7 @@ pub fn fetch_workflows(model: Model) -> #(Model, Effect(Msg)) {
       api_workflows.list_project_workflows(project_id, WorkflowsProjectFetched)
     opt.None -> effect.none()
   }
-  let model =
-    Model(..model, workflows_org: Loading, workflows_project: Loading)
+  let model = Model(..model, workflows_org: Loading, workflows_project: Loading)
   #(model, effect.batch([org_effect, project_effect]))
 }
 

@@ -36,12 +36,14 @@ import lustre/effect.{type Effect}
 import domain/org_role
 
 import scrumbringer_client/accept_invite
+
 // API modules
 import scrumbringer_client/api/auth as api_auth
+import scrumbringer_client/api/metrics as api_metrics
+import scrumbringer_client/api/org as api_org
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/api/tasks as api_tasks
-import scrumbringer_client/api/org as api_org
-import scrumbringer_client/api/metrics as api_metrics
+
 // Domain types
 import domain/task.{TaskFilters}
 import scrumbringer_client/client_ffi
@@ -62,33 +64,31 @@ import scrumbringer_client/client_state.{
   AdminMetricsOverviewFetched, AdminMetricsProjectTasksFetched,
   AdminRuleMetricsDrilldownClicked, AdminRuleMetricsDrilldownClosed,
   AdminRuleMetricsExecPageChanged, AdminRuleMetricsExecutionsFetched,
-  AdminRuleMetricsFetched, AdminRuleMetricsFromChanged, AdminRuleMetricsRefreshClicked,
-  AdminRuleMetricsRuleDetailsFetched, AdminRuleMetricsToChanged,
-  AdminRuleMetricsWorkflowDetailsFetched, AdminRuleMetricsWorkflowExpanded,
-  CapabilitiesFetched, CapabilityCreateNameChanged, CapabilityCreateSubmitted,
-  CapabilityCreated, CardCreateDescriptionChanged, CardCreateSubmitted,
-  CardCreateTitleChanged, CardCreated, CardDeleteCancelled, CardDeleteClicked,
-  CardDeleteConfirmed, CardDeleted, CardEditCancelled, CardEditClicked,
-  CardEditDescriptionChanged, CardEditSubmitted, CardEditTitleChanged,
-  CardUpdated, CardsFetched, Failed, ForgotPasswordClicked,
-  ForgotPasswordCopyClicked, ForgotPasswordCopyFinished, ForgotPasswordDismissed,
-  ForgotPasswordEmailChanged, ForgotPasswordFinished, ForgotPasswordSubmitted,
-  GlobalKeyDown, InviteLinkCopyClicked,
+  AdminRuleMetricsFetched, AdminRuleMetricsFromChanged,
+  AdminRuleMetricsRefreshClicked, AdminRuleMetricsRuleDetailsFetched,
+  AdminRuleMetricsToChanged, AdminRuleMetricsWorkflowDetailsFetched,
+  AdminRuleMetricsWorkflowExpanded, CapabilitiesFetched,
+  CapabilityCreateNameChanged, CapabilityCreateSubmitted, CapabilityCreated,
+  CardCreateDescriptionChanged, CardCreateSubmitted, CardCreateTitleChanged,
+  CardCreated, CardDeleteCancelled, CardDeleteClicked, CardDeleteConfirmed,
+  CardDeleted, CardEditCancelled, CardEditClicked, CardEditDescriptionChanged,
+  CardEditSubmitted, CardEditTitleChanged, CardUpdated, CardsFetched, Failed,
+  ForgotPasswordClicked, ForgotPasswordCopyClicked, ForgotPasswordCopyFinished,
+  ForgotPasswordDismissed, ForgotPasswordEmailChanged, ForgotPasswordFinished,
+  ForgotPasswordSubmitted, GlobalKeyDown, InviteLinkCopyClicked,
   InviteLinkCopyFinished, InviteLinkCreateSubmitted, InviteLinkCreated,
   InviteLinkEmailChanged, InviteLinkRegenerateClicked, InviteLinkRegenerated,
   InviteLinksFetched, Loaded, Loading, LocaleSelected, Login, LoginDomValuesRead,
   LoginEmailChanged, LoginFinished, LoginPasswordChanged, LoginSubmitted,
   LogoutClicked, LogoutFinished, MeFetched, Member, MemberActiveTaskFetched,
   MemberActiveTaskHeartbeated, MemberActiveTaskPaused, MemberActiveTaskStarted,
-  MemberWorkSessionsFetched, MemberWorkSessionStarted, MemberWorkSessionPaused,
-  MemberWorkSessionHeartbeated,
   MemberAddDialogClosed, MemberAddDialogOpened, MemberAddRoleChanged,
   MemberAddSubmitted, MemberAddUserSelected, MemberAdded,
   MemberCanvasRectFetched, MemberClaimClicked, MemberCompleteClicked,
   MemberCreateDescriptionChanged, MemberCreateDialogClosed,
   MemberCreateDialogOpened, MemberCreatePriorityChanged, MemberCreateSubmitted,
-  MemberCreateTitleChanged, MemberCreateTypeIdChanged,
-  MemberDragEnded, MemberDragMoved, MemberDragStarted, MemberMetricsFetched,
+  MemberCreateTitleChanged, MemberCreateTypeIdChanged, MemberDragEnded,
+  MemberDragMoved, MemberDragStarted, MemberMetricsFetched,
   MemberMyCapabilityIdsFetched, MemberMyCapabilityIdsSaved, MemberNoteAdded,
   MemberNoteContentChanged, MemberNoteSubmitted, MemberNotesFetched,
   MemberNowWorkingPauseClicked, MemberNowWorkingStartClicked,
@@ -103,48 +103,51 @@ import scrumbringer_client/client_state.{
   MemberRemoved, MemberSaveCapabilitiesClicked, MemberTaskClaimed,
   MemberTaskCompleted, MemberTaskCreated, MemberTaskDetailsClosed,
   MemberTaskDetailsOpened, MemberTaskReleased, MemberTaskTypesFetched,
-  MemberToggleCapability, MemberToggleMyCapabilitiesQuick, MembersFetched, Model,
+  MemberToggleCapability, MemberToggleMyCapabilitiesQuick,
+  MemberWorkSessionHeartbeated, MemberWorkSessionPaused,
+  MemberWorkSessionStarted, MemberWorkSessionsFetched, MembersFetched, Model,
   NavigateTo, NotAsked, NowWorkingTicked, OrgSettingsRoleChanged,
   OrgSettingsSaveClicked, OrgSettingsSaved, OrgSettingsUsersFetched,
   OrgUsersCacheFetched, OrgUsersSearchChanged, OrgUsersSearchDebounced,
   OrgUsersSearchResults, ProjectCreateNameChanged, ProjectCreateSubmitted,
   ProjectCreated, ProjectSelected, ProjectsFetched, Push, Rect, Replace,
   ResetPassword as ResetPasswordPage, ResetPasswordMsg,
+  RuleAttachTemplateSelected, RuleAttachTemplateSubmitted,
+  RuleCreateActiveChanged, RuleCreateGoalChanged, RuleCreateNameChanged,
+  RuleCreateResourceTypeChanged, RuleCreateSubmitted,
+  RuleCreateTaskTypeIdChanged, RuleCreateToStateChanged, RuleCreated,
+  RuleDeleteCancelled, RuleDeleteClicked, RuleDeleteConfirmed, RuleDeleted,
+  RuleEditActiveChanged, RuleEditCancelled, RuleEditClicked, RuleEditGoalChanged,
+  RuleEditNameChanged, RuleEditResourceTypeChanged, RuleEditSubmitted,
+  RuleEditTaskTypeIdChanged, RuleEditToStateChanged, RuleMetricsFetched,
+  RuleTemplateAttached, RuleTemplateDetachClicked, RuleTemplateDetached,
+  RuleTemplatesClicked, RuleTemplatesFetched, RuleUpdated, RulesBackClicked,
+  RulesFetched, TaskTemplateCreateDescriptionChanged,
+  TaskTemplateCreateNameChanged, TaskTemplateCreatePriorityChanged,
+  TaskTemplateCreateSubmitted, TaskTemplateCreateTypeIdChanged,
+  TaskTemplateCreated, TaskTemplateDeleteCancelled, TaskTemplateDeleteClicked,
+  TaskTemplateDeleteConfirmed, TaskTemplateDeleted, TaskTemplateEditCancelled,
+  TaskTemplateEditClicked, TaskTemplateEditDescriptionChanged,
+  TaskTemplateEditNameChanged, TaskTemplateEditPriorityChanged,
+  TaskTemplateEditSubmitted, TaskTemplateEditTypeIdChanged, TaskTemplateUpdated,
+  TaskTemplatesOrgFetched, TaskTemplatesProjectFetched,
   TaskTypeCreateCapabilityChanged, TaskTypeCreateIconChanged,
   TaskTypeCreateNameChanged, TaskTypeCreateSubmitted, TaskTypeCreated,
   TaskTypeIconErrored, TaskTypeIconLoaded, TaskTypesFetched, ThemeSelected,
-  ToastDismissed, UrlChanged,
-  // Workflows
-  WorkflowsOrgFetched, WorkflowsProjectFetched, WorkflowCreateNameChanged,
-  WorkflowCreateDescriptionChanged, WorkflowCreateActiveChanged,
-  WorkflowCreateSubmitted, WorkflowCreated, WorkflowEditClicked,
-  WorkflowEditNameChanged, WorkflowEditDescriptionChanged,
-  WorkflowEditActiveChanged, WorkflowEditSubmitted, WorkflowEditCancelled,
-  WorkflowUpdated, WorkflowDeleteClicked, WorkflowDeleteCancelled,
-  WorkflowDeleteConfirmed, WorkflowDeleted, WorkflowRulesClicked,
-  // Rules
-  RulesFetched, RuleMetricsFetched, RulesBackClicked, RuleCreateNameChanged, RuleCreateGoalChanged,
-  RuleCreateResourceTypeChanged, RuleCreateTaskTypeIdChanged,
-  RuleCreateToStateChanged, RuleCreateActiveChanged, RuleCreateSubmitted,
-  RuleCreated, RuleEditClicked, RuleEditNameChanged, RuleEditGoalChanged,
-  RuleEditResourceTypeChanged, RuleEditTaskTypeIdChanged, RuleEditToStateChanged,
-  RuleEditActiveChanged, RuleEditSubmitted, RuleEditCancelled, RuleUpdated,
-  RuleDeleteClicked, RuleDeleteCancelled, RuleDeleteConfirmed, RuleDeleted,
-  // Rule templates
-  RuleTemplatesClicked, RuleTemplatesFetched, RuleAttachTemplateSelected,
-  RuleAttachTemplateSubmitted, RuleTemplateAttached, RuleTemplateDetachClicked,
-  RuleTemplateDetached,
-  // Task templates
-  TaskTemplatesOrgFetched, TaskTemplatesProjectFetched,
-  TaskTemplateCreateNameChanged, TaskTemplateCreateDescriptionChanged,
-  TaskTemplateCreateTypeIdChanged, TaskTemplateCreatePriorityChanged,
-  TaskTemplateCreateSubmitted, TaskTemplateCreated, TaskTemplateEditClicked,
-  TaskTemplateEditNameChanged, TaskTemplateEditDescriptionChanged,
-  TaskTemplateEditTypeIdChanged, TaskTemplateEditPriorityChanged,
-  TaskTemplateEditSubmitted, TaskTemplateEditCancelled, TaskTemplateUpdated,
-  TaskTemplateDeleteClicked, TaskTemplateDeleteCancelled,
-  TaskTemplateDeleteConfirmed, TaskTemplateDeleted,
+  ToastDismissed, UrlChanged, WorkflowCreateActiveChanged,
+  WorkflowCreateDescriptionChanged, WorkflowCreateNameChanged,
+  WorkflowCreateSubmitted, WorkflowCreated, WorkflowDeleteCancelled,
+  WorkflowDeleteClicked, WorkflowDeleteConfirmed, WorkflowDeleted,
+  WorkflowEditActiveChanged, WorkflowEditCancelled, WorkflowEditClicked,
+  WorkflowEditDescriptionChanged, WorkflowEditNameChanged, WorkflowEditSubmitted,
+  WorkflowRulesClicked, WorkflowUpdated, WorkflowsOrgFetched,
+  WorkflowsProjectFetched,
 }
+
+// Workflows
+// Rules
+// Rule templates
+// Task templates
 
 import scrumbringer_client/features/admin/update as admin_workflow
 import scrumbringer_client/features/auth/update as auth_workflow
@@ -233,8 +236,6 @@ pub fn register_keydown_effect() -> Effect(Msg) {
   })
 }
 
-
-
 /// Write URL to browser history using the appropriate navigation mode.
 ///
 /// Delegates to `router.push` or `router.replace` based on mode.
@@ -299,7 +300,7 @@ fn apply_route_fields(
     }
 
     router.Admin(section, project_id) -> {
-      #(
+      let model =
         Model(
           ..model,
           page: Admin,
@@ -308,12 +309,17 @@ fn apply_route_fields(
           member_drag: opt.None,
           member_pool_drag_to_claim_armed: False,
           member_pool_drag_over_my_tasks: False,
-        ),
-        effect.none(),
-      )
+        )
+      let #(model, fx) = refresh_section_for_test(model)
+      #(model, fx)
     }
 
     router.Member(section, project_id) -> {
+      let capabilities_fx = case model.page {
+        Admin -> api_org.list_capabilities(CapabilitiesFetched)
+        _ -> effect.none()
+      }
+
       #(
         Model(
           ..model,
@@ -324,7 +330,7 @@ fn apply_route_fields(
           member_pool_drag_to_claim_armed: False,
           member_pool_drag_over_my_tasks: False,
         ),
-        effect.none(),
+        capabilities_fx,
       )
     }
   }
@@ -459,7 +465,9 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                 _ -> {
                   let m = Model(..m, member_my_capability_ids: Loading)
                   #(m, [
-                    api_tasks.get_me_capability_ids(MemberMyCapabilityIdsFetched),
+                    api_tasks.get_me_capability_ids(
+                      MemberMyCapabilityIdsFetched,
+                    ),
                     ..fx
                   ])
                 }
@@ -472,7 +480,10 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
 
                 _ -> {
                   let m = Model(..m, member_active_task: Loading)
-                  #(m, [api_tasks.get_me_active_task(MemberActiveTaskFetched), ..fx])
+                  #(m, [
+                    api_tasks.get_me_active_task(MemberActiveTaskFetched),
+                    ..fx
+                  ])
                 }
               }
             }
@@ -483,7 +494,10 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
 
                 _ -> {
                   let m = Model(..m, member_metrics: Loading)
-                  #(m, [api_metrics.get_me_metrics(30, MemberMetricsFetched), ..fx])
+                  #(m, [
+                    api_metrics.get_me_metrics(30, MemberMetricsFetched),
+                    ..fx
+                  ])
                 }
               }
             }
@@ -559,7 +573,10 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                       org_settings_error_user_id: opt.None,
                     )
 
-                  #(m, [api_org.list_org_users("", OrgSettingsUsersFetched), ..fx])
+                  #(m, [
+                    api_org.list_org_users("", OrgSettingsUsersFetched),
+                    ..fx
+                  ])
                 }
               }
             }
@@ -588,7 +605,10 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                         )
 
                       let fx_members =
-                        api_projects.list_project_members(project_id, MembersFetched)
+                        api_projects.list_project_members(
+                          project_id,
+                          MembersFetched,
+                        )
                       let fx_users =
                         api_org.list_org_users("", OrgUsersCacheFetched)
 
@@ -684,7 +704,10 @@ fn handle_url_changed(model: Model) -> #(Model, Effect(Msg)) {
     router.Redirect(_) -> {
       let #(model, route_fx) = apply_route_fields(model, route)
       let #(model, hyd_fx) = hydrate_model(model)
-      #(model, effect.batch([write_url(Replace, route), route_fx, hyd_fx, title_fx]))
+      #(
+        model,
+        effect.batch([write_url(Replace, route), route_fx, hyd_fx, title_fx]),
+      )
     }
   }
 }
@@ -712,7 +735,12 @@ fn handle_navigate_to(
 
       #(
         model,
-        effect.batch([write_url(next_mode, next_route), route_fx, hyd_fx, title_fx]),
+        effect.batch([
+          write_url(next_mode, next_route),
+          route_fx,
+          hyd_fx,
+          title_fx,
+        ]),
       )
     }
   }
@@ -754,7 +782,7 @@ fn bootstrap_admin(model: Model) -> #(Model, Effect(Msg)) {
   #(model, effect.batch(effects))
 }
 
-fn refresh_section(model: Model) -> #(Model, Effect(Msg)) {
+pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
   case model.active_section {
     permissions.Invites -> {
       let model = Model(..model, invite_links: Loading)
@@ -775,7 +803,10 @@ fn refresh_section(model: Model) -> #(Model, Effect(Msg)) {
       #(model, api_org.list_org_users("", OrgSettingsUsersFetched))
     }
 
-    permissions.Projects -> #(model, api_projects.list_projects(ProjectsFetched))
+    permissions.Projects -> #(
+      model,
+      api_projects.list_projects(ProjectsFetched),
+    )
 
     permissions.Metrics -> {
       let model = Model(..model, admin_metrics_overview: Loading)
@@ -1212,8 +1243,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     LoginFinished(Error(err)) ->
       auth_workflow.handle_login_finished_error(model, err)
 
-    ForgotPasswordClicked ->
-      auth_workflow.handle_forgot_password_clicked(model)
+    ForgotPasswordClicked -> auth_workflow.handle_forgot_password_clicked(model)
     ForgotPasswordEmailChanged(email) ->
       auth_workflow.handle_forgot_password_email_changed(model, email)
     ForgotPasswordSubmitted ->
@@ -1290,7 +1320,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         }
 
         _ -> {
-          let #(model, fx) = refresh_section(model)
+          let #(model, fx) = refresh_section_for_test(model)
           #(model, effect.batch([fx, replace_url(model)]))
         }
       }
@@ -1319,7 +1349,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         }
 
         Admin -> {
-          let #(model, fx) = refresh_section(model)
+          let #(model, fx) = refresh_section_for_test(model)
           let #(model, hyd_fx) = hydrate_model(model)
           #(model, effect.batch([fx, hyd_fx, replace_url(model)]))
         }
@@ -1426,10 +1456,9 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       admin_workflow.handle_member_add_role_changed(model, role)
     MemberAddUserSelected(user_id) ->
       admin_workflow.handle_member_add_user_selected(model, user_id)
-    MemberAddSubmitted ->
-      admin_workflow.handle_member_add_submitted(model)
+    MemberAddSubmitted -> admin_workflow.handle_member_add_submitted(model)
     MemberAdded(Ok(_)) ->
-      admin_workflow.handle_member_added_ok(model, refresh_section)
+      admin_workflow.handle_member_added_ok(model, refresh_section_for_test)
     MemberAdded(Error(err)) ->
       admin_workflow.handle_member_added_error(model, err)
 
@@ -1440,7 +1469,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     MemberRemoveConfirmed ->
       admin_workflow.handle_member_remove_confirmed(model)
     MemberRemoved(Ok(_)) ->
-      admin_workflow.handle_member_removed_ok(model, refresh_section)
+      admin_workflow.handle_member_removed_ok(model, refresh_section_for_test)
     MemberRemoved(Error(err)) ->
       admin_workflow.handle_member_removed_error(model, err)
 
@@ -1462,15 +1491,22 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       task_types_workflow.handle_task_type_create_name_changed(model, name)
     TaskTypeCreateIconChanged(icon) ->
       task_types_workflow.handle_task_type_create_icon_changed(model, icon)
-    TaskTypeIconLoaded -> task_types_workflow.handle_task_type_icon_loaded(model)
+    TaskTypeIconLoaded ->
+      task_types_workflow.handle_task_type_icon_loaded(model)
     TaskTypeIconErrored ->
       task_types_workflow.handle_task_type_icon_errored(model)
     TaskTypeCreateCapabilityChanged(value) ->
-      task_types_workflow.handle_task_type_create_capability_changed(model, value)
+      task_types_workflow.handle_task_type_create_capability_changed(
+        model,
+        value,
+      )
     TaskTypeCreateSubmitted ->
       task_types_workflow.handle_task_type_create_submitted(model)
     TaskTypeCreated(Ok(_)) ->
-      task_types_workflow.handle_task_type_created_ok(model, refresh_section)
+      task_types_workflow.handle_task_type_created_ok(
+        model,
+        refresh_section_for_test,
+      )
     TaskTypeCreated(Error(err)) ->
       task_types_workflow.handle_task_type_created_error(model, err)
 
@@ -1483,12 +1519,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     MemberToggleMyCapabilitiesQuick ->
       pool_workflow.handle_toggle_my_capabilities_quick(model)
-    MemberPoolFiltersToggled ->
-      pool_workflow.handle_pool_filters_toggled(model)
+    MemberPoolFiltersToggled -> pool_workflow.handle_pool_filters_toggled(model)
     MemberPoolViewModeSet(mode) ->
       pool_workflow.handle_pool_view_mode_set(model, mode)
-    GlobalKeyDown(event) ->
-      pool_workflow.handle_global_keydown(model, event)
+    GlobalKeyDown(event) -> pool_workflow.handle_global_keydown(model, event)
 
     MemberPoolSearchChanged(v) ->
       pool_workflow.handle_pool_search_changed(model, v)
@@ -1763,8 +1797,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     MemberPositionEditOpened(task_id) ->
       pool_workflow.handle_position_edit_opened(model, task_id)
-    MemberPositionEditClosed ->
-      pool_workflow.handle_position_edit_closed(model)
+    MemberPositionEditClosed -> pool_workflow.handle_position_edit_closed(model)
     MemberPositionEditXChanged(v) ->
       pool_workflow.handle_position_edit_x_changed(model, v)
     MemberPositionEditYChanged(v) ->
@@ -1779,8 +1812,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     MemberTaskDetailsOpened(task_id) ->
       tasks_workflow.handle_task_details_opened(model, task_id)
-    MemberTaskDetailsClosed ->
-      tasks_workflow.handle_task_details_closed(model)
+    MemberTaskDetailsClosed -> tasks_workflow.handle_task_details_closed(model)
 
     MemberNotesFetched(Ok(notes)) ->
       tasks_workflow.handle_notes_fetched_ok(model, notes)
@@ -1789,8 +1821,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     MemberNoteContentChanged(v) ->
       tasks_workflow.handle_note_content_changed(model, v)
-    MemberNoteSubmitted ->
-      tasks_workflow.handle_note_submitted(model)
+    MemberNoteSubmitted -> tasks_workflow.handle_note_submitted(model)
 
     MemberNoteAdded(Ok(note)) ->
       tasks_workflow.handle_note_added_ok(model, note)
@@ -1798,7 +1829,8 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       tasks_workflow.handle_note_added_error(model, err)
 
     // Cards (Fichas) handlers
-    CardsFetched(Ok(cards)) -> admin_workflow.handle_cards_fetched_ok(model, cards)
+    CardsFetched(Ok(cards)) ->
+      admin_workflow.handle_cards_fetched_ok(model, cards)
     CardsFetched(Error(err)) ->
       admin_workflow.handle_cards_fetched_error(model, err)
 
@@ -1811,7 +1843,8 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     CardCreated(Error(err)) ->
       admin_workflow.handle_card_created_error(model, err)
 
-    CardEditClicked(card) -> admin_workflow.handle_card_edit_clicked(model, card)
+    CardEditClicked(card) ->
+      admin_workflow.handle_card_edit_clicked(model, card)
     CardEditTitleChanged(title) ->
       admin_workflow.handle_card_edit_title_changed(model, title)
     CardEditDescriptionChanged(description) ->
@@ -1843,7 +1876,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     WorkflowCreateNameChanged(name) ->
       admin_workflow.handle_workflow_create_name_changed(model, name)
     WorkflowCreateDescriptionChanged(description) ->
-      admin_workflow.handle_workflow_create_description_changed(model, description)
+      admin_workflow.handle_workflow_create_description_changed(
+        model,
+        description,
+      )
     WorkflowCreateActiveChanged(active) ->
       admin_workflow.handle_workflow_create_active_changed(model, active)
     WorkflowCreateSubmitted ->
@@ -1858,7 +1894,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     WorkflowEditNameChanged(name) ->
       admin_workflow.handle_workflow_edit_name_changed(model, name)
     WorkflowEditDescriptionChanged(description) ->
-      admin_workflow.handle_workflow_edit_description_changed(model, description)
+      admin_workflow.handle_workflow_edit_description_changed(
+        model,
+        description,
+      )
     WorkflowEditActiveChanged(active) ->
       admin_workflow.handle_workflow_edit_active_changed(model, active)
     WorkflowEditSubmitted ->
@@ -1899,9 +1938,15 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     RuleCreateGoalChanged(goal) ->
       admin_workflow.handle_rule_create_goal_changed(model, goal)
     RuleCreateResourceTypeChanged(resource_type) ->
-      admin_workflow.handle_rule_create_resource_type_changed(model, resource_type)
+      admin_workflow.handle_rule_create_resource_type_changed(
+        model,
+        resource_type,
+      )
     RuleCreateTaskTypeIdChanged(task_type_id) ->
-      admin_workflow.handle_rule_create_task_type_id_changed(model, task_type_id)
+      admin_workflow.handle_rule_create_task_type_id_changed(
+        model,
+        task_type_id,
+      )
     RuleCreateToStateChanged(to_state) ->
       admin_workflow.handle_rule_create_to_state_changed(model, to_state)
     RuleCreateActiveChanged(active) ->
@@ -1911,13 +1956,17 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     RuleCreated(Error(err)) ->
       admin_workflow.handle_rule_created_error(model, err)
 
-    RuleEditClicked(rule) -> admin_workflow.handle_rule_edit_clicked(model, rule)
+    RuleEditClicked(rule) ->
+      admin_workflow.handle_rule_edit_clicked(model, rule)
     RuleEditNameChanged(name) ->
       admin_workflow.handle_rule_edit_name_changed(model, name)
     RuleEditGoalChanged(goal) ->
       admin_workflow.handle_rule_edit_goal_changed(model, goal)
     RuleEditResourceTypeChanged(resource_type) ->
-      admin_workflow.handle_rule_edit_resource_type_changed(model, resource_type)
+      admin_workflow.handle_rule_edit_resource_type_changed(
+        model,
+        resource_type,
+      )
     RuleEditTaskTypeIdChanged(task_type_id) ->
       admin_workflow.handle_rule_edit_task_type_id_changed(model, task_type_id)
     RuleEditToStateChanged(to_state) ->
@@ -1976,7 +2025,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     TaskTemplateCreateTypeIdChanged(type_id) ->
       admin_workflow.handle_task_template_create_type_id_changed(model, type_id)
     TaskTemplateCreatePriorityChanged(priority) ->
-      admin_workflow.handle_task_template_create_priority_changed(model, priority)
+      admin_workflow.handle_task_template_create_priority_changed(
+        model,
+        priority,
+      )
     TaskTemplateCreateSubmitted ->
       admin_workflow.handle_task_template_create_submitted(model)
     TaskTemplateCreated(Ok(template)) ->

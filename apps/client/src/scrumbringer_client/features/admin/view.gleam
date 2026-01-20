@@ -43,8 +43,8 @@ import lustre/event
 
 import gleam/dynamic/decode
 
-import domain/card.{type Card}
 import domain/capability.{type Capability}
+import domain/card.{type Card}
 import domain/org.{type OrgUser}
 import domain/project.{type Project, type ProjectMember}
 import domain/task_type.{type TaskType}
@@ -52,44 +52,46 @@ import domain/workflow.{type Rule, type TaskTemplate, type Workflow}
 
 import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/client_state.{
-  type Model, type Msg, type Remote, CapabilityCreateNameChanged,
-  CapabilityCreateSubmitted, CardCreateDescriptionChanged,
-  CardCreateSubmitted, CardCreateTitleChanged, CardDeleteCancelled,
-  CardDeleteClicked, CardDeleteConfirmed, CardEditCancelled, CardEditClicked,
-  CardEditDescriptionChanged, CardEditSubmitted, CardEditTitleChanged, Failed,
-  IconError, IconOk, Loaded, Loading, MemberAddDialogClosed,
-  MemberAddDialogOpened, MemberAddRoleChanged, MemberAddSubmitted,
-  MemberAddUserSelected, MemberRemoveCancelled, MemberRemoveClicked,
-  MemberRemoveConfirmed, NotAsked, OrgSettingsRoleChanged, OrgSettingsSaveClicked,
-  OrgUsersSearchChanged, OrgUsersSearchDebounced, TaskTypeCreateCapabilityChanged,
-  TaskTypeCreateIconChanged, TaskTypeCreateNameChanged, TaskTypeCreateSubmitted,
-  TaskTypeIconErrored, TaskTypeIconLoaded,
-  // Workflows
+  type Model, type Msg, type Remote, AdminRuleMetricsDrilldownClicked,
+  AdminRuleMetricsDrilldownClosed, AdminRuleMetricsExecPageChanged,
+  AdminRuleMetricsFromChanged, AdminRuleMetricsRefreshClicked,
+  AdminRuleMetricsToChanged, AdminRuleMetricsWorkflowExpanded,
+  CapabilityCreateNameChanged, CapabilityCreateSubmitted,
+  CardCreateDescriptionChanged, CardCreateSubmitted, CardCreateTitleChanged,
+  CardDeleteCancelled, CardDeleteClicked, CardDeleteConfirmed, CardEditCancelled,
+  CardEditClicked, CardEditDescriptionChanged, CardEditSubmitted,
+  CardEditTitleChanged, Failed, IconError, IconOk, Loaded, Loading,
+  MemberAddDialogClosed, MemberAddDialogOpened, MemberAddRoleChanged,
+  MemberAddSubmitted, MemberAddUserSelected, MemberRemoveCancelled,
+  MemberRemoveClicked, MemberRemoveConfirmed, NotAsked, OrgSettingsRoleChanged,
+  OrgSettingsSaveClicked, OrgUsersSearchChanged, OrgUsersSearchDebounced,
   RuleCreateActiveChanged, RuleCreateGoalChanged, RuleCreateNameChanged,
   RuleCreateResourceTypeChanged, RuleCreateSubmitted,
-  RuleCreateToStateChanged, RuleDeleteCancelled, RuleDeleteClicked,
-  RuleDeleteConfirmed, RuleEditActiveChanged, RuleEditCancelled, RuleEditClicked,
-  RuleEditGoalChanged, RuleEditNameChanged, RuleEditResourceTypeChanged,
-  RuleEditSubmitted, RuleEditToStateChanged,
-  RulesBackClicked, WorkflowCreateActiveChanged, WorkflowCreateDescriptionChanged,
-  WorkflowCreateNameChanged, WorkflowCreateSubmitted, WorkflowDeleteCancelled,
-  WorkflowDeleteClicked, WorkflowDeleteConfirmed, WorkflowEditActiveChanged,
-  WorkflowEditCancelled, WorkflowEditClicked, WorkflowEditDescriptionChanged,
-  WorkflowEditNameChanged, WorkflowEditSubmitted, WorkflowRulesClicked,
-  // Task Templates
-  TaskTemplateCreateDescriptionChanged, TaskTemplateCreateNameChanged,
-  TaskTemplateCreatePriorityChanged, TaskTemplateCreateSubmitted,
-  TaskTemplateCreateTypeIdChanged, TaskTemplateDeleteCancelled,
-  TaskTemplateDeleteClicked, TaskTemplateDeleteConfirmed, TaskTemplateEditCancelled,
+  RuleCreateTaskTypeIdChanged, RuleCreateToStateChanged, RuleDeleteCancelled,
+  RuleDeleteClicked, RuleDeleteConfirmed, RuleEditActiveChanged,
+  RuleEditCancelled, RuleEditClicked, RuleEditGoalChanged, RuleEditNameChanged,
+  RuleEditResourceTypeChanged, RuleEditSubmitted, RuleEditTaskTypeIdChanged,
+  RuleEditToStateChanged, RulesBackClicked, TaskTemplateCreateDescriptionChanged,
+  TaskTemplateCreateNameChanged, TaskTemplateCreatePriorityChanged,
+  TaskTemplateCreateSubmitted, TaskTemplateCreateTypeIdChanged,
+  TaskTemplateDeleteCancelled, TaskTemplateDeleteClicked,
+  TaskTemplateDeleteConfirmed, TaskTemplateEditCancelled,
   TaskTemplateEditClicked, TaskTemplateEditDescriptionChanged,
   TaskTemplateEditNameChanged, TaskTemplateEditPriorityChanged,
   TaskTemplateEditSubmitted, TaskTemplateEditTypeIdChanged,
-  // Rule Metrics Tab
-  AdminRuleMetricsDrilldownClicked, AdminRuleMetricsDrilldownClosed,
-  AdminRuleMetricsExecPageChanged, AdminRuleMetricsFromChanged,
-  AdminRuleMetricsRefreshClicked, AdminRuleMetricsToChanged,
-  AdminRuleMetricsWorkflowExpanded,
+  TaskTypeCreateCapabilityChanged, TaskTypeCreateIconChanged,
+  TaskTypeCreateNameChanged, TaskTypeCreateSubmitted, TaskTypeIconErrored,
+  TaskTypeIconLoaded, WorkflowCreateActiveChanged,
+  WorkflowCreateDescriptionChanged, WorkflowCreateNameChanged,
+  WorkflowCreateSubmitted, WorkflowDeleteCancelled, WorkflowDeleteClicked,
+  WorkflowDeleteConfirmed, WorkflowEditActiveChanged, WorkflowEditCancelled,
+  WorkflowEditClicked, WorkflowEditDescriptionChanged, WorkflowEditNameChanged,
+  WorkflowEditSubmitted, WorkflowRulesClicked,
 }
+
+// Workflows
+// Task Templates
+// Rule Metrics Tab
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme
 import scrumbringer_client/update_helpers
@@ -145,44 +147,47 @@ pub fn view_org_settings(model: Model) -> Element(Msg) {
                 _, _ -> ""
               }
 
-              #(int.to_string(u.id), tr([], [
-                td([], [text(u.email)]),
-                td([], [
-                  select(
-                    [
-                      attribute.value(draft),
-                      attribute.disabled(model.org_settings_save_in_flight),
-                      event.on_input(fn(value) {
-                        OrgSettingsRoleChanged(u.id, value)
-                      }),
-                    ],
-                    [
-                      option(
-                        [attribute.value("admin")],
-                        update_helpers.i18n_t(model, i18n_text.RoleAdmin),
-                      ),
-                      option(
-                        [attribute.value("member")],
-                        update_helpers.i18n_t(model, i18n_text.RoleMember),
-                      ),
-                    ],
-                  ),
-                  case inline_error == "" {
-                    True -> element.none()
-                    False ->
-                      div([attribute.class("error")], [text(inline_error)])
-                  },
+              #(
+                int.to_string(u.id),
+                tr([], [
+                  td([], [text(u.email)]),
+                  td([], [
+                    select(
+                      [
+                        attribute.value(draft),
+                        attribute.disabled(model.org_settings_save_in_flight),
+                        event.on_input(fn(value) {
+                          OrgSettingsRoleChanged(u.id, value)
+                        }),
+                      ],
+                      [
+                        option(
+                          [attribute.value("admin")],
+                          update_helpers.i18n_t(model, i18n_text.RoleAdmin),
+                        ),
+                        option(
+                          [attribute.value("member")],
+                          update_helpers.i18n_t(model, i18n_text.RoleMember),
+                        ),
+                      ],
+                    ),
+                    case inline_error == "" {
+                      True -> element.none()
+                      False ->
+                        div([attribute.class("error")], [text(inline_error)])
+                    },
+                  ]),
+                  td([], [
+                    button(
+                      [
+                        attribute.disabled(model.org_settings_save_in_flight),
+                        event.on_click(OrgSettingsSaveClicked(u.id)),
+                      ],
+                      [text(update_helpers.i18n_t(model, i18n_text.Save))],
+                    ),
+                  ]),
                 ]),
-                td([], [
-                  button(
-                    [
-                      attribute.disabled(model.org_settings_save_in_flight),
-                      event.on_click(OrgSettingsSaveClicked(u.id)),
-                    ],
-                    [text(update_helpers.i18n_t(model, i18n_text.Save))],
-                  ),
-                ]),
-              ]))
+              )
             }),
           ),
         ])
@@ -465,17 +470,20 @@ fn view_members_table(
                     )
                 }
 
-                #(int.to_string(m.user_id), tr([], [
-                  td([], [text(email)]),
-                  td([], [text(int.to_string(m.user_id))]),
-                  td([], [text(m.role)]),
-                  td([], [text(m.created_at)]),
-                  td([], [
-                    button([event.on_click(MemberRemoveClicked(m.user_id))], [
-                      text(update_helpers.i18n_t(model, i18n_text.Remove)),
+                #(
+                  int.to_string(m.user_id),
+                  tr([], [
+                    td([], [text(email)]),
+                    td([], [text(int.to_string(m.user_id))]),
+                    td([], [text(m.role)]),
+                    td([], [text(m.created_at)]),
+                    td([], [
+                      button([event.on_click(MemberRemoveClicked(m.user_id))], [
+                        text(update_helpers.i18n_t(model, i18n_text.Remove)),
+                      ]),
                     ]),
                   ]),
-                ]))
+                )
               }),
             ),
           ])
@@ -597,16 +605,19 @@ fn view_org_users_search_results(
             keyed.tbody(
               [],
               list.map(users, fn(u) {
-                #(int.to_string(u.id), tr([], [
-                  td([], [text(u.email)]),
-                  td([], [text(u.org_role)]),
-                  td([], [text(u.created_at)]),
-                  td([], [
-                    button([event.on_click(MemberAddUserSelected(u.id))], [
-                      text(update_helpers.i18n_t(model, i18n_text.Select)),
+                #(
+                  int.to_string(u.id),
+                  tr([], [
+                    td([], [text(u.email)]),
+                    td([], [text(u.org_role)]),
+                    td([], [text(u.created_at)]),
+                    td([], [
+                      button([event.on_click(MemberAddUserSelected(u.id))], [
+                        text(update_helpers.i18n_t(model, i18n_text.Select)),
+                      ]),
                     ]),
                   ]),
-                ]))
+                )
               }),
             ),
           ])
@@ -878,16 +889,19 @@ fn view_task_types_list(
             keyed.tbody(
               [],
               list.map(task_types, fn(tt) {
-                #(int.to_string(tt.id), tr([], [
-                  td([], [text(tt.name)]),
-                  td([], [view_task_type_icon_inline(tt.icon, 20, theme)]),
-                  td([], [
-                    case tt.capability_id {
-                      opt.Some(id) -> text(int.to_string(id))
-                      opt.None -> text("-")
-                    },
+                #(
+                  int.to_string(tt.id),
+                  tr([], [
+                    td([], [text(tt.name)]),
+                    td([], [view_task_type_icon_inline(tt.icon, 20, theme)]),
+                    td([], [
+                      case tt.capability_id {
+                        opt.Some(id) -> text(int.to_string(id))
+                        opt.None -> text("-")
+                      },
+                    ]),
                   ]),
-                ]))
+                )
               }),
             ),
           ])
@@ -907,19 +921,13 @@ pub fn view_cards(
   case selected_project {
     opt.None ->
       div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(
-          model,
-          i18n_text.SelectProjectToManageCards,
-        )),
+        text(update_helpers.i18n_t(model, i18n_text.SelectProjectToManageCards)),
       ])
 
     opt.Some(project) ->
       div([attribute.class("section")], [
         h2([], [
-          text(update_helpers.i18n_t(
-            model,
-            i18n_text.CardsTitle(project.name),
-          )),
+          text(update_helpers.i18n_t(model, i18n_text.CardsTitle(project.name))),
         ]),
         view_cards_list(model, model.cards),
         hr([]),
@@ -1012,24 +1020,27 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
             keyed.tbody(
               [],
               list.map(cards, fn(c) {
-                #(int.to_string(c.id), tr([], [
-                  td([], [text(c.title)]),
-                  td([], [text(view_card_state_label(model, c.state))]),
-                  td([], [
-                    text(update_helpers.i18n_t(
-                      model,
-                      i18n_text.CardTaskCount(c.completed_count, c.task_count),
-                    )),
-                  ]),
-                  td([], [
-                    button([event.on_click(CardEditClicked(c))], [
-                      text(update_helpers.i18n_t(model, i18n_text.EditCard)),
+                #(
+                  int.to_string(c.id),
+                  tr([], [
+                    td([], [text(c.title)]),
+                    td([], [text(view_card_state_label(model, c.state))]),
+                    td([], [
+                      text(update_helpers.i18n_t(
+                        model,
+                        i18n_text.CardTaskCount(c.completed_count, c.task_count),
+                      )),
                     ]),
-                    button([event.on_click(CardDeleteClicked(c))], [
-                      text(update_helpers.i18n_t(model, i18n_text.DeleteCard)),
+                    td([], [
+                      button([event.on_click(CardEditClicked(c))], [
+                        text(update_helpers.i18n_t(model, i18n_text.EditCard)),
+                      ]),
+                      button([event.on_click(CardDeleteClicked(c))], [
+                        text(update_helpers.i18n_t(model, i18n_text.DeleteCard)),
+                      ]),
                     ]),
                   ]),
-                ]))
+                )
               }),
             ),
           ])
@@ -1039,8 +1050,7 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
 
 fn view_card_state_label(model: Model, state: card.CardState) -> String {
   case state {
-    card.Pendiente ->
-      update_helpers.i18n_t(model, i18n_text.CardStatePendiente)
+    card.Pendiente -> update_helpers.i18n_t(model, i18n_text.CardStatePendiente)
     card.EnCurso -> update_helpers.i18n_t(model, i18n_text.CardStateEnCurso)
     card.Cerrada -> update_helpers.i18n_t(model, i18n_text.CardStateCerrada)
   }
@@ -1167,7 +1177,11 @@ fn view_workflows_list(
               i18n_text.WorkflowsProjectTitle(project.name),
             )),
           ]),
-          view_workflows_table(model, model.workflows_project, opt.Some(project)),
+          view_workflows_table(
+            model,
+            model.workflows_project,
+            opt.Some(project),
+          ),
         ])
       opt.None -> element.none()
     },
@@ -1279,30 +1293,39 @@ fn view_workflows_table(
             keyed.tbody(
               [],
               list.map(workflows, fn(w) {
-                #(int.to_string(w.id), tr([], [
-                  td([], [text(w.name)]),
-                  td([], [
-                    text(case w.active {
-                      True -> "✓"
-                      False -> "✗"
-                    }),
+                #(
+                  int.to_string(w.id),
+                  tr([], [
+                    td([], [text(w.name)]),
+                    td([], [
+                      text(case w.active {
+                        True -> "✓"
+                        False -> "✗"
+                      }),
+                    ]),
+                    td([], [text(int.to_string(w.rule_count))]),
+                    td([], [
+                      button([event.on_click(WorkflowRulesClicked(w.id))], [
+                        text(update_helpers.i18n_t(
+                          model,
+                          i18n_text.WorkflowRules,
+                        )),
+                      ]),
+                      button([event.on_click(WorkflowEditClicked(w))], [
+                        text(update_helpers.i18n_t(
+                          model,
+                          i18n_text.EditWorkflow,
+                        )),
+                      ]),
+                      button([event.on_click(WorkflowDeleteClicked(w))], [
+                        text(update_helpers.i18n_t(
+                          model,
+                          i18n_text.DeleteWorkflow,
+                        )),
+                      ]),
+                    ]),
                   ]),
-                  td([], [text(int.to_string(w.rule_count))]),
-                  td([], [
-                    button([event.on_click(WorkflowRulesClicked(w.id))], [
-                      text(update_helpers.i18n_t(model, i18n_text.WorkflowRules)),
-                    ]),
-                    button([event.on_click(WorkflowEditClicked(w))], [
-                      text(update_helpers.i18n_t(model, i18n_text.EditWorkflow)),
-                    ]),
-                    button([event.on_click(WorkflowDeleteClicked(w))], [
-                      text(update_helpers.i18n_t(
-                        model,
-                        i18n_text.DeleteWorkflow,
-                      )),
-                    ]),
-                  ]),
-                ]))
+                )
               }),
             ),
           ])
@@ -1468,6 +1491,24 @@ fn view_workflow_rules(model: Model, workflow_id: Int) -> Element(Msg) {
           ],
         ),
       ]),
+      case model.rules_create_resource_type == "task" {
+        True ->
+          div([attribute.class("field")], [
+            label([], [
+              text(update_helpers.i18n_t(model, i18n_text.RuleTaskType)),
+            ]),
+            view_task_type_selector_for_templates(
+              model,
+              model.task_types,
+              case model.rules_create_task_type_id {
+                opt.Some(id) -> int.to_string(id)
+                opt.None -> ""
+              },
+              RuleCreateTaskTypeIdChanged,
+            ),
+          ])
+        False -> element.none()
+      },
       div([attribute.class("field")], [
         label([], [text(update_helpers.i18n_t(model, i18n_text.RuleToState))]),
         select(
@@ -1578,10 +1619,16 @@ fn view_rules_table(
                   text(update_helpers.i18n_t(model, i18n_text.RuleActive)),
                 ]),
                 th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.RuleMetricsApplied)),
+                  text(update_helpers.i18n_t(
+                    model,
+                    i18n_text.RuleMetricsApplied,
+                  )),
                 ]),
                 th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.RuleMetricsSuppressed)),
+                  text(update_helpers.i18n_t(
+                    model,
+                    i18n_text.RuleMetricsSuppressed,
+                  )),
                 ]),
                 th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
               ]),
@@ -1590,35 +1637,38 @@ fn view_rules_table(
               [],
               list.map(rules, fn(r) {
                 let #(applied, suppressed) = get_rule_metrics(metrics, r.id)
-                #(int.to_string(r.id), tr([], [
-                  td([], [text(r.name)]),
-                  td([], [text(r.resource_type)]),
-                  td([], [text(r.to_state)]),
-                  td([], [
-                    text(case r.active {
-                      True -> "✓"
-                      False -> "✗"
-                    }),
-                  ]),
-                  td([attribute.class("metric-cell")], [
-                    span([attribute.class("metric applied")], [
-                      text(int.to_string(applied)),
+                #(
+                  int.to_string(r.id),
+                  tr([], [
+                    td([], [text(r.name)]),
+                    td([], [text(r.resource_type)]),
+                    td([], [text(r.to_state)]),
+                    td([], [
+                      text(case r.active {
+                        True -> "✓"
+                        False -> "✗"
+                      }),
+                    ]),
+                    td([attribute.class("metric-cell")], [
+                      span([attribute.class("metric applied")], [
+                        text(int.to_string(applied)),
+                      ]),
+                    ]),
+                    td([attribute.class("metric-cell")], [
+                      span([attribute.class("metric suppressed")], [
+                        text(int.to_string(suppressed)),
+                      ]),
+                    ]),
+                    td([], [
+                      button([event.on_click(RuleEditClicked(r))], [
+                        text(update_helpers.i18n_t(model, i18n_text.EditRule)),
+                      ]),
+                      button([event.on_click(RuleDeleteClicked(r))], [
+                        text(update_helpers.i18n_t(model, i18n_text.DeleteRule)),
+                      ]),
                     ]),
                   ]),
-                  td([attribute.class("metric-cell")], [
-                    span([attribute.class("metric suppressed")], [
-                      text(int.to_string(suppressed)),
-                    ]),
-                  ]),
-                  td([], [
-                    button([event.on_click(RuleEditClicked(r))], [
-                      text(update_helpers.i18n_t(model, i18n_text.EditRule)),
-                    ]),
-                    button([event.on_click(RuleDeleteClicked(r))], [
-                      text(update_helpers.i18n_t(model, i18n_text.DeleteRule)),
-                    ]),
-                  ]),
-                ]))
+                )
               }),
             ),
           ])
@@ -1689,6 +1739,24 @@ fn view_edit_rule_dialog(model: Model) -> Element(Msg) {
             ],
           ),
         ]),
+        case model.rules_edit_resource_type == "task" {
+          True ->
+            div([attribute.class("field")], [
+              label([], [
+                text(update_helpers.i18n_t(model, i18n_text.RuleTaskType)),
+              ]),
+              view_task_type_selector_for_templates(
+                model,
+                model.task_types,
+                case model.rules_edit_task_type_id {
+                  opt.Some(id) -> int.to_string(id)
+                  opt.None -> ""
+                },
+                RuleEditTaskTypeIdChanged,
+              ),
+            ])
+          False -> element.none()
+        },
         div([attribute.class("field")], [
           label([], [text(update_helpers.i18n_t(model, i18n_text.RuleToState))]),
           select(
@@ -1934,25 +2002,28 @@ fn view_task_templates_table(
             keyed.tbody(
               [],
               list.map(templates, fn(t) {
-                #(int.to_string(t.id), tr([], [
-                  td([], [text(t.name)]),
-                  td([], [text(t.type_name)]),
-                  td([], [text(int.to_string(t.priority))]),
-                  td([], [
-                    button([event.on_click(TaskTemplateEditClicked(t))], [
-                      text(update_helpers.i18n_t(
-                        model,
-                        i18n_text.EditTaskTemplate,
-                      )),
-                    ]),
-                    button([event.on_click(TaskTemplateDeleteClicked(t))], [
-                      text(update_helpers.i18n_t(
-                        model,
-                        i18n_text.DeleteTaskTemplate,
-                      )),
+                #(
+                  int.to_string(t.id),
+                  tr([], [
+                    td([], [text(t.name)]),
+                    td([], [text(t.type_name)]),
+                    td([], [text(int.to_string(t.priority))]),
+                    td([], [
+                      button([event.on_click(TaskTemplateEditClicked(t))], [
+                        text(update_helpers.i18n_t(
+                          model,
+                          i18n_text.EditTaskTemplate,
+                        )),
+                      ]),
+                      button([event.on_click(TaskTemplateDeleteClicked(t))], [
+                        text(update_helpers.i18n_t(
+                          model,
+                          i18n_text.DeleteTaskTemplate,
+                        )),
+                      ]),
                     ]),
                   ]),
-                ]))
+                )
               }),
             ),
           ])
@@ -1968,18 +2039,15 @@ fn view_task_type_selector_for_templates(
 ) -> Element(Msg) {
   case task_types {
     Loaded(types) ->
-      select(
-        [attribute.value(selected), event.on_input(on_change)],
-        [
-          option(
-            [attribute.value("")],
-            update_helpers.i18n_t(model, i18n_text.SelectType),
-          ),
-          ..list.map(types, fn(tt) {
-            option([attribute.value(int.to_string(tt.id))], tt.name)
-          })
-        ],
-      )
+      select([attribute.value(selected), event.on_input(on_change)], [
+        option(
+          [attribute.value("")],
+          update_helpers.i18n_t(model, i18n_text.SelectType),
+        ),
+        ..list.map(types, fn(tt) {
+          option([attribute.value(int.to_string(tt.id))], tt.name)
+        })
+      ])
     _ ->
       div([attribute.class("empty")], [
         text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
@@ -2099,7 +2167,8 @@ fn view_delete_task_template_dialog(
           [
             text(case model.task_templates_delete_in_flight {
               True -> update_helpers.i18n_t(model, i18n_text.Removing)
-              False -> update_helpers.i18n_t(model, i18n_text.DeleteTaskTemplate)
+              False ->
+                update_helpers.i18n_t(model, i18n_text.DeleteTaskTemplate)
             }),
           ],
         ),
@@ -2120,7 +2189,9 @@ pub fn view_rule_metrics(model: Model) -> Element(Msg) {
     // Date range inputs
     div([attribute.class("field-row")], [
       div([attribute.class("field")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsFrom))]),
+        label([], [
+          text(update_helpers.i18n_t(model, i18n_text.RuleMetricsFrom)),
+        ]),
         input([
           attribute.type_("date"),
           attribute.value(model.admin_rule_metrics_from),
@@ -2167,8 +2238,7 @@ fn view_rule_metrics_table(
         text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
       ])
 
-    Failed(err) ->
-      div([attribute.class("error")], [text(err.message)])
+    Failed(err) -> div([attribute.class("error")], [text(err.message)])
 
     Loaded(workflows) ->
       case workflows {
@@ -2182,18 +2252,38 @@ fn view_rule_metrics_table(
               thead([], [
                 tr([], [
                   th([], []),
-                  th([], [text(update_helpers.i18n_t(model, i18n_text.WorkflowName))]),
-                  th([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsRuleCount))]),
-                  th([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsEvaluated))]),
-                  th([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsApplied))]),
-                  th([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsSuppressed))]),
+                  th([], [
+                    text(update_helpers.i18n_t(model, i18n_text.WorkflowName)),
+                  ]),
+                  th([], [
+                    text(update_helpers.i18n_t(
+                      model,
+                      i18n_text.RuleMetricsRuleCount,
+                    )),
+                  ]),
+                  th([], [
+                    text(update_helpers.i18n_t(
+                      model,
+                      i18n_text.RuleMetricsEvaluated,
+                    )),
+                  ]),
+                  th([], [
+                    text(update_helpers.i18n_t(
+                      model,
+                      i18n_text.RuleMetricsApplied,
+                    )),
+                  ]),
+                  th([], [
+                    text(update_helpers.i18n_t(
+                      model,
+                      i18n_text.RuleMetricsSuppressed,
+                    )),
+                  ]),
                 ]),
               ]),
               keyed.tbody(
                 [],
-                list.flat_map(workflows, fn(w) {
-                  view_workflow_row(model, w)
-                }),
+                list.flat_map(workflows, fn(w) { view_workflow_row(model, w) }),
               ),
             ]),
             // Drill-down modal
@@ -2215,32 +2305,31 @@ fn view_workflow_row(
     False -> "[+]"
   }
 
-  let main_row =
-    #(
-      "wf-" <> int.to_string(w.workflow_id),
-      tr(
-        [
-          attribute.class("workflow-row clickable"),
-          event.on_click(AdminRuleMetricsWorkflowExpanded(w.workflow_id)),
-        ],
-        [
-          td([attribute.class("expand-col")], [text(expand_icon)]),
-          td([], [text(w.workflow_name)]),
-          td([], [text(int.to_string(w.rule_count))]),
-          td([], [text(int.to_string(w.evaluated_count))]),
-          td([attribute.class("metric-cell")], [
-            span([attribute.class("metric applied")], [
-              text(int.to_string(w.applied_count)),
-            ]),
+  let main_row = #(
+    "wf-" <> int.to_string(w.workflow_id),
+    tr(
+      [
+        attribute.class("workflow-row clickable"),
+        event.on_click(AdminRuleMetricsWorkflowExpanded(w.workflow_id)),
+      ],
+      [
+        td([attribute.class("expand-col")], [text(expand_icon)]),
+        td([], [text(w.workflow_name)]),
+        td([], [text(int.to_string(w.rule_count))]),
+        td([], [text(int.to_string(w.evaluated_count))]),
+        td([attribute.class("metric-cell")], [
+          span([attribute.class("metric applied")], [
+            text(int.to_string(w.applied_count)),
           ]),
-          td([attribute.class("metric-cell")], [
-            span([attribute.class("metric suppressed")], [
-              text(int.to_string(w.suppressed_count)),
-            ]),
+        ]),
+        td([attribute.class("metric-cell")], [
+          span([attribute.class("metric suppressed")], [
+            text(int.to_string(w.suppressed_count)),
           ]),
-        ],
-      ),
-    )
+        ]),
+      ],
+    ),
+  )
 
   case is_expanded {
     False -> [main_row]
@@ -2272,9 +2361,24 @@ fn view_workflow_rules_expansion(
             thead([], [
               tr([], [
                 th([], [text(update_helpers.i18n_t(model, i18n_text.RuleName))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsEvaluated))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsApplied))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsSuppressed))]),
+                th([], [
+                  text(update_helpers.i18n_t(
+                    model,
+                    i18n_text.RuleMetricsEvaluated,
+                  )),
+                ]),
+                th([], [
+                  text(update_helpers.i18n_t(
+                    model,
+                    i18n_text.RuleMetricsApplied,
+                  )),
+                ]),
+                th([], [
+                  text(update_helpers.i18n_t(
+                    model,
+                    i18n_text.RuleMetricsSuppressed,
+                  )),
+                ]),
                 th([], []),
               ]),
             ]),
@@ -2295,9 +2399,9 @@ fn view_workflow_rules_expansion(
                       button(
                         [
                           attribute.class("btn-link metric suppressed"),
-                          event.on_click(
-                            AdminRuleMetricsDrilldownClicked(r.rule_id),
-                          ),
+                          event.on_click(AdminRuleMetricsDrilldownClicked(
+                            r.rule_id,
+                          )),
                         ],
                         [text(int.to_string(r.suppressed_count))],
                       ),
@@ -2306,11 +2410,16 @@ fn view_workflow_rules_expansion(
                       button(
                         [
                           attribute.class("btn-small"),
-                          event.on_click(
-                            AdminRuleMetricsDrilldownClicked(r.rule_id),
-                          ),
+                          event.on_click(AdminRuleMetricsDrilldownClicked(
+                            r.rule_id,
+                          )),
                         ],
-                        [text(update_helpers.i18n_t(model, i18n_text.ViewDetails))],
+                        [
+                          text(update_helpers.i18n_t(
+                            model,
+                            i18n_text.ViewDetails,
+                          )),
+                        ],
                       ),
                     ]),
                   ]),
@@ -2340,9 +2449,7 @@ fn view_rule_drilldown_modal(model: Model) -> Element(Msg) {
         div([attribute.class("modal-content")], [
           div([attribute.class("modal-header")], [
             h3([], [
-              text(
-                update_helpers.i18n_t(model, i18n_text.RuleMetricsDrilldown),
-              ),
+              text(update_helpers.i18n_t(model, i18n_text.RuleMetricsDrilldown)),
             ]),
             button(
               [
@@ -2416,17 +2523,23 @@ fn view_drilldown_details(model: Model) -> Element(Msg) {
           ]),
           div([attribute.class("breakdown-item")], [
             span([attribute.class("breakdown-label")], [
-              text(
-                update_helpers.i18n_t(model, i18n_text.SuppressionNotUserTriggered),
-              ),
+              text(update_helpers.i18n_t(
+                model,
+                i18n_text.SuppressionNotUserTriggered,
+              )),
             ]),
             span([attribute.class("breakdown-value")], [
-              text(int.to_string(details.suppression_breakdown.not_user_triggered)),
+              text(int.to_string(
+                details.suppression_breakdown.not_user_triggered,
+              )),
             ]),
           ]),
           div([attribute.class("breakdown-item")], [
             span([attribute.class("breakdown-label")], [
-              text(update_helpers.i18n_t(model, i18n_text.SuppressionNotMatching)),
+              text(update_helpers.i18n_t(
+                model,
+                i18n_text.SuppressionNotMatching,
+              )),
             ]),
             span([attribute.class("breakdown-value")], [
               text(int.to_string(details.suppression_breakdown.not_matching)),
@@ -2470,10 +2583,16 @@ fn view_drilldown_executions(model: Model) -> Element(Msg) {
               table([attribute.class("table executions-table")], [
                 thead([], [
                   tr([], [
-                    th([], [text(update_helpers.i18n_t(model, i18n_text.Origin))]),
-                    th([], [text(update_helpers.i18n_t(model, i18n_text.Outcome))]),
+                    th([], [
+                      text(update_helpers.i18n_t(model, i18n_text.Origin)),
+                    ]),
+                    th([], [
+                      text(update_helpers.i18n_t(model, i18n_text.Outcome)),
+                    ]),
                     th([], [text(update_helpers.i18n_t(model, i18n_text.User))]),
-                    th([], [text(update_helpers.i18n_t(model, i18n_text.Timestamp))]),
+                    th([], [
+                      text(update_helpers.i18n_t(model, i18n_text.Timestamp)),
+                    ]),
                   ]),
                 ]),
                 keyed.tbody(
@@ -2488,20 +2607,29 @@ fn view_drilldown_executions(model: Model) -> Element(Msg) {
                       "applied" ->
                         update_helpers.i18n_t(model, i18n_text.OutcomeApplied)
                       "suppressed" ->
-                        update_helpers.i18n_t(model, i18n_text.OutcomeSuppressed)
-                          <> case exec.suppression_reason {
-                            "" -> ""
-                            reason -> " (" <> reason <> ")"
-                          }
+                        update_helpers.i18n_t(
+                          model,
+                          i18n_text.OutcomeSuppressed,
+                        )
+                        <> case exec.suppression_reason {
+                          "" -> ""
+                          reason -> " (" <> reason <> ")"
+                        }
                       _ -> exec.outcome
                     }
                     #(
                       int.to_string(exec.id),
                       tr([], [
                         td([], [
-                          text(exec.origin_type <> " #" <> int.to_string(exec.origin_id)),
+                          text(
+                            exec.origin_type
+                            <> " #"
+                            <> int.to_string(exec.origin_id),
+                          ),
                         ]),
-                        td([attribute.class(outcome_class)], [text(outcome_text)]),
+                        td([attribute.class(outcome_class)], [
+                          text(outcome_text),
+                        ]),
                         td([], [
                           text(case exec.user_email {
                             "" -> "-"
@@ -2528,7 +2656,8 @@ fn view_executions_pagination(
   pagination: api_workflows.Pagination,
 ) -> Element(Msg) {
   let current_page = pagination.offset / pagination.limit + 1
-  let total_pages = { pagination.total + pagination.limit - 1 } / pagination.limit
+  let total_pages =
+    { pagination.total + pagination.limit - 1 } / pagination.limit
 
   case total_pages <= 1 {
     True -> element.none()
@@ -2546,17 +2675,18 @@ fn view_executions_pagination(
           [
             attribute.class("btn-small"),
             attribute.disabled(pagination.offset == 0),
-            event.on_click(AdminRuleMetricsExecPageChanged(
-              int.max(0, pagination.offset - pagination.limit),
-            )),
+            event.on_click(
+              AdminRuleMetricsExecPageChanged(int.max(
+                0,
+                pagination.offset - pagination.limit,
+              )),
+            ),
           ],
           [text("<")],
         ),
         span([attribute.class("page-info")], [
           text(
-            int.to_string(current_page)
-              <> " / "
-              <> int.to_string(total_pages),
+            int.to_string(current_page) <> " / " <> int.to_string(total_pages),
           ),
         ]),
         button(

@@ -16,15 +16,16 @@ pub fn base_css() -> String {
     ".body { display: flex; gap: 12px; align-items: flex-start; }",
     ".nav { width: 220px; background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }",
     ".content { flex: 1; background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 12px; padding: 12px; min-width: 0; }",
-    ".content.pool-main { overflow: hidden; }",
-    ".pool-layout { display: flex; gap: 12px; align-items: flex-start; }",
-    ".pool-main { flex: 1; min-width: 0; position: relative; overflow: hidden; }",
-    ".pool-right { width: 360px; flex-shrink: 0; position: relative; z-index: 2; background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
-.pool-my-tasks-dropzone { border: 1px dashed transparent; border-radius: 12px; padding: 8px; transition: border-color 120ms ease, background 120ms ease; }
+    ".content.pool-main { overflow: hidden; min-height: 520px; }",
+    ".pool-layout { display: flex; gap: 12px; align-items: flex-start; width: 100%; }",
+    ".pool-main { flex: 1 1 auto; min-width: 0; position: relative; overflow: hidden; }",
+    ".pool-right { width: 360px; flex-shrink: 0; position: relative; z-index: 2; background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; align-self: stretch; }
+.pool-my-tasks-dropzone { border: 1px dashed transparent; border-radius: 12px; padding: 8px; transition: border-color 120ms ease, background 120ms ease; min-height: 120px; }
 .pool-my-tasks-dropzone.drag-active { border-color: var(--sb-border); background: color-mix(in oklab, var(--sb-elevated) 70%, transparent); }
 .pool-my-tasks-dropzone.drop-over { border-color: var(--sb-primary); background: color-mix(in oklab, var(--sb-primary) 12%, var(--sb-elevated)); }
 .dropzone-hint { font-size: 12px; color: var(--sb-muted); margin-bottom: 6px; }",
-    "@media (max-width: 1024px) { .pool-right { width: 320px; } }",
+    "@media (max-width: 1280px) { .pool-right { width: 320px; } }
+@media (max-width: 1024px) { .pool-layout { flex-direction: column; } .pool-right { width: 100%; } }",
     ".topbar { display: flex; align-items: center; gap: 12px; justify-content: space-between; background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 12px; padding: 12px; }",
     ".topbar-title { font-weight: 700; }",
     ".topbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }",

@@ -42,10 +42,10 @@ import domain/user.{type User}
 
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, Loading,
-  MemberClaimClicked, MemberCompleteClicked, MemberCreateDialogOpened,
-  MemberDragEnded, MemberDragMoved, MemberDragStarted,
-  MemberPoolFiltersToggled, MemberPoolViewModeSet, MemberReleaseClicked, NotAsked,
+  type Model, type Msg, Failed, Loaded, Loading, MemberClaimClicked,
+  MemberCompleteClicked, MemberCreateDialogOpened, MemberDragEnded,
+  MemberDragMoved, MemberDragStarted, MemberPoolFiltersToggled,
+  MemberPoolViewModeSet, MemberReleaseClicked, NotAsked,
 }
 import scrumbringer_client/features/admin/view as admin_view
 import scrumbringer_client/features/my_bar/view as my_bar_view
@@ -194,7 +194,10 @@ pub fn view_right_panel(model: Model, user: User) -> Element(Msg) {
               [attribute.class("task-list")],
               list.map(claimed_tasks, fn(t) {
                 let Task(id: task_id, ..) = t
-                #(int.to_string(task_id), my_bar_view.view_member_bar_task_row(model, user, t))
+                #(
+                  int.to_string(task_id),
+                  my_bar_view.view_member_bar_task_row(model, user, t),
+                )
               }),
             )
         },
@@ -207,7 +210,7 @@ pub fn view_right_panel(model: Model, user: User) -> Element(Msg) {
 pub fn view_pool_body(model: Model, user: User) -> Element(Msg) {
   div(
     [
-      attribute.class("body"),
+      attribute.class("pool-layout"),
       event.on("mousemove", {
         use x <- decode.field("clientX", decode.int)
         use y <- decode.field("clientY", decode.int)
