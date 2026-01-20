@@ -6,6 +6,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/time/timestamp.{type Timestamp}
+import helpers/option as option_helpers
 import pog
 import scrumbringer_server/sql
 
@@ -174,7 +175,7 @@ pub fn get_org_metrics_summary(
       WorkflowMetricsSummary(
         workflow_id: row.workflow_id,
         workflow_name: row.workflow_name,
-        project_id: int_to_option(row.project_id),
+        project_id: option_helpers.int_to_option(row.project_id),
         rule_count: row.rule_count,
         evaluated_count: row.evaluated_count,
         applied_count: row.applied_count,
@@ -208,13 +209,3 @@ pub fn get_project_metrics_summary(
   })
 }
 
-// =============================================================================
-// Helpers
-// =============================================================================
-
-fn int_to_option(value: Int) -> Option(Int) {
-  case value {
-    0 -> None
-    id -> Some(id)
-  }
-}

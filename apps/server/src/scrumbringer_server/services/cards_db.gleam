@@ -11,6 +11,11 @@
 //// - Validate delete constraints (no tasks)
 //// - Derive card state from task counts
 
+import domain/card.{
+  type CardState, Pendiente,
+  derive_state as shared_derive_state,
+  state_to_string as shared_state_to_string,
+}
 import gleam/list
 import gleam/option.{type Option}
 import gleam/result
@@ -20,13 +25,6 @@ import scrumbringer_server/sql
 // =============================================================================
 // Types
 // =============================================================================
-
-/// Card state derived from tasks.
-pub type CardState {
-  Pendiente
-  EnCurso
-  Cerrada
-}
 
 /// A card with its derived state.
 pub type Card {
@@ -237,43 +235,11 @@ pub fn delete_card(db: pog.Connection, card_id: Int) -> Result(Nil, CardError) {
 }
 
 // =============================================================================
-// State Derivation
+// State Derivation (delegated to shared module)
 // =============================================================================
 
 /// Derive card state from task counts.
-///
-/// Rules:
-/// - If task_count = 0 → Pendiente
-/// - If task_count > 0 AND task_count = completed_count → Cerrada
-/// - If available_count < task_count (some progress) → EnCurso
-/// - Else (all tasks available) → Pendiente
-pub fn derive_card_state(
-  task_count: Int,
-  completed_count: Int,
-  available_count: Int,
-) -> CardState {
-  case task_count {
-    0 -> Pendiente
-    _ -> {
-      case task_count == completed_count {
-        True -> Cerrada
-        False -> {
-          // If any task is NOT available (claimed or completed), there's progress
-          case available_count < task_count {
-            True -> EnCurso
-            False -> Pendiente
-          }
-        }
-      }
-    }
-  }
-}
+pub const derive_card_state = shared_derive_state
 
 /// Convert CardState to string for API responses.
-pub fn state_to_string(state: CardState) -> String {
-  case state {
-    Pendiente -> "pendiente"
-    EnCurso -> "en_curso"
-    Cerrada -> "cerrada"
-  }
-}
+pub const state_to_string = shared_state_to_string

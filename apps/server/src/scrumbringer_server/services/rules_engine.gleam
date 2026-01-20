@@ -6,9 +6,10 @@
 
 import gleam/int
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{type Option}
 import gleam/result
 import gleam/string
+import helpers/option as option_helpers
 import pog
 import scrumbringer_server/sql
 
@@ -141,14 +142,14 @@ fn find_matching_rules(
           id: row.id,
           workflow_id: row.workflow_id,
           name: row.name,
-          goal: string_to_option(row.goal),
+          goal: option_helpers.string_to_option(row.goal),
           resource_type: row.resource_type,
-          task_type_id: int_to_option(row.task_type_id),
+          task_type_id: option_helpers.int_to_option(row.task_type_id),
           to_state: row.to_state,
           active: row.active,
           created_at: row.created_at,
           workflow_org_id: row.workflow_org_id,
-          workflow_project_id: int_to_option(row.workflow_project_id),
+          workflow_project_id: option_helpers.int_to_option(row.workflow_project_id),
         )
       })
       |> Ok
@@ -250,9 +251,9 @@ fn get_rule_templates(
         ExecutionTemplate(
           id: row.id,
           org_id: row.org_id,
-          project_id: int_to_option(row.project_id),
+          project_id: option_helpers.int_to_option(row.project_id),
           name: row.name,
-          description: string_to_option(row.description),
+          description: option_helpers.string_to_option(row.description),
           type_id: row.type_id,
           priority: row.priority,
           created_by: row.created_by,
@@ -416,19 +417,5 @@ fn resource_type_to_string(rt: ResourceType) -> String {
   case rt {
     Task -> "task"
     Card -> "card"
-  }
-}
-
-fn int_to_option(value: Int) -> Option(Int) {
-  case value {
-    0 -> None
-    id -> Some(id)
-  }
-}
-
-fn string_to_option(value: String) -> Option(String) {
-  case value {
-    "" -> None
-    text -> Some(text)
   }
 }

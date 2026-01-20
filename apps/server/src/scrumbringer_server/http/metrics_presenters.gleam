@@ -19,6 +19,7 @@
 
 import gleam/json
 import gleam/option.{type Option, None, Some}
+import helpers/json as json_helpers
 
 import scrumbringer_server/http/metrics_service.{
   type MetricsOverview, type ProjectMetricsRow, type ProjectTask,
@@ -146,24 +147,16 @@ fn project_task_json(task: ProjectTask) -> json.Json {
 }
 
 // =============================================================================
-// Helpers
+// Helpers (re-exported from shared/helpers/json for backwards compatibility)
 // =============================================================================
 
 /// Convert optional int to JSON (null or number).
-pub fn option_int_json(value: Option(Int)) -> json.Json {
-  case value {
-    None -> json.null()
-    Some(v) -> json.int(v)
-  }
-}
+/// Re-exported from shared/helpers/json.
+pub const option_int_json = json_helpers.option_int_json
 
 /// Convert optional string to JSON (null or string).
-pub fn option_string_json(value: Option(String)) -> json.Json {
-  case value {
-    None -> json.null()
-    Some(v) -> json.string(v)
-  }
-}
+/// Re-exported from shared/helpers/json.
+pub const option_string_json = json_helpers.option_string_json
 
 fn ongoing_by_json(value: Option(Int)) -> json.Json {
   case value {

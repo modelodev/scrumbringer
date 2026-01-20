@@ -8,13 +8,12 @@ import gleam/http
 import gleam/int
 import gleam/json
 import gleam/option.{type Option, None, Some}
-import pog
+import helpers/json as json_helpers
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
+import scrumbringer_server/http/authorization
 import scrumbringer_server/http/csrf
 import scrumbringer_server/services/projects_db
-import scrumbringer_server/services/store_state.{type StoredUser}
-
 import scrumbringer_server/services/task_templates_db
 import wisp
 
@@ -180,7 +179,14 @@ fn handle_update(
 
           case task_templates_db.get_template(db, template_id) {
             Ok(template) ->
-              case require_template_admin(db, user, template) {
+              case
+                authorization.require_scoped_admin(
+                  db,
+                  user,
+                  template.org_id,
+                  template.project_id,
+                )
+              {
                 Error(resp) -> resp
                 Ok(#(org_id, project_id)) ->
                   update_template(req, ctx, template_id, org_id, project_id)
@@ -215,7 +221,14 @@ fn handle_delete(
 
           case task_templates_db.get_template(db, template_id) {
             Ok(template) ->
-              case require_template_admin(db, user, template) {
+              case
+                authorization.require_scoped_admin(
+                  db,
+                  user,
+                  template.org_id,
+                  template.project_id,
+                )
+              {
                 Error(resp) -> resp
                 Ok(#(org_id, _project_id)) ->
                   case csrf.require_double_submit(req) {
@@ -374,30 +387,6 @@ fn update_template(
   }
 }
 
-fn require_template_admin(
-  db: pog.Connection,
-  user: StoredUser,
-  template: task_templates_db.TaskTemplate,
-) -> Result(#(Int, Option(Int)), wisp.Response) {
-  let task_templates_db.TaskTemplate(org_id: org_id, project_id: project_id, ..) =
-    template
-
-  case project_id {
-    None ->
-      case user.org_role {
-        Admin -> Ok(#(org_id, project_id))
-        _ -> Error(api.error(403, "FORBIDDEN", "Forbidden"))
-      }
-
-    Some(pid) ->
-      case projects_db.is_project_admin(db, pid, user.id) {
-        Ok(True) -> Ok(#(org_id, project_id))
-        Ok(False) -> Error(api.error(403, "FORBIDDEN", "Forbidden"))
-        Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
-      }
-  }
-}
-
 fn template_json(template: task_templates_db.TaskTemplate) -> json.Json {
   let task_templates_db.TaskTemplate(
     id: id,
@@ -415,27 +404,13 @@ fn template_json(template: task_templates_db.TaskTemplate) -> json.Json {
   json.object([
     #("id", json.int(id)),
     #("org_id", json.int(org_id)),
-    #("project_id", option_int_json(project_id)),
+    #("project_id", json_helpers.option_int_json(project_id)),
     #("name", json.string(name)),
-    #("description", option_string_json(description)),
+    #("description", json_helpers.option_string_json(description)),
     #("type_id", json.int(type_id)),
     #("type_name", json.string(type_name)),
     #("priority", json.int(priority)),
     #("created_by", json.int(created_by)),
     #("created_at", json.string(created_at)),
   ])
-}
-
-fn option_int_json(value: Option(Int)) -> json.Json {
-  case value {
-    None -> json.null()
-    Some(id) -> json.int(id)
-  }
-}
-
-fn option_string_json(value: Option(String)) -> json.Json {
-  case value {
-    None -> json.null()
-    Some(text) -> json.string(text)
-  }
 }

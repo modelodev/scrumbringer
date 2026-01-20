@@ -7,12 +7,12 @@ import gleam/http
 import gleam/int
 import gleam/json
 import gleam/option.{type Option, None, Some}
-import pog
+import helpers/json as json_helpers
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
+import scrumbringer_server/http/authorization
 import scrumbringer_server/http/csrf
 import scrumbringer_server/services/projects_db
-import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/workflows_db
 import wisp
 
@@ -174,7 +174,14 @@ fn handle_update(
 
           case workflows_db.get_workflow(db, workflow_id) {
             Ok(workflow) ->
-              case require_workflow_admin(db, user, workflow) {
+              case
+                authorization.require_scoped_admin(
+                  db,
+                  user,
+                  workflow.org_id,
+                  workflow.project_id,
+                )
+              {
                 Error(resp) -> resp
                 Ok(#(org_id, project_id)) ->
                   update_workflow(req, ctx, workflow_id, org_id, project_id)
@@ -209,7 +216,14 @@ fn handle_delete(
 
           case workflows_db.get_workflow(db, workflow_id) {
             Ok(workflow) ->
-              case require_workflow_admin(db, user, workflow) {
+              case
+                authorization.require_scoped_admin(
+                  db,
+                  user,
+                  workflow.org_id,
+                  workflow.project_id,
+                )
+              {
                 Error(resp) -> resp
                 Ok(#(org_id, project_id)) ->
                   case csrf.require_double_submit(req) {
@@ -454,30 +468,6 @@ fn update_workflow(
   }
 }
 
-fn require_workflow_admin(
-  db: pog.Connection,
-  user: StoredUser,
-  workflow: workflows_db.Workflow,
-) -> Result(#(Int, Option(Int)), wisp.Response) {
-  let workflows_db.Workflow(org_id: org_id, project_id: project_id, ..) =
-    workflow
-
-  case project_id {
-    None ->
-      case user.org_role {
-        Admin -> Ok(#(org_id, project_id))
-        _ -> Error(api.error(403, "FORBIDDEN", "Forbidden"))
-      }
-
-    Some(pid) ->
-      case projects_db.is_project_admin(db, pid, user.id) {
-        Ok(True) -> Ok(#(org_id, project_id))
-        Ok(False) -> Error(api.error(403, "FORBIDDEN", "Forbidden"))
-        Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
-      }
-  }
-}
-
 fn workflow_json(workflow: workflows_db.Workflow) -> json.Json {
   let workflows_db.Workflow(
     id: id,
@@ -494,26 +484,12 @@ fn workflow_json(workflow: workflows_db.Workflow) -> json.Json {
   json.object([
     #("id", json.int(id)),
     #("org_id", json.int(org_id)),
-    #("project_id", option_int_json(project_id)),
+    #("project_id", json_helpers.option_int_json(project_id)),
     #("name", json.string(name)),
-    #("description", option_string_json(description)),
+    #("description", json_helpers.option_string_json(description)),
     #("active", json.bool(active)),
     #("rule_count", json.int(rule_count)),
     #("created_by", json.int(created_by)),
     #("created_at", json.string(created_at)),
   ])
-}
-
-fn option_int_json(value: Option(Int)) -> json.Json {
-  case value {
-    None -> json.null()
-    Some(id) -> json.int(id)
-  }
-}
-
-fn option_string_json(value: Option(String)) -> json.Json {
-  case value {
-    None -> json.null()
-    Some(text) -> json.string(text)
-  }
 }

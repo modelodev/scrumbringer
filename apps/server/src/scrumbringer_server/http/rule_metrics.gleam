@@ -14,10 +14,11 @@ import gleam/option.{type Option, None, Some}
 import gleam/order
 import gleam/result
 import gleam/time/duration
-import pog
 import gleam/time/timestamp.{type Timestamp}
+import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
+import scrumbringer_server/http/authorization
 import scrumbringer_server/services/projects_db
 import scrumbringer_server/services/rule_metrics_db
 import scrumbringer_server/services/rules_db
@@ -116,7 +117,11 @@ fn get_workflow_metrics(
 
           case workflows_db.get_workflow(db, workflow_id) {
             Ok(workflow) ->
-              case require_workflow_admin(db, user, workflow) {
+              case authorization.require_scoped_admin_with_org_bypass(
+                  db,
+                  user,
+                  workflow.project_id,
+                ) {
                 Error(resp) -> resp
                 Ok(Nil) ->
                   case parse_date_range(req) {
@@ -421,36 +426,6 @@ fn do_get_project_metrics(
   }
 }
 
-// =============================================================================
-// Authorization
-// =============================================================================
-
-fn require_workflow_admin(
-  db,
-  user: StoredUser,
-  workflow: workflows_db.Workflow,
-) -> Result(Nil, wisp.Response) {
-  // Org-scoped workflow: require org admin
-  // Project-scoped workflow: require project admin or org admin
-  case workflow.project_id {
-    None ->
-      case user.org_role {
-        Admin -> Ok(Nil)
-        _ -> Error(api.error(403, "FORBIDDEN", "Admin role required"))
-      }
-
-    Some(project_id) ->
-      case user.org_role {
-        Admin -> Ok(Nil)
-        _ ->
-          case projects_db.is_project_admin(db, user.id, project_id) {
-            Ok(True) -> Ok(Nil)
-            _ -> Error(api.error(403, "FORBIDDEN", "Admin role required"))
-          }
-      }
-  }
-}
-
 fn workflow_from_rule(
   db,
   user: StoredUser,
@@ -458,7 +433,11 @@ fn workflow_from_rule(
 ) -> Result(workflows_db.Workflow, wisp.Response) {
   case workflows_db.get_workflow(db, rule.workflow_id) {
     Ok(workflow) ->
-      case require_workflow_admin(db, user, workflow) {
+      case authorization.require_scoped_admin_with_org_bypass(
+                  db,
+                  user,
+                  workflow.project_id,
+                ) {
         Ok(Nil) -> Ok(workflow)
         Error(resp) -> Error(resp)
       }

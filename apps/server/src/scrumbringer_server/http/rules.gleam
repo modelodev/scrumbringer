@@ -1,19 +1,18 @@
 ////
 //// HTTP handlers for workflow rules CRUD and template associations.
 
-import domain/org_role.{Admin}
 import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
 import gleam/option.{type Option, None, Some}
+import helpers/json as json_helpers
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
+import scrumbringer_server/http/authorization
 import scrumbringer_server/http/csrf
-import scrumbringer_server/services/projects_db
 import scrumbringer_server/services/rules_db
-import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/task_templates_db
 import scrumbringer_server/services/workflows_db
 import wisp
@@ -78,7 +77,12 @@ fn handle_list(
 
           case workflows_db.get_workflow(db, workflow_id) {
             Ok(workflow) ->
-              case require_workflow_admin(db, user, workflow) {
+              case authorization.require_scoped_admin_simple(
+                  db,
+                  user,
+                  workflow.org_id,
+                  workflow.project_id,
+                ) {
                 Error(resp) -> resp
                 Ok(Nil) ->
                   case rules_db.list_rules_for_workflow(db, workflow_id) {
@@ -116,7 +120,12 @@ fn handle_create(
 
           case workflows_db.get_workflow(db, workflow_id) {
             Ok(workflow) ->
-              case require_workflow_admin(db, user, workflow) {
+              case authorization.require_scoped_admin_simple(
+                  db,
+                  user,
+                  workflow.org_id,
+                  workflow.project_id,
+                ) {
                 Error(resp) -> resp
                 Ok(Nil) -> create_rule(req, ctx, workflow_id)
               }
@@ -148,7 +157,12 @@ fn handle_update(
               case workflow_from_rule(db, rule) {
                 Error(resp) -> resp
                 Ok(workflow) ->
-                  case require_workflow_admin(db, user, workflow) {
+                  case authorization.require_scoped_admin_simple(
+                  db,
+                  user,
+                  workflow.org_id,
+                  workflow.project_id,
+                ) {
                     Error(resp) -> resp
                     Ok(Nil) -> update_rule(req, ctx, rule_id)
                   }
@@ -181,7 +195,12 @@ fn handle_delete(
               case workflow_from_rule(db, rule) {
                 Error(resp) -> resp
                 Ok(workflow) ->
-                  case require_workflow_admin(db, user, workflow) {
+                  case authorization.require_scoped_admin_simple(
+                  db,
+                  user,
+                  workflow.org_id,
+                  workflow.project_id,
+                ) {
                     Error(resp) -> resp
                     Ok(Nil) ->
                       case csrf.require_double_submit(req) {
@@ -230,7 +249,12 @@ fn handle_attach_template(
               case workflow_from_rule(db, rule) {
                 Error(resp) -> resp
                 Ok(workflow) ->
-                  case require_workflow_admin(db, user, workflow) {
+                  case authorization.require_scoped_admin_simple(
+                  db,
+                  user,
+                  workflow.org_id,
+                  workflow.project_id,
+                ) {
                     Error(resp) -> resp
                     Ok(Nil) ->
                       case validate_template_scope(db, workflow, template_id) {
@@ -268,7 +292,12 @@ fn handle_detach_template(
               case workflow_from_rule(db, rule) {
                 Error(resp) -> resp
                 Ok(workflow) ->
-                  case require_workflow_admin(db, user, workflow) {
+                  case authorization.require_scoped_admin_simple(
+                  db,
+                  user,
+                  workflow.org_id,
+                  workflow.project_id,
+                ) {
                     Error(resp) -> resp
                     Ok(Nil) ->
                       detach_rule_template(req, ctx, rule_id, template_id)
@@ -577,30 +606,6 @@ fn template_org_matches(
   }
 }
 
-fn require_workflow_admin(
-  db: pog.Connection,
-  user: StoredUser,
-  workflow: workflows_db.Workflow,
-) -> Result(Nil, wisp.Response) {
-  let workflows_db.Workflow(org_id: _org_id, project_id: project_id, ..) =
-    workflow
-
-  case project_id {
-    None ->
-      case user.org_role {
-        Admin -> Ok(Nil)
-        _ -> Error(api.error(403, "FORBIDDEN", "Forbidden"))
-      }
-
-    Some(pid) ->
-      case projects_db.is_project_admin(db, pid, user.id) {
-        Ok(True) -> Ok(Nil)
-        Ok(False) -> Error(api.error(403, "FORBIDDEN", "Forbidden"))
-        Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
-      }
-  }
-}
-
 fn rule_json(rule: rules_db.Rule) -> json.Json {
   let rules_db.Rule(
     id: id,
@@ -618,9 +623,9 @@ fn rule_json(rule: rules_db.Rule) -> json.Json {
     #("id", json.int(id)),
     #("workflow_id", json.int(workflow_id)),
     #("name", json.string(name)),
-    #("goal", option_string_json(goal)),
+    #("goal", json_helpers.option_string_json(goal)),
     #("resource_type", json.string(resource_type)),
-    #("task_type_id", option_int_json(task_type_id)),
+    #("task_type_id", json_helpers.option_int_json(task_type_id)),
     #("to_state", json.string(to_state)),
     #("active", json.bool(active)),
     #("created_at", json.string(created_at)),
@@ -645,9 +650,9 @@ fn template_json(template: rules_db.RuleTemplate) -> json.Json {
   json.object([
     #("id", json.int(id)),
     #("org_id", json.int(org_id)),
-    #("project_id", option_int_json(project_id)),
+    #("project_id", json_helpers.option_int_json(project_id)),
     #("name", json.string(name)),
-    #("description", option_string_json(description)),
+    #("description", json_helpers.option_string_json(description)),
     #("type_id", json.int(type_id)),
     #("type_name", json.string(type_name)),
     #("priority", json.int(priority)),
@@ -655,18 +660,4 @@ fn template_json(template: rules_db.RuleTemplate) -> json.Json {
     #("created_at", json.string(created_at)),
     #("execution_order", json.int(execution_order)),
   ])
-}
-
-fn option_int_json(value: Option(Int)) -> json.Json {
-  case value {
-    None -> json.null()
-    Some(id) -> json.int(id)
-  }
-}
-
-fn option_string_json(value: Option(String)) -> json.Json {
-  case value {
-    None -> json.null()
-    Some(text) -> json.string(text)
-  }
 }

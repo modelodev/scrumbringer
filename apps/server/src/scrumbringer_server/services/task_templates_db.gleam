@@ -6,6 +6,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
+import helpers/option as option_helpers
 import pog
 import scrumbringer_server/sql
 
@@ -51,27 +52,13 @@ fn option_to_param(value: Option(Int)) -> Int {
   }
 }
 
-fn int_to_option(value: Int) -> Option(Int) {
-  case value {
-    0 -> None
-    id -> Some(id)
-  }
-}
-
-fn string_to_option(value: String) -> Option(String) {
-  case value {
-    "" -> None
-    text -> Some(text)
-  }
-}
-
 fn from_list_org_row(row: sql.TaskTemplatesListForOrgRow) -> TaskTemplate {
   TaskTemplate(
     id: row.id,
     org_id: row.org_id,
-    project_id: int_to_option(row.project_id),
+    project_id: option_helpers.int_to_option(row.project_id),
     name: row.name,
-    description: string_to_option(row.description),
+    description: option_helpers.string_to_option(row.description),
     type_id: row.type_id,
     type_name: row.type_name,
     priority: row.priority,
@@ -86,9 +73,9 @@ fn from_list_project_row(
   TaskTemplate(
     id: row.id,
     org_id: row.org_id,
-    project_id: int_to_option(row.project_id),
+    project_id: option_helpers.int_to_option(row.project_id),
     name: row.name,
-    description: string_to_option(row.description),
+    description: option_helpers.string_to_option(row.description),
     type_id: row.type_id,
     type_name: row.type_name,
     priority: row.priority,
@@ -101,9 +88,9 @@ fn from_get_row(row: sql.TaskTemplatesGetRow) -> TaskTemplate {
   TaskTemplate(
     id: row.id,
     org_id: row.org_id,
-    project_id: int_to_option(row.project_id),
+    project_id: option_helpers.int_to_option(row.project_id),
     name: row.name,
-    description: string_to_option(row.description),
+    description: option_helpers.string_to_option(row.description),
     type_id: row.type_id,
     type_name: row.type_name,
     priority: row.priority,
@@ -118,7 +105,7 @@ fn from_create_row(row: sql.TaskTemplatesCreateRow) -> TaskTemplate {
     org_id: row.org_id,
     project_id: row.project_id,
     name: row.name,
-    description: string_to_option(row.description),
+    description: option_helpers.string_to_option(row.description),
     type_id: row.type_id,
     type_name: row.type_name,
     priority: row.priority,
@@ -133,7 +120,7 @@ fn from_update_row(row: sql.TaskTemplatesUpdateRow) -> TaskTemplate {
     org_id: row.org_id,
     project_id: row.project_id,
     name: row.name,
-    description: string_to_option(row.description),
+    description: option_helpers.string_to_option(row.description),
     type_id: row.type_id,
     type_name: row.type_name,
     priority: row.priority,

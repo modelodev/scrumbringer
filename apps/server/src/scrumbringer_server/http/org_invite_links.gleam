@@ -6,9 +6,9 @@
 import gleam/dynamic/decode
 import gleam/http
 import gleam/json
-import gleam/option.{type Option, None, Some}
 import gleam/string
 import domain/org_role
+import helpers/json as json_helpers
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
@@ -179,14 +179,7 @@ fn invite_link_json(link: org_invite_links_db.OrgInviteLink) -> json.Json {
     #("url_path", json.string(org_invite_links_db.url_path(token))),
     #("state", json.string(org_invite_links_db.state_to_string(state))),
     #("created_at", json.string(created_at)),
-    #("used_at", option_string_json(used_at)),
-    #("invalidated_at", option_string_json(invalidated_at)),
+    #("used_at", json_helpers.option_string_json(used_at)),
+    #("invalidated_at", json_helpers.option_string_json(invalidated_at)),
   ])
-}
-
-fn option_string_json(value: Option(String)) -> json.Json {
-  case value {
-    None -> json.null()
-    Some(v) -> json.string(v)
-  }
 }

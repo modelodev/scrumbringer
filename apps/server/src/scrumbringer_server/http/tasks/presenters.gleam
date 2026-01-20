@@ -19,6 +19,7 @@ import gleam/option.{type Option, None, Some}
 import domain/task_status.{
   type TaskStatus, Available, Claimed, Completed, Ongoing, Taken,
 }
+import helpers/json as json_helpers
 import scrumbringer_server/persistence/tasks/mappers.{type Task, Task}
 import scrumbringer_server/services/task_types_db
 
@@ -113,38 +114,16 @@ pub fn task_json(task: Task) -> json.Json {
 }
 
 // =============================================================================
-// Helper Functions
+// Helper Functions (re-exported from shared/helpers/json)
 // =============================================================================
 
 /// Convert optional Int to JSON (null if None).
-///
-/// ## Example
-///
-/// ```gleam
-/// option_int_json(Some(42))  // json.int(42)
-/// option_int_json(None)      // json.null()
-/// ```
-pub fn option_int_json(value: Option(Int)) -> json.Json {
-  case value {
-    None -> json.null()
-    Some(v) -> json.int(v)
-  }
-}
+/// Re-exported from shared/helpers/json for backwards compatibility.
+pub const option_int_json = json_helpers.option_int_json
 
 /// Convert optional String to JSON (null if None).
-///
-/// ## Example
-///
-/// ```gleam
-/// option_string_json(Some("hello"))  // json.string("hello")
-/// option_string_json(None)           // json.null()
-/// ```
-pub fn option_string_json(value: Option(String)) -> json.Json {
-  case value {
-    None -> json.null()
-    Some(v) -> json.string(v)
-  }
-}
+/// Re-exported from shared/helpers/json for backwards compatibility.
+pub const option_string_json = json_helpers.option_string_json
 
 /// Convert ongoing_by user_id to JSON object or null.
 ///
