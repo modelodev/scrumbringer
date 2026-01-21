@@ -20,7 +20,7 @@ export function emit_custom_event(name, detail) {
   // This works for effects that run outside the render cycle
   if (!component || !component.dispatchEvent) {
     // List of known Lustre component tag names in this app
-    const knownComponents = ['card-detail-modal', 'card-crud-dialog', 'workflow-crud-dialog', 'task-template-crud-dialog']
+    const knownComponents = ['card-detail-modal', 'card-crud-dialog', 'workflow-crud-dialog', 'task-template-crud-dialog', 'rule-crud-dialog']
 
     for (const tag of knownComponents) {
       const el = document.querySelector(tag)

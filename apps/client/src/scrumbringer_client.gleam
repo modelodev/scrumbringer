@@ -83,6 +83,7 @@ import scrumbringer_client/client_update
 import scrumbringer_client/client_view
 import scrumbringer_client/components/card_crud_dialog
 import scrumbringer_client/components/card_detail_modal
+import scrumbringer_client/components/rule_crud_dialog
 import scrumbringer_client/components/task_template_crud_dialog
 import scrumbringer_client/components/workflow_crud_dialog
 
@@ -121,6 +122,10 @@ pub fn main() {
     Error(_) -> Nil
   }
   case task_template_crud_dialog.register() {
+    Ok(_) -> Nil
+    Error(_) -> Nil
+  }
+  case rule_crud_dialog.register() {
     Ok(_) -> Nil
     Error(_) -> Nil
   }
@@ -250,6 +255,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       invite_link_error: opt.None,
       invite_link_last: opt.None,
       invite_link_copy_status: opt.None,
+      projects_create_dialog_open: False,
       projects_create_name: "",
       projects_create_in_flight: False,
       projects_create_error: opt.None,
@@ -370,30 +376,10 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       workflows_org: NotAsked,
       workflows_project: NotAsked,
       workflows_dialog_mode: opt.None,
-      // Rules
+      // Rules (list and dialog mode - component handles CRUD state internally)
       rules_workflow_id: opt.None,
       rules: NotAsked,
-      rules_create_dialog_open: False,
-      rules_create_name: "",
-      rules_create_goal: "",
-      rules_create_resource_type: "task",
-      rules_create_task_type_id: opt.None,
-      rules_create_to_state: "completed",
-      rules_create_active: True,
-      rules_create_in_flight: False,
-      rules_create_error: opt.None,
-      rules_edit_id: opt.None,
-      rules_edit_name: "",
-      rules_edit_goal: "",
-      rules_edit_resource_type: "task",
-      rules_edit_task_type_id: opt.None,
-      rules_edit_to_state: "completed",
-      rules_edit_active: True,
-      rules_edit_in_flight: False,
-      rules_edit_error: opt.None,
-      rules_delete_confirm: opt.None,
-      rules_delete_in_flight: False,
-      rules_delete_error: opt.None,
+      rules_dialog_mode: opt.None,
       // Rule templates
       rules_templates: NotAsked,
       rules_attach_template_id: opt.None,

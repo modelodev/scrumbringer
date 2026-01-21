@@ -55,7 +55,7 @@ import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/features/admin/cards as admin_cards
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/client_state.{
-  type Model, type Msg, type Remote, type TaskTemplateDialogMode,
+  type Model, type Msg, type Remote,
   AdminRuleMetricsDrilldownClicked, AdminRuleMetricsDrilldownClosed,
   AdminRuleMetricsExecPageChanged, AdminRuleMetricsFromChanged,
   AdminRuleMetricsRefreshClicked, AdminRuleMetricsToChanged,
@@ -63,30 +63,24 @@ import scrumbringer_client/client_state.{
   CapabilityCreateDialogOpened, CapabilityCreateNameChanged,
   CapabilityCreateSubmitted, CardCrudCreated, CardCrudDeleted, CardCrudUpdated,
   CardDialogCreate, CardDialogDelete, CardDialogEdit, CloseCardDialog,
-  CloseTaskTemplateDialog, Failed, OpenCardDialog, OpenTaskTemplateDialog,
-  IconError, IconOk, Loaded, Loading,
-  MemberAddDialogClosed, MemberAddDialogOpened, MemberAddRoleChanged,
+  CloseRuleDialog, CloseTaskTemplateDialog, Failed, IconError, IconOk, Loaded,
+  Loading, MemberAddDialogClosed, MemberAddDialogOpened, MemberAddRoleChanged,
   MemberAddSubmitted, MemberAddUserSelected, MemberRemoveCancelled,
-  MemberRemoveClicked, MemberRemoveConfirmed, NotAsked, OrgSettingsRoleChanged,
+  MemberRemoveClicked, MemberRemoveConfirmed, NotAsked, OpenCardDialog,
+  OpenRuleDialog, OpenTaskTemplateDialog, OrgSettingsRoleChanged,
   OrgSettingsSaveClicked, OrgUsersSearchChanged, OrgUsersSearchDebounced,
-  UserProjectsDialogOpened, UserProjectsDialogClosed, UserProjectsAddProjectChanged,
-  UserProjectsAddSubmitted, UserProjectRemoveClicked,
-  RuleCreateActiveChanged, RuleCreateGoalChanged, RuleCreateNameChanged,
-  RuleCreateResourceTypeChanged, RuleCreateSubmitted,
-  RuleCreateTaskTypeIdChanged, RuleCreateToStateChanged, RuleDeleteCancelled,
-  RuleDeleteClicked, RuleDeleteConfirmed, RuleEditActiveChanged,
-  RuleEditCancelled, RuleEditClicked, RuleEditGoalChanged, RuleEditNameChanged,
-  RuleEditResourceTypeChanged, RuleEditSubmitted, RuleEditTaskTypeIdChanged,
-  RuleCreateDialogClosed, RuleCreateDialogOpened, RuleEditToStateChanged,
-  RulesBackClicked,
-  TaskTemplateDialogCreate, TaskTemplateDialogDelete, TaskTemplateDialogEdit,
-  TaskTemplateCrudCreated, TaskTemplateCrudDeleted, TaskTemplateCrudUpdated,
+  RuleCrudCreated, RuleCrudDeleted, RuleCrudUpdated, RuleDialogCreate,
+  RuleDialogDelete, RuleDialogEdit, RulesBackClicked, TaskTemplateCrudCreated,
+  TaskTemplateCrudDeleted, TaskTemplateCrudUpdated, TaskTemplateDialogCreate,
+  TaskTemplateDialogDelete, TaskTemplateDialogEdit,
   TaskTypeCreateCapabilityChanged, TaskTypeCreateDialogClosed,
   TaskTypeCreateDialogOpened, TaskTypeCreateIconChanged,
   TaskTypeCreateNameChanged, TaskTypeCreateSubmitted, TaskTypeIconErrored,
-  TaskTypeIconLoaded, WorkflowDialogCreate, WorkflowDialogDelete,
-  WorkflowDialogEdit, CloseWorkflowDialog, OpenWorkflowDialog, WorkflowCrudCreated,
-  WorkflowCrudDeleted, WorkflowCrudUpdated, WorkflowRulesClicked,
+  TaskTypeIconLoaded, UserProjectRemoveClicked, UserProjectsAddProjectChanged,
+  UserProjectsAddSubmitted, UserProjectsDialogClosed, UserProjectsDialogOpened,
+  WorkflowCrudCreated, WorkflowCrudDeleted, WorkflowCrudUpdated,
+  WorkflowDialogCreate, WorkflowDialogDelete, WorkflowDialogEdit,
+  CloseWorkflowDialog, OpenWorkflowDialog, WorkflowRulesClicked,
 }
 
 // Workflows
@@ -101,45 +95,6 @@ import scrumbringer_client/ui/info_callout
 import scrumbringer_client/update_helpers
 
 // =============================================================================
-// Helper Functions
-// =============================================================================
-
-/// Render state options filtered by resource type.
-/// Task states: available, claimed, completed
-/// Card states: pendiente, en_curso, cerrada
-fn view_state_options(model: Model, resource_type: String) -> List(Element(Msg)) {
-  case resource_type {
-    "task" -> [
-      option(
-        [attribute.value("available")],
-        update_helpers.i18n_t(model, i18n_text.TaskStateAvailable),
-      ),
-      option(
-        [attribute.value("claimed")],
-        update_helpers.i18n_t(model, i18n_text.TaskStateClaimed),
-      ),
-      option(
-        [attribute.value("completed")],
-        update_helpers.i18n_t(model, i18n_text.TaskStateCompleted),
-      ),
-    ]
-    _ -> [
-      option(
-        [attribute.value("pendiente")],
-        update_helpers.i18n_t(model, i18n_text.CardStatePendiente),
-      ),
-      option(
-        [attribute.value("en_curso")],
-        update_helpers.i18n_t(model, i18n_text.CardStateEnCurso),
-      ),
-      option(
-        [attribute.value("cerrada")],
-        update_helpers.i18n_t(model, i18n_text.CardStateCerrada),
-      ),
-    ]
-  }
-}
-
 // =============================================================================
 // Public API
 // =============================================================================
@@ -508,35 +463,29 @@ pub fn view_members(
       div([attribute.class("section")], [
         // Help callout for Members section
         info_callout.simple(update_helpers.i18n_t(model, i18n_text.MembersHelp)),
-        // Card: Members list
-        div([attribute.class("admin-card")], [
-          div([attribute.class("admin-card-header")], [
+        // Section header with add button
+        div([attribute.class("admin-section-header")], [
+          div([attribute.class("admin-section-title")], [
+            span([attribute.class("admin-section-icon")], [text("\u{1F465}")]),
             text(update_helpers.i18n_t(
               model,
               i18n_text.MembersTitle(project.name),
             )),
           ]),
-          case model.members_remove_error {
-            opt.Some(err) -> div([attribute.class("error")], [text(err)])
-            opt.None -> element.none()
-          },
-          view_members_table(model, model.members, model.org_users_cache),
-          // Button styled as primary CTA
-          div([attribute.attribute("style", "margin-top: 16px;")], [
-            button(
-              [
-                attribute.type_("submit"),
-                event.on_click(MemberAddDialogOpened),
-                attribute.attribute("aria-label", "Add new member to project"),
-              ],
-              [text("+ " <> update_helpers.i18n_t(model, i18n_text.AddMember))],
-            ),
-          ]),
+          dialog.add_button(model, i18n_text.AddMember, MemberAddDialogOpened),
         ]),
+        // Members list
+        case model.members_remove_error {
+          opt.Some(err) -> div([attribute.class("error")], [text(err)])
+          opt.None -> element.none()
+        },
+        view_members_table(model, model.members, model.org_users_cache),
+        // Add member dialog
         case model.members_add_dialog_open {
           True -> view_add_member_dialog(model)
           False -> element.none()
         },
+        // Remove member confirmation dialog
         case model.members_remove_confirm {
           opt.Some(user) -> view_remove_member_dialog(model, project.name, user)
           opt.None -> element.none()
@@ -1798,21 +1747,11 @@ fn view_workflow_rules(model: Model, workflow_id: Int) -> Element(Msg) {
         span([attribute.class("admin-section-icon")], [text("\u{1F4DC}")]),
         text(update_helpers.i18n_t(model, i18n_text.RulesTitle(workflow_name))),
       ]),
-      dialog.add_button(model, i18n_text.CreateRule, RuleCreateDialogOpened),
+      dialog.add_button(model, i18n_text.CreateRule, OpenRuleDialog(RuleDialogCreate)),
     ]),
     view_rules_table(model, model.rules, model.rules_metrics),
-    // Create dialog
-    view_rule_create_dialog(model),
-    // Edit dialog
-    case model.rules_edit_id {
-      opt.Some(_) -> view_edit_rule_dialog(model)
-      opt.None -> element.none()
-    },
-    // Delete dialog
-    case model.rules_delete_confirm {
-      opt.Some(rule) -> view_delete_rule_dialog(model, rule)
-      opt.None -> element.none()
-    },
+    // Rule CRUD dialog component (handles create/edit/delete internally)
+    view_rule_crud_dialog(model, workflow_id),
   ])
 }
 
@@ -1914,10 +1853,10 @@ fn view_rules_table(
                       ]),
                     ]),
                     td([], [
-                      button([event.on_click(RuleEditClicked(r))], [
+                      button([event.on_click(OpenRuleDialog(RuleDialogEdit(r)))], [
                         text(update_helpers.i18n_t(model, i18n_text.EditRule)),
                       ]),
-                      button([event.on_click(RuleDeleteClicked(r))], [
+                      button([event.on_click(OpenRuleDialog(RuleDialogDelete(r)))], [
                         text(update_helpers.i18n_t(model, i18n_text.DeleteRule)),
                       ]),
                     ]),
@@ -1946,270 +1885,107 @@ fn get_rule_metrics(
   }
 }
 
-fn view_rule_create_dialog(model: Model) -> Element(Msg) {
-  dialog.view(
-    dialog.DialogConfig(
-      title: update_helpers.i18n_t(model, i18n_text.CreateRule),
-      icon: opt.Some("\u{1F4DC}"),
-      size: dialog.DialogLg,
-      on_close: RuleCreateDialogClosed,
-    ),
-    model.rules_create_dialog_open,
-    model.rules_create_error,
+/// Renders the rule-crud-dialog component.
+/// The component handles create/edit/delete internally and emits events.
+fn view_rule_crud_dialog(model: Model, workflow_id: Int) -> Element(Msg) {
+  // Build mode attribute based on dialog mode
+  let mode_attr = case model.rules_dialog_mode {
+    opt.None -> "closed"
+    opt.Some(RuleDialogCreate) -> "create"
+    opt.Some(RuleDialogEdit(_)) -> "edit"
+    opt.Some(RuleDialogDelete(_)) -> "delete"
+  }
+
+  // Build rule property for edit/delete modes
+  let rule_prop = case model.rules_dialog_mode {
+    opt.Some(RuleDialogEdit(rule)) -> attribute.property("rule", rule_to_json(rule))
+    opt.Some(RuleDialogDelete(rule)) -> attribute.property("rule", rule_to_json(rule))
+    _ -> attribute.none()
+  }
+
+  // Build task types property
+  let task_types_json = case model.task_types {
+    Loaded(types) ->
+      json.array(types, fn(tt) {
+        json.object([
+          #("id", json.int(tt.id)),
+          #("name", json.string(tt.name)),
+        ])
+      })
+    _ -> json.array([], fn(_: Nil) { json.null() })
+  }
+
+  element.element(
+    "rule-crud-dialog",
     [
-      form([event.on_submit(fn(_) { RuleCreateSubmitted })], [
-        div([attribute.class("field")], [
-          label([], [text(update_helpers.i18n_t(model, i18n_text.RuleName))]),
-          input([
-            attribute.type_("text"),
-            attribute.value(model.rules_create_name),
-            event.on_input(RuleCreateNameChanged),
-            attribute.required(True),
-          ]),
-        ]),
-        div([attribute.class("field")], [
-          label([], [text(update_helpers.i18n_t(model, i18n_text.RuleGoal))]),
-          input([
-            attribute.type_("text"),
-            attribute.value(model.rules_create_goal),
-            event.on_input(RuleCreateGoalChanged),
-          ]),
-        ]),
-        div([attribute.class("field")], [
-          label([], [
-            text(update_helpers.i18n_t(model, i18n_text.RuleResourceType)),
-          ]),
-          select(
-            [
-              attribute.value(model.rules_create_resource_type),
-              event.on_input(RuleCreateResourceTypeChanged),
-            ],
-            [
-              option(
-                [attribute.value("task")],
-                update_helpers.i18n_t(model, i18n_text.RuleResourceTypeTask),
-              ),
-              option(
-                [attribute.value("card")],
-                update_helpers.i18n_t(model, i18n_text.RuleResourceTypeCard),
-              ),
-            ],
-          ),
-        ]),
-        case model.rules_create_resource_type == "task" {
-          True ->
-            div([attribute.class("field")], [
-              label([], [
-                text(update_helpers.i18n_t(model, i18n_text.RuleTaskType)),
-              ]),
-              view_task_type_selector_for_templates(
-                model,
-                model.task_types,
-                case model.rules_create_task_type_id {
-                  opt.Some(id) -> int.to_string(id)
-                  opt.None -> ""
-                },
-                RuleCreateTaskTypeIdChanged,
-              ),
-            ])
-          False -> element.none()
-        },
-        div([attribute.class("field")], [
-          label([], [text(update_helpers.i18n_t(model, i18n_text.RuleToState))]),
-          select(
-            [
-              attribute.value(model.rules_create_to_state),
-              event.on_input(RuleCreateToStateChanged),
-            ],
-            view_state_options(model, model.rules_create_resource_type),
-          ),
-        ]),
-        div([attribute.class("field")], [
-          label([], [
-            input([
-              attribute.type_("checkbox"),
-              attribute.checked(model.rules_create_active),
-              event.on_check(RuleCreateActiveChanged),
-            ]),
-            text(" " <> update_helpers.i18n_t(model, i18n_text.RuleActive)),
-          ]),
-        ]),
-        dialog.submit_button(
-          model,
-          model.rules_create_in_flight,
-          False,
-          i18n_text.Create,
-          i18n_text.Creating,
-        ),
-      ]),
+      attribute.attribute("locale", locale.serialize(model.locale)),
+      attribute.attribute("workflow-id", int.to_string(workflow_id)),
+      attribute.attribute("mode", mode_attr),
+      rule_prop,
+      attribute.property("task-types", task_types_json),
+      // Event handlers
+      event.on("rule-created", decode_rule_event(RuleCrudCreated)),
+      event.on("rule-updated", decode_rule_event(RuleCrudUpdated)),
+      event.on("rule-deleted", decode_rule_id_event(RuleCrudDeleted)),
+      event.on("close-requested", decode_close_event(CloseRuleDialog)),
     ],
-    [
-      dialog.cancel_button(model, RuleCreateDialogClosed),
-    ],
+    [],
   )
 }
 
-fn view_edit_rule_dialog(model: Model) -> Element(Msg) {
-  div([attribute.class("modal")], [
-    div([attribute.class("modal-content")], [
-      h3([], [text(update_helpers.i18n_t(model, i18n_text.EditRule))]),
-      case model.rules_edit_error {
-        opt.Some(err) -> div([attribute.class("error")], [text(err)])
-        opt.None -> element.none()
-      },
-      form([event.on_submit(fn(_) { RuleEditSubmitted })], [
-        div([attribute.class("field")], [
-          label([], [text(update_helpers.i18n_t(model, i18n_text.RuleName))]),
-          input([
-            attribute.type_("text"),
-            attribute.value(model.rules_edit_name),
-            event.on_input(RuleEditNameChanged),
-            attribute.required(True),
-          ]),
-        ]),
-        div([attribute.class("field")], [
-          label([], [text(update_helpers.i18n_t(model, i18n_text.RuleGoal))]),
-          input([
-            attribute.type_("text"),
-            attribute.value(model.rules_edit_goal),
-            event.on_input(RuleEditGoalChanged),
-          ]),
-        ]),
-        div([attribute.class("field")], [
-          label([], [
-            text(update_helpers.i18n_t(model, i18n_text.RuleResourceType)),
-          ]),
-          select(
-            [
-              attribute.value(model.rules_edit_resource_type),
-              event.on_input(RuleEditResourceTypeChanged),
-            ],
-            [
-              option(
-                [attribute.value("task")],
-                update_helpers.i18n_t(model, i18n_text.RuleResourceTypeTask),
-              ),
-              option(
-                [attribute.value("card")],
-                update_helpers.i18n_t(model, i18n_text.RuleResourceTypeCard),
-              ),
-            ],
-          ),
-        ]),
-        case model.rules_edit_resource_type == "task" {
-          True ->
-            div([attribute.class("field")], [
-              label([], [
-                text(update_helpers.i18n_t(model, i18n_text.RuleTaskType)),
-              ]),
-              view_task_type_selector_for_templates(
-                model,
-                model.task_types,
-                case model.rules_edit_task_type_id {
-                  opt.Some(id) -> int.to_string(id)
-                  opt.None -> ""
-                },
-                RuleEditTaskTypeIdChanged,
-              ),
-            ])
-          False -> element.none()
-        },
-        div([attribute.class("field")], [
-          label([], [text(update_helpers.i18n_t(model, i18n_text.RuleToState))]),
-          select(
-            [
-              attribute.value(model.rules_edit_to_state),
-              event.on_input(RuleEditToStateChanged),
-            ],
-            view_state_options(model, model.rules_edit_resource_type),
-          ),
-        ]),
-        div([attribute.class("field")], [
-          label([], [
-            input([
-              attribute.type_("checkbox"),
-              attribute.checked(model.rules_edit_active),
-              event.on_check(RuleEditActiveChanged),
-            ]),
-            text(" " <> update_helpers.i18n_t(model, i18n_text.RuleActive)),
-          ]),
-        ]),
-        div([attribute.class("actions")], [
-          button(
-            [attribute.type_("button"), event.on_click(RuleEditCancelled)],
-            [text(update_helpers.i18n_t(model, i18n_text.Cancel))],
-          ),
-          button(
-            [
-              attribute.type_("submit"),
-              attribute.disabled(model.rules_edit_in_flight),
-            ],
-            [
-              text(case model.rules_edit_in_flight {
-                True -> update_helpers.i18n_t(model, i18n_text.Working)
-                False -> update_helpers.i18n_t(model, i18n_text.Save)
-              }),
-            ],
-          ),
-        ]),
-      ]),
-    ]),
+/// Convert a Rule to JSON for property passing to component.
+fn rule_to_json(rule: Rule) -> json.Json {
+  json.object([
+    #("id", json.int(rule.id)),
+    #("workflow_id", json.int(rule.workflow_id)),
+    #("name", json.string(rule.name)),
+    #("goal", json.nullable(rule.goal, json.string)),
+    #("resource_type", json.string(rule.resource_type)),
+    #("task_type_id", json.nullable(rule.task_type_id, json.int)),
+    #("to_state", json.string(rule.to_state)),
+    #("active", json.bool(rule.active)),
+    #("created_at", json.string(rule.created_at)),
   ])
 }
 
-fn view_delete_rule_dialog(model: Model, rule: Rule) -> Element(Msg) {
-  div([attribute.class("modal")], [
-    div([attribute.class("modal-content")], [
-      h3([], [text(update_helpers.i18n_t(model, i18n_text.DeleteRule))]),
-      p([], [text("Delete rule \"" <> rule.name <> "\"?")]),
-      case model.rules_delete_error {
-        opt.Some(err) -> div([attribute.class("error")], [text(err)])
-        opt.None -> element.none()
-      },
-      div([attribute.class("actions")], [
-        button([event.on_click(RuleDeleteCancelled)], [
-          text(update_helpers.i18n_t(model, i18n_text.Cancel)),
-        ]),
-        button(
-          [
-            event.on_click(RuleDeleteConfirmed),
-            attribute.disabled(model.rules_delete_in_flight),
-          ],
-          [
-            text(case model.rules_delete_in_flight {
-              True -> update_helpers.i18n_t(model, i18n_text.Removing)
-              False -> update_helpers.i18n_t(model, i18n_text.DeleteRule)
-            }),
-          ],
-        ),
-      ]),
-    ]),
-  ])
+/// Decode rule event from component custom event.
+fn decode_rule_event(to_msg: fn(Rule) -> Msg) -> decode.Decoder(Msg) {
+  decode.at(
+    ["detail"],
+    {
+      use id <- decode.field("id", decode.int)
+      use workflow_id <- decode.field("workflow_id", decode.int)
+      use name <- decode.field("name", decode.string)
+      use goal <- decode.field("goal", decode.optional(decode.string))
+      use resource_type <- decode.field("resource_type", decode.string)
+      use task_type_id <- decode.field("task_type_id", decode.optional(decode.int))
+      use to_state <- decode.field("to_state", decode.string)
+      use active <- decode.field("active", decode.bool)
+      use created_at <- decode.field("created_at", decode.string)
+      decode.success(to_msg(workflow.Rule(
+        id: id,
+        workflow_id: workflow_id,
+        name: name,
+        goal: goal,
+        resource_type: resource_type,
+        task_type_id: task_type_id,
+        to_state: to_state,
+        active: active,
+        created_at: created_at,
+      )))
+    },
+  )
 }
 
-/// Shared task type selector for rules (used in create and edit dialogs).
-fn view_task_type_selector_for_templates(
-  model: Model,
-  task_types: Remote(List(TaskType)),
-  selected: String,
-  on_change: fn(String) -> Msg,
-) -> Element(Msg) {
-  case task_types {
-    Loaded(types) ->
-      select([attribute.value(selected), event.on_input(on_change)], [
-        option(
-          [attribute.value("")],
-          update_helpers.i18n_t(model, i18n_text.SelectType),
-        ),
-        ..list.map(types, fn(tt) {
-          option([attribute.value(int.to_string(tt.id))], tt.name)
-        })
-      ])
-    _ ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
-      ])
-  }
+/// Decode rule ID from delete event.
+fn decode_rule_id_event(to_msg: fn(Int) -> Msg) -> decode.Decoder(Msg) {
+  decode.at(["detail", "rule_id"], decode.int)
+  |> decode.map(to_msg)
+}
+
+/// Decode close event (no payload).
+fn decode_close_event(msg: Msg) -> decode.Decoder(Msg) {
+  decode.success(msg)
 }
 
 // =============================================================================
@@ -2540,6 +2316,8 @@ pub fn view_rule_metrics(model: Model) -> Element(Msg) {
                 model.admin_rule_metrics_from == ""
                 || model.admin_rule_metrics_to == "",
               ),
+              // Match .field margin-bottom for vertical alignment
+              attribute.attribute("style", "margin-bottom: 8px;"),
             ],
             [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsRefresh))],
           ),

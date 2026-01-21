@@ -110,20 +110,14 @@ import scrumbringer_client/client_state.{
   UserProjectsDialogOpened, UserProjectsDialogClosed, UserProjectsFetched,
   UserProjectsAddProjectChanged, UserProjectsAddSubmitted, UserProjectAdded,
   UserProjectRemoveClicked, UserProjectRemoved,
-  OrgUsersSearchResults, ProjectCreateNameChanged, ProjectCreateSubmitted,
+  OrgUsersSearchResults, ProjectCreateDialogOpened, ProjectCreateDialogClosed,
+  ProjectCreateNameChanged, ProjectCreateSubmitted,
   ProjectCreated, ProjectSelected, ProjectsFetched, Push, Rect, Replace,
   ResetPassword as ResetPasswordPage, ResetPasswordMsg,
   RuleAttachTemplateSelected, RuleAttachTemplateSubmitted,
-  RuleCreateActiveChanged, RuleCreateDialogClosed, RuleCreateDialogOpened,
-  RuleCreateGoalChanged, RuleCreateNameChanged,
-  RuleCreateResourceTypeChanged, RuleCreateSubmitted,
-  RuleCreateTaskTypeIdChanged, RuleCreateToStateChanged, RuleCreated,
-  RuleDeleteCancelled, RuleDeleteClicked, RuleDeleteConfirmed, RuleDeleted,
-  RuleEditActiveChanged, RuleEditCancelled, RuleEditClicked, RuleEditGoalChanged,
-  RuleEditNameChanged, RuleEditResourceTypeChanged, RuleEditSubmitted,
-  RuleEditTaskTypeIdChanged, RuleEditToStateChanged, RuleMetricsFetched,
-  RuleTemplateAttached, RuleTemplateDetachClicked, RuleTemplateDetached,
-  RuleTemplatesClicked, RuleTemplatesFetched, RuleUpdated, RulesBackClicked,
+  OpenRuleDialog, CloseRuleDialog, RuleCrudCreated, RuleCrudUpdated, RuleCrudDeleted,
+  RuleMetricsFetched, RuleTemplateAttached, RuleTemplateDetachClicked, RuleTemplateDetached,
+  RuleTemplatesClicked, RuleTemplatesFetched, RulesBackClicked,
   RulesFetched, TaskTemplatesOrgFetched, TaskTemplatesProjectFetched,
   OpenTaskTemplateDialog, CloseTaskTemplateDialog,
   TaskTemplateCrudCreated, TaskTemplateCrudUpdated, TaskTemplateCrudDeleted,
@@ -1391,6 +1385,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
     }
 
+    ProjectCreateDialogOpened ->
+      projects_workflow.handle_project_create_dialog_opened(model)
+    ProjectCreateDialogClosed ->
+      projects_workflow.handle_project_create_dialog_closed(model)
     ProjectCreateNameChanged(name) ->
       projects_workflow.handle_project_create_name_changed(model, name)
     ProjectCreateSubmitted ->
@@ -1930,64 +1928,20 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       admin_workflow.handle_rule_metrics_fetched_ok(model, metrics)
     RuleMetricsFetched(Error(err)) ->
       admin_workflow.handle_rule_metrics_fetched_error(model, err)
-    RuleCreateDialogOpened ->
-      admin_workflow.handle_rule_create_dialog_opened(model)
-    RuleCreateDialogClosed ->
-      admin_workflow.handle_rule_create_dialog_closed(model)
 
-    RuleCreateNameChanged(name) ->
-      admin_workflow.handle_rule_create_name_changed(model, name)
-    RuleCreateGoalChanged(goal) ->
-      admin_workflow.handle_rule_create_goal_changed(model, goal)
-    RuleCreateResourceTypeChanged(resource_type) ->
-      admin_workflow.handle_rule_create_resource_type_changed(
-        model,
-        resource_type,
-      )
-    RuleCreateTaskTypeIdChanged(task_type_id) ->
-      admin_workflow.handle_rule_create_task_type_id_changed(
-        model,
-        task_type_id,
-      )
-    RuleCreateToStateChanged(to_state) ->
-      admin_workflow.handle_rule_create_to_state_changed(model, to_state)
-    RuleCreateActiveChanged(active) ->
-      admin_workflow.handle_rule_create_active_changed(model, active)
-    RuleCreateSubmitted -> admin_workflow.handle_rule_create_submitted(model)
-    RuleCreated(Ok(rule)) -> admin_workflow.handle_rule_created_ok(model, rule)
-    RuleCreated(Error(err)) ->
-      admin_workflow.handle_rule_created_error(model, err)
+    // Rules - dialog mode control (component pattern)
+    OpenRuleDialog(mode) ->
+      admin_workflow.handle_open_rule_dialog(model, mode)
+    CloseRuleDialog ->
+      admin_workflow.handle_close_rule_dialog(model)
 
-    RuleEditClicked(rule) ->
-      admin_workflow.handle_rule_edit_clicked(model, rule)
-    RuleEditNameChanged(name) ->
-      admin_workflow.handle_rule_edit_name_changed(model, name)
-    RuleEditGoalChanged(goal) ->
-      admin_workflow.handle_rule_edit_goal_changed(model, goal)
-    RuleEditResourceTypeChanged(resource_type) ->
-      admin_workflow.handle_rule_edit_resource_type_changed(
-        model,
-        resource_type,
-      )
-    RuleEditTaskTypeIdChanged(task_type_id) ->
-      admin_workflow.handle_rule_edit_task_type_id_changed(model, task_type_id)
-    RuleEditToStateChanged(to_state) ->
-      admin_workflow.handle_rule_edit_to_state_changed(model, to_state)
-    RuleEditActiveChanged(active) ->
-      admin_workflow.handle_rule_edit_active_changed(model, active)
-    RuleEditSubmitted -> admin_workflow.handle_rule_edit_submitted(model)
-    RuleEditCancelled -> admin_workflow.handle_rule_edit_cancelled(model)
-    RuleUpdated(Ok(rule)) -> admin_workflow.handle_rule_updated_ok(model, rule)
-    RuleUpdated(Error(err)) ->
-      admin_workflow.handle_rule_updated_error(model, err)
-
-    RuleDeleteClicked(rule) ->
-      admin_workflow.handle_rule_delete_clicked(model, rule)
-    RuleDeleteCancelled -> admin_workflow.handle_rule_delete_cancelled(model)
-    RuleDeleteConfirmed -> admin_workflow.handle_rule_delete_confirmed(model)
-    RuleDeleted(Ok(_)) -> admin_workflow.handle_rule_deleted_ok(model)
-    RuleDeleted(Error(err)) ->
-      admin_workflow.handle_rule_deleted_error(model, err)
+    // Rules - component events (rule-crud-dialog emits these)
+    RuleCrudCreated(rule) ->
+      admin_workflow.handle_rule_crud_created(model, rule)
+    RuleCrudUpdated(rule) ->
+      admin_workflow.handle_rule_crud_updated(model, rule)
+    RuleCrudDeleted(rule_id) ->
+      admin_workflow.handle_rule_crud_deleted(model, rule_id)
 
     // Rule templates handlers
     RuleTemplatesClicked(_rule_id) -> #(model, effect.none())

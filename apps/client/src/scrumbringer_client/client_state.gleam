@@ -208,6 +208,19 @@ pub type TaskTemplateDialogMode {
   TaskTemplateDialogDelete(TaskTemplate)
 }
 
+/// Dialog mode for Rule CRUD operations.
+///
+/// Used by the parent to control which dialog the rule-crud-dialog
+/// component should display:
+/// - `RuleDialogCreate`: Show create new rule form
+/// - `RuleDialogEdit(Rule)`: Show edit form for given rule
+/// - `RuleDialogDelete(Rule)`: Show delete confirmation for given rule
+pub type RuleDialogMode {
+  RuleDialogCreate
+  RuleDialogEdit(Rule)
+  RuleDialogDelete(Rule)
+}
+
 // ----------------------------------------------------------------------------
 // Navigation mode
 // ----------------------------------------------------------------------------
@@ -274,6 +287,7 @@ pub type Model {
     invite_link_last: Option(InviteLink),
     invite_link_copy_status: Option(String),
     // Project creation
+    projects_create_dialog_open: Bool,
     projects_create_name: String,
     projects_create_in_flight: Bool,
     projects_create_error: Option(String),
@@ -351,30 +365,10 @@ pub type Model {
     workflows_project: Remote(List(Workflow)),
     // Workflows - dialog mode (component handles CRUD state internally)
     workflows_dialog_mode: Option(WorkflowDialogMode),
-    // Rules (for selected workflow)
+    // Rules (for selected workflow) - list and dialog mode (component handles CRUD state internally)
     rules_workflow_id: Option(Int),
     rules: Remote(List(Rule)),
-    rules_create_dialog_open: Bool,
-    rules_create_name: String,
-    rules_create_goal: String,
-    rules_create_resource_type: String,
-    rules_create_task_type_id: Option(Int),
-    rules_create_to_state: String,
-    rules_create_active: Bool,
-    rules_create_in_flight: Bool,
-    rules_create_error: Option(String),
-    rules_edit_id: Option(Int),
-    rules_edit_name: String,
-    rules_edit_goal: String,
-    rules_edit_resource_type: String,
-    rules_edit_task_type_id: Option(Int),
-    rules_edit_to_state: String,
-    rules_edit_active: Bool,
-    rules_edit_in_flight: Bool,
-    rules_edit_error: Option(String),
-    rules_delete_confirm: Option(Rule),
-    rules_delete_in_flight: Bool,
-    rules_delete_error: Option(String),
+    rules_dialog_mode: Option(RuleDialogMode),
     // Rule templates (attached templates)
     rules_templates: Remote(List(RuleTemplate)),
     rules_attach_template_id: Option(Int),
@@ -515,6 +509,8 @@ pub type Msg {
 
   // Projects CRUD
   ProjectsFetched(ApiResult(List(Project)))
+  ProjectCreateDialogOpened
+  ProjectCreateDialogClosed
   ProjectCreateNameChanged(String)
   ProjectCreateSubmitted
   ProjectCreated(ApiResult(Project))
@@ -615,30 +611,13 @@ pub type Msg {
   // Rules
   RulesFetched(ApiResult(List(Rule)))
   RulesBackClicked
-  RuleCreateDialogOpened
-  RuleCreateDialogClosed
-  RuleCreateNameChanged(String)
-  RuleCreateGoalChanged(String)
-  RuleCreateResourceTypeChanged(String)
-  RuleCreateTaskTypeIdChanged(String)
-  RuleCreateToStateChanged(String)
-  RuleCreateActiveChanged(Bool)
-  RuleCreateSubmitted
-  RuleCreated(ApiResult(Rule))
-  RuleEditClicked(Rule)
-  RuleEditNameChanged(String)
-  RuleEditGoalChanged(String)
-  RuleEditResourceTypeChanged(String)
-  RuleEditTaskTypeIdChanged(String)
-  RuleEditToStateChanged(String)
-  RuleEditActiveChanged(Bool)
-  RuleEditSubmitted
-  RuleUpdated(ApiResult(Rule))
-  RuleEditCancelled
-  RuleDeleteClicked(Rule)
-  RuleDeleteCancelled
-  RuleDeleteConfirmed
-  RuleDeleted(ApiResult(Nil))
+  // Rules - dialog mode control (component pattern)
+  OpenRuleDialog(RuleDialogMode)
+  CloseRuleDialog
+  // Rules - component events (rule-crud-dialog emits these)
+  RuleCrudCreated(Rule)
+  RuleCrudUpdated(Rule)
+  RuleCrudDeleted(Int)
   RuleTemplatesClicked(Int)
 
   // Rule templates
@@ -877,6 +856,7 @@ pub fn default_model() -> Model {
     invite_link_last: option.None,
     invite_link_copy_status: option.None,
     // Project creation
+    projects_create_dialog_open: False,
     projects_create_name: "",
     projects_create_in_flight: False,
     projects_create_error: option.None,
@@ -954,30 +934,10 @@ pub fn default_model() -> Model {
     workflows_project: NotAsked,
     // Workflows - dialog mode (component handles CRUD state internally)
     workflows_dialog_mode: option.None,
-    // Rules
+    // Rules (for selected workflow) - list and dialog mode
     rules_workflow_id: option.None,
     rules: NotAsked,
-    rules_create_dialog_open: False,
-    rules_create_name: "",
-    rules_create_goal: "",
-    rules_create_resource_type: "task",
-    rules_create_task_type_id: option.None,
-    rules_create_to_state: "completed",
-    rules_create_active: True,
-    rules_create_in_flight: False,
-    rules_create_error: option.None,
-    rules_edit_id: option.None,
-    rules_edit_name: "",
-    rules_edit_goal: "",
-    rules_edit_resource_type: "task",
-    rules_edit_task_type_id: option.None,
-    rules_edit_to_state: "completed",
-    rules_edit_active: True,
-    rules_edit_in_flight: False,
-    rules_edit_error: option.None,
-    rules_delete_confirm: option.None,
-    rules_delete_in_flight: False,
-    rules_delete_error: option.None,
+    rules_dialog_mode: option.None,
     // Rule templates
     rules_templates: NotAsked,
     rules_attach_template_id: option.None,

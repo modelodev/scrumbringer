@@ -162,6 +162,24 @@ pub fn handle_project_selected(
 // Project Create Handlers
 // =============================================================================
 
+/// Handle project create dialog opened.
+pub fn handle_project_create_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
+  #(Model(..model, projects_create_dialog_open: True), effect.none())
+}
+
+/// Handle project create dialog closed.
+pub fn handle_project_create_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
+  #(
+    Model(
+      ..model,
+      projects_create_dialog_open: False,
+      projects_create_name: "",
+      projects_create_error: opt.None,
+    ),
+    effect.none(),
+  )
+}
+
 /// Handle project create name input change.
 pub fn handle_project_create_name_changed(
   model: Model,
@@ -217,6 +235,7 @@ pub fn handle_project_created_ok(
       ..model,
       projects: Loaded(updated_projects),
       selected_project_id: opt.Some(project.id),
+      projects_create_dialog_open: False,
       projects_create_in_flight: False,
       projects_create_name: "",
       toast: opt.Some(update_helpers.i18n_t(model, i18n_text.ProjectCreated)),

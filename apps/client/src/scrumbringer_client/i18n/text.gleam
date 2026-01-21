@@ -361,7 +361,10 @@ pub type Text {
   EditRule
   DeleteRule
   NoRulesYet
+  RuleCreated
+  RuleUpdated
   RuleDeleted
+  RuleDeleteConfirm(rule_name: String)
   AttachTemplate
   DetachTemplate
   RuleMetricsApplied

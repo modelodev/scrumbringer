@@ -7,7 +7,7 @@
 //// ## Responsibilities
 ////
 //// - Projects list table
-//// - Project creation form
+//// - Project creation dialog
 ////
 //// ## Relations
 ////
@@ -19,19 +19,18 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{
-  button, div, form, h2, h3, hr, input, label, table, td, text, th, thead,
-  tr,
-}
+import lustre/element/html.{button, div, form, input, label, span, table, td, text, th, thead, tr}
 import lustre/element/keyed
 import lustre/event
 
 import domain/project.{type Project}
 import scrumbringer_client/client_state.{
   type Model, type Msg, type Remote, Failed, Loaded, Loading, NotAsked,
+  ProjectCreateDialogClosed, ProjectCreateDialogOpened,
   ProjectCreateNameChanged, ProjectCreateSubmitted,
 }
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/dialog
 import scrumbringer_client/update_helpers
 
 // =============================================================================
@@ -41,28 +40,73 @@ import scrumbringer_client/update_helpers
 /// Main projects section view.
 pub fn view_projects(model: Model) -> Element(Msg) {
   div([attribute.class("section")], [
-    h2([], [text(update_helpers.i18n_t(model, i18n_text.Projects))]),
-    view_projects_list(model, model.projects),
-    hr([]),
-    h3([], [text(update_helpers.i18n_t(model, i18n_text.CreateProject))]),
-    case model.projects_create_error {
-      opt.Some(err) -> div([attribute.class("error")], [text(err)])
-      opt.None -> element.none()
-    },
-    form([event.on_submit(fn(_) { ProjectCreateSubmitted })], [
-      div([attribute.class("field")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
-        input([
-          attribute.type_("text"),
-          attribute.value(model.projects_create_name),
-          event.on_input(ProjectCreateNameChanged),
-          attribute.required(True),
-        ]),
+    // Section header with add button
+    div([attribute.class("admin-section-header")], [
+      div([attribute.class("admin-section-title")], [
+        span([attribute.class("admin-section-icon")], [text("\u{1F4C1}")]),
+        text(update_helpers.i18n_t(model, i18n_text.Projects)),
       ]),
+      dialog.add_button(
+        model,
+        i18n_text.CreateProject,
+        ProjectCreateDialogOpened,
+      ),
+    ]),
+    // Projects list
+    view_projects_list(model, model.projects),
+    // Create project dialog
+    view_projects_create_dialog(model),
+  ])
+}
+
+// =============================================================================
+// Private Helpers
+// =============================================================================
+
+/// Dialog for creating a new project.
+fn view_projects_create_dialog(model: Model) -> Element(Msg) {
+  dialog.view(
+    dialog.DialogConfig(
+      title: update_helpers.i18n_t(model, i18n_text.CreateProject),
+      icon: opt.Some("\u{1F4C1}"),
+      size: dialog.DialogSm,
+      on_close: ProjectCreateDialogClosed,
+    ),
+    model.projects_create_dialog_open,
+    model.projects_create_error,
+    // Form content
+    [
+      form(
+        [
+          event.on_submit(fn(_) { ProjectCreateSubmitted }),
+          attribute.id("project-create-form"),
+        ],
+        [
+          div([attribute.class("field")], [
+            label([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
+            input([
+              attribute.type_("text"),
+              attribute.value(model.projects_create_name),
+              event.on_input(ProjectCreateNameChanged),
+              attribute.required(True),
+              attribute.autofocus(True),
+            ]),
+          ]),
+        ],
+      ),
+    ],
+    // Footer buttons
+    [
+      dialog.cancel_button(model, ProjectCreateDialogClosed),
       button(
         [
           attribute.type_("submit"),
+          attribute.form("project-create-form"),
           attribute.disabled(model.projects_create_in_flight),
+          attribute.class(case model.projects_create_in_flight {
+            True -> "btn-loading"
+            False -> ""
+          }),
         ],
         [
           text(case model.projects_create_in_flight {
@@ -71,13 +115,9 @@ pub fn view_projects(model: Model) -> Element(Msg) {
           }),
         ],
       ),
-    ]),
-  ])
+    ],
+  )
 }
-
-// =============================================================================
-// Private Helpers
-// =============================================================================
 
 fn view_projects_list(
   model: Model,

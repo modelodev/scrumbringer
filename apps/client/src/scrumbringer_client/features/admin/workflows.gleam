@@ -28,10 +28,10 @@ import domain/workflow.{
 }
 import scrumbringer_client/client_state.{
   type Model, type Msg, type TaskTemplateDialogMode, type WorkflowDialogMode,
-  Failed, Loaded, Loading, Model, NotAsked, RuleCreated, RuleDeleted,
-  RuleMetricsFetched, RuleTemplateAttached, RuleTemplateDetached, RuleUpdated,
-  RulesFetched, TaskTemplatesOrgFetched, TaskTemplatesProjectFetched,
-  TaskTypesFetched, WorkflowsOrgFetched, WorkflowsProjectFetched,
+  Failed, Loaded, Loading, Model, NotAsked, RuleMetricsFetched,
+  RuleTemplateAttached, RuleTemplateDetached, RulesFetched,
+  TaskTemplatesOrgFetched, TaskTemplatesProjectFetched, TaskTypesFetched,
+  WorkflowsOrgFetched, WorkflowsProjectFetched,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -285,159 +285,32 @@ pub fn handle_rules_back_clicked(model: Model) -> #(Model, Effect(Msg)) {
 }
 
 // =============================================================================
-// Rule Dialog Handlers
+// Rule Dialog Handlers (Component Pattern)
 // =============================================================================
 
-/// Handle rule create dialog open.
-pub fn handle_rule_create_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
-  #(Model(..model, rules_create_dialog_open: True), effect.none())
+/// Handle opening a rule dialog (create, edit, or delete).
+pub fn handle_open_rule_dialog(
+  model: Model,
+  mode: client_state.RuleDialogMode,
+) -> #(Model, Effect(Msg)) {
+  #(Model(..model, rules_dialog_mode: opt.Some(mode)), effect.none())
 }
 
-/// Handle rule create dialog close.
-pub fn handle_rule_create_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
-  #(
-    Model(
-      ..model,
-      rules_create_dialog_open: False,
-      rules_create_name: "",
-      rules_create_goal: "",
-      rules_create_resource_type: "task",
-      rules_create_task_type_id: opt.None,
-      rules_create_to_state: "completed",
-      rules_create_active: True,
-      rules_create_error: opt.None,
-    ),
-    effect.none(),
-  )
+/// Handle closing any open rule dialog.
+pub fn handle_close_rule_dialog(model: Model) -> #(Model, Effect(Msg)) {
+  #(Model(..model, rules_dialog_mode: opt.None), effect.none())
 }
 
 // =============================================================================
-// Rule Create Handlers
+// Rule Component Event Handlers
 // =============================================================================
 
-/// Handle rule create name change.
-pub fn handle_rule_create_name_changed(
+/// Handle rule created event from component.
+/// Adds the new rule to the list and shows a toast.
+pub fn handle_rule_crud_created(
   model: Model,
-  name: String,
+  rule: Rule,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, rules_create_name: name), effect.none())
-}
-
-/// Handle rule create goal change.
-pub fn handle_rule_create_goal_changed(
-  model: Model,
-  goal: String,
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, rules_create_goal: goal), effect.none())
-}
-
-/// Handle rule create resource type change.
-/// Resets to_state to a valid default for the new resource type (AC11).
-pub fn handle_rule_create_resource_type_changed(
-  model: Model,
-  resource_type: String,
-) -> #(Model, Effect(Msg)) {
-  let task_type_id = case resource_type {
-    "task" -> model.rules_create_task_type_id
-    _ -> opt.None
-  }
-  // Reset to_state to first valid option for the resource type
-  let to_state = case resource_type {
-    "task" -> "available"
-    _ -> "pendiente"
-  }
-  #(
-    Model(
-      ..model,
-      rules_create_resource_type: resource_type,
-      rules_create_task_type_id: task_type_id,
-      rules_create_to_state: to_state,
-    ),
-    effect.none(),
-  )
-}
-
-/// Handle rule create task type id change.
-pub fn handle_rule_create_task_type_id_changed(
-  model: Model,
-  task_type_id_str: String,
-) -> #(Model, Effect(Msg)) {
-  let task_type_id = case task_type_id_str {
-    "" -> opt.None
-    s ->
-      case int.parse(s) {
-        Ok(id) -> opt.Some(id)
-        Error(_) -> opt.None
-      }
-  }
-  #(Model(..model, rules_create_task_type_id: task_type_id), effect.none())
-}
-
-/// Handle rule create to_state change.
-pub fn handle_rule_create_to_state_changed(
-  model: Model,
-  to_state: String,
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, rules_create_to_state: to_state), effect.none())
-}
-
-/// Handle rule create active change.
-pub fn handle_rule_create_active_changed(
-  model: Model,
-  active: Bool,
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, rules_create_active: active), effect.none())
-}
-
-/// Handle rule create form submission.
-pub fn handle_rule_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.rules_create_in_flight {
-    True -> #(model, effect.none())
-    False -> {
-      case model.rules_workflow_id {
-        opt.None -> #(model, effect.none())
-        opt.Some(workflow_id) -> {
-          case model.rules_create_name {
-            "" -> #(
-              Model(
-                ..model,
-                rules_create_error: opt.Some(update_helpers.i18n_t(
-                  model,
-                  i18n_text.NameRequired,
-                )),
-              ),
-              effect.none(),
-            )
-            name -> {
-              let model =
-                Model(
-                  ..model,
-                  rules_create_in_flight: True,
-                  rules_create_error: opt.None,
-                )
-              #(
-                model,
-                api_workflows.create_rule(
-                  workflow_id,
-                  name,
-                  model.rules_create_goal,
-                  model.rules_create_resource_type,
-                  model.rules_create_task_type_id,
-                  model.rules_create_to_state,
-                  model.rules_create_active,
-                  RuleCreated,
-                ),
-              )
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-/// Handle rule created success.
-pub fn handle_rule_created_ok(model: Model, rule: Rule) -> #(Model, Effect(Msg)) {
   let rules = case model.rules {
     Loaded(existing) -> Loaded([rule, ..existing])
     _ -> Loaded([rule])
@@ -446,211 +319,23 @@ pub fn handle_rule_created_ok(model: Model, rule: Rule) -> #(Model, Effect(Msg))
     Model(
       ..model,
       rules: rules,
-      rules_create_dialog_open: False,
-      rules_create_name: "",
-      rules_create_goal: "",
-      rules_create_resource_type: "task",
-      rules_create_task_type_id: opt.None,
-      rules_create_to_state: "completed",
-      rules_create_active: True,
-      rules_create_in_flight: False,
-      rules_create_error: opt.None,
+      rules_dialog_mode: opt.None,
+      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.RuleCreated)),
     ),
     effect.none(),
   )
 }
 
-/// Handle rule created error.
-pub fn handle_rule_created_error(
-  model: Model,
-  err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
-      Model(
-        ..model,
-        rules_create_in_flight: False,
-        rules_create_error: opt.Some(err.message),
-      ),
-      effect.none(),
-    )
-  }
-}
-
-// =============================================================================
-// Rule Edit Handlers
-// =============================================================================
-
-/// Handle rule edit button clicked.
-pub fn handle_rule_edit_clicked(
-  model: Model,
-  rule: Rule,
-) -> #(Model, Effect(Msg)) {
-  #(
-    Model(
-      ..model,
-      rules_edit_id: opt.Some(rule.id),
-      rules_edit_name: rule.name,
-      rules_edit_goal: opt.unwrap(rule.goal, ""),
-      rules_edit_resource_type: rule.resource_type,
-      rules_edit_task_type_id: rule.task_type_id,
-      rules_edit_to_state: rule.to_state,
-      rules_edit_active: rule.active,
-      rules_edit_error: opt.None,
-    ),
-    effect.none(),
-  )
-}
-
-/// Handle rule edit name change.
-pub fn handle_rule_edit_name_changed(
-  model: Model,
-  name: String,
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, rules_edit_name: name), effect.none())
-}
-
-/// Handle rule edit goal change.
-pub fn handle_rule_edit_goal_changed(
-  model: Model,
-  goal: String,
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, rules_edit_goal: goal), effect.none())
-}
-
-/// Handle rule edit resource type change.
-/// Resets to_state to a valid default for the new resource type (AC11).
-pub fn handle_rule_edit_resource_type_changed(
-  model: Model,
-  resource_type: String,
-) -> #(Model, Effect(Msg)) {
-  let task_type_id = case resource_type {
-    "task" -> model.rules_edit_task_type_id
-    _ -> opt.None
-  }
-  // Reset to_state to first valid option for the resource type
-  let to_state = case resource_type {
-    "task" -> "available"
-    _ -> "pendiente"
-  }
-  #(
-    Model(
-      ..model,
-      rules_edit_resource_type: resource_type,
-      rules_edit_task_type_id: task_type_id,
-      rules_edit_to_state: to_state,
-    ),
-    effect.none(),
-  )
-}
-
-/// Handle rule edit task type id change.
-pub fn handle_rule_edit_task_type_id_changed(
-  model: Model,
-  task_type_id_str: String,
-) -> #(Model, Effect(Msg)) {
-  let task_type_id = case task_type_id_str {
-    "" -> opt.None
-    s ->
-      case int.parse(s) {
-        Ok(id) -> opt.Some(id)
-        Error(_) -> opt.None
-      }
-  }
-  #(Model(..model, rules_edit_task_type_id: task_type_id), effect.none())
-}
-
-/// Handle rule edit to_state change.
-pub fn handle_rule_edit_to_state_changed(
-  model: Model,
-  to_state: String,
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, rules_edit_to_state: to_state), effect.none())
-}
-
-/// Handle rule edit active change.
-pub fn handle_rule_edit_active_changed(
-  model: Model,
-  active: Bool,
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, rules_edit_active: active), effect.none())
-}
-
-/// Handle rule edit form submission.
-pub fn handle_rule_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.rules_edit_in_flight {
-    True -> #(model, effect.none())
-    False -> {
-      case model.rules_edit_id {
-        opt.Some(rule_id) -> {
-          case model.rules_edit_name {
-            "" -> #(
-              Model(
-                ..model,
-                rules_edit_error: opt.Some(update_helpers.i18n_t(
-                  model,
-                  i18n_text.NameRequired,
-                )),
-              ),
-              effect.none(),
-            )
-            name -> {
-              let model =
-                Model(
-                  ..model,
-                  rules_edit_in_flight: True,
-                  rules_edit_error: opt.None,
-                )
-              #(
-                model,
-                api_workflows.update_rule(
-                  rule_id,
-                  name,
-                  model.rules_edit_goal,
-                  model.rules_edit_resource_type,
-                  model.rules_edit_task_type_id,
-                  model.rules_edit_to_state,
-                  model.rules_edit_active,
-                  RuleUpdated,
-                ),
-              )
-            }
-          }
-        }
-        opt.None -> #(model, effect.none())
-      }
-    }
-  }
-}
-
-/// Handle rule edit cancelled.
-pub fn handle_rule_edit_cancelled(model: Model) -> #(Model, Effect(Msg)) {
-  #(
-    Model(
-      ..model,
-      rules_edit_id: opt.None,
-      rules_edit_name: "",
-      rules_edit_goal: "",
-      rules_edit_resource_type: "task",
-      rules_edit_task_type_id: opt.None,
-      rules_edit_to_state: "completed",
-      rules_edit_active: True,
-      rules_edit_error: opt.None,
-    ),
-    effect.none(),
-  )
-}
-
-/// Handle rule updated success.
-pub fn handle_rule_updated_ok(
+/// Handle rule updated event from component.
+/// Updates the rule in the list and shows a toast.
+pub fn handle_rule_crud_updated(
   model: Model,
   updated_rule: Rule,
 ) -> #(Model, Effect(Msg)) {
   let rules = case model.rules {
     Loaded(existing) ->
       Loaded(
-        list.map(existing, fn(r) {
+        list.map(existing, fn(r: Rule) {
           case r.id == updated_rule.id {
             True -> updated_rule
             False -> r
@@ -663,126 +348,33 @@ pub fn handle_rule_updated_ok(
     Model(
       ..model,
       rules: rules,
-      rules_edit_id: opt.None,
-      rules_edit_name: "",
-      rules_edit_goal: "",
-      rules_edit_resource_type: "task",
-      rules_edit_task_type_id: opt.None,
-      rules_edit_to_state: "completed",
-      rules_edit_active: True,
-      rules_edit_in_flight: False,
-      rules_edit_error: opt.None,
+      rules_dialog_mode: opt.None,
+      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.RuleUpdated)),
     ),
     effect.none(),
   )
 }
 
-/// Handle rule updated error.
-pub fn handle_rule_updated_error(
+/// Handle rule deleted event from component.
+/// Removes the rule from the list and shows a toast.
+pub fn handle_rule_crud_deleted(
   model: Model,
-  err: ApiError,
+  rule_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
-      Model(
-        ..model,
-        rules_edit_in_flight: False,
-        rules_edit_error: opt.Some(err.message),
-      ),
-      effect.none(),
-    )
-  }
-}
-
-// =============================================================================
-// Rule Delete Handlers
-// =============================================================================
-
-/// Handle rule delete button clicked.
-pub fn handle_rule_delete_clicked(
-  model: Model,
-  rule: Rule,
-) -> #(Model, Effect(Msg)) {
-  #(
-    Model(
-      ..model,
-      rules_delete_confirm: opt.Some(rule),
-      rules_delete_error: opt.None,
-    ),
-    effect.none(),
-  )
-}
-
-/// Handle rule delete cancelled.
-pub fn handle_rule_delete_cancelled(model: Model) -> #(Model, Effect(Msg)) {
-  #(
-    Model(..model, rules_delete_confirm: opt.None, rules_delete_error: opt.None),
-    effect.none(),
-  )
-}
-
-/// Handle rule delete confirmed.
-pub fn handle_rule_delete_confirmed(model: Model) -> #(Model, Effect(Msg)) {
-  case model.rules_delete_in_flight {
-    True -> #(model, effect.none())
-    False -> {
-      case model.rules_delete_confirm {
-        opt.Some(rule) -> {
-          let model =
-            Model(
-              ..model,
-              rules_delete_in_flight: True,
-              rules_delete_error: opt.None,
-            )
-          #(model, api_workflows.delete_rule(rule.id, RuleDeleted))
-        }
-        opt.None -> #(model, effect.none())
-      }
-    }
-  }
-}
-
-/// Handle rule deleted success.
-pub fn handle_rule_deleted_ok(model: Model) -> #(Model, Effect(Msg)) {
-  let deleted_id = case model.rules_delete_confirm {
-    opt.Some(rule) -> opt.Some(rule.id)
-    opt.None -> opt.None
-  }
-  let rules = case model.rules, deleted_id {
-    Loaded(existing), opt.Some(id) ->
-      Loaded(list.filter(existing, fn(r) { r.id != id }))
-    other, _ -> other
+  let rules = case model.rules {
+    Loaded(existing) ->
+      Loaded(list.filter(existing, fn(r: Rule) { r.id != rule_id }))
+    other -> other
   }
   #(
     Model(
       ..model,
       rules: rules,
-      rules_delete_confirm: opt.None,
-      rules_delete_in_flight: False,
-      rules_delete_error: opt.None,
+      rules_dialog_mode: opt.None,
       toast: opt.Some(update_helpers.i18n_t(model, i18n_text.RuleDeleted)),
     ),
     effect.none(),
   )
-}
-
-/// Handle rule deleted error.
-pub fn handle_rule_deleted_error(
-  model: Model,
-  err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
-      Model(
-        ..model,
-        rules_delete_in_flight: False,
-        rules_delete_error: opt.Some(err.message),
-      ),
-      effect.none(),
-    )
-  }
 }
 
 // =============================================================================

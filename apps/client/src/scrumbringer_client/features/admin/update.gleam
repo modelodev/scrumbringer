@@ -188,59 +188,17 @@ pub const handle_rule_metrics_fetched_error = workflows.handle_rule_metrics_fetc
 
 pub const handle_rules_back_clicked = workflows.handle_rules_back_clicked
 
-pub const handle_rule_create_dialog_opened = workflows.handle_rule_create_dialog_opened
+// Rule Component Event Handlers
 
-pub const handle_rule_create_dialog_closed = workflows.handle_rule_create_dialog_closed
+pub const handle_open_rule_dialog = workflows.handle_open_rule_dialog
 
-pub const handle_rule_create_name_changed = workflows.handle_rule_create_name_changed
+pub const handle_close_rule_dialog = workflows.handle_close_rule_dialog
 
-pub const handle_rule_create_goal_changed = workflows.handle_rule_create_goal_changed
+pub const handle_rule_crud_created = workflows.handle_rule_crud_created
 
-pub const handle_rule_create_resource_type_changed = workflows.handle_rule_create_resource_type_changed
+pub const handle_rule_crud_updated = workflows.handle_rule_crud_updated
 
-pub const handle_rule_create_task_type_id_changed = workflows.handle_rule_create_task_type_id_changed
-
-pub const handle_rule_create_to_state_changed = workflows.handle_rule_create_to_state_changed
-
-pub const handle_rule_create_active_changed = workflows.handle_rule_create_active_changed
-
-pub const handle_rule_create_submitted = workflows.handle_rule_create_submitted
-
-pub const handle_rule_created_ok = workflows.handle_rule_created_ok
-
-pub const handle_rule_created_error = workflows.handle_rule_created_error
-
-pub const handle_rule_edit_clicked = workflows.handle_rule_edit_clicked
-
-pub const handle_rule_edit_name_changed = workflows.handle_rule_edit_name_changed
-
-pub const handle_rule_edit_goal_changed = workflows.handle_rule_edit_goal_changed
-
-pub const handle_rule_edit_resource_type_changed = workflows.handle_rule_edit_resource_type_changed
-
-pub const handle_rule_edit_task_type_id_changed = workflows.handle_rule_edit_task_type_id_changed
-
-pub const handle_rule_edit_to_state_changed = workflows.handle_rule_edit_to_state_changed
-
-pub const handle_rule_edit_active_changed = workflows.handle_rule_edit_active_changed
-
-pub const handle_rule_edit_submitted = workflows.handle_rule_edit_submitted
-
-pub const handle_rule_edit_cancelled = workflows.handle_rule_edit_cancelled
-
-pub const handle_rule_updated_ok = workflows.handle_rule_updated_ok
-
-pub const handle_rule_updated_error = workflows.handle_rule_updated_error
-
-pub const handle_rule_delete_clicked = workflows.handle_rule_delete_clicked
-
-pub const handle_rule_delete_cancelled = workflows.handle_rule_delete_cancelled
-
-pub const handle_rule_delete_confirmed = workflows.handle_rule_delete_confirmed
-
-pub const handle_rule_deleted_ok = workflows.handle_rule_deleted_ok
-
-pub const handle_rule_deleted_error = workflows.handle_rule_deleted_error
+pub const handle_rule_crud_deleted = workflows.handle_rule_crud_deleted
 
 // =============================================================================
 // Re-exports: Rule Templates

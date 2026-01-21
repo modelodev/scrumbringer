@@ -5,11 +5,9 @@
 import gleeunit/should
 
 import scrumbringer_client/components/card_crud_dialog.{
-  type CardColor, type DialogMode, type Model, type Msg, Blue, CreateColorChanged,
-  CreateColorToggle, CreateDescriptionChanged, CreateResult, CreateSubmitted,
-  CreateTitleChanged, DeleteCancelled, DeleteConfirmed, DeleteResult,
-  EditCancelled, EditColorChanged, EditColorToggle, EditDescriptionChanged,
-  EditResult, EditSubmitted, EditTitleChanged, Gray, Green, LocaleReceived,
+  type CardColor, Blue, CreateColorChanged, CreateColorToggle,
+  CreateDescriptionChanged, CreateSubmitted, CreateTitleChanged, DeleteCancelled,
+  DeleteConfirmed, EditCancelled, EditTitleChanged, Gray, Green, LocaleReceived,
   ModeCreate, ModeDelete, ModeEdit, ModeReceived, Model, Orange, Pink,
   ProjectIdReceived, Purple, Red, Yellow,
 }
@@ -21,7 +19,6 @@ import gleam/option
 // =============================================================================
 
 pub fn model_default_values_test() {
-  // Test that default model has expected initial values
   let model =
     Model(
       locale: En,
@@ -85,28 +82,19 @@ pub fn model_with_spanish_locale_test() {
 
 pub fn dialog_mode_create_test() {
   let mode = ModeCreate
-  case mode {
-    ModeCreate -> should.be_true(True)
-    _ -> should.fail()
-  }
+  should.equal(mode, ModeCreate)
 }
 
 pub fn dialog_mode_edit_test() {
   let card = make_test_card()
-  let mode = ModeEdit(card)
-  case mode {
-    ModeEdit(c) -> c.id |> should.equal(1)
-    _ -> should.fail()
-  }
+  let ModeEdit(c) = ModeEdit(card)
+  c.id |> should.equal(1)
 }
 
 pub fn dialog_mode_delete_test() {
   let card = make_test_card()
-  let mode = ModeDelete(card)
-  case mode {
-    ModeDelete(c) -> c.title |> should.equal("Test Card")
-    _ -> should.fail()
-  }
+  let ModeDelete(c) = ModeDelete(card)
+  c.title |> should.equal("Test Card")
 }
 
 // =============================================================================
@@ -117,7 +105,6 @@ pub fn msg_locale_received_test() {
   let msg = LocaleReceived(Es)
   case msg {
     LocaleReceived(loc) -> loc |> should.equal(Es)
-    _ -> should.fail()
   }
 }
 
@@ -125,19 +112,13 @@ pub fn msg_project_id_received_test() {
   let msg = ProjectIdReceived(123)
   case msg {
     ProjectIdReceived(id) -> id |> should.equal(123)
-    _ -> should.fail()
   }
 }
 
 pub fn msg_mode_received_test() {
   let msg = ModeReceived(ModeCreate)
   case msg {
-    ModeReceived(mode) ->
-      case mode {
-        ModeCreate -> should.be_true(True)
-        _ -> should.fail()
-      }
-    _ -> should.fail()
+    ModeReceived(mode) -> should.equal(mode, ModeCreate)
   }
 }
 
@@ -145,7 +126,6 @@ pub fn msg_create_title_changed_test() {
   let msg = CreateTitleChanged("New Title")
   case msg {
     CreateTitleChanged(title) -> title |> should.equal("New Title")
-    _ -> should.fail()
   }
 }
 
@@ -153,64 +133,46 @@ pub fn msg_create_description_changed_test() {
   let msg = CreateDescriptionChanged("New Description")
   case msg {
     CreateDescriptionChanged(desc) -> desc |> should.equal("New Description")
-    _ -> should.fail()
   }
 }
 
 pub fn msg_create_color_toggle_test() {
   let msg = CreateColorToggle
-  case msg {
-    CreateColorToggle -> should.be_true(True)
-    _ -> should.fail()
-  }
+  should.equal(msg, CreateColorToggle)
 }
 
 pub fn msg_create_color_changed_test() {
   let msg = CreateColorChanged(option.Some("red"))
   case msg {
     CreateColorChanged(color) -> color |> should.equal(option.Some("red"))
-    _ -> should.fail()
   }
 }
 
 pub fn msg_create_submitted_test() {
   let msg = CreateSubmitted
-  case msg {
-    CreateSubmitted -> should.be_true(True)
-    _ -> should.fail()
-  }
+  should.equal(msg, CreateSubmitted)
 }
 
 pub fn msg_edit_title_changed_test() {
   let msg = EditTitleChanged("Updated Title")
   case msg {
     EditTitleChanged(title) -> title |> should.equal("Updated Title")
-    _ -> should.fail()
   }
 }
 
 pub fn msg_edit_cancelled_test() {
   let msg = EditCancelled
-  case msg {
-    EditCancelled -> should.be_true(True)
-    _ -> should.fail()
-  }
+  should.equal(msg, EditCancelled)
 }
 
 pub fn msg_delete_confirmed_test() {
   let msg = DeleteConfirmed
-  case msg {
-    DeleteConfirmed -> should.be_true(True)
-    _ -> should.fail()
-  }
+  should.equal(msg, DeleteConfirmed)
 }
 
 pub fn msg_delete_cancelled_test() {
   let msg = DeleteCancelled
-  case msg {
-    DeleteCancelled -> should.be_true(True)
-    _ -> should.fail()
-  }
+  should.equal(msg, DeleteCancelled)
 }
 
 // =============================================================================
@@ -218,34 +180,23 @@ pub fn msg_delete_cancelled_test() {
 // =============================================================================
 
 pub fn card_color_all_variants_test() {
-  // Test all color variants exist and can be constructed
   let colors = [Gray, Red, Orange, Yellow, Green, Blue, Purple, Pink]
-  colors
-  |> should.not_equal([])
+  colors |> should.not_equal([])
 }
 
 pub fn card_color_gray_test() {
   let color: CardColor = Gray
-  case color {
-    Gray -> should.be_true(True)
-    _ -> should.fail()
-  }
+  should.equal(color, Gray)
 }
 
 pub fn card_color_red_test() {
   let color: CardColor = Red
-  case color {
-    Red -> should.be_true(True)
-    _ -> should.fail()
-  }
+  should.equal(color, Red)
 }
 
 pub fn card_color_blue_test() {
   let color: CardColor = Blue
-  case color {
-    Blue -> should.be_true(True)
-    _ -> should.fail()
-  }
+  should.equal(color, Blue)
 }
 
 // =============================================================================
