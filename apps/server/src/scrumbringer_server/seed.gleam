@@ -192,16 +192,47 @@ fn run_seed() -> Result(SeedStats, String) {
   // =========================================================================
   io.println("\n--- Creating Tasks and Cards ---")
 
-  let bug_titles = ["Login broken", "Dashboard slow", "Upload fails", "Timeout", "Email delayed"]
-  use bug_ids <- result.try(list.try_map(bug_titles, fn(t) { insert_task(db, alpha_id, alpha_bug_type, t, admin_id) }))
+  // Alpha: Create cards with colors
+  use card_sprint <- result.try(insert_card(db, alpha_id, "Sprint Notes", Some("blue"), admin_id))
+  use card_arch <- result.try(insert_card(db, alpha_id, "Architecture", Some("purple"), admin_id))
+  use card_retro <- result.try(insert_card(db, alpha_id, "Retro", Some("green"), admin_id))
+  use card_release <- result.try(insert_card(db, alpha_id, "Release", Some("orange"), admin_id))
+  let alpha_card_ids = [card_sprint, card_arch, card_retro, card_release]
+  io.println("[OK] Alpha cards created (4 cards with colors, last one empty)")
 
-  let feature_titles = ["Dark mode", "Export PDF", "Notifications"]
-  use feature_ids <- result.try(list.try_map(feature_titles, fn(t) { insert_task(db, alpha_id, alpha_feature_type, t, admin_id) }))
+  // Alpha: Bugs - some in cards, some directly in project
+  use bug1 <- result.try(insert_task(db, alpha_id, alpha_bug_type, "Login broken", admin_id, Some(card_sprint)))
+  use bug2 <- result.try(insert_task(db, alpha_id, alpha_bug_type, "Dashboard slow", admin_id, Some(card_sprint)))
+  use bug3 <- result.try(insert_task(db, alpha_id, alpha_bug_type, "Upload fails", admin_id, Some(card_arch)))
+  use bug4 <- result.try(insert_task(db, alpha_id, alpha_bug_type, "Timeout", admin_id, None))
+  use bug5 <- result.try(insert_task(db, alpha_id, alpha_bug_type, "Email delayed", admin_id, None))
+  let bug_ids = [bug1, bug2, bug3, bug4, bug5]
+  io.println("[OK] Alpha bugs: 3 in cards, 2 directly in project")
 
-  let card_titles = ["Sprint Notes", "Architecture", "Retro", "Release"]
-  use card_ids <- result.try(list.try_map(card_titles, fn(t) { insert_card(db, alpha_id, t, admin_id) }))
+  // Alpha: Features - some in cards, some directly in project
+  use feat1 <- result.try(insert_task(db, alpha_id, alpha_feature_type, "Dark mode", admin_id, Some(card_arch)))
+  use feat2 <- result.try(insert_task(db, alpha_id, alpha_feature_type, "Export PDF", admin_id, Some(card_retro)))
+  use feat3 <- result.try(insert_task(db, alpha_id, alpha_feature_type, "Notifications", admin_id, None))
+  let feature_ids = [feat1, feat2, feat3]
+  io.println("[OK] Alpha features: 2 in cards, 1 directly in project")
 
-  use beta_bug_ids <- result.try(list.try_map(["Beta Bug 1", "Beta Bug 2"], fn(t) { insert_task(db, beta_id, beta_bug_type, t, admin_id) }))
+  let card_ids = alpha_card_ids
+
+  // Beta: Create cards with colors
+  use beta_card1 <- result.try(insert_card(db, beta_id, "Backend Refactor", Some("red"), admin_id))
+  use beta_card2 <- result.try(insert_card(db, beta_id, "API Cleanup", Some("yellow"), admin_id))
+  use beta_card3 <- result.try(insert_card(db, beta_id, "DB Migration", Some("pink"), admin_id))
+  use beta_card_empty <- result.try(insert_card(db, beta_id, "Docs", Some("gray"), admin_id))
+  let beta_card_ids = [beta_card1, beta_card2, beta_card3, beta_card_empty]
+  io.println("[OK] Beta cards created (4 cards with colors, last one empty)")
+
+  // Beta: Bugs - some in cards, some directly in project
+  use beta_bug1 <- result.try(insert_task(db, beta_id, beta_bug_type, "Beta Bug 1", admin_id, Some(beta_card1)))
+  use beta_bug2 <- result.try(insert_task(db, beta_id, beta_bug_type, "Beta Bug 2", admin_id, Some(beta_card2)))
+  use beta_bug3 <- result.try(insert_task(db, beta_id, beta_bug_type, "Beta Bug 3", admin_id, Some(beta_card3)))
+  use beta_bug4 <- result.try(insert_task(db, beta_id, beta_bug_type, "Beta Bug 4", admin_id, None))
+  let beta_bug_ids = [beta_bug1, beta_bug2, beta_bug3, beta_bug4]
+  io.println("[OK] Beta bugs: 3 in cards, 1 directly in project")
 
   io.println("[OK] Tasks and cards created")
 
@@ -336,7 +367,7 @@ fn run_seed() -> Result(SeedStats, String) {
     workflows: 4,
     rules: 6,
     tasks: list.length(bug_ids) + list.length(feature_ids) + list.length(beta_bug_ids),
-    cards: list.length(card_ids),
+    cards: list.length(card_ids) + list.length(beta_card_ids),
     rule_executions: count,
     task_events: events_count,
   ))
@@ -425,7 +456,7 @@ fn insert_project(db: pog.Connection, org_id: Int, name: String) -> Result(Int, 
 }
 
 fn insert_member(db: pog.Connection, project_id: Int, user_id: Int, role: String) -> Result(Nil, String) {
-  pog.query("INSERT INTO project_members (project_id, admin_id, role) VALUES ($1, $2, $3)")
+  pog.query("INSERT INTO project_members (project_id, user_id, role) VALUES ($1, $2, $3)")
   |> pog.parameter(pog.int(project_id))
   |> pog.parameter(pog.int(user_id))
   |> pog.parameter(pog.text(role))
@@ -492,22 +523,24 @@ fn attach_template(db: pog.Connection, rule_id: Int, template_id: Int) -> Result
   |> result.map_error(fn(e) { "Attach template: " <> string.inspect(e) })
 }
 
-fn insert_task(db: pog.Connection, project_id: Int, type_id: Int, title: String, created_by: Int) -> Result(Int, String) {
-  pog.query("INSERT INTO tasks (project_id, type_id, title, description, priority, status, created_by) VALUES ($1, $2, $3, 'Seeded', 3, 'available', $4) RETURNING id")
+fn insert_task(db: pog.Connection, project_id: Int, type_id: Int, title: String, created_by: Int, card_id: Option(Int)) -> Result(Int, String) {
+  pog.query("INSERT INTO tasks (project_id, type_id, title, description, priority, status, created_by, card_id) VALUES ($1, $2, $3, 'Seeded', 3, 'available', $4, $5) RETURNING id")
   |> pog.parameter(pog.int(project_id))
   |> pog.parameter(pog.int(type_id))
   |> pog.parameter(pog.text(title))
   |> pog.parameter(pog.int(created_by))
+  |> pog.parameter(pog.nullable(pog.int, card_id))
   |> pog.returning(int_decoder())
   |> pog.execute(db)
   |> result.map_error(fn(e) { "Insert task: " <> string.inspect(e) })
   |> result.try(fn(r) { case r.rows { [id] -> Ok(id) _ -> Error("No ID") } })
 }
 
-fn insert_card(db: pog.Connection, project_id: Int, title: String, created_by: Int) -> Result(Int, String) {
-  pog.query("INSERT INTO cards (project_id, title, description, created_by) VALUES ($1, $2, 'Seeded', $3) RETURNING id")
+fn insert_card(db: pog.Connection, project_id: Int, title: String, color: Option(String), created_by: Int) -> Result(Int, String) {
+  pog.query("INSERT INTO cards (project_id, title, description, color, created_by) VALUES ($1, $2, 'Seeded', $3, $4) RETURNING id")
   |> pog.parameter(pog.int(project_id))
   |> pog.parameter(pog.text(title))
+  |> pog.parameter(pog.nullable(pog.text, color))
   |> pog.parameter(pog.int(created_by))
   |> pog.returning(int_decoder())
   |> pog.execute(db)

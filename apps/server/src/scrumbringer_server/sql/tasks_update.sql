@@ -32,6 +32,9 @@ select
   tt.name as type_name,
   tt.icon as type_icon,
   false as is_ongoing,
-  0 as ongoing_by_user_id
+  0 as ongoing_by_user_id,
+  coalesce(c.title, '') as card_title,
+  coalesce(c.color, '') as card_color
 from updated
-join task_types tt on tt.id = updated.type_id;
+join task_types tt on tt.id = updated.type_id
+left join cards c on c.id = updated.card_id;

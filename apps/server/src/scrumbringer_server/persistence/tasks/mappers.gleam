@@ -49,6 +49,8 @@ pub type Task {
     created_at: String,
     version: Int,
     card_id: Option(Int),
+    card_title: Option(String),
+    card_color: Option(String),
   )
 }
 
@@ -73,6 +75,8 @@ pub fn from_list_row(row: sql.TasksListRow) -> Task {
     created_at: row.created_at,
     version: row.version,
     card_id: row.card_id,
+    card_title: row.card_title,
+    card_color: row.card_color,
   )
 }
 
@@ -97,6 +101,8 @@ pub fn from_get_row(row: sql.TasksGetForUserRow) -> Task {
     created_at: row.created_at,
     version: row.version,
     card_id: row.card_id,
+    card_title: row.card_title,
+    card_color: row.card_color,
   )
 }
 
@@ -121,6 +127,8 @@ pub fn from_create_row(row: sql.TasksCreateRow) -> Task {
     created_at: row.created_at,
     version: row.version,
     card_id: row.card_id,
+    card_title: row.card_title,
+    card_color: row.card_color,
   )
 }
 
@@ -145,6 +153,8 @@ pub fn from_update_row(row: sql.TasksUpdateRow) -> Task {
     created_at: row.created_at,
     version: row.version,
     card_id: row.card_id,
+    card_title: row.card_title,
+    card_color: row.card_color,
   )
 }
 
@@ -169,6 +179,8 @@ pub fn from_claim_row(row: sql.TasksClaimRow) -> Task {
     created_at: row.created_at,
     version: row.version,
     card_id: row.card_id,
+    card_title: row.card_title,
+    card_color: row.card_color,
   )
 }
 
@@ -193,6 +205,8 @@ pub fn from_release_row(row: sql.TasksReleaseRow) -> Task {
     created_at: row.created_at,
     version: row.version,
     card_id: row.card_id,
+    card_title: row.card_title,
+    card_color: row.card_color,
   )
 }
 
@@ -217,6 +231,8 @@ pub fn from_complete_row(row: sql.TasksCompleteRow) -> Task {
     created_at: row.created_at,
     version: row.version,
     card_id: row.card_id,
+    card_title: row.card_title,
+    card_color: row.card_color,
   )
 }
 
@@ -240,6 +256,8 @@ fn from_fields(
   created_at created_at: String,
   version version: Int,
   card_id card_id: Int,
+  card_title card_title: String,
+  card_color card_color: String,
 ) -> Task {
   Task(
     id: id,
@@ -259,6 +277,8 @@ fn from_fields(
     created_at: created_at,
     version: version,
     card_id: int_option(card_id),
+    card_title: string_option(card_title),
+    card_color: string_option(card_color),
   )
 }
 

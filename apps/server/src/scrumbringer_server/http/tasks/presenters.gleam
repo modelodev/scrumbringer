@@ -83,6 +83,8 @@ pub fn task_json(task: Task) -> json.Json {
     created_at: created_at,
     version: version,
     card_id: card_id,
+    card_title: card_title,
+    card_color: card_color,
   ) = task
 
   json.object([
@@ -110,6 +112,8 @@ pub fn task_json(task: Task) -> json.Json {
     #("created_at", json.string(created_at)),
     #("version", json.int(version)),
     #("card_id", option_int_json(card_id)),
+    #("card_title", option_string_json(card_title)),
+    #("card_color", option_string_json(card_color)),
   ])
 }
 

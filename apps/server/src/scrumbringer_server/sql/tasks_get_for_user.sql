@@ -30,9 +30,12 @@ select
   coalesce(to_char(t.completed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as completed_at,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
   t.version,
-  coalesce(t.card_id, 0) as card_id
+  coalesce(t.card_id, 0) as card_id,
+  coalesce(c.title, '') as card_title,
+  coalesce(c.color, '') as card_color
 from tasks t
 join task_types tt on tt.id = t.type_id
+left join cards c on c.id = t.card_id
 where t.id = $1
   and exists(
     select 1
