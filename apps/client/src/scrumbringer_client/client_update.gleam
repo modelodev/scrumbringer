@@ -64,8 +64,9 @@ import scrumbringer_client/client_state.{
   AdminRuleMetricsDrilldownClicked, AdminRuleMetricsDrilldownClosed,
   AdminRuleMetricsExecPageChanged, AdminRuleMetricsExecutionsFetched,
   AdminRuleMetricsFetched, AdminRuleMetricsFromChanged,
-  AdminRuleMetricsRefreshClicked, AdminRuleMetricsRuleDetailsFetched,
-  AdminRuleMetricsToChanged, AdminRuleMetricsWorkflowDetailsFetched,
+  AdminRuleMetricsQuickRangeClicked, AdminRuleMetricsRefreshClicked,
+  AdminRuleMetricsRuleDetailsFetched, AdminRuleMetricsToChanged,
+  AdminRuleMetricsWorkflowDetailsFetched,
   AdminRuleMetricsWorkflowExpanded, CapabilitiesFetched,
   CapabilityCreateDialogClosed, CapabilityCreateDialogOpened,
   CapabilityCreateNameChanged, CapabilityCreateSubmitted, CapabilityCreated,
@@ -123,6 +124,7 @@ import scrumbringer_client/client_state.{
   TaskTemplateCrudCreated, TaskTemplateCrudUpdated, TaskTemplateCrudDeleted,
   TaskTypeCreateCapabilityChanged, TaskTypeCreateDialogClosed,
   TaskTypeCreateDialogOpened, TaskTypeCreateIconChanged,
+  TaskTypeCreateIconSearchChanged, TaskTypeCreateIconCategoryChanged,
   TaskTypeCreateNameChanged, TaskTypeCreateSubmitted, TaskTypeCreated,
   TaskTypeIconErrored, TaskTypeIconLoaded, TaskTypesFetched, ThemeSelected,
   ToastDismissed, UrlChanged,
@@ -825,8 +827,8 @@ pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
     }
 
     permissions.RuleMetrics -> {
-      // Don't auto-fetch - user needs to select date range first
-      #(model, effect.none())
+      // Initialize with default date range (last 30 days)
+      admin_workflow.handle_rule_metrics_tab_init(model)
     }
 
     permissions.Capabilities -> #(
@@ -1532,6 +1534,16 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       task_types_workflow.handle_task_type_create_name_changed(model, name)
     TaskTypeCreateIconChanged(icon) ->
       task_types_workflow.handle_task_type_create_icon_changed(model, icon)
+    TaskTypeCreateIconSearchChanged(search) ->
+      task_types_workflow.handle_task_type_create_icon_search_changed(
+        model,
+        search,
+      )
+    TaskTypeCreateIconCategoryChanged(category) ->
+      task_types_workflow.handle_task_type_create_icon_category_changed(
+        model,
+        category,
+      )
     TaskTypeIconLoaded ->
       task_types_workflow.handle_task_type_icon_loaded(model)
     TaskTypeIconErrored ->
@@ -1788,6 +1800,8 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       admin_workflow.handle_rule_metrics_tab_to_changed(model, to)
     AdminRuleMetricsRefreshClicked ->
       admin_workflow.handle_rule_metrics_tab_refresh_clicked(model)
+    AdminRuleMetricsQuickRangeClicked(from, to) ->
+      admin_workflow.handle_rule_metrics_tab_quick_range_clicked(model, from, to)
     // Rule metrics drill-down
     AdminRuleMetricsWorkflowExpanded(workflow_id) ->
       admin_workflow.handle_rule_metrics_workflow_expanded(model, workflow_id)

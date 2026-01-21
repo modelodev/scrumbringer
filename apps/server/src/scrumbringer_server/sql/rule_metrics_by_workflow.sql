@@ -9,8 +9,8 @@ select
     count(re.id) filter (where re.outcome = 'suppressed')::int as suppressed_count
 from rules r
 left join rule_executions re on re.rule_id = r.id
-    and re.created_at >= $2::timestamp
-    and re.created_at <= $3::timestamp
+    and re.created_at >= ($2::timestamp)::date
+    and re.created_at < (($3::timestamp)::date + interval '1 day')
 where r.workflow_id = $1
 group by r.id
 order by r.name;

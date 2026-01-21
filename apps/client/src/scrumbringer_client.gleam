@@ -308,6 +308,8 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       task_types_create_dialog_open: False,
       task_types_create_name: "",
       task_types_create_icon: "",
+      task_types_create_icon_search: "",
+      task_types_create_icon_category: "all",
       task_types_create_capability_id: opt.None,
       task_types_create_in_flight: False,
       task_types_create_error: opt.None,

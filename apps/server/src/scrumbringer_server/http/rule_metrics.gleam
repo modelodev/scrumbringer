@@ -545,34 +545,32 @@ fn workflow_summary_json(summary: rule_metrics_db.WorkflowMetricsSummary) -> jso
 }
 
 fn execution_json(exec: rule_metrics_db.RuleExecution) -> json.Json {
-  json.object([
+  // Build base required fields
+  let fields = [
     #("id", json.int(exec.id)),
     #("origin_type", json.string(exec.origin_type)),
     #("origin_id", json.int(exec.origin_id)),
     #("outcome", json.string(exec.outcome)),
-    #(
-      "suppression_reason",
-      case exec.suppression_reason {
-        "" -> json.null()
-        reason -> json.string(reason)
-      },
-    ),
-    #(
-      "user_id",
-      case exec.user_id {
-        0 -> json.null()
-        id -> json.int(id)
-      },
-    ),
-    #(
-      "user_email",
-      case exec.user_email {
-        "" -> json.null()
-        email -> json.string(email)
-      },
-    ),
     #("created_at", json.string(exec.created_at)),
-  ])
+  ]
+
+  // Add optional fields only when present (omit rather than null)
+  let fields = case exec.suppression_reason {
+    "" -> fields
+    reason -> [#("suppression_reason", json.string(reason)), ..fields]
+  }
+
+  let fields = case exec.user_id {
+    0 -> fields
+    id -> [#("user_id", json.int(id)), ..fields]
+  }
+
+  let fields = case exec.user_email {
+    "" -> fields
+    email -> [#("user_email", json.string(email)), ..fields]
+  }
+
+  json.object(fields)
 }
 
 type Totals {

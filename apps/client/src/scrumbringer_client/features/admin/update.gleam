@@ -258,11 +258,15 @@ pub const fetch_task_templates = workflows.fetch_task_templates
 // Re-exports: Rule Metrics Tab
 // =============================================================================
 
+pub const handle_rule_metrics_tab_init = rule_metrics.init_tab
+
 pub const handle_rule_metrics_tab_from_changed = rule_metrics.handle_from_changed
 
 pub const handle_rule_metrics_tab_to_changed = rule_metrics.handle_to_changed
 
 pub const handle_rule_metrics_tab_refresh_clicked = rule_metrics.handle_refresh_clicked
+
+pub const handle_rule_metrics_tab_quick_range_clicked = rule_metrics.handle_quick_range_clicked
 
 pub const handle_rule_metrics_tab_fetched_ok = rule_metrics.handle_fetched_ok
 

@@ -22,6 +22,7 @@ import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError}
 import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
   type Model, type Msg, AdminRuleMetricsExecutionsFetched, AdminRuleMetricsFetched,
   AdminRuleMetricsRuleDetailsFetched, AdminRuleMetricsWorkflowDetailsFetched,
@@ -59,6 +60,22 @@ pub fn handle_refresh_clicked(model: Model) -> #(Model, Effect(Msg)) {
   }
 }
 
+/// Handle quick range button click (sets dates and fetches immediately).
+pub fn handle_quick_range_clicked(
+  model: Model,
+  from: String,
+  to: String,
+) -> #(Model, Effect(Msg)) {
+  let model =
+    Model(
+      ..model,
+      admin_rule_metrics_from: from,
+      admin_rule_metrics_to: to,
+      admin_rule_metrics: Loading,
+    )
+  #(model, api_workflows.get_org_rule_metrics(from, to, AdminRuleMetricsFetched))
+}
+
 // =============================================================================
 // Fetch Handlers
 // =============================================================================
@@ -82,11 +99,20 @@ pub fn handle_fetched_error(
   }
 }
 
-/// Initialize the rule metrics tab with default date range.
+/// Initialize the rule metrics tab with default date range (last 30 days).
 pub fn init_tab(model: Model) -> #(Model, Effect(Msg)) {
-  // If dates are not set, don't auto-fetch. User will set dates and click refresh.
-  // Alternatively, we could set default dates here.
-  #(model, effect.none())
+  // Set default dates if not already set: from 30 days ago to today
+  case model.admin_rule_metrics_from == "" || model.admin_rule_metrics_to == "" {
+    True -> {
+      let to = client_ffi.date_today()
+      let from = client_ffi.date_days_ago(30)
+      #(
+        Model(..model, admin_rule_metrics_from: from, admin_rule_metrics_to: to),
+        effect.none(),
+      )
+    }
+    False -> #(model, effect.none())
+  }
 }
 
 // =============================================================================

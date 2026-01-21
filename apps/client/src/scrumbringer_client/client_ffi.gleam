@@ -335,3 +335,19 @@ pub fn send(
 pub fn encode_uri_component(_value: String) -> String {
   ""
 }
+
+// =============================================================================
+// Date Helpers
+// =============================================================================
+
+/// Get today's date as YYYY-MM-DD string.
+@external(javascript, "./fetch.ffi.mjs", "date_today")
+pub fn date_today() -> String {
+  ""
+}
+
+/// Get date N days ago as YYYY-MM-DD string.
+@external(javascript, "./fetch.ffi.mjs", "date_days_ago")
+pub fn date_days_ago(_days: Int) -> String {
+  ""
+}

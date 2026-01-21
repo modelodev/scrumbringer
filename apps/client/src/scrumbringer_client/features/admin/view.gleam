@@ -52,18 +52,20 @@ import domain/task_type.{type TaskType}
 import domain/workflow.{type Rule, type TaskTemplate, type Workflow, Workflow}
 
 import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/client_ffi
 import scrumbringer_client/features/admin/cards as admin_cards
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/client_state.{
   type Model, type Msg, type Remote,
   AdminRuleMetricsDrilldownClicked, AdminRuleMetricsDrilldownClosed,
   AdminRuleMetricsExecPageChanged, AdminRuleMetricsFromChanged,
-  AdminRuleMetricsRefreshClicked, AdminRuleMetricsToChanged,
+  AdminRuleMetricsQuickRangeClicked, AdminRuleMetricsRefreshClicked,
+  AdminRuleMetricsToChanged,
   AdminRuleMetricsWorkflowExpanded, CapabilityCreateDialogClosed,
   CapabilityCreateDialogOpened, CapabilityCreateNameChanged,
   CapabilityCreateSubmitted, CardCrudCreated, CardCrudDeleted, CardCrudUpdated,
   CardDialogCreate, CardDialogDelete, CardDialogEdit, CloseCardDialog,
-  CloseRuleDialog, CloseTaskTemplateDialog, Failed, IconError, IconOk, Loaded,
+  CloseRuleDialog, CloseTaskTemplateDialog, Failed, Loaded,
   Loading, MemberAddDialogClosed, MemberAddDialogOpened, MemberAddRoleChanged,
   MemberAddSubmitted, MemberAddUserSelected, MemberRemoveCancelled,
   MemberRemoveClicked, MemberRemoveConfirmed, NotAsked, OpenCardDialog,
@@ -74,9 +76,10 @@ import scrumbringer_client/client_state.{
   TaskTemplateCrudDeleted, TaskTemplateCrudUpdated, TaskTemplateDialogCreate,
   TaskTemplateDialogDelete, TaskTemplateDialogEdit,
   TaskTypeCreateCapabilityChanged, TaskTypeCreateDialogClosed,
-  TaskTypeCreateDialogOpened, TaskTypeCreateIconChanged,
-  TaskTypeCreateNameChanged, TaskTypeCreateSubmitted, TaskTypeIconErrored,
-  TaskTypeIconLoaded, UserProjectRemoveClicked, UserProjectsAddProjectChanged,
+  TaskTypeCreateDialogOpened, TaskTypeCreateIconCategoryChanged,
+  TaskTypeCreateIconChanged, TaskTypeCreateIconSearchChanged,
+  TaskTypeCreateNameChanged, TaskTypeCreateSubmitted,
+  UserProjectRemoveClicked, UserProjectsAddProjectChanged,
   UserProjectsAddSubmitted, UserProjectsDialogClosed, UserProjectsDialogOpened,
   WorkflowCrudCreated, WorkflowCrudDeleted, WorkflowCrudUpdated,
   WorkflowDialogCreate, WorkflowDialogDelete, WorkflowDialogEdit,
@@ -91,6 +94,8 @@ import scrumbringer_client/theme
 import scrumbringer_client/ui/card_badge
 import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/dialog
+import scrumbringer_client/ui/icon_catalog
+import scrumbringer_client/ui/icon_picker
 import scrumbringer_client/ui/info_callout
 import scrumbringer_client/update_helpers
 
@@ -461,8 +466,6 @@ pub fn view_members(
 
     opt.Some(project) ->
       div([attribute.class("section")], [
-        // Help callout for Members section
-        info_callout.simple(update_helpers.i18n_t(model, i18n_text.MembersHelp)),
         // Section header with add button
         div([attribute.class("admin-section-header")], [
           div([attribute.class("admin-section-title")], [
@@ -474,6 +477,8 @@ pub fn view_members(
           ]),
           dialog.add_button(model, i18n_text.AddMember, MemberAddDialogOpened),
         ]),
+        // Help callout for Members section
+        info_callout.simple(update_helpers.i18n_t(model, i18n_text.MembersHelp)),
         // Members list
         case model.members_remove_error {
           opt.Some(err) -> div([attribute.class("error")], [text(err)])
@@ -575,39 +580,19 @@ fn view_task_types_create_dialog(model: Model) -> Element(Msg) {
             ]),
             div([attribute.class("field")], [
               label([], [text(update_helpers.i18n_t(model, i18n_text.Icon))]),
-              div([attribute.class("icon-row")], [
-                input([
-                  attribute.type_("text"),
-                  attribute.value(model.task_types_create_icon),
-                  event.on_input(TaskTypeCreateIconChanged),
-                  attribute.required(True),
-                  attribute.placeholder(update_helpers.i18n_t(
-                    model,
-                    i18n_text.HeroiconSearchPlaceholder,
-                  )),
-                ]),
-                view_icon_preview(model.task_types_create_icon),
-              ]),
-              // Large icon preview
-              div([attribute.class("icon-preview-large")], [
-                case model.task_types_create_icon == "" {
-                  True -> text("-")
-                  False ->
-                    view_task_type_icon_inline(
-                      model.task_types_create_icon,
-                      28,
-                      model.theme,
-                    )
-                },
-              ]),
-              view_icon_picker(model.task_types_create_icon),
-              case model.task_types_icon_preview {
-                IconError ->
-                  div([attribute.class("field-error-msg")], [
-                    text(update_helpers.i18n_t(model, i18n_text.UnknownIcon)),
+              // Selected icon preview
+              case model.task_types_create_icon == "" {
+                True -> element.none()
+                False ->
+                  div([attribute.class("icon-preview-selected")], [
+                    icon_catalog.render(model.task_types_create_icon, 32),
+                    span([attribute.class("icon-preview-name")], [
+                      text(model.task_types_create_icon),
+                    ]),
                   ])
-                _ -> element.none()
               },
+              // Icon picker grid
+              view_icon_picker_grid(model),
             ]),
           ]),
           // Section: Configuration
@@ -638,7 +623,7 @@ fn view_task_types_create_dialog(model: Model) -> Element(Msg) {
           attribute.form("task-type-create-form"),
           attribute.disabled(
             model.task_types_create_in_flight
-            || model.task_types_icon_preview != IconOk,
+            || !icon_catalog.exists(model.task_types_create_icon),
           ),
           attribute.class(case model.task_types_create_in_flight {
             True -> "btn-loading"
@@ -982,109 +967,57 @@ fn view_heroicon_inline(
   ])
 }
 
-/// Render a task type icon - either heroicon or emoji.
+/// Render a task type icon using the icon catalog.
+/// Falls back to CDN for icons not in catalog, or text for non-heroicons.
 /// Exported for use in pool/task card views.
 pub fn view_task_type_icon_inline(
   icon: String,
   size: Int,
   theme: theme.Theme,
 ) -> Element(Msg) {
-  case string.contains(icon, "-") {
-    True -> view_heroicon_inline(icon, size, theme)
+  case string.is_empty(icon) {
+    True -> element.none()
     False ->
-      span(
-        [
-          attribute.attribute(
-            "style",
-            "font-size:" <> int.to_string(size) <> "px;",
-          ),
-        ],
-        [text(icon)],
-      )
-  }
-}
-
-fn view_icon_preview(icon_name: String) -> Element(Msg) {
-  let name = string.trim(icon_name)
-
-  case name == "" {
-    True -> div([attribute.class("icon-preview")], [text("-")])
-
-    False -> {
-      let url = heroicon_outline_url(name)
-
-      div([attribute.class("icon-preview")], [
-        img([
-          attribute.attribute("src", url),
-          attribute.attribute("alt", name <> " icon"),
-          attribute.attribute("width", "24"),
-          attribute.attribute("height", "24"),
-          event.on("load", decode.success(TaskTypeIconLoaded)),
-          event.on("error", decode.success(TaskTypeIconErrored)),
-        ]),
-      ])
-    }
-  }
-}
-
-fn view_icon_picker(current_icon: String) -> Element(Msg) {
-  let current = string.trim(current_icon)
-
-  let icons = [
-    "bug-ant",
-    "sparkles",
-    "wrench-screwdriver",
-    "clipboard-document-check",
-    "light-bulb",
-    "bolt",
-    "beaker",
-    "chat-bubble-left-right",
-    "document-text",
-    "flag",
-    "exclamation-triangle",
-    "check-circle",
-    "arrow-path",
-    "rocket-launch",
-    "pencil-square",
-    "cog-6-tooth",
-  ]
-
-  let has_current = current != "" && list.contains(icons, current)
-
-  let options = [option([attribute.value("")], "Pick a common icon…")]
-
-  let options = case current != "" && !has_current {
-    True -> [
-      option([attribute.value(current)], "Custom: " <> current),
-      ..options
-    ]
-    False -> options
-  }
-
-  let options =
-    list.append(
-      options,
-      list.map(icons, fn(name) { option([attribute.value(name)], name) }),
-    )
-
-  let selected = case current != "" && !has_current {
-    True -> current
-    False ->
-      case has_current {
-        True -> current
-        False -> ""
+      case icon_catalog.exists(icon) {
+        True -> {
+          let class = case theme {
+            theme.Dark -> "icon-theme-dark"
+            theme.Default -> ""
+          }
+          icon_catalog.render_with_class(icon, size, class)
+        }
+        False ->
+          // Fallback: try CDN if looks like heroicon, otherwise show as text
+          case string.contains(icon, "-") {
+            True -> view_heroicon_inline(icon, size, theme)
+            False ->
+              span(
+                [
+                  attribute.attribute(
+                    "style",
+                    "font-size:" <> int.to_string(size) <> "px;",
+                  ),
+                ],
+                [text(icon)],
+              )
+          }
       }
   }
+}
 
-  div([attribute.class("icon-picker")], [
-    select(
-      [
-        attribute.value(selected),
-        event.on_input(TaskTypeCreateIconChanged),
-      ],
-      options,
-    ),
-  ])
+fn view_icon_picker_grid(model: Model) -> Element(Msg) {
+  icon_picker.view(
+    model.task_types_create_icon_search,
+    model.task_types_create_icon_category,
+    model.task_types_create_icon,
+    fn(picker_msg) {
+      case picker_msg {
+        icon_picker.SearchChanged(q) -> TaskTypeCreateIconSearchChanged(q)
+        icon_picker.CategoryChanged(c) -> TaskTypeCreateIconCategoryChanged(c)
+        icon_picker.IconSelected(id) -> TaskTypeCreateIconChanged(id)
+      }
+    },
+  )
 }
 
 fn view_capability_selector(
@@ -2258,80 +2191,155 @@ fn view_task_templates_table(
 
 /// Rule metrics tab view.
 pub fn view_rule_metrics(model: Model) -> Element(Msg) {
+  let is_loading = case model.admin_rule_metrics {
+    Loading -> True
+    _ -> False
+  }
+  let has_dates =
+    model.admin_rule_metrics_from != "" && model.admin_rule_metrics_to != ""
+
   div([attribute.class("section")], [
-    // Card wrapper
-    div([attribute.class("admin-card")], [
-      div([attribute.class("admin-card-header")], [
+    // Header with icon (T1)
+    div([attribute.class("admin-section-header")], [
+      div([attribute.class("admin-section-title")], [
+        span([attribute.class("admin-section-icon")], [text("📊")]),
         text(update_helpers.i18n_t(model, i18n_text.RuleMetricsTitle)),
       ]),
-      // E10: Info callout with instructions
-      div([attribute.class("info-callout")], [
-        div([attribute.class("info-callout-icon")], [text("💡")]),
-        div([attribute.class("info-callout-content")], [
-          div([attribute.class("info-callout-title")], [text("Como usar")]),
-          div([attribute.class("info-callout-text")], [
-            text(
-              "1. Selecciona un rango de fechas. 2. Pulsa \"Actualizar\" para cargar las metricas de ejecucion de tus automatizaciones.",
-            ),
+    ]),
+    // Card wrapper
+    div([attribute.class("admin-card")], [
+      // Quick range buttons (S3/S4)
+      div([attribute.class("quick-ranges")], [
+        span([attribute.class("quick-ranges-label")], [text("Rango rápido:")]),
+        view_quick_range_button("7 días", 7),
+        view_quick_range_button("30 días", 30),
+        view_quick_range_button("90 días", 90),
+      ]),
+      // Date range inputs with subtle hint (T2)
+      div([attribute.class("filters-row")], [
+        div([attribute.class("field")], [
+          label([attribute.class("filter-label")], [
+            text(update_helpers.i18n_t(model, i18n_text.RuleMetricsFrom)),
+          ]),
+          input([
+            attribute.type_("date"),
+            attribute.value(model.admin_rule_metrics_from),
+            event.on_input(AdminRuleMetricsFromChanged),
+            attribute.attribute("aria-label", "Fecha inicio"),
           ]),
         ]),
-      ]),
-      // Date range inputs
-      div(
-        [
-          attribute.class("field-row"),
-          attribute.attribute(
-            "style",
-            "display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;",
+        div([attribute.class("field")], [
+          label([attribute.class("filter-label")], [
+            text(update_helpers.i18n_t(model, i18n_text.RuleMetricsTo)),
+          ]),
+          input([
+            attribute.type_("date"),
+            attribute.value(model.admin_rule_metrics_to),
+            event.on_input(AdminRuleMetricsToChanged),
+            attribute.attribute("aria-label", "Fecha fin"),
+          ]),
+        ]),
+        // Refresh button with icon (S5) and loading state (S2)
+        div([attribute.class("field")], [
+          label(
+            [
+              attribute.class("filter-label"),
+              attribute.attribute("style", "visibility: hidden;"),
+            ],
+            [text("\u{00A0}")],
           ),
-        ],
-        [
-          div([attribute.class("field")], [
-            label([], [
-              text(update_helpers.i18n_t(model, i18n_text.RuleMetricsFrom)),
-            ]),
-            input([
-              attribute.type_("date"),
-              attribute.value(model.admin_rule_metrics_from),
-              event.on_input(AdminRuleMetricsFromChanged),
-              attribute.attribute("aria-label", "Start date"),
-            ]),
-          ]),
-          div([attribute.class("field")], [
-            label([], [
-              text(update_helpers.i18n_t(model, i18n_text.RuleMetricsTo)),
-            ]),
-            input([
-              attribute.type_("date"),
-              attribute.value(model.admin_rule_metrics_to),
-              event.on_input(AdminRuleMetricsToChanged),
-              attribute.attribute("aria-label", "End date"),
-            ]),
-          ]),
           button(
             [
-              attribute.type_("submit"),
+              attribute.class("btn-secondary"),
               event.on_click(AdminRuleMetricsRefreshClicked),
-              attribute.disabled(
-                model.admin_rule_metrics_from == ""
-                || model.admin_rule_metrics_to == "",
-              ),
-              // Match .field margin-bottom for vertical alignment
-              attribute.attribute("style", "margin-bottom: 8px;"),
+              attribute.disabled(!has_dates || is_loading),
             ],
-            [text(update_helpers.i18n_t(model, i18n_text.RuleMetricsRefresh))],
+            [
+              case is_loading {
+                True -> span([attribute.class("btn-spinner")], [])
+                False -> span([attribute.class("btn-icon-left")], [text("↻")])
+              },
+              text(case is_loading {
+                True -> "Cargando..."
+                False ->
+                  update_helpers.i18n_t(model, i18n_text.RuleMetricsRefresh)
+              }),
+            ],
           ),
-        ],
-      ),
+        ]),
+      ]),
     ]),
-    // Spacing
-    div([attribute.class("admin-section-gap")], []),
-    // Results card
-    div([attribute.class("admin-card")], [
-      div([attribute.class("admin-card-header")], [text("Resultados")]),
-      view_rule_metrics_table(model, model.admin_rule_metrics),
-    ]),
+    // Results
+    view_rule_metrics_results(model),
   ])
+}
+
+/// Quick range button helper.
+fn view_quick_range_button(label: String, days: Int) -> Element(Msg) {
+  let today = client_ffi.date_today()
+  let from = client_ffi.date_days_ago(days)
+  button(
+    [
+      attribute.class("btn-chip"),
+      event.on_click(AdminRuleMetricsQuickRangeClicked(from, today)),
+    ],
+    [text(label)],
+  )
+}
+
+/// Results section with improved empty state (T5).
+fn view_rule_metrics_results(model: Model) -> Element(Msg) {
+  case model.admin_rule_metrics {
+    NotAsked ->
+      // Empty state with icon and action hint (T5)
+      div([attribute.class("empty-state")], [
+        div([attribute.class("empty-state-icon")], [text("📈")]),
+        div([attribute.class("empty-state-title")], [
+          text("Sin datos que mostrar"),
+        ]),
+        div([attribute.class("empty-state-description")], [
+          text(
+            "Selecciona un rango de fechas o usa los botones de rango rápido para ver las métricas de tus automatizaciones.",
+          ),
+        ]),
+      ])
+
+    Loading ->
+      div([attribute.class("loading-state")], [
+        div([attribute.class("loading-spinner")], []),
+        text("Cargando métricas..."),
+      ])
+
+    Failed(err) ->
+      div([attribute.class("error-state")], [
+        span([attribute.class("error-icon")], [text("⚠️")]),
+        text(err.message),
+      ])
+
+    Loaded(workflows) ->
+      case workflows {
+        [] ->
+          div([attribute.class("empty-state")], [
+            div([attribute.class("empty-state-icon")], [text("📭")]),
+            div([attribute.class("empty-state-title")], [
+              text("No hay ejecuciones"),
+            ]),
+            div([attribute.class("empty-state-description")], [
+              text(
+                "No se encontraron ejecuciones de automatizaciones en el rango seleccionado.",
+              ),
+            ]),
+          ])
+        _ ->
+          div([attribute.class("admin-card")], [
+            div([attribute.class("admin-card-header")], [
+              span([], [text("📋")]),
+              text(" Resultados"),
+            ]),
+            view_rule_metrics_table(model, model.admin_rule_metrics),
+          ])
+      }
+  }
 }
 
 fn view_rule_metrics_table(
@@ -2507,15 +2515,9 @@ fn view_workflow_rules_expansion(
                       ]),
                     ]),
                     td([attribute.class("metric-cell")], [
-                      button(
-                        [
-                          attribute.class("btn-link metric suppressed"),
-                          event.on_click(AdminRuleMetricsDrilldownClicked(
-                            r.rule_id,
-                          )),
-                        ],
-                        [text(int.to_string(r.suppressed_count))],
-                      ),
+                      span([attribute.class("metric suppressed")], [
+                        text(int.to_string(r.suppressed_count)),
+                      ]),
                     ]),
                     td([], [
                       button(

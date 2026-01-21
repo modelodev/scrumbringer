@@ -34,6 +34,7 @@ import lustre/element/html.{img}
 import scrumbringer_client/client_state.{type Msg}
 import scrumbringer_client/permissions
 import scrumbringer_client/theme.{type Theme}
+import scrumbringer_client/ui/icon_catalog
 
 // =============================================================================
 // Emoji Icons (Type-Safe)
@@ -167,7 +168,8 @@ pub fn view_heroicon_inline(
 
 /// Render a task type icon inline with theme awareness.
 ///
-/// Task type icons are stored as heroicon names in the database.
+/// Uses the curated icon catalog for embedded SVG rendering.
+/// Falls back to CDN for icons not in the catalog.
 pub fn view_task_type_icon_inline(
   icon_name: String,
   size: Int,
@@ -175,6 +177,18 @@ pub fn view_task_type_icon_inline(
 ) -> Element(Msg) {
   case string.is_empty(icon_name) {
     True -> element.none()
-    False -> view_heroicon_inline(icon_name, size, theme)
+    False ->
+      case icon_catalog.exists(icon_name) {
+        True -> icon_catalog.render_with_class(icon_name, size, theme_class(theme))
+        False -> view_heroicon_inline(icon_name, size, theme)
+      }
+  }
+}
+
+/// Convert theme to CSS class for icon styling.
+fn theme_class(theme: Theme) -> String {
+  case theme {
+    theme.Dark -> "icon-theme-dark"
+    theme.Default -> ""
   }
 }

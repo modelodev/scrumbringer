@@ -350,6 +350,8 @@ pub type Model {
     task_types_create_dialog_open: Bool,
     task_types_create_name: String,
     task_types_create_icon: String,
+    task_types_create_icon_search: String,
+    task_types_create_icon_category: String,
     task_types_create_capability_id: Option(String),
     task_types_create_in_flight: Bool,
     task_types_create_error: Option(String),
@@ -576,6 +578,8 @@ pub type Msg {
   TaskTypeCreateDialogClosed
   TaskTypeCreateNameChanged(String)
   TaskTypeCreateIconChanged(String)
+  TaskTypeCreateIconSearchChanged(String)
+  TaskTypeCreateIconCategoryChanged(String)
   TaskTypeIconLoaded
   TaskTypeIconErrored
   TaskTypeCreateCapabilityChanged(String)
@@ -709,6 +713,7 @@ pub type Msg {
   AdminRuleMetricsFromChanged(String)
   AdminRuleMetricsToChanged(String)
   AdminRuleMetricsRefreshClicked
+  AdminRuleMetricsQuickRangeClicked(String, String)
   // Rule metrics drill-down
   AdminRuleMetricsWorkflowExpanded(Int)
   AdminRuleMetricsWorkflowDetailsFetched(ApiResult(api_workflows.WorkflowMetrics))
@@ -919,6 +924,8 @@ pub fn default_model() -> Model {
     task_types_create_dialog_open: False,
     task_types_create_name: "",
     task_types_create_icon: "",
+    task_types_create_icon_search: "",
+    task_types_create_icon_category: "all",
     task_types_create_capability_id: option.None,
     task_types_create_in_flight: False,
     task_types_create_error: option.None,

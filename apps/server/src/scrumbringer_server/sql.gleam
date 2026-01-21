@@ -2151,8 +2151,8 @@ select
     count(re.id) filter (where re.suppression_reason = 'inactive')::int as suppressed_inactive
 from rules r
 left join rule_executions re on re.rule_id = r.id
-    and re.created_at >= $2::timestamp
-    and re.created_at <= $3::timestamp
+    and re.created_at >= ($2::timestamp)::date
+    and re.created_at < (($3::timestamp)::date + interval '1 day')
 where r.id = $1
 group by r.id;
 "
@@ -2221,8 +2221,8 @@ select
     count(re.id) filter (where re.outcome = 'suppressed')::int as suppressed_count
 from rules r
 left join rule_executions re on re.rule_id = r.id
-    and re.created_at >= $2::timestamp
-    and re.created_at <= $3::timestamp
+    and re.created_at >= ($2::timestamp)::date
+    and re.created_at < (($3::timestamp)::date + interval '1 day')
 where r.workflow_id = $1
 group by r.id
 order by r.name;
@@ -2297,8 +2297,8 @@ select
 from workflows w
 left join rules r on r.workflow_id = w.id
 left join rule_executions re on re.rule_id = r.id
-    and re.created_at >= $2::timestamp
-    and re.created_at <= $3::timestamp
+    and re.created_at >= ($2::timestamp)::date
+    and re.created_at < (($3::timestamp)::date + interval '1 day')
 where w.org_id = $1
 group by w.id
 order by w.name;
@@ -2369,8 +2369,8 @@ select
 from workflows w
 left join rules r on r.workflow_id = w.id
 left join rule_executions re on re.rule_id = r.id
-    and re.created_at >= $2::timestamp
-    and re.created_at <= $3::timestamp
+    and re.created_at >= ($2::timestamp)::date
+    and re.created_at < (($3::timestamp)::date + interval '1 day')
 where w.project_id = $1
 group by w.id
 order by w.name;
@@ -4787,6 +4787,129 @@ order by t.created_at desc;
   |> pog.parameter(pog.int(arg_3))
   |> pog.parameter(pog.int(arg_4))
   |> pog.parameter(pog.text(arg_5))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `tasks_list_by_card` query
+/// defined in `./src/scrumbringer_server/sql/tasks_list_by_card.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TasksListByCardRow {
+  TasksListByCardRow(
+    id: Int,
+    project_id: Int,
+    type_id: Int,
+    type_name: String,
+    type_icon: String,
+    title: String,
+    description: String,
+    priority: Int,
+    status: String,
+    is_ongoing: Bool,
+    ongoing_by_user_id: Int,
+    created_by: Int,
+    claimed_by: Int,
+    claimed_at: String,
+    completed_at: String,
+    created_at: String,
+    version: Int,
+    card_id: Int,
+  )
+}
+
+/// List tasks belonging to a specific card
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn tasks_list_by_card(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(TasksListByCardRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use project_id <- decode.field(1, decode.int)
+    use type_id <- decode.field(2, decode.int)
+    use type_name <- decode.field(3, decode.string)
+    use type_icon <- decode.field(4, decode.string)
+    use title <- decode.field(5, decode.string)
+    use description <- decode.field(6, decode.string)
+    use priority <- decode.field(7, decode.int)
+    use status <- decode.field(8, decode.string)
+    use is_ongoing <- decode.field(9, decode.bool)
+    use ongoing_by_user_id <- decode.field(10, decode.int)
+    use created_by <- decode.field(11, decode.int)
+    use claimed_by <- decode.field(12, decode.int)
+    use claimed_at <- decode.field(13, decode.string)
+    use completed_at <- decode.field(14, decode.string)
+    use created_at <- decode.field(15, decode.string)
+    use version <- decode.field(16, decode.int)
+    use card_id <- decode.field(17, decode.int)
+    decode.success(TasksListByCardRow(
+      id:,
+      project_id:,
+      type_id:,
+      type_name:,
+      type_icon:,
+      title:,
+      description:,
+      priority:,
+      status:,
+      is_ongoing:,
+      ongoing_by_user_id:,
+      created_by:,
+      claimed_by:,
+      claimed_at:,
+      completed_at:,
+      created_at:,
+      version:,
+      card_id:,
+    ))
+  }
+
+  "-- List tasks belonging to a specific card
+select
+  t.id,
+  t.project_id,
+  t.type_id,
+  tt.name as type_name,
+  tt.icon as type_icon,
+  t.title,
+  coalesce(t.description, '') as description,
+  t.priority,
+  t.status,
+  (
+    t.status = 'claimed'
+    and exists(
+      select 1
+      from user_task_work_session ws
+      where ws.task_id = t.id and ws.ended_at is null
+    )
+  ) as is_ongoing,
+  coalesce((
+    select ws.user_id
+    from user_task_work_session ws
+    where ws.task_id = t.id and ws.ended_at is null
+    order by ws.started_at desc
+    limit 1
+  ), 0) as ongoing_by_user_id,
+  t.created_by,
+  coalesce(t.claimed_by, 0) as claimed_by,
+  coalesce(to_char(t.claimed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as claimed_at,
+  coalesce(to_char(t.completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
+  to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  t.version,
+  coalesce(t.card_id, 0) as card_id
+from tasks t
+join task_types tt on tt.id = t.type_id
+where t.card_id = $1
+order by t.created_at desc;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

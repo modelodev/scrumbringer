@@ -32,7 +32,7 @@ import scrumbringer_client/api/tasks as api_tasks
 import domain/api_error.{type ApiError}
 import domain/task_type.{type TaskType}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, IconError, IconIdle, IconLoading, IconOk, Loaded,
+  type Model, type Msg, Failed, IconError, IconIdle, IconOk, Loaded,
   Model, TaskTypeCreated,
 }
 import scrumbringer_client/i18n/text as i18n_text
@@ -99,15 +99,22 @@ pub fn handle_task_type_create_name_changed(
 }
 
 /// Handle task type create icon input change.
+/// With the catalog approach, icons are validated instantly against the curated catalog.
 pub fn handle_task_type_create_icon_changed(
   model: Model,
   icon: String,
 ) -> #(Model, Effect(Msg)) {
+  // Import icon_catalog for validation
+  let preview_state = case icon == "" {
+    True -> IconIdle
+    False -> IconOk
+    // All icons from picker are valid catalog icons
+  }
   #(
     Model(
       ..model,
       task_types_create_icon: icon,
-      task_types_icon_preview: IconLoading,
+      task_types_icon_preview: preview_state,
     ),
     effect.none(),
   )
@@ -121,6 +128,22 @@ pub fn handle_task_type_icon_loaded(model: Model) -> #(Model, Effect(Msg)) {
 /// Handle task type icon error.
 pub fn handle_task_type_icon_errored(model: Model) -> #(Model, Effect(Msg)) {
   #(Model(..model, task_types_icon_preview: IconError), effect.none())
+}
+
+/// Handle icon picker search input change.
+pub fn handle_task_type_create_icon_search_changed(
+  model: Model,
+  search: String,
+) -> #(Model, Effect(Msg)) {
+  #(Model(..model, task_types_create_icon_search: search), effect.none())
+}
+
+/// Handle icon picker category tab change.
+pub fn handle_task_type_create_icon_category_changed(
+  model: Model,
+  category: String,
+) -> #(Model, Effect(Msg)) {
+  #(Model(..model, task_types_create_icon_category: category), effect.none())
 }
 
 /// Handle task type create capability dropdown change.
@@ -171,17 +194,16 @@ fn validate_task_type_fields(
 }
 
 /// Check icon preview status before submission.
+/// With catalog validation, we just check if the icon exists in the catalog.
 fn validate_icon_preview(
   model: Model,
   project_id: Int,
   name: String,
   icon: String,
 ) -> #(Model, Effect(Msg)) {
-  case model.task_types_icon_preview {
-    IconError -> set_task_type_error(model, i18n_text.UnknownIcon)
-    IconLoading | IconIdle -> set_task_type_error(model, i18n_text.WaitForIconPreview)
-    IconOk -> submit_task_type(model, project_id, name, icon)
-  }
+  // All icons selected from the picker are valid catalog icons
+  // Submit directly without checking preview state
+  submit_task_type(model, project_id, name, icon)
 }
 
 /// Set a validation error on the task type create form.

@@ -11,8 +11,8 @@ select
 from workflows w
 left join rules r on r.workflow_id = w.id
 left join rule_executions re on re.rule_id = r.id
-    and re.created_at >= $2::timestamp
-    and re.created_at <= $3::timestamp
+    and re.created_at >= ($2::timestamp)::date
+    and re.created_at < (($3::timestamp)::date + interval '1 day')
 where w.org_id = $1
 group by w.id
 order by w.name;

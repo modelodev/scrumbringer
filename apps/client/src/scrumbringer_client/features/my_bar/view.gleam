@@ -59,6 +59,7 @@ import scrumbringer_client/theme
 import scrumbringer_client/ui/card_badge
 import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/empty_state
+import scrumbringer_client/ui/icon_catalog
 import scrumbringer_client/ui/icons
 import scrumbringer_client/update_helpers
 
@@ -450,24 +451,39 @@ fn view_heroicon_inline(
   )
 }
 
-/// Render task type icon - heroicon or emoji.
+/// Render task type icon using the icon catalog.
+/// Falls back to CDN or text for icons not in catalog.
 fn view_task_type_icon_inline(
   icon: String,
   size: Int,
   current_theme: theme.Theme,
 ) -> Element(Msg) {
-  case string.contains(icon, "-") {
-    True -> view_heroicon_inline(icon, size, current_theme)
+  case string.is_empty(icon) {
+    True -> element.none()
     False ->
-      span(
-        [
-          attribute.attribute(
-            "style",
-            "font-size:" <> int.to_string(size) <> "px;",
-          ),
-        ],
-        [text(icon)],
-      )
+      case icon_catalog.exists(icon) {
+        True -> {
+          let class = case current_theme {
+            theme.Dark -> "icon-theme-dark"
+            theme.Default -> ""
+          }
+          icon_catalog.render_with_class(icon, size, class)
+        }
+        False ->
+          case string.contains(icon, "-") {
+            True -> view_heroicon_inline(icon, size, current_theme)
+            False ->
+              span(
+                [
+                  attribute.attribute(
+                    "style",
+                    "font-size:" <> int.to_string(size) <> "px;",
+                  ),
+                ],
+                [text(icon)],
+              )
+          }
+      }
   }
 }
 

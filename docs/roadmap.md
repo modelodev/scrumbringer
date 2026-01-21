@@ -65,16 +65,13 @@ This document captures the planned product backlog across sprints.
 
 ---
 
-## Sprint 4 (2 weeks) — v0.4 (Planning stubs / examples)
+## Sprint 4 (2 weeks) — v0.4
 
-**Goal:** Expand workflows + add advanced metrics (burndown/agenda/time) as optional follow-ups.
+**Goal:** Project admin UX improvements and role management.
 
-**Stories (stubs):**
-- `docs/stories/4.1.workflows-templates-v1.md`
-- `docs/stories/4.2.workflows-dashboard-v1.md`
-- `docs/stories/4.3.burndown-v1.md`
-- `docs/stories/4.4.agenda-v1.md`
-- `docs/stories/4.5.time-tracking-v1.md`
+**Stories:**
+- `docs/stories/4.1.permissions-refactor.md` — Simplify permission model (Org Admin > Project Manager > Member)
+- `docs/stories/4.2.project-manager-ux.md` — UI for changing member roles (depends on 4.1)
 
 ---
 
@@ -82,4 +79,6 @@ This document captures the planned product backlog across sprints.
 
 | Date | Version | Description |
 |------|---------|-------------|
+| 2025-01-21 | 1.2 | Added 4.2 Permissions Refactor story |
+| 2025-01-21 | 1.1 | Sprint 4 reset: removed obsolete stories 4.1-4.5, added 4.1 Project Admin UX |
 | 2026-01-14 | 1.0 | Initial roadmap from Sprint 1 close + Sprint 2 planning |
