@@ -106,15 +106,11 @@ pub fn route(req: wisp.Request, ctx: RouterCtx) -> wisp.Response {
     ["api", "v1", "projects", project_id, "workflows"] ->
       workflows.handle_project_workflows(req, auth_ctx(ctx), project_id)
 
-    // Task templates (org scoped)
-    ["api", "v1", "task-templates"] ->
-      task_templates.handle_org_templates(req, auth_ctx(ctx))
+    // Task templates (individual template by id)
     ["api", "v1", "task-templates", template_id] ->
       task_templates.handle_template(req, auth_ctx(ctx), template_id)
 
-    // Workflows (org scoped)
-    ["api", "v1", "workflows"] ->
-      workflows.handle_org_workflows(req, auth_ctx(ctx))
+    // Workflows (individual workflow by id)
     ["api", "v1", "workflows", workflow_id] ->
       workflows.handle_workflow(req, auth_ctx(ctx), workflow_id)
 
@@ -164,11 +160,17 @@ pub fn route(req: wisp.Request, ctx: RouterCtx) -> wisp.Response {
     ["api", "v1", "tasks", task_id] ->
       tasks.handle_task(req, auth_ctx(ctx), task_id)
 
-    // Capabilities routes
-    ["api", "v1", "capabilities"] ->
-      capabilities.handle_capabilities(req, auth_ctx(ctx))
-    ["api", "v1", "me", "capabilities"] ->
-      capabilities.handle_me_capabilities(req, auth_ctx(ctx))
+    // Capabilities routes (project-scoped)
+    ["api", "v1", "projects", project_id, "capabilities"] ->
+      case int.parse(project_id) {
+        Ok(pid) -> capabilities.handle_project_capabilities(req, auth_ctx(ctx), pid)
+        Error(_) -> wisp.not_found()
+      }
+    ["api", "v1", "projects", project_id, "members", user_id, "capabilities"] ->
+      case int.parse(project_id), int.parse(user_id) {
+        Ok(pid), Ok(uid) -> capabilities.handle_member_capabilities(req, auth_ctx(ctx), pid, uid)
+        _, _ -> wisp.not_found()
+      }
 
     // Me routes
     ["api", "v1", "me", "task-positions"] ->

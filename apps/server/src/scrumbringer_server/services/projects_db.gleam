@@ -31,7 +31,7 @@ pub type ProjectMember {
 
 pub type RemoveMemberError {
   MembershipNotFound
-  CannotRemoveLastAdmin
+  CannotRemoveLastManager
   RemoveDbError(pog.QueryError)
 }
 
@@ -90,19 +90,19 @@ pub fn list_projects_for_user(
   |> Ok
 }
 
-pub fn is_project_admin(
+pub fn is_project_manager(
   db: pog.Connection,
   project_id: Int,
   user_id: Int,
 ) -> Result(Bool, pog.QueryError) {
-  use returned <- result.try(sql.project_members_is_admin(
+  use returned <- result.try(sql.project_members_is_manager(
     db,
     project_id,
     user_id,
   ))
 
   case returned.rows {
-    [row, ..] -> Ok(row.is_admin)
+    [row, ..] -> Ok(row.is_manager)
     [] -> Ok(False)
   }
 }
@@ -124,19 +124,19 @@ pub fn is_project_member(
   }
 }
 
-pub fn is_any_project_admin_in_org(
+pub fn is_any_project_manager_in_org(
   db: pog.Connection,
   user_id: Int,
   org_id: Int,
 ) -> Result(Bool, pog.QueryError) {
-  use returned <- result.try(sql.project_members_is_any_admin_in_org(
+  use returned <- result.try(sql.project_members_is_any_manager_in_org(
     db,
     user_id,
     org_id,
   ))
 
   case returned.rows {
-    [row, ..] -> Ok(row.is_admin)
+    [row, ..] -> Ok(row.is_manager)
     [] -> Ok(False)
   }
 }
@@ -185,7 +185,7 @@ pub fn add_member(
 
 fn validate_role(role: String) -> Result(Nil, AddMemberError) {
   case role {
-    "admin" | "member" -> Ok(Nil)
+    "manager" | "member" -> Ok(Nil)
     _ -> Error(InvalidRole)
   }
 }
@@ -253,8 +253,8 @@ pub fn remove_member(
     Ok(pog.Returned(rows: [row, ..], ..)) -> {
       case row.target_role {
         "" -> Error(MembershipNotFound)
-        "admin" if row.admin_count == 1 && row.removed == False ->
-          Error(CannotRemoveLastAdmin)
+        "manager" if row.manager_count == 1 && row.removed == False ->
+          Error(CannotRemoveLastManager)
         _ ->
           case row.removed {
             True -> Ok(Nil)

@@ -102,7 +102,7 @@ fn bootstrap_register(
     let #(user_id, created_at) = user_row
 
     use _ <- result.try(
-      queries.insert_project_member(tx, project_id, user_id, "admin")
+      queries.insert_project_member(tx, project_id, user_id, "manager")
       |> result.map_error(auth_logic.DbError),
     )
 

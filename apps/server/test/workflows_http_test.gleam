@@ -2,6 +2,7 @@ import gleam/dynamic/decode
 import gleam/erlang/charlist
 import gleam/http
 import gleam/http/request
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/result
@@ -14,10 +15,12 @@ import wisp/simulate
 
 const secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
-pub fn workflows_org_crud_and_active_cascade_test() {
+pub fn workflows_project_crud_and_active_cascade_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
+
+  let project_id = get_default_project_id(db)
 
   let login_res = login_as(handler, "admin@example.com", "passwordpassword")
   let session = find_cookie_value(login_res.headers, "sb_session")
@@ -25,14 +28,17 @@ pub fn workflows_org_crud_and_active_cascade_test() {
 
   let create_res =
     handler(
-      simulate.request(http.Post, "/api/v1/workflows")
+      simulate.request(
+        http.Post,
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
+      )
       |> request.set_cookie("sb_session", session)
       |> request.set_cookie("sb_csrf", csrf)
       |> request.set_header("X-CSRF", csrf)
       |> simulate.json_body(
         json.object([
-          #("name", json.string("Org Workflow")),
-          #("description", json.string("Org desc")),
+          #("name", json.string("Project Workflow")),
+          #("description", json.string("Project desc")),
         ]),
       ),
     )
@@ -46,7 +52,7 @@ pub fn workflows_org_crud_and_active_cascade_test() {
     handler(
       simulate.request(
         http.Patch,
-        "/api/v1/workflows/" <> int_to_string(workflow_id),
+        "/api/v1/workflows/" <> int.to_string(workflow_id),
       )
       |> request.set_cookie("sb_session", session)
       |> request.set_cookie("sb_csrf", csrf)
@@ -63,20 +69,23 @@ pub fn workflows_org_crud_and_active_cascade_test() {
 
   let list_res =
     handler(
-      simulate.request(http.Get, "/api/v1/workflows")
+      simulate.request(
+        http.Get,
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
+      )
       |> request.set_cookie("sb_session", session)
       |> request.set_cookie("sb_csrf", csrf),
     )
 
   list_res.status |> should.equal(200)
   decode_workflow_names(simulate.read_body(list_res))
-  |> should.equal(["Org Workflow"])
+  |> should.equal(["Project Workflow"])
 
   let delete_res =
     handler(
       simulate.request(
         http.Delete,
-        "/api/v1/workflows/" <> int_to_string(workflow_id),
+        "/api/v1/workflows/" <> int.to_string(workflow_id),
       )
       |> request.set_cookie("sb_session", session)
       |> request.set_cookie("sb_csrf", csrf)
@@ -86,7 +95,7 @@ pub fn workflows_org_crud_and_active_cascade_test() {
   delete_res.status |> should.equal(204)
 }
 
-pub fn workflows_project_scope_requires_project_admin_test() {
+pub fn workflows_project_scope_requires_project_manager_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
@@ -126,7 +135,7 @@ pub fn workflows_project_scope_requires_project_admin_test() {
     handler(
       simulate.request(
         http.Get,
-        "/api/v1/projects/" <> int_to_string(project_id) <> "/workflows",
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
       )
       |> request.set_cookie("sb_session", member_session)
       |> request.set_cookie("sb_csrf", member_csrf),
@@ -138,7 +147,7 @@ pub fn workflows_project_scope_requires_project_admin_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/projects/" <> int_to_string(project_id) <> "/workflows",
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
       )
       |> request.set_cookie("sb_session", member_session)
       |> request.set_cookie("sb_csrf", member_csrf)
@@ -163,59 +172,72 @@ pub fn workflows_project_list_filters_scope_test() {
   let session = find_cookie_value(login_res.headers, "sb_session")
   let csrf = find_cookie_value(login_res.headers, "sb_csrf")
 
+  let default_project_id = get_default_project_id(db)
+
   create_project(handler, session, csrf, "Core")
-  let project_id =
+  let core_project_id =
     single_int(db, "select id from projects where name = 'Core'", [])
 
-  let _org_res =
-    handler(
-      simulate.request(http.Post, "/api/v1/workflows")
-      |> request.set_cookie("sb_session", session)
-      |> request.set_cookie("sb_csrf", csrf)
-      |> request.set_header("X-CSRF", csrf)
-      |> simulate.json_body(
-        json.object([
-          #("name", json.string("Org Workflow")),
-          #("description", json.string("Org desc")),
-        ]),
-      ),
-    )
-
-  let _project_res =
+  // Create workflow in default project
+  let _default_res =
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/projects/" <> int_to_string(project_id) <> "/workflows",
+        "/api/v1/projects/"
+          <> int.to_string(default_project_id)
+          <> "/workflows",
       )
       |> request.set_cookie("sb_session", session)
       |> request.set_cookie("sb_csrf", csrf)
       |> request.set_header("X-CSRF", csrf)
       |> simulate.json_body(
         json.object([
-          #("name", json.string("Proj Workflow")),
-          #("description", json.string("Proj desc")),
+          #("name", json.string("Default Workflow")),
+          #("description", json.string("Default desc")),
         ]),
       ),
     )
 
-  let list_project_res =
+  // Create workflow in Core project
+  let _core_res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/projects/" <> int.to_string(core_project_id) <> "/workflows",
+      )
+      |> request.set_cookie("sb_session", session)
+      |> request.set_cookie("sb_csrf", csrf)
+      |> request.set_header("X-CSRF", csrf)
+      |> simulate.json_body(
+        json.object([
+          #("name", json.string("Core Workflow")),
+          #("description", json.string("Core desc")),
+        ]),
+      ),
+    )
+
+  // List Core project workflows - should only show Core Workflow
+  let list_core_res =
     handler(
       simulate.request(
         http.Get,
-        "/api/v1/projects/" <> int_to_string(project_id) <> "/workflows",
+        "/api/v1/projects/" <> int.to_string(core_project_id) <> "/workflows",
       )
       |> request.set_cookie("sb_session", session)
       |> request.set_cookie("sb_csrf", csrf),
     )
 
-  list_project_res.status |> should.equal(200)
-  decode_workflow_names(simulate.read_body(list_project_res))
-  |> should.equal(["Proj Workflow"])
+  list_core_res.status |> should.equal(200)
+  decode_workflow_names(simulate.read_body(list_core_res))
+  |> should.equal(["Core Workflow"])
 }
 
-pub fn workflows_duplicate_name_is_rejected_test() {
+pub fn workflows_duplicate_name_in_same_project_is_rejected_test() {
   let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
+
+  let project_id = get_default_project_id(db)
 
   let login_res = login_as(handler, "admin@example.com", "passwordpassword")
   let session = find_cookie_value(login_res.headers, "sb_session")
@@ -223,7 +245,10 @@ pub fn workflows_duplicate_name_is_rejected_test() {
 
   let _first_res =
     handler(
-      simulate.request(http.Post, "/api/v1/workflows")
+      simulate.request(
+        http.Post,
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
+      )
       |> request.set_cookie("sb_session", session)
       |> request.set_cookie("sb_csrf", csrf)
       |> request.set_header("X-CSRF", csrf)
@@ -237,7 +262,10 @@ pub fn workflows_duplicate_name_is_rejected_test() {
 
   let dup_res =
     handler(
-      simulate.request(http.Post, "/api/v1/workflows")
+      simulate.request(
+        http.Post,
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
+      )
       |> request.set_cookie("sb_session", session)
       |> request.set_cookie("sb_csrf", csrf)
       |> request.set_header("X-CSRF", csrf)
@@ -254,7 +282,10 @@ pub fn workflows_duplicate_name_is_rejected_test() {
 
 pub fn workflows_invalid_payload_returns_400_test() {
   let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
+
+  let project_id = get_default_project_id(db)
 
   let login_res = login_as(handler, "admin@example.com", "passwordpassword")
   let session = find_cookie_value(login_res.headers, "sb_session")
@@ -262,7 +293,10 @@ pub fn workflows_invalid_payload_returns_400_test() {
 
   let bad_res =
     handler(
-      simulate.request(http.Post, "/api/v1/workflows")
+      simulate.request(
+        http.Post,
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/workflows",
+      )
       |> request.set_cookie("sb_session", session)
       |> request.set_cookie("sb_csrf", csrf)
       |> request.set_header("X-CSRF", csrf)
@@ -370,7 +404,7 @@ fn add_member(
   let req =
     simulate.request(
       http.Post,
-      "/api/v1/projects/" <> int_to_string(project_id) <> "/members",
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/members",
     )
     |> request.set_cookie("sb_session", session)
     |> request.set_cookie("sb_csrf", csrf)
@@ -525,6 +559,10 @@ fn insert_invite_link_active(db: pog.Connection, token: String, email: String) {
   Nil
 }
 
+fn get_default_project_id(db: pog.Connection) -> Int {
+  single_int(db, "select id from projects where org_id = 1 limit 1", [])
+}
+
 fn single_int(db: pog.Connection, sql: String, params: List(pog.Value)) -> Int {
   let decoder = {
     use value <- decode.field(0, decode.int)
@@ -544,13 +582,6 @@ fn single_int(db: pog.Connection, sql: String, params: List(pog.Value)) -> Int {
 
   value
 }
-
-fn int_to_string(value: Int) -> String {
-  value |> int_to_string_unsafe
-}
-
-@external(erlang, "erlang", "integer_to_binary")
-fn int_to_string_unsafe(value: Int) -> String
 
 fn getenv(key: String, default: String) -> String {
   let key_charlist = charlist.from_string(key)

@@ -1,12 +1,10 @@
 ////
 //// HTTP handlers for workflows CRUD endpoints.
 
-import domain/org_role.{Admin}
 import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
-import gleam/option.{type Option, None, Some}
 import helpers/json as json_helpers
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
@@ -19,14 +17,6 @@ import wisp
 // =============================================================================
 // Routing
 // =============================================================================
-
-pub fn handle_org_workflows(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
-  case req.method {
-    http.Get -> handle_list_org(req, ctx)
-    http.Post -> handle_create_org(req, ctx)
-    _ -> wisp.method_not_allowed([http.Get, http.Post])
-  }
-}
 
 pub fn handle_project_workflows(
   req: wisp.Request,
@@ -56,32 +46,6 @@ pub fn handle_workflow(
 // Handlers
 // =============================================================================
 
-fn handle_list_org(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
-  use <- wisp.require_method(req, http.Get)
-
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) -> {
-      let auth.Ctx(db: db, ..) = ctx
-
-      case user.org_role {
-        Admin ->
-          case workflows_db.list_org_workflows(db, user.org_id) {
-            Ok(workflows) ->
-              api.ok(
-                json.object([
-                  #("workflows", json.array(workflows, of: workflow_json)),
-                ]),
-              )
-            Error(_) -> api.error(500, "INTERNAL", "Database error")
-          }
-        _ -> api.error(403, "FORBIDDEN", "Forbidden")
-      }
-    }
-  }
-}
-
 fn handle_list_project(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -99,7 +63,7 @@ fn handle_list_project(
         Ok(project_id) -> {
           let auth.Ctx(db: db, ..) = ctx
 
-          case projects_db.is_project_admin(db, project_id, user.id) {
+          case projects_db.is_project_manager(db, project_id, user.id) {
             Ok(True) ->
               case workflows_db.list_project_workflows(db, project_id) {
                 Ok(workflows) ->
@@ -119,18 +83,6 @@ fn handle_list_project(
   }
 }
 
-fn handle_create_org(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) ->
-      case user.org_role {
-        Admin -> create_workflow(req, ctx, user.org_id, None, user.id)
-        _ -> api.error(403, "FORBIDDEN", "Forbidden")
-      }
-  }
-}
-
 fn handle_create_project(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -146,9 +98,9 @@ fn handle_create_project(
         Ok(project_id) -> {
           let auth.Ctx(db: db, ..) = ctx
 
-          case projects_db.is_project_admin(db, project_id, user.id) {
+          case projects_db.is_project_manager(db, project_id, user.id) {
             Ok(True) ->
-              create_workflow(req, ctx, user.org_id, Some(project_id), user.id)
+              create_workflow(req, ctx, user.org_id, project_id, user.id)
             Ok(False) -> api.error(403, "FORBIDDEN", "Forbidden")
             Error(_) -> api.error(500, "INTERNAL", "Database error")
           }
@@ -175,7 +127,7 @@ fn handle_update(
           case workflows_db.get_workflow(db, workflow_id) {
             Ok(workflow) ->
               case
-                authorization.require_scoped_admin(
+                authorization.require_project_manager(
                   db,
                   user,
                   workflow.org_id,
@@ -217,7 +169,7 @@ fn handle_delete(
           case workflows_db.get_workflow(db, workflow_id) {
             Ok(workflow) ->
               case
-                authorization.require_scoped_admin(
+                authorization.require_project_manager(
                   db,
                   user,
                   workflow.org_id,
@@ -271,7 +223,7 @@ fn create_workflow(
   req: wisp.Request,
   ctx: auth.Ctx,
   org_id: Int,
-  project_id: Option(Int),
+  project_id: Int,
   user_id: Int,
 ) -> wisp.Response {
   case csrf.require_double_submit(req) {
@@ -326,7 +278,7 @@ fn update_workflow(
   ctx: auth.Ctx,
   workflow_id: Int,
   org_id: Int,
-  project_id: Option(Int),
+  project_id: Int,
 ) -> wisp.Response {
   case csrf.require_double_submit(req) {
     Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
@@ -484,7 +436,7 @@ fn workflow_json(workflow: workflows_db.Workflow) -> json.Json {
   json.object([
     #("id", json.int(id)),
     #("org_id", json.int(org_id)),
-    #("project_id", json_helpers.option_int_json(project_id)),
+    #("project_id", json.int(project_id)),
     #("name", json.string(name)),
     #("description", json_helpers.option_string_json(description)),
     #("active", json.bool(active)),

@@ -338,10 +338,10 @@ pub fn is_project_member(db: pog.Connection, user_id: Int, project_id: Int) -> B
   }
 }
 
-/// Check if user is an admin of the given project.
-pub fn is_project_admin(db: pog.Connection, user_id: Int, project_id: Int) -> Bool {
-  case sql.project_members_is_admin(db, project_id, user_id) {
-    Ok(pog.Returned(rows: [row, ..], ..)) -> row.is_admin
+/// Check if user is a manager of the given project.
+pub fn is_project_manager(db: pog.Connection, user_id: Int, project_id: Int) -> Bool {
+  case sql.project_members_is_manager(db, project_id, user_id) {
+    Ok(pog.Returned(rows: [row, ..], ..)) -> row.is_manager
     _ -> False
   }
 }

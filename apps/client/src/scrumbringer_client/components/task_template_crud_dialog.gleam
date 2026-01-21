@@ -407,10 +407,11 @@ fn handle_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
           )
         name, option.Some(type_id) -> {
           let priority = int.parse(model.create_priority) |> result.unwrap(3)
-          #(
-            Model(..model, create_in_flight: True, create_error: option.None),
-            case model.project_id {
-              option.Some(project_id) ->
+          // Templates are now project-scoped only
+          case model.project_id {
+            option.Some(project_id) ->
+              #(
+                Model(..model, create_in_flight: True, create_error: option.None),
                 api_workflows.create_project_template(
                   project_id,
                   name,
@@ -418,17 +419,14 @@ fn handle_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
                   type_id,
                   priority,
                   CreateResult,
-                )
-              option.None ->
-                api_workflows.create_org_template(
-                  name,
-                  model.create_description,
-                  type_id,
-                  priority,
-                  CreateResult,
-                )
-            },
-          )
+                ),
+              )
+            option.None ->
+              #(
+                Model(..model, create_error: option.Some(t(model.locale, i18n_text.SelectProjectFirst))),
+                effect.none(),
+              )
+          }
         }
       }
   }

@@ -3,11 +3,13 @@
 //// Provides response helpers, cookie management, and common constants
 //// used across all API endpoints.
 
+import envoy
 import gleam/http
 import gleam/http/cookie
 import gleam/http/response
 import gleam/json
 import gleam/option
+import gleam/result
 import wisp
 
 /// Cookie name for session JWT.
@@ -80,15 +82,23 @@ pub fn is_mutating_method(method: http.Method) -> Bool {
   }
 }
 
+/// Check if we should use secure cookies (default: True).
+/// Set SB_COOKIE_SECURE=false to disable for HTTP development.
+fn is_cookie_secure() -> Bool {
+  envoy.get("SB_COOKIE_SECURE")
+  |> result.map(fn(v) { v != "false" && v != "0" })
+  |> result.unwrap(True)
+}
+
 /// Cookie attributes for the session cookie (HttpOnly, Secure, Strict).
 pub fn session_cookie_attributes() -> cookie.Attributes {
   cookie.Attributes(
     max_age: option.None,
     domain: option.None,
     path: option.Some("/"),
-    secure: True,
+    secure: is_cookie_secure(),
     http_only: True,
-    same_site: option.Some(cookie.Strict),
+    same_site: option.Some(cookie.Lax),
   )
 }
 
@@ -98,8 +108,8 @@ pub fn csrf_cookie_attributes() -> cookie.Attributes {
     max_age: option.None,
     domain: option.None,
     path: option.Some("/"),
-    secure: True,
+    secure: is_cookie_secure(),
     http_only: False,
-    same_site: option.Some(cookie.Strict),
+    same_site: option.Some(cookie.Lax),
   )
 }

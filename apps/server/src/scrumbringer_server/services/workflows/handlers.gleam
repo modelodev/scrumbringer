@@ -126,13 +126,13 @@ fn handle_create_task_type(
   db: pog.Connection,
   project_id: Int,
   user_id: Int,
-  org_id: Int,
+  _org_id: Int,
   name: String,
   icon: String,
   capability_id: Option(Int),
 ) -> Result(Response, Error) {
   use _ <- authorization.require_project_admin(db, project_id, user_id)
-  use _ <- validation.validate_capability_in_org(db, capability_id, org_id)
+  use _ <- validation.validate_capability_in_project(db, capability_id, project_id)
 
   case
     task_types_db.create_task_type(db, project_id, name, icon, capability_id)

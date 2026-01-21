@@ -20,9 +20,9 @@ import gleam/option.{type Option, None, Some}
 import gleam/string
 import pog
 import scrumbringer_server/http/api
+import scrumbringer_server/services/capabilities_db
 import scrumbringer_server/services/projects_db
 import scrumbringer_server/services/task_types_db
-import scrumbringer_server/sql
 import wisp
 
 // =============================================================================
@@ -139,36 +139,29 @@ pub fn validate_type_update(
 // Capability Validation
 // =============================================================================
 
-/// Validate capability belongs to organization.
+/// Validate capability belongs to project.
 ///
 /// ## Example
 ///
 /// ```gleam
-/// case validate_capability_in_org(db, Some(5), org_id) {
+/// case validate_capability_in_project(db, Some(5), project_id) {
 ///   Ok(Nil) -> // capability is valid
 ///   Error(response) -> response
 /// }
 /// ```
-pub fn validate_capability_in_org(
+pub fn validate_capability_in_project(
   db: pog.Connection,
   capability_id: Option(Int),
-  org_id: Int,
+  project_id: Int,
 ) -> Result(Nil, wisp.Response) {
   case capability_id {
     None -> Ok(Nil)
 
     Some(id) ->
-      case sql.capabilities_is_in_org(db, id, org_id) {
-        Ok(pog.Returned(rows: [row, ..], ..)) ->
-          case row.ok {
-            True -> Ok(Nil)
-            False ->
-              Error(api.error(422, "VALIDATION_ERROR", "Invalid capability_id"))
-          }
-
-        Ok(pog.Returned(rows: [], ..)) ->
+      case capabilities_db.capability_is_in_project(db, id, project_id) {
+        Ok(True) -> Ok(Nil)
+        Ok(False) ->
           Error(api.error(422, "VALIDATION_ERROR", "Invalid capability_id"))
-
         Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
       }
   }
@@ -215,7 +208,7 @@ pub fn require_project_admin(
   project_id: Int,
   user_id: Int,
 ) -> Result(Nil, wisp.Response) {
-  case projects_db.is_project_admin(db, project_id, user_id) {
+  case projects_db.is_project_manager(db, project_id, user_id) {
     Ok(True) -> Ok(Nil)
     Ok(False) -> Error(api.error(403, "FORBIDDEN", "Forbidden"))
     Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))

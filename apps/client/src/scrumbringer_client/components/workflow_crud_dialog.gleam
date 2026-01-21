@@ -340,26 +340,25 @@ fn handle_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
             effect.none(),
           )
         name ->
-          #(
-            Model(..model, create_in_flight: True, create_error: option.None),
-            case model.project_id {
-              option.Some(project_id) ->
+          // Workflows are now project-scoped only
+          case model.project_id {
+            option.Some(project_id) ->
+              #(
+                Model(..model, create_in_flight: True, create_error: option.None),
                 api_workflows.create_project_workflow(
                   project_id,
                   name,
                   model.create_description,
                   model.create_active,
                   CreateResult,
-                )
-              option.None ->
-                api_workflows.create_org_workflow(
-                  name,
-                  model.create_description,
-                  model.create_active,
-                  CreateResult,
-                )
-            },
-          )
+                ),
+              )
+            option.None ->
+              #(
+                Model(..model, create_error: option.Some(t(model.locale, i18n_text.SelectProjectFirst))),
+                effect.none(),
+              )
+          }
       }
   }
 }

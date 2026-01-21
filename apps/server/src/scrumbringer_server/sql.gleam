@@ -5,7 +5,6 @@
 ////
 
 import gleam/dynamic/decode
-import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
 import pog
 
@@ -16,7 +15,12 @@ import pog
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub type CapabilitiesCreateRow {
-  CapabilitiesCreateRow(id: Int, org_id: Int, name: String, created_at: String)
+  CapabilitiesCreateRow(
+    id: Int,
+    project_id: Int,
+    name: String,
+    created_at: String,
+  )
 }
 
 /// name: create_capability
@@ -31,18 +35,18 @@ pub fn capabilities_create(
 ) -> Result(pog.Returned(CapabilitiesCreateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
-    use org_id <- decode.field(1, decode.int)
+    use project_id <- decode.field(1, decode.int)
     use name <- decode.field(2, decode.string)
     use created_at <- decode.field(3, decode.string)
-    decode.success(CapabilitiesCreateRow(id:, org_id:, name:, created_at:))
+    decode.success(CapabilitiesCreateRow(id:, project_id:, name:, created_at:))
   }
 
   "-- name: create_capability
-insert into capabilities (org_id, name)
+insert into capabilities (project_id, name)
 values ($1, $2)
 returning
   id,
-  org_id,
+  project_id,
   name,
   to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
 "
@@ -53,37 +57,74 @@ returning
   |> pog.execute(db)
 }
 
-/// A row you get from running the `capabilities_is_in_org` query
-/// defined in `./src/scrumbringer_server/sql/capabilities_is_in_org.sql`.
+/// A row you get from running the `capabilities_delete` query
+/// defined in `./src/scrumbringer_server/sql/capabilities_delete.sql`.
 ///
 /// > 🐿️ This type definition was generated automatically using v4.6.0 of the
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub type CapabilitiesIsInOrgRow {
-  CapabilitiesIsInOrgRow(ok: Bool)
+pub type CapabilitiesDeleteRow {
+  CapabilitiesDeleteRow(id: Int)
 }
 
-/// name: capability_is_in_org
+/// name: delete_capability
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn capabilities_is_in_org(
+pub fn capabilities_delete(
   db: pog.Connection,
   arg_1: Int,
   arg_2: Int,
-) -> Result(pog.Returned(CapabilitiesIsInOrgRow), pog.QueryError) {
+) -> Result(pog.Returned(CapabilitiesDeleteRow), pog.QueryError) {
   let decoder = {
-    use ok <- decode.field(0, decode.bool)
-    decode.success(CapabilitiesIsInOrgRow(ok:))
+    use id <- decode.field(0, decode.int)
+    decode.success(CapabilitiesDeleteRow(id:))
   }
 
-  "-- name: capability_is_in_org
+  "-- name: delete_capability
+delete from capabilities
+where id = $1 and project_id = $2
+returning id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `capabilities_is_in_project` query
+/// defined in `./src/scrumbringer_server/sql/capabilities_is_in_project.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type CapabilitiesIsInProjectRow {
+  CapabilitiesIsInProjectRow(ok: Bool)
+}
+
+/// name: capability_is_in_project
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn capabilities_is_in_project(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(CapabilitiesIsInProjectRow), pog.QueryError) {
+  let decoder = {
+    use ok <- decode.field(0, decode.bool)
+    decode.success(CapabilitiesIsInProjectRow(ok:))
+  }
+
+  "-- name: capability_is_in_project
 select exists(
   select 1
   from capabilities
   where id = $1
-    and org_id = $2
+    and project_id = $2
 ) as ok;
 "
   |> pog.query
@@ -93,41 +134,51 @@ select exists(
   |> pog.execute(db)
 }
 
-/// A row you get from running the `capabilities_list` query
-/// defined in `./src/scrumbringer_server/sql/capabilities_list.sql`.
+/// A row you get from running the `capabilities_list_for_project` query
+/// defined in `./src/scrumbringer_server/sql/capabilities_list_for_project.sql`.
 ///
 /// > 🐿️ This type definition was generated automatically using v4.6.0 of the
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub type CapabilitiesListRow {
-  CapabilitiesListRow(id: Int, org_id: Int, name: String, created_at: String)
+pub type CapabilitiesListForProjectRow {
+  CapabilitiesListForProjectRow(
+    id: Int,
+    project_id: Int,
+    name: String,
+    created_at: String,
+  )
 }
 
-/// name: list_capabilities_for_org
+/// name: list_capabilities_for_project
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn capabilities_list(
+pub fn capabilities_list_for_project(
   db: pog.Connection,
   arg_1: Int,
-) -> Result(pog.Returned(CapabilitiesListRow), pog.QueryError) {
+) -> Result(pog.Returned(CapabilitiesListForProjectRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
-    use org_id <- decode.field(1, decode.int)
+    use project_id <- decode.field(1, decode.int)
     use name <- decode.field(2, decode.string)
     use created_at <- decode.field(3, decode.string)
-    decode.success(CapabilitiesListRow(id:, org_id:, name:, created_at:))
+    decode.success(CapabilitiesListForProjectRow(
+      id:,
+      project_id:,
+      name:,
+      created_at:,
+    ))
   }
 
-  "-- name: list_capabilities_for_org
+  "-- name: list_capabilities_for_project
 select
   id,
-  org_id,
+  project_id,
   name,
   to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
 from capabilities
-where org_id = $1
+where project_id = $1
 order by name asc;
 "
   |> pog.query
@@ -1376,6 +1427,187 @@ select 1 as ok;
   |> pog.execute(db)
 }
 
+/// A row you get from running the `project_member_capabilities_delete` query
+/// defined in `./src/scrumbringer_server/sql/project_member_capabilities_delete.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type ProjectMemberCapabilitiesDeleteRow {
+  ProjectMemberCapabilitiesDeleteRow(project_id: Int)
+}
+
+/// name: delete_project_member_capability
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn project_member_capabilities_delete(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Int,
+) -> Result(pog.Returned(ProjectMemberCapabilitiesDeleteRow), pog.QueryError) {
+  let decoder = {
+    use project_id <- decode.field(0, decode.int)
+    decode.success(ProjectMemberCapabilitiesDeleteRow(project_id:))
+  }
+
+  "-- name: delete_project_member_capability
+delete from project_member_capabilities
+where project_id = $1 and user_id = $2 and capability_id = $3
+returning project_id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `project_member_capabilities_delete_all` query
+/// defined in `./src/scrumbringer_server/sql/project_member_capabilities_delete_all.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type ProjectMemberCapabilitiesDeleteAllRow {
+  ProjectMemberCapabilitiesDeleteAllRow(project_id: Int)
+}
+
+/// name: delete_all_project_member_capabilities
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn project_member_capabilities_delete_all(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(ProjectMemberCapabilitiesDeleteAllRow), pog.QueryError) {
+  let decoder = {
+    use project_id <- decode.field(0, decode.int)
+    decode.success(ProjectMemberCapabilitiesDeleteAllRow(project_id:))
+  }
+
+  "-- name: delete_all_project_member_capabilities
+delete from project_member_capabilities
+where project_id = $1 and user_id = $2
+returning project_id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `project_member_capabilities_insert` query
+/// defined in `./src/scrumbringer_server/sql/project_member_capabilities_insert.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type ProjectMemberCapabilitiesInsertRow {
+  ProjectMemberCapabilitiesInsertRow(
+    project_id: Int,
+    user_id: Int,
+    capability_id: Int,
+  )
+}
+
+/// name: insert_project_member_capability
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn project_member_capabilities_insert(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Int,
+) -> Result(pog.Returned(ProjectMemberCapabilitiesInsertRow), pog.QueryError) {
+  let decoder = {
+    use project_id <- decode.field(0, decode.int)
+    use user_id <- decode.field(1, decode.int)
+    use capability_id <- decode.field(2, decode.int)
+    decode.success(ProjectMemberCapabilitiesInsertRow(
+      project_id:,
+      user_id:,
+      capability_id:,
+    ))
+  }
+
+  "-- name: insert_project_member_capability
+insert into project_member_capabilities (project_id, user_id, capability_id)
+values ($1, $2, $3)
+returning project_id, user_id, capability_id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `project_member_capabilities_list` query
+/// defined in `./src/scrumbringer_server/sql/project_member_capabilities_list.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type ProjectMemberCapabilitiesListRow {
+  ProjectMemberCapabilitiesListRow(
+    project_id: Int,
+    user_id: Int,
+    capability_id: Int,
+    capability_name: String,
+  )
+}
+
+/// name: list_project_member_capabilities
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn project_member_capabilities_list(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(ProjectMemberCapabilitiesListRow), pog.QueryError) {
+  let decoder = {
+    use project_id <- decode.field(0, decode.int)
+    use user_id <- decode.field(1, decode.int)
+    use capability_id <- decode.field(2, decode.int)
+    use capability_name <- decode.field(3, decode.string)
+    decode.success(ProjectMemberCapabilitiesListRow(
+      project_id:,
+      user_id:,
+      capability_id:,
+      capability_name:,
+    ))
+  }
+
+  "-- name: list_project_member_capabilities
+select
+  pmc.project_id,
+  pmc.user_id,
+  pmc.capability_id,
+  c.name as capability_name
+from project_member_capabilities pmc
+join capabilities c on c.id = pmc.capability_id
+where pmc.project_id = $1 and pmc.user_id = $2
+order by c.name asc;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `project_members_insert` query
 /// defined in `./src/scrumbringer_server/sql/project_members_insert.sql`.
 ///
@@ -1432,39 +1664,40 @@ returning
   |> pog.execute(db)
 }
 
-/// A row you get from running the `project_members_is_admin` query
-/// defined in `./src/scrumbringer_server/sql/project_members_is_admin.sql`.
+/// A row you get from running the `project_members_is_any_manager_in_org` query
+/// defined in `./src/scrumbringer_server/sql/project_members_is_any_manager_in_org.sql`.
 ///
 /// > 🐿️ This type definition was generated automatically using v4.6.0 of the
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub type ProjectMembersIsAdminRow {
-  ProjectMembersIsAdminRow(is_admin: Bool)
+pub type ProjectMembersIsAnyManagerInOrgRow {
+  ProjectMembersIsAnyManagerInOrgRow(is_manager: Bool)
 }
 
-/// name: is_project_admin
+/// name: is_any_project_manager_in_org
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn project_members_is_admin(
+pub fn project_members_is_any_manager_in_org(
   db: pog.Connection,
   arg_1: Int,
   arg_2: Int,
-) -> Result(pog.Returned(ProjectMembersIsAdminRow), pog.QueryError) {
+) -> Result(pog.Returned(ProjectMembersIsAnyManagerInOrgRow), pog.QueryError) {
   let decoder = {
-    use is_admin <- decode.field(0, decode.bool)
-    decode.success(ProjectMembersIsAdminRow(is_admin:))
+    use is_manager <- decode.field(0, decode.bool)
+    decode.success(ProjectMembersIsAnyManagerInOrgRow(is_manager:))
   }
 
-  "-- name: is_project_admin
+  "-- name: is_any_project_manager_in_org
 select exists(
   select 1
-  from project_members
-  where project_id = $1
-    and user_id = $2
-    and role = 'admin'
-) as is_admin;
+  from project_members pm
+  join projects p on p.id = pm.project_id
+  where pm.user_id = $1
+    and pm.role = 'manager'
+    and p.org_id = $2
+) as is_manager;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -1473,40 +1706,39 @@ select exists(
   |> pog.execute(db)
 }
 
-/// A row you get from running the `project_members_is_any_admin_in_org` query
-/// defined in `./src/scrumbringer_server/sql/project_members_is_any_admin_in_org.sql`.
+/// A row you get from running the `project_members_is_manager` query
+/// defined in `./src/scrumbringer_server/sql/project_members_is_manager.sql`.
 ///
 /// > 🐿️ This type definition was generated automatically using v4.6.0 of the
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub type ProjectMembersIsAnyAdminInOrgRow {
-  ProjectMembersIsAnyAdminInOrgRow(is_admin: Bool)
+pub type ProjectMembersIsManagerRow {
+  ProjectMembersIsManagerRow(is_manager: Bool)
 }
 
-/// name: is_any_project_admin_in_org
+/// name: is_project_manager
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn project_members_is_any_admin_in_org(
+pub fn project_members_is_manager(
   db: pog.Connection,
   arg_1: Int,
   arg_2: Int,
-) -> Result(pog.Returned(ProjectMembersIsAnyAdminInOrgRow), pog.QueryError) {
+) -> Result(pog.Returned(ProjectMembersIsManagerRow), pog.QueryError) {
   let decoder = {
-    use is_admin <- decode.field(0, decode.bool)
-    decode.success(ProjectMembersIsAnyAdminInOrgRow(is_admin:))
+    use is_manager <- decode.field(0, decode.bool)
+    decode.success(ProjectMembersIsManagerRow(is_manager:))
   }
 
-  "-- name: is_any_project_admin_in_org
+  "-- name: is_project_manager
 select exists(
   select 1
-  from project_members pm
-  join projects p on p.id = pm.project_id
-  where pm.user_id = $1
-    and pm.role = 'admin'
-    and p.org_id = $2
-) as is_admin;
+  from project_members
+  where project_id = $1
+    and user_id = $2
+    and role = 'manager'
+) as is_manager;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -1615,7 +1847,11 @@ order by user_id asc;
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub type ProjectMembersRemoveRow {
-  ProjectMembersRemoveRow(target_role: String, admin_count: Int, removed: Bool)
+  ProjectMembersRemoveRow(
+    target_role: String,
+    manager_count: Int,
+    removed: Bool,
+  )
 }
 
 /// name: remove_project_member
@@ -1630,9 +1866,13 @@ pub fn project_members_remove(
 ) -> Result(pog.Returned(ProjectMembersRemoveRow), pog.QueryError) {
   let decoder = {
     use target_role <- decode.field(0, decode.string)
-    use admin_count <- decode.field(1, decode.int)
+    use manager_count <- decode.field(1, decode.int)
     use removed <- decode.field(2, decode.bool)
-    decode.success(ProjectMembersRemoveRow(target_role:, admin_count:, removed:))
+    decode.success(ProjectMembersRemoveRow(
+      target_role:,
+      manager_count:,
+      removed:,
+    ))
   }
 
   "-- name: remove_project_member
@@ -1642,24 +1882,24 @@ with
     from project_members
     where project_id = $1
       and user_id = $2
-  ), admin_count as (
+  ), manager_count as (
     select count(*)::int as count
     from project_members
     where project_id = $1
-      and role = 'admin'
+      and role = 'manager'
   ), deleted as (
     delete from project_members
     where project_id = $1
       and user_id = $2
       and not (
-        (select role from target) = 'admin'
-        and (select count from admin_count) = 1
+        (select role from target) = 'manager'
+        and (select count from manager_count) = 1
       )
     returning 1 as ok
   )
 select
   coalesce((select role from target), '') as target_role,
-  (select count from admin_count) as admin_count,
+  (select count from manager_count) as manager_count,
   exists(select 1 from deleted) as removed;
 "
   |> pog.query
@@ -1686,7 +1926,7 @@ pub type ProjectsCreateRow {
 }
 
 /// name: create_project
-/// Create a project and add the creator as an admin member.
+/// Create a project and add the creator as a manager member.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -1707,14 +1947,14 @@ pub fn projects_create(
   }
 
   "-- name: create_project
--- Create a project and add the creator as an admin member.
+-- Create a project and add the creator as a manager member.
 with new_project as (
   insert into projects (org_id, name)
   values ($1, $2)
   returning id, org_id, name, created_at
 ), membership as (
   insert into project_members (project_id, user_id, role)
-  select new_project.id, $3, 'admin'
+  select new_project.id, $3, 'manager'
   from new_project
 )
 select
@@ -1722,7 +1962,7 @@ select
   new_project.org_id,
   new_project.name,
   to_char(new_project.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
-  'admin' as my_role
+  'manager' as my_role
 from new_project;
 "
   |> pog.query
@@ -3460,7 +3700,7 @@ pub type TaskTemplatesCreateRow {
   TaskTemplatesCreateRow(
     id: Int,
     org_id: Int,
-    project_id: Option(Int),
+    project_id: Int,
     name: String,
     description: String,
     type_id: Int,
@@ -3489,7 +3729,7 @@ pub fn task_templates_create(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use org_id <- decode.field(1, decode.int)
-    use project_id <- decode.field(2, decode.optional(decode.int))
+    use project_id <- decode.field(2, decode.int)
     use name <- decode.field(3, decode.string)
     use description <- decode.field(4, decode.string)
     use type_id <- decode.field(5, decode.int)
@@ -3845,7 +4085,7 @@ pub type TaskTemplatesUpdateRow {
   TaskTemplatesUpdateRow(
     id: Int,
     org_id: Int,
-    project_id: Option(Int),
+    project_id: Int,
     name: String,
     description: String,
     type_id: Int,
@@ -3874,7 +4114,7 @@ pub fn task_templates_update(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use org_id <- decode.field(1, decode.int)
-    use project_id <- decode.field(2, decode.optional(decode.int))
+    use project_id <- decode.field(2, decode.int)
     use name <- decode.field(3, decode.string)
     use description <- decode.field(4, decode.string)
     use type_id <- decode.field(5, decode.int)
@@ -5175,120 +5415,6 @@ join task_types tt on tt.id = updated.type_id;
   |> pog.execute(db)
 }
 
-/// A row you get from running the `user_capabilities_delete_all` query
-/// defined in `./src/scrumbringer_server/sql/user_capabilities_delete_all.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub type UserCapabilitiesDeleteAllRow {
-  UserCapabilitiesDeleteAllRow(user_id: Int)
-}
-
-/// name: delete_user_capabilities_for_user
-///
-/// > 🐿️ This function was generated automatically using v4.6.0 of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub fn user_capabilities_delete_all(
-  db: pog.Connection,
-  arg_1: Int,
-) -> Result(pog.Returned(UserCapabilitiesDeleteAllRow), pog.QueryError) {
-  let decoder = {
-    use user_id <- decode.field(0, decode.int)
-    decode.success(UserCapabilitiesDeleteAllRow(user_id:))
-  }
-
-  "-- name: delete_user_capabilities_for_user
-delete from user_capabilities
-where user_id = $1
-returning user_id;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(arg_1))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
-/// A row you get from running the `user_capabilities_insert` query
-/// defined in `./src/scrumbringer_server/sql/user_capabilities_insert.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub type UserCapabilitiesInsertRow {
-  UserCapabilitiesInsertRow(user_id: Int, capability_id: Int)
-}
-
-/// name: insert_user_capability
-///
-/// > 🐿️ This function was generated automatically using v4.6.0 of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub fn user_capabilities_insert(
-  db: pog.Connection,
-  arg_1: Int,
-  arg_2: Int,
-) -> Result(pog.Returned(UserCapabilitiesInsertRow), pog.QueryError) {
-  let decoder = {
-    use user_id <- decode.field(0, decode.int)
-    use capability_id <- decode.field(1, decode.int)
-    decode.success(UserCapabilitiesInsertRow(user_id:, capability_id:))
-  }
-
-  "-- name: insert_user_capability
-insert into user_capabilities (user_id, capability_id)
-values ($1, $2)
-returning user_id, capability_id;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(arg_1))
-  |> pog.parameter(pog.int(arg_2))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
-/// A row you get from running the `user_capabilities_list` query
-/// defined in `./src/scrumbringer_server/sql/user_capabilities_list.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub type UserCapabilitiesListRow {
-  UserCapabilitiesListRow(capability_id: Int)
-}
-
-/// name: list_user_capability_ids
-///
-/// > 🐿️ This function was generated automatically using v4.6.0 of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub fn user_capabilities_list(
-  db: pog.Connection,
-  arg_1: Int,
-  arg_2: Int,
-) -> Result(pog.Returned(UserCapabilitiesListRow), pog.QueryError) {
-  let decoder = {
-    use capability_id <- decode.field(0, decode.int)
-    decode.success(UserCapabilitiesListRow(capability_id:))
-  }
-
-  "-- name: list_user_capability_ids
-select
-  uc.capability_id
-from user_capabilities uc
-join capabilities c on c.id = uc.capability_id
-where uc.user_id = $1
-  and c.org_id = $2
-order by uc.capability_id asc;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(arg_1))
-  |> pog.parameter(pog.int(arg_2))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
 /// A row you get from running the `users_org_id` query
 /// defined in `./src/scrumbringer_server/sql/users_org_id.sql`.
 ///
@@ -5334,7 +5460,7 @@ pub type WorkflowsCreateRow {
   WorkflowsCreateRow(
     id: Int,
     org_id: Int,
-    project_id: Option(Int),
+    project_id: Int,
     name: String,
     description: String,
     active: Bool,
@@ -5360,7 +5486,7 @@ pub fn workflows_create(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use org_id <- decode.field(1, decode.int)
-    use project_id <- decode.field(2, decode.optional(decode.int))
+    use project_id <- decode.field(2, decode.int)
     use name <- decode.field(3, decode.string)
     use description <- decode.field(4, decode.string)
     use active <- decode.field(5, decode.bool)
@@ -5532,85 +5658,6 @@ WHERE w.id = $1;
   |> pog.execute(db)
 }
 
-/// A row you get from running the `workflows_list_for_org` query
-/// defined in `./src/scrumbringer_server/sql/workflows_list_for_org.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub type WorkflowsListForOrgRow {
-  WorkflowsListForOrgRow(
-    id: Int,
-    org_id: Int,
-    project_id: Int,
-    name: String,
-    description: String,
-    active: Bool,
-    created_by: Int,
-    created_at: String,
-    rule_count: Int,
-  )
-}
-
-/// name: list_workflows_for_org
-///
-/// > 🐿️ This function was generated automatically using v4.6.0 of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
-pub fn workflows_list_for_org(
-  db: pog.Connection,
-  arg_1: Int,
-) -> Result(pog.Returned(WorkflowsListForOrgRow), pog.QueryError) {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    use org_id <- decode.field(1, decode.int)
-    use project_id <- decode.field(2, decode.int)
-    use name <- decode.field(3, decode.string)
-    use description <- decode.field(4, decode.string)
-    use active <- decode.field(5, decode.bool)
-    use created_by <- decode.field(6, decode.int)
-    use created_at <- decode.field(7, decode.string)
-    use rule_count <- decode.field(8, decode.int)
-    decode.success(WorkflowsListForOrgRow(
-      id:,
-      org_id:,
-      project_id:,
-      name:,
-      description:,
-      active:,
-      created_by:,
-      created_at:,
-      rule_count:,
-    ))
-  }
-
-  "-- name: list_workflows_for_org
-SELECT
-  w.id,
-  w.org_id,
-  coalesce(w.project_id, 0) as project_id,
-  w.name,
-  coalesce(w.description, '') as description,
-  w.active,
-  w.created_by,
-  to_char(w.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
-  coalesce(r.rule_count, 0) as rule_count
-FROM workflows w
-LEFT JOIN (
-  SELECT workflow_id, count(*)::int as rule_count
-  FROM rules
-  GROUP BY workflow_id
-) r ON r.workflow_id = w.id
-WHERE w.org_id = $1
-  AND w.project_id is null
-ORDER BY w.created_at DESC;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(arg_1))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
 /// A row you get from running the `workflows_list_for_project` query
 /// defined in `./src/scrumbringer_server/sql/workflows_list_for_project.sql`.
 ///
@@ -5748,7 +5795,7 @@ pub type WorkflowsUpdateRow {
   WorkflowsUpdateRow(
     id: Int,
     org_id: Int,
-    project_id: Option(Int),
+    project_id: Int,
     name: String,
     description: String,
     active: Bool,
@@ -5774,7 +5821,7 @@ pub fn workflows_update(
   let decoder = {
     use id <- decode.field(0, decode.int)
     use org_id <- decode.field(1, decode.int)
-    use project_id <- decode.field(2, decode.optional(decode.int))
+    use project_id <- decode.field(2, decode.int)
     use name <- decode.field(3, decode.string)
     use description <- decode.field(4, decode.string)
     use active <- decode.field(5, decode.bool)

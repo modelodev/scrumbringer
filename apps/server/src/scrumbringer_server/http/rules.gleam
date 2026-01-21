@@ -5,7 +5,6 @@ import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
-import gleam/option.{type Option, None, Some}
 import helpers/json as json_helpers
 import pog
 import scrumbringer_server/http/api
@@ -77,7 +76,7 @@ fn handle_list(
 
           case workflows_db.get_workflow(db, workflow_id) {
             Ok(workflow) ->
-              case authorization.require_scoped_admin_simple(
+              case authorization.require_project_manager_simple(
                   db,
                   user,
                   workflow.org_id,
@@ -120,7 +119,7 @@ fn handle_create(
 
           case workflows_db.get_workflow(db, workflow_id) {
             Ok(workflow) ->
-              case authorization.require_scoped_admin_simple(
+              case authorization.require_project_manager_simple(
                   db,
                   user,
                   workflow.org_id,
@@ -157,7 +156,7 @@ fn handle_update(
               case workflow_from_rule(db, rule) {
                 Error(resp) -> resp
                 Ok(workflow) ->
-                  case authorization.require_scoped_admin_simple(
+                  case authorization.require_project_manager_simple(
                   db,
                   user,
                   workflow.org_id,
@@ -195,7 +194,7 @@ fn handle_delete(
               case workflow_from_rule(db, rule) {
                 Error(resp) -> resp
                 Ok(workflow) ->
-                  case authorization.require_scoped_admin_simple(
+                  case authorization.require_project_manager_simple(
                   db,
                   user,
                   workflow.org_id,
@@ -249,7 +248,7 @@ fn handle_attach_template(
               case workflow_from_rule(db, rule) {
                 Error(resp) -> resp
                 Ok(workflow) ->
-                  case authorization.require_scoped_admin_simple(
+                  case authorization.require_project_manager_simple(
                   db,
                   user,
                   workflow.org_id,
@@ -292,7 +291,7 @@ fn handle_detach_template(
               case workflow_from_rule(db, rule) {
                 Error(resp) -> resp
                 Ok(workflow) ->
-                  case authorization.require_scoped_admin_simple(
+                  case authorization.require_project_manager_simple(
                   db,
                   user,
                   workflow.org_id,
@@ -586,24 +585,13 @@ fn validate_template_scope(
 fn template_org_matches(
   template: task_templates_db.TaskTemplate,
   workflow_org_id: Int,
-  workflow_project_id: Option(Int),
+  workflow_project_id: Int,
 ) -> Bool {
   let task_templates_db.TaskTemplate(org_id: org_id, project_id: project_id, ..) =
     template
 
-  case workflow_project_id {
-    None ->
-      case project_id {
-        None -> org_id == workflow_org_id
-        Some(_) -> False
-      }
-
-    Some(pid) ->
-      case project_id {
-        None -> org_id == workflow_org_id
-        Some(template_pid) -> template_pid == pid && org_id == workflow_org_id
-      }
-  }
+  // Both workflows and templates are now project-scoped, so they must match
+  org_id == workflow_org_id && project_id == workflow_project_id
 }
 
 fn rule_json(rule: rules_db.Rule) -> json.Json {

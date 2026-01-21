@@ -601,7 +601,6 @@ pub type Msg {
   CloseCardDetail
 
   // Workflows
-  WorkflowsOrgFetched(ApiResult(List(Workflow)))
   WorkflowsProjectFetched(ApiResult(List(Workflow)))
   // Workflows - dialog mode control (component pattern)
   OpenWorkflowDialog(WorkflowDialogMode)
@@ -636,7 +635,6 @@ pub type Msg {
   RuleMetricsFetched(ApiResult(api_workflows.WorkflowMetrics))
 
   // Task templates
-  TaskTemplatesOrgFetched(ApiResult(List(TaskTemplate)))
   TaskTemplatesProjectFetched(ApiResult(List(TaskTemplate)))
   // Task templates - dialog mode control (component pattern)
   OpenTaskTemplateDialog(TaskTemplateDialogMode)

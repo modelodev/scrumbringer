@@ -2,9 +2,10 @@
 //// Database operations for workflows.
 ////
 //// Provides CRUD operations for workflows, including active cascade.
+//// Note: Workflows are now project-scoped only (no org-scoped workflows).
 
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{type Option}
 import gleam/result
 import gleam/string
 import helpers/option as option_helpers
@@ -15,7 +16,7 @@ pub type Workflow {
   Workflow(
     id: Int,
     org_id: Int,
-    project_id: Option(Int),
+    project_id: Int,
     name: String,
     description: Option(String),
     active: Bool,
@@ -45,32 +46,11 @@ pub type DeleteWorkflowError {
 // Helpers
 // =============================================================================
 
-fn option_to_param(value: Option(Int)) -> Int {
-  case value {
-    None -> 0
-    Some(id) -> id
-  }
-}
-
-fn from_list_org_row(row: sql.WorkflowsListForOrgRow) -> Workflow {
-  Workflow(
-    id: row.id,
-    org_id: row.org_id,
-    project_id: option_helpers.int_to_option(row.project_id),
-    name: row.name,
-    description: option_helpers.string_to_option(row.description),
-    active: row.active,
-    rule_count: row.rule_count,
-    created_by: row.created_by,
-    created_at: row.created_at,
-  )
-}
-
 fn from_list_project_row(row: sql.WorkflowsListForProjectRow) -> Workflow {
   Workflow(
     id: row.id,
     org_id: row.org_id,
-    project_id: option_helpers.int_to_option(row.project_id),
+    project_id: row.project_id,
     name: row.name,
     description: option_helpers.string_to_option(row.description),
     active: row.active,
@@ -84,7 +64,7 @@ fn from_get_row(row: sql.WorkflowsGetRow) -> Workflow {
   Workflow(
     id: row.id,
     org_id: row.org_id,
-    project_id: option_helpers.int_to_option(row.project_id),
+    project_id: row.project_id,
     name: row.name,
     description: option_helpers.string_to_option(row.description),
     active: row.active,
@@ -97,17 +77,6 @@ fn from_get_row(row: sql.WorkflowsGetRow) -> Workflow {
 // =============================================================================
 // Public API
 // =============================================================================
-
-pub fn list_org_workflows(
-  db: pog.Connection,
-  org_id: Int,
-) -> Result(List(Workflow), pog.QueryError) {
-  use returned <- result.try(sql.workflows_list_for_org(db, org_id))
-
-  returned.rows
-  |> list.map(from_list_org_row)
-  |> Ok
-}
 
 pub fn list_project_workflows(
   db: pog.Connection,
@@ -134,18 +103,17 @@ pub fn get_workflow(
 pub fn create_workflow(
   db: pog.Connection,
   org_id: Int,
-  project_id: Option(Int),
+  project_id: Int,
   name: String,
   description: String,
   active: Bool,
   created_by: Int,
 ) -> Result(Workflow, CreateWorkflowError) {
-  let project_param = option_to_param(project_id)
   case
     sql.workflows_create(
       db,
       org_id,
-      project_param,
+      project_id,
       name,
       description,
       active,
@@ -183,19 +151,17 @@ pub fn update_workflow(
   db: pog.Connection,
   workflow_id: Int,
   org_id: Int,
-  project_id: Option(Int),
+  project_id: Int,
   name: String,
   description: String,
   active_flag: Int,
 ) -> Result(Workflow, UpdateWorkflowError) {
-  let project_param = option_to_param(project_id)
-
   case
     sql.workflows_update(
       db,
       workflow_id,
       org_id,
-      project_param,
+      project_id,
       name,
       description,
       active_flag,
@@ -231,11 +197,9 @@ pub fn delete_workflow(
   db: pog.Connection,
   workflow_id: Int,
   org_id: Int,
-  project_id: Option(Int),
+  project_id: Int,
 ) -> Result(Nil, DeleteWorkflowError) {
-  let project_param = option_to_param(project_id)
-
-  case sql.workflows_delete(db, workflow_id, org_id, project_param) {
+  case sql.workflows_delete(db, workflow_id, org_id, project_id) {
     Ok(pog.Returned(rows: [_, ..], ..)) -> Ok(Nil)
     Ok(pog.Returned(rows: [], ..)) -> Error(DeleteWorkflowNotFound)
     Error(e) -> Error(DeleteWorkflowDbError(e))
@@ -246,13 +210,11 @@ pub fn set_active_cascade(
   db: pog.Connection,
   workflow_id: Int,
   org_id: Int,
-  project_id: Option(Int),
+  project_id: Int,
   active: Bool,
 ) -> Result(Nil, UpdateWorkflowError) {
-  let project_param = option_to_param(project_id)
-
   case
-    sql.workflows_set_active(db, workflow_id, org_id, project_param, active)
+    sql.workflows_set_active(db, workflow_id, org_id, project_id, active)
   {
     Ok(pog.Returned(rows: [_, ..], ..)) -> {
       let _ = sql.rules_set_active_for_workflow(db, workflow_id, active)

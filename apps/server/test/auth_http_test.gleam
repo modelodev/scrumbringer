@@ -44,7 +44,7 @@ pub fn bootstrap_happy_path_creates_org_default_project_and_membership_test() {
   let admin_memberships =
     single_int(
       db,
-      "select count(*) from project_members where user_id = 1 and role = 'admin'",
+      "select count(*) from project_members where user_id = 1 and role = 'manager'",
     )
   admin_memberships |> should.equal(1)
 }

@@ -46,7 +46,7 @@ pub fn require_project_admin(
   user_id: Int,
   next: fn(Nil) -> Result(Response, Error),
 ) -> Result(Response, Error) {
-  case projects_db.is_project_admin(db, project_id, user_id) {
+  case projects_db.is_project_manager(db, project_id, user_id) {
     Ok(True) -> next(Nil)
     Ok(False) -> Error(NotAuthorized)
     Error(e) -> Error(DbError(e))

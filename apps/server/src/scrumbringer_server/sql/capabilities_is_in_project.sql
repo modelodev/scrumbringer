@@ -1,7 +1,7 @@
--- name: capability_is_in_org
+-- name: capability_is_in_project
 select exists(
   select 1
   from capabilities
   where id = $1
-    and org_id = $2
+    and project_id = $2
 ) as ok;

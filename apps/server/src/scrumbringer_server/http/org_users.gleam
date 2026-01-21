@@ -173,7 +173,7 @@ fn require_org_user_directory_access(
   case role {
     org_role.Admin -> Ok(Nil)
     _ ->
-      case projects_db.is_any_project_admin_in_org(db, user_id, org_id) {
+      case projects_db.is_any_project_manager_in_org(db, user_id, org_id) {
         Ok(True) -> Ok(Nil)
         Ok(False) -> Error(api.error(403, "FORBIDDEN", "Forbidden"))
         Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
@@ -401,7 +401,7 @@ fn handle_remove_user_from_project(
                     Error(projects_db.MembershipNotFound) ->
                       api.error(404, "NOT_FOUND", "Membership not found")
 
-                    Error(projects_db.CannotRemoveLastAdmin) ->
+                    Error(projects_db.CannotRemoveLastManager) ->
                       api.error(409, "CONFLICT", "Cannot remove last project admin")
 
                     Error(projects_db.RemoveDbError(_)) ->

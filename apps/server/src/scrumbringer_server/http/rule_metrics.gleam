@@ -117,7 +117,7 @@ fn get_workflow_metrics(
 
           case workflows_db.get_workflow(db, workflow_id) {
             Ok(workflow) ->
-              case authorization.require_scoped_admin_with_org_bypass(
+              case authorization.require_project_manager_with_org_bypass(
                   db,
                   user,
                   workflow.project_id,
@@ -379,7 +379,7 @@ fn get_project_metrics(
           let auth.Ctx(db: db, ..) = ctx
 
           // Verify user is admin of this project's org or a project admin
-          case projects_db.is_project_admin(db, user.id, project_id) {
+          case projects_db.is_project_manager(db, user.id, project_id) {
             Ok(True) ->
               case parse_date_range(req) {
                 Error(resp) -> resp
@@ -433,7 +433,7 @@ fn workflow_from_rule(
 ) -> Result(workflows_db.Workflow, wisp.Response) {
   case workflows_db.get_workflow(db, rule.workflow_id) {
     Ok(workflow) ->
-      case authorization.require_scoped_admin_with_org_bypass(
+      case authorization.require_project_manager_with_org_bypass(
                   db,
                   user,
                   workflow.project_id,

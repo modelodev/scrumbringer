@@ -102,9 +102,11 @@ pub fn handle_toggle_capability(
 
 /// Handle save capabilities button click.
 pub fn handle_save_capabilities_clicked(model: Model) -> #(Model, Effect(Msg)) {
-  case model.member_my_capabilities_in_flight {
-    True -> #(model, effect.none())
-    False -> {
+  case model.member_my_capabilities_in_flight, model.selected_project_id, model.user {
+    True, _, _ -> #(model, effect.none())
+    _, opt.None, _ -> #(model, effect.none())
+    _, _, opt.None -> #(model, effect.none())
+    False, opt.Some(project_id), opt.Some(user) -> {
       let ids =
         update_helpers.bool_dict_to_ids(model.member_my_capability_ids_edit)
       let model =
@@ -113,7 +115,15 @@ pub fn handle_save_capabilities_clicked(model: Model) -> #(Model, Effect(Msg)) {
           member_my_capabilities_in_flight: True,
           member_my_capabilities_error: opt.None,
         )
-      #(model, api_tasks.put_me_capability_ids(ids, MemberMyCapabilityIdsSaved))
+      #(
+        model,
+        api_tasks.put_member_capability_ids(
+          project_id,
+          user.id,
+          ids,
+          MemberMyCapabilityIdsSaved,
+        ),
+      )
     }
   }
 }
@@ -142,14 +152,25 @@ pub fn handle_save_capabilities_error(
 ) -> #(Model, Effect(Msg)) {
   case err.status {
     401 -> update_helpers.reset_to_login(model)
-    _ -> #(
-      Model(
-        ..model,
-        member_my_capabilities_in_flight: False,
-        member_my_capabilities_error: opt.Some(err.message),
-        toast: opt.Some(err.message),
-      ),
-      api_tasks.get_me_capability_ids(MemberMyCapabilityIdsFetched),
-    )
+    _ -> {
+      let refetch_effect = case model.selected_project_id, model.user {
+        opt.Some(project_id), opt.Some(user) ->
+          api_tasks.get_member_capability_ids(
+            project_id,
+            user.id,
+            MemberMyCapabilityIdsFetched,
+          )
+        _, _ -> effect.none()
+      }
+      #(
+        Model(
+          ..model,
+          member_my_capabilities_in_flight: False,
+          member_my_capabilities_error: opt.Some(err.message),
+          toast: opt.Some(err.message),
+        ),
+        refetch_effect,
+      )
+    }
   }
 }

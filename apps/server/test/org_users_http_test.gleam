@@ -110,7 +110,7 @@ pub fn org_users_allows_project_admin_and_scopes_org_test() {
     single_int(db, "select id from users where email = 'b@org2.com'", [])
 
   let project2_id = insert_project(db, org2_id, "P2")
-  insert_project_member(db, project2_id, user2_id, "admin")
+  insert_project_member(db, project2_id, user2_id, "manager")
 
   let user2_login_res = login_as(handler, "b@org2.com", "passwordpassword")
   let user2_session = find_cookie_value(user2_login_res.headers, "sb_session")

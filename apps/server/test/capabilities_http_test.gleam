@@ -2,6 +2,7 @@ import gleam/dynamic/decode
 import gleam/erlang/charlist
 import gleam/http
 import gleam/http/request
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/result
@@ -14,31 +15,28 @@ import wisp/simulate
 
 const secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
-pub fn capabilities_list_is_org_scoped_and_sorted_by_name_test() {
+pub fn capabilities_list_is_project_scoped_and_sorted_by_name_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
+
+  let project_id = get_default_project_id(db)
 
   let admin_login_res =
     login_as(handler, "admin@example.com", "passwordpassword")
   let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
   let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
 
-  create_capability(handler, admin_session, admin_csrf, "Zulu")
-  create_capability(handler, admin_session, admin_csrf, "Alpha")
-
-  create_member_user(handler, db)
-  let member_login_res =
-    login_as(handler, "member@example.com", "passwordpassword")
-  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
-  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
-
-  insert_other_org_capability(db, 2, 200)
+  create_capability(handler, admin_session, admin_csrf, project_id, "Zulu")
+  create_capability(handler, admin_session, admin_csrf, project_id, "Alpha")
 
   let req =
-    simulate.request(http.Get, "/api/v1/capabilities")
-    |> request.set_cookie("sb_session", member_session)
-    |> request.set_cookie("sb_csrf", member_csrf)
+    simulate.request(
+      http.Get,
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/capabilities",
+    )
+    |> request.set_cookie("sb_session", admin_session)
+    |> request.set_cookie("sb_csrf", admin_csrf)
 
   let res = handler(req)
   res.status |> should.equal(200)
@@ -47,12 +45,15 @@ pub fn capabilities_list_is_org_scoped_and_sorted_by_name_test() {
   names |> should.equal(["Alpha", "Zulu"])
 }
 
-pub fn non_org_admin_cannot_create_capability_test() {
+pub fn non_project_manager_cannot_create_capability_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
 
+  let project_id = get_default_project_id(db)
+
   create_member_user(handler, db)
+  add_member_to_project(db, project_id, get_member_user_id(db), "member")
 
   let member_login_res =
     login_as(handler, "member@example.com", "passwordpassword")
@@ -60,7 +61,10 @@ pub fn non_org_admin_cannot_create_capability_test() {
   let csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
 
   let req =
-    simulate.request(http.Post, "/api/v1/capabilities")
+    simulate.request(
+      http.Post,
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/capabilities",
+    )
     |> request.set_cookie("sb_session", session)
     |> request.set_cookie("sb_csrf", csrf)
     |> request.set_header("X-CSRF", csrf)
@@ -71,9 +75,12 @@ pub fn non_org_admin_cannot_create_capability_test() {
   string.contains(simulate.read_body(res), "FORBIDDEN") |> should.be_true
 }
 
-pub fn duplicate_capability_name_in_same_org_is_rejected_test() {
+pub fn duplicate_capability_name_in_same_project_is_rejected_test() {
   let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
+
+  let project_id = get_default_project_id(db)
 
   let admin_login_res =
     login_as(handler, "admin@example.com", "passwordpassword")
@@ -81,7 +88,10 @@ pub fn duplicate_capability_name_in_same_org_is_rejected_test() {
   let csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
 
   let first_req =
-    simulate.request(http.Post, "/api/v1/capabilities")
+    simulate.request(
+      http.Post,
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/capabilities",
+    )
     |> request.set_cookie("sb_session", session)
     |> request.set_cookie("sb_csrf", csrf)
     |> request.set_header("X-CSRF", csrf)
@@ -91,7 +101,10 @@ pub fn duplicate_capability_name_in_same_org_is_rejected_test() {
   first_res.status |> should.equal(200)
 
   let second_req =
-    simulate.request(http.Post, "/api/v1/capabilities")
+    simulate.request(
+      http.Post,
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/capabilities",
+    )
     |> request.set_cookie("sb_session", session)
     |> request.set_cookie("sb_csrf", csrf)
     |> request.set_header("X-CSRF", csrf)
@@ -103,18 +116,20 @@ pub fn duplicate_capability_name_in_same_org_is_rejected_test() {
   |> should.be_true
 }
 
-pub fn me_capabilities_put_replaces_selection_and_supports_clearing_test() {
+pub fn member_capabilities_put_replaces_selection_and_supports_clearing_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
+
+  let project_id = get_default_project_id(db)
 
   let admin_login_res =
     login_as(handler, "admin@example.com", "passwordpassword")
   let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
   let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
 
-  create_capability(handler, admin_session, admin_csrf, "Dev")
-  create_capability(handler, admin_session, admin_csrf, "PM")
+  create_capability(handler, admin_session, admin_csrf, project_id, "Dev")
+  create_capability(handler, admin_session, admin_csrf, project_id, "PM")
 
   let dev_id =
     single_int(db, "select id from capabilities where name = 'Dev'", [])
@@ -122,52 +137,100 @@ pub fn me_capabilities_put_replaces_selection_and_supports_clearing_test() {
     single_int(db, "select id from capabilities where name = 'PM'", [])
 
   create_member_user(handler, db)
-  let login_res = login_as(handler, "member@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let member_id = get_member_user_id(db)
+  add_member_to_project(db, project_id, member_id, "member")
 
-  let put_1 = put_me_capabilities(handler, session, csrf, [dev_id])
+  // Admin can set member capabilities
+  let put_1 =
+    put_member_capabilities(
+      handler,
+      admin_session,
+      admin_csrf,
+      project_id,
+      member_id,
+      [dev_id],
+    )
   put_1 |> should.equal([dev_id])
 
-  let put_2 = put_me_capabilities(handler, session, csrf, [pm_id])
+  let put_2 =
+    put_member_capabilities(
+      handler,
+      admin_session,
+      admin_csrf,
+      project_id,
+      member_id,
+      [pm_id],
+    )
   put_2 |> should.equal([pm_id])
 
-  let put_3 = put_me_capabilities(handler, session, csrf, [])
+  let put_3 =
+    put_member_capabilities(
+      handler,
+      admin_session,
+      admin_csrf,
+      project_id,
+      member_id,
+      [],
+    )
   put_3 |> should.equal([])
 
-  let get_ids = get_me_capabilities(handler, session, csrf)
+  let get_ids =
+    get_member_capabilities(
+      handler,
+      admin_session,
+      admin_csrf,
+      project_id,
+      member_id,
+    )
   get_ids |> should.equal([])
 }
 
-pub fn me_capabilities_cannot_select_capability_from_other_org_test() {
+pub fn member_capabilities_cannot_select_capability_from_other_project_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
+
+  let project_id = get_default_project_id(db)
 
   let admin_login_res =
     login_as(handler, "admin@example.com", "passwordpassword")
   let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
   let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
 
-  create_capability(handler, admin_session, admin_csrf, "Dev")
+  create_capability(handler, admin_session, admin_csrf, project_id, "Dev")
   let dev_id =
     single_int(db, "select id from capabilities where name = 'Dev'", [])
 
   create_member_user(handler, db)
-  let login_res = login_as(handler, "member@example.com", "passwordpassword")
-  let session = find_cookie_value(login_res.headers, "sb_session")
-  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+  let member_id = get_member_user_id(db)
+  add_member_to_project(db, project_id, member_id, "member")
 
-  put_me_capabilities(handler, session, csrf, [dev_id])
+  put_member_capabilities(
+    handler,
+    admin_session,
+    admin_csrf,
+    project_id,
+    member_id,
+    [dev_id],
+  )
   |> should.equal([dev_id])
 
-  insert_other_org_capability(db, 2, 200)
+  // Create another project with a capability
+  let project2_id = insert_project(db, 1, "Project2")
+  insert_capability_direct(db, project2_id, 200, "OtherCap")
 
   let invalid_req =
-    simulate.request(http.Put, "/api/v1/me/capabilities")
-    |> request.set_cookie("sb_session", session)
-    |> request.set_cookie("sb_csrf", csrf)
-    |> request.set_header("X-CSRF", csrf)
+    simulate.request(
+      http.Put,
+      "/api/v1/projects/"
+        <> int.to_string(project_id)
+        <> "/members/"
+        <> int.to_string(member_id)
+        <> "/capabilities",
+    )
+    |> request.set_cookie("sb_session", admin_session)
+    |> request.set_cookie("sb_csrf", admin_csrf)
+    |> request.set_header("X-CSRF", admin_csrf)
     |> simulate.json_body(
       json.object([
         #("capability_ids", json.array([200], of: json.int)),
@@ -177,7 +240,14 @@ pub fn me_capabilities_cannot_select_capability_from_other_org_test() {
   let invalid_res = handler(invalid_req)
   invalid_res.status |> should.equal(422)
 
-  let still_selected = get_me_capabilities(handler, session, csrf)
+  let still_selected =
+    get_member_capabilities(
+      handler,
+      admin_session,
+      admin_csrf,
+      project_id,
+      member_id,
+    )
   still_selected |> should.equal([dev_id])
 }
 
@@ -185,10 +255,14 @@ fn create_capability(
   handler: fn(wisp.Request) -> wisp.Response,
   session: String,
   csrf: String,
+  project_id: Int,
   name: String,
 ) {
   let req =
-    simulate.request(http.Post, "/api/v1/capabilities")
+    simulate.request(
+      http.Post,
+      "/api/v1/projects/" <> int.to_string(project_id) <> "/capabilities",
+    )
     |> request.set_cookie("sb_session", session)
     |> request.set_cookie("sb_csrf", csrf)
     |> request.set_header("X-CSRF", csrf)
@@ -223,14 +297,23 @@ fn decode_capability_names(body: String) -> List(String) {
   names
 }
 
-fn put_me_capabilities(
+fn put_member_capabilities(
   handler: fn(wisp.Request) -> wisp.Response,
   session: String,
   csrf: String,
+  project_id: Int,
+  user_id: Int,
   ids: List(Int),
 ) -> List(Int) {
   let req =
-    simulate.request(http.Put, "/api/v1/me/capabilities")
+    simulate.request(
+      http.Put,
+      "/api/v1/projects/"
+        <> int.to_string(project_id)
+        <> "/members/"
+        <> int.to_string(user_id)
+        <> "/capabilities",
+    )
     |> request.set_cookie("sb_session", session)
     |> request.set_cookie("sb_csrf", csrf)
     |> request.set_header("X-CSRF", csrf)
@@ -243,26 +326,35 @@ fn put_me_capabilities(
   let res = handler(req)
   res.status |> should.equal(200)
 
-  decode_me_capabilities(simulate.read_body(res))
+  decode_member_capabilities(simulate.read_body(res))
 }
 
-fn get_me_capabilities(
+fn get_member_capabilities(
   handler: fn(wisp.Request) -> wisp.Response,
   session: String,
   csrf: String,
+  project_id: Int,
+  user_id: Int,
 ) -> List(Int) {
   let req =
-    simulate.request(http.Get, "/api/v1/me/capabilities")
+    simulate.request(
+      http.Get,
+      "/api/v1/projects/"
+        <> int.to_string(project_id)
+        <> "/members/"
+        <> int.to_string(user_id)
+        <> "/capabilities",
+    )
     |> request.set_cookie("sb_session", session)
     |> request.set_cookie("sb_csrf", csrf)
 
   let res = handler(req)
   res.status |> should.equal(200)
 
-  decode_me_capabilities(simulate.read_body(res))
+  decode_member_capabilities(simulate.read_body(res))
 }
 
-fn decode_me_capabilities(body: String) -> List(Int) {
+fn decode_member_capabilities(body: String) -> List(Int) {
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)
 
   let data_decoder = {
@@ -386,7 +478,7 @@ fn require_database_url() -> String {
 fn reset_db(db: pog.Connection) {
   let assert Ok(_) =
     pog.query(
-      "TRUNCATE project_members, org_invite_links, org_invites, users, projects, organizations RESTART IDENTITY CASCADE",
+      "TRUNCATE project_member_capabilities, capabilities, project_members, org_invite_links, org_invites, users, projects, organizations RESTART IDENTITY CASCADE",
     )
     |> pog.execute(db)
 
@@ -405,18 +497,57 @@ fn insert_invite_link_active(db: pog.Connection, token: String, email: String) {
   Nil
 }
 
-fn insert_other_org_capability(db: pog.Connection, org_id: Int, cap_id: Int) {
-  let assert Ok(_) =
-    pog.query("insert into organizations (id, name) values ($1, 'Other')")
-    |> pog.parameter(pog.int(org_id))
-    |> pog.execute(db)
+fn get_default_project_id(db: pog.Connection) -> Int {
+  single_int(db, "select id from projects where org_id = 1 limit 1", [])
+}
 
+fn get_member_user_id(db: pog.Connection) -> Int {
+  single_int(
+    db,
+    "select id from users where email = 'member@example.com'",
+    [],
+  )
+}
+
+fn add_member_to_project(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+  role: String,
+) {
   let assert Ok(_) =
     pog.query(
-      "insert into capabilities (id, name, org_id) values ($1, 'OtherCap', $2)",
+      "insert into project_members (project_id, user_id, role) values ($1, $2, $3)",
+    )
+    |> pog.parameter(pog.int(project_id))
+    |> pog.parameter(pog.int(user_id))
+    |> pog.parameter(pog.text(role))
+    |> pog.execute(db)
+
+  Nil
+}
+
+fn insert_project(db: pog.Connection, org_id: Int, name: String) -> Int {
+  single_int(
+    db,
+    "insert into projects (org_id, name) values ($1, $2) returning id",
+    [pog.int(org_id), pog.text(name)],
+  )
+}
+
+fn insert_capability_direct(
+  db: pog.Connection,
+  project_id: Int,
+  cap_id: Int,
+  name: String,
+) {
+  let assert Ok(_) =
+    pog.query(
+      "insert into capabilities (id, name, project_id) values ($1, $2, $3)",
     )
     |> pog.parameter(pog.int(cap_id))
-    |> pog.parameter(pog.int(org_id))
+    |> pog.parameter(pog.text(name))
+    |> pog.parameter(pog.int(project_id))
     |> pog.execute(db)
 
   Nil

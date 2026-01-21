@@ -10,7 +10,7 @@
 //// - Validate task titles (required, max length)
 //// - Validate priority values (1-5 range)
 //// - Validate task types belong to project
-//// - Validate capabilities belong to organization
+//// - Validate capabilities belong to project
 ////
 //// ## Relations
 ////
@@ -20,11 +20,11 @@
 import gleam/option.{type Option, None, Some}
 import gleam/string
 import pog
+import scrumbringer_server/services/capabilities_db
 import scrumbringer_server/services/task_types_db
 import scrumbringer_server/services/workflows/types.{
   type Error, type Response, DbError, ValidationError,
 }
-import scrumbringer_server/sql
 
 // =============================================================================
 // Constants
@@ -103,28 +103,21 @@ pub fn validate_type_update(
   }
 }
 
-/// Validate capability belongs to organization.
-pub fn validate_capability_in_org(
+/// Validate capability belongs to project.
+pub fn validate_capability_in_project(
   db: pog.Connection,
   capability_id: Option(Int),
-  org_id: Int,
+  project_id: Int,
   next: fn(Nil) -> Result(Response, Error),
 ) -> Result(Response, Error) {
   case capability_id {
     None -> next(Nil)
 
     Some(id) ->
-      case sql.capabilities_is_in_org(db, id, org_id) {
-        Ok(pog.Returned(rows: [row, ..], ..)) ->
-          case row.ok {
-            True -> next(Nil)
-            False -> Error(ValidationError("Invalid capability_id"))
-          }
-
-        Ok(pog.Returned(rows: [], ..)) ->
-          Error(ValidationError("Invalid capability_id"))
-
-        Error(e) -> Error(DbError(e))
+      case capabilities_db.capability_is_in_project(db, id, project_id) {
+        Ok(True) -> next(Nil)
+        Ok(False) -> Error(ValidationError("Invalid capability_id"))
+        Error(_) -> Error(ValidationError("Invalid capability_id"))
       }
   }
 }

@@ -99,8 +99,8 @@ pub fn handle_capability_create_submitted(model: Model) -> #(Model, Effect(Msg))
     False -> {
       let name = string.trim(model.capabilities_create_name)
 
-      case name == "" {
-        True -> #(
+      case name == "", model.selected_project_id {
+        True, _ -> #(
           Model(
             ..model,
             capabilities_create_error: opt.Some(update_helpers.i18n_t(
@@ -110,14 +110,18 @@ pub fn handle_capability_create_submitted(model: Model) -> #(Model, Effect(Msg))
           ),
           effect.none(),
         )
-        False -> {
+        _, opt.None -> #(model, effect.none())
+        False, opt.Some(project_id) -> {
           let model =
             Model(
               ..model,
               capabilities_create_in_flight: True,
               capabilities_create_error: opt.None,
             )
-          #(model, api_org.create_capability(name, CapabilityCreated))
+          #(
+            model,
+            api_org.create_project_capability(project_id, name, CapabilityCreated),
+          )
         }
       }
     }

@@ -72,7 +72,7 @@ pub fn projects_list_is_membership_scoped_sorted_and_includes_my_role_test() {
     admin_csrf,
     alpha_project_id,
     member_id,
-    "admin",
+    "manager",
   )
   add_member(
     handler,
@@ -119,7 +119,7 @@ pub fn projects_list_is_membership_scoped_sorted_and_includes_my_role_test() {
   let assert Ok(projects) = decode.run(dynamic, response_decoder)
 
   projects
-  |> should.equal([#("Alpha", "admin"), #("Zulu", "member")])
+  |> should.equal([#("Alpha", "manager"), #("Zulu", "member")])
 }
 
 pub fn non_project_admin_cannot_list_add_or_remove_members_test() {
@@ -272,7 +272,7 @@ pub fn cannot_remove_last_project_admin_test() {
   let admin_count =
     single_int(
       db,
-      "select count(*) from project_members where project_id = $1 and role = 'admin'",
+      "select count(*) from project_members where project_id = $1 and role = 'manager'",
       [pog.int(project_id)],
     )
   admin_count |> should.equal(1)

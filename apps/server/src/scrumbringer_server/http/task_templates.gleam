@@ -1,13 +1,11 @@
 //// HTTP handlers for task templates.
 ////
-//// Provides CRUD endpoints for org- and project-scoped templates.
+//// Provides CRUD endpoints for project-scoped templates.
 
-import domain/org_role.{Admin}
 import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
-import gleam/option.{type Option, None, Some}
 import helpers/json as json_helpers
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
@@ -20,14 +18,6 @@ import wisp
 // =============================================================================
 // Context + Routing
 // =============================================================================
-
-pub fn handle_org_templates(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
-  case req.method {
-    http.Get -> handle_list_org(req, ctx)
-    http.Post -> handle_create_org(req, ctx)
-    _ -> wisp.method_not_allowed([http.Get, http.Post])
-  }
-}
 
 pub fn handle_project_templates(
   req: wisp.Request,
@@ -57,34 +47,6 @@ pub fn handle_template(
 // Handlers
 // =============================================================================
 
-fn handle_list_org(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
-  use <- wisp.require_method(req, http.Get)
-
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) -> {
-      let auth.Ctx(db: db, ..) = ctx
-
-      case user.org_role {
-        Admin -> {
-          case task_templates_db.list_org_templates(db, user.org_id) {
-            Ok(templates) ->
-              api.ok(
-                json.object([
-                  #("templates", json.array(templates, of: template_json)),
-                ]),
-              )
-
-            Error(_) -> api.error(500, "INTERNAL", "Database error")
-          }
-        }
-        _ -> api.error(403, "FORBIDDEN", "Forbidden")
-      }
-    }
-  }
-}
-
 fn handle_list_project(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -102,7 +64,7 @@ fn handle_list_project(
         Ok(project_id) -> {
           let auth.Ctx(db: db, ..) = ctx
 
-          case projects_db.is_project_admin(db, project_id, user.id) {
+          case projects_db.is_project_manager(db, project_id, user.id) {
             Ok(True) ->
               case task_templates_db.list_project_templates(db, project_id) {
                 Ok(templates) ->
@@ -123,19 +85,6 @@ fn handle_list_project(
   }
 }
 
-fn handle_create_org(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) ->
-      case user.org_role {
-        Admin -> create_template(req, ctx, user.org_id, None, user.id)
-
-        _ -> api.error(403, "FORBIDDEN", "Forbidden")
-      }
-  }
-}
-
 fn handle_create_project(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -151,9 +100,9 @@ fn handle_create_project(
         Ok(project_id) -> {
           let auth.Ctx(db: db, ..) = ctx
 
-          case projects_db.is_project_admin(db, project_id, user.id) {
+          case projects_db.is_project_manager(db, project_id, user.id) {
             Ok(True) ->
-              create_template(req, ctx, user.org_id, Some(project_id), user.id)
+              create_template(req, ctx, user.org_id, project_id, user.id)
             Ok(False) -> api.error(403, "FORBIDDEN", "Forbidden")
             Error(_) -> api.error(500, "INTERNAL", "Database error")
           }
@@ -180,7 +129,7 @@ fn handle_update(
           case task_templates_db.get_template(db, template_id) {
             Ok(template) ->
               case
-                authorization.require_scoped_admin(
+                authorization.require_project_manager(
                   db,
                   user,
                   template.org_id,
@@ -222,7 +171,7 @@ fn handle_delete(
           case task_templates_db.get_template(db, template_id) {
             Ok(template) ->
               case
-                authorization.require_scoped_admin(
+                authorization.require_project_manager(
                   db,
                   user,
                   template.org_id,
@@ -275,7 +224,7 @@ fn create_template(
   req: wisp.Request,
   ctx: auth.Ctx,
   org_id: Int,
-  project_id: Option(Int),
+  project_id: Int,
   user_id: Int,
 ) -> wisp.Response {
   case csrf.require_double_submit(req) {
@@ -333,7 +282,7 @@ fn update_template(
   ctx: auth.Ctx,
   template_id: Int,
   org_id: Int,
-  project_id: Option(Int),
+  project_id: Int,
 ) -> wisp.Response {
   case csrf.require_double_submit(req) {
     Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
@@ -404,7 +353,7 @@ fn template_json(template: task_templates_db.TaskTemplate) -> json.Json {
   json.object([
     #("id", json.int(id)),
     #("org_id", json.int(org_id)),
-    #("project_id", json_helpers.option_int_json(project_id)),
+    #("project_id", json.int(project_id)),
     #("name", json.string(name)),
     #("description", json_helpers.option_string_json(description)),
     #("type_id", json.int(type_id)),

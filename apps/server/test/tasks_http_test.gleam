@@ -149,8 +149,8 @@ pub fn tasks_list_filters_sorting_and_q_search_test() {
   let project_id =
     single_int(db, "select id from projects where name = 'Core'", [])
 
-  let cap1 = insert_capability(db, 1, "Frontend")
-  let cap2 = insert_capability(db, 1, "Backend")
+  let cap1 = insert_capability(db, project_id, "Frontend")
+  let cap2 = insert_capability(db, project_id, "Backend")
 
   create_task_type(
     handler,
@@ -1957,12 +1957,12 @@ fn set_task_created_at(db: pog.Connection, task_id: Int, created_at: String) {
   Nil
 }
 
-fn insert_capability(db: pog.Connection, org_id: Int, name: String) -> Int {
+fn insert_capability(db: pog.Connection, project_id: Int, name: String) -> Int {
   let assert Ok(pog.Returned(rows: [id, ..], ..)) =
     pog.query(
-      "insert into capabilities (org_id, name) values ($1, $2) returning id",
+      "insert into capabilities (project_id, name) values ($1, $2) returning id",
     )
-    |> pog.parameter(pog.int(org_id))
+    |> pog.parameter(pog.int(project_id))
     |> pog.parameter(pog.text(name))
     |> pog.returning({
       use id <- decode.field(0, decode.int)

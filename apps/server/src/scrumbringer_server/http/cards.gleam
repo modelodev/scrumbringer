@@ -82,7 +82,7 @@ fn require_project_admin(
   user_id: Int,
   project_id: Int,
 ) -> Result(Nil, wisp.Response) {
-  case auth.is_project_admin(db, user_id, project_id) {
+  case auth.is_project_manager(db, user_id, project_id) {
     True -> Ok(Nil)
     False -> Error(api.error(403, "FORBIDDEN", "Project admin role required"))
   }

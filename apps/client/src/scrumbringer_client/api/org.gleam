@@ -218,11 +218,12 @@ pub fn remove_user_from_project(
 }
 
 // =============================================================================
-// Capability API Functions
+// Capability API Functions (Project-Scoped)
 // =============================================================================
 
-/// List all capabilities.
-pub fn list_capabilities(
+/// List capabilities for a project.
+pub fn list_project_capabilities(
+  project_id: Int,
   to_msg: fn(ApiResult(List(Capability))) -> msg,
 ) -> Effect(msg) {
   let decoder =
@@ -231,11 +232,18 @@ pub fn list_capabilities(
       decode.list(capability_decoder()),
       decode.success,
     )
-  core.request("GET", "/api/v1/capabilities", option.None, decoder, to_msg)
+  core.request(
+    "GET",
+    "/api/v1/projects/" <> int.to_string(project_id) <> "/capabilities",
+    option.None,
+    decoder,
+    to_msg,
+  )
 }
 
-/// Create a new capability.
-pub fn create_capability(
+/// Create a capability in a project.
+pub fn create_project_capability(
+  project_id: Int,
   name: String,
   to_msg: fn(ApiResult(Capability)) -> msg,
 ) -> Effect(msg) {
@@ -243,7 +251,7 @@ pub fn create_capability(
   let decoder = decode.field("capability", capability_decoder(), decode.success)
   core.request(
     "POST",
-    "/api/v1/capabilities",
+    "/api/v1/projects/" <> int.to_string(project_id) <> "/capabilities",
     option.Some(body),
     decoder,
     to_msg,

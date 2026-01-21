@@ -162,9 +162,9 @@ pub const list_me_task_positions = positions.list_me_task_positions
 pub const upsert_me_task_position = positions.upsert_me_task_position
 
 // =============================================================================
-// Re-export Functions: Capabilities
+// Re-export Functions: Capabilities (Project-Scoped)
 // =============================================================================
 
-pub const get_me_capability_ids = capabilities.get_me_capability_ids
+pub const get_member_capability_ids = capabilities.get_member_capability_ids
 
-pub const put_me_capability_ids = capabilities.put_me_capability_ids
+pub const put_member_capability_ids = capabilities.put_member_capability_ids

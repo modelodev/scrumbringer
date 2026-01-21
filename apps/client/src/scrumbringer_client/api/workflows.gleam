@@ -180,16 +180,7 @@ pub fn rule_templates_payload_decoder() -> decode.Decoder(List(RuleTemplate)) {
 // Workflow API
 // =============================================================================
 
-/// List org-scoped workflows.
-pub fn list_org_workflows(
-  to_msg: fn(ApiResult(List(Workflow))) -> msg,
-) -> Effect(msg) {
-  let decoder =
-    decode.field("workflows", decode.list(workflow_decoder()), decode.success)
-  core.request("GET", "/api/v1/workflows", None, decoder, to_msg)
-}
-
-/// List project-scoped workflows.
+/// List workflows for a project.
 pub fn list_project_workflows(
   project_id: Int,
   to_msg: fn(ApiResult(List(Workflow))) -> msg,
@@ -205,24 +196,7 @@ pub fn list_project_workflows(
   )
 }
 
-/// Create org-scoped workflow.
-pub fn create_org_workflow(
-  name: String,
-  description: String,
-  active: Bool,
-  to_msg: fn(ApiResult(Workflow)) -> msg,
-) -> Effect(msg) {
-  let body =
-    json.object([
-      #("name", json.string(name)),
-      #("description", json.string(description)),
-      #("active", json.bool(active)),
-    ])
-  let decoder = decode.field("workflow", workflow_decoder(), decode.success)
-  core.request("POST", "/api/v1/workflows", Some(body), decoder, to_msg)
-}
-
-/// Create project-scoped workflow.
+/// Create workflow in a project.
 pub fn create_project_workflow(
   project_id: Int,
   name: String,
@@ -429,20 +403,7 @@ pub fn detach_template(
 // TaskTemplate API
 // =============================================================================
 
-/// List org-scoped task templates.
-pub fn list_org_templates(
-  to_msg: fn(ApiResult(List(TaskTemplate))) -> msg,
-) -> Effect(msg) {
-  let decoder =
-    decode.field(
-      "templates",
-      decode.list(task_template_decoder()),
-      decode.success,
-    )
-  core.request("GET", "/api/v1/task-templates", None, decoder, to_msg)
-}
-
-/// List project-scoped task templates.
+/// List task templates for a project.
 pub fn list_project_templates(
   project_id: Int,
   to_msg: fn(ApiResult(List(TaskTemplate))) -> msg,
@@ -462,27 +423,7 @@ pub fn list_project_templates(
   )
 }
 
-/// Create org-scoped task template.
-pub fn create_org_template(
-  name: String,
-  description: String,
-  type_id: Int,
-  priority: Int,
-  to_msg: fn(ApiResult(TaskTemplate)) -> msg,
-) -> Effect(msg) {
-  let body =
-    json.object([
-      #("name", json.string(name)),
-      #("description", json.string(description)),
-      #("type_id", json.int(type_id)),
-      #("priority", json.int(priority)),
-    ])
-  let decoder =
-    decode.field("task_template", task_template_decoder(), decode.success)
-  core.request("POST", "/api/v1/task-templates", Some(body), decoder, to_msg)
-}
-
-/// Create project-scoped task template.
+/// Create task template in a project.
 pub fn create_project_template(
   project_id: Int,
   name: String,

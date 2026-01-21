@@ -119,7 +119,7 @@ import scrumbringer_client/client_state.{
   OpenRuleDialog, CloseRuleDialog, RuleCrudCreated, RuleCrudUpdated, RuleCrudDeleted,
   RuleMetricsFetched, RuleTemplateAttached, RuleTemplateDetachClicked, RuleTemplateDetached,
   RuleTemplatesClicked, RuleTemplatesFetched, RulesBackClicked,
-  RulesFetched, TaskTemplatesOrgFetched, TaskTemplatesProjectFetched,
+  RulesFetched, TaskTemplatesProjectFetched,
   OpenTaskTemplateDialog, CloseTaskTemplateDialog,
   TaskTemplateCrudCreated, TaskTemplateCrudUpdated, TaskTemplateCrudDeleted,
   TaskTypeCreateCapabilityChanged, TaskTypeCreateDialogClosed,
@@ -130,7 +130,7 @@ import scrumbringer_client/client_state.{
   ToastDismissed, UrlChanged,
   CloseWorkflowDialog, OpenWorkflowDialog, WorkflowCrudCreated,
   WorkflowCrudDeleted, WorkflowCrudUpdated, WorkflowRulesClicked,
-  WorkflowsOrgFetched, WorkflowsProjectFetched,
+  WorkflowsProjectFetched,
 }
 
 // Workflows
@@ -304,9 +304,10 @@ fn apply_route_fields(
     }
 
     router.Member(section, project_id) -> {
-      let capabilities_fx = case model.page {
-        Admin -> api_org.list_capabilities(CapabilitiesFetched)
-        _ -> effect.none()
+      let capabilities_fx = case model.page, project_id {
+        Admin, opt.Some(pid) ->
+          api_org.list_project_capabilities(pid, CapabilitiesFetched)
+        _, _ -> effect.none()
       }
 
       #(
@@ -437,29 +438,41 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
             }
 
             hydration.FetchCapabilities -> {
-              case m.capabilities {
-                Loading | Loaded(_) -> #(m, fx)
+              case m.capabilities, m.selected_project_id {
+                Loading, _ | Loaded(_), _ -> #(m, fx)
 
-                _ -> {
+                _, opt.Some(project_id) -> {
                   let m = Model(..m, capabilities: Loading)
-                  #(m, [api_org.list_capabilities(CapabilitiesFetched), ..fx])
+                  #(m, [
+                    api_org.list_project_capabilities(
+                      project_id,
+                      CapabilitiesFetched,
+                    ),
+                    ..fx
+                  ])
                 }
+
+                _, opt.None -> #(m, fx)
               }
             }
 
             hydration.FetchMeCapabilityIds -> {
-              case m.member_my_capability_ids {
-                Loading | Loaded(_) -> #(m, fx)
+              case m.member_my_capability_ids, m.selected_project_id, m.user {
+                Loading, _, _ | Loaded(_), _, _ -> #(m, fx)
 
-                _ -> {
+                _, opt.Some(project_id), opt.Some(user) -> {
                   let m = Model(..m, member_my_capability_ids: Loading)
                   #(m, [
-                    api_tasks.get_me_capability_ids(
+                    api_tasks.get_member_capability_ids(
+                      project_id,
+                      user.id,
                       MemberMyCapabilityIdsFetched,
                     ),
                     ..fx
                   ])
                 }
+
+                _, _, _ -> #(m, fx)
               }
             }
 
@@ -745,23 +758,41 @@ fn bootstrap_admin(model: Model) -> #(Model, Effect(Msg)) {
     opt.None -> False
   }
 
+  // Capabilities and member capability IDs are now project-scoped
+  // They will be fetched when a project is selected
   let model =
     Model(
       ..model,
       projects: Loading,
-      capabilities: Loading,
-      member_my_capability_ids: Loading,
       invite_links: case is_admin {
         True -> Loading
         False -> model.invite_links
       },
     )
 
-  let effects = [
-    api_projects.list_projects(ProjectsFetched),
-    api_org.list_capabilities(CapabilitiesFetched),
-    api_tasks.get_me_capability_ids(MemberMyCapabilityIdsFetched),
-  ]
+  let effects = [api_projects.list_projects(ProjectsFetched)]
+
+  // Fetch capabilities if project is selected
+  let effects = case model.selected_project_id {
+    opt.Some(project_id) -> [
+      api_org.list_project_capabilities(project_id, CapabilitiesFetched),
+      ..effects
+    ]
+    opt.None -> effects
+  }
+
+  // Fetch member capability IDs if project and user are available
+  let effects = case model.selected_project_id, model.user {
+    opt.Some(project_id), opt.Some(user) -> [
+      api_tasks.get_member_capability_ids(
+        project_id,
+        user.id,
+        MemberMyCapabilityIdsFetched,
+      ),
+      ..effects
+    ]
+    _, _ -> effects
+  }
 
   let effects = case is_admin {
     True -> [api_org.list_invite_links(InviteLinksFetched), ..effects]
@@ -831,10 +862,14 @@ pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
       admin_workflow.handle_rule_metrics_tab_init(model)
     }
 
-    permissions.Capabilities -> #(
-      model,
-      api_org.list_capabilities(CapabilitiesFetched),
-    )
+    permissions.Capabilities ->
+      case model.selected_project_id {
+        opt.Some(project_id) -> #(
+          model,
+          api_org.list_project_capabilities(project_id, CapabilitiesFetched),
+        )
+        opt.None -> #(model, effect.none())
+      }
 
     permissions.Members ->
       case model.selected_project_id {
@@ -1909,10 +1944,6 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(Model(..model, card_detail_open: opt.None), effect.none())
 
     // Workflows handlers
-    WorkflowsOrgFetched(Ok(workflows)) ->
-      admin_workflow.handle_workflows_org_fetched_ok(model, workflows)
-    WorkflowsOrgFetched(Error(err)) ->
-      admin_workflow.handle_workflows_org_fetched_error(model, err)
     WorkflowsProjectFetched(Ok(workflows)) ->
       admin_workflow.handle_workflows_project_fetched_ok(model, workflows)
     WorkflowsProjectFetched(Error(err)) ->
@@ -1976,10 +2007,6 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       admin_workflow.handle_rule_template_detached_error(model, err)
 
     // Task templates handlers
-    TaskTemplatesOrgFetched(Ok(templates)) ->
-      admin_workflow.handle_task_templates_org_fetched_ok(model, templates)
-    TaskTemplatesOrgFetched(Error(err)) ->
-      admin_workflow.handle_task_templates_org_fetched_error(model, err)
     TaskTemplatesProjectFetched(Ok(templates)) ->
       admin_workflow.handle_task_templates_project_fetched_ok(model, templates)
     TaskTemplatesProjectFetched(Error(err)) ->

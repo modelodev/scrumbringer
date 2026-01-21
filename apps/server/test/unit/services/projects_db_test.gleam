@@ -1,6 +1,6 @@
 //// Unit tests for project membership authorization.
 ////
-//// Tests is_project_member and is_project_admin functions via HTTP API
+//// Tests is_project_member and is_project_manager functions via HTTP API
 //// using fixtures.gleam for test setup.
 
 import fixtures
@@ -61,7 +61,7 @@ pub fn is_project_member_returns_false_for_non_member_test() {
 // AC5: Project admin positive test
 // =============================================================================
 
-pub fn is_project_admin_returns_true_for_admin_test() {
+pub fn is_project_manager_returns_true_for_admin_test() {
   // Given: Bootstrap and create a project (creator becomes admin)
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
@@ -72,7 +72,7 @@ pub fn is_project_admin_returns_true_for_admin_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   // When: Check if user is admin of the project
-  let result = auth.is_project_admin(db, user_id, project_id)
+  let result = auth.is_project_manager(db, user_id, project_id)
 
   // Then: Returns True
   result |> should.be_true()
@@ -82,7 +82,7 @@ pub fn is_project_admin_returns_true_for_admin_test() {
 // AC6: Project admin negative test
 // =============================================================================
 
-pub fn is_project_admin_returns_false_for_member_test() {
+pub fn is_project_manager_returns_false_for_member_test() {
   // Given: Bootstrap and create a project
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
@@ -94,7 +94,7 @@ pub fn is_project_admin_returns_false_for_member_test() {
   let assert Ok(_) = fixtures.add_member(handler, session, project_id, member_user_id, "member")
 
   // When: Check if regular member is admin
-  let result = auth.is_project_admin(db, member_user_id, project_id)
+  let result = auth.is_project_manager(db, member_user_id, project_id)
 
   // Then: Returns False
   result |> should.be_false()

@@ -1,38 +1,59 @@
-//// HTTP handlers for organization capabilities (skills).
+//// HTTP handlers for project capabilities (skills).
 ////
-//// Provides endpoints for listing and creating capabilities,
-//// as well as managing user capability selections.
+//// Provides endpoints for listing and creating capabilities within a project,
+//// as well as managing project member capability selections.
+////
+//// Routes:
+//// - GET  /api/projects/:id/capabilities - List capabilities for project
+//// - POST /api/projects/:id/capabilities - Create capability (manager only)
+//// - GET  /api/projects/:id/members/:user_id/capabilities - Get member capabilities
+//// - PUT  /api/projects/:id/members/:user_id/capabilities - Set member capabilities
 
+import domain/org_role
 import gleam/dynamic/decode
 import gleam/http
 import gleam/json
-import domain/org_role
+import gleam/list
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
 import scrumbringer_server/services/capabilities_db
-import scrumbringer_server/services/user_capabilities_db
+import scrumbringer_server/services/projects_db
+import scrumbringer_server/services/store_state.{type StoredUser}
 import wisp
 
-/// Routes /api/capabilities requests (GET list, POST create).
-pub fn handle_capabilities(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
+/// Routes /api/projects/:id/capabilities requests.
+pub fn handle_project_capabilities(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+) -> wisp.Response {
   case req.method {
-    http.Get -> handle_list(req, ctx)
-    http.Post -> handle_create(req, ctx)
+    http.Get -> handle_list(req, ctx, project_id)
+    http.Post -> handle_create(req, ctx, project_id)
     _ -> wisp.method_not_allowed([http.Get, http.Post])
   }
 }
 
-/// Routes /api/me/capabilities requests (GET/PUT user selections).
-pub fn handle_me_capabilities(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
+/// Routes /api/projects/:id/members/:user_id/capabilities requests.
+pub fn handle_member_capabilities(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+  user_id: Int,
+) -> wisp.Response {
   case req.method {
-    http.Get -> handle_get_me(req, ctx)
-    http.Put -> handle_put_me(req, ctx)
+    http.Get -> handle_get_member_capabilities(req, ctx, project_id, user_id)
+    http.Put -> handle_put_member_capabilities(req, ctx, project_id, user_id)
     _ -> wisp.method_not_allowed([http.Get, http.Put])
   }
 }
 
-fn handle_list(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
+fn handle_list(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
   case auth.require_current_user(req, ctx) {
@@ -41,37 +62,69 @@ fn handle_list(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
     Ok(user) -> {
       let auth.Ctx(db: db, ..) = ctx
 
-      case capabilities_db.list_capabilities_for_org(db, user.org_id) {
-        Ok(capabilities) ->
-          api.ok(
-            json.object([
-              #("capabilities", json.array(capabilities, of: capability_json)),
-            ]),
-          )
+      // Must be a member of the project
+      case projects_db.is_project_member(db, project_id, user.id) {
+        Ok(True) -> {
+          case capabilities_db.list_capabilities_for_project(db, project_id) {
+            Ok(capabilities) ->
+              api.ok(
+                json.object([
+                  #("capabilities", json.array(capabilities, of: capability_json)),
+                ]),
+              )
 
+            Error(_) -> api.error(500, "INTERNAL", "Database error")
+          }
+        }
+        Ok(False) -> api.error(403, "FORBIDDEN", "Not a member of this project")
         Error(_) -> api.error(500, "INTERNAL", "Database error")
       }
     }
   }
 }
 
-fn handle_create(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
+fn handle_create(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+) -> wisp.Response {
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
 
     Ok(user) -> {
-      case user.org_role {
-        org_role.Admin -> create_as_admin(req, ctx, user.org_id)
-        _ -> api.error(403, "FORBIDDEN", "Forbidden")
+      let auth.Ctx(db: db, ..) = ctx
+
+      // Must be a manager of the project (or org admin)
+      case require_project_manager(db, user, project_id) {
+        Error(resp) -> resp
+        Ok(Nil) -> create_capability(req, ctx, project_id)
       }
     }
   }
 }
 
-fn create_as_admin(
+fn require_project_manager(
+  db,
+  user: StoredUser,
+  project_id: Int,
+) -> Result(Nil, wisp.Response) {
+  // Org admin has implicit manager access
+  case user.org_role {
+    org_role.Admin -> Ok(Nil)
+    _ -> {
+      case projects_db.is_project_manager(db, project_id, user.id) {
+        Ok(True) -> Ok(Nil)
+        Ok(False) -> Error(api.error(403, "FORBIDDEN", "Not a project manager"))
+        Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+      }
+    }
+  }
+}
+
+fn create_capability(
   req: wisp.Request,
   ctx: auth.Ctx,
-  org_id: Int,
+  project_id: Int,
 ) -> wisp.Response {
   case csrf.require_double_submit(req) {
     Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
@@ -90,7 +143,7 @@ fn create_as_admin(
         Ok(name) -> {
           let auth.Ctx(db: db, ..) = ctx
 
-          case capabilities_db.create_capability(db, org_id, name) {
+          case capabilities_db.create_capability(db, project_id, name) {
             Ok(capability) ->
               api.ok(
                 json.object([#("capability", capability_json(capability))]),
@@ -111,7 +164,12 @@ fn create_as_admin(
   }
 }
 
-fn handle_get_me(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
+fn handle_get_member_capabilities(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+  user_id: Int,
+) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
   case auth.require_current_user(req, ctx) {
@@ -120,59 +178,102 @@ fn handle_get_me(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
     Ok(user) -> {
       let auth.Ctx(db: db, ..) = ctx
 
-      case
-        user_capabilities_db.get_selected_capability_ids(
-          db,
-          user.id,
-          user.org_id,
-        )
-      {
-        Ok(ids) -> api.ok(json.object([#("capability_ids", ids_json(ids))]))
+      // Must be a member of the project
+      case projects_db.is_project_member(db, project_id, user.id) {
+        Ok(True) -> {
+          case capabilities_db.list_member_capabilities(db, project_id, user_id) {
+            Ok(capabilities) -> {
+              let ids = list.map(capabilities, fn(c) { c.capability_id })
+              api.ok(json.object([#("capability_ids", ids_json(ids))]))
+            }
+            Error(_) -> api.error(500, "INTERNAL", "Database error")
+          }
+        }
+        Ok(False) -> api.error(403, "FORBIDDEN", "Not a member of this project")
         Error(_) -> api.error(500, "INTERNAL", "Database error")
       }
     }
   }
 }
 
-fn handle_put_me(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
+fn handle_put_member_capabilities(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+  target_user_id: Int,
+) -> wisp.Response {
   use <- wisp.require_method(req, http.Put)
 
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
 
     Ok(user) -> {
-      case csrf.require_double_submit(req) {
-        Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+      // User can update their own capabilities, or manager can update any member
+      let auth.Ctx(db: db, ..) = ctx
+      let can_update = case user.id == target_user_id {
+        True -> projects_db.is_project_member(db, project_id, user.id)
+        False -> projects_db.is_project_manager(db, project_id, user.id)
+      }
 
-        Ok(Nil) -> {
-          use data <- wisp.require_json(req)
+      case can_update {
+        Ok(True) -> update_member_capabilities(req, ctx, project_id, target_user_id)
+        Ok(False) -> api.error(403, "FORBIDDEN", "Not authorized")
+        Error(_) -> api.error(500, "INTERNAL", "Database error")
+      }
+    }
+  }
+}
 
-          let decoder = {
-            use ids <- decode.field("capability_ids", decode.list(decode.int))
-            decode.success(ids)
-          }
+fn update_member_capabilities(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+  user_id: Int,
+) -> wisp.Response {
+  case csrf.require_double_submit(req) {
+    Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
 
-          case decode.run(data, decoder) {
-            Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+    Ok(Nil) -> {
+      use data <- wisp.require_json(req)
 
-            Ok(ids) -> {
-              let auth.Ctx(db: db, ..) = ctx
+      let decoder = {
+        use ids <- decode.field("capability_ids", decode.list(decode.int))
+        decode.success(ids)
+      }
 
-              case
-                user_capabilities_db.set_selected_capability_ids(
-                  db,
-                  user.id,
-                  user.org_id,
-                  ids,
-                )
-              {
-                Ok(stored) ->
-                  api.ok(json.object([#("capability_ids", ids_json(stored))]))
+      case decode.run(data, decoder) {
+        Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
 
-                Error(user_capabilities_db.InvalidCapabilityId(_)) ->
-                  api.error(422, "VALIDATION_ERROR", "Invalid capability_id")
+        Ok(new_ids) -> {
+          let auth.Ctx(db: db, ..) = ctx
 
+          // First, verify all capability IDs belong to this project
+          let validation_result = list.try_map(new_ids, fn(cap_id) {
+            case capabilities_db.capability_is_in_project(db, cap_id, project_id) {
+              Ok(True) -> Ok(cap_id)
+              Ok(False) -> Error("invalid")
+              Error(_) -> Error("db_error")
+            }
+          })
+
+          case validation_result {
+            Error("invalid") ->
+              api.error(422, "VALIDATION_ERROR", "Invalid capability_id")
+            Error(_) ->
+              api.error(500, "INTERNAL", "Database error")
+            Ok(_) -> {
+              // Remove all existing and add new ones
+              case capabilities_db.remove_all_member_capabilities(db, project_id, user_id) {
                 Error(_) -> api.error(500, "INTERNAL", "Database error")
+                Ok(Nil) -> {
+                  let add_result = list.try_map(new_ids, fn(cap_id) {
+                    capabilities_db.add_member_capability(db, project_id, user_id, cap_id)
+                  })
+                  case add_result {
+                    Ok(_) -> api.ok(json.object([#("capability_ids", ids_json(new_ids))]))
+                    Error(_) -> api.error(500, "INTERNAL", "Database error")
+                  }
+                }
               }
             }
           }
@@ -189,14 +290,14 @@ fn ids_json(values: List(Int)) -> json.Json {
 fn capability_json(capability: capabilities_db.Capability) -> json.Json {
   let capabilities_db.Capability(
     id: id,
-    org_id: org_id,
+    project_id: project_id,
     name: name,
     created_at: created_at,
   ) = capability
 
   json.object([
     #("id", json.int(id)),
-    #("org_id", json.int(org_id)),
+    #("project_id", json.int(project_id)),
     #("name", json.string(name)),
     #("created_at", json.string(created_at)),
   ])

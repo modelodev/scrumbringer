@@ -6,9 +6,12 @@
 ////
 //// ```gleam
 //// import shared/domain/project.{type Project, type ProjectMember}
+//// import shared/domain/project_role.{Manager}
 ////
-//// let project = Project(id: 1, name: "My Project", my_role: "admin")
+//// let project = Project(id: 1, name: "My Project", my_role: Manager)
 //// ```
+
+import domain/project_role.{type ProjectRole}
 
 // =============================================================================
 // Types
@@ -19,10 +22,10 @@
 /// ## Example
 ///
 /// ```gleam
-/// Project(id: 1, name: "Sprint Tracker", my_role: "admin")
+/// Project(id: 1, name: "Sprint Tracker", my_role: Manager)
 /// ```
 pub type Project {
-  Project(id: Int, name: String, my_role: String)
+  Project(id: Int, name: String, my_role: ProjectRole)
 }
 
 /// A member of a project with their role.
@@ -30,8 +33,8 @@ pub type Project {
 /// ## Example
 ///
 /// ```gleam
-/// ProjectMember(user_id: 1, role: "member", created_at: "2024-01-17T12:00:00Z")
+/// ProjectMember(user_id: 1, role: Member, created_at: "2024-01-17T12:00:00Z")
 /// ```
 pub type ProjectMember {
-  ProjectMember(user_id: Int, role: String, created_at: String)
+  ProjectMember(user_id: Int, role: ProjectRole, created_at: String)
 }

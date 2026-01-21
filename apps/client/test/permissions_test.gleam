@@ -21,7 +21,7 @@ pub fn visible_sections_org_admin_test() {
 }
 
 pub fn visible_sections_org_admin_and_project_admin_test() {
-  let projects = [Project(id: 1, name: "P1", my_role: "admin")]
+  let projects = [Project(id: 1, name: "P1", my_role: "manager")]
 
   permissions.visible_sections(org_role.Admin, projects)
   |> should.equal([
@@ -39,12 +39,15 @@ pub fn visible_sections_org_admin_and_project_admin_test() {
   ])
 }
 
-pub fn visible_sections_project_admin_only_test() {
-  let projects = [Project(id: 1, name: "P1", my_role: "admin")]
+pub fn visible_sections_project_manager_only_test() {
+  let projects = [Project(id: 1, name: "P1", my_role: "manager")]
 
+  // Project managers get access to project-scoped sections including capabilities
   permissions.visible_sections(org_role.Member, projects)
   |> should.equal([
+    permissions.RuleMetrics,
     permissions.Members,
+    permissions.Capabilities,
     permissions.TaskTypes,
     permissions.Cards,
     permissions.Workflows,
@@ -53,7 +56,7 @@ pub fn visible_sections_project_admin_only_test() {
 }
 
 pub fn can_access_members_requires_selected_project_or_any_admin_test() {
-  let projects = [Project(id: 1, name: "P1", my_role: "admin")]
+  let projects = [Project(id: 1, name: "P1", my_role: "manager")]
 
   permissions.can_access_section(
     permissions.Members,

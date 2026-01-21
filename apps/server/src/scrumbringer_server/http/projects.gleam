@@ -89,7 +89,7 @@ pub fn handle_member_remove(
                         Error(projects_db.MembershipNotFound) ->
                           api.error(404, "NOT_FOUND", "Membership not found")
 
-                        Error(projects_db.CannotRemoveLastAdmin) ->
+                        Error(projects_db.CannotRemoveLastManager) ->
                           api.error(
                             422,
                             "VALIDATION_ERROR",
@@ -312,7 +312,7 @@ fn require_project_admin(
   project_id: Int,
   user_id: Int,
 ) -> Result(Nil, wisp.Response) {
-  case projects_db.is_project_admin(db, project_id, user_id) {
+  case projects_db.is_project_manager(db, project_id, user_id) {
     Ok(True) -> Ok(Nil)
     Ok(False) -> Error(api.error(403, "FORBIDDEN", "Forbidden"))
     Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))

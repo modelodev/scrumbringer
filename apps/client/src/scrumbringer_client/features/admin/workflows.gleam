@@ -30,8 +30,7 @@ import scrumbringer_client/client_state.{
   type Model, type Msg, type TaskTemplateDialogMode, type WorkflowDialogMode,
   Failed, Loaded, Loading, Model, NotAsked, RuleMetricsFetched,
   RuleTemplateAttached, RuleTemplateDetached, RulesFetched,
-  TaskTemplatesOrgFetched, TaskTemplatesProjectFetched, TaskTypesFetched,
-  WorkflowsOrgFetched, WorkflowsProjectFetched,
+  TaskTemplatesProjectFetched, TaskTypesFetched, WorkflowsProjectFetched,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -42,25 +41,6 @@ import scrumbringer_client/api/workflows as api_workflows
 // =============================================================================
 // Workflow Fetch Handlers
 // =============================================================================
-
-/// Handle org workflows fetch success.
-pub fn handle_workflows_org_fetched_ok(
-  model: Model,
-  workflows: List(Workflow),
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, workflows_org: Loaded(workflows)), effect.none())
-}
-
-/// Handle org workflows fetch error.
-pub fn handle_workflows_org_fetched_error(
-  model: Model,
-  err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(Model(..model, workflows_org: Failed(err)), effect.none())
-  }
-}
 
 /// Handle project workflows fetch success.
 pub fn handle_workflows_project_fetched_ok(
@@ -554,25 +534,6 @@ pub fn handle_rule_template_detached_error(
 // Task Template Fetch Handlers
 // =============================================================================
 
-/// Handle org task templates fetch success.
-pub fn handle_task_templates_org_fetched_ok(
-  model: Model,
-  templates: List(TaskTemplate),
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, task_templates_org: Loaded(templates)), effect.none())
-}
-
-/// Handle org task templates fetch error.
-pub fn handle_task_templates_org_fetched_error(
-  model: Model,
-  err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(Model(..model, task_templates_org: Failed(err)), effect.none())
-  }
-}
-
 /// Handle project task templates fetch success.
 pub fn handle_task_templates_project_fetched_ok(
   model: Model,
@@ -715,30 +676,31 @@ pub fn handle_task_template_crud_deleted(
 // Fetch Helpers
 // =============================================================================
 
-/// Fetch workflows for admin panel (both org and project scoped).
+/// Fetch workflows for admin panel (project-scoped only).
 pub fn fetch_workflows(model: Model) -> #(Model, Effect(Msg)) {
-  let org_effect = api_workflows.list_org_workflows(WorkflowsOrgFetched)
-  let project_effect = case model.selected_project_id {
-    opt.Some(project_id) ->
-      api_workflows.list_project_workflows(project_id, WorkflowsProjectFetched)
-    opt.None -> effect.none()
+  case model.selected_project_id {
+    opt.Some(project_id) -> {
+      let fetch_effect =
+        api_workflows.list_project_workflows(project_id, WorkflowsProjectFetched)
+      let model = Model(..model, workflows_project: Loading)
+      #(model, fetch_effect)
+    }
+    opt.None -> #(model, effect.none())
   }
-  let model = Model(..model, workflows_org: Loading, workflows_project: Loading)
-  #(model, effect.batch([org_effect, project_effect]))
 }
 
-/// Fetch task templates for admin panel (both org and project scoped).
+/// Fetch task templates for admin panel (project-scoped only).
 pub fn fetch_task_templates(model: Model) -> #(Model, Effect(Msg)) {
-  let org_effect = api_workflows.list_org_templates(TaskTemplatesOrgFetched)
-  let project_effect = case model.selected_project_id {
-    opt.Some(project_id) ->
-      api_workflows.list_project_templates(
-        project_id,
-        TaskTemplatesProjectFetched,
-      )
-    opt.None -> effect.none()
+  case model.selected_project_id {
+    opt.Some(project_id) -> {
+      let fetch_effect =
+        api_workflows.list_project_templates(
+          project_id,
+          TaskTemplatesProjectFetched,
+        )
+      let model = Model(..model, task_templates_project: Loading)
+      #(model, fetch_effect)
+    }
+    opt.None -> #(model, effect.none())
   }
-  let model =
-    Model(..model, task_templates_org: Loading, task_templates_project: Loading)
-  #(model, effect.batch([org_effect, project_effect]))
 }

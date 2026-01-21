@@ -10,8 +10,9 @@ DATABASE_URL=${DATABASE_URL:-"postgres://scrumbringer:scrumbringer@localhost:543
 SB_PORT=${SB_PORT:-8000}
 DEV_PORT=${DEV_PORT:-1234}
 SB_SECRET_KEY_BASE=${SB_SECRET_KEY_BASE:-dev-secret}
+SB_COOKIE_SECURE=${SB_COOKIE_SECURE:-false}
 
-export DATABASE_URL SB_PORT SB_SECRET_KEY_BASE
+export DATABASE_URL SB_PORT SB_SECRET_KEY_BASE SB_COOKIE_SECURE
 
 cleanup() {
   # Best-effort cleanup.
@@ -48,8 +49,9 @@ SB_PORT="$SB_PORT" DEV_PORT="$DEV_PORT" \
   caddy run --config "$CADDY_CONFIG" --adapter caddyfile &
 
 echo
-echo "Dev stack running:" 
-echo "- App: https://localhost:8443"
+echo "Dev stack running:"
+echo "- App (HTTPS): https://localhost:8443"
+echo "- App (HTTP):  http://localhost:8080  (or http://<your-ip>:8080)"
 echo "- API: http://localhost:$SB_PORT/api/v1"
 echo "- Client dev: http://localhost:$DEV_PORT"
 echo

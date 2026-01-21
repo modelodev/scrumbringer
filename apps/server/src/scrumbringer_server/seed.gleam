@@ -102,7 +102,7 @@ fn run_seed() -> Result(SeedStats, String) {
   io.println("\n--- Creating Project Alpha ---")
 
   use alpha_id <- result.try(insert_project(db, org_id, "Project Alpha"))
-  use _ <- result.try(insert_member(db, alpha_id, user_id, "admin"))
+  use _ <- result.try(insert_member(db, alpha_id, user_id, "manager"))
   io.println("[OK] Project Alpha ID: " <> int.to_string(alpha_id))
 
   use alpha_bug_type <- result.try(insert_task_type(db, alpha_id, "Bug", "bug-ant"))
@@ -111,19 +111,19 @@ fn run_seed() -> Result(SeedStats, String) {
   io.println("[OK] Task types created")
 
   use alpha_review_tmpl <- result.try(
-    insert_template(db, org_id, Some(alpha_id), alpha_task_type, "Code Review", user_id)
+    insert_template(db, org_id, alpha_id, alpha_task_type, "Code Review", user_id)
   )
   use alpha_qa_tmpl <- result.try(
-    insert_template(db, org_id, Some(alpha_id), alpha_task_type, "QA Verification", user_id)
+    insert_template(db, org_id, alpha_id, alpha_task_type, "QA Verification", user_id)
   )
   use alpha_deploy_tmpl <- result.try(
-    insert_template(db, org_id, Some(alpha_id), alpha_task_type, "Deploy to Staging", user_id)
+    insert_template(db, org_id, alpha_id, alpha_task_type, "Deploy to Staging", user_id)
   )
   io.println("[OK] Templates created")
 
-  use wf_bug_id <- result.try(insert_workflow(db, org_id, Some(alpha_id), "Bug Resolution", user_id))
-  use wf_feature_id <- result.try(insert_workflow(db, org_id, Some(alpha_id), "Feature Development", user_id))
-  use wf_card_id <- result.try(insert_workflow(db, org_id, Some(alpha_id), "Card Automation", user_id))
+  use wf_bug_id <- result.try(insert_workflow(db, org_id, alpha_id, "Bug Resolution", user_id))
+  use wf_feature_id <- result.try(insert_workflow(db, org_id, alpha_id, "Feature Development", user_id))
+  use wf_card_id <- result.try(insert_workflow(db, org_id, alpha_id, "Card Automation", user_id))
   io.println("[OK] Workflows created")
 
   use rule_bug_resolved <- result.try(insert_rule(db, wf_bug_id, "On Bug Resolved", "task", Some(alpha_bug_type), "resolved"))
@@ -147,10 +147,10 @@ fn run_seed() -> Result(SeedStats, String) {
   io.println("\n--- Creating Project Beta ---")
 
   use beta_id <- result.try(insert_project(db, org_id, "Project Beta"))
-  use _ <- result.try(insert_member(db, beta_id, user_id, "admin"))
+  use _ <- result.try(insert_member(db, beta_id, user_id, "manager"))
   use beta_bug_type <- result.try(insert_task_type(db, beta_id, "Bug", "bug-ant"))
   use _beta_feature <- result.try(insert_task_type(db, beta_id, "Feature", "sparkles"))
-  use wf_beta_id <- result.try(insert_workflow(db, org_id, Some(beta_id), "Simple Bug Flow", user_id))
+  use wf_beta_id <- result.try(insert_workflow(db, org_id, beta_id, "Simple Bug Flow", user_id))
   use _rule_beta <- result.try(insert_rule(db, wf_beta_id, "On Beta Bug Resolved", "task", Some(beta_bug_type), "resolved"))
   io.println("[OK] Project Beta created")
 
@@ -390,10 +390,10 @@ fn insert_task_type(db: pog.Connection, project_id: Int, name: String, icon: Str
   |> result.try(fn(r) { case r.rows { [id] -> Ok(id) _ -> Error("No ID") } })
 }
 
-fn insert_template(db: pog.Connection, org_id: Int, project_id: Option(Int), type_id: Int, name: String, created_by: Int) -> Result(Int, String) {
+fn insert_template(db: pog.Connection, org_id: Int, project_id: Int, type_id: Int, name: String, created_by: Int) -> Result(Int, String) {
   pog.query("INSERT INTO task_templates (org_id, project_id, type_id, name, description, priority, created_by) VALUES ($1, $2, $3, $4, 'Seeded', 3, $5) RETURNING id")
   |> pog.parameter(pog.int(org_id))
-  |> pog.parameter(pog.nullable(pog.int, project_id))
+  |> pog.parameter(pog.int(project_id))
   |> pog.parameter(pog.int(type_id))
   |> pog.parameter(pog.text(name))
   |> pog.parameter(pog.int(created_by))
@@ -403,10 +403,10 @@ fn insert_template(db: pog.Connection, org_id: Int, project_id: Option(Int), typ
   |> result.try(fn(r) { case r.rows { [id] -> Ok(id) _ -> Error("No ID") } })
 }
 
-fn insert_workflow(db: pog.Connection, org_id: Int, project_id: Option(Int), name: String, created_by: Int) -> Result(Int, String) {
+fn insert_workflow(db: pog.Connection, org_id: Int, project_id: Int, name: String, created_by: Int) -> Result(Int, String) {
   pog.query("INSERT INTO workflows (org_id, project_id, name, active, created_by) VALUES ($1, $2, $3, true, $4) RETURNING id")
   |> pog.parameter(pog.int(org_id))
-  |> pog.parameter(pog.nullable(pog.int, project_id))
+  |> pog.parameter(pog.int(project_id))
   |> pog.parameter(pog.text(name))
   |> pog.parameter(pog.int(created_by))
   |> pog.returning(int_decoder())
