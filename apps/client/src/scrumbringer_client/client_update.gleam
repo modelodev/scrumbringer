@@ -108,11 +108,11 @@ import scrumbringer_client/client_state.{
   MemberWorkSessionHeartbeated, MemberWorkSessionPaused,
   MemberWorkSessionStarted, MemberWorkSessionsFetched, MembersFetched, Model,
   NavigateTo, NotAsked, NowWorkingTicked, OpenCardDetail, OpenCardDialog, OrgSettingsRoleChanged,
-  OrgSettingsSaveClicked, OrgSettingsSaved, OrgSettingsUsersFetched,
+  OrgSettingsSaveClicked, OrgSettingsSaved, OrgSettingsSaveAllClicked, OrgSettingsUsersFetched,
   OrgUsersCacheFetched, OrgUsersSearchChanged, OrgUsersSearchDebounced,
   UserProjectsDialogOpened, UserProjectsDialogClosed, UserProjectsFetched,
-  UserProjectsAddProjectChanged, UserProjectsAddSubmitted, UserProjectAdded,
-  UserProjectRemoveClicked, UserProjectRemoved,
+  UserProjectsAddProjectChanged, UserProjectsAddRoleChanged, UserProjectsAddSubmitted, UserProjectAdded,
+  UserProjectRemoveClicked, UserProjectRemoved, UserProjectRoleChangeRequested, UserProjectRoleChanged,
   OrgUsersSearchResults, ProjectCreateDialogOpened, ProjectCreateDialogClosed,
   ProjectCreateNameChanged, ProjectCreateSubmitted,
   ProjectCreated, ProjectSelected, ProjectsFetched, Push, Rect, Replace,
@@ -1501,6 +1501,8 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       admin_workflow.handle_org_settings_saved_ok(model, updated)
     OrgSettingsSaved(user_id, Error(err)) ->
       admin_workflow.handle_org_settings_saved_error(model, user_id, err)
+    OrgSettingsSaveAllClicked ->
+      admin_workflow.handle_org_settings_save_all_clicked(model)
 
     // User projects dialog handlers
     UserProjectsDialogOpened(user) ->
@@ -1513,6 +1515,8 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       admin_workflow.handle_user_projects_fetched_error(model, err)
     UserProjectsAddProjectChanged(project_id) ->
       admin_workflow.handle_user_projects_add_project_changed(model, project_id)
+    UserProjectsAddRoleChanged(role) ->
+      admin_workflow.handle_user_projects_add_role_changed(model, role)
     UserProjectsAddSubmitted ->
       admin_workflow.handle_user_projects_add_submitted(model)
     UserProjectAdded(Ok(project)) ->
@@ -1525,6 +1529,12 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       admin_workflow.handle_user_project_removed_ok(model)
     UserProjectRemoved(Error(err)) ->
       admin_workflow.handle_user_project_removed_error(model, err)
+    UserProjectRoleChangeRequested(project_id, new_role) ->
+      admin_workflow.handle_user_project_role_change_requested(model, project_id, new_role)
+    UserProjectRoleChanged(project_id, Ok(updated)) ->
+      admin_workflow.handle_user_project_role_changed_ok(model, project_id, updated)
+    UserProjectRoleChanged(_project_id, Error(err)) ->
+      admin_workflow.handle_user_project_role_changed_error(model, err)
 
     MemberAddDialogOpened ->
       admin_workflow.handle_member_add_dialog_opened(model)

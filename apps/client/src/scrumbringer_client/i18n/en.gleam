@@ -292,6 +292,18 @@ pub fn translate(text: Text) -> String {
     text.UserProjectsAdd -> "Add to project"
     text.SelectProject -> "Select project"
     text.UserProjectRemove -> "Remove"
+    text.RoleInProject -> "Role in project"
+    text.ProjectRoleUpdated -> "Project role updated"
+
+    // Org Users main table
+    text.Manage -> "Manage"
+    text.SaveOrgRoleChanges -> "Save role changes"
+    text.PendingChanges -> "pending changes"
+    text.ProjectsSummary(count, summary) ->
+      case count {
+        0 -> "No projects"
+        _ -> int.to_string(count) <> ": " <> summary
+      }
 
     // Task types
     text.SelectProjectToManageTaskTypes ->

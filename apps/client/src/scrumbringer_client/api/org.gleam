@@ -193,17 +193,42 @@ pub fn list_user_projects(
   )
 }
 
-/// Add a user to a project.
+/// Add a user to a project with a role.
 pub fn add_user_to_project(
   user_id: Int,
   project_id: Int,
+  role: String,
   to_msg: fn(ApiResult(Project)) -> msg,
 ) -> Effect(msg) {
-  let body = json.object([#("project_id", json.int(project_id))])
+  let body = json.object([
+    #("project_id", json.int(project_id)),
+    #("role", json.string(role)),
+  ])
   let decoder = decode.field("project", user_project_decoder(), decode.success)
   core.request(
     "POST",
     "/api/v1/org/users/" <> int.to_string(user_id) <> "/projects",
+    option.Some(body),
+    decoder,
+    to_msg,
+  )
+}
+
+/// Update a user's role in a project.
+pub fn update_user_project_role(
+  user_id: Int,
+  project_id: Int,
+  role: String,
+  to_msg: fn(ApiResult(Project)) -> msg,
+) -> Effect(msg) {
+  let body = json.object([#("role", json.string(role))])
+  let decoder = decode.field("project", user_project_decoder(), decode.success)
+  core.request(
+    "PATCH",
+    "/api/v1/org/users/"
+      <> int.to_string(user_id)
+      <> "/projects/"
+      <> int.to_string(project_id),
     option.Some(body),
     decoder,
     to_msg,

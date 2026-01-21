@@ -292,6 +292,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       user_projects_dialog_user: opt.None,
       user_projects_list: NotAsked,
       user_projects_add_project_id: opt.None,
+      user_projects_add_role: "member",
       user_projects_in_flight: False,
       user_projects_error: opt.None,
       members_add_dialog_open: False,

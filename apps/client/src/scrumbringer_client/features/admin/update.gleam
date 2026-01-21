@@ -68,6 +68,8 @@ pub const handle_org_settings_saved_ok = org_settings.handle_org_settings_saved_
 
 pub const handle_org_settings_saved_error = org_settings.handle_org_settings_saved_error
 
+pub const handle_org_settings_save_all_clicked = org_settings.handle_org_settings_save_all_clicked
+
 // =============================================================================
 // Re-exports: Member Add
 // =============================================================================
@@ -379,6 +381,8 @@ pub const handle_user_projects_fetched_error = user_projects.handle_user_project
 
 pub const handle_user_projects_add_project_changed = user_projects.handle_user_projects_add_project_changed
 
+pub const handle_user_projects_add_role_changed = user_projects.handle_user_projects_add_role_changed
+
 pub const handle_user_projects_add_submitted = user_projects.handle_user_projects_add_submitted
 
 pub const handle_user_project_added_ok = user_projects.handle_user_project_added_ok
@@ -390,3 +394,9 @@ pub const handle_user_project_remove_clicked = user_projects.handle_user_project
 pub const handle_user_project_removed_ok = user_projects.handle_user_project_removed_ok
 
 pub const handle_user_project_removed_error = user_projects.handle_user_project_removed_error
+
+pub const handle_user_project_role_change_requested = user_projects.handle_user_project_role_change_requested
+
+pub const handle_user_project_role_changed_ok = user_projects.handle_user_project_role_changed_ok
+
+pub const handle_user_project_role_changed_error = user_projects.handle_user_project_role_changed_error

@@ -73,7 +73,7 @@ import scrumbringer_client/client_state.{
   MemberRemoveClicked, MemberRemoveConfirmed, MemberRoleChangeRequested,
   NotAsked, OpenCardDialog,
   OpenRuleDialog, OpenTaskTemplateDialog, OrgSettingsRoleChanged,
-  OrgSettingsSaveClicked, OrgUsersSearchChanged, OrgUsersSearchDebounced,
+  OrgSettingsSaveAllClicked, OrgUsersSearchChanged, OrgUsersSearchDebounced,
   RuleCrudCreated, RuleCrudDeleted, RuleCrudUpdated, RuleDialogCreate,
   RuleDialogDelete, RuleDialogEdit, RulesBackClicked, TaskTemplateCrudCreated,
   TaskTemplateCrudDeleted, TaskTemplateCrudUpdated, TaskTemplateDialogCreate,
@@ -82,8 +82,9 @@ import scrumbringer_client/client_state.{
   TaskTypeCreateDialogOpened, TaskTypeCreateIconCategoryChanged,
   TaskTypeCreateIconChanged, TaskTypeCreateIconSearchChanged,
   TaskTypeCreateNameChanged, TaskTypeCreateSubmitted,
-  UserProjectRemoveClicked, UserProjectsAddProjectChanged,
+  UserProjectRemoveClicked, UserProjectsAddProjectChanged, UserProjectsAddRoleChanged,
   UserProjectsAddSubmitted, UserProjectsDialogClosed, UserProjectsDialogOpened,
+  UserProjectRoleChangeRequested,
   WorkflowCrudCreated, WorkflowCrudDeleted, WorkflowCrudUpdated,
   WorkflowDialogCreate, WorkflowDialogDelete, WorkflowDialogEdit,
   CloseWorkflowDialog, OpenWorkflowDialog, WorkflowRulesClicked,
@@ -129,13 +130,16 @@ pub fn view_org_settings(model: Model) -> Element(Msg) {
 
       Failed(err) -> div([attribute.class("error")], [text(err.message)])
 
-      Loaded(users) ->
+      Loaded(users) -> {
+        let pending_count = dict.size(model.org_settings_role_drafts)
+        let has_pending = pending_count > 0
+
         div([], [
           table([attribute.class("table")], [
             thead([], [
               tr([], [
                 th([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Role))]),
+                th([], [text(update_helpers.i18n_t(model, i18n_text.OrgRole))]),
                 th([], [text(update_helpers.i18n_t(model, i18n_text.AdminProjects))]),
                 th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
               ]),
@@ -146,6 +150,11 @@ pub fn view_org_settings(model: Model) -> Element(Msg) {
                 let draft = case dict.get(model.org_settings_role_drafts, u.id) {
                   Ok(role) -> role
                   Error(_) -> u.org_role
+                }
+
+                let has_change = case dict.get(model.org_settings_role_drafts, u.id) {
+                  Ok(_) -> True
+                  Error(_) -> False
                 }
 
                 let inline_error = case
@@ -180,6 +189,11 @@ pub fn view_org_settings(model: Model) -> Element(Msg) {
                           ),
                         ],
                       ),
+                      // Pending change indicator
+                      case has_change {
+                        True -> span([attribute.class("pending-indicator")], [text(" *")])
+                        False -> element.none()
+                      },
                       case inline_error == "" {
                         True -> element.none()
                         False ->
@@ -187,21 +201,16 @@ pub fn view_org_settings(model: Model) -> Element(Msg) {
                       },
                     ]),
                     td([], [
+                      // Projects summary (lazy loaded)
+                      text(format_projects_summary(model, u.id)),
+                    ]),
+                    td([], [
                       button(
                         [
                           attribute.class("btn-secondary btn-sm"),
                           event.on_click(UserProjectsDialogOpened(u)),
                         ],
-                        [text(update_helpers.i18n_t(model, i18n_text.View))],
-                      ),
-                    ]),
-                    td([], [
-                      button(
-                        [
-                          attribute.disabled(model.org_settings_save_in_flight),
-                          event.on_click(OrgSettingsSaveClicked(u.id)),
-                        ],
-                        [text(update_helpers.i18n_t(model, i18n_text.Save))],
+                        [text(update_helpers.i18n_t(model, i18n_text.Manage))],
                       ),
                     ]),
                   ]),
@@ -209,9 +218,27 @@ pub fn view_org_settings(model: Model) -> Element(Msg) {
               }),
             ),
           ]),
+          // Save all button at bottom
+          div([attribute.class("save-all-row")], [
+            case has_pending {
+              True ->
+                span([attribute.class("pending-count")], [
+                  text(int.to_string(pending_count) <> " " <> update_helpers.i18n_t(model, i18n_text.PendingChanges)),
+                ])
+              False -> element.none()
+            },
+            button(
+              [
+                attribute.disabled(!has_pending || model.org_settings_save_in_flight),
+                event.on_click(OrgSettingsSaveAllClicked),
+              ],
+              [text(update_helpers.i18n_t(model, i18n_text.SaveOrgRoleChanges))],
+            ),
+          ]),
           // User projects dialog
           view_user_projects_dialog(model),
         ])
+      }
     },
   ])
 }
@@ -260,7 +287,7 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
                             text(update_helpers.i18n_t(model, i18n_text.Name)),
                           ]),
                           th([], [
-                            text(update_helpers.i18n_t(model, i18n_text.Role)),
+                            text(update_helpers.i18n_t(model, i18n_text.RoleInProject)),
                           ]),
                           th([], [
                             text(update_helpers.i18n_t(model, i18n_text.Actions)),
@@ -274,7 +301,28 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
                             int.to_string(p.id),
                             tr([], [
                               td([], [text(p.name)]),
-                              td([], [text(project_role.to_string(p.my_role))]),
+                              td([], [
+                                // Editable role dropdown
+                                select(
+                                  [
+                                    attribute.value(project_role.to_string(p.my_role)),
+                                    attribute.disabled(model.user_projects_in_flight),
+                                    event.on_input(fn(value) {
+                                      UserProjectRoleChangeRequested(p.id, value)
+                                    }),
+                                  ],
+                                  [
+                                    option(
+                                      [attribute.value("manager")],
+                                      update_helpers.i18n_t(model, i18n_text.RoleManager),
+                                    ),
+                                    option(
+                                      [attribute.value("member")],
+                                      update_helpers.i18n_t(model, i18n_text.RoleMember),
+                                    ),
+                                  ],
+                                ),
+                              ]),
                               td([], [
                                 button(
                                   [
@@ -307,6 +355,7 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
               text(update_helpers.i18n_t(model, i18n_text.UserProjectsAdd)),
             ]),
             div([attribute.class("field-row")], [
+              // Project selector
               select(
                 [
                   attribute.value(
@@ -324,6 +373,24 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
                     i18n_text.SelectProject,
                   )),
                   ..view_available_projects_options(model),
+                ],
+              ),
+              // Role selector
+              select(
+                [
+                  attribute.value(model.user_projects_add_role),
+                  attribute.disabled(model.user_projects_in_flight),
+                  event.on_input(UserProjectsAddRoleChanged),
+                ],
+                [
+                  option(
+                    [attribute.value("member")],
+                    update_helpers.i18n_t(model, i18n_text.RoleMember),
+                  ),
+                  option(
+                    [attribute.value("manager")],
+                    update_helpers.i18n_t(model, i18n_text.RoleManager),
+                  ),
                 ],
               ),
               button(
@@ -370,6 +437,39 @@ fn view_available_projects_options(model: Model) -> List(Element(Msg)) {
   all_projects
   |> list.filter(fn(p) { !list.contains(user_project_ids, p.id) })
   |> list.map(fn(p) { option([attribute.value(int.to_string(p.id))], p.name) })
+}
+
+/// Format projects summary for a user (lazy loaded).
+/// Shows "..." if not yet loaded, otherwise "count: name1, name2 (mgr), ..."
+fn format_projects_summary(model: Model, user_id: Int) -> String {
+  // Check if this is the user whose dialog is open and projects are loaded
+  case model.user_projects_dialog_user, model.user_projects_list {
+    opt.Some(dialog_user), Loaded(projects) if dialog_user.id == user_id -> {
+      let count = list.length(projects)
+      case count {
+        0 -> update_helpers.i18n_t(model, i18n_text.ProjectsSummary(0, ""))
+        _ -> {
+          let names = projects
+            |> list.take(3)
+            |> list.map(fn(p) {
+              case p.my_role {
+                Manager -> p.name <> " (mgr)"
+                Member -> p.name
+              }
+            })
+            |> string.join(", ")
+
+          let suffix = case list.length(projects) > 3 {
+            True -> ", +" <> int.to_string(list.length(projects) - 3)
+            False -> ""
+          }
+
+          update_helpers.i18n_t(model, i18n_text.ProjectsSummary(count, names <> suffix))
+        }
+      }
+    }
+    _, _ -> "..."
+  }
 }
 
 /// Capabilities management view.

@@ -29,8 +29,10 @@ import domain/project.{type Project}
 import scrumbringer_client/api/org as api_org
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, Loading, Model, NotAsked,
-  UserProjectAdded, UserProjectRemoved, UserProjectsFetched,
+  UserProjectAdded, UserProjectRemoved, UserProjectRoleChanged, UserProjectsFetched,
 }
+import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/update_helpers
 
 // =============================================================================
 // Dialog Open/Close
@@ -48,6 +50,7 @@ pub fn handle_user_projects_dialog_opened(
       user_projects_dialog_user: opt.Some(user),
       user_projects_list: Loading,
       user_projects_add_project_id: opt.None,
+      user_projects_add_role: "member",
       user_projects_in_flight: False,
       user_projects_error: opt.None,
     )
@@ -64,6 +67,7 @@ pub fn handle_user_projects_dialog_closed(model: Model) -> #(Model, Effect(Msg))
       user_projects_dialog_user: opt.None,
       user_projects_list: NotAsked,
       user_projects_add_project_id: opt.None,
+      user_projects_add_role: "member",
       user_projects_in_flight: False,
       user_projects_error: opt.None,
     ),
@@ -111,6 +115,14 @@ pub fn handle_user_projects_add_project_changed(
   #(Model(..model, user_projects_add_project_id: project_id), effect.none())
 }
 
+/// Handle role selection change for add.
+pub fn handle_user_projects_add_role_changed(
+  model: Model,
+  role: String,
+) -> #(Model, Effect(Msg)) {
+  #(Model(..model, user_projects_add_role: role), effect.none())
+}
+
 /// Handle submit add user to project.
 pub fn handle_user_projects_add_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.user_projects_dialog_user, model.user_projects_add_project_id {
@@ -118,7 +130,12 @@ pub fn handle_user_projects_add_submitted(model: Model) -> #(Model, Effect(Msg))
       let model =
         Model(..model, user_projects_in_flight: True, user_projects_error: opt.None)
 
-      #(model, api_org.add_user_to_project(user.id, project_id, UserProjectAdded))
+      #(model, api_org.add_user_to_project(
+        user.id,
+        project_id,
+        model.user_projects_add_role,
+        UserProjectAdded,
+      ))
     }
 
     _, _ -> #(model, effect.none())
@@ -210,6 +227,78 @@ pub fn handle_user_project_removed_error(
       ..model,
       user_projects_in_flight: False,
       user_projects_error: opt.Some(err.message),
+    ),
+    effect.none(),
+  )
+}
+
+// =============================================================================
+// Change User Project Role
+// =============================================================================
+
+/// Handle project role change request (dropdown changed).
+pub fn handle_user_project_role_change_requested(
+  model: Model,
+  project_id: Int,
+  new_role: String,
+) -> #(Model, Effect(Msg)) {
+  case model.user_projects_dialog_user {
+    opt.Some(user) -> {
+      let model =
+        Model(..model, user_projects_in_flight: True, user_projects_error: opt.None)
+
+      #(
+        model,
+        api_org.update_user_project_role(user.id, project_id, new_role, fn(result) {
+          UserProjectRoleChanged(project_id, result)
+        }),
+      )
+    }
+
+    opt.None -> #(model, effect.none())
+  }
+}
+
+/// Handle successful project role change.
+pub fn handle_user_project_role_changed_ok(
+  model: Model,
+  project_id: Int,
+  updated: Project,
+) -> #(Model, Effect(Msg)) {
+  // Update the project in the list with the new role
+  let updated_projects = case model.user_projects_list {
+    Loaded(projects) ->
+      Loaded(list.map(projects, fn(p) {
+        case p.id == project_id {
+          True -> updated
+          False -> p
+        }
+      }))
+    other -> other
+  }
+
+  #(
+    Model(
+      ..model,
+      user_projects_list: updated_projects,
+      user_projects_in_flight: False,
+      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.ProjectRoleUpdated)),
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle project role change error.
+pub fn handle_user_project_role_changed_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  #(
+    Model(
+      ..model,
+      user_projects_in_flight: False,
+      user_projects_error: opt.Some(err.message),
+      toast: opt.Some(err.message),
     ),
     effect.none(),
   )

@@ -1971,7 +1971,7 @@ pub fn project_members_update_role(
 
 WITH current_state AS (
   SELECT
-    pm.role as current_role,
+    pm.role as old_role,
     u.email,
     (SELECT COUNT(*) FROM project_members WHERE project_id = $1 AND role = 'manager') as manager_count
   FROM project_members pm
@@ -1980,18 +1980,18 @@ WITH current_state AS (
 ),
 validation AS (
   SELECT
-    current_role,
+    old_role,
     email,
     manager_count,
     CASE
       -- Idempotent: no change needed
-      WHEN current_role = $3 THEN 'no_change'
+      WHEN old_role = $3 THEN 'no_change'
       -- Promotion (member → manager): always allowed
-      WHEN current_role = 'member' AND $3 = 'manager' THEN 'allowed'
+      WHEN old_role = 'member' AND $3 = 'manager' THEN 'allowed'
       -- Demotion with multiple managers: allowed
-      WHEN current_role = 'manager' AND $3 = 'member' AND manager_count > 1 THEN 'allowed'
+      WHEN old_role = 'manager' AND $3 = 'member' AND manager_count > 1 THEN 'allowed'
       -- Demotion with single manager: blocked
-      WHEN current_role = 'manager' AND $3 = 'member' AND manager_count = 1 THEN 'last_manager'
+      WHEN old_role = 'manager' AND $3 = 'member' AND manager_count = 1 THEN 'last_manager'
       -- Fallback (shouldn't happen with valid roles)
       ELSE 'allowed'
     END as status
@@ -2006,7 +2006,7 @@ RETURNING
   pm.user_id,
   v.email,
   pm.role as role,
-  v.current_role as previous_role,
+  v.old_role as previous_role,
   v.status;
 "
   |> pog.query
@@ -4493,6 +4493,8 @@ pub type TasksClaimRow {
     type_icon: String,
     is_ongoing: Bool,
     ongoing_by_user_id: Int,
+    card_title: String,
+    card_color: String,
   )
 }
 
@@ -4526,6 +4528,8 @@ pub fn tasks_claim(
     use type_icon <- decode.field(15, decode.string)
     use is_ongoing <- decode.field(16, decode.bool)
     use ongoing_by_user_id <- decode.field(17, decode.int)
+    use card_title <- decode.field(18, decode.string)
+    use card_color <- decode.field(19, decode.string)
     decode.success(TasksClaimRow(
       id:,
       project_id:,
@@ -4545,6 +4549,8 @@ pub fn tasks_claim(
       type_icon:,
       is_ongoing:,
       ongoing_by_user_id:,
+      card_title:,
+      card_color:,
     ))
   }
 
@@ -4580,9 +4586,12 @@ select
   tt.name as type_name,
   tt.icon as type_icon,
   false as is_ongoing,
-  0 as ongoing_by_user_id
+  0 as ongoing_by_user_id,
+  coalesce(c.title, '') as card_title,
+  coalesce(c.color, '') as card_color
 from updated
-join task_types tt on tt.id = updated.type_id;
+join task_types tt on tt.id = updated.type_id
+left join cards c on c.id = updated.card_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -4618,6 +4627,8 @@ pub type TasksCompleteRow {
     type_icon: String,
     is_ongoing: Bool,
     ongoing_by_user_id: Int,
+    card_title: String,
+    card_color: String,
   )
 }
 
@@ -4651,6 +4662,8 @@ pub fn tasks_complete(
     use type_icon <- decode.field(15, decode.string)
     use is_ongoing <- decode.field(16, decode.bool)
     use ongoing_by_user_id <- decode.field(17, decode.int)
+    use card_title <- decode.field(18, decode.string)
+    use card_color <- decode.field(19, decode.string)
     decode.success(TasksCompleteRow(
       id:,
       project_id:,
@@ -4670,6 +4683,8 @@ pub fn tasks_complete(
       type_icon:,
       is_ongoing:,
       ongoing_by_user_id:,
+      card_title:,
+      card_color:,
     ))
   }
 
@@ -4705,9 +4720,12 @@ select
   tt.name as type_name,
   tt.icon as type_icon,
   false as is_ongoing,
-  0 as ongoing_by_user_id
+  0 as ongoing_by_user_id,
+  coalesce(c.title, '') as card_title,
+  coalesce(c.color, '') as card_color
 from updated
-join task_types tt on tt.id = updated.type_id;
+join task_types tt on tt.id = updated.type_id
+left join cards c on c.id = updated.card_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -4743,6 +4761,8 @@ pub type TasksCreateRow {
     type_icon: String,
     is_ongoing: Bool,
     ongoing_by_user_id: Int,
+    card_title: String,
+    card_color: String,
   )
 }
 
@@ -4782,6 +4802,8 @@ pub fn tasks_create(
     use type_icon <- decode.field(15, decode.string)
     use is_ongoing <- decode.field(16, decode.bool)
     use ongoing_by_user_id <- decode.field(17, decode.int)
+    use card_title <- decode.field(18, decode.string)
+    use card_color <- decode.field(19, decode.string)
     decode.success(TasksCreateRow(
       id:,
       project_id:,
@@ -4801,6 +4823,8 @@ pub fn tasks_create(
       type_icon:,
       is_ongoing:,
       ongoing_by_user_id:,
+      card_title:,
+      card_color:,
     ))
   }
 
@@ -4854,9 +4878,12 @@ select
   tt.name as type_name,
   tt.icon as type_icon,
   (false) as is_ongoing,
-  0 as ongoing_by_user_id
+  0 as ongoing_by_user_id,
+  coalesce(c.title, '') as card_title,
+  coalesce(c.color, '') as card_color
 from inserted
-join task_types tt on tt.id = inserted.type_id;
+join task_types tt on tt.id = inserted.type_id
+left join cards c on c.id = inserted.card_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -4896,6 +4923,8 @@ pub type TasksGetForUserRow {
     created_at: String,
     version: Int,
     card_id: Int,
+    card_title: String,
+    card_color: String,
   )
 }
 
@@ -4928,6 +4957,8 @@ pub fn tasks_get_for_user(
     use created_at <- decode.field(15, decode.string)
     use version <- decode.field(16, decode.int)
     use card_id <- decode.field(17, decode.int)
+    use card_title <- decode.field(18, decode.string)
+    use card_color <- decode.field(19, decode.string)
     decode.success(TasksGetForUserRow(
       id:,
       project_id:,
@@ -4947,6 +4978,8 @@ pub fn tasks_get_for_user(
       created_at:,
       version:,
       card_id:,
+      card_title:,
+      card_color:,
     ))
   }
 
@@ -4982,9 +5015,12 @@ select
   coalesce(to_char(t.completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
   t.version,
-  coalesce(t.card_id, 0) as card_id
+  coalesce(t.card_id, 0) as card_id,
+  coalesce(c.title, '') as card_title,
+  coalesce(c.color, '') as card_color
 from tasks t
 join task_types tt on tt.id = t.type_id
+left join cards c on c.id = t.card_id
 where t.id = $1
   and exists(
     select 1
@@ -5026,6 +5062,8 @@ pub type TasksListRow {
     created_at: String,
     version: Int,
     card_id: Int,
+    card_title: String,
+    card_color: String,
   )
 }
 
@@ -5061,6 +5099,8 @@ pub fn tasks_list(
     use created_at <- decode.field(15, decode.string)
     use version <- decode.field(16, decode.int)
     use card_id <- decode.field(17, decode.int)
+    use card_title <- decode.field(18, decode.string)
+    use card_color <- decode.field(19, decode.string)
     decode.success(TasksListRow(
       id:,
       project_id:,
@@ -5080,6 +5120,8 @@ pub fn tasks_list(
       created_at:,
       version:,
       card_id:,
+      card_title:,
+      card_color:,
     ))
   }
 
@@ -5115,9 +5157,12 @@ select
   coalesce(to_char(t.completed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as completed_at,
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
   t.version,
-  coalesce(t.card_id, 0) as card_id
+  coalesce(t.card_id, 0) as card_id,
+  coalesce(c.title, '') as card_title,
+  coalesce(c.color, '') as card_color
 from tasks t
 join task_types tt on tt.id = t.type_id
+left join cards c on c.id = t.card_id
 where t.project_id = $1
   and ($2 = '' or t.status = $2)
   and ($3 = 0 or t.type_id = $3)
@@ -5288,6 +5333,8 @@ pub type TasksReleaseRow {
     type_icon: String,
     is_ongoing: Bool,
     ongoing_by_user_id: Int,
+    card_title: String,
+    card_color: String,
   )
 }
 
@@ -5321,6 +5368,8 @@ pub fn tasks_release(
     use type_icon <- decode.field(15, decode.string)
     use is_ongoing <- decode.field(16, decode.bool)
     use ongoing_by_user_id <- decode.field(17, decode.int)
+    use card_title <- decode.field(18, decode.string)
+    use card_color <- decode.field(19, decode.string)
     decode.success(TasksReleaseRow(
       id:,
       project_id:,
@@ -5340,6 +5389,8 @@ pub fn tasks_release(
       type_icon:,
       is_ongoing:,
       ongoing_by_user_id:,
+      card_title:,
+      card_color:,
     ))
   }
 
@@ -5376,9 +5427,12 @@ select
   tt.name as type_name,
   tt.icon as type_icon,
   false as is_ongoing,
-  0 as ongoing_by_user_id
+  0 as ongoing_by_user_id,
+  coalesce(c.title, '') as card_title,
+  coalesce(c.color, '') as card_color
 from updated
-join task_types tt on tt.id = updated.type_id;
+join task_types tt on tt.id = updated.type_id
+left join cards c on c.id = updated.card_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -5414,6 +5468,8 @@ pub type TasksUpdateRow {
     type_icon: String,
     is_ongoing: Bool,
     ongoing_by_user_id: Int,
+    card_title: String,
+    card_color: String,
   )
 }
 
@@ -5451,6 +5507,8 @@ pub fn tasks_update(
     use type_icon <- decode.field(15, decode.string)
     use is_ongoing <- decode.field(16, decode.bool)
     use ongoing_by_user_id <- decode.field(17, decode.int)
+    use card_title <- decode.field(18, decode.string)
+    use card_color <- decode.field(19, decode.string)
     decode.success(TasksUpdateRow(
       id:,
       project_id:,
@@ -5470,6 +5528,8 @@ pub fn tasks_update(
       type_icon:,
       is_ongoing:,
       ongoing_by_user_id:,
+      card_title:,
+      card_color:,
     ))
   }
 
@@ -5507,9 +5567,12 @@ select
   tt.name as type_name,
   tt.icon as type_icon,
   false as is_ongoing,
-  0 as ongoing_by_user_id
+  0 as ongoing_by_user_id,
+  coalesce(c.title, '') as card_title,
+  coalesce(c.color, '') as card_color
 from updated
-join task_types tt on tt.id = updated.type_id;
+join task_types tt on tt.id = updated.type_id
+left join cards c on c.id = updated.card_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))

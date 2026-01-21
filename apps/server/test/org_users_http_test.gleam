@@ -211,6 +211,213 @@ pub fn patch_org_user_role_rejects_demoting_last_org_admin_test() {
   |> should.be_true
 }
 
+// =============================================================================
+// Story 4.3 Tests: User Project Role Management
+// =============================================================================
+
+/// AC13: POST accepts optional role parameter
+pub fn add_user_to_project_with_role_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  // Login as admin
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  // Create a member user
+  create_user_via_invite(handler, db, "member@example.com", "il_member", 1)
+  let member_id =
+    single_int(db, "select id from users where email = 'member@example.com'", [])
+
+  // Create a project
+  let project_id = insert_project(db, 1, "Test Project")
+  insert_project_member(db, project_id, 1, "manager")  // admin is manager
+
+  // Add user to project as manager
+  let req =
+    simulate.request(
+      http.Post,
+      "/api/v1/org/users/" <> int.to_string(member_id) <> "/projects",
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+    |> simulate.json_body(json.object([
+      #("project_id", json.int(project_id)),
+      #("role", json.string("manager")),
+    ]))
+
+  let res = handler(req)
+  res.status |> should.equal(200)
+
+  // Verify role in response
+  let body = simulate.read_body(res)
+  string.contains(body, "\"role\":\"manager\"") |> should.be_true
+}
+
+/// AC13: POST defaults to member if role not provided
+pub fn add_user_to_project_defaults_to_member_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  // Login as admin
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  // Create a member user
+  create_user_via_invite(handler, db, "member2@example.com", "il_member2", 1)
+  let member_id =
+    single_int(db, "select id from users where email = 'member2@example.com'", [])
+
+  // Create a project
+  let project_id = insert_project(db, 1, "Test Project 2")
+  insert_project_member(db, project_id, 1, "manager")  // admin is manager
+
+  // Add user to project without specifying role
+  let req =
+    simulate.request(
+      http.Post,
+      "/api/v1/org/users/" <> int.to_string(member_id) <> "/projects",
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+    |> simulate.json_body(json.object([
+      #("project_id", json.int(project_id)),
+    ]))
+
+  let res = handler(req)
+  res.status |> should.equal(200)
+
+  // Verify role defaults to member
+  let body = simulate.read_body(res)
+  string.contains(body, "\"role\":\"member\"") |> should.be_true
+}
+
+/// AC14: PATCH changes user's role in a project
+pub fn update_user_project_role_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  // Login as admin
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  // Create a member user
+  create_user_via_invite(handler, db, "pmember@example.com", "il_pmember", 1)
+  let member_id =
+    single_int(db, "select id from users where email = 'pmember@example.com'", [])
+
+  // Create a project with admin as manager and member user as member
+  let project_id = insert_project(db, 1, "Test Project 3")
+  insert_project_member(db, project_id, 1, "manager")  // admin is manager
+  insert_project_member(db, project_id, member_id, "member")
+
+  // Change member to manager
+  let req =
+    simulate.request(
+      http.Patch,
+      "/api/v1/org/users/"
+        <> int.to_string(member_id)
+        <> "/projects/"
+        <> int.to_string(project_id),
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+    |> simulate.json_body(json.object([#("role", json.string("manager"))]))
+
+  let res = handler(req)
+  res.status |> should.equal(200)
+
+  // Verify role change in response
+  let body = simulate.read_body(res)
+  string.contains(body, "\"role\":\"manager\"") |> should.be_true
+  string.contains(body, "\"previous_role\":\"member\"") |> should.be_true
+}
+
+/// AC15: PATCH returns 422 when trying to demote last manager
+pub fn update_user_project_role_last_manager_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  // Login as admin
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  // Create a project with admin as the only manager
+  let project_id = insert_project(db, 1, "Test Project 4")
+  insert_project_member(db, project_id, 1, "manager")  // admin is only manager
+
+  // Try to demote admin (last manager)
+  let req =
+    simulate.request(
+      http.Patch,
+      "/api/v1/org/users/1/projects/" <> int.to_string(project_id),
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+    |> simulate.json_body(json.object([#("role", json.string("member"))]))
+
+  let res = handler(req)
+  res.status |> should.equal(422)
+
+  // Verify error message
+  let body = simulate.read_body(res)
+  string.contains(body, "LAST_MANAGER") |> should.be_true
+}
+
+/// AC14: PATCH returns 404 when user is not a member
+pub fn update_user_project_role_not_member_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  // Login as admin
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  // Create a member user (NOT in the project)
+  create_user_via_invite(handler, db, "notmember@example.com", "il_notmember", 1)
+  let member_id =
+    single_int(db, "select id from users where email = 'notmember@example.com'", [])
+
+  // Create a project
+  let project_id = insert_project(db, 1, "Test Project 5")
+  insert_project_member(db, project_id, 1, "manager")  // admin is manager
+
+  // Try to change role for non-member
+  let req =
+    simulate.request(
+      http.Patch,
+      "/api/v1/org/users/"
+        <> int.to_string(member_id)
+        <> "/projects/"
+        <> int.to_string(project_id),
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+    |> simulate.json_body(json.object([#("role", json.string("manager"))]))
+
+  let res = handler(req)
+  res.status |> should.equal(404)
+
+  // Verify error message
+  let body = simulate.read_body(res)
+  string.contains(body, "NOT_FOUND") |> should.be_true
+}
+
 fn decode_user_emails(body: String) -> List(String) {
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)
 

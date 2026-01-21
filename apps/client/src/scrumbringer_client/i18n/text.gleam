@@ -278,6 +278,14 @@ pub type Text {
   UserProjectsAdd
   SelectProject
   UserProjectRemove
+  RoleInProject
+  ProjectRoleUpdated
+
+  // Org Users main table
+  Manage
+  SaveOrgRoleChanges
+  PendingChanges
+  ProjectsSummary(count: Int, summary: String)
 
   // Task types
   SelectProjectToManageTaskTypes

@@ -10,7 +10,7 @@
 
 WITH current_state AS (
   SELECT
-    pm.role as current_role,
+    pm.role as old_role,
     u.email,
     (SELECT COUNT(*) FROM project_members WHERE project_id = $1 AND role = 'manager') as manager_count
   FROM project_members pm
@@ -19,18 +19,18 @@ WITH current_state AS (
 ),
 validation AS (
   SELECT
-    current_role,
+    old_role,
     email,
     manager_count,
     CASE
       -- Idempotent: no change needed
-      WHEN current_role = $3 THEN 'no_change'
+      WHEN old_role = $3 THEN 'no_change'
       -- Promotion (member → manager): always allowed
-      WHEN current_role = 'member' AND $3 = 'manager' THEN 'allowed'
+      WHEN old_role = 'member' AND $3 = 'manager' THEN 'allowed'
       -- Demotion with multiple managers: allowed
-      WHEN current_role = 'manager' AND $3 = 'member' AND manager_count > 1 THEN 'allowed'
+      WHEN old_role = 'manager' AND $3 = 'member' AND manager_count > 1 THEN 'allowed'
       -- Demotion with single manager: blocked
-      WHEN current_role = 'manager' AND $3 = 'member' AND manager_count = 1 THEN 'last_manager'
+      WHEN old_role = 'manager' AND $3 = 'member' AND manager_count = 1 THEN 'last_manager'
       -- Fallback (shouldn't happen with valid roles)
       ELSE 'allowed'
     END as status
@@ -45,5 +45,5 @@ RETURNING
   pm.user_id,
   v.email,
   pm.role as role,
-  v.current_role as previous_role,
+  v.old_role as previous_role,
   v.status;

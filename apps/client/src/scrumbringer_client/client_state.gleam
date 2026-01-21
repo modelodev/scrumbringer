@@ -331,6 +331,7 @@ pub type Model {
     user_projects_dialog_user: Option(OrgUser),
     user_projects_list: Remote(List(Project)),
     user_projects_add_project_id: Option(Int),
+    user_projects_add_role: String,
     user_projects_in_flight: Bool,
     user_projects_error: Option(String),
     // Member add dialog
@@ -547,16 +548,20 @@ pub type Msg {
   OrgSettingsRoleChanged(Int, String)
   OrgSettingsSaveClicked(Int)
   OrgSettingsSaved(Int, ApiResult(OrgUser))
+  OrgSettingsSaveAllClicked
 
   // User projects dialog
   UserProjectsDialogOpened(OrgUser)
   UserProjectsDialogClosed
   UserProjectsFetched(ApiResult(List(Project)))
   UserProjectsAddProjectChanged(String)
+  UserProjectsAddRoleChanged(String)
   UserProjectsAddSubmitted
   UserProjectAdded(ApiResult(Project))
   UserProjectRemoveClicked(Int)
   UserProjectRemoved(ApiResult(Nil))
+  UserProjectRoleChangeRequested(Int, String)
+  UserProjectRoleChanged(Int, ApiResult(Project))
 
   // Member add dialog
   MemberAddDialogOpened
@@ -910,6 +915,7 @@ pub fn default_model() -> Model {
     user_projects_dialog_user: option.None,
     user_projects_list: NotAsked,
     user_projects_add_project_id: option.None,
+    user_projects_add_role: "member",
     user_projects_in_flight: False,
     user_projects_error: option.None,
     // Member add dialog

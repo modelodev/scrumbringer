@@ -183,6 +183,9 @@ pub fn handle_org_settings_saved_ok(
     other -> other
   }
 
+  // Remove saved user from drafts
+  let org_settings_role_drafts = dict.delete(model.org_settings_role_drafts, updated.id)
+
   let org_users_cache = case model.org_users_cache {
     Loaded(users) -> Loaded(update_list(users))
     other -> other
@@ -199,19 +202,43 @@ pub fn handle_org_settings_saved_ok(
     _ -> model.user
   }
 
-  #(
-    Model(
-      ..model,
-      user: user,
-      org_settings_users: org_settings_users,
-      org_users_cache: org_users_cache,
-      org_settings_save_in_flight: False,
-      org_settings_error: opt.None,
-      org_settings_error_user_id: opt.None,
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.RoleUpdated)),
-    ),
-    effect.none(),
-  )
+  // Check if there are more pending changes to save
+  let remaining_changes = dict.to_list(org_settings_role_drafts)
+
+  case remaining_changes {
+    // No more pending changes, done
+    [] -> #(
+      Model(
+        ..model,
+        user: user,
+        org_settings_users: org_settings_users,
+        org_users_cache: org_users_cache,
+        org_settings_role_drafts: org_settings_role_drafts,
+        org_settings_save_in_flight: False,
+        org_settings_error: opt.None,
+        org_settings_error_user_id: opt.None,
+        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.RoleUpdated)),
+      ),
+      effect.none(),
+    )
+
+    // More pending changes, save next
+    [#(next_user_id, next_role), ..] -> #(
+      Model(
+        ..model,
+        user: user,
+        org_settings_users: org_settings_users,
+        org_users_cache: org_users_cache,
+        org_settings_role_drafts: org_settings_role_drafts,
+        org_settings_save_in_flight: True,
+        org_settings_error: opt.None,
+        org_settings_error_user_id: opt.None,
+      ),
+      api_org.update_org_user_role(next_user_id, next_role, fn(result) {
+        OrgSettingsSaved(next_user_id, result)
+      }),
+    )
+  }
 }
 
 /// Handle org settings save error.
@@ -251,6 +278,43 @@ pub fn handle_org_settings_saved_error(
       ),
       effect.none(),
     )
+  }
+}
+
+/// Handle save all pending org role changes.
+/// Iterates through org_settings_role_drafts and saves each pending change.
+pub fn handle_org_settings_save_all_clicked(
+  model: Model,
+) -> #(Model, Effect(Msg)) {
+  case model.org_settings_save_in_flight {
+    True -> #(model, effect.none())
+
+    False -> {
+      // Get pending changes (user_id, role) pairs
+      let pending_changes = dict.to_list(model.org_settings_role_drafts)
+
+      case pending_changes {
+        [] -> #(model, effect.none())
+
+        [#(user_id, role), ..] -> {
+          // Save the first pending change, then continue with the rest
+          let model =
+            Model(
+              ..model,
+              org_settings_save_in_flight: True,
+              org_settings_error: opt.None,
+              org_settings_error_user_id: opt.None,
+            )
+
+          #(
+            model,
+            api_org.update_org_user_role(user_id, role, fn(result) {
+              OrgSettingsSaved(user_id, result)
+            }),
+          )
+        }
+      }
+    }
   }
 }
 

@@ -242,7 +242,7 @@ pub fn handle_user_projects(
   }
 }
 
-/// Handle DELETE for /api/v1/org/users/:user_id/projects/:project_id
+/// Handle DELETE/PATCH for /api/v1/org/users/:user_id/projects/:project_id
 pub fn handle_user_project(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -251,7 +251,8 @@ pub fn handle_user_project(
 ) -> wisp.Response {
   case req.method {
     http.Delete -> handle_remove_user_from_project(req, ctx, user_id, project_id)
-    _ -> wisp.method_not_allowed([http.Delete])
+    http.Patch -> handle_update_user_project_role(req, ctx, user_id, project_id)
+    _ -> wisp.method_not_allowed([http.Delete, http.Patch])
   }
 }
 
@@ -311,13 +312,14 @@ fn handle_add_user_to_project(
     Ok(target_user_id) -> {
       let decoder = {
         use project_id <- decode.field("project_id", decode.int)
-        decode.success(project_id)
+        use role <- decode.optional_field("role", "member", decode.string)
+        decode.success(#(project_id, role))
       }
 
       case decode.run(data, decoder) {
         Error(_) -> api.error(422, "VALIDATION_ERROR", "Invalid JSON: project_id required")
 
-        Ok(project_id) -> {
+        Ok(#(project_id, role)) -> {
           case auth.require_current_user(req, ctx) {
             Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
 
@@ -331,7 +333,7 @@ fn handle_add_user_to_project(
                     Ok(Nil) -> {
                       let auth.Ctx(db: db, ..) = ctx
 
-                      case projects_db.add_member(db, project_id, target_user_id, "member") {
+                      case projects_db.add_member(db, project_id, target_user_id, role) {
                         Ok(member) -> {
                           let project_name = get_project_name(db, project_id)
                           api.ok(
@@ -417,6 +419,90 @@ fn handle_remove_user_from_project(
             }
 
             _ -> api.error(403, "FORBIDDEN", "Only org admins can remove users from projects")
+          }
+        }
+      }
+    }
+  }
+}
+
+fn handle_update_user_project_role(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  user_id_str: String,
+  project_id_str: String,
+) -> wisp.Response {
+  use data <- wisp.require_json(req)
+
+  case int.parse(user_id_str), int.parse(project_id_str) {
+    Error(_), _ -> api.error(422, "VALIDATION_ERROR", "Invalid user_id")
+    _, Error(_) -> api.error(422, "VALIDATION_ERROR", "Invalid project_id")
+
+    Ok(target_user_id), Ok(project_id) -> {
+      let decoder = {
+        use role <- decode.field("role", decode.string)
+        decode.success(role)
+      }
+
+      case decode.run(data, decoder) {
+        Error(_) -> api.error(422, "VALIDATION_ERROR", "Invalid JSON: role required")
+
+        Ok(new_role) -> {
+          case auth.require_current_user(req, ctx) {
+            Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+
+            Ok(user) -> {
+              case user.org_role {
+                org_role.Admin -> {
+                  case csrf.require_double_submit(req) {
+                    Error(_) ->
+                      api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+
+                    Ok(Nil) -> {
+                      let auth.Ctx(db: db, ..) = ctx
+
+                      case projects_db.update_member_role(db, project_id, target_user_id, new_role) {
+                        Ok(projects_db.RoleUpdated(
+                          user_id: _,
+                          email: _,
+                          role: role,
+                          previous_role: previous_role,
+                        )) -> {
+                          let project_name = get_project_name(db, project_id)
+                          api.ok(
+                            json.object([
+                              #(
+                                "project",
+                                json.object([
+                                  #("id", json.int(project_id)),
+                                  #("name", json.string(project_name)),
+                                  #("role", json.string(role)),
+                                  #("previous_role", json.string(previous_role)),
+                                ]),
+                              ),
+                            ]),
+                          )
+                        }
+
+                        Error(projects_db.UpdateMemberNotFound) ->
+                          api.error(404, "NOT_FOUND", "User is not a member of this project")
+
+                        Error(projects_db.UpdateLastManager) ->
+                          api.error(422, "LAST_MANAGER", "Cannot demote the last project manager")
+
+                        Error(projects_db.UpdateInvalidRole) ->
+                          api.error(422, "VALIDATION_ERROR", "Invalid role")
+
+                        Error(projects_db.UpdateDbError(_)) ->
+                          api.error(500, "INTERNAL", "Database error")
+                      }
+                    }
+                  }
+                }
+
+                _ -> api.error(403, "FORBIDDEN", "Only org admins can change user project roles")
+              }
+            }
           }
         }
       }
