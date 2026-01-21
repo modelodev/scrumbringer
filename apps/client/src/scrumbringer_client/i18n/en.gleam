@@ -366,6 +366,7 @@ pub fn translate(text: Text) -> String {
     text.CreateWorkflow -> "Create Workflow"
     text.EditWorkflow -> "Edit Workflow"
     text.DeleteWorkflow -> "Delete Workflow"
+    text.WorkflowDeleteConfirm(name) -> "Delete workflow \"" <> name <> "\"?"
     text.NoWorkflowsYet -> "No workflows yet"
     text.WorkflowDeleted -> "Workflow deleted"
 
@@ -407,11 +408,13 @@ pub fn translate(text: Text) -> String {
     text.TaskTemplatePriority -> "Priority"
     text.TaskTemplateScope -> "Scope"
     text.TaskTemplateCreated -> "Template created"
+    text.TaskTemplateUpdated -> "Template updated"
     text.CreateTaskTemplate -> "Create Template"
     text.EditTaskTemplate -> "Edit Template"
     text.DeleteTaskTemplate -> "Delete Template"
     text.NoTaskTemplatesYet -> "No task templates yet"
     text.TaskTemplateDeleted -> "Template deleted"
+    text.TaskTemplateDeleteConfirm(name) -> "Delete template \"" <> name <> "\"?"
     text.TaskTemplateVariablesHelp ->
       "Variables: {{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}"
 

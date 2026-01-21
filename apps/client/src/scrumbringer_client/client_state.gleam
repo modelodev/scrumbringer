@@ -169,6 +169,45 @@ pub fn rect_contains_point(rect: Rect, x: Int, y: Int) -> Bool {
   x >= left && x <= left + width && y >= top && y <= top + height
 }
 
+/// Dialog mode for Card CRUD operations.
+///
+/// Used by the parent to control which dialog the card-crud-dialog
+/// component should display:
+/// - `CardDialogCreate`: Show create new card form
+/// - `CardDialogEdit(Int)`: Show edit form for card with given ID
+/// - `CardDialogDelete(Int)`: Show delete confirmation for card with given ID
+pub type CardDialogMode {
+  CardDialogCreate
+  CardDialogEdit(Int)
+  CardDialogDelete(Int)
+}
+
+/// Dialog mode for Workflow CRUD operations.
+///
+/// Used by the parent to control which dialog the workflow-crud-dialog
+/// component should display:
+/// - `WorkflowDialogCreate`: Show create new workflow form
+/// - `WorkflowDialogEdit(Workflow)`: Show edit form for given workflow
+/// - `WorkflowDialogDelete(Workflow)`: Show delete confirmation for given workflow
+pub type WorkflowDialogMode {
+  WorkflowDialogCreate
+  WorkflowDialogEdit(Workflow)
+  WorkflowDialogDelete(Workflow)
+}
+
+/// Dialog mode for Task Template CRUD operations.
+///
+/// Used by the parent to control which dialog the task-template-crud-dialog
+/// component should display:
+/// - `TaskTemplateDialogCreate`: Show create new template form
+/// - `TaskTemplateDialogEdit(TaskTemplate)`: Show edit form for given template
+/// - `TaskTemplateDialogDelete(TaskTemplate)`: Show delete confirmation for given template
+pub type TaskTemplateDialogMode {
+  TaskTemplateDialogCreate
+  TaskTemplateDialogEdit(TaskTemplate)
+  TaskTemplateDialogDelete(TaskTemplate)
+}
+
 // ----------------------------------------------------------------------------
 // Navigation mode
 // ----------------------------------------------------------------------------
@@ -301,46 +340,17 @@ pub type Model {
     task_types_create_in_flight: Bool,
     task_types_create_error: Option(String),
     task_types_icon_preview: IconPreview,
-    // Cards
+    // Cards - list data and dialog mode (component handles CRUD state internally)
     cards: Remote(List(Card)),
     cards_project_id: Option(Int),
-    cards_create_dialog_open: Bool,
-    cards_create_title: String,
-    cards_create_description: String,
-    cards_create_color: Option(String),
-    cards_create_color_open: Bool,
-    cards_create_in_flight: Bool,
-    cards_create_error: Option(String),
-    cards_edit_id: Option(Int),
-    cards_edit_title: String,
-    cards_edit_description: String,
-    cards_edit_color: Option(String),
-    cards_edit_color_open: Bool,
-    cards_edit_in_flight: Bool,
-    cards_edit_error: Option(String),
-    cards_delete_confirm: Option(Card),
-    cards_delete_in_flight: Bool,
-    cards_delete_error: Option(String),
+    cards_dialog_mode: Option(CardDialogMode),
     // Card detail (member view) - only open state, component manages internal state
     card_detail_open: Option(Int),
     // Workflows
     workflows_org: Remote(List(Workflow)),
     workflows_project: Remote(List(Workflow)),
-    workflows_create_dialog_open: Bool,
-    workflows_create_name: String,
-    workflows_create_description: String,
-    workflows_create_active: Bool,
-    workflows_create_in_flight: Bool,
-    workflows_create_error: Option(String),
-    workflows_edit_id: Option(Int),
-    workflows_edit_name: String,
-    workflows_edit_description: String,
-    workflows_edit_active: Bool,
-    workflows_edit_in_flight: Bool,
-    workflows_edit_error: Option(String),
-    workflows_delete_confirm: Option(Workflow),
-    workflows_delete_in_flight: Bool,
-    workflows_delete_error: Option(String),
+    // Workflows - dialog mode (component handles CRUD state internally)
+    workflows_dialog_mode: Option(WorkflowDialogMode),
     // Rules (for selected workflow)
     rules_workflow_id: Option(Int),
     rules: Remote(List(Rule)),
@@ -372,26 +382,10 @@ pub type Model {
     rules_attach_error: Option(String),
     // Rule metrics (inline display)
     rules_metrics: Remote(api_workflows.WorkflowMetrics),
-    // Task templates
+    // Task templates - list data and dialog mode (component handles CRUD state internally)
     task_templates_org: Remote(List(TaskTemplate)),
     task_templates_project: Remote(List(TaskTemplate)),
-    task_templates_create_dialog_open: Bool,
-    task_templates_create_name: String,
-    task_templates_create_description: String,
-    task_templates_create_type_id: Option(Int),
-    task_templates_create_priority: String,
-    task_templates_create_in_flight: Bool,
-    task_templates_create_error: Option(String),
-    task_templates_edit_id: Option(Int),
-    task_templates_edit_name: String,
-    task_templates_edit_description: String,
-    task_templates_edit_type_id: Option(Int),
-    task_templates_edit_priority: String,
-    task_templates_edit_in_flight: Bool,
-    task_templates_edit_error: Option(String),
-    task_templates_delete_confirm: Option(TaskTemplate),
-    task_templates_delete_in_flight: Bool,
-    task_templates_delete_error: Option(String),
+    task_templates_dialog_mode: Option(TaskTemplateDialogMode),
     // Member section
     member_section: member_section.MemberSection,
     member_active_task: Remote(ActiveTaskPayload),
@@ -592,28 +586,15 @@ pub type Msg {
   TaskTypeCreateSubmitted
   TaskTypeCreated(ApiResult(TaskType))
 
-  // Cards
+  // Cards - list loading
   CardsFetched(ApiResult(List(Card)))
-  CardCreateDialogOpened
-  CardCreateDialogClosed
-  CardCreateTitleChanged(String)
-  CardCreateDescriptionChanged(String)
-  CardCreateColorChanged(Option(String))
-  CardCreateColorToggle
-  CardCreateSubmitted
-  CardCreated(ApiResult(Card))
-  CardEditClicked(Card)
-  CardEditTitleChanged(String)
-  CardEditDescriptionChanged(String)
-  CardEditColorChanged(Option(String))
-  CardEditColorToggle
-  CardEditSubmitted
-  CardUpdated(ApiResult(Card))
-  CardEditCancelled
-  CardDeleteClicked(Card)
-  CardDeleteCancelled
-  CardDeleteConfirmed
-  CardDeleted(ApiResult(Nil))
+  // Cards - dialog mode control (component pattern)
+  OpenCardDialog(CardDialogMode)
+  CloseCardDialog
+  // Cards - component events (card-crud-dialog emits these)
+  CardCrudCreated(Card)
+  CardCrudUpdated(Card)
+  CardCrudDeleted(Int)
 
   // Card detail (member view) - component manages internal state
   OpenCardDetail(Int)
@@ -622,24 +603,13 @@ pub type Msg {
   // Workflows
   WorkflowsOrgFetched(ApiResult(List(Workflow)))
   WorkflowsProjectFetched(ApiResult(List(Workflow)))
-  WorkflowCreateDialogOpened
-  WorkflowCreateDialogClosed
-  WorkflowCreateNameChanged(String)
-  WorkflowCreateDescriptionChanged(String)
-  WorkflowCreateActiveChanged(Bool)
-  WorkflowCreateSubmitted
-  WorkflowCreated(ApiResult(Workflow))
-  WorkflowEditClicked(Workflow)
-  WorkflowEditNameChanged(String)
-  WorkflowEditDescriptionChanged(String)
-  WorkflowEditActiveChanged(Bool)
-  WorkflowEditSubmitted
-  WorkflowUpdated(ApiResult(Workflow))
-  WorkflowEditCancelled
-  WorkflowDeleteClicked(Workflow)
-  WorkflowDeleteCancelled
-  WorkflowDeleteConfirmed
-  WorkflowDeleted(ApiResult(Nil))
+  // Workflows - dialog mode control (component pattern)
+  OpenWorkflowDialog(WorkflowDialogMode)
+  CloseWorkflowDialog
+  // Workflows - component events (workflow-crud-dialog emits these)
+  WorkflowCrudCreated(Workflow)
+  WorkflowCrudUpdated(Workflow)
+  WorkflowCrudDeleted(Int)
   WorkflowRulesClicked(Int)
 
   // Rules
@@ -685,26 +655,13 @@ pub type Msg {
   // Task templates
   TaskTemplatesOrgFetched(ApiResult(List(TaskTemplate)))
   TaskTemplatesProjectFetched(ApiResult(List(TaskTemplate)))
-  TaskTemplateCreateDialogOpened
-  TaskTemplateCreateDialogClosed
-  TaskTemplateCreateNameChanged(String)
-  TaskTemplateCreateDescriptionChanged(String)
-  TaskTemplateCreateTypeIdChanged(String)
-  TaskTemplateCreatePriorityChanged(String)
-  TaskTemplateCreateSubmitted
-  TaskTemplateCreated(ApiResult(TaskTemplate))
-  TaskTemplateEditClicked(TaskTemplate)
-  TaskTemplateEditNameChanged(String)
-  TaskTemplateEditDescriptionChanged(String)
-  TaskTemplateEditTypeIdChanged(String)
-  TaskTemplateEditPriorityChanged(String)
-  TaskTemplateEditSubmitted
-  TaskTemplateUpdated(ApiResult(TaskTemplate))
-  TaskTemplateEditCancelled
-  TaskTemplateDeleteClicked(TaskTemplate)
-  TaskTemplateDeleteCancelled
-  TaskTemplateDeleteConfirmed
-  TaskTemplateDeleted(ApiResult(Nil))
+  // Task templates - dialog mode control (component pattern)
+  OpenTaskTemplateDialog(TaskTemplateDialogMode)
+  CloseTaskTemplateDialog
+  // Task templates - component events (task-template-crud-dialog emits these)
+  TaskTemplateCrudCreated(TaskTemplate)
+  TaskTemplateCrudUpdated(TaskTemplate)
+  TaskTemplateCrudDeleted(Int)
 
   // Pool filters
   MemberPoolStatusChanged(String)
@@ -986,46 +943,17 @@ pub fn default_model() -> Model {
     task_types_create_in_flight: False,
     task_types_create_error: option.None,
     task_types_icon_preview: IconIdle,
-    // Cards
+    // Cards - list and dialog mode (component handles CRUD state internally)
     cards: NotAsked,
     cards_project_id: option.None,
-    cards_create_dialog_open: False,
-    cards_create_title: "",
-    cards_create_description: "",
-    cards_create_color: option.None,
-    cards_create_color_open: False,
-    cards_create_in_flight: False,
-    cards_create_error: option.None,
-    cards_edit_id: option.None,
-    cards_edit_title: "",
-    cards_edit_description: "",
-    cards_edit_color: option.None,
-    cards_edit_color_open: False,
-    cards_edit_in_flight: False,
-    cards_edit_error: option.None,
-    cards_delete_confirm: option.None,
-    cards_delete_in_flight: False,
-    cards_delete_error: option.None,
+    cards_dialog_mode: option.None,
     // Card detail (member view) - only open state, component manages internal state
     card_detail_open: option.None,
     // Workflows
     workflows_org: NotAsked,
     workflows_project: NotAsked,
-    workflows_create_dialog_open: False,
-    workflows_create_name: "",
-    workflows_create_description: "",
-    workflows_create_active: True,
-    workflows_create_in_flight: False,
-    workflows_create_error: option.None,
-    workflows_edit_id: option.None,
-    workflows_edit_name: "",
-    workflows_edit_description: "",
-    workflows_edit_active: True,
-    workflows_edit_in_flight: False,
-    workflows_edit_error: option.None,
-    workflows_delete_confirm: option.None,
-    workflows_delete_in_flight: False,
-    workflows_delete_error: option.None,
+    // Workflows - dialog mode (component handles CRUD state internally)
+    workflows_dialog_mode: option.None,
     // Rules
     rules_workflow_id: option.None,
     rules: NotAsked,
@@ -1057,26 +985,10 @@ pub fn default_model() -> Model {
     rules_attach_error: option.None,
     // Rule metrics (inline display)
     rules_metrics: NotAsked,
-    // Task templates
+    // Task templates - list and dialog mode (component handles CRUD state internally)
     task_templates_org: NotAsked,
     task_templates_project: NotAsked,
-    task_templates_create_dialog_open: False,
-    task_templates_create_name: "",
-    task_templates_create_description: "",
-    task_templates_create_type_id: option.None,
-    task_templates_create_priority: "3",
-    task_templates_create_in_flight: False,
-    task_templates_create_error: option.None,
-    task_templates_edit_id: option.None,
-    task_templates_edit_name: "",
-    task_templates_edit_description: "",
-    task_templates_edit_type_id: option.None,
-    task_templates_edit_priority: "3",
-    task_templates_edit_in_flight: False,
-    task_templates_edit_error: option.None,
-    task_templates_delete_confirm: option.None,
-    task_templates_delete_in_flight: False,
-    task_templates_delete_error: option.None,
+    task_templates_dialog_mode: option.None,
     // Member section
     member_section: member_section.Pool,
     member_active_task: NotAsked,

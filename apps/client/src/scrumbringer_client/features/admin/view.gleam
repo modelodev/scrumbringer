@@ -27,6 +27,7 @@
 
 import gleam/dict
 import gleam/int
+import gleam/json
 import gleam/list
 import gleam/option as opt
 import gleam/result
@@ -48,23 +49,22 @@ import domain/card.{type Card}
 import domain/org.{type OrgUser}
 import domain/project.{type Project, type ProjectMember}
 import domain/task_type.{type TaskType}
-import domain/workflow.{type Rule, type TaskTemplate, type Workflow}
+import domain/workflow.{type Rule, type TaskTemplate, type Workflow, Workflow}
 
 import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/features/admin/cards as admin_cards
+import scrumbringer_client/i18n/locale
 import scrumbringer_client/client_state.{
-  type Model, type Msg, type Remote, AdminRuleMetricsDrilldownClicked,
-  AdminRuleMetricsDrilldownClosed, AdminRuleMetricsExecPageChanged,
-  AdminRuleMetricsFromChanged, AdminRuleMetricsRefreshClicked,
-  AdminRuleMetricsToChanged, AdminRuleMetricsWorkflowExpanded,
-  CapabilityCreateDialogClosed, CapabilityCreateDialogOpened,
-  CapabilityCreateNameChanged, CapabilityCreateSubmitted,
-  CardCreateColorChanged, CardCreateColorToggle, CardCreateDescriptionChanged,
-  CardCreateDialogClosed, CardCreateDialogOpened,
-  CardCreateSubmitted, CardCreateTitleChanged, CardDeleteCancelled,
-  CardDeleteClicked, CardDeleteConfirmed, CardEditCancelled, CardEditClicked,
-  CardEditColorChanged, CardEditColorToggle, CardEditDescriptionChanged,
-  CardEditSubmitted, CardEditTitleChanged, Failed, IconError, IconOk, Loaded,
-  Loading,
+  type Model, type Msg, type Remote, type TaskTemplateDialogMode,
+  AdminRuleMetricsDrilldownClicked, AdminRuleMetricsDrilldownClosed,
+  AdminRuleMetricsExecPageChanged, AdminRuleMetricsFromChanged,
+  AdminRuleMetricsRefreshClicked, AdminRuleMetricsToChanged,
+  AdminRuleMetricsWorkflowExpanded, CapabilityCreateDialogClosed,
+  CapabilityCreateDialogOpened, CapabilityCreateNameChanged,
+  CapabilityCreateSubmitted, CardCrudCreated, CardCrudDeleted, CardCrudUpdated,
+  CardDialogCreate, CardDialogDelete, CardDialogEdit, CloseCardDialog,
+  CloseTaskTemplateDialog, Failed, OpenCardDialog, OpenTaskTemplateDialog,
+  IconError, IconOk, Loaded, Loading,
   MemberAddDialogClosed, MemberAddDialogOpened, MemberAddRoleChanged,
   MemberAddSubmitted, MemberAddUserSelected, MemberRemoveCancelled,
   MemberRemoveClicked, MemberRemoveConfirmed, NotAsked, OrgSettingsRoleChanged,
@@ -78,25 +78,15 @@ import scrumbringer_client/client_state.{
   RuleEditCancelled, RuleEditClicked, RuleEditGoalChanged, RuleEditNameChanged,
   RuleEditResourceTypeChanged, RuleEditSubmitted, RuleEditTaskTypeIdChanged,
   RuleCreateDialogClosed, RuleCreateDialogOpened, RuleEditToStateChanged,
-  RulesBackClicked, TaskTemplateCreateDescriptionChanged,
-  TaskTemplateCreateDialogClosed, TaskTemplateCreateDialogOpened,
-  TaskTemplateCreateNameChanged, TaskTemplateCreatePriorityChanged,
-  TaskTemplateCreateSubmitted, TaskTemplateCreateTypeIdChanged,
-  TaskTemplateDeleteCancelled, TaskTemplateDeleteClicked,
-  TaskTemplateDeleteConfirmed, TaskTemplateEditCancelled,
-  TaskTemplateEditClicked, TaskTemplateEditDescriptionChanged,
-  TaskTemplateEditNameChanged, TaskTemplateEditPriorityChanged,
-  TaskTemplateEditSubmitted, TaskTemplateEditTypeIdChanged,
+  RulesBackClicked,
+  TaskTemplateDialogCreate, TaskTemplateDialogDelete, TaskTemplateDialogEdit,
+  TaskTemplateCrudCreated, TaskTemplateCrudDeleted, TaskTemplateCrudUpdated,
   TaskTypeCreateCapabilityChanged, TaskTypeCreateDialogClosed,
   TaskTypeCreateDialogOpened, TaskTypeCreateIconChanged,
   TaskTypeCreateNameChanged, TaskTypeCreateSubmitted, TaskTypeIconErrored,
-  TaskTypeIconLoaded, WorkflowCreateActiveChanged,
-  WorkflowCreateDescriptionChanged, WorkflowCreateDialogClosed,
-  WorkflowCreateDialogOpened, WorkflowCreateNameChanged,
-  WorkflowCreateSubmitted, WorkflowDeleteCancelled, WorkflowDeleteClicked,
-  WorkflowDeleteConfirmed, WorkflowEditActiveChanged, WorkflowEditCancelled,
-  WorkflowEditClicked, WorkflowEditDescriptionChanged, WorkflowEditNameChanged,
-  WorkflowEditSubmitted, WorkflowRulesClicked,
+  TaskTypeIconLoaded, WorkflowDialogCreate, WorkflowDialogDelete,
+  WorkflowDialogEdit, CloseWorkflowDialog, OpenWorkflowDialog, WorkflowCrudCreated,
+  WorkflowCrudDeleted, WorkflowCrudUpdated, WorkflowRulesClicked,
 }
 
 // Workflows
@@ -1284,116 +1274,142 @@ pub fn view_cards(
               i18n_text.CardsTitle(project.name),
             )),
           ]),
-          dialog.add_button(model, i18n_text.CreateCard, CardCreateDialogOpened),
+          dialog.add_button(
+            model,
+            i18n_text.CreateCard,
+            OpenCardDialog(CardDialogCreate),
+          ),
         ]),
         // Cards list
         view_cards_list(model, model.cards),
-        // Create card dialog
-        view_cards_create_dialog(model),
-        // Edit card dialog
-        case model.cards_edit_id {
-          opt.Some(_) -> view_edit_card_dialog(model)
-          opt.None -> element.none()
-        },
-        // Delete card confirmation
-        case model.cards_delete_confirm {
-          opt.Some(card) -> view_delete_card_dialog(model, card)
-          opt.None -> element.none()
-        },
+        // Card CRUD dialog component (handles create, edit, delete)
+        view_card_crud_dialog(model, project.id),
       ])
   }
 }
 
-/// Dialog for creating a new card.
-fn view_cards_create_dialog(model: Model) -> Element(Msg) {
-  dialog.view(
-    dialog.DialogConfig(
-      title: update_helpers.i18n_t(model, i18n_text.CreateCard),
-      icon: opt.Some("\u{1F0CF}"),
-      size: dialog.DialogMd,
-      on_close: CardCreateDialogClosed,
-    ),
-    model.cards_create_dialog_open,
-    model.cards_create_error,
-    // Form content
-    [
-      form(
+/// Render the card-crud-dialog Lustre component.
+fn view_card_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
+  case model.cards_dialog_mode {
+    opt.None -> element.none()
+    opt.Some(mode) -> {
+      let #(mode_str, card_json) = case mode {
+        CardDialogCreate -> #("create", attribute.none())
+        CardDialogEdit(card_id) ->
+          case admin_cards.find_card(model, card_id) {
+            opt.Some(card) -> #("edit", attribute.property("card", card_to_property_json(card, "edit")))
+            opt.None -> #("edit", attribute.none())
+          }
+        CardDialogDelete(card_id) ->
+          case admin_cards.find_card(model, card_id) {
+            opt.Some(card) -> #("delete", attribute.property("card", card_to_property_json(card, "delete")))
+            opt.None -> #("delete", attribute.none())
+          }
+      }
+
+      element.element(
+        "card-crud-dialog",
         [
-          event.on_submit(fn(_) { CardCreateSubmitted }),
-          attribute.id("card-create-form"),
+          // Attributes (strings)
+          attribute.attribute("locale", locale.serialize(model.locale)),
+          attribute.attribute("project-id", int.to_string(project_id)),
+          attribute.attribute("mode", mode_str),
+          // Property for card data (edit/delete modes)
+          card_json,
+          // Event listeners for component events
+          event.on("card-created", decode_card_created_event()),
+          event.on("card-updated", decode_card_updated_event()),
+          event.on("card-deleted", decode_card_deleted_event()),
+          event.on("close-requested", decode_close_requested_event()),
         ],
-        [
-          div([attribute.class("field")], [
-            label([], [
-              text(update_helpers.i18n_t(model, i18n_text.CardTitle)),
-            ]),
-            input([
-              attribute.type_("text"),
-              attribute.value(model.cards_create_title),
-              event.on_input(CardCreateTitleChanged),
-              attribute.required(True),
-              attribute.attribute("aria-label", "Card title"),
-            ]),
-          ]),
-          div([attribute.class("field")], [
-            label([], [
-              text(update_helpers.i18n_t(model, i18n_text.CardDescription)),
-            ]),
-            input([
-              attribute.type_("text"),
-              attribute.value(model.cards_create_description),
-              event.on_input(CardCreateDescriptionChanged),
-              attribute.attribute("aria-label", "Card description"),
-            ]),
-          ]),
-          div([attribute.class("field")], [
-            label([], [
-              text(update_helpers.i18n_t(model, i18n_text.ColorLabel)),
-            ]),
-            color_picker.view(
-              model,
-              case model.cards_create_color {
-                opt.None -> opt.None
-                opt.Some(c) -> color_picker.string_to_color(c)
-              },
-              model.cards_create_color_open,
-              CardCreateColorToggle,
-              fn(c) {
-                case c {
-                  opt.None -> CardCreateColorChanged(opt.None)
-                  opt.Some(color) ->
-                    CardCreateColorChanged(opt.Some(
-                      color_picker.color_to_string(color),
-                    ))
-                }
-              },
-            ),
-          ]),
-        ],
-      ),
-    ],
-    // Footer buttons
-    [
-      dialog.cancel_button(model, CardCreateDialogClosed),
-      button(
-        [
-          attribute.type_("submit"),
-          attribute.form("card-create-form"),
-          attribute.disabled(model.cards_create_in_flight),
-          attribute.class(case model.cards_create_in_flight {
-            True -> "btn-loading"
-            False -> ""
-          }),
-        ],
-        [
-          text(case model.cards_create_in_flight {
-            True -> update_helpers.i18n_t(model, i18n_text.Creating)
-            False -> update_helpers.i18n_t(model, i18n_text.Create)
-          }),
-        ],
-      ),
-    ],
-  )
+        [],
+      )
+    }
+  }
+}
+
+/// Decoder for card-created event.
+fn decode_card_created_event() -> decode.Decoder(Msg) {
+  use card <- decode.field("detail", card_decoder())
+  decode.success(CardCrudCreated(card))
+}
+
+/// Decoder for card-updated event.
+fn decode_card_updated_event() -> decode.Decoder(Msg) {
+  use card <- decode.field("detail", card_decoder())
+  decode.success(CardCrudUpdated(card))
+}
+
+/// Decoder for card-deleted event.
+fn decode_card_deleted_event() -> decode.Decoder(Msg) {
+  use id <- decode.field("detail", decode.field("id", decode.int, decode.success))
+  decode.success(CardCrudDeleted(id))
+}
+
+/// Decoder for close-requested event.
+fn decode_close_requested_event() -> decode.Decoder(Msg) {
+  decode.success(CloseCardDialog)
+}
+
+/// Decoder for Card from JSON (used in custom events).
+fn card_decoder() -> decode.Decoder(Card) {
+  use id <- decode.field("id", decode.int)
+  use project_id <- decode.field("project_id", decode.int)
+  use title <- decode.field("title", decode.string)
+  use description <- decode.field("description", decode.string)
+  use color <- decode.field("color", decode.optional(decode.string))
+  use state <- decode.field("state", card_state_decoder())
+  use task_count <- decode.field("task_count", decode.int)
+  use completed_count <- decode.field("completed_count", decode.int)
+  use created_by <- decode.field("created_by", decode.int)
+  use created_at <- decode.field("created_at", decode.string)
+  decode.success(card.Card(
+    id: id,
+    project_id: project_id,
+    title: title,
+    description: description,
+    color: color,
+    state: state,
+    task_count: task_count,
+    completed_count: completed_count,
+    created_by: created_by,
+    created_at: created_at,
+  ))
+}
+
+fn card_state_decoder() -> decode.Decoder(card.CardState) {
+  use state_str <- decode.then(decode.string)
+  case state_str {
+    "en_curso" -> decode.success(card.EnCurso)
+    "cerrada" -> decode.success(card.Cerrada)
+    _ -> decode.success(card.Pendiente)
+  }
+}
+
+/// Convert a Card to JSON for passing as a property to the component.
+fn card_to_property_json(c: Card, mode: String) -> json.Json {
+  let state_str = case c.state {
+    card.Pendiente -> "pendiente"
+    card.EnCurso -> "en_curso"
+    card.Cerrada -> "cerrada"
+  }
+  let color_field = case c.color {
+    opt.Some(color) -> json.string(color)
+    opt.None -> json.null()
+  }
+  json.object([
+    #("id", json.int(c.id)),
+    #("project_id", json.int(c.project_id)),
+    #("title", json.string(c.title)),
+    #("description", json.string(c.description)),
+    #("color", color_field),
+    #("state", json.string(state_str)),
+    #("task_count", json.int(c.task_count)),
+    #("completed_count", json.int(c.completed_count)),
+    #("created_by", json.int(c.created_by)),
+    #("created_at", json.string(c.created_at)),
+    #("_mode", json.string(mode)),
+  ])
 }
 
 fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
@@ -1464,10 +1480,10 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
                       )),
                     ]),
                     td([], [
-                      button([event.on_click(CardEditClicked(c))], [
+                      button([event.on_click(OpenCardDialog(CardDialogEdit(c.id)))], [
                         text(update_helpers.i18n_t(model, i18n_text.EditCard)),
                       ]),
-                      button([event.on_click(CardDeleteClicked(c))], [
+                      button([event.on_click(OpenCardDialog(CardDialogDelete(c.id)))], [
                         text(update_helpers.i18n_t(model, i18n_text.DeleteCard)),
                       ]),
                     ]),
@@ -1486,115 +1502,6 @@ fn view_card_state_label(model: Model, state: card.CardState) -> String {
     card.EnCurso -> update_helpers.i18n_t(model, i18n_text.CardStateEnCurso)
     card.Cerrada -> update_helpers.i18n_t(model, i18n_text.CardStateCerrada)
   }
-}
-
-fn view_edit_card_dialog(model: Model) -> Element(Msg) {
-  div([attribute.class("modal")], [
-    div([attribute.class("modal-content")], [
-      h3([], [text(update_helpers.i18n_t(model, i18n_text.EditCard))]),
-      case model.cards_edit_error {
-        opt.Some(err) -> div([attribute.class("error")], [text(err)])
-        opt.None -> element.none()
-      },
-      form([event.on_submit(fn(_) { CardEditSubmitted })], [
-        div([attribute.class("field")], [
-          label([], [text(update_helpers.i18n_t(model, i18n_text.CardTitle))]),
-          input([
-            attribute.type_("text"),
-            attribute.value(model.cards_edit_title),
-            event.on_input(CardEditTitleChanged),
-            attribute.required(True),
-          ]),
-        ]),
-        div([attribute.class("field")], [
-          label([], [
-            text(update_helpers.i18n_t(model, i18n_text.CardDescription)),
-          ]),
-          input([
-            attribute.type_("text"),
-            attribute.value(model.cards_edit_description),
-            event.on_input(CardEditDescriptionChanged),
-          ]),
-        ]),
-        div([attribute.class("field")], [
-          label([], [
-            text(update_helpers.i18n_t(model, i18n_text.ColorLabel)),
-          ]),
-          color_picker.view(
-            model,
-            case model.cards_edit_color {
-              opt.None -> opt.None
-              opt.Some(c) -> color_picker.string_to_color(c)
-            },
-            model.cards_edit_color_open,
-            CardEditColorToggle,
-            fn(c) {
-              case c {
-                opt.None -> CardEditColorChanged(opt.None)
-                opt.Some(color) ->
-                  CardEditColorChanged(opt.Some(
-                    color_picker.color_to_string(color),
-                  ))
-              }
-            },
-          ),
-        ]),
-        div([attribute.class("actions")], [
-          button(
-            [attribute.type_("button"), event.on_click(CardEditCancelled)],
-            [text(update_helpers.i18n_t(model, i18n_text.Cancel))],
-          ),
-          button(
-            [
-              attribute.type_("submit"),
-              attribute.disabled(model.cards_edit_in_flight),
-            ],
-            [
-              text(case model.cards_edit_in_flight {
-                True -> update_helpers.i18n_t(model, i18n_text.Working)
-                False -> update_helpers.i18n_t(model, i18n_text.Save)
-              }),
-            ],
-          ),
-        ]),
-      ]),
-    ]),
-  ])
-}
-
-fn view_delete_card_dialog(model: Model, card: Card) -> Element(Msg) {
-  div([attribute.class("modal")], [
-    div([attribute.class("modal-content")], [
-      h3([], [text(update_helpers.i18n_t(model, i18n_text.DeleteCard))]),
-      p([], [
-        text(update_helpers.i18n_t(
-          model,
-          i18n_text.CardDeleteConfirm(card.title),
-        )),
-      ]),
-      case model.cards_delete_error {
-        opt.Some(err) -> div([attribute.class("error")], [text(err)])
-        opt.None -> element.none()
-      },
-      div([attribute.class("actions")], [
-        button([event.on_click(CardDeleteCancelled)], [
-          text(update_helpers.i18n_t(model, i18n_text.Cancel)),
-        ]),
-        button(
-          [
-            event.on_click(CardDeleteConfirmed),
-            attribute.disabled(model.cards_delete_in_flight),
-          ],
-          [
-            text(case model.cards_delete_in_flight {
-              True -> update_helpers.i18n_t(model, i18n_text.Removing)
-              False -> update_helpers.i18n_t(model, i18n_text.DeleteCard)
-            }),
-          ],
-        ),
-      ]),
-    ]),
-  ])
 }
 
 // =============================================================================
@@ -1624,7 +1531,11 @@ fn view_workflows_list(
         span([attribute.class("admin-section-icon")], [text("\u{2699}\u{FE0F}")]),
         text(update_helpers.i18n_t(model, i18n_text.WorkflowsOrgTitle)),
       ]),
-      dialog.add_button(model, i18n_text.CreateWorkflow, WorkflowCreateDialogOpened),
+      dialog.add_button(
+        model,
+        i18n_text.CreateWorkflow,
+        OpenWorkflowDialog(WorkflowDialogCreate),
+      ),
     ]),
     // Org workflows table
     view_workflows_table(model, model.workflows_org, opt.None),
@@ -1647,75 +1558,131 @@ fn view_workflows_list(
         ])
       opt.None -> element.none()
     },
-    // Create dialog
-    view_workflow_create_dialog(model),
-    // Edit dialog
-    case model.workflows_edit_id {
-      opt.Some(_) -> view_edit_workflow_dialog(model)
-      opt.None -> element.none()
-    },
-    // Delete dialog
-    case model.workflows_delete_confirm {
-      opt.Some(workflow) -> view_delete_workflow_dialog(model, workflow)
-      opt.None -> element.none()
-    },
+    // Workflow CRUD dialog component (handles create, edit, delete)
+    view_workflow_crud_dialog(model),
   ])
 }
 
-fn view_workflow_create_dialog(model: Model) -> Element(Msg) {
-  dialog.view(
-    dialog.DialogConfig(
-      title: update_helpers.i18n_t(model, i18n_text.CreateWorkflow),
-      icon: opt.Some("\u{2699}\u{FE0F}"),
-      size: dialog.DialogMd,
-      on_close: WorkflowCreateDialogClosed,
-    ),
-    model.workflows_create_dialog_open,
-    model.workflows_create_error,
-    [
-      form([event.on_submit(fn(_) { WorkflowCreateSubmitted })], [
-        div([attribute.class("field")], [
-          label([], [text(update_helpers.i18n_t(model, i18n_text.WorkflowName))]),
-          input([
-            attribute.type_("text"),
-            attribute.value(model.workflows_create_name),
-            event.on_input(WorkflowCreateNameChanged),
-            attribute.required(True),
-          ]),
-        ]),
-        div([attribute.class("field")], [
-          label([], [
-            text(update_helpers.i18n_t(model, i18n_text.WorkflowDescription)),
-          ]),
-          input([
-            attribute.type_("text"),
-            attribute.value(model.workflows_create_description),
-            event.on_input(WorkflowCreateDescriptionChanged),
-          ]),
-        ]),
-        div([attribute.class("field")], [
-          label([], [
-            input([
-              attribute.type_("checkbox"),
-              attribute.checked(model.workflows_create_active),
-              event.on_check(WorkflowCreateActiveChanged),
-            ]),
-            text(" " <> update_helpers.i18n_t(model, i18n_text.WorkflowActive)),
-          ]),
-        ]),
-        dialog.submit_button(
-          model,
-          model.workflows_create_in_flight,
-          False,
-          i18n_text.Create,
-          i18n_text.Creating,
-        ),
-      ]),
-    ],
-    [
-      dialog.cancel_button(model, WorkflowCreateDialogClosed),
-    ],
-  )
+/// Render the workflow-crud-dialog Lustre component.
+fn view_workflow_crud_dialog(model: Model) -> Element(Msg) {
+  case model.workflows_dialog_mode {
+    opt.None -> element.none()
+    opt.Some(mode) -> {
+      let #(mode_str, workflow_json, project_id_attr) = case mode {
+        WorkflowDialogCreate -> #(
+          "create",
+          attribute.none(),
+          case model.selected_project_id {
+            opt.Some(id) -> attribute.attribute("project-id", int.to_string(id))
+            opt.None -> attribute.none()
+          },
+        )
+        WorkflowDialogEdit(workflow) -> #(
+          "edit",
+          attribute.property("workflow", workflow_to_property_json(workflow, "edit")),
+          case workflow.project_id {
+            opt.Some(id) -> attribute.attribute("project-id", int.to_string(id))
+            opt.None -> attribute.none()
+          },
+        )
+        WorkflowDialogDelete(workflow) -> #(
+          "delete",
+          attribute.property("workflow", workflow_to_property_json(workflow, "delete")),
+          case workflow.project_id {
+            opt.Some(id) -> attribute.attribute("project-id", int.to_string(id))
+            opt.None -> attribute.none()
+          },
+        )
+      }
+
+      element.element(
+        "workflow-crud-dialog",
+        [
+          // Attributes (strings)
+          attribute.attribute("locale", locale.serialize(model.locale)),
+          project_id_attr,
+          attribute.attribute("mode", mode_str),
+          // Property for workflow data (edit/delete modes)
+          workflow_json,
+          // Event listeners for component events
+          event.on("workflow-created", decode_workflow_created_event()),
+          event.on("workflow-updated", decode_workflow_updated_event()),
+          event.on("workflow-deleted", decode_workflow_deleted_event()),
+          event.on("close-requested", decode_workflow_close_requested_event()),
+        ],
+        [],
+      )
+    }
+  }
+}
+
+/// Convert workflow to JSON for property passing to component.
+fn workflow_to_property_json(workflow: Workflow, mode: String) -> json.Json {
+  json.object([
+    #("id", json.int(workflow.id)),
+    #("org_id", json.int(workflow.org_id)),
+    #("project_id", case workflow.project_id {
+      opt.Some(id) -> json.int(id)
+      opt.None -> json.null()
+    }),
+    #("name", json.string(workflow.name)),
+    #("description", case workflow.description {
+      opt.Some(desc) -> json.string(desc)
+      opt.None -> json.null()
+    }),
+    #("active", json.bool(workflow.active)),
+    #("rule_count", json.int(workflow.rule_count)),
+    #("created_by", json.int(workflow.created_by)),
+    #("created_at", json.string(workflow.created_at)),
+    #("_mode", json.string(mode)),
+  ])
+}
+
+/// Decoder for workflow-created event.
+fn decode_workflow_created_event() -> decode.Decoder(Msg) {
+  use workflow <- decode.field("detail", workflow_decoder())
+  decode.success(WorkflowCrudCreated(workflow))
+}
+
+/// Decoder for workflow-updated event.
+fn decode_workflow_updated_event() -> decode.Decoder(Msg) {
+  use workflow <- decode.field("detail", workflow_decoder())
+  decode.success(WorkflowCrudUpdated(workflow))
+}
+
+/// Decoder for workflow-deleted event.
+fn decode_workflow_deleted_event() -> decode.Decoder(Msg) {
+  use id <- decode.field("detail", decode.field("id", decode.int, decode.success))
+  decode.success(WorkflowCrudDeleted(id))
+}
+
+/// Decoder for Workflow from JSON (used in custom events).
+fn workflow_decoder() -> decode.Decoder(Workflow) {
+  use id <- decode.field("id", decode.int)
+  use org_id <- decode.field("org_id", decode.int)
+  use project_id <- decode.field("project_id", decode.optional(decode.int))
+  use name <- decode.field("name", decode.string)
+  use description <- decode.field("description", decode.optional(decode.string))
+  use active <- decode.field("active", decode.bool)
+  use rule_count <- decode.field("rule_count", decode.int)
+  use created_by <- decode.field("created_by", decode.int)
+  use created_at <- decode.field("created_at", decode.string)
+  decode.success(Workflow(
+    id: id,
+    org_id: org_id,
+    project_id: project_id,
+    name: name,
+    description: description,
+    active: active,
+    rule_count: rule_count,
+    created_by: created_by,
+    created_at: created_at,
+  ))
+}
+
+/// Decoder for close-requested event from workflow dialog.
+fn decode_workflow_close_requested_event() -> decode.Decoder(Msg) {
+  decode.success(CloseWorkflowDialog)
 }
 
 fn view_workflows_table(
@@ -1781,18 +1748,24 @@ fn view_workflows_table(
                           i18n_text.WorkflowRules,
                         )),
                       ]),
-                      button([event.on_click(WorkflowEditClicked(w))], [
-                        text(update_helpers.i18n_t(
-                          model,
-                          i18n_text.EditWorkflow,
-                        )),
-                      ]),
-                      button([event.on_click(WorkflowDeleteClicked(w))], [
-                        text(update_helpers.i18n_t(
-                          model,
-                          i18n_text.DeleteWorkflow,
-                        )),
-                      ]),
+                      button(
+                        [event.on_click(OpenWorkflowDialog(WorkflowDialogEdit(w)))],
+                        [
+                          text(update_helpers.i18n_t(
+                            model,
+                            i18n_text.EditWorkflow,
+                          )),
+                        ],
+                      ),
+                      button(
+                        [event.on_click(OpenWorkflowDialog(WorkflowDialogDelete(w)))],
+                        [
+                          text(update_helpers.i18n_t(
+                            model,
+                            i18n_text.DeleteWorkflow,
+                          )),
+                        ],
+                      ),
                     ]),
                   ]),
                 )
@@ -1803,98 +1776,6 @@ fn view_workflows_table(
   }
 }
 
-fn view_edit_workflow_dialog(model: Model) -> Element(Msg) {
-  div([attribute.class("modal")], [
-    div([attribute.class("modal-content")], [
-      h3([], [text(update_helpers.i18n_t(model, i18n_text.EditWorkflow))]),
-      case model.workflows_edit_error {
-        opt.Some(err) -> div([attribute.class("error")], [text(err)])
-        opt.None -> element.none()
-      },
-      form([event.on_submit(fn(_) { WorkflowEditSubmitted })], [
-        div([attribute.class("field")], [
-          label([], [
-            text(update_helpers.i18n_t(model, i18n_text.WorkflowName)),
-          ]),
-          input([
-            attribute.type_("text"),
-            attribute.value(model.workflows_edit_name),
-            event.on_input(WorkflowEditNameChanged),
-            attribute.required(True),
-          ]),
-        ]),
-        div([attribute.class("field")], [
-          label([], [
-            text(update_helpers.i18n_t(model, i18n_text.WorkflowDescription)),
-          ]),
-          input([
-            attribute.type_("text"),
-            attribute.value(model.workflows_edit_description),
-            event.on_input(WorkflowEditDescriptionChanged),
-          ]),
-        ]),
-        div([attribute.class("field")], [
-          label([], [
-            input([
-              attribute.type_("checkbox"),
-              attribute.checked(model.workflows_edit_active),
-              event.on_check(WorkflowEditActiveChanged),
-            ]),
-            text(" " <> update_helpers.i18n_t(model, i18n_text.WorkflowActive)),
-          ]),
-        ]),
-        div([attribute.class("actions")], [
-          button(
-            [attribute.type_("button"), event.on_click(WorkflowEditCancelled)],
-            [text(update_helpers.i18n_t(model, i18n_text.Cancel))],
-          ),
-          button(
-            [
-              attribute.type_("submit"),
-              attribute.disabled(model.workflows_edit_in_flight),
-            ],
-            [
-              text(case model.workflows_edit_in_flight {
-                True -> update_helpers.i18n_t(model, i18n_text.Working)
-                False -> update_helpers.i18n_t(model, i18n_text.Save)
-              }),
-            ],
-          ),
-        ]),
-      ]),
-    ]),
-  ])
-}
-
-fn view_delete_workflow_dialog(model: Model, workflow: Workflow) -> Element(Msg) {
-  div([attribute.class("modal")], [
-    div([attribute.class("modal-content")], [
-      h3([], [text(update_helpers.i18n_t(model, i18n_text.DeleteWorkflow))]),
-      p([], [text("Delete workflow \"" <> workflow.name <> "\"?")]),
-      case model.workflows_delete_error {
-        opt.Some(err) -> div([attribute.class("error")], [text(err)])
-        opt.None -> element.none()
-      },
-      div([attribute.class("actions")], [
-        button([event.on_click(WorkflowDeleteCancelled)], [
-          text(update_helpers.i18n_t(model, i18n_text.Cancel)),
-        ]),
-        button(
-          [
-            event.on_click(WorkflowDeleteConfirmed),
-            attribute.disabled(model.workflows_delete_in_flight),
-          ],
-          [
-            text(case model.workflows_delete_in_flight {
-              True -> update_helpers.i18n_t(model, i18n_text.Removing)
-              False -> update_helpers.i18n_t(model, i18n_text.DeleteWorkflow)
-            }),
-          ],
-        ),
-      ]),
-    ]),
-  ])
-}
 
 // =============================================================================
 // Rules Views
@@ -2306,6 +2187,31 @@ fn view_delete_rule_dialog(model: Model, rule: Rule) -> Element(Msg) {
   ])
 }
 
+/// Shared task type selector for rules (used in create and edit dialogs).
+fn view_task_type_selector_for_templates(
+  model: Model,
+  task_types: Remote(List(TaskType)),
+  selected: String,
+  on_change: fn(String) -> Msg,
+) -> Element(Msg) {
+  case task_types {
+    Loaded(types) ->
+      select([attribute.value(selected), event.on_input(on_change)], [
+        option(
+          [attribute.value("")],
+          update_helpers.i18n_t(model, i18n_text.SelectType),
+        ),
+        ..list.map(types, fn(tt) {
+          option([attribute.value(int.to_string(tt.id))], tt.name)
+        })
+      ])
+    _ ->
+      div([attribute.class("empty")], [
+        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+      ])
+  }
+}
+
 // =============================================================================
 // Task Templates Views
 // =============================================================================
@@ -2322,7 +2228,11 @@ pub fn view_task_templates(
         span([attribute.class("admin-section-icon")], [text("\u{1F4CB}")]),
         text(update_helpers.i18n_t(model, i18n_text.TaskTemplatesOrgTitle)),
       ]),
-      dialog.add_button(model, i18n_text.CreateTaskTemplate, TaskTemplateCreateDialogOpened),
+      dialog.add_button(
+        model,
+        i18n_text.CreateTaskTemplate,
+        OpenTaskTemplateDialog(TaskTemplateDialogCreate),
+      ),
     ]),
     p([], [
       text(update_helpers.i18n_t(model, i18n_text.TaskTemplateVariablesHelp)),
@@ -2343,99 +2253,151 @@ pub fn view_task_templates(
         ])
       opt.None -> element.none()
     },
-    // Create dialog
-    view_task_template_create_dialog(model),
-    // Edit dialog
-    case model.task_templates_edit_id {
-      opt.Some(_) -> view_edit_task_template_dialog(model)
-      opt.None -> element.none()
-    },
-    // Delete dialog
-    case model.task_templates_delete_confirm {
-      opt.Some(template) -> view_delete_task_template_dialog(model, template)
-      opt.None -> element.none()
-    },
+    // Task template CRUD dialog component
+    view_task_template_crud_dialog(model),
   ])
 }
 
-fn view_task_template_create_dialog(model: Model) -> Element(Msg) {
-  dialog.view(
-    dialog.DialogConfig(
-      title: update_helpers.i18n_t(model, i18n_text.CreateTaskTemplate),
-      icon: opt.Some("\u{1F4CB}"),
-      size: dialog.DialogMd,
-      on_close: TaskTemplateCreateDialogClosed,
-    ),
-    model.task_templates_create_dialog_open,
-    model.task_templates_create_error,
-    [
-      form([event.on_submit(fn(_) { TaskTemplateCreateSubmitted })], [
-        div([attribute.class("field")], [
-          label([], [
-            text(update_helpers.i18n_t(model, i18n_text.TaskTemplateName)),
-          ]),
-          input([
-            attribute.type_("text"),
-            attribute.value(model.task_templates_create_name),
-            event.on_input(TaskTemplateCreateNameChanged),
-            attribute.required(True),
-          ]),
-        ]),
-        div([attribute.class("field")], [
-          label([], [
-            text(update_helpers.i18n_t(model, i18n_text.TaskTemplateDescription)),
-          ]),
-          input([
-            attribute.type_("text"),
-            attribute.value(model.task_templates_create_description),
-            event.on_input(TaskTemplateCreateDescriptionChanged),
-          ]),
-        ]),
-        div([attribute.class("field")], [
-          label([], [
-            text(update_helpers.i18n_t(model, i18n_text.TaskTemplateType)),
-          ]),
-          view_task_type_selector_for_templates(
-            model,
-            model.task_types,
-            case model.task_templates_create_type_id {
-              opt.Some(id) -> int.to_string(id)
-              opt.None -> ""
-            },
-            TaskTemplateCreateTypeIdChanged,
-          ),
-        ]),
-        div([attribute.class("field")], [
-          label([], [
-            text(update_helpers.i18n_t(model, i18n_text.TaskTemplatePriority)),
-          ]),
-          select(
-            [
-              attribute.value(model.task_templates_create_priority),
-              event.on_input(TaskTemplateCreatePriorityChanged),
-            ],
-            [
-              option([attribute.value("1")], "1"),
-              option([attribute.value("2")], "2"),
-              option([attribute.value("3")], "3"),
-              option([attribute.value("4")], "4"),
-              option([attribute.value("5")], "5"),
-            ],
-          ),
-        ]),
-        dialog.submit_button(
-          model,
-          model.task_templates_create_in_flight,
-          False,
-          i18n_text.Create,
-          i18n_text.Creating,
-        ),
-      ]),
-    ],
-    [
-      dialog.cancel_button(model, TaskTemplateCreateDialogClosed),
-    ],
-  )
+/// Render the task-template-crud-dialog Lustre component.
+fn view_task_template_crud_dialog(model: Model) -> Element(Msg) {
+  case model.task_templates_dialog_mode {
+    opt.None -> element.none()
+    opt.Some(mode) -> {
+      let #(mode_str, template_json, project_id_attr) = case mode {
+        TaskTemplateDialogCreate -> #(
+          "create",
+          attribute.none(),
+          case model.selected_project_id {
+            opt.Some(id) -> attribute.attribute("project-id", int.to_string(id))
+            opt.None -> attribute.none()
+          },
+        )
+        TaskTemplateDialogEdit(template) -> #(
+          "edit",
+          attribute.property("template", task_template_to_property_json(template, "edit")),
+          case template.project_id {
+            opt.Some(id) -> attribute.attribute("project-id", int.to_string(id))
+            opt.None -> attribute.none()
+          },
+        )
+        TaskTemplateDialogDelete(template) -> #(
+          "delete",
+          attribute.property("template", task_template_to_property_json(template, "delete")),
+          case template.project_id {
+            opt.Some(id) -> attribute.attribute("project-id", int.to_string(id))
+            opt.None -> attribute.none()
+          },
+        )
+      }
+
+      element.element(
+        "task-template-crud-dialog",
+        [
+          // Attributes (strings)
+          attribute.attribute("locale", locale.serialize(model.locale)),
+          project_id_attr,
+          attribute.attribute("mode", mode_str),
+          // Property for template data (edit/delete modes)
+          template_json,
+          // Property for task types list
+          attribute.property("task-types", task_types_to_property_json(model.task_types)),
+          // Event listeners for component events
+          event.on("task-template-created", decode_task_template_created_event()),
+          event.on("task-template-updated", decode_task_template_updated_event()),
+          event.on("task-template-deleted", decode_task_template_deleted_event()),
+          event.on("close-requested", decode_task_template_close_requested_event()),
+        ],
+        [],
+      )
+    }
+  }
+}
+
+/// Convert task template to JSON for property passing to component.
+fn task_template_to_property_json(template: TaskTemplate, mode: String) -> json.Json {
+  json.object([
+    #("id", json.int(template.id)),
+    #("org_id", json.int(template.org_id)),
+    #("project_id", case template.project_id {
+      opt.Some(id) -> json.int(id)
+      opt.None -> json.null()
+    }),
+    #("name", json.string(template.name)),
+    #("description", case template.description {
+      opt.Some(desc) -> json.string(desc)
+      opt.None -> json.null()
+    }),
+    #("type_id", json.int(template.type_id)),
+    #("type_name", json.string(template.type_name)),
+    #("priority", json.int(template.priority)),
+    #("created_by", json.int(template.created_by)),
+    #("created_at", json.string(template.created_at)),
+    #("_mode", json.string(mode)),
+  ])
+}
+
+/// Convert task types to JSON for property passing to component.
+fn task_types_to_property_json(task_types: Remote(List(TaskType))) -> json.Json {
+  case task_types {
+    Loaded(types) ->
+      json.array(types, fn(tt: TaskType) {
+        json.object([
+          #("id", json.int(tt.id)),
+          #("name", json.string(tt.name)),
+          #("icon", json.string(tt.icon)),
+        ])
+      })
+    _ -> json.array([], fn(_) { json.null() })
+  }
+}
+
+/// Decoder for task-template-created event.
+fn decode_task_template_created_event() -> decode.Decoder(Msg) {
+  use template <- decode.field("detail", task_template_decoder())
+  decode.success(TaskTemplateCrudCreated(template))
+}
+
+/// Decoder for task-template-updated event.
+fn decode_task_template_updated_event() -> decode.Decoder(Msg) {
+  use template <- decode.field("detail", task_template_decoder())
+  decode.success(TaskTemplateCrudUpdated(template))
+}
+
+/// Decoder for task-template-deleted event.
+fn decode_task_template_deleted_event() -> decode.Decoder(Msg) {
+  use id <- decode.field("detail", decode.field("id", decode.int, decode.success))
+  decode.success(TaskTemplateCrudDeleted(id))
+}
+
+/// Decoder for close-requested event from task template component.
+fn decode_task_template_close_requested_event() -> decode.Decoder(Msg) {
+  decode.success(CloseTaskTemplateDialog)
+}
+
+/// Decoder for TaskTemplate from JSON (used in custom events).
+fn task_template_decoder() -> decode.Decoder(TaskTemplate) {
+  use id <- decode.field("id", decode.int)
+  use org_id <- decode.field("org_id", decode.int)
+  use project_id <- decode.field("project_id", decode.optional(decode.int))
+  use name <- decode.field("name", decode.string)
+  use description <- decode.field("description", decode.optional(decode.string))
+  use type_id <- decode.field("type_id", decode.int)
+  use type_name <- decode.field("type_name", decode.string)
+  use priority <- decode.field("priority", decode.int)
+  use created_by <- decode.field("created_by", decode.int)
+  use created_at <- decode.field("created_at", decode.string)
+  decode.success(workflow.TaskTemplate(
+    id: id,
+    org_id: org_id,
+    project_id: project_id,
+    name: name,
+    description: description,
+    type_id: type_id,
+    type_name: type_name,
+    priority: priority,
+    created_by: created_by,
+    created_at: created_at,
+  ))
 }
 
 fn view_task_templates_table(
@@ -2492,13 +2454,13 @@ fn view_task_templates_table(
                     td([], [text(t.type_name)]),
                     td([], [text(int.to_string(t.priority))]),
                     td([], [
-                      button([event.on_click(TaskTemplateEditClicked(t))], [
+                      button([event.on_click(OpenTaskTemplateDialog(TaskTemplateDialogEdit(t)))], [
                         text(update_helpers.i18n_t(
                           model,
                           i18n_text.EditTaskTemplate,
                         )),
                       ]),
-                      button([event.on_click(TaskTemplateDeleteClicked(t))], [
+                      button([event.on_click(OpenTaskTemplateDialog(TaskTemplateDialogDelete(t)))], [
                         text(update_helpers.i18n_t(
                           model,
                           i18n_text.DeleteTaskTemplate,
@@ -2512,152 +2474,6 @@ fn view_task_templates_table(
           ])
       }
   }
-}
-
-fn view_task_type_selector_for_templates(
-  model: Model,
-  task_types: Remote(List(TaskType)),
-  selected: String,
-  on_change: fn(String) -> Msg,
-) -> Element(Msg) {
-  case task_types {
-    Loaded(types) ->
-      select([attribute.value(selected), event.on_input(on_change)], [
-        option(
-          [attribute.value("")],
-          update_helpers.i18n_t(model, i18n_text.SelectType),
-        ),
-        ..list.map(types, fn(tt) {
-          option([attribute.value(int.to_string(tt.id))], tt.name)
-        })
-      ])
-    _ ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
-      ])
-  }
-}
-
-fn view_edit_task_template_dialog(model: Model) -> Element(Msg) {
-  div([attribute.class("modal")], [
-    div([attribute.class("modal-content")], [
-      h3([], [text(update_helpers.i18n_t(model, i18n_text.EditTaskTemplate))]),
-      case model.task_templates_edit_error {
-        opt.Some(err) -> div([attribute.class("error")], [text(err)])
-        opt.None -> element.none()
-      },
-      form([event.on_submit(fn(_) { TaskTemplateEditSubmitted })], [
-        div([attribute.class("field")], [
-          label([], [
-            text(update_helpers.i18n_t(model, i18n_text.TaskTemplateName)),
-          ]),
-          input([
-            attribute.type_("text"),
-            attribute.value(model.task_templates_edit_name),
-            event.on_input(TaskTemplateEditNameChanged),
-            attribute.required(True),
-          ]),
-        ]),
-        div([attribute.class("field")], [
-          label([], [
-            text(update_helpers.i18n_t(model, i18n_text.TaskTemplateDescription)),
-          ]),
-          input([
-            attribute.type_("text"),
-            attribute.value(model.task_templates_edit_description),
-            event.on_input(TaskTemplateEditDescriptionChanged),
-          ]),
-        ]),
-        div([attribute.class("field")], [
-          label([], [
-            text(update_helpers.i18n_t(model, i18n_text.TaskTemplateType)),
-          ]),
-          view_task_type_selector_for_templates(
-            model,
-            model.task_types,
-            case model.task_templates_edit_type_id {
-              opt.Some(id) -> int.to_string(id)
-              opt.None -> ""
-            },
-            TaskTemplateEditTypeIdChanged,
-          ),
-        ]),
-        div([attribute.class("field")], [
-          label([], [
-            text(update_helpers.i18n_t(model, i18n_text.TaskTemplatePriority)),
-          ]),
-          select(
-            [
-              attribute.value(model.task_templates_edit_priority),
-              event.on_input(TaskTemplateEditPriorityChanged),
-            ],
-            [
-              option([attribute.value("1")], "1"),
-              option([attribute.value("2")], "2"),
-              option([attribute.value("3")], "3"),
-              option([attribute.value("4")], "4"),
-              option([attribute.value("5")], "5"),
-            ],
-          ),
-        ]),
-        div([attribute.class("actions")], [
-          button(
-            [
-              attribute.type_("button"),
-              event.on_click(TaskTemplateEditCancelled),
-            ],
-            [text(update_helpers.i18n_t(model, i18n_text.Cancel))],
-          ),
-          button(
-            [
-              attribute.type_("submit"),
-              attribute.disabled(model.task_templates_edit_in_flight),
-            ],
-            [
-              text(case model.task_templates_edit_in_flight {
-                True -> update_helpers.i18n_t(model, i18n_text.Working)
-                False -> update_helpers.i18n_t(model, i18n_text.Save)
-              }),
-            ],
-          ),
-        ]),
-      ]),
-    ]),
-  ])
-}
-
-fn view_delete_task_template_dialog(
-  model: Model,
-  template: TaskTemplate,
-) -> Element(Msg) {
-  div([attribute.class("modal")], [
-    div([attribute.class("modal-content")], [
-      h3([], [text(update_helpers.i18n_t(model, i18n_text.DeleteTaskTemplate))]),
-      p([], [text("Delete template \"" <> template.name <> "\"?")]),
-      case model.task_templates_delete_error {
-        opt.Some(err) -> div([attribute.class("error")], [text(err)])
-        opt.None -> element.none()
-      },
-      div([attribute.class("actions")], [
-        button([event.on_click(TaskTemplateDeleteCancelled)], [
-          text(update_helpers.i18n_t(model, i18n_text.Cancel)),
-        ]),
-        button(
-          [
-            event.on_click(TaskTemplateDeleteConfirmed),
-            attribute.disabled(model.task_templates_delete_in_flight),
-          ],
-          [
-            text(case model.task_templates_delete_in_flight {
-              True -> update_helpers.i18n_t(model, i18n_text.Removing)
-              False ->
-                update_helpers.i18n_t(model, i18n_text.DeleteTaskTemplate)
-            }),
-          ],
-        ),
-      ]),
-    ]),
-  ])
 }
 
 // =============================================================================

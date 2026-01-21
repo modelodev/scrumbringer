@@ -131,58 +131,22 @@ pub fn handle_members_fetched_error(
 }
 
 // =============================================================================
-// Re-exports: Cards
+// Re-exports: Cards (component pattern - minimal handlers)
 // =============================================================================
 
 pub const handle_cards_fetched_ok = cards.handle_cards_fetched_ok
 
 pub const handle_cards_fetched_error = cards.handle_cards_fetched_error
 
-pub const handle_card_create_dialog_opened = cards.handle_card_create_dialog_opened
+pub const handle_open_card_dialog = cards.handle_open_card_dialog
 
-pub const handle_card_create_dialog_closed = cards.handle_card_create_dialog_closed
+pub const handle_close_card_dialog = cards.handle_close_card_dialog
 
-pub const handle_card_create_title_changed = cards.handle_card_create_title_changed
+pub const handle_card_crud_created = cards.handle_card_crud_created
 
-pub const handle_card_create_description_changed = cards.handle_card_create_description_changed
+pub const handle_card_crud_updated = cards.handle_card_crud_updated
 
-pub const handle_card_create_color_changed = cards.handle_card_create_color_changed
-
-pub const handle_card_create_color_toggle = cards.handle_card_create_color_toggle
-
-pub const handle_card_create_submitted = cards.handle_card_create_submitted
-
-pub const handle_card_created_ok = cards.handle_card_created_ok
-
-pub const handle_card_created_error = cards.handle_card_created_error
-
-pub const handle_card_edit_clicked = cards.handle_card_edit_clicked
-
-pub const handle_card_edit_title_changed = cards.handle_card_edit_title_changed
-
-pub const handle_card_edit_description_changed = cards.handle_card_edit_description_changed
-
-pub const handle_card_edit_color_changed = cards.handle_card_edit_color_changed
-
-pub const handle_card_edit_color_toggle = cards.handle_card_edit_color_toggle
-
-pub const handle_card_edit_submitted = cards.handle_card_edit_submitted
-
-pub const handle_card_edit_cancelled = cards.handle_card_edit_cancelled
-
-pub const handle_card_updated_ok = cards.handle_card_updated_ok
-
-pub const handle_card_updated_error = cards.handle_card_updated_error
-
-pub const handle_card_delete_clicked = cards.handle_card_delete_clicked
-
-pub const handle_card_delete_cancelled = cards.handle_card_delete_cancelled
-
-pub const handle_card_delete_confirmed = cards.handle_card_delete_confirmed
-
-pub const handle_card_deleted_ok = cards.handle_card_deleted_ok
-
-pub const handle_card_deleted_error = cards.handle_card_deleted_error
+pub const handle_card_crud_deleted = cards.handle_card_crud_deleted
 
 pub const fetch_cards_for_project = cards.fetch_cards_for_project
 
@@ -198,47 +162,15 @@ pub const handle_workflows_project_fetched_ok = workflows.handle_workflows_proje
 
 pub const handle_workflows_project_fetched_error = workflows.handle_workflows_project_fetched_error
 
-pub const handle_workflow_create_dialog_opened = workflows.handle_workflow_create_dialog_opened
+pub const handle_open_workflow_dialog = workflows.handle_open_workflow_dialog
 
-pub const handle_workflow_create_dialog_closed = workflows.handle_workflow_create_dialog_closed
+pub const handle_close_workflow_dialog = workflows.handle_close_workflow_dialog
 
-pub const handle_workflow_create_name_changed = workflows.handle_workflow_create_name_changed
+pub const handle_workflow_crud_created = workflows.handle_workflow_crud_created
 
-pub const handle_workflow_create_description_changed = workflows.handle_workflow_create_description_changed
+pub const handle_workflow_crud_updated = workflows.handle_workflow_crud_updated
 
-pub const handle_workflow_create_active_changed = workflows.handle_workflow_create_active_changed
-
-pub const handle_workflow_create_submitted = workflows.handle_workflow_create_submitted
-
-pub const handle_workflow_created_ok = workflows.handle_workflow_created_ok
-
-pub const handle_workflow_created_error = workflows.handle_workflow_created_error
-
-pub const handle_workflow_edit_clicked = workflows.handle_workflow_edit_clicked
-
-pub const handle_workflow_edit_name_changed = workflows.handle_workflow_edit_name_changed
-
-pub const handle_workflow_edit_description_changed = workflows.handle_workflow_edit_description_changed
-
-pub const handle_workflow_edit_active_changed = workflows.handle_workflow_edit_active_changed
-
-pub const handle_workflow_edit_submitted = workflows.handle_workflow_edit_submitted
-
-pub const handle_workflow_edit_cancelled = workflows.handle_workflow_edit_cancelled
-
-pub const handle_workflow_updated_ok = workflows.handle_workflow_updated_ok
-
-pub const handle_workflow_updated_error = workflows.handle_workflow_updated_error
-
-pub const handle_workflow_delete_clicked = workflows.handle_workflow_delete_clicked
-
-pub const handle_workflow_delete_cancelled = workflows.handle_workflow_delete_cancelled
-
-pub const handle_workflow_delete_confirmed = workflows.handle_workflow_delete_confirmed
-
-pub const handle_workflow_deleted_ok = workflows.handle_workflow_deleted_ok
-
-pub const handle_workflow_deleted_error = workflows.handle_workflow_deleted_error
+pub const handle_workflow_crud_deleted = workflows.handle_workflow_crud_deleted
 
 pub const handle_workflow_rules_clicked = workflows.handle_workflow_rules_clicked
 
@@ -344,51 +276,17 @@ pub const handle_task_templates_project_fetched_ok = workflows.handle_task_templ
 
 pub const handle_task_templates_project_fetched_error = workflows.handle_task_templates_project_fetched_error
 
-pub const handle_task_template_create_dialog_opened = workflows.handle_task_template_create_dialog_opened
+// Task Template Component Event Handlers
 
-pub const handle_task_template_create_dialog_closed = workflows.handle_task_template_create_dialog_closed
+pub const handle_open_task_template_dialog = workflows.handle_open_task_template_dialog
 
-pub const handle_task_template_create_name_changed = workflows.handle_task_template_create_name_changed
+pub const handle_close_task_template_dialog = workflows.handle_close_task_template_dialog
 
-pub const handle_task_template_create_description_changed = workflows.handle_task_template_create_description_changed
+pub const handle_task_template_crud_created = workflows.handle_task_template_crud_created
 
-pub const handle_task_template_create_type_id_changed = workflows.handle_task_template_create_type_id_changed
+pub const handle_task_template_crud_updated = workflows.handle_task_template_crud_updated
 
-pub const handle_task_template_create_priority_changed = workflows.handle_task_template_create_priority_changed
-
-pub const handle_task_template_create_submitted = workflows.handle_task_template_create_submitted
-
-pub const handle_task_template_created_ok = workflows.handle_task_template_created_ok
-
-pub const handle_task_template_created_error = workflows.handle_task_template_created_error
-
-pub const handle_task_template_edit_clicked = workflows.handle_task_template_edit_clicked
-
-pub const handle_task_template_edit_name_changed = workflows.handle_task_template_edit_name_changed
-
-pub const handle_task_template_edit_description_changed = workflows.handle_task_template_edit_description_changed
-
-pub const handle_task_template_edit_type_id_changed = workflows.handle_task_template_edit_type_id_changed
-
-pub const handle_task_template_edit_priority_changed = workflows.handle_task_template_edit_priority_changed
-
-pub const handle_task_template_edit_submitted = workflows.handle_task_template_edit_submitted
-
-pub const handle_task_template_edit_cancelled = workflows.handle_task_template_edit_cancelled
-
-pub const handle_task_template_updated_ok = workflows.handle_task_template_updated_ok
-
-pub const handle_task_template_updated_error = workflows.handle_task_template_updated_error
-
-pub const handle_task_template_delete_clicked = workflows.handle_task_template_delete_clicked
-
-pub const handle_task_template_delete_cancelled = workflows.handle_task_template_delete_cancelled
-
-pub const handle_task_template_delete_confirmed = workflows.handle_task_template_delete_confirmed
-
-pub const handle_task_template_deleted_ok = workflows.handle_task_template_deleted_ok
-
-pub const handle_task_template_deleted_error = workflows.handle_task_template_deleted_error
+pub const handle_task_template_crud_deleted = workflows.handle_task_template_crud_deleted
 
 // =============================================================================
 // Fetch Helpers

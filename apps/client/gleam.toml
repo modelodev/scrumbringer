@@ -14,3 +14,7 @@ lustre_dev_tools = "~> 2.0"
 
 [tools.lustre.build]
 no_html = true
+
+[tools.lustre.dev.proxy]
+from = "/api"
+to = "http://localhost:8000"

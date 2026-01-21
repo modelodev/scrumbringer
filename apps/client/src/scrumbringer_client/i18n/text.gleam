@@ -342,6 +342,7 @@ pub type Text {
   CreateWorkflow
   EditWorkflow
   DeleteWorkflow
+  WorkflowDeleteConfirm(workflow_name: String)
   NoWorkflowsYet
   WorkflowDeleted
 
@@ -382,11 +383,13 @@ pub type Text {
   TaskTemplatePriority
   TaskTemplateScope
   TaskTemplateCreated
+  TaskTemplateUpdated
   CreateTaskTemplate
   EditTaskTemplate
   DeleteTaskTemplate
   NoTaskTemplatesYet
   TaskTemplateDeleted
+  TaskTemplateDeleteConfirm(template_name: String)
   TaskTemplateVariablesHelp
 
   // Rule Metrics Tab

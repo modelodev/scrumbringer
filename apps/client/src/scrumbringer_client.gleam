@@ -81,7 +81,10 @@ import scrumbringer_client/client_state.{
 
 import scrumbringer_client/client_update
 import scrumbringer_client/client_view
+import scrumbringer_client/components/card_crud_dialog
 import scrumbringer_client/components/card_detail_modal
+import scrumbringer_client/components/task_template_crud_dialog
+import scrumbringer_client/components/workflow_crud_dialog
 
 // =============================================================================
 // Application Entry Point
@@ -106,6 +109,18 @@ pub fn app() -> lustre.App(Nil, Model, Msg) {
 pub fn main() {
   // Register custom element components
   case card_detail_modal.register() {
+    Ok(_) -> Nil
+    Error(_) -> Nil
+  }
+  case card_crud_dialog.register() {
+    Ok(_) -> Nil
+    Error(_) -> Nil
+  }
+  case workflow_crud_dialog.register() {
+    Ok(_) -> Nil
+    Error(_) -> Nil
+  }
+  case task_template_crud_dialog.register() {
     Ok(_) -> Nil
     Error(_) -> Nil
   }
@@ -345,46 +360,16 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       member_note_content: "",
       member_note_in_flight: False,
       member_note_error: opt.None,
-      // Cards (Fichas)
+      // Cards (Fichas) - list and dialog mode (component handles CRUD state internally)
       cards: NotAsked,
       cards_project_id: opt.None,
-      cards_create_dialog_open: False,
-      cards_create_title: "",
-      cards_create_description: "",
-      cards_create_color: opt.None,
-      cards_create_color_open: False,
-      cards_create_in_flight: False,
-      cards_create_error: opt.None,
-      cards_edit_id: opt.None,
-      cards_edit_title: "",
-      cards_edit_description: "",
-      cards_edit_color: opt.None,
-      cards_edit_color_open: False,
-      cards_edit_in_flight: False,
-      cards_edit_error: opt.None,
-      cards_delete_confirm: opt.None,
-      cards_delete_in_flight: False,
-      cards_delete_error: opt.None,
+      cards_dialog_mode: opt.None,
       // Card detail (member view) - only open state, component manages internal state
       card_detail_open: opt.None,
-      // Workflows
+      // Workflows - list and dialog mode (component handles CRUD state internally)
       workflows_org: NotAsked,
       workflows_project: NotAsked,
-      workflows_create_dialog_open: False,
-      workflows_create_name: "",
-      workflows_create_description: "",
-      workflows_create_active: True,
-      workflows_create_in_flight: False,
-      workflows_create_error: opt.None,
-      workflows_edit_id: opt.None,
-      workflows_edit_name: "",
-      workflows_edit_description: "",
-      workflows_edit_active: True,
-      workflows_edit_in_flight: False,
-      workflows_edit_error: opt.None,
-      workflows_delete_confirm: opt.None,
-      workflows_delete_in_flight: False,
-      workflows_delete_error: opt.None,
+      workflows_dialog_mode: opt.None,
       // Rules
       rules_workflow_id: opt.None,
       rules: NotAsked,
@@ -416,26 +401,10 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       rules_attach_error: opt.None,
       // Rule metrics (inline display)
       rules_metrics: NotAsked,
-      // Task templates
+      // Task templates (org/project lists, dialog mode managed by component)
       task_templates_org: NotAsked,
       task_templates_project: NotAsked,
-      task_templates_create_dialog_open: False,
-      task_templates_create_name: "",
-      task_templates_create_description: "",
-      task_templates_create_type_id: opt.None,
-      task_templates_create_priority: "3",
-      task_templates_create_in_flight: False,
-      task_templates_create_error: opt.None,
-      task_templates_edit_id: opt.None,
-      task_templates_edit_name: "",
-      task_templates_edit_description: "",
-      task_templates_edit_type_id: opt.None,
-      task_templates_edit_priority: "3",
-      task_templates_edit_in_flight: False,
-      task_templates_edit_error: opt.None,
-      task_templates_delete_confirm: opt.None,
-      task_templates_delete_in_flight: False,
-      task_templates_delete_error: opt.None,
+      task_templates_dialog_mode: opt.None,
     )
 
   let base_effect = case page {

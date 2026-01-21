@@ -374,6 +374,8 @@ pub fn translate(text: Text) -> String {
     text.CreateWorkflow -> "Crear automatización"
     text.EditWorkflow -> "Editar automatización"
     text.DeleteWorkflow -> "Eliminar automatización"
+    text.WorkflowDeleteConfirm(name) ->
+      "¿Eliminar la automatización \"" <> name <> "\"?"
     text.NoWorkflowsYet -> "Aún no hay automatizaciones"
     text.WorkflowDeleted -> "Automatización eliminada"
 
@@ -415,11 +417,13 @@ pub fn translate(text: Text) -> String {
     text.TaskTemplatePriority -> "Prioridad"
     text.TaskTemplateScope -> "Alcance"
     text.TaskTemplateCreated -> "Plantilla creada"
+    text.TaskTemplateUpdated -> "Plantilla actualizada"
     text.CreateTaskTemplate -> "Crear plantilla"
     text.EditTaskTemplate -> "Editar plantilla"
     text.DeleteTaskTemplate -> "Eliminar plantilla"
     text.NoTaskTemplatesYet -> "Aún no hay plantillas de tarea"
     text.TaskTemplateDeleted -> "Plantilla eliminada"
+    text.TaskTemplateDeleteConfirm(name) -> "¿Eliminar la plantilla \"" <> name <> "\"?"
     text.TaskTemplateVariablesHelp ->
       "Variables: {{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}"
 

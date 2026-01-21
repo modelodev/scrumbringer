@@ -69,14 +69,8 @@ import scrumbringer_client/client_state.{
   AdminRuleMetricsWorkflowExpanded, CapabilitiesFetched,
   CapabilityCreateDialogClosed, CapabilityCreateDialogOpened,
   CapabilityCreateNameChanged, CapabilityCreateSubmitted, CapabilityCreated,
-  CardCreateColorChanged, CardCreateColorToggle, CardCreateDescriptionChanged,
-  CardCreateDialogClosed, CardCreateDialogOpened,
-  CardCreateSubmitted, CardCreateTitleChanged,
-  CardCreated, CardDeleteCancelled, CardDeleteClicked, CardDeleteConfirmed,
-  CardDeleted, CardEditCancelled, CardEditClicked,
-  CardEditColorChanged, CardEditColorToggle, CardEditDescriptionChanged,
-  CardEditSubmitted, CardEditTitleChanged,
-  CardUpdated, CardsFetched, CloseCardDetail, Failed,
+  CardCrudCreated, CardCrudDeleted, CardCrudUpdated, CardsFetched,
+  CloseCardDetail, CloseCardDialog, Failed,
   ForgotPasswordClicked, ForgotPasswordCopyClicked, ForgotPasswordCopyFinished,
   ForgotPasswordDismissed, ForgotPasswordEmailChanged, ForgotPasswordFinished,
   ForgotPasswordSubmitted, GlobalKeyDown, InviteLinkCopyClicked,
@@ -110,7 +104,7 @@ import scrumbringer_client/client_state.{
   MemberToggleCapability, MemberToggleMyCapabilitiesQuick,
   MemberWorkSessionHeartbeated, MemberWorkSessionPaused,
   MemberWorkSessionStarted, MemberWorkSessionsFetched, MembersFetched, Model,
-  NavigateTo, NotAsked, NowWorkingTicked, OpenCardDetail, OrgSettingsRoleChanged,
+  NavigateTo, NotAsked, NowWorkingTicked, OpenCardDetail, OpenCardDialog, OrgSettingsRoleChanged,
   OrgSettingsSaveClicked, OrgSettingsSaved, OrgSettingsUsersFetched,
   OrgUsersCacheFetched, OrgUsersSearchChanged, OrgUsersSearchDebounced,
   UserProjectsDialogOpened, UserProjectsDialogClosed, UserProjectsFetched,
@@ -130,30 +124,17 @@ import scrumbringer_client/client_state.{
   RuleEditTaskTypeIdChanged, RuleEditToStateChanged, RuleMetricsFetched,
   RuleTemplateAttached, RuleTemplateDetachClicked, RuleTemplateDetached,
   RuleTemplatesClicked, RuleTemplatesFetched, RuleUpdated, RulesBackClicked,
-  RulesFetched, TaskTemplateCreateDescriptionChanged,
-  TaskTemplateCreateDialogClosed, TaskTemplateCreateDialogOpened,
-  TaskTemplateCreateNameChanged, TaskTemplateCreatePriorityChanged,
-  TaskTemplateCreateSubmitted, TaskTemplateCreateTypeIdChanged,
-  TaskTemplateCreated, TaskTemplateDeleteCancelled, TaskTemplateDeleteClicked,
-  TaskTemplateDeleteConfirmed, TaskTemplateDeleted, TaskTemplateEditCancelled,
-  TaskTemplateEditClicked, TaskTemplateEditDescriptionChanged,
-  TaskTemplateEditNameChanged, TaskTemplateEditPriorityChanged,
-  TaskTemplateEditSubmitted, TaskTemplateEditTypeIdChanged, TaskTemplateUpdated,
-  TaskTemplatesOrgFetched, TaskTemplatesProjectFetched,
+  RulesFetched, TaskTemplatesOrgFetched, TaskTemplatesProjectFetched,
+  OpenTaskTemplateDialog, CloseTaskTemplateDialog,
+  TaskTemplateCrudCreated, TaskTemplateCrudUpdated, TaskTemplateCrudDeleted,
   TaskTypeCreateCapabilityChanged, TaskTypeCreateDialogClosed,
   TaskTypeCreateDialogOpened, TaskTypeCreateIconChanged,
   TaskTypeCreateNameChanged, TaskTypeCreateSubmitted, TaskTypeCreated,
   TaskTypeIconErrored, TaskTypeIconLoaded, TaskTypesFetched, ThemeSelected,
   ToastDismissed, UrlChanged,
-  WorkflowCreateActiveChanged, WorkflowCreateDialogClosed,
-  WorkflowCreateDialogOpened, WorkflowCreateDescriptionChanged,
-  WorkflowCreateNameChanged, WorkflowCreateSubmitted, WorkflowCreated,
-  WorkflowDeleteCancelled,
-  WorkflowDeleteClicked, WorkflowDeleteConfirmed, WorkflowDeleted,
-  WorkflowEditActiveChanged, WorkflowEditCancelled, WorkflowEditClicked,
-  WorkflowEditDescriptionChanged, WorkflowEditNameChanged, WorkflowEditSubmitted,
-  WorkflowRulesClicked, WorkflowUpdated, WorkflowsOrgFetched,
-  WorkflowsProjectFetched,
+  CloseWorkflowDialog, OpenWorkflowDialog, WorkflowCrudCreated,
+  WorkflowCrudDeleted, WorkflowCrudUpdated, WorkflowRulesClicked,
+  WorkflowsOrgFetched, WorkflowsProjectFetched,
 }
 
 // Workflows
@@ -1892,51 +1873,22 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     MemberNoteAdded(Error(err)) ->
       tasks_workflow.handle_note_added_error(model, err)
 
-    // Cards (Fichas) handlers
+    // Cards (Fichas) handlers - list loading and dialog mode
     CardsFetched(Ok(cards)) ->
       admin_workflow.handle_cards_fetched_ok(model, cards)
     CardsFetched(Error(err)) ->
       admin_workflow.handle_cards_fetched_error(model, err)
-    CardCreateDialogOpened ->
-      admin_workflow.handle_card_create_dialog_opened(model)
-    CardCreateDialogClosed ->
-      admin_workflow.handle_card_create_dialog_closed(model)
-
-    CardCreateTitleChanged(title) ->
-      admin_workflow.handle_card_create_title_changed(model, title)
-    CardCreateDescriptionChanged(description) ->
-      admin_workflow.handle_card_create_description_changed(model, description)
-    CardCreateColorChanged(color) ->
-      admin_workflow.handle_card_create_color_changed(model, color)
-    CardCreateColorToggle ->
-      admin_workflow.handle_card_create_color_toggle(model)
-    CardCreateSubmitted -> admin_workflow.handle_card_create_submitted(model)
-    CardCreated(Ok(card)) -> admin_workflow.handle_card_created_ok(model, card)
-    CardCreated(Error(err)) ->
-      admin_workflow.handle_card_created_error(model, err)
-
-    CardEditClicked(card) ->
-      admin_workflow.handle_card_edit_clicked(model, card)
-    CardEditTitleChanged(title) ->
-      admin_workflow.handle_card_edit_title_changed(model, title)
-    CardEditDescriptionChanged(description) ->
-      admin_workflow.handle_card_edit_description_changed(model, description)
-    CardEditColorChanged(color) ->
-      admin_workflow.handle_card_edit_color_changed(model, color)
-    CardEditColorToggle -> admin_workflow.handle_card_edit_color_toggle(model)
-    CardEditSubmitted -> admin_workflow.handle_card_edit_submitted(model)
-    CardEditCancelled -> admin_workflow.handle_card_edit_cancelled(model)
-    CardUpdated(Ok(card)) -> admin_workflow.handle_card_updated_ok(model, card)
-    CardUpdated(Error(err)) ->
-      admin_workflow.handle_card_updated_error(model, err)
-
-    CardDeleteClicked(card) ->
-      admin_workflow.handle_card_delete_clicked(model, card)
-    CardDeleteCancelled -> admin_workflow.handle_card_delete_cancelled(model)
-    CardDeleteConfirmed -> admin_workflow.handle_card_delete_confirmed(model)
-    CardDeleted(Ok(_)) -> admin_workflow.handle_card_deleted_ok(model)
-    CardDeleted(Error(err)) ->
-      admin_workflow.handle_card_deleted_error(model, err)
+    OpenCardDialog(mode) ->
+      admin_workflow.handle_open_card_dialog(model, mode)
+    CloseCardDialog ->
+      admin_workflow.handle_close_card_dialog(model)
+    // Cards (Fichas) - component events
+    CardCrudCreated(card) ->
+      admin_workflow.handle_card_crud_created(model, card)
+    CardCrudUpdated(card) ->
+      admin_workflow.handle_card_crud_updated(model, card)
+    CardCrudDeleted(card_id) ->
+      admin_workflow.handle_card_crud_deleted(model, card_id)
 
     // Card detail (member view) handlers - component manages internal state
     OpenCardDetail(card_id) ->
@@ -1953,56 +1905,17 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       admin_workflow.handle_workflows_project_fetched_ok(model, workflows)
     WorkflowsProjectFetched(Error(err)) ->
       admin_workflow.handle_workflows_project_fetched_error(model, err)
-    WorkflowCreateDialogOpened ->
-      admin_workflow.handle_workflow_create_dialog_opened(model)
-    WorkflowCreateDialogClosed ->
-      admin_workflow.handle_workflow_create_dialog_closed(model)
-
-    WorkflowCreateNameChanged(name) ->
-      admin_workflow.handle_workflow_create_name_changed(model, name)
-    WorkflowCreateDescriptionChanged(description) ->
-      admin_workflow.handle_workflow_create_description_changed(
-        model,
-        description,
-      )
-    WorkflowCreateActiveChanged(active) ->
-      admin_workflow.handle_workflow_create_active_changed(model, active)
-    WorkflowCreateSubmitted ->
-      admin_workflow.handle_workflow_create_submitted(model)
-    WorkflowCreated(Ok(workflow)) ->
-      admin_workflow.handle_workflow_created_ok(model, workflow)
-    WorkflowCreated(Error(err)) ->
-      admin_workflow.handle_workflow_created_error(model, err)
-
-    WorkflowEditClicked(workflow) ->
-      admin_workflow.handle_workflow_edit_clicked(model, workflow)
-    WorkflowEditNameChanged(name) ->
-      admin_workflow.handle_workflow_edit_name_changed(model, name)
-    WorkflowEditDescriptionChanged(description) ->
-      admin_workflow.handle_workflow_edit_description_changed(
-        model,
-        description,
-      )
-    WorkflowEditActiveChanged(active) ->
-      admin_workflow.handle_workflow_edit_active_changed(model, active)
-    WorkflowEditSubmitted ->
-      admin_workflow.handle_workflow_edit_submitted(model)
-    WorkflowEditCancelled ->
-      admin_workflow.handle_workflow_edit_cancelled(model)
-    WorkflowUpdated(Ok(workflow)) ->
-      admin_workflow.handle_workflow_updated_ok(model, workflow)
-    WorkflowUpdated(Error(err)) ->
-      admin_workflow.handle_workflow_updated_error(model, err)
-
-    WorkflowDeleteClicked(workflow) ->
-      admin_workflow.handle_workflow_delete_clicked(model, workflow)
-    WorkflowDeleteCancelled ->
-      admin_workflow.handle_workflow_delete_cancelled(model)
-    WorkflowDeleteConfirmed ->
-      admin_workflow.handle_workflow_delete_confirmed(model)
-    WorkflowDeleted(Ok(_)) -> admin_workflow.handle_workflow_deleted_ok(model)
-    WorkflowDeleted(Error(err)) ->
-      admin_workflow.handle_workflow_deleted_error(model, err)
+    // Workflow dialog control (component pattern)
+    OpenWorkflowDialog(mode) ->
+      admin_workflow.handle_open_workflow_dialog(model, mode)
+    CloseWorkflowDialog -> admin_workflow.handle_close_workflow_dialog(model)
+    // Workflow component events
+    WorkflowCrudCreated(workflow) ->
+      admin_workflow.handle_workflow_crud_created(model, workflow)
+    WorkflowCrudUpdated(workflow) ->
+      admin_workflow.handle_workflow_crud_updated(model, workflow)
+    WorkflowCrudDeleted(workflow_id) ->
+      admin_workflow.handle_workflow_crud_deleted(model, workflow_id)
 
     WorkflowRulesClicked(workflow_id) ->
       admin_workflow.handle_workflow_rules_clicked(model, workflow_id)
@@ -2103,64 +2016,20 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       admin_workflow.handle_task_templates_project_fetched_ok(model, templates)
     TaskTemplatesProjectFetched(Error(err)) ->
       admin_workflow.handle_task_templates_project_fetched_error(model, err)
-    TaskTemplateCreateDialogOpened ->
-      admin_workflow.handle_task_template_create_dialog_opened(model)
-    TaskTemplateCreateDialogClosed ->
-      admin_workflow.handle_task_template_create_dialog_closed(model)
 
-    TaskTemplateCreateNameChanged(name) ->
-      admin_workflow.handle_task_template_create_name_changed(model, name)
-    TaskTemplateCreateDescriptionChanged(description) ->
-      admin_workflow.handle_task_template_create_description_changed(
-        model,
-        description,
-      )
-    TaskTemplateCreateTypeIdChanged(type_id) ->
-      admin_workflow.handle_task_template_create_type_id_changed(model, type_id)
-    TaskTemplateCreatePriorityChanged(priority) ->
-      admin_workflow.handle_task_template_create_priority_changed(
-        model,
-        priority,
-      )
-    TaskTemplateCreateSubmitted ->
-      admin_workflow.handle_task_template_create_submitted(model)
-    TaskTemplateCreated(Ok(template)) ->
-      admin_workflow.handle_task_template_created_ok(model, template)
-    TaskTemplateCreated(Error(err)) ->
-      admin_workflow.handle_task_template_created_error(model, err)
+    // Task templates - dialog mode control (component pattern)
+    OpenTaskTemplateDialog(mode) ->
+      admin_workflow.handle_open_task_template_dialog(model, mode)
+    CloseTaskTemplateDialog ->
+      admin_workflow.handle_close_task_template_dialog(model)
 
-    TaskTemplateEditClicked(template) ->
-      admin_workflow.handle_task_template_edit_clicked(model, template)
-    TaskTemplateEditNameChanged(name) ->
-      admin_workflow.handle_task_template_edit_name_changed(model, name)
-    TaskTemplateEditDescriptionChanged(description) ->
-      admin_workflow.handle_task_template_edit_description_changed(
-        model,
-        description,
-      )
-    TaskTemplateEditTypeIdChanged(type_id) ->
-      admin_workflow.handle_task_template_edit_type_id_changed(model, type_id)
-    TaskTemplateEditPriorityChanged(priority) ->
-      admin_workflow.handle_task_template_edit_priority_changed(model, priority)
-    TaskTemplateEditSubmitted ->
-      admin_workflow.handle_task_template_edit_submitted(model)
-    TaskTemplateEditCancelled ->
-      admin_workflow.handle_task_template_edit_cancelled(model)
-    TaskTemplateUpdated(Ok(template)) ->
-      admin_workflow.handle_task_template_updated_ok(model, template)
-    TaskTemplateUpdated(Error(err)) ->
-      admin_workflow.handle_task_template_updated_error(model, err)
-
-    TaskTemplateDeleteClicked(template) ->
-      admin_workflow.handle_task_template_delete_clicked(model, template)
-    TaskTemplateDeleteCancelled ->
-      admin_workflow.handle_task_template_delete_cancelled(model)
-    TaskTemplateDeleteConfirmed ->
-      admin_workflow.handle_task_template_delete_confirmed(model)
-    TaskTemplateDeleted(Ok(_)) ->
-      admin_workflow.handle_task_template_deleted_ok(model)
-    TaskTemplateDeleted(Error(err)) ->
-      admin_workflow.handle_task_template_deleted_error(model, err)
+    // Task templates - component events
+    TaskTemplateCrudCreated(template) ->
+      admin_workflow.handle_task_template_crud_created(model, template)
+    TaskTemplateCrudUpdated(template) ->
+      admin_workflow.handle_task_template_crud_updated(model, template)
+    TaskTemplateCrudDeleted(template_id) ->
+      admin_workflow.handle_task_template_crud_deleted(model, template_id)
   }
 }
 

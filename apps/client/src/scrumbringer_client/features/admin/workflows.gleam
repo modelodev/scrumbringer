@@ -19,7 +19,6 @@
 import gleam/int
 import gleam/list
 import gleam/option as opt
-import gleam/result
 
 import lustre/effect.{type Effect}
 
@@ -28,12 +27,11 @@ import domain/workflow.{
   type Rule, type RuleTemplate, type TaskTemplate, type Workflow,
 }
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, Loading, Model, NotAsked, RuleCreated,
-  RuleDeleted, RuleMetricsFetched, RuleTemplateAttached, RuleTemplateDetached,
-  RuleUpdated, RulesFetched, TaskTemplateCreated, TaskTemplateDeleted,
-  TaskTemplateUpdated, TaskTemplatesOrgFetched, TaskTemplatesProjectFetched,
-  TaskTypesFetched, WorkflowCreated, WorkflowDeleted, WorkflowUpdated,
-  WorkflowsOrgFetched, WorkflowsProjectFetched,
+  type Model, type Msg, type TaskTemplateDialogMode, type WorkflowDialogMode,
+  Failed, Loaded, Loading, Model, NotAsked, RuleCreated, RuleDeleted,
+  RuleMetricsFetched, RuleTemplateAttached, RuleTemplateDetached, RuleUpdated,
+  RulesFetched, TaskTemplatesOrgFetched, TaskTemplatesProjectFetched,
+  TaskTypesFetched, WorkflowsOrgFetched, WorkflowsProjectFetched,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -84,114 +82,29 @@ pub fn handle_workflows_project_fetched_error(
 }
 
 // =============================================================================
-// Workflow Dialog Handlers
+// Workflow Dialog Handlers (Component Pattern)
 // =============================================================================
 
-/// Handle workflow create dialog open.
-pub fn handle_workflow_create_dialog_opened(
+/// Handle opening a workflow dialog (create, edit, or delete).
+pub fn handle_open_workflow_dialog(
   model: Model,
+  mode: WorkflowDialogMode,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, workflows_create_dialog_open: True), effect.none())
+  #(Model(..model, workflows_dialog_mode: opt.Some(mode)), effect.none())
 }
 
-/// Handle workflow create dialog close.
-pub fn handle_workflow_create_dialog_closed(
-  model: Model,
-) -> #(Model, Effect(Msg)) {
-  #(
-    Model(
-      ..model,
-      workflows_create_dialog_open: False,
-      workflows_create_name: "",
-      workflows_create_description: "",
-      workflows_create_active: True,
-      workflows_create_error: opt.None,
-    ),
-    effect.none(),
-  )
+/// Handle closing any open workflow dialog.
+pub fn handle_close_workflow_dialog(model: Model) -> #(Model, Effect(Msg)) {
+  #(Model(..model, workflows_dialog_mode: opt.None), effect.none())
 }
 
 // =============================================================================
-// Workflow Create Handlers
+// Workflow Component Event Handlers
 // =============================================================================
 
-/// Handle workflow create name change.
-pub fn handle_workflow_create_name_changed(
-  model: Model,
-  name: String,
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, workflows_create_name: name), effect.none())
-}
-
-/// Handle workflow create description change.
-pub fn handle_workflow_create_description_changed(
-  model: Model,
-  description: String,
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, workflows_create_description: description), effect.none())
-}
-
-/// Handle workflow create active change.
-pub fn handle_workflow_create_active_changed(
-  model: Model,
-  active: Bool,
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, workflows_create_active: active), effect.none())
-}
-
-/// Handle workflow create form submission.
-pub fn handle_workflow_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.workflows_create_in_flight {
-    True -> #(model, effect.none())
-    False -> {
-      case model.workflows_create_name {
-        "" -> #(
-          Model(
-            ..model,
-            workflows_create_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NameRequired,
-            )),
-          ),
-          effect.none(),
-        )
-        name -> {
-          let model =
-            Model(
-              ..model,
-              workflows_create_in_flight: True,
-              workflows_create_error: opt.None,
-            )
-          // Create org-scoped or project-scoped based on selection
-          case model.selected_project_id {
-            opt.Some(project_id) -> #(
-              model,
-              api_workflows.create_project_workflow(
-                project_id,
-                name,
-                model.workflows_create_description,
-                model.workflows_create_active,
-                WorkflowCreated,
-              ),
-            )
-            opt.None -> #(
-              model,
-              api_workflows.create_org_workflow(
-                name,
-                model.workflows_create_description,
-                model.workflows_create_active,
-                WorkflowCreated,
-              ),
-            )
-          }
-        }
-      }
-    }
-  }
-}
-
-/// Handle workflow created success.
-pub fn handle_workflow_created_ok(
+/// Handle workflow created event from component.
+/// Adds the new workflow to the list and shows a toast.
+pub fn handle_workflow_crud_created(
   model: Model,
   workflow: Workflow,
 ) -> #(Model, Effect(Msg)) {
@@ -217,142 +130,16 @@ pub fn handle_workflow_created_ok(
       ..model,
       workflows_org: org,
       workflows_project: project,
-      workflows_create_name: "",
-      workflows_create_description: "",
-      workflows_create_active: True,
-      workflows_create_in_flight: False,
-      workflows_create_error: opt.None,
+      workflows_dialog_mode: opt.None,
       toast: opt.Some(update_helpers.i18n_t(model, i18n_text.WorkflowCreated)),
     ),
     effect.none(),
   )
 }
 
-/// Handle workflow created error.
-pub fn handle_workflow_created_error(
-  model: Model,
-  err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
-      Model(
-        ..model,
-        workflows_create_in_flight: False,
-        workflows_create_error: opt.Some(err.message),
-      ),
-      effect.none(),
-    )
-  }
-}
-
-// =============================================================================
-// Workflow Edit Handlers
-// =============================================================================
-
-/// Handle workflow edit button clicked.
-pub fn handle_workflow_edit_clicked(
-  model: Model,
-  workflow: Workflow,
-) -> #(Model, Effect(Msg)) {
-  #(
-    Model(
-      ..model,
-      workflows_edit_id: opt.Some(workflow.id),
-      workflows_edit_name: workflow.name,
-      workflows_edit_description: opt.unwrap(workflow.description, ""),
-      workflows_edit_active: workflow.active,
-      workflows_edit_error: opt.None,
-    ),
-    effect.none(),
-  )
-}
-
-/// Handle workflow edit name change.
-pub fn handle_workflow_edit_name_changed(
-  model: Model,
-  name: String,
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, workflows_edit_name: name), effect.none())
-}
-
-/// Handle workflow edit description change.
-pub fn handle_workflow_edit_description_changed(
-  model: Model,
-  description: String,
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, workflows_edit_description: description), effect.none())
-}
-
-/// Handle workflow edit active change.
-pub fn handle_workflow_edit_active_changed(
-  model: Model,
-  active: Bool,
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, workflows_edit_active: active), effect.none())
-}
-
-/// Handle workflow edit form submission.
-pub fn handle_workflow_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.workflows_edit_in_flight {
-    True -> #(model, effect.none())
-    False -> {
-      case model.workflows_edit_id {
-        opt.Some(workflow_id) -> {
-          case model.workflows_edit_name {
-            "" -> #(
-              Model(
-                ..model,
-                workflows_edit_error: opt.Some(update_helpers.i18n_t(
-                  model,
-                  i18n_text.NameRequired,
-                )),
-              ),
-              effect.none(),
-            )
-            name -> {
-              let model =
-                Model(
-                  ..model,
-                  workflows_edit_in_flight: True,
-                  workflows_edit_error: opt.None,
-                )
-              #(
-                model,
-                api_workflows.update_workflow(
-                  workflow_id,
-                  name,
-                  model.workflows_edit_description,
-                  model.workflows_edit_active,
-                  WorkflowUpdated,
-                ),
-              )
-            }
-          }
-        }
-        opt.None -> #(model, effect.none())
-      }
-    }
-  }
-}
-
-/// Handle workflow edit cancelled.
-pub fn handle_workflow_edit_cancelled(model: Model) -> #(Model, Effect(Msg)) {
-  #(
-    Model(
-      ..model,
-      workflows_edit_id: opt.None,
-      workflows_edit_name: "",
-      workflows_edit_description: "",
-      workflows_edit_active: True,
-      workflows_edit_error: opt.None,
-    ),
-    effect.none(),
-  )
-}
-
-/// Handle workflow updated success.
-pub fn handle_workflow_updated_ok(
+/// Handle workflow updated event from component.
+/// Updates the workflow in the list and shows a toast.
+pub fn handle_workflow_crud_updated(
   model: Model,
   updated_workflow: Workflow,
 ) -> #(Model, Effect(Msg)) {
@@ -377,99 +164,21 @@ pub fn handle_workflow_updated_ok(
       ..model,
       workflows_org: org,
       workflows_project: project,
-      workflows_edit_id: opt.None,
-      workflows_edit_name: "",
-      workflows_edit_description: "",
-      workflows_edit_active: True,
-      workflows_edit_in_flight: False,
-      workflows_edit_error: opt.None,
+      workflows_dialog_mode: opt.None,
       toast: opt.Some(update_helpers.i18n_t(model, i18n_text.WorkflowUpdated)),
     ),
     effect.none(),
   )
 }
 
-/// Handle workflow updated error.
-pub fn handle_workflow_updated_error(
+/// Handle workflow deleted event from component.
+/// Removes the workflow from the list and shows a toast.
+pub fn handle_workflow_crud_deleted(
   model: Model,
-  err: ApiError,
+  workflow_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
-      Model(
-        ..model,
-        workflows_edit_in_flight: False,
-        workflows_edit_error: opt.Some(err.message),
-      ),
-      effect.none(),
-    )
-  }
-}
-
-// =============================================================================
-// Workflow Delete Handlers
-// =============================================================================
-
-/// Handle workflow delete button clicked.
-pub fn handle_workflow_delete_clicked(
-  model: Model,
-  workflow: Workflow,
-) -> #(Model, Effect(Msg)) {
-  #(
-    Model(
-      ..model,
-      workflows_delete_confirm: opt.Some(workflow),
-      workflows_delete_error: opt.None,
-    ),
-    effect.none(),
-  )
-}
-
-/// Handle workflow delete cancelled.
-pub fn handle_workflow_delete_cancelled(model: Model) -> #(Model, Effect(Msg)) {
-  #(
-    Model(
-      ..model,
-      workflows_delete_confirm: opt.None,
-      workflows_delete_error: opt.None,
-    ),
-    effect.none(),
-  )
-}
-
-/// Handle workflow delete confirmed.
-pub fn handle_workflow_delete_confirmed(model: Model) -> #(Model, Effect(Msg)) {
-  case model.workflows_delete_in_flight {
-    True -> #(model, effect.none())
-    False -> {
-      case model.workflows_delete_confirm {
-        opt.Some(workflow) -> {
-          let model =
-            Model(
-              ..model,
-              workflows_delete_in_flight: True,
-              workflows_delete_error: opt.None,
-            )
-          #(model, api_workflows.delete_workflow(workflow.id, WorkflowDeleted))
-        }
-        opt.None -> #(model, effect.none())
-      }
-    }
-  }
-}
-
-/// Handle workflow deleted success.
-pub fn handle_workflow_deleted_ok(model: Model) -> #(Model, Effect(Msg)) {
-  let deleted_id = case model.workflows_delete_confirm {
-    opt.Some(workflow) -> opt.Some(workflow.id)
-    opt.None -> opt.None
-  }
   let filter_list = fn(workflows: List(Workflow)) {
-    case deleted_id {
-      opt.Some(id) -> list.filter(workflows, fn(w: Workflow) { w.id != id })
-      opt.None -> workflows
-    }
+    list.filter(workflows, fn(w: Workflow) { w.id != workflow_id })
   }
   let org = case model.workflows_org {
     Loaded(existing) -> Loaded(filter_list(existing))
@@ -484,31 +193,11 @@ pub fn handle_workflow_deleted_ok(model: Model) -> #(Model, Effect(Msg)) {
       ..model,
       workflows_org: org,
       workflows_project: project,
-      workflows_delete_confirm: opt.None,
-      workflows_delete_in_flight: False,
-      workflows_delete_error: opt.None,
+      workflows_dialog_mode: opt.None,
       toast: opt.Some(update_helpers.i18n_t(model, i18n_text.WorkflowDeleted)),
     ),
     effect.none(),
   )
-}
-
-/// Handle workflow deleted error.
-pub fn handle_workflow_deleted_error(
-  model: Model,
-  err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
-      Model(
-        ..model,
-        workflows_delete_in_flight: False,
-        workflows_delete_error: opt.Some(err.message),
-      ),
-      effect.none(),
-    )
-  }
 }
 
 /// Handle workflow rules clicked (navigate to rules view).
@@ -1312,155 +1001,29 @@ pub fn handle_task_templates_project_fetched_error(
 }
 
 // =============================================================================
-// Task Template Dialog Handlers
+// Task Template Dialog Handlers (Component Pattern)
 // =============================================================================
 
-/// Handle task template create dialog open.
-pub fn handle_task_template_create_dialog_opened(
+/// Handle opening a task template dialog (create, edit, or delete).
+pub fn handle_open_task_template_dialog(
   model: Model,
+  mode: TaskTemplateDialogMode,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, task_templates_create_dialog_open: True), effect.none())
+  #(Model(..model, task_templates_dialog_mode: opt.Some(mode)), effect.none())
 }
 
-/// Handle task template create dialog close.
-pub fn handle_task_template_create_dialog_closed(
-  model: Model,
-) -> #(Model, Effect(Msg)) {
-  #(
-    Model(
-      ..model,
-      task_templates_create_dialog_open: False,
-      task_templates_create_name: "",
-      task_templates_create_description: "",
-      task_templates_create_type_id: opt.None,
-      task_templates_create_priority: "3",
-      task_templates_create_error: opt.None,
-    ),
-    effect.none(),
-  )
+/// Handle closing any open task template dialog.
+pub fn handle_close_task_template_dialog(model: Model) -> #(Model, Effect(Msg)) {
+  #(Model(..model, task_templates_dialog_mode: opt.None), effect.none())
 }
 
 // =============================================================================
-// Task Template Create Handlers
+// Task Template Component Event Handlers
 // =============================================================================
 
-/// Handle task template create name change.
-pub fn handle_task_template_create_name_changed(
-  model: Model,
-  name: String,
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, task_templates_create_name: name), effect.none())
-}
-
-/// Handle task template create description change.
-pub fn handle_task_template_create_description_changed(
-  model: Model,
-  description: String,
-) -> #(Model, Effect(Msg)) {
-  #(
-    Model(..model, task_templates_create_description: description),
-    effect.none(),
-  )
-}
-
-/// Handle task template create type id change.
-pub fn handle_task_template_create_type_id_changed(
-  model: Model,
-  type_id_str: String,
-) -> #(Model, Effect(Msg)) {
-  let type_id = case type_id_str {
-    "" -> opt.None
-    s ->
-      case int.parse(s) {
-        Ok(id) -> opt.Some(id)
-        Error(_) -> opt.None
-      }
-  }
-  #(Model(..model, task_templates_create_type_id: type_id), effect.none())
-}
-
-/// Handle task template create priority change.
-pub fn handle_task_template_create_priority_changed(
-  model: Model,
-  priority: String,
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, task_templates_create_priority: priority), effect.none())
-}
-
-/// Handle task template create form submission.
-pub fn handle_task_template_create_submitted(
-  model: Model,
-) -> #(Model, Effect(Msg)) {
-  case model.task_templates_create_in_flight {
-    True -> #(model, effect.none())
-    False -> {
-      case model.task_templates_create_name {
-        "" -> #(
-          Model(
-            ..model,
-            task_templates_create_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NameRequired,
-            )),
-          ),
-          effect.none(),
-        )
-        name -> {
-          case model.task_templates_create_type_id {
-            opt.None -> #(
-              Model(
-                ..model,
-                task_templates_create_error: opt.Some(update_helpers.i18n_t(
-                  model,
-                  i18n_text.TypeRequired,
-                )),
-              ),
-              effect.none(),
-            )
-            opt.Some(type_id) -> {
-              let priority =
-                int.parse(model.task_templates_create_priority)
-                |> result.unwrap(3)
-              let model =
-                Model(
-                  ..model,
-                  task_templates_create_in_flight: True,
-                  task_templates_create_error: opt.None,
-                )
-              // Create org-scoped or project-scoped based on selection
-              case model.selected_project_id {
-                opt.Some(project_id) -> #(
-                  model,
-                  api_workflows.create_project_template(
-                    project_id,
-                    name,
-                    model.task_templates_create_description,
-                    type_id,
-                    priority,
-                    TaskTemplateCreated,
-                  ),
-                )
-                opt.None -> #(
-                  model,
-                  api_workflows.create_org_template(
-                    name,
-                    model.task_templates_create_description,
-                    type_id,
-                    priority,
-                    TaskTemplateCreated,
-                  ),
-                )
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-/// Handle task template created success.
-pub fn handle_task_template_created_ok(
+/// Handle task template created event from component.
+/// Adds the new template to the list and shows a toast.
+pub fn handle_task_template_crud_created(
   model: Model,
   template: TaskTemplate,
 ) -> #(Model, Effect(Msg)) {
@@ -1486,187 +1049,16 @@ pub fn handle_task_template_created_ok(
       ..model,
       task_templates_org: org,
       task_templates_project: project,
-      task_templates_create_dialog_open: False,
-      task_templates_create_name: "",
-      task_templates_create_description: "",
-      task_templates_create_type_id: opt.None,
-      task_templates_create_priority: "3",
-      task_templates_create_in_flight: False,
-      task_templates_create_error: opt.None,
-      toast: opt.Some(update_helpers.i18n_t(
-        model,
-        i18n_text.TaskTemplateCreated,
-      )),
+      task_templates_dialog_mode: opt.None,
+      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskTemplateCreated)),
     ),
     effect.none(),
   )
 }
 
-/// Handle task template created error.
-pub fn handle_task_template_created_error(
-  model: Model,
-  err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
-      Model(
-        ..model,
-        task_templates_create_in_flight: False,
-        task_templates_create_error: opt.Some(err.message),
-      ),
-      effect.none(),
-    )
-  }
-}
-
-// =============================================================================
-// Task Template Edit Handlers
-// =============================================================================
-
-/// Handle task template edit button clicked.
-pub fn handle_task_template_edit_clicked(
-  model: Model,
-  template: TaskTemplate,
-) -> #(Model, Effect(Msg)) {
-  #(
-    Model(
-      ..model,
-      task_templates_edit_id: opt.Some(template.id),
-      task_templates_edit_name: template.name,
-      task_templates_edit_description: opt.unwrap(template.description, ""),
-      task_templates_edit_type_id: opt.Some(template.type_id),
-      task_templates_edit_priority: int.to_string(template.priority),
-      task_templates_edit_error: opt.None,
-    ),
-    effect.none(),
-  )
-}
-
-/// Handle task template edit name change.
-pub fn handle_task_template_edit_name_changed(
-  model: Model,
-  name: String,
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, task_templates_edit_name: name), effect.none())
-}
-
-/// Handle task template edit description change.
-pub fn handle_task_template_edit_description_changed(
-  model: Model,
-  description: String,
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, task_templates_edit_description: description), effect.none())
-}
-
-/// Handle task template edit type id change.
-pub fn handle_task_template_edit_type_id_changed(
-  model: Model,
-  type_id_str: String,
-) -> #(Model, Effect(Msg)) {
-  let type_id = case type_id_str {
-    "" -> opt.None
-    s ->
-      case int.parse(s) {
-        Ok(id) -> opt.Some(id)
-        Error(_) -> opt.None
-      }
-  }
-  #(Model(..model, task_templates_edit_type_id: type_id), effect.none())
-}
-
-/// Handle task template edit priority change.
-pub fn handle_task_template_edit_priority_changed(
-  model: Model,
-  priority: String,
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, task_templates_edit_priority: priority), effect.none())
-}
-
-/// Handle task template edit form submission.
-pub fn handle_task_template_edit_submitted(
-  model: Model,
-) -> #(Model, Effect(Msg)) {
-  case model.task_templates_edit_in_flight {
-    True -> #(model, effect.none())
-    False -> {
-      case model.task_templates_edit_id {
-        opt.Some(template_id) -> {
-          case model.task_templates_edit_name {
-            "" -> #(
-              Model(
-                ..model,
-                task_templates_edit_error: opt.Some(update_helpers.i18n_t(
-                  model,
-                  i18n_text.NameRequired,
-                )),
-              ),
-              effect.none(),
-            )
-            name -> {
-              case model.task_templates_edit_type_id {
-                opt.None -> #(
-                  Model(
-                    ..model,
-                    task_templates_edit_error: opt.Some(update_helpers.i18n_t(
-                      model,
-                      i18n_text.TypeRequired,
-                    )),
-                  ),
-                  effect.none(),
-                )
-                opt.Some(type_id) -> {
-                  let priority =
-                    int.parse(model.task_templates_edit_priority)
-                    |> result.unwrap(3)
-                  let model =
-                    Model(
-                      ..model,
-                      task_templates_edit_in_flight: True,
-                      task_templates_edit_error: opt.None,
-                    )
-                  #(
-                    model,
-                    api_workflows.update_template(
-                      template_id,
-                      name,
-                      model.task_templates_edit_description,
-                      type_id,
-                      priority,
-                      TaskTemplateUpdated,
-                    ),
-                  )
-                }
-              }
-            }
-          }
-        }
-        opt.None -> #(model, effect.none())
-      }
-    }
-  }
-}
-
-/// Handle task template edit cancelled.
-pub fn handle_task_template_edit_cancelled(
-  model: Model,
-) -> #(Model, Effect(Msg)) {
-  #(
-    Model(
-      ..model,
-      task_templates_edit_id: opt.None,
-      task_templates_edit_name: "",
-      task_templates_edit_description: "",
-      task_templates_edit_type_id: opt.None,
-      task_templates_edit_priority: "3",
-      task_templates_edit_error: opt.None,
-    ),
-    effect.none(),
-  )
-}
-
-/// Handle task template updated success.
-pub fn handle_task_template_updated_ok(
+/// Handle task template updated event from component.
+/// Updates the template in the list and shows a toast.
+pub fn handle_task_template_crud_updated(
   model: Model,
   updated_template: TaskTemplate,
 ) -> #(Model, Effect(Msg)) {
@@ -1691,106 +1083,21 @@ pub fn handle_task_template_updated_ok(
       ..model,
       task_templates_org: org,
       task_templates_project: project,
-      task_templates_edit_id: opt.None,
-      task_templates_edit_name: "",
-      task_templates_edit_description: "",
-      task_templates_edit_type_id: opt.None,
-      task_templates_edit_priority: "3",
-      task_templates_edit_in_flight: False,
-      task_templates_edit_error: opt.None,
+      task_templates_dialog_mode: opt.None,
+      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskTemplateUpdated)),
     ),
     effect.none(),
   )
 }
 
-/// Handle task template updated error.
-pub fn handle_task_template_updated_error(
+/// Handle task template deleted event from component.
+/// Removes the template from the list and shows a toast.
+pub fn handle_task_template_crud_deleted(
   model: Model,
-  err: ApiError,
+  template_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
-      Model(
-        ..model,
-        task_templates_edit_in_flight: False,
-        task_templates_edit_error: opt.Some(err.message),
-      ),
-      effect.none(),
-    )
-  }
-}
-
-// =============================================================================
-// Task Template Delete Handlers
-// =============================================================================
-
-/// Handle task template delete button clicked.
-pub fn handle_task_template_delete_clicked(
-  model: Model,
-  template: TaskTemplate,
-) -> #(Model, Effect(Msg)) {
-  #(
-    Model(
-      ..model,
-      task_templates_delete_confirm: opt.Some(template),
-      task_templates_delete_error: opt.None,
-    ),
-    effect.none(),
-  )
-}
-
-/// Handle task template delete cancelled.
-pub fn handle_task_template_delete_cancelled(
-  model: Model,
-) -> #(Model, Effect(Msg)) {
-  #(
-    Model(
-      ..model,
-      task_templates_delete_confirm: opt.None,
-      task_templates_delete_error: opt.None,
-    ),
-    effect.none(),
-  )
-}
-
-/// Handle task template delete confirmed.
-pub fn handle_task_template_delete_confirmed(
-  model: Model,
-) -> #(Model, Effect(Msg)) {
-  case model.task_templates_delete_in_flight {
-    True -> #(model, effect.none())
-    False -> {
-      case model.task_templates_delete_confirm {
-        opt.Some(template) -> {
-          let model =
-            Model(
-              ..model,
-              task_templates_delete_in_flight: True,
-              task_templates_delete_error: opt.None,
-            )
-          #(
-            model,
-            api_workflows.delete_template(template.id, TaskTemplateDeleted),
-          )
-        }
-        opt.None -> #(model, effect.none())
-      }
-    }
-  }
-}
-
-/// Handle task template deleted success.
-pub fn handle_task_template_deleted_ok(model: Model) -> #(Model, Effect(Msg)) {
-  let deleted_id = case model.task_templates_delete_confirm {
-    opt.Some(template) -> opt.Some(template.id)
-    opt.None -> opt.None
-  }
   let filter_list = fn(templates: List(TaskTemplate)) {
-    case deleted_id {
-      opt.Some(id) -> list.filter(templates, fn(t: TaskTemplate) { t.id != id })
-      opt.None -> templates
-    }
+    list.filter(templates, fn(t: TaskTemplate) { t.id != template_id })
   }
   let org = case model.task_templates_org {
     Loaded(existing) -> Loaded(filter_list(existing))
@@ -1805,34 +1112,11 @@ pub fn handle_task_template_deleted_ok(model: Model) -> #(Model, Effect(Msg)) {
       ..model,
       task_templates_org: org,
       task_templates_project: project,
-      task_templates_delete_confirm: opt.None,
-      task_templates_delete_in_flight: False,
-      task_templates_delete_error: opt.None,
-      toast: opt.Some(update_helpers.i18n_t(
-        model,
-        i18n_text.TaskTemplateDeleted,
-      )),
+      task_templates_dialog_mode: opt.None,
+      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskTemplateDeleted)),
     ),
     effect.none(),
   )
-}
-
-/// Handle task template deleted error.
-pub fn handle_task_template_deleted_error(
-  model: Model,
-  err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
-      Model(
-        ..model,
-        task_templates_delete_in_flight: False,
-        task_templates_delete_error: opt.Some(err.message),
-      ),
-      effect.none(),
-    )
-  }
 }
 
 // =============================================================================
