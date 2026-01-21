@@ -332,12 +332,17 @@ fn handle_add_user_to_project(
                       let auth.Ctx(db: db, ..) = ctx
 
                       case projects_db.add_member(db, project_id, target_user_id, "member") {
-                        Ok(member) ->
+                        Ok(member) -> {
+                          let project_name = get_project_name(db, project_id)
                           api.ok(
                             json.object([
-                              #("project", project_member_json(project_id, member)),
+                              #(
+                                "project",
+                                project_member_json(project_id, project_name, member),
+                              ),
                             ]),
                           )
+                        }
 
                         Error(projects_db.ProjectNotFound) ->
                           api.error(404, "NOT_FOUND", "Project not found")
@@ -445,11 +450,22 @@ fn project_json(project: projects_db.Project) -> json.Json {
   ])
 }
 
-fn project_member_json(project_id: Int, member: projects_db.ProjectMember) -> json.Json {
-  // We need to fetch project name - for now return minimal info
+fn project_member_json(
+  project_id: Int,
+  project_name: String,
+  member: projects_db.ProjectMember,
+) -> json.Json {
   json.object([
     #("id", json.int(project_id)),
-    #("name", json.string("")),  // Would need separate query
+    #("name", json.string(project_name)),
     #("role", json.string(member.role)),
   ])
+}
+
+/// Fetch project name by ID.
+fn get_project_name(db: pog.Connection, project_id: Int) -> String {
+  case sql.engine_get_project_name(db, project_id) {
+    Ok(pog.Returned(rows: [row, ..], ..)) -> row.name
+    _ -> ""
+  }
 }

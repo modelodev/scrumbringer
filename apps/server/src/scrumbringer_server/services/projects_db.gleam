@@ -267,3 +267,63 @@ pub fn remove_member(
     Error(e) -> Error(RemoveDbError(e))
   }
 }
+
+// =============================================================================
+// Role Update
+// =============================================================================
+
+pub type UpdateMemberRoleResult {
+  RoleUpdated(user_id: Int, email: String, role: String, previous_role: String)
+}
+
+pub type UpdateMemberRoleError {
+  UpdateMemberNotFound
+  UpdateLastManager
+  UpdateInvalidRole
+  UpdateDbError(pog.QueryError)
+}
+
+pub fn update_member_role(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+  new_role: String,
+) -> Result(UpdateMemberRoleResult, UpdateMemberRoleError) {
+  // Validate role value first
+  case new_role {
+    "manager" | "member" ->
+      do_update_member_role(db, project_id, user_id, new_role)
+    _ -> Error(UpdateInvalidRole)
+  }
+}
+
+fn do_update_member_role(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+  new_role: String,
+) -> Result(UpdateMemberRoleResult, UpdateMemberRoleError) {
+  case sql.project_members_update_role(db, project_id, user_id, new_role) {
+    Ok(pog.Returned(rows: [row, ..], ..)) -> {
+      case row.status {
+        "last_manager" -> Error(UpdateLastManager)
+        "allowed" | "no_change" ->
+          Ok(RoleUpdated(
+            user_id: row.user_id,
+            email: row.email,
+            role: row.role,
+            previous_role: row.previous_role,
+          ))
+        _ ->
+          Error(UpdateDbError(pog.PostgresqlError(
+            code: "UNEXPECTED_STATUS",
+            name: "unexpected_status",
+            message: "Unexpected status: " <> row.status,
+          )))
+      }
+    }
+
+    Ok(pog.Returned(rows: [], ..)) -> Error(UpdateMemberNotFound)
+    Error(e) -> Error(UpdateDbError(e))
+  }
+}

@@ -78,6 +78,7 @@ import scrumbringer_client/client_state.{
   MeFetched, Member, Model, NotAsked, Replace,
   ResetPassword as ResetPasswordPage,
 }
+import domain/project_role.{Member as MemberRole}
 
 import scrumbringer_client/client_update
 import scrumbringer_client/client_view
@@ -250,6 +251,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       projects: NotAsked,
       selected_project_id: selected_project_id,
       invite_links: NotAsked,
+      invite_create_dialog_open: False,
       invite_link_email: "",
       invite_link_in_flight: False,
       invite_link_error: opt.None,
@@ -294,7 +296,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       user_projects_error: opt.None,
       members_add_dialog_open: False,
       members_add_selected_user: opt.None,
-      members_add_role: "member",
+      members_add_role: MemberRole,
       members_add_in_flight: False,
       members_add_error: opt.None,
       members_remove_confirm: opt.None,

@@ -37,6 +37,7 @@ pub fn main() {
       io.println("========================================")
       io.println("")
       io.println("Projects: " <> int.to_string(stats.projects))
+      io.println("Users: " <> int.to_string(stats.users))
       io.println("Task types: " <> int.to_string(stats.task_types))
       io.println("Workflows: " <> int.to_string(stats.workflows))
       io.println("Rules: " <> int.to_string(stats.rules))
@@ -45,7 +46,11 @@ pub fn main() {
       io.println("Rule executions: " <> int.to_string(stats.rule_executions))
       io.println("Task events: " <> int.to_string(stats.task_events))
       io.println("")
-      io.println("Login: admin@example.com / passwordpassword")
+      io.println("=== Test Users (password: passwordpassword) ===")
+      io.println("  admin@example.com    - Org Admin (manager on all projects)")
+      io.println("  pm@example.com       - Org Member, Project Manager on Alpha")
+      io.println("  member@example.com   - Org Member, Project Member on Alpha")
+      io.println("  beta@example.com     - Org Member, Project Manager on Beta only")
       io.println("")
     }
     Error(msg) -> {
@@ -61,6 +66,7 @@ pub fn main() {
 pub type SeedStats {
   SeedStats(
     projects: Int,
+    users: Int,
     task_types: Int,
     workflows: Int,
     rules: Int,
@@ -87,23 +93,46 @@ fn run_seed() -> Result(SeedStats, String) {
   let scrumbringer_server.App(db: db, ..) = app
   io.println("[OK] Connected to database")
 
-  // Get org_id and user_id
+  // Get org_id and admin user_id
   use org_id <- result.try(query_int(db, "SELECT id FROM organizations LIMIT 1"))
-  use user_id <- result.try(query_int(db, "SELECT id FROM users WHERE email = 'admin@example.com'"))
-  io.println("[OK] Org ID: " <> int.to_string(org_id) <> ", User ID: " <> int.to_string(user_id))
+  use admin_id <- result.try(query_int(db, "SELECT id FROM users WHERE email = 'admin@example.com'"))
+  io.println("[OK] Org ID: " <> int.to_string(org_id) <> ", Admin ID: " <> int.to_string(admin_id))
 
   // Reset workflow tables (keep users, org, default project)
   use _ <- result.try(reset_workflow_tables(db))
   io.println("[OK] Reset workflow tables")
 
   // =========================================================================
-  // Project Alpha
+  // Create Test Users (varied roles for UI validation)
+  // =========================================================================
+  io.println("\n--- Creating Test Users ---")
+
+  // pm@example.com - Org Member who will be Project Manager on Alpha
+  use pm_id <- result.try(upsert_user(db, org_id, "pm@example.com", "member"))
+  io.println("[OK] pm@example.com ID: " <> int.to_string(pm_id))
+
+  // member@example.com - Org Member who will be Project Member on Alpha
+  use member_id <- result.try(upsert_user(db, org_id, "member@example.com", "member"))
+  io.println("[OK] member@example.com ID: " <> int.to_string(member_id))
+
+  // beta@example.com - Org Member who will be Project Manager on Beta only
+  use beta_user_id <- result.try(upsert_user(db, org_id, "beta@example.com", "member"))
+  io.println("[OK] beta@example.com ID: " <> int.to_string(beta_user_id))
+
+  // =========================================================================
+  // Project Alpha (multi-role testing)
   // =========================================================================
   io.println("\n--- Creating Project Alpha ---")
 
   use alpha_id <- result.try(insert_project(db, org_id, "Project Alpha"))
-  use _ <- result.try(insert_member(db, alpha_id, user_id, "manager"))
+  // admin@example.com as manager (Org Admin)
+  use _ <- result.try(insert_member(db, alpha_id, admin_id, "manager"))
+  // pm@example.com as manager (Org Member who is Project Manager)
+  use _ <- result.try(insert_member(db, alpha_id, pm_id, "manager"))
+  // member@example.com as member (Org Member who is Project Member)
+  use _ <- result.try(insert_member(db, alpha_id, member_id, "member"))
   io.println("[OK] Project Alpha ID: " <> int.to_string(alpha_id))
+  io.println("[OK] Alpha members: admin (manager), pm (manager), member (member)")
 
   use alpha_bug_type <- result.try(insert_task_type(db, alpha_id, "Bug", "bug-ant"))
   use alpha_feature_type <- result.try(insert_task_type(db, alpha_id, "Feature", "sparkles"))
@@ -111,19 +140,19 @@ fn run_seed() -> Result(SeedStats, String) {
   io.println("[OK] Task types created")
 
   use alpha_review_tmpl <- result.try(
-    insert_template(db, org_id, alpha_id, alpha_task_type, "Code Review", user_id)
+    insert_template(db, org_id, alpha_id, alpha_task_type, "Code Review", admin_id)
   )
   use alpha_qa_tmpl <- result.try(
-    insert_template(db, org_id, alpha_id, alpha_task_type, "QA Verification", user_id)
+    insert_template(db, org_id, alpha_id, alpha_task_type, "QA Verification", admin_id)
   )
   use alpha_deploy_tmpl <- result.try(
-    insert_template(db, org_id, alpha_id, alpha_task_type, "Deploy to Staging", user_id)
+    insert_template(db, org_id, alpha_id, alpha_task_type, "Deploy to Staging", admin_id)
   )
   io.println("[OK] Templates created")
 
-  use wf_bug_id <- result.try(insert_workflow(db, org_id, alpha_id, "Bug Resolution", user_id))
-  use wf_feature_id <- result.try(insert_workflow(db, org_id, alpha_id, "Feature Development", user_id))
-  use wf_card_id <- result.try(insert_workflow(db, org_id, alpha_id, "Card Automation", user_id))
+  use wf_bug_id <- result.try(insert_workflow(db, org_id, alpha_id, "Bug Resolution", admin_id))
+  use wf_feature_id <- result.try(insert_workflow(db, org_id, alpha_id, "Feature Development", admin_id))
+  use wf_card_id <- result.try(insert_workflow(db, org_id, alpha_id, "Card Automation", admin_id))
   io.println("[OK] Workflows created")
 
   use rule_bug_resolved <- result.try(insert_rule(db, wf_bug_id, "On Bug Resolved", "task", Some(alpha_bug_type), "resolved"))
@@ -142,17 +171,21 @@ fn run_seed() -> Result(SeedStats, String) {
   io.println("[OK] Rules created")
 
   // =========================================================================
-  // Project Beta
+  // Project Beta (beta user is manager, admin is also manager)
   // =========================================================================
   io.println("\n--- Creating Project Beta ---")
 
   use beta_id <- result.try(insert_project(db, org_id, "Project Beta"))
-  use _ <- result.try(insert_member(db, beta_id, user_id, "manager"))
+  // admin@example.com as manager (Org Admin)
+  use _ <- result.try(insert_member(db, beta_id, admin_id, "manager"))
+  // beta@example.com as manager (Org Member who is only manager on Beta)
+  use _ <- result.try(insert_member(db, beta_id, beta_user_id, "manager"))
   use beta_bug_type <- result.try(insert_task_type(db, beta_id, "Bug", "bug-ant"))
   use _beta_feature <- result.try(insert_task_type(db, beta_id, "Feature", "sparkles"))
-  use wf_beta_id <- result.try(insert_workflow(db, org_id, beta_id, "Simple Bug Flow", user_id))
+  use wf_beta_id <- result.try(insert_workflow(db, org_id, beta_id, "Simple Bug Flow", admin_id))
   use _rule_beta <- result.try(insert_rule(db, wf_beta_id, "On Beta Bug Resolved", "task", Some(beta_bug_type), "resolved"))
   io.println("[OK] Project Beta created")
+  io.println("[OK] Beta members: admin (manager), beta (manager)")
 
   // =========================================================================
   // Tasks and Cards
@@ -160,15 +193,15 @@ fn run_seed() -> Result(SeedStats, String) {
   io.println("\n--- Creating Tasks and Cards ---")
 
   let bug_titles = ["Login broken", "Dashboard slow", "Upload fails", "Timeout", "Email delayed"]
-  use bug_ids <- result.try(list.try_map(bug_titles, fn(t) { insert_task(db, alpha_id, alpha_bug_type, t, user_id) }))
+  use bug_ids <- result.try(list.try_map(bug_titles, fn(t) { insert_task(db, alpha_id, alpha_bug_type, t, admin_id) }))
 
   let feature_titles = ["Dark mode", "Export PDF", "Notifications"]
-  use feature_ids <- result.try(list.try_map(feature_titles, fn(t) { insert_task(db, alpha_id, alpha_feature_type, t, user_id) }))
+  use feature_ids <- result.try(list.try_map(feature_titles, fn(t) { insert_task(db, alpha_id, alpha_feature_type, t, admin_id) }))
 
   let card_titles = ["Sprint Notes", "Architecture", "Retro", "Release"]
-  use card_ids <- result.try(list.try_map(card_titles, fn(t) { insert_card(db, alpha_id, t, user_id) }))
+  use card_ids <- result.try(list.try_map(card_titles, fn(t) { insert_card(db, alpha_id, t, admin_id) }))
 
-  use beta_bug_ids <- result.try(list.try_map(["Beta Bug 1", "Beta Bug 2"], fn(t) { insert_task(db, beta_id, beta_bug_type, t, user_id) }))
+  use beta_bug_ids <- result.try(list.try_map(["Beta Bug 1", "Beta Bug 2"], fn(t) { insert_task(db, beta_id, beta_bug_type, t, admin_id) }))
 
   io.println("[OK] Tasks and cards created")
 
@@ -182,10 +215,10 @@ fn run_seed() -> Result(SeedStats, String) {
 
   // All tasks: task_created events
   use _ <- result.try(list.try_map(all_alpha_tasks, fn(id) {
-    insert_task_event(db, org_id, alpha_id, id, user_id, "task_created")
+    insert_task_event(db, org_id, alpha_id, id, admin_id, "task_created")
   }))
   use _ <- result.try(list.try_map(all_beta_tasks, fn(id) {
-    insert_task_event(db, org_id, beta_id, id, user_id, "task_created")
+    insert_task_event(db, org_id, beta_id, id, admin_id, "task_created")
   }))
   let events_count = mut_events + list.length(all_alpha_tasks) + list.length(all_beta_tasks)
   io.println("[OK] Created events: " <> int.to_string(list.length(all_alpha_tasks) + list.length(all_beta_tasks)))
@@ -194,12 +227,12 @@ fn run_seed() -> Result(SeedStats, String) {
   let to_claim_alpha = list.take(all_alpha_tasks, 6)
   let to_claim_beta = list.take(all_beta_tasks, 1)
   use _ <- result.try(list.try_map(to_claim_alpha, fn(id) {
-    use _ <- result.try(insert_task_event(db, org_id, alpha_id, id, user_id, "task_claimed"))
-    update_task_status(db, id, "claimed", Some(user_id))
+    use _ <- result.try(insert_task_event(db, org_id, alpha_id, id, admin_id, "task_claimed"))
+    update_task_status(db, id, "claimed", Some(admin_id))
   }))
   use _ <- result.try(list.try_map(to_claim_beta, fn(id) {
-    use _ <- result.try(insert_task_event(db, org_id, beta_id, id, user_id, "task_claimed"))
-    update_task_status(db, id, "claimed", Some(user_id))
+    use _ <- result.try(insert_task_event(db, org_id, beta_id, id, admin_id, "task_claimed"))
+    update_task_status(db, id, "claimed", Some(admin_id))
   }))
   let events_count = events_count + list.length(to_claim_alpha) + list.length(to_claim_beta)
   io.println("[OK] Claimed events: " <> int.to_string(list.length(to_claim_alpha) + list.length(to_claim_beta)))
@@ -207,7 +240,7 @@ fn run_seed() -> Result(SeedStats, String) {
   // Release some tasks (2)
   let to_release = list.take(to_claim_alpha, 2)
   use _ <- result.try(list.try_map(to_release, fn(id) {
-    use _ <- result.try(insert_task_event(db, org_id, alpha_id, id, user_id, "task_released"))
+    use _ <- result.try(insert_task_event(db, org_id, alpha_id, id, admin_id, "task_released"))
     update_task_status(db, id, "available", None)
   }))
   let events_count = events_count + list.length(to_release)
@@ -217,11 +250,11 @@ fn run_seed() -> Result(SeedStats, String) {
   let to_complete_alpha = list.drop(to_claim_alpha, 2) |> list.take(3)
   let to_complete_beta = to_claim_beta
   use _ <- result.try(list.try_map(to_complete_alpha, fn(id) {
-    use _ <- result.try(insert_task_event(db, org_id, alpha_id, id, user_id, "task_completed"))
+    use _ <- result.try(insert_task_event(db, org_id, alpha_id, id, admin_id, "task_completed"))
     update_task_status(db, id, "completed", None)
   }))
   use _ <- result.try(list.try_map(to_complete_beta, fn(id) {
-    use _ <- result.try(insert_task_event(db, org_id, beta_id, id, user_id, "task_completed"))
+    use _ <- result.try(insert_task_event(db, org_id, beta_id, id, admin_id, "task_completed"))
     update_task_status(db, id, "completed", None)
   }))
   let events_count = events_count + list.length(to_complete_alpha) + list.length(to_complete_beta)
@@ -237,7 +270,7 @@ fn run_seed() -> Result(SeedStats, String) {
   // Resolve bugs
   let resolved = list.take(bug_ids, 3)
   use _ <- result.try(list.try_map(resolved, fn(id) {
-    rules_engine.evaluate_rules(db, StateChangeEvent(Task, id, Some("in_progress"), "resolved", alpha_id, org_id, user_id, True, Some(alpha_bug_type)))
+    rules_engine.evaluate_rules(db, StateChangeEvent(Task, id, Some("in_progress"), "resolved", alpha_id, org_id, admin_id, True, Some(alpha_bug_type)))
     |> result.map_error(fn(_) { "eval failed" })
   }))
   let count = mut_count + list.length(resolved)
@@ -246,7 +279,7 @@ fn run_seed() -> Result(SeedStats, String) {
   // Close bugs
   let closed = list.take(bug_ids, 2)
   use _ <- result.try(list.try_map(closed, fn(id) {
-    rules_engine.evaluate_rules(db, StateChangeEvent(Task, id, Some("resolved"), "closed", alpha_id, org_id, user_id, True, Some(alpha_bug_type)))
+    rules_engine.evaluate_rules(db, StateChangeEvent(Task, id, Some("resolved"), "closed", alpha_id, org_id, admin_id, True, Some(alpha_bug_type)))
     |> result.map_error(fn(_) { "eval failed" })
   }))
   let count = count + list.length(closed)
@@ -255,7 +288,7 @@ fn run_seed() -> Result(SeedStats, String) {
   // Feature done
   let done = list.take(feature_ids, 2)
   use _ <- result.try(list.try_map(done, fn(id) {
-    rules_engine.evaluate_rules(db, StateChangeEvent(Task, id, Some("in_progress"), "done", alpha_id, org_id, user_id, True, Some(alpha_feature_type)))
+    rules_engine.evaluate_rules(db, StateChangeEvent(Task, id, Some("in_progress"), "done", alpha_id, org_id, admin_id, True, Some(alpha_feature_type)))
     |> result.map_error(fn(_) { "eval failed" })
   }))
   let count = count + list.length(done)
@@ -264,7 +297,7 @@ fn run_seed() -> Result(SeedStats, String) {
   // Feature QA
   let assert [first_feature, ..] = feature_ids
   use _ <- result.try(
-    rules_engine.evaluate_rules(db, StateChangeEvent(Task, first_feature, Some("done"), "qa_approved", alpha_id, org_id, user_id, True, Some(alpha_feature_type)))
+    rules_engine.evaluate_rules(db, StateChangeEvent(Task, first_feature, Some("done"), "qa_approved", alpha_id, org_id, admin_id, True, Some(alpha_feature_type)))
     |> result.map_error(fn(_) { "eval failed" })
   )
   let count = count + 1
@@ -273,7 +306,7 @@ fn run_seed() -> Result(SeedStats, String) {
   // Card archived
   let archived = list.take(card_ids, 2)
   use _ <- result.try(list.try_map(archived, fn(id) {
-    rules_engine.evaluate_rules(db, StateChangeEvent(Card, id, Some("active"), "archived", alpha_id, org_id, user_id, True, None))
+    rules_engine.evaluate_rules(db, StateChangeEvent(Card, id, Some("active"), "archived", alpha_id, org_id, admin_id, True, None))
     |> result.map_error(fn(_) { "eval failed" })
   }))
   let count = count + list.length(archived)
@@ -281,7 +314,7 @@ fn run_seed() -> Result(SeedStats, String) {
 
   // Beta bugs
   use _ <- result.try(list.try_map(beta_bug_ids, fn(id) {
-    rules_engine.evaluate_rules(db, StateChangeEvent(Task, id, Some("in_progress"), "resolved", beta_id, org_id, user_id, True, Some(beta_bug_type)))
+    rules_engine.evaluate_rules(db, StateChangeEvent(Task, id, Some("in_progress"), "resolved", beta_id, org_id, admin_id, True, Some(beta_bug_type)))
     |> result.map_error(fn(_) { "eval failed" })
   }))
   let count = count + list.length(beta_bug_ids)
@@ -290,7 +323,7 @@ fn run_seed() -> Result(SeedStats, String) {
   // Idempotent
   let assert [first_bug, ..] = bug_ids
   use _ <- result.try(
-    rules_engine.evaluate_rules(db, StateChangeEvent(Task, first_bug, Some("claimed"), "resolved", alpha_id, org_id, user_id, True, Some(alpha_bug_type)))
+    rules_engine.evaluate_rules(db, StateChangeEvent(Task, first_bug, Some("claimed"), "resolved", alpha_id, org_id, admin_id, True, Some(alpha_bug_type)))
     |> result.map_error(fn(_) { "eval failed" })
   )
   let count = count + 1
@@ -298,6 +331,7 @@ fn run_seed() -> Result(SeedStats, String) {
 
   Ok(SeedStats(
     projects: 2,
+    users: 4,  // admin, pm, member, beta
     task_types: 5,
     workflows: 4,
     rules: 6,
@@ -359,6 +393,27 @@ fn int_decoder() {
   decode.success(value)
 }
 
+/// Insert or update a user. Uses a fixed password hash for "passwordpassword".
+fn upsert_user(db: pog.Connection, org_id: Int, email: String, org_role: String) -> Result(Int, String) {
+  // Password hash for "passwordpassword" (generated with argon2)
+  let password_hash = "$argon2id$v=19$m=19456,t=2,p=1$Dqfb9+7qAiJzB5ghwAjP8A$3agIFIqxEfklBQ4Y+kbetHBD2hyyPZyEfqC8GPwkhDY"
+
+  pog.query(
+    "INSERT INTO users (email, password_hash, org_id, org_role)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (email) DO UPDATE SET org_role = $4
+     RETURNING id"
+  )
+  |> pog.parameter(pog.text(email))
+  |> pog.parameter(pog.text(password_hash))
+  |> pog.parameter(pog.int(org_id))
+  |> pog.parameter(pog.text(org_role))
+  |> pog.returning(int_decoder())
+  |> pog.execute(db)
+  |> result.map_error(fn(e) { "Upsert user " <> email <> ": " <> string.inspect(e) })
+  |> result.try(fn(r) { case r.rows { [id] -> Ok(id) _ -> Error("No ID for " <> email) } })
+}
+
 fn insert_project(db: pog.Connection, org_id: Int, name: String) -> Result(Int, String) {
   pog.query("INSERT INTO projects (org_id, name) VALUES ($1, $2) RETURNING id")
   |> pog.parameter(pog.int(org_id))
@@ -370,7 +425,7 @@ fn insert_project(db: pog.Connection, org_id: Int, name: String) -> Result(Int, 
 }
 
 fn insert_member(db: pog.Connection, project_id: Int, user_id: Int, role: String) -> Result(Nil, String) {
-  pog.query("INSERT INTO project_members (project_id, user_id, role) VALUES ($1, $2, $3)")
+  pog.query("INSERT INTO project_members (project_id, admin_id, role) VALUES ($1, $2, $3)")
   |> pog.parameter(pog.int(project_id))
   |> pog.parameter(pog.int(user_id))
   |> pog.parameter(pog.text(role))
@@ -474,10 +529,10 @@ fn insert_task_event(db: pog.Connection, org_id: Int, project_id: Int, task_id: 
 
 fn update_task_status(db: pog.Connection, task_id: Int, status: String, claimed_by: Option(Int)) -> Result(Nil, String) {
   case claimed_by {
-    Some(user_id) -> {
+    Some(claimed_user_id) -> {
       pog.query("UPDATE tasks SET status = $1, claimed_by = $2, claimed_at = NOW() WHERE id = $3")
       |> pog.parameter(pog.text(status))
-      |> pog.parameter(pog.int(user_id))
+      |> pog.parameter(pog.int(claimed_user_id))
       |> pog.parameter(pog.int(task_id))
       |> pog.execute(db)
       |> result.map(fn(_) { Nil })

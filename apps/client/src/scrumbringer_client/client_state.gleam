@@ -66,6 +66,7 @@ import scrumbringer_client/accept_invite
 // API types from domain modules
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/project.{type Project, type ProjectMember}
+import domain/project_role.{type ProjectRole, Member as MemberRole}
 import domain/capability.{type Capability}
 import domain/org.{type InviteLink, type OrgUser}
 import domain/task.{
@@ -77,6 +78,7 @@ import domain/task_type.{type TaskType}
 import domain/card.{type Card}
 import domain/workflow.{type Rule, type RuleTemplate, type TaskTemplate, type Workflow}
 import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/api/projects as api_projects
 import domain/metrics.{
   type MyMetrics, type OrgMetricsOverview,
   type OrgMetricsProjectTasksPayload,
@@ -281,6 +283,7 @@ pub type Model {
     selected_project_id: Option(Int),
     // Invite links
     invite_links: Remote(List(InviteLink)),
+    invite_create_dialog_open: Bool,
     invite_link_email: String,
     invite_link_in_flight: Bool,
     invite_link_error: Option(String),
@@ -333,7 +336,7 @@ pub type Model {
     // Member add dialog
     members_add_dialog_open: Bool,
     members_add_selected_user: Option(OrgUser),
-    members_add_role: String,
+    members_add_role: ProjectRole,
     members_add_in_flight: Bool,
     members_add_error: Option(String),
     // Member remove dialog
@@ -518,6 +521,8 @@ pub type Msg {
   ProjectCreated(ApiResult(Project))
 
   // Invite links
+  InviteCreateDialogOpened
+  InviteCreateDialogClosed
   InviteLinkEmailChanged(String)
   InviteLinkCreateSubmitted
   InviteLinkCreated(ApiResult(InviteLink))
@@ -566,6 +571,10 @@ pub type Msg {
   MemberRemoveCancelled
   MemberRemoveConfirmed
   MemberRemoved(ApiResult(Nil))
+
+  // Member role change
+  MemberRoleChangeRequested(Int, ProjectRole)
+  MemberRoleChanged(ApiResult(api_projects.RoleChangeResult))
 
   // Org user search
   OrgUsersSearchChanged(String)
@@ -809,7 +818,7 @@ pub fn remote_to_resource_state(remote: Remote(a)) -> hydration.ResourceState {
 /// - All `Dict` fields start empty
 /// - `page` defaults to `Login`
 /// - `member_create_priority` defaults to `"3"` (medium)
-/// - `members_add_role` defaults to `"member"`
+/// - `members_add_role` defaults to `Member`
 pub fn default_model() -> Model {
   Model(
     // Core navigation and auth
@@ -853,6 +862,7 @@ pub fn default_model() -> Model {
     selected_project_id: option.None,
     // Invite links
     invite_links: NotAsked,
+    invite_create_dialog_open: False,
     invite_link_email: "",
     invite_link_in_flight: False,
     invite_link_error: option.None,
@@ -905,7 +915,7 @@ pub fn default_model() -> Model {
     // Member add dialog
     members_add_dialog_open: False,
     members_add_selected_user: option.None,
-    members_add_role: "member",
+    members_add_role: MemberRole,
     members_add_in_flight: False,
     members_add_error: option.None,
     // Member remove dialog

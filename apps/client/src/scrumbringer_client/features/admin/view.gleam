@@ -50,6 +50,8 @@ import domain/org.{type OrgUser}
 import domain/project.{type Project, type ProjectMember}
 import domain/task_type.{type TaskType}
 import domain/workflow.{type Rule, type TaskTemplate, type Workflow, Workflow}
+import domain/project_role.{Manager, Member}
+import domain/org_role
 
 import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/client_ffi
@@ -68,7 +70,8 @@ import scrumbringer_client/client_state.{
   CloseRuleDialog, CloseTaskTemplateDialog, Failed, Loaded,
   Loading, MemberAddDialogClosed, MemberAddDialogOpened, MemberAddRoleChanged,
   MemberAddSubmitted, MemberAddUserSelected, MemberRemoveCancelled,
-  MemberRemoveClicked, MemberRemoveConfirmed, NotAsked, OpenCardDialog,
+  MemberRemoveClicked, MemberRemoveConfirmed, MemberRoleChangeRequested,
+  NotAsked, OpenCardDialog,
   OpenRuleDialog, OpenTaskTemplateDialog, OrgSettingsRoleChanged,
   OrgSettingsSaveClicked, OrgUsersSearchChanged, OrgUsersSearchDebounced,
   RuleCrudCreated, RuleCrudDeleted, RuleCrudUpdated, RuleDialogCreate,
@@ -271,7 +274,7 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
                             int.to_string(p.id),
                             tr([], [
                               td([], [text(p.name)]),
-                              td([], [text(p.my_role)]),
+                              td([], [text(project_role.to_string(p.my_role))]),
                               td([], [
                                 button(
                                   [
@@ -697,6 +700,12 @@ fn view_members_table(
   members: Remote(List(ProjectMember)),
   cache: Remote(List(OrgUser)),
 ) -> Element(Msg) {
+  // Check if current user is org admin (can change roles)
+  let is_org_admin = case model.user {
+    opt.Some(user) -> user.org_role == org_role.Admin
+    opt.None -> False
+  }
+
   case members {
     NotAsked | Loading ->
       div([attribute.class("empty")], [
@@ -748,7 +757,7 @@ fn view_members_table(
                   tr([], [
                     td([], [text(email)]),
                     td([], [text(int.to_string(m.user_id))]),
-                    td([], [text(m.role)]),
+                    td([], [view_member_role_cell(model, m, is_org_admin)]),
                     td([], [text(m.created_at)]),
                     td([], [
                       button([event.on_click(MemberRemoveClicked(m.user_id))], [
@@ -761,6 +770,49 @@ fn view_members_table(
             ),
           ])
       }
+  }
+}
+
+/// Render role cell - dropdown for org admins, text for project managers.
+fn view_member_role_cell(
+  model: Model,
+  member: ProjectMember,
+  is_org_admin: Bool,
+) -> Element(Msg) {
+  case is_org_admin {
+    True ->
+      // Org Admin: show dropdown to change role
+      select(
+        [
+          attribute.value(project_role.to_string(member.role)),
+          event.on_input(fn(value) {
+            let new_role = case value {
+              "manager" -> Manager
+              _ -> Member
+            }
+            MemberRoleChangeRequested(member.user_id, new_role)
+          }),
+        ],
+        [
+          option(
+            [
+              attribute.value("member"),
+              attribute.selected(member.role == Member),
+            ],
+            update_helpers.i18n_t(model, i18n_text.RoleMember),
+          ),
+          option(
+            [
+              attribute.value("manager"),
+              attribute.selected(member.role == Manager),
+            ],
+            update_helpers.i18n_t(model, i18n_text.RoleManager),
+          ),
+        ],
+      )
+    False ->
+      // Project Manager: show text only (view only)
+      text(project_role.to_string(member.role))
   }
 }
 
@@ -790,7 +842,7 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
         label([], [text(update_helpers.i18n_t(model, i18n_text.Role))]),
         select(
           [
-            attribute.value(model.members_add_role),
+            attribute.value(project_role.to_string(model.members_add_role)),
             event.on_input(MemberAddRoleChanged),
           ],
           [
@@ -799,8 +851,8 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
               update_helpers.i18n_t(model, i18n_text.RoleMember),
             ),
             option(
-              [attribute.value("admin")],
-              update_helpers.i18n_t(model, i18n_text.RoleAdmin),
+              [attribute.value("manager")],
+              update_helpers.i18n_t(model, i18n_text.RoleManager),
             ),
           ],
         ),

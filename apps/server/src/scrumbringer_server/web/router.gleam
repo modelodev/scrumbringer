@@ -96,7 +96,7 @@ pub fn route(req: wisp.Request, ctx: RouterCtx) -> wisp.Response {
     ["api", "v1", "projects", project_id, "members"] ->
       projects.handle_members(req, auth_ctx(ctx), project_id)
     ["api", "v1", "projects", project_id, "members", user_id] ->
-      projects.handle_member_remove(req, auth_ctx(ctx), project_id, user_id)
+      projects.handle_member(req, auth_ctx(ctx), project_id, user_id)
     ["api", "v1", "projects", project_id, "task-types"] ->
       tasks.handle_task_types(req, auth_ctx(ctx), project_id)
     ["api", "v1", "projects", project_id, "tasks"] ->

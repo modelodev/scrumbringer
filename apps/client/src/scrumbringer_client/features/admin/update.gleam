@@ -23,15 +23,20 @@
 //// - **member_remove.gleam**: Member remove handlers
 //// - **search.gleam**: Org users search handlers
 
+import gleam/list
 import gleam/option as opt
 
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError}
-import domain/project.{type ProjectMember}
+import domain/project.{type ProjectMember, ProjectMember}
+import domain/project_role.{type ProjectRole}
+import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, Login, Model,
+  type Model, type Msg, Failed, Loaded, Login, MemberRoleChanged, Model,
 }
+import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/update_helpers
 
 // Re-export from split modules
 import scrumbringer_client/features/admin/cards
@@ -94,6 +99,81 @@ pub const handle_member_remove_confirmed = member_remove.handle_member_remove_co
 pub const handle_member_removed_ok = member_remove.handle_member_removed_ok
 
 pub const handle_member_removed_error = member_remove.handle_member_removed_error
+
+// =============================================================================
+// Member Role Change Handlers
+// =============================================================================
+
+/// Handle role change request - call the API.
+pub fn handle_member_role_change_requested(
+  model: Model,
+  user_id: Int,
+  new_role: ProjectRole,
+) -> #(Model, Effect(Msg)) {
+  case model.selected_project_id {
+    opt.Some(project_id) -> #(
+      model,
+      api_projects.update_member_role(
+        project_id,
+        user_id,
+        new_role,
+        MemberRoleChanged,
+      ),
+    )
+    opt.None -> #(model, effect.none())
+  }
+}
+
+/// Handle role change success - update member in list.
+pub fn handle_member_role_changed_ok(
+  model: Model,
+  result: api_projects.RoleChangeResult,
+) -> #(Model, Effect(Msg)) {
+  let updated_members = case model.members {
+    Loaded(members) ->
+      Loaded(
+        list.map(members, fn(m) {
+          case m.user_id == result.user_id {
+            True -> ProjectMember(..m, role: result.role)
+            False -> m
+          }
+        }),
+      )
+    other -> other
+  }
+  #(
+    Model(
+      ..model,
+      members: updated_members,
+      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.RoleUpdated)),
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle role change error.
+pub fn handle_member_role_changed_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  case err.status {
+    401 -> update_helpers.reset_to_login(model)
+    422 -> #(
+      Model(
+        ..model,
+        toast: opt.Some(update_helpers.i18n_t(
+          model,
+          i18n_text.CannotDemoteLastManager,
+        )),
+      ),
+      effect.none(),
+    )
+    _ -> #(
+      Model(..model, toast: opt.Some(err.message)),
+      effect.none(),
+    )
+  }
+}
 
 // =============================================================================
 // Re-exports: Search

@@ -62,6 +62,35 @@ pub fn handle_invite_links_fetched_error(
 }
 
 // =============================================================================
+// Invite Link Dialog Handlers
+// =============================================================================
+
+/// Handle invite create dialog opened.
+pub fn handle_invite_create_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
+  #(
+    Model(
+      ..model,
+      invite_create_dialog_open: True,
+      invite_link_email: "",
+      invite_link_error: opt.None,
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle invite create dialog closed.
+pub fn handle_invite_create_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
+  #(
+    Model(
+      ..model,
+      invite_create_dialog_open: False,
+      invite_link_error: opt.None,
+    ),
+    effect.none(),
+  )
+}
+
+// =============================================================================
 // Invite Link Create Handlers
 // =============================================================================
 
@@ -115,6 +144,7 @@ pub fn handle_invite_link_created_ok(
     Model(
       ..model,
       invite_link_in_flight: False,
+      invite_create_dialog_open: False,
       invite_link_last: opt.Some(link),
       invite_link_email: "",
       toast: opt.Some(update_helpers.i18n_t(

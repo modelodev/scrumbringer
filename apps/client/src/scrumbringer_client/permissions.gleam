@@ -14,6 +14,7 @@ import gleam/option.{type Option, None, Some}
 import domain/org_role.{type OrgRole, Admin}
 
 import domain/project.{type Project, Project}
+import domain/project_role.{Manager}
 
 /// Admin panel sections.
 pub type AdminSection {
@@ -38,7 +39,7 @@ pub fn is_org_admin(role: OrgRole) -> Bool {
 /// Returns true if the user is a manager of the project.
 pub fn is_project_manager(project: Project) -> Bool {
   case project {
-    Project(_, _, "manager") -> True
+    Project(_, _, Manager) -> True
     _ -> False
   }
 }

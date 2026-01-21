@@ -47,14 +47,25 @@ pub fn handle_members(
   }
 }
 
-pub fn handle_member_remove(
+pub fn handle_member(
   req: wisp.Request,
   ctx: auth.Ctx,
   project_id: String,
   user_id: String,
 ) -> wisp.Response {
-  use <- wisp.require_method(req, http.Delete)
+  case req.method {
+    http.Delete -> handle_member_delete(req, ctx, project_id, user_id)
+    http.Patch -> handle_member_role_update(req, ctx, project_id, user_id)
+    _ -> wisp.method_not_allowed([http.Delete, http.Patch])
+  }
+}
 
+fn handle_member_delete(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+  user_id: String,
+) -> wisp.Response {
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
 
@@ -98,6 +109,90 @@ pub fn handle_member_remove(
 
                         Error(projects_db.RemoveDbError(_)) ->
                           api.error(500, "INTERNAL", "Database error")
+                      }
+                    }
+                  }
+                }
+              }
+          }
+        }
+      }
+    }
+  }
+}
+
+fn handle_member_role_update(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+  user_id: String,
+) -> wisp.Response {
+  case auth.require_current_user(req, ctx) {
+    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+
+    Ok(user) -> {
+      case csrf.require_double_submit(req) {
+        Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+
+        Ok(Nil) -> {
+          case int.parse(project_id) {
+            Error(_) -> api.error(404, "NOT_FOUND", "Not found")
+
+            Ok(project_id) ->
+              case int.parse(user_id) {
+                Error(_) -> api.error(404, "NOT_FOUND", "Not found")
+
+                Ok(target_user_id) -> {
+                  let auth.Ctx(db: db, ..) = ctx
+
+                  case require_project_admin(db, project_id, user.id) {
+                    Error(resp) -> resp
+
+                    Ok(Nil) -> {
+                      use data <- wisp.require_json(req)
+
+                      let decoder = {
+                        use role <- decode.field("role", decode.string)
+                        decode.success(role)
+                      }
+
+                      case decode.run(data, decoder) {
+                        Error(_) ->
+                          api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+
+                        Ok(new_role) -> {
+                          case
+                            projects_db.update_member_role(
+                              db,
+                              project_id,
+                              target_user_id,
+                              new_role,
+                            )
+                          {
+                            Ok(result) ->
+                              api.ok(
+                                json.object([
+                                  #("member", role_update_result_json(result)),
+                                ]),
+                              )
+
+                            Error(projects_db.UpdateMemberNotFound) ->
+                              api.error(404, "NOT_FOUND", "Membership not found")
+
+                            Error(projects_db.UpdateLastManager) ->
+                              api.error(
+                                422,
+                                "VALIDATION_ERROR",
+                                "Cannot demote last project manager",
+                              )
+
+                            Error(projects_db.UpdateInvalidRole) ->
+                              api.error(400, "VALIDATION_ERROR", "Invalid role")
+
+                            Error(projects_db.UpdateDbError(_)) ->
+                              api.error(500, "INTERNAL", "Database error")
+                          }
+                        }
                       }
                     }
                   }
@@ -354,5 +449,23 @@ fn member_json(member: projects_db.ProjectMember) -> json.Json {
     #("user_id", json.int(user_id)),
     #("role", json.string(role)),
     #("created_at", json.string(created_at)),
+  ])
+}
+
+fn role_update_result_json(
+  result: projects_db.UpdateMemberRoleResult,
+) -> json.Json {
+  let projects_db.RoleUpdated(
+    user_id: user_id,
+    email: email,
+    role: role,
+    previous_role: previous_role,
+  ) = result
+
+  json.object([
+    #("user_id", json.int(user_id)),
+    #("email", json.string(email)),
+    #("role", json.string(role)),
+    #("previous_role", json.string(previous_role)),
   ])
 }

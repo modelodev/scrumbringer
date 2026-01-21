@@ -23,6 +23,7 @@ import gleam/option as opt
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError}
+import domain/project_role.{type ProjectRole}
 import scrumbringer_client/client_state.{
   type Model, type Msg, Loaded, MemberAdded, Model, NotAsked,
 }
@@ -73,7 +74,7 @@ pub fn handle_member_add_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
 /// Handle member add role dropdown change.
 pub fn handle_member_add_role_changed(
   model: Model,
-  role: String,
+  role: ProjectRole,
 ) -> #(Model, Effect(Msg)) {
   #(Model(..model, members_add_role: role), effect.none())
 }

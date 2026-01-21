@@ -41,6 +41,7 @@ pub type Text {
   InviteLinkCreated
   InviteLinkRegenerated
   RoleUpdated
+  CannotDemoteLastManager
   MemberAdded
   MemberRemoved
   TaskTypeCreated
@@ -167,6 +168,7 @@ pub type Text {
   OrgSettingsHelp
   RoleAdmin
   RoleMember
+  RoleManager
   AdminProjects
   AdminMetrics
   AdminMembers
@@ -236,6 +238,7 @@ pub type Text {
   OrgRole
 
   // Invite links
+  InvitesTitle
   LatestInviteLink
   InviteLinks
   InviteLinksHelp

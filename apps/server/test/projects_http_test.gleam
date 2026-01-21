@@ -278,6 +278,314 @@ pub fn cannot_remove_last_project_admin_test() {
   admin_count |> should.equal(1)
 }
 
+// =============================================================================
+// Role Change Tests (Story 4.2)
+// =============================================================================
+
+pub fn org_admin_can_change_member_to_manager_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "RoleTest")
+  let project_id =
+    single_int(db, "select id from projects where name = 'RoleTest'", [])
+
+  create_member_user(handler, db)
+  let member_id =
+    single_int(
+      db,
+      "select id from users where email = 'member@example.com'",
+      [],
+    )
+
+  add_member(handler, admin_session, admin_csrf, project_id, member_id, "member")
+
+  // Promote member to manager
+  let req =
+    simulate.request(
+      http.Patch,
+      "/api/v1/projects/"
+        <> int_to_string(project_id)
+        <> "/members/"
+        <> int_to_string(member_id),
+    )
+    |> request.set_cookie("sb_session", admin_session)
+    |> request.set_cookie("sb_csrf", admin_csrf)
+    |> request.set_header("X-CSRF", admin_csrf)
+    |> simulate.json_body(json.object([#("role", json.string("manager"))]))
+
+  let res = handler(req)
+  res.status |> should.equal(200)
+
+  let body = simulate.read_body(res)
+  string.contains(body, "\"role\":\"manager\"") |> should.be_true
+  string.contains(body, "\"previous_role\":\"member\"") |> should.be_true
+
+  // Verify in database
+  let role =
+    single_string(
+      db,
+      "select role from project_members where project_id = $1 and user_id = $2",
+      [pog.int(project_id), pog.int(member_id)],
+    )
+  role |> should.equal("manager")
+}
+
+pub fn org_admin_can_change_manager_to_member_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "DemoteTest")
+  let project_id =
+    single_int(db, "select id from projects where name = 'DemoteTest'", [])
+
+  create_member_user(handler, db)
+  let member_id =
+    single_int(
+      db,
+      "select id from users where email = 'member@example.com'",
+      [],
+    )
+
+  // Add as manager first (so we have 2 managers)
+  add_member(
+    handler,
+    admin_session,
+    admin_csrf,
+    project_id,
+    member_id,
+    "manager",
+  )
+
+  // Demote to member (should work since there are 2 managers)
+  let req =
+    simulate.request(
+      http.Patch,
+      "/api/v1/projects/"
+        <> int_to_string(project_id)
+        <> "/members/"
+        <> int_to_string(member_id),
+    )
+    |> request.set_cookie("sb_session", admin_session)
+    |> request.set_cookie("sb_csrf", admin_csrf)
+    |> request.set_header("X-CSRF", admin_csrf)
+    |> simulate.json_body(json.object([#("role", json.string("member"))]))
+
+  let res = handler(req)
+  res.status |> should.equal(200)
+
+  let body = simulate.read_body(res)
+  string.contains(body, "\"role\":\"member\"") |> should.be_true
+  string.contains(body, "\"previous_role\":\"manager\"") |> should.be_true
+}
+
+pub fn cannot_demote_last_project_manager_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "LastManager")
+  let project_id =
+    single_int(db, "select id from projects where name = 'LastManager'", [])
+
+  // Try to demote the only manager (user_id 1)
+  let req =
+    simulate.request(
+      http.Patch,
+      "/api/v1/projects/" <> int_to_string(project_id) <> "/members/1",
+    )
+    |> request.set_cookie("sb_session", admin_session)
+    |> request.set_cookie("sb_csrf", admin_csrf)
+    |> request.set_header("X-CSRF", admin_csrf)
+    |> simulate.json_body(json.object([#("role", json.string("member"))]))
+
+  let res = handler(req)
+  res.status |> should.equal(422)
+
+  let body = simulate.read_body(res)
+  string.contains(body, "VALIDATION_ERROR") |> should.be_true
+  string.contains(body, "last") |> should.be_true
+
+  // Verify role unchanged in database
+  let role =
+    single_string(
+      db,
+      "select role from project_members where project_id = $1 and user_id = 1",
+      [pog.int(project_id)],
+    )
+  role |> should.equal("manager")
+}
+
+pub fn project_manager_cannot_change_roles_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "PermTest")
+  let project_id =
+    single_int(db, "select id from projects where name = 'PermTest'", [])
+
+  create_member_user(handler, db)
+  let member_id =
+    single_int(
+      db,
+      "select id from users where email = 'member@example.com'",
+      [],
+    )
+
+  // Add as project manager (not org admin)
+  add_member(
+    handler,
+    admin_session,
+    admin_csrf,
+    project_id,
+    member_id,
+    "manager",
+  )
+
+  let member_login_res =
+    login_as(handler, "member@example.com", "passwordpassword")
+  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
+  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
+
+  // Project manager tries to change role - should fail (403)
+  let req =
+    simulate.request(
+      http.Patch,
+      "/api/v1/projects/" <> int_to_string(project_id) <> "/members/1",
+    )
+    |> request.set_cookie("sb_session", member_session)
+    |> request.set_cookie("sb_csrf", member_csrf)
+    |> request.set_header("X-CSRF", member_csrf)
+    |> simulate.json_body(json.object([#("role", json.string("member"))]))
+
+  let res = handler(req)
+  res.status |> should.equal(403)
+}
+
+pub fn change_role_user_not_member_returns_404_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "NotMemberTest")
+  let project_id =
+    single_int(db, "select id from projects where name = 'NotMemberTest'", [])
+
+  create_member_user(handler, db)
+  let member_id =
+    single_int(
+      db,
+      "select id from users where email = 'member@example.com'",
+      [],
+    )
+
+  // Try to change role for user who is not a member
+  let req =
+    simulate.request(
+      http.Patch,
+      "/api/v1/projects/"
+        <> int_to_string(project_id)
+        <> "/members/"
+        <> int_to_string(member_id),
+    )
+    |> request.set_cookie("sb_session", admin_session)
+    |> request.set_cookie("sb_csrf", admin_csrf)
+    |> request.set_header("X-CSRF", admin_csrf)
+    |> simulate.json_body(json.object([#("role", json.string("manager"))]))
+
+  let res = handler(req)
+  res.status |> should.equal(404)
+}
+
+pub fn change_role_idempotent_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "IdempotentTest")
+  let project_id =
+    single_int(db, "select id from projects where name = 'IdempotentTest'", [])
+
+  // Change to same role (manager -> manager)
+  let req =
+    simulate.request(
+      http.Patch,
+      "/api/v1/projects/" <> int_to_string(project_id) <> "/members/1",
+    )
+    |> request.set_cookie("sb_session", admin_session)
+    |> request.set_cookie("sb_csrf", admin_csrf)
+    |> request.set_header("X-CSRF", admin_csrf)
+    |> simulate.json_body(json.object([#("role", json.string("manager"))]))
+
+  let res = handler(req)
+  res.status |> should.equal(200)
+
+  let body = simulate.read_body(res)
+  string.contains(body, "\"role\":\"manager\"") |> should.be_true
+  string.contains(body, "\"previous_role\":\"manager\"") |> should.be_true
+}
+
+pub fn change_role_invalid_value_returns_400_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "InvalidRoleTest")
+  let project_id =
+    single_int(db, "select id from projects where name = 'InvalidRoleTest'", [])
+
+  let req =
+    simulate.request(
+      http.Patch,
+      "/api/v1/projects/" <> int_to_string(project_id) <> "/members/1",
+    )
+    |> request.set_cookie("sb_session", admin_session)
+    |> request.set_cookie("sb_csrf", admin_csrf)
+    |> request.set_header("X-CSRF", admin_csrf)
+    |> simulate.json_body(json.object([#("role", json.string("admin"))]))
+
+  let res = handler(req)
+  res.status |> should.equal(400)
+}
+
 fn create_project(
   handler: fn(wisp.Request) -> wisp.Response,
   session: String,
@@ -469,6 +777,30 @@ fn insert_invite_link_active(db: pog.Connection, token: String, email: String) {
 fn single_int(db: pog.Connection, sql: String, params: List(pog.Value)) -> Int {
   let decoder = {
     use value <- decode.field(0, decode.int)
+    decode.success(value)
+  }
+
+  let query =
+    params
+    |> list.fold(pog.query(sql), fn(query, param) {
+      pog.parameter(query, param)
+    })
+
+  let assert Ok(pog.Returned(rows: [value, ..], ..)) =
+    query
+    |> pog.returning(decoder)
+    |> pog.execute(db)
+
+  value
+}
+
+fn single_string(
+  db: pog.Connection,
+  sql: String,
+  params: List(pog.Value),
+) -> String {
+  let decoder = {
+    use value <- decode.field(0, decode.string)
     decode.success(value)
   }
 

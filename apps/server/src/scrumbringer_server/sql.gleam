@@ -1909,6 +1909,114 @@ select
   |> pog.execute(db)
 }
 
+/// A row you get from running the `project_members_update_role` query
+/// defined in `./src/scrumbringer_server/sql/project_members_update_role.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type ProjectMembersUpdateRoleRow {
+  ProjectMembersUpdateRoleRow(
+    user_id: Int,
+    email: String,
+    role: String,
+    previous_role: String,
+    status: String,
+  )
+}
+
+/// project_members_update_role.sql
+/// Update a project member's role with last-manager protection.
+/// Parameters: $1 = project_id, $2 = user_id, $3 = new_role
+/// Returns: user_id, email, role (new), previous_role, status
+/// Status values:
+/// 'allowed' - Role was changed
+/// 'no_change' - Role unchanged (idempotent)
+/// 'last_manager' - Cannot demote last manager (caller should return 422)
+/// Empty result = user not a member (caller should return 404)
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn project_members_update_role(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: String,
+) -> Result(pog.Returned(ProjectMembersUpdateRoleRow), pog.QueryError) {
+  let decoder = {
+    use user_id <- decode.field(0, decode.int)
+    use email <- decode.field(1, decode.string)
+    use role <- decode.field(2, decode.string)
+    use previous_role <- decode.field(3, decode.string)
+    use status <- decode.field(4, decode.string)
+    decode.success(ProjectMembersUpdateRoleRow(
+      user_id:,
+      email:,
+      role:,
+      previous_role:,
+      status:,
+    ))
+  }
+
+  "-- project_members_update_role.sql
+-- Update a project member's role with last-manager protection.
+-- Parameters: $1 = project_id, $2 = user_id, $3 = new_role
+-- Returns: user_id, email, role (new), previous_role, status
+-- Status values:
+--   'allowed' - Role was changed
+--   'no_change' - Role unchanged (idempotent)
+--   'last_manager' - Cannot demote last manager (caller should return 422)
+-- Empty result = user not a member (caller should return 404)
+
+WITH current_state AS (
+  SELECT
+    pm.role as current_role,
+    u.email,
+    (SELECT COUNT(*) FROM project_members WHERE project_id = $1 AND role = 'manager') as manager_count
+  FROM project_members pm
+  JOIN users u ON u.id = pm.user_id
+  WHERE pm.project_id = $1 AND pm.user_id = $2
+),
+validation AS (
+  SELECT
+    current_role,
+    email,
+    manager_count,
+    CASE
+      -- Idempotent: no change needed
+      WHEN current_role = $3 THEN 'no_change'
+      -- Promotion (member → manager): always allowed
+      WHEN current_role = 'member' AND $3 = 'manager' THEN 'allowed'
+      -- Demotion with multiple managers: allowed
+      WHEN current_role = 'manager' AND $3 = 'member' AND manager_count > 1 THEN 'allowed'
+      -- Demotion with single manager: blocked
+      WHEN current_role = 'manager' AND $3 = 'member' AND manager_count = 1 THEN 'last_manager'
+      -- Fallback (shouldn't happen with valid roles)
+      ELSE 'allowed'
+    END as status
+  FROM current_state
+)
+UPDATE project_members pm
+SET role = CASE WHEN v.status = 'allowed' THEN $3 ELSE pm.role END
+FROM validation v
+WHERE pm.project_id = $1
+  AND pm.user_id = $2
+RETURNING
+  pm.user_id,
+  v.email,
+  pm.role as role,
+  v.current_role as previous_role,
+  v.status;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.text(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `projects_create` query
 /// defined in `./src/scrumbringer_server/sql/projects_create.sql`.
 ///

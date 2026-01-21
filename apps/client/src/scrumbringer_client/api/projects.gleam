@@ -27,21 +27,31 @@ import scrumbringer_client/api/core.{type ApiResult}
 import domain/project.{
   type Project, type ProjectMember, Project, ProjectMember,
 }
+import domain/project_role.{type ProjectRole, Manager, Member} as project_role
 
 // =============================================================================
 // Decoders
 // =============================================================================
 
+fn project_role_decoder() -> decode.Decoder(ProjectRole) {
+  use role_string <- decode.then(decode.string)
+  case role_string {
+    "manager" -> decode.success(Manager)
+    "member" -> decode.success(Member)
+    _ -> decode.failure(Manager, "ProjectRole")
+  }
+}
+
 fn project_decoder() -> decode.Decoder(Project) {
   use id <- decode.field("id", decode.int)
   use name <- decode.field("name", decode.string)
-  use my_role <- decode.field("my_role", decode.string)
+  use my_role <- decode.field("my_role", project_role_decoder())
   decode.success(Project(id: id, name: name, my_role: my_role))
 }
 
 fn project_member_decoder() -> decode.Decoder(ProjectMember) {
   use user_id <- decode.field("user_id", decode.int)
-  use role <- decode.field("role", decode.string)
+  use role <- decode.field("role", project_role_decoder())
   use created_at <- decode.field("created_at", decode.string)
   decode.success(ProjectMember(
     user_id: user_id,
@@ -95,11 +105,14 @@ pub fn list_project_members(
 pub fn add_project_member(
   project_id: Int,
   user_id: Int,
-  role: String,
+  role: ProjectRole,
   to_msg: fn(ApiResult(ProjectMember)) -> msg,
 ) -> Effect(msg) {
   let body =
-    json.object([#("user_id", json.int(user_id)), #("role", json.string(role))])
+    json.object([
+      #("user_id", json.int(user_id)),
+      #("role", json.string(project_role.to_string(role))),
+    ])
   let decoder = decode.field("member", project_member_decoder(), decode.success)
   core.request(
     "POST",
@@ -123,6 +136,56 @@ pub fn remove_project_member(
       <> "/members/"
       <> int.to_string(user_id),
     option.None,
+    to_msg,
+  )
+}
+
+// =============================================================================
+// Role Change
+// =============================================================================
+
+/// Result of a member role change operation.
+pub type RoleChangeResult {
+  RoleChangeResult(
+    user_id: Int,
+    email: String,
+    role: ProjectRole,
+    previous_role: ProjectRole,
+  )
+}
+
+fn role_change_result_decoder() -> decode.Decoder(RoleChangeResult) {
+  use user_id <- decode.field("user_id", decode.int)
+  use email <- decode.field("email", decode.string)
+  use role <- decode.field("role", project_role_decoder())
+  use previous_role <- decode.field("previous_role", project_role_decoder())
+  decode.success(RoleChangeResult(
+    user_id: user_id,
+    email: email,
+    role: role,
+    previous_role: previous_role,
+  ))
+}
+
+/// Update a project member's role.
+pub fn update_member_role(
+  project_id: Int,
+  user_id: Int,
+  new_role: ProjectRole,
+  to_msg: fn(ApiResult(RoleChangeResult)) -> msg,
+) -> Effect(msg) {
+  let body =
+    json.object([#("role", json.string(project_role.to_string(new_role)))])
+  let decoder =
+    decode.field("member", role_change_result_decoder(), decode.success)
+  core.request(
+    "PATCH",
+    "/api/v1/projects/"
+      <> int.to_string(project_id)
+      <> "/members/"
+      <> int.to_string(user_id),
+    option.Some(body),
+    decoder,
     to_msg,
   )
 }

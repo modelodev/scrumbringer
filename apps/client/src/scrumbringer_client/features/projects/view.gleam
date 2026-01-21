@@ -24,6 +24,7 @@ import lustre/element/keyed
 import lustre/event
 
 import domain/project.{type Project}
+import domain/project_role
 import scrumbringer_client/client_state.{
   type Model, type Msg, type Remote, Failed, Loaded, Loading, NotAsked,
   ProjectCreateDialogClosed, ProjectCreateDialogOpened,
@@ -158,7 +159,7 @@ fn view_projects_list(
             keyed.tbody(
               [],
               list.map(projects, fn(p) {
-                #(p.name, tr([], [td([], [text(p.name)]), td([], [text(p.my_role)])]))
+                #(p.name, tr([], [td([], [text(p.name)]), td([], [text(project_role.to_string(p.my_role))])]))
               }),
             ),
           ])

@@ -32,6 +32,7 @@ import gleam/list
 import gleam/option as opt
 import lustre/effect.{type Effect}
 import domain/org_role
+import domain/project_role.{Member as MemberRole} as project_role
 
 import scrumbringer_client/accept_invite
 
@@ -74,7 +75,8 @@ import scrumbringer_client/client_state.{
   CloseCardDetail, CloseCardDialog, Failed,
   ForgotPasswordClicked, ForgotPasswordCopyClicked, ForgotPasswordCopyFinished,
   ForgotPasswordDismissed, ForgotPasswordEmailChanged, ForgotPasswordFinished,
-  ForgotPasswordSubmitted, GlobalKeyDown, InviteLinkCopyClicked,
+  ForgotPasswordSubmitted, GlobalKeyDown, InviteCreateDialogClosed,
+  InviteCreateDialogOpened, InviteLinkCopyClicked,
   InviteLinkCopyFinished, InviteLinkCreateSubmitted, InviteLinkCreated,
   InviteLinkEmailChanged, InviteLinkRegenerateClicked, InviteLinkRegenerated,
   InviteLinksFetched, Loaded, Loading, LocaleSelected, Login, LoginDomValuesRead,
@@ -99,7 +101,7 @@ import scrumbringer_client/client_state.{
   MemberPositionEditXChanged, MemberPositionEditYChanged, MemberPositionSaved,
   MemberPositionsFetched, MemberProjectTasksFetched, MemberReleaseClicked,
   MemberRemoveCancelled, MemberRemoveClicked, MemberRemoveConfirmed,
-  MemberRemoved, MemberSaveCapabilitiesClicked, MemberTaskClaimed,
+  MemberRemoved, MemberRoleChanged, MemberRoleChangeRequested, MemberSaveCapabilitiesClicked, MemberTaskClaimed,
   MemberTaskCompleted, MemberTaskCreated, MemberTaskDetailsClosed,
   MemberTaskDetailsOpened, MemberTaskReleased, MemberTaskTypesFetched,
   MemberToggleCapability, MemberToggleMyCapabilitiesQuick,
@@ -348,9 +350,11 @@ fn auth_state(model: Model) -> hydration.AuthState {
 }
 
 fn build_snapshot(model: Model) -> hydration.Snapshot {
+  let projects = update_helpers.active_projects(model)
   hydration.Snapshot(
     auth: auth_state(model),
     projects: remote_state(model.projects),
+    is_any_project_manager: permissions.any_project_manager(projects),
     invite_links: remote_state(model.invite_links),
     capabilities: remote_state(model.capabilities),
     my_capability_ids: remote_state(model.member_my_capability_ids),
@@ -1127,15 +1131,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         _ -> Member
       }
 
+      // Keep Admin page if user requested it - hydration will check access
+      // after projects load (to determine if user is a project manager)
       let resolved_page = case model.page {
         Member -> Member
-
-        Admin ->
-          case user.org_role {
-            org_role.Admin -> Admin
-            _ -> Member
-          }
-
+        Admin -> Admin
         _ -> default_page
       }
 
@@ -1435,6 +1435,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     ProjectCreated(Error(err)) ->
       projects_workflow.handle_project_created_error(model, err)
 
+    InviteCreateDialogOpened ->
+      invite_links_workflow.handle_invite_create_dialog_opened(model)
+    InviteCreateDialogClosed ->
+      invite_links_workflow.handle_invite_create_dialog_closed(model)
     InviteLinkEmailChanged(value) ->
       invite_links_workflow.handle_invite_link_email_changed(model, value)
     InviteLinksFetched(Ok(links)) ->
@@ -1526,8 +1530,13 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       admin_workflow.handle_member_add_dialog_opened(model)
     MemberAddDialogClosed ->
       admin_workflow.handle_member_add_dialog_closed(model)
-    MemberAddRoleChanged(role) ->
+    MemberAddRoleChanged(role_string) -> {
+      let role = case project_role.parse(role_string) {
+        Ok(r) -> r
+        Error(_) -> MemberRole
+      }
       admin_workflow.handle_member_add_role_changed(model, role)
+    }
     MemberAddUserSelected(user_id) ->
       admin_workflow.handle_member_add_user_selected(model, user_id)
     MemberAddSubmitted -> admin_workflow.handle_member_add_submitted(model)
@@ -1546,6 +1555,13 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       admin_workflow.handle_member_removed_ok(model, refresh_section_for_test)
     MemberRemoved(Error(err)) ->
       admin_workflow.handle_member_removed_error(model, err)
+
+    MemberRoleChangeRequested(user_id, new_role) ->
+      admin_workflow.handle_member_role_change_requested(model, user_id, new_role)
+    MemberRoleChanged(Ok(result)) ->
+      admin_workflow.handle_member_role_changed_ok(model, result)
+    MemberRoleChanged(Error(err)) ->
+      admin_workflow.handle_member_role_changed_error(model, err)
 
     OrgUsersSearchChanged(query) ->
       admin_workflow.handle_org_users_search_changed(model, query)

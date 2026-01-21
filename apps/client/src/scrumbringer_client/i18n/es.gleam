@@ -47,6 +47,7 @@ pub fn translate(text: Text) -> String {
     text.InviteLinkCreated -> "Link de invitación creado"
     text.InviteLinkRegenerated -> "Link de invitación regenerado"
     text.RoleUpdated -> "Rol actualizado"
+    text.CannotDemoteLastManager -> "No se puede degradar al último manager del proyecto"
     text.MemberAdded -> "Miembro añadido"
     text.MemberRemoved -> "Miembro quitado"
     text.TaskTypeCreated -> "Tipo de tarea creado"
@@ -177,6 +178,7 @@ pub fn translate(text: Text) -> String {
       "Gestiona roles de la org (admin/member). Los cambios requieren Guardar y están protegidos por una regla de último admin."
     text.RoleAdmin -> "admin"
     text.RoleMember -> "miembro"
+    text.RoleManager -> "manager"
     text.AdminProjects -> "Proyectos"
     text.AdminMetrics -> "Métricas"
     text.AdminMembers -> "Miembros"
@@ -251,6 +253,7 @@ pub fn translate(text: Text) -> String {
     text.OrgRole -> "Rol org"
 
     // Invite links
+    text.InvitesTitle -> "INVITACIONES"
     text.LatestInviteLink -> "Último link de invitación"
     text.InviteLinks -> "Links de invitación"
     text.InviteLinksHelp ->

@@ -44,6 +44,8 @@ pub type Snapshot {
   Snapshot(
     auth: AuthState,
     projects: ResourceState,
+    /// True if user is a project manager on any project (only valid when projects: Loaded)
+    is_any_project_manager: Bool,
     invite_links: ResourceState,
     capabilities: ResourceState,
     my_capability_ids: ResourceState,
@@ -83,6 +85,7 @@ pub fn plan(route: router.Route, snapshot: Snapshot) -> List(Command) {
   let Snapshot(
     auth: auth,
     projects: projects,
+    is_any_project_manager: is_any_project_manager,
     invite_links: invite_links,
     capabilities: capabilities,
     my_capability_ids: my_capability_ids,
@@ -113,86 +116,112 @@ pub fn plan(route: router.Route, snapshot: Snapshot) -> List(Command) {
         Unknown -> [FetchMe]
         Unauthed -> [Redirect(to: router.Login)]
         Authed(role) -> {
-          case role == Admin {
-            False -> [
-              Redirect(to: router.Member(member_section.Pool, project_id)),
-            ]
+          // Check access based on org role and project manager status
+          let is_org_admin = role == Admin
+          let is_org_level_section = case section {
+            permissions.Invites
+            | permissions.OrgSettings
+            | permissions.Projects
+            | permissions.Metrics -> True
+            _ -> False
+          }
 
-            True -> {
-              let base = case projects {
-                NotAsked | Failed -> [FetchProjects]
-                _ -> []
-              }
+          // Org-level sections: only org admin
+          // Project-scoped sections: org admin OR any project manager
+          let has_access = case is_org_level_section {
+            True -> is_org_admin
+            False -> is_org_admin || is_any_project_manager
+          }
 
-              let base = case invite_links {
-                NotAsked | Failed -> list.append(base, [FetchInviteLinks])
-                _ -> base
-              }
+          // If projects not loaded yet, we can't determine PM status
+          // Fetch projects first before deciding to redirect
+          let needs_projects_to_decide =
+            !is_org_admin && !is_org_level_section && projects != Loaded
 
-              let base = case capabilities {
-                NotAsked | Failed -> list.append(base, [FetchCapabilities])
-                _ -> base
-              }
+          case needs_projects_to_decide {
+            True -> [FetchProjects]
+            False ->
+              case has_access {
+                False -> [
+                  Redirect(to: router.Member(member_section.Pool, project_id)),
+                ]
+                True -> {
+                  let base = case projects {
+                    NotAsked | Failed -> [FetchProjects]
+                    _ -> []
+                  }
 
-              case section {
-                permissions.Members ->
-                  case project_id, projects {
-                    Some(id), Loaded ->
-                      case members, members_project_id {
-                        Loading, _ -> base
-                        Loaded, Some(pid) if pid == id -> base
-                        _, _ ->
-                          list.append(base, [FetchMembers(project_id: id)])
-                      }
-
+                  let base = case is_org_admin, invite_links {
+                    True, NotAsked | True, Failed ->
+                      list.append(base, [FetchInviteLinks])
                     _, _ -> base
                   }
 
-                permissions.TaskTypes ->
-                  case project_id, projects {
-                    Some(id), Loaded ->
-                      case task_types, task_types_project_id {
-                        Loading, _ -> base
-                        Loaded, Some(pid) if pid == id -> base
-                        _, _ ->
-                          list.append(base, [FetchTaskTypes(project_id: id)])
-                      }
-
-                    _, _ -> base
-                  }
-
-                permissions.OrgSettings ->
-                  case org_settings_users {
-                    NotAsked | Failed ->
-                      list.append(base, [FetchOrgSettingsUsers])
+                  let base = case capabilities {
+                    NotAsked | Failed -> list.append(base, [FetchCapabilities])
                     _ -> base
                   }
 
-                permissions.Metrics -> {
-                  let base = case org_metrics_overview {
-                    NotAsked | Failed ->
-                      list.append(base, [FetchOrgMetricsOverview])
-                    _ -> base
-                  }
+                  case section {
+                    permissions.Members ->
+                      case project_id, projects {
+                        Some(id), Loaded ->
+                          case members, members_project_id {
+                            Loading, _ -> base
+                            Loaded, Some(pid) if pid == id -> base
+                            _, _ ->
+                              list.append(base, [FetchMembers(project_id: id)])
+                          }
 
-                  case project_id {
-                    Some(id) ->
-                      case org_metrics_project_tasks, org_metrics_project_id {
-                        Loading, _ -> base
-                        Loaded, Some(pid) if pid == id -> base
-                        _, _ ->
-                          list.append(base, [
-                            FetchOrgMetricsProjectTasks(project_id: id),
-                          ])
+                        _, _ -> base
                       }
 
-                    None -> base
+                    permissions.TaskTypes ->
+                      case project_id, projects {
+                        Some(id), Loaded ->
+                          case task_types, task_types_project_id {
+                            Loading, _ -> base
+                            Loaded, Some(pid) if pid == id -> base
+                            _, _ ->
+                              list.append(base, [FetchTaskTypes(project_id: id)])
+                          }
+
+                        _, _ -> base
+                      }
+
+                    permissions.OrgSettings ->
+                      case org_settings_users {
+                        NotAsked | Failed ->
+                          list.append(base, [FetchOrgSettingsUsers])
+                        _ -> base
+                      }
+
+                    permissions.Metrics -> {
+                      let base = case org_metrics_overview {
+                        NotAsked | Failed ->
+                          list.append(base, [FetchOrgMetricsOverview])
+                        _ -> base
+                      }
+
+                      case project_id {
+                        Some(id) ->
+                          case org_metrics_project_tasks, org_metrics_project_id {
+                            Loading, _ -> base
+                            Loaded, Some(pid) if pid == id -> base
+                            _, _ ->
+                              list.append(base, [
+                                FetchOrgMetricsProjectTasks(project_id: id),
+                              ])
+                          }
+
+                        None -> base
+                      }
+                    }
+
+                    _ -> base
                   }
                 }
-
-                _ -> base
               }
-            }
           }
         }
       }
