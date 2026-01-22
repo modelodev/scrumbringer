@@ -29,7 +29,14 @@ import domain/api_error.{type ApiError}
 /// // <div class="error">Something went wrong</div>
 /// ```
 pub fn error_text(message: String) -> Element(msg) {
-  div([attribute.class("error")], [text(message)])
+  div(
+    [
+      attribute.class("error"),
+      attribute.attribute("role", "alert"),
+      attribute.attribute("aria-live", "assertive"),
+    ],
+    [text(message)],
+  )
 }
 
 /// Render an error message from an ApiError.

@@ -461,4 +461,27 @@ pub type Text {
   CardTasksCompleted
   TaskType
   TaskTitlePlaceholder
+
+  // Story 4.4 - Three-panel layout
+  // Accessibility labels
+  MainNavigation
+  MyActivity
+
+  // Left panel sections
+  Work
+  NewCard
+  Configuration
+  Team
+  Catalog
+  Automation
+  Organization
+  OrgUsers
+  Invites
+
+  // Right panel sections
+  InProgress
+  Resume
+  MyCards
+  NoTasksClaimed
+  NoCardsAssigned
 }

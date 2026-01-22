@@ -1,0 +1,211 @@
+//// Center Panel - Main content area with view mode switching
+////
+//// Mission: Render the center panel content based on current view mode,
+//// including toolbar with mode toggle, filters, and view content.
+////
+//// Responsibilities:
+//// - View mode toggle (Pool, List, Cards)
+//// - Filter controls
+//// - Content routing based on view mode
+////
+//// Non-responsibilities:
+//// - Individual view implementations (delegated to view modules)
+//// - State management (handled by parent)
+
+import gleam/option.{type Option, None, Some}
+import lustre/attribute
+import lustre/element.{type Element}
+import lustre/element/html.{div, input, label, option, select, text}
+import lustre/event
+
+import domain/capability.{type Capability}
+import domain/task_type.{type TaskType}
+import domain/view_mode.{type ViewMode, Cards, List, Pool}
+import scrumbringer_client/features/layout/view_mode_toggle
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale.{type Locale}
+import scrumbringer_client/i18n/text as i18n_text
+
+// =============================================================================
+// Types
+// =============================================================================
+
+/// Configuration for the center panel
+pub type CenterPanelConfig(msg) {
+  CenterPanelConfig(
+    locale: Locale,
+    view_mode: ViewMode,
+    on_view_mode_change: fn(ViewMode) -> msg,
+    // Filters
+    task_types: List(TaskType),
+    capabilities: List(Capability),
+    type_filter: Option(Int),
+    capability_filter: Option(Int),
+    search_query: String,
+    on_type_filter_change: fn(String) -> msg,
+    on_capability_filter_change: fn(String) -> msg,
+    on_search_change: fn(String) -> msg,
+    // Content
+    pool_content: Element(msg),
+    list_content: Element(msg),
+    cards_content: Element(msg),
+  )
+}
+
+// =============================================================================
+// View
+// =============================================================================
+
+/// Renders the center panel with toolbar and content
+pub fn view(config: CenterPanelConfig(msg)) -> Element(msg) {
+  div(
+    [attribute.class("center-panel-content")],
+    [
+      // Toolbar: view mode toggle + filters
+      view_toolbar(config),
+      // Content based on view mode
+      view_content(config),
+    ],
+  )
+}
+
+fn view_toolbar(config: CenterPanelConfig(msg)) -> Element(msg) {
+  div(
+    [attribute.class("center-toolbar")],
+    [
+      // View mode toggle
+      view_mode_toggle.view(view_mode_toggle.ToggleConfig(
+        locale: config.locale,
+        current_mode: config.view_mode,
+        on_mode_change: config.on_view_mode_change,
+      )),
+      // Filters
+      view_filters(config),
+    ],
+  )
+}
+
+fn view_filters(config: CenterPanelConfig(msg)) -> Element(msg) {
+  div(
+    [attribute.class("center-filters")],
+    [
+      // Type filter
+      div(
+        [attribute.class("filter-field")],
+        [
+          label([], [text(i18n.t(config.locale, i18n_text.TypeLabel))]),
+          select(
+            [
+              attribute.attribute("data-testid", "filter-type"),
+              attribute.value(option_int_to_string(config.type_filter)),
+              event.on_input(config.on_type_filter_change),
+            ],
+            [
+              option(
+                [attribute.value("")],
+                i18n.t(config.locale, i18n_text.AllOption),
+              ),
+              ..list_map(config.task_types, fn(tt) {
+                option(
+                  [
+                    attribute.value(int_to_string(tt.id)),
+                    attribute.selected(Some(tt.id) == config.type_filter),
+                  ],
+                  tt.name,
+                )
+              })
+            ],
+          ),
+        ],
+      ),
+      // Capability filter
+      div(
+        [attribute.class("filter-field")],
+        [
+          label([], [text(i18n.t(config.locale, i18n_text.CapabilityLabel))]),
+          select(
+            [
+              attribute.attribute("data-testid", "filter-capability"),
+              attribute.value(option_int_to_string(config.capability_filter)),
+              event.on_input(config.on_capability_filter_change),
+            ],
+            [
+              option(
+                [attribute.value("")],
+                i18n.t(config.locale, i18n_text.AllOption),
+              ),
+              ..list_map(config.capabilities, fn(cap) {
+                option(
+                  [
+                    attribute.value(int_to_string(cap.id)),
+                    attribute.selected(Some(cap.id) == config.capability_filter),
+                  ],
+                  cap.name,
+                )
+              })
+            ],
+          ),
+        ],
+      ),
+      // Search
+      div(
+        [attribute.class("filter-field filter-search")],
+        [
+          label([], [text(i18n.t(config.locale, i18n_text.SearchLabel))]),
+          input([
+            attribute.type_("search"),
+            attribute.placeholder(
+              i18n.t(config.locale, i18n_text.SearchPlaceholder),
+            ),
+            attribute.value(config.search_query),
+            event.on_input(config.on_search_change),
+          ]),
+        ],
+      ),
+    ],
+  )
+}
+
+fn view_content(config: CenterPanelConfig(msg)) -> Element(msg) {
+  let content = case config.view_mode {
+    Pool -> config.pool_content
+    List -> config.list_content
+    Cards -> config.cards_content
+  }
+
+  let testid = case config.view_mode {
+    Pool -> "pool-canvas"
+    List -> "grouped-list"
+    Cards -> "kanban-board"
+  }
+
+  div(
+    [
+      attribute.class("center-content"),
+      attribute.attribute("data-testid", testid),
+    ],
+    [content],
+  )
+}
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+import gleam/int
+import gleam/list
+
+fn int_to_string(i: Int) -> String {
+  int.to_string(i)
+}
+
+fn option_int_to_string(opt: Option(Int)) -> String {
+  case opt {
+    Some(i) -> int.to_string(i)
+    None -> ""
+  }
+}
+
+fn list_map(items: List(a), f: fn(a) -> b) -> List(b) {
+  list.map(items, f)
+}

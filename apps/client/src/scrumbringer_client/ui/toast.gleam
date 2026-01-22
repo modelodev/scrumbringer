@@ -53,16 +53,23 @@ pub fn view(
   case toast {
     opt.None -> element.none()
     opt.Some(message) ->
-      div([attribute.class("toast")], [
-        span([], [text(message)]),
-        button(
-          [
-            attribute.class("toast-dismiss btn-xs"),
-            attribute.attribute("aria-label", dismiss_label),
-            event.on_click(on_dismiss),
-          ],
-          [text("×")],
-        ),
-      ])
+      div(
+        [
+          attribute.class("toast"),
+          attribute.attribute("role", "status"),
+          attribute.attribute("aria-live", "polite"),
+        ],
+        [
+          span([], [text(message)]),
+          button(
+            [
+              attribute.class("toast-dismiss btn-xs"),
+              attribute.attribute("aria-label", dismiss_label),
+              event.on_click(on_dismiss),
+            ],
+            [text("×")],
+          ),
+        ],
+      )
   }
 }

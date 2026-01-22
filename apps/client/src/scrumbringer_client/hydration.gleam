@@ -143,7 +143,11 @@ pub fn plan(route: router.Route, snapshot: Snapshot) -> List(Command) {
             False ->
               case has_access {
                 False -> [
-                  Redirect(to: router.Member(member_section.Pool, project_id)),
+                  Redirect(to: router.Member(
+                    member_section.Pool,
+                    project_id,
+                    None,
+                  )),
                 ]
                 True -> {
                   let base = case projects {
@@ -227,7 +231,7 @@ pub fn plan(route: router.Route, snapshot: Snapshot) -> List(Command) {
       }
     }
 
-    router.Member(_section, _project_id) -> {
+    router.Member(_section, _project_id, _view_mode) -> {
       case auth {
         Unknown -> [FetchMe]
         Unauthed -> [Redirect(to: router.Login)]

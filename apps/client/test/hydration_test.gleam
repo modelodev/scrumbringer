@@ -111,7 +111,7 @@ pub fn admin_route_non_admin_redirects_to_member_pool_test() {
 
   hydration.plan(router.Admin(permissions.Invites, Some(2)), snap)
   |> should.equal([
-    hydration.Redirect(to: router.Member(member_section.Pool, Some(2))),
+    hydration.Redirect(to: router.Member(member_section.Pool, Some(2), None)),
   ])
 }
 
@@ -202,7 +202,7 @@ pub fn admin_org_level_section_pm_redirects_test() {
   // Should redirect because Invites is org-level
   hydration.plan(router.Admin(permissions.Invites, Some(8)), snap)
   |> should.equal([
-    hydration.Redirect(to: router.Member(member_section.Pool, Some(8))),
+    hydration.Redirect(to: router.Member(member_section.Pool, Some(8), None)),
   ])
 }
 
@@ -228,7 +228,7 @@ pub fn member_pool_with_projects_loaded_only_refreshes_member_test() {
       org_metrics_project_id: None,
     )
 
-  hydration.plan(router.Member(member_section.Pool, Some(2)), snap)
+  hydration.plan(router.Member(member_section.Pool, Some(2), None), snap)
   |> should.equal([
     hydration.FetchActiveTask,
     hydration.FetchMeMetrics,

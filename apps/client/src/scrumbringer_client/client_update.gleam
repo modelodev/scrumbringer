@@ -96,7 +96,8 @@ import scrumbringer_client/client_state.{
   MemberPoolCapabilityChanged, MemberPoolDragToClaimArmed,
   MemberPoolFiltersToggled, MemberPoolMyTasksRectFetched,
   MemberPoolSearchChanged, MemberPoolSearchDebounced, MemberPoolStatusChanged,
-  MemberPanelToggled, MemberPoolTypeChanged, MemberPoolViewModeSet, MemberPositionEditClosed,
+  MemberPanelToggled, MobileLeftDrawerToggled, MobileRightDrawerToggled, MobileDrawersClosed,
+  MemberPoolTypeChanged, MemberPoolViewModeSet, MemberPositionEditClosed,
   MemberPositionEditOpened, MemberPositionEditSubmitted,
   MemberPositionEditXChanged, MemberPositionEditYChanged, MemberPositionSaved,
   MemberPositionsFetched, MemberProjectTasksFetched, MemberReleaseClicked,
@@ -129,7 +130,7 @@ import scrumbringer_client/client_state.{
   TaskTypeCreateIconSearchChanged, TaskTypeCreateIconCategoryChanged,
   TaskTypeCreateNameChanged, TaskTypeCreateSubmitted, TaskTypeCreated,
   TaskTypeIconErrored, TaskTypeIconLoaded, TaskTypesFetched, ThemeSelected,
-  ToastDismissed, UrlChanged,
+  NoOp, ToastDismissed, UrlChanged, ViewModeChanged,
   CloseWorkflowDialog, OpenWorkflowDialog, WorkflowCrudCreated,
   WorkflowCrudDeleted, WorkflowCrudUpdated, WorkflowRulesClicked,
   WorkflowsProjectFetched,
@@ -173,7 +174,12 @@ fn current_route(model: Model) -> router.Route {
 
     Admin -> router.Admin(model.active_section, model.selected_project_id)
 
-    Member -> router.Member(model.member_section, model.selected_project_id)
+    Member ->
+      router.Member(
+        model.member_section,
+        model.selected_project_id,
+        opt.Some(model.view_mode),
+      )
   }
 }
 
@@ -305,12 +311,15 @@ fn apply_route_fields(
       #(model, fx)
     }
 
-    router.Member(section, project_id) -> {
+    router.Member(section, project_id, view) -> {
       let capabilities_fx = case model.page, project_id {
         Admin, opt.Some(pid) ->
           api_org.list_project_capabilities(pid, CapabilitiesFetched)
         _, _ -> effect.none()
       }
+
+      // Update view mode if provided in URL
+      let new_view = opt.unwrap(view, model.view_mode)
 
       #(
         Model(
@@ -318,6 +327,7 @@ fn apply_route_fields(
           page: Member,
           member_section: section,
           selected_project_id: project_id,
+          view_mode: new_view,
           member_drag: opt.None,
           member_pool_drag_to_claim_armed: False,
           member_pool_drag_over_my_tasks: False,
@@ -724,8 +734,8 @@ fn handle_navigate_to(
   mode: NavMode,
 ) -> #(Model, Effect(Msg)) {
   let #(next_route, next_mode) = case model.is_mobile, route {
-    True, router.Member(member_section.Pool, project_id) -> #(
-      router.Member(member_section.MyBar, project_id),
+    True, router.Member(member_section.Pool, project_id, view) -> #(
+      router.Member(member_section.MyBar, project_id, view),
       Replace,
     )
     _, _ -> #(route, mode)
@@ -1099,6 +1109,9 @@ pub fn should_pause_active_task_on_project_change(
 /// ```
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
+    // No operation - used for placeholder handlers
+    NoOp -> #(model, effect.none())
+
     UrlChanged -> handle_url_changed(model)
 
     NavigateTo(route, mode) -> handle_navigate_to(model, route, mode)
@@ -1636,8 +1649,45 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     MemberPoolFiltersToggled -> pool_workflow.handle_pool_filters_toggled(model)
     MemberPoolViewModeSet(mode) ->
       pool_workflow.handle_pool_view_mode_set(model, mode)
+    ViewModeChanged(mode) -> {
+      let new_model = Model(..model, view_mode: mode)
+      let route =
+        router.Member(
+          model.member_section,
+          model.selected_project_id,
+          opt.Some(mode),
+        )
+      #(new_model, router.replace(route))
+    }
     MemberPanelToggled ->
       #(Model(..model, member_panel_expanded: !model.member_panel_expanded), effect.none())
+    MobileLeftDrawerToggled ->
+      #(
+        Model(
+          ..model,
+          mobile_left_drawer_open: !model.mobile_left_drawer_open,
+          mobile_right_drawer_open: False,
+        ),
+        effect.none(),
+      )
+    MobileRightDrawerToggled ->
+      #(
+        Model(
+          ..model,
+          mobile_right_drawer_open: !model.mobile_right_drawer_open,
+          mobile_left_drawer_open: False,
+        ),
+        effect.none(),
+      )
+    MobileDrawersClosed ->
+      #(
+        Model(
+          ..model,
+          mobile_left_drawer_open: False,
+          mobile_right_drawer_open: False,
+        ),
+        effect.none(),
+      )
     GlobalKeyDown(event) -> pool_workflow.handle_global_keydown(model, event)
 
     MemberPoolSearchChanged(v) ->

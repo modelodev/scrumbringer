@@ -88,6 +88,7 @@ import scrumbringer_client/hydration
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/member_section
 import scrumbringer_client/permissions
+import domain/view_mode
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/reset_password
 import scrumbringer_client/router
@@ -388,6 +389,8 @@ pub type Model {
     task_templates_dialog_mode: Option(TaskTemplateDialogMode),
     // Member section
     member_section: member_section.MemberSection,
+    // View mode for 3-panel layout (Pool | List | Cards)
+    view_mode: view_mode.ViewMode,
     member_active_task: Remote(ActiveTaskPayload),
     // Work sessions (multi-session model)
     member_work_sessions: Remote(WorkSessionsPayload),
@@ -418,6 +421,9 @@ pub type Model {
     member_pool_view_mode: pool_prefs.ViewMode,
     // Mobile panel toggle
     member_panel_expanded: Bool,
+    // Mobile drawer state
+    mobile_left_drawer_open: Bool,
+    mobile_right_drawer_open: Bool,
     // Member task creation
     member_create_dialog_open: Bool,
     member_create_title: String,
@@ -470,6 +476,8 @@ pub type Model {
 /// - Drag-and-drop interactions
 /// - Timer and metrics
 pub type Msg {
+  // No operation - used for placeholder handlers
+  NoOp
   // Pool drag-to-claim
   MemberPoolMyTasksRectFetched(Int, Int, Int, Int)
   MemberPoolDragToClaimArmed(Bool)
@@ -667,7 +675,13 @@ pub type Msg {
   MemberToggleMyCapabilitiesQuick
   MemberPoolFiltersToggled
   MemberPoolViewModeSet(pool_prefs.ViewMode)
+  // New view mode for 3-panel layout
+  ViewModeChanged(view_mode.ViewMode)
   MemberPanelToggled
+  // Mobile drawer controls
+  MobileLeftDrawerToggled
+  MobileRightDrawerToggled
+  MobileDrawersClosed
 
   // Keyboard
   GlobalKeyDown(pool_prefs.KeyEvent)
@@ -972,6 +986,8 @@ pub fn default_model() -> Model {
     task_templates_dialog_mode: option.None,
     // Member section
     member_section: member_section.Pool,
+    // View mode for 3-panel layout
+    view_mode: view_mode.Pool,
     member_active_task: NotAsked,
     member_work_sessions: NotAsked,
     member_metrics: NotAsked,
@@ -1002,6 +1018,9 @@ pub fn default_model() -> Model {
     member_pool_view_mode: pool_prefs.Canvas,
     // Mobile panel toggle
     member_panel_expanded: False,
+    // Mobile drawer state
+    mobile_left_drawer_open: False,
+    mobile_right_drawer_open: False,
     // Member task creation
     member_create_dialog_open: False,
     member_create_title: "",

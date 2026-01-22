@@ -501,5 +501,28 @@ pub fn translate(text: Text) -> String {
     text.CardTasksCompleted -> "completadas"
     text.TaskType -> "Tipo de tarea"
     text.TaskTitlePlaceholder -> "Título de la tarea..."
+
+    // Story 4.4 - Layout de 3 paneles
+    // Etiquetas de accesibilidad
+    text.MainNavigation -> "Navegación principal"
+    text.MyActivity -> "Mi actividad"
+
+    // Secciones del panel izquierdo
+    text.Work -> "Trabajo"
+    text.NewCard -> "Nueva Ficha"
+    text.Configuration -> "Configuración"
+    text.Team -> "Equipo"
+    text.Catalog -> "Catálogo"
+    text.Automation -> "Automatización"
+    text.Organization -> "Organización"
+    text.OrgUsers -> "Usuarios"
+    text.Invites -> "Invitaciones"
+
+    // Secciones del panel derecho
+    text.InProgress -> "En Curso"
+    text.Resume -> "Reanudar"
+    text.MyCards -> "Mis Fichas"
+    text.NoTasksClaimed -> "Sin tareas reclamadas"
+    text.NoCardsAssigned -> "Sin fichas asignadas"
   }
 }

@@ -1,0 +1,257 @@
+//// KanbanBoard - Cards displayed in kanban columns
+////
+//// Mission: Display cards organized in three columns by state
+//// (Pendiente, En Curso, Cerrada) with progress indicators.
+////
+//// Responsibilities:
+//// - Organize cards by state into columns
+//// - Display card progress (completed/total tasks)
+//// - Show context menu for PM/Admin (edit, delete)
+//// - Handle card selection
+////
+//// Non-responsibilities:
+//// - Card CRUD operations (handled by parent)
+//// - Task details (handled by other views)
+
+import gleam/int
+import gleam/list
+import gleam/option.{None, Some}
+import lustre/attribute
+import lustre/element.{type Element}
+import lustre/element/html.{button, div, h4, span, text}
+import lustre/event
+
+import domain/card.{type Card, Cerrada, EnCurso, Pendiente}
+import domain/task.{type Task}
+import domain/task_status
+import scrumbringer_client/i18n/i18n
+import scrumbringer_client/i18n/locale.{type Locale}
+import scrumbringer_client/i18n/text as i18n_text
+
+// =============================================================================
+// Types
+// =============================================================================
+
+/// Configuration for the kanban board
+pub type KanbanConfig(msg) {
+  KanbanConfig(
+    locale: Locale,
+    cards: List(Card),
+    tasks: List(Task),
+    is_pm_or_admin: Bool,
+    on_card_click: fn(Int) -> msg,
+    on_card_edit: fn(Int) -> msg,
+    on_card_delete: fn(Int) -> msg,
+    on_new_card: msg,
+  )
+}
+
+/// Card with computed progress
+type CardWithProgress {
+  CardWithProgress(card: Card, completed: Int, total: Int)
+}
+
+// =============================================================================
+// View
+// =============================================================================
+
+/// Renders the kanban board with 3 columns
+pub fn view(config: KanbanConfig(msg)) -> Element(msg) {
+  let cards_with_progress = compute_progress(config.cards, config.tasks)
+
+  // Group by state
+  let pendiente =
+    list.filter(cards_with_progress, fn(cwp) {
+      cwp.card.state == Pendiente
+    })
+  let en_curso =
+    list.filter(cards_with_progress, fn(cwp) { cwp.card.state == EnCurso })
+  let cerrada =
+    list.filter(cards_with_progress, fn(cwp) { cwp.card.state == Cerrada })
+
+  div(
+    [attribute.class("kanban-board")],
+    [
+      view_column(
+        config,
+        i18n.t(config.locale, i18n_text.CardStatePendiente),
+        "pendiente",
+        pendiente,
+      ),
+      view_column(
+        config,
+        i18n.t(config.locale, i18n_text.CardStateEnCurso),
+        "en-curso",
+        en_curso,
+      ),
+      view_column(
+        config,
+        i18n.t(config.locale, i18n_text.CardStateCerrada),
+        "cerrada",
+        cerrada,
+      ),
+    ],
+  )
+}
+
+fn view_column(
+  config: KanbanConfig(msg),
+  title: String,
+  column_class: String,
+  cards: List(CardWithProgress),
+) -> Element(msg) {
+  div(
+    [attribute.class("kanban-column " <> column_class)],
+    [
+      div(
+        [attribute.class("kanban-column-header")],
+        [
+          h4([], [text(title)]),
+          span([attribute.class("column-count")], [
+            text(int.to_string(list.length(cards))),
+          ]),
+        ],
+      ),
+      div(
+        [attribute.class("kanban-column-content")],
+        list.map(cards, fn(cwp) { view_card(config, cwp) }),
+      ),
+    ],
+  )
+}
+
+fn view_card(config: KanbanConfig(msg), cwp: CardWithProgress) -> Element(msg) {
+  let progress_text =
+    int.to_string(cwp.completed) <> "/" <> int.to_string(cwp.total)
+
+  let progress_percent = case cwp.total {
+    0 -> 0
+    _ -> cwp.completed * 100 / cwp.total
+  }
+
+  div(
+    [
+      attribute.class("kanban-card"),
+      attribute.attribute("data-testid", "card-item"),
+      attribute.attribute("data-card-id", int.to_string(cwp.card.id)),
+    ],
+    [
+      // Card header with title and context menu
+      div(
+        [attribute.class("kanban-card-header")],
+        [
+          button(
+            [
+              attribute.class("kanban-card-title"),
+              attribute.attribute("data-testid", "card-title"),
+              event.on_click(config.on_card_click(cwp.card.id)),
+            ],
+            [
+              // Color dot
+              case cwp.card.color {
+                Some(color) ->
+                  span(
+                    [
+                      attribute.class("card-color-dot"),
+                      attribute.style("background-color", color),
+                    ],
+                    [],
+                  )
+                None -> element.none()
+              },
+              text(cwp.card.title),
+            ],
+          ),
+          // Context menu for PM/Admin
+          case config.is_pm_or_admin {
+            True -> view_context_menu(config, cwp.card.id)
+            False -> element.none()
+          },
+        ],
+      ),
+      // Description (truncated)
+      case cwp.card.description {
+        "" -> element.none()
+        desc ->
+          div([attribute.class("kanban-card-desc")], [
+            text(truncate(desc, 80)),
+          ])
+      },
+      // Progress bar
+      div(
+        [attribute.class("kanban-card-progress")],
+        [
+          div(
+            [attribute.class("progress-bar")],
+            [
+              div(
+                [
+                  attribute.class("progress-fill"),
+                  attribute.style("width", int.to_string(progress_percent) <> "%"),
+                ],
+                [],
+              ),
+            ],
+          ),
+          span([attribute.class("progress-text")], [text(progress_text)]),
+        ],
+      ),
+    ],
+  )
+}
+
+fn view_context_menu(config: KanbanConfig(msg), card_id: Int) -> Element(msg) {
+  div(
+    [
+      attribute.class("kanban-card-menu"),
+      attribute.attribute("data-testid", "card-context-menu"),
+    ],
+    [
+      button(
+        [
+          attribute.class("btn-icon btn-xs"),
+          attribute.attribute("data-testid", "card-edit-btn"),
+          attribute.attribute("aria-label", "Edit card"),
+          event.on_click(config.on_card_edit(card_id)),
+        ],
+        [text("✏")],
+      ),
+      button(
+        [
+          attribute.class("btn-icon btn-xs btn-danger"),
+          attribute.attribute("data-testid", "card-delete-btn"),
+          attribute.attribute("aria-label", "Delete card"),
+          event.on_click(config.on_card_delete(card_id)),
+        ],
+        [text("🗑")],
+      ),
+    ],
+  )
+}
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+fn compute_progress(
+  cards: List(Card),
+  tasks: List(Task),
+) -> List(CardWithProgress) {
+  list.map(cards, fn(card) {
+    let card_tasks =
+      list.filter(tasks, fn(t) { t.card_id == Some(card.id) })
+    let completed =
+      list.count(card_tasks, fn(t) { t.status == task_status.Completed })
+    let total = list.length(card_tasks)
+    CardWithProgress(card: card, completed: completed, total: total)
+  })
+}
+
+fn truncate(s: String, max_len: Int) -> String {
+  case string.length(s) > max_len {
+    True -> string.slice(s, 0, max_len) <> "..."
+    False -> s
+  }
+}
+
+import gleam/string

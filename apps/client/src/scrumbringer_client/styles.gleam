@@ -579,6 +579,141 @@ pub fn base_css() -> String {
     ".admin-section-icon { font-size: 16px; }",
     // Responsive dialog
     "@media (max-width: 640px) { .dialog { max-height: 100vh; border-radius: 0; } .dialog-overlay { padding: 0; } .dialog-sm, .dialog-md, .dialog-lg, .dialog-xl { width: 100%; height: 100%; } .dialog-body { padding: 16px; } .dialog-header, .dialog-footer { padding: 12px 16px; } }",
+    // =============================================================================
+    // Three-panel layout (Story 4.4)
+    // =============================================================================
+    // Base layout - desktop 3 columns
+    ".three-panel-layout { display: grid; grid-template-columns: 240px 1fr 300px; gap: 12px; min-height: calc(100vh - 48px); }",
+    // Left panel (navigation)
+    ".panel-left { background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; position: sticky; top: 12px; max-height: calc(100vh - 48px); overflow-y: auto; }",
+    // Center panel (main content)
+    ".panel-center { background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 12px; padding: 12px; min-width: 0; }",
+    // Right panel (activity/profile)
+    ".panel-right { background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; position: sticky; top: 12px; max-height: calc(100vh - 48px); overflow-y: auto; }",
+    // Tablet: 2 columns (left + center, right as drawer)
+    "@media (max-width: 1024px) { .three-panel-layout { grid-template-columns: 220px 1fr; } .panel-right { display: none; } }",
+    // Mobile: 1 column (center only, both panels as drawers)
+    "@media (max-width: 768px) { .three-panel-layout { grid-template-columns: 1fr; } .panel-left { display: none; } .panel-right { display: none; } }",
+    // =============================================================================
+    // Left Panel Components (Story 4.4)
+    // =============================================================================
+    ".left-panel-content { display: flex; flex-direction: column; gap: 16px; }",
+    ".project-selector-section { margin-bottom: 8px; }",
+    ".project-selector-dropdown { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--sb-border); background: var(--sb-elevated); font-weight: 500; }",
+    ".panel-section { display: flex; flex-direction: column; gap: 8px; }",
+    ".section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--sb-muted); margin: 0 0 4px 0; }",
+    ".btn-action { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 12px; text-align: left; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 10px; cursor: pointer; }",
+    ".btn-action:hover { border-color: var(--sb-primary); }",
+    ".btn-action:disabled { opacity: 0.5; cursor: not-allowed; }",
+    ".btn-icon-prefix { font-weight: 700; color: var(--sb-primary); }",
+    ".nav-link { display: block; width: 100%; padding: 8px 12px; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: var(--sb-text); }",
+    ".nav-link:hover { background: var(--sb-elevated); }",
+    ".nav-link:disabled { opacity: 0.5; cursor: not-allowed; }",
+    // =============================================================================
+    // Right Panel Components (Story 4.4)
+    // =============================================================================
+    ".right-panel-content { display: flex; flex-direction: column; gap: 16px; }",
+    ".active-task-section, .my-tasks-section, .my-cards-section { display: flex; flex-direction: column; gap: 8px; }",
+    ".active-task-card { background: var(--sb-elevated); border: 1px solid var(--sb-primary); border-radius: 10px; padding: 12px; }",
+    ".task-timer { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: center; margin: 8px 0; }",
+    ".task-actions { display: flex; gap: 8px; justify-content: center; }",
+    ".task-list { display: flex; flex-direction: column; gap: 6px; }",
+    ".task-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 8px; }",
+    ".profile-section { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--sb-border); display: flex; flex-direction: column; gap: 8px; }",
+    ".user-info { text-align: center; }",
+    ".user-email { color: var(--sb-muted); font-size: 14px; }",
+    ".btn-logout { width: 100%; }",
+    // =============================================================================
+    // View Mode Toggle (Story 4.4)
+    // =============================================================================
+    ".view-mode-toggle { display: inline-flex; gap: 4px; padding: 4px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 12px; }",
+    ".view-mode-btn { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: transparent; border: none; border-radius: 8px; cursor: pointer; color: var(--sb-text); transition: all 0.15s ease; }",
+    ".view-mode-btn:hover { background: var(--sb-surface); }",
+    ".view-mode-btn.active { background: var(--sb-primary); color: var(--sb-inverse); }",
+    ".view-mode-icon { font-size: 16px; }",
+    ".view-mode-label { font-size: 14px; font-weight: 500; }",
+    "@media (max-width: 768px) { .view-mode-label { display: none; } }",
+    // =============================================================================
+    // Center Panel / Toolbar (Story 4.4)
+    // =============================================================================
+    ".center-panel-content { display: flex; flex-direction: column; gap: 12px; height: 100%; }",
+    ".center-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }",
+    ".center-filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-left: auto; }",
+    ".filter-field { display: flex; flex-direction: column; gap: 4px; }",
+    ".filter-field label { font-size: 11px; color: var(--sb-muted); }",
+    ".filter-field select, .filter-field input { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--sb-border); background: var(--sb-elevated); min-width: 120px; }",
+    ".filter-search input { min-width: 160px; }",
+    ".center-content { flex: 1; overflow: auto; }",
+    // =============================================================================
+    // Grouped List View (Story 4.4)
+    // =============================================================================
+    ".grouped-list { display: flex; flex-direction: column; gap: 12px; }",
+    ".grouped-list-empty { text-align: center; color: var(--sb-muted); padding: 40px 20px; }",
+    ".card-group { background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 12px; overflow: hidden; }",
+    ".card-group-header { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 16px; background: transparent; border: none; cursor: pointer; text-align: left; }",
+    ".card-group-header:hover { background: var(--sb-surface); }",
+    ".expand-icon { font-size: 12px; color: var(--sb-muted); width: 16px; }",
+    ".card-title { flex: 1; font-weight: 500; }",
+    ".card-progress { font-size: 13px; color: var(--sb-muted); }",
+    ".card-color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }",
+    ".card-task-list { list-style: none; margin: 0; padding: 0 16px 12px 16px; display: flex; flex-direction: column; gap: 6px; }",
+    ".task-item.status-available { border-left: 3px solid var(--sb-success); }",
+    ".task-item.status-claimed { border-left: 3px solid var(--sb-warning); }",
+    ".task-item.status-taken { border-left: 3px solid var(--sb-primary); }",
+    ".task-item.status-completed { border-left: 3px solid var(--sb-muted); opacity: 0.7; }",
+    ".task-item-content { flex: 1; background: transparent; border: none; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; padding: 0; }",
+    ".task-status { font-size: 12px; color: var(--sb-muted); }",
+    ".btn-claim { background: var(--sb-success); color: white; border-color: var(--sb-success); }",
+    // =============================================================================
+    // Kanban Board View (Story 4.4)
+    // =============================================================================
+    ".kanban-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; height: 100%; min-height: 400px; }",
+    "@media (max-width: 900px) { .kanban-board { grid-template-columns: 1fr; } }",
+    ".kanban-column { background: var(--sb-bg); border: 1px solid var(--sb-border); border-radius: 12px; display: flex; flex-direction: column; min-height: 200px; }",
+    ".kanban-column.pendiente { border-top: 3px solid var(--sb-muted); }",
+    ".kanban-column.en-curso { border-top: 3px solid var(--sb-primary); }",
+    ".kanban-column.cerrada { border-top: 3px solid var(--sb-success); }",
+    ".kanban-column-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--sb-border); }",
+    ".kanban-column-header h4 { margin: 0; font-size: 14px; font-weight: 600; }",
+    ".column-count { font-size: 12px; color: var(--sb-muted); background: var(--sb-elevated); padding: 2px 8px; border-radius: 10px; }",
+    ".kanban-column-content { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }",
+    ".kanban-card { background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 10px; padding: 12px; }",
+    ".kanban-card-header { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }",
+    ".kanban-card-title { flex: 1; background: transparent; border: none; cursor: pointer; text-align: left; font-weight: 500; padding: 0; display: flex; align-items: center; gap: 6px; }",
+    ".kanban-card-title:hover { color: var(--sb-primary); }",
+    ".kanban-card-menu { display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; }",
+    ".kanban-card:hover .kanban-card-menu { opacity: 1; }",
+    ".kanban-card-desc { font-size: 13px; color: var(--sb-muted); margin-bottom: 8px; line-height: 1.4; }",
+    ".kanban-card-progress { display: flex; align-items: center; gap: 8px; }",
+    ".progress-bar { flex: 1; height: 6px; background: var(--sb-border); border-radius: 3px; overflow: hidden; }",
+    ".progress-fill { height: 100%; background: var(--sb-success); transition: width 0.3s ease; }",
+    ".progress-text { font-size: 12px; color: var(--sb-muted); min-width: 40px; text-align: right; }",
+    ".btn-danger { color: var(--sb-danger); }",
+    ".btn-danger:hover { background: color-mix(in oklab, var(--sb-danger) 10%, transparent); }",
+    // =============================================================================
+    // Responsive Drawers (Story 4.4 - Phase 6)
+    // =============================================================================
+    ".drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }",
+    ".drawer-overlay.open { opacity: 1; pointer-events: auto; }",
+    ".drawer { position: fixed; top: 0; bottom: 0; width: 280px; background: var(--sb-surface); z-index: 101; transform: translateX(-100%); transition: transform 0.3s ease; display: flex; flex-direction: column; }",
+    ".drawer.right { right: 0; left: auto; transform: translateX(100%); }",
+    ".drawer.open { transform: translateX(0); }",
+    ".drawer-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--sb-border); }",
+    ".drawer-content { flex: 1; overflow-y: auto; padding: 16px; }",
+    ".drawer-close { background: transparent; border: none; font-size: 24px; cursor: pointer; color: var(--sb-muted); }",
+    // =============================================================================
+    // Mobile Mini Task Bar (Story 4.4 - Phase 6)
+    // =============================================================================
+    ".mini-task-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--sb-primary); color: var(--sb-inverse); padding: 12px 16px; display: none; align-items: center; gap: 12px; z-index: 90; }",
+    "@media (max-width: 768px) { .mini-task-bar.visible { display: flex; } }",
+    ".mini-task-bar .task-title { flex: 1; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }",
+    ".mini-task-bar .task-timer { font-variant-numeric: tabular-nums; font-weight: 600; }",
+    // =============================================================================
+    // Mobile Header (Story 4.4 - Phase 6)
+    // =============================================================================
+    ".mobile-header { display: none; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--sb-surface); border-bottom: 1px solid var(--sb-border); }",
+    "@media (max-width: 768px) { .mobile-header { display: flex; } }",
+    ".menu-hamburger, .menu-user { background: transparent; border: none; font-size: 24px; cursor: pointer; padding: 8px; }",
   ]
   |> string.join("\n")
 }

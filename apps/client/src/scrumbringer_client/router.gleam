@@ -56,6 +56,7 @@ import scrumbringer_client/client_ffi
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/i18n/text as i18n_text
+import domain/view_mode.{type ViewMode}
 import scrumbringer_client/member_section.{type MemberSection}
 import scrumbringer_client/permissions
 
@@ -72,7 +73,11 @@ pub type Route {
   AcceptInvite(token: String)
   ResetPassword(token: String)
   Admin(section: permissions.AdminSection, project_id: Option(Int))
-  Member(section: MemberSection, project_id: Option(Int))
+  Member(
+    section: MemberSection,
+    project_id: Option(Int),
+    view_mode: Option(ViewMode),
+  )
 }
 
 /// Result of parsing a URL, indicating whether it was parsed directly
@@ -109,9 +114,26 @@ pub fn parse(pathname: String, search: String, hash: String) -> ParseResult {
   }
 
   // Normalize invalid `project=` query values by removing them (replaceState).
-  case legacy != None || has_invalid_project(search) {
+  // Also redirect deprecated member section slugs (Story 4.4)
+  let needs_redirect =
+    legacy != None
+    || has_invalid_project(search)
+    || has_deprecated_member_slug(pathname)
+
+  case needs_redirect {
     True -> Redirect(route)
     False -> Parsed(route)
+  }
+}
+
+/// Story 4.4: Check if pathname contains a deprecated member section slug
+fn has_deprecated_member_slug(pathname: String) -> Bool {
+  case string.starts_with(pathname, "/app/") {
+    True -> {
+      let slug = path_segment(pathname, "/app")
+      member_section.is_deprecated_slug(slug)
+    }
+    False -> False
   }
 }
 
@@ -140,7 +162,11 @@ fn parse_legacy_hash(hash: String, search: String) -> Option(Route) {
         True -> {
           let slug = drop_prefix(hash, "#/app/")
           let section = member_section.from_slug(slug)
-          Some(Member(section, project_id_from_search(search)))
+          Some(Member(
+            section,
+            project_id_from_search(search),
+            view_mode_from_search(search),
+          ))
         }
 
         False -> None
@@ -170,6 +196,7 @@ fn parse_pathname(pathname: String, search: String) -> Route {
               Member(
                 member_section.from_slug(slug),
                 project_id_from_search(search),
+                view_mode_from_search(search),
               )
             }
 
@@ -210,9 +237,9 @@ pub fn format(route: Route) -> String {
       with_project(base, project_id)
     }
 
-    Member(section, project_id) -> {
+    Member(section, project_id, view) -> {
       let base = "/app/" <> member_section.to_slug(section)
-      with_project(base, project_id)
+      with_query_params(base, project_id, view)
     }
   }
 }
@@ -221,6 +248,25 @@ fn with_project(base: String, project_id: Option(Int)) -> String {
   case project_id {
     None -> base
     Some(id) -> base <> "?project=" <> int.to_string(id)
+  }
+}
+
+fn with_query_params(
+  base: String,
+  project_id: Option(Int),
+  view: Option(ViewMode),
+) -> String {
+  let params = [
+    project_id |> option.map(fn(id) { "project=" <> int.to_string(id) }),
+    view |> option.map(fn(v) { "view=" <> view_mode.to_string(v) }),
+  ]
+  let query =
+    params
+    |> list.filter_map(fn(p) { option.to_result(p, Nil) })
+    |> string.join("&")
+  case query {
+    "" -> base
+    q -> base <> "?" <> q
   }
 }
 
@@ -241,6 +287,11 @@ fn project_id_from_search(search: String) -> Option(Int) {
         Error(_) -> None
       }
   }
+}
+
+fn view_mode_from_search(search: String) -> Option(ViewMode) {
+  query_param(search, "view")
+  |> option.map(view_mode.from_string)
 }
 
 fn query_param(search: String, key: String) -> Option(String) {
@@ -310,37 +361,22 @@ fn admin_section_slug(section: permissions.AdminSection) -> String {
 
 /// Apply mobile-specific routing rules.
 ///
-/// On mobile devices, redirects Pool section to MyBar since Pool
-/// requires drag-and-drop which is not supported on mobile.
+/// Story 4.4: With the new 3-panel layout, mobile uses drawers instead of
+/// redirecting to different routes. Pool works on mobile (no drag-drop,
+/// uses tap-to-claim instead). This function is kept for backwards
+/// compatibility but now returns the input unchanged.
 ///
 /// ## Example
 ///
 /// ```gleam
 /// let result = parse("/app/pool", "", "")
 /// apply_mobile_rules(result, True)
-/// // Redirect(Member(MyBar, None))
+/// // Parsed(Member(Pool, None)) - no longer redirects
 /// ```
-pub fn apply_mobile_rules(result: ParseResult, is_mobile: Bool) -> ParseResult {
-  case is_mobile {
-    False -> result
-
-    True ->
-      case result {
-        Parsed(route) ->
-          case route {
-            Member(member_section.Pool, project_id) ->
-              Redirect(Member(member_section.MyBar, project_id))
-            _ -> Parsed(route)
-          }
-
-        Redirect(route) ->
-          case route {
-            Member(member_section.Pool, project_id) ->
-              Redirect(Member(member_section.MyBar, project_id))
-            _ -> Redirect(route)
-          }
-      }
-  }
+pub fn apply_mobile_rules(result: ParseResult, _is_mobile: Bool) -> ParseResult {
+  // Story 4.4: Mobile no longer redirects Pool to MyBar
+  // The 3-panel layout handles mobile with drawers
+  result
 }
 
 // =============================================================================
@@ -400,7 +436,7 @@ pub fn page_title_for_route(route: Route, locale: i18n_locale.Locale) -> String 
 
     Admin(section, _) -> Some(admin_section_title(section, locale))
 
-    Member(section, _) -> Some(member_section_title(section, locale))
+    Member(section, _, _) -> Some(member_section_title(section, locale))
   }
 
   case section_title {

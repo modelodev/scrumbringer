@@ -92,6 +92,7 @@ fn view_dialog(
         attribute.class("dialog " <> size_class),
         attribute.attribute("role", "dialog"),
         attribute.attribute("aria-modal", "true"),
+        attribute.attribute("aria-labelledby", "dialog-title"),
       ],
       [
         // Header
@@ -114,7 +115,7 @@ fn view_header(config: DialogConfig(Msg)) -> Element(Msg) {
         Some(icon) -> span([attribute.class("dialog-icon")], [text(icon)])
         None -> element.none()
       },
-      h3([], [text(config.title)]),
+      h3([attribute.id("dialog-title")], [text(config.title)]),
     ]),
     button(
       [
@@ -131,10 +132,17 @@ fn view_header(config: DialogConfig(Msg)) -> Element(Msg) {
 fn view_error(error: Option(String)) -> Element(Msg) {
   case error {
     Some(msg) ->
-      div([attribute.class("dialog-error")], [
-        span([], [text("\u{26A0}")]),
-        text(" " <> msg),
-      ])
+      div(
+        [
+          attribute.class("dialog-error"),
+          attribute.attribute("role", "alert"),
+          attribute.attribute("aria-live", "assertive"),
+        ],
+        [
+          span([attribute.attribute("aria-hidden", "true")], [text("\u{26A0}")]),
+          text(" " <> msg),
+        ],
+      )
     None -> element.none()
   }
 }

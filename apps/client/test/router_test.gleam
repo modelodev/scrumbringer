@@ -19,7 +19,7 @@ pub fn parse_member_pool_with_project_test() {
   let parsed = router.parse("/app/pool", "?project=2", "")
 
   parsed
-  |> should.equal(router.Parsed(router.Member(member_section.Pool, Some(2))))
+  |> should.equal(router.Parsed(router.Member(member_section.Pool, Some(2), None)))
 }
 
 pub fn parse_accept_invite_token_test() {
@@ -41,16 +41,18 @@ pub fn parse_invalid_project_redirects_and_drops_project_test() {
   |> should.equal(router.Redirect(router.Admin(permissions.Members, None)))
 }
 
-pub fn mobile_redirects_pool_to_my_bar_test() {
+// Story 4.4: Mobile no longer redirects to my-bar since it's deprecated
+// Pool is the main view in the new 3-panel layout
+pub fn mobile_keeps_pool_route_test() {
   router.parse("/app/pool", "?project=2", "")
   |> router.apply_mobile_rules(True)
-  |> should.equal(router.Redirect(router.Member(member_section.MyBar, Some(2))))
+  |> should.equal(router.Parsed(router.Member(member_section.Pool, Some(2), None)))
 }
 
 pub fn desktop_keeps_pool_route_test() {
   router.parse("/app/pool", "?project=2", "")
   |> router.apply_mobile_rules(False)
-  |> should.equal(router.Parsed(router.Member(member_section.Pool, Some(2))))
+  |> should.equal(router.Parsed(router.Member(member_section.Pool, Some(2), None)))
 }
 
 fn parse_formatted(url: String) -> router.ParseResult {
@@ -74,7 +76,7 @@ pub fn format_admin_with_project_test() {
 }
 
 pub fn format_member_pool_with_project_test() {
-  router.format(router.Member(member_section.Pool, Some(2)))
+  router.format(router.Member(member_section.Pool, Some(2), None))
   |> should.equal("/app/pool?project=2")
 }
 
@@ -83,8 +85,22 @@ pub fn roundtrip_admin_members_test() {
   router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
 }
 
-pub fn roundtrip_member_my_bar_without_project_test() {
-  let route = router.Member(member_section.MyBar, None)
+// Story 4.4: my-bar is deprecated and redirects to Pool
+pub fn deprecated_my_bar_redirects_to_pool_test() {
+  // Parsing /app/my-bar now redirects to Pool
+  router.parse("/app/my-bar", "", "")
+  |> should.equal(router.Redirect(router.Member(member_section.Pool, None, None)))
+}
+
+// Story 4.4: my-skills is deprecated and redirects to Pool
+pub fn deprecated_my_skills_redirects_to_pool_test() {
+  router.parse("/app/my-skills", "", "")
+  |> should.equal(router.Redirect(router.Member(member_section.Pool, None, None)))
+}
+
+// Fichas is still valid
+pub fn roundtrip_member_fichas_without_project_test() {
+  let route = router.Member(member_section.Fichas, None, None)
   router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
 }
 

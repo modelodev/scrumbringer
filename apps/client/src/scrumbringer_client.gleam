@@ -66,6 +66,7 @@ import scrumbringer_client/api/auth as api_auth
 import scrumbringer_client/client_ffi
 import scrumbringer_client/member_section
 import scrumbringer_client/permissions
+import domain/view_mode
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/reset_password
 import scrumbringer_client/router
@@ -192,7 +193,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
     router.AcceptInvite(_) -> AcceptInvitePage
     router.ResetPassword(_) -> ResetPasswordPage
     router.Admin(_, _) -> Admin
-    router.Member(_, _) -> Member
+    router.Member(_, _, _) -> Member
   }
 
   let active_section = case route {
@@ -201,13 +202,19 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
   }
 
   let member_section = case route {
-    router.Member(section, _) -> section
+    router.Member(section, _, _) -> section
     _ -> member_section.Pool
   }
 
   let selected_project_id = case route {
-    router.Admin(_, project_id) | router.Member(_, project_id) -> project_id
+    router.Admin(_, project_id) | router.Member(_, project_id, _) -> project_id
     _ -> opt.None
+  }
+
+  // Extract view mode from URL (default to Pool if not specified)
+  let initial_view_mode = case route {
+    router.Member(_, _, opt.Some(vm)) -> vm
+    _ -> view_mode.Pool
   }
 
   let #(accept_model, accept_action) = accept_invite.init(accept_token)
@@ -318,6 +325,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       task_types_create_error: opt.None,
       task_types_icon_preview: IconIdle,
       member_section: member_section,
+      view_mode: initial_view_mode,
       member_active_task: NotAsked,
       member_work_sessions: NotAsked,
       member_metrics: NotAsked,
@@ -343,6 +351,8 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       member_pool_filters_visible: pool_filters_visible,
       member_pool_view_mode: pool_view_mode,
       member_panel_expanded: False,
+      mobile_left_drawer_open: False,
+      mobile_right_drawer_open: False,
       member_create_dialog_open: False,
       member_create_title: "",
       member_create_description: "",
