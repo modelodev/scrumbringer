@@ -111,7 +111,8 @@ pub fn plan(route: router.Route, snapshot: Snapshot) -> List(Command) {
         _ -> []
       }
 
-    router.Admin(section, project_id) -> {
+    // Story 4.5: Config and Admin routes share hydration logic
+    router.Config(section, project_id) | router.Admin(section, project_id) -> {
       case auth {
         Unknown -> [FetchMe]
         Unauthed -> [Redirect(to: router.Login)]
@@ -226,6 +227,53 @@ pub fn plan(route: router.Route, snapshot: Snapshot) -> List(Command) {
                   }
                 }
               }
+          }
+        }
+      }
+    }
+
+    // Story 4.5: Org routes (org-scoped, no project_id)
+    router.Org(section) -> {
+      case auth {
+        Unknown -> [FetchMe]
+        Unauthed -> [Redirect(to: router.Login)]
+        Authed(role) -> {
+          let is_org_admin = role == Admin
+          // Org sections require org admin
+          case is_org_admin {
+            False -> [
+              Redirect(to: router.Member(member_section.Pool, None, None)),
+            ]
+            True -> {
+              let base = case projects {
+                NotAsked | Failed -> [FetchProjects]
+                _ -> []
+              }
+              let base = case invite_links {
+                NotAsked | Failed -> list.append(base, [FetchInviteLinks])
+                _ -> base
+              }
+              let base = case capabilities {
+                NotAsked | Failed -> list.append(base, [FetchCapabilities])
+                _ -> base
+              }
+              case section {
+                permissions.OrgSettings ->
+                  case org_settings_users {
+                    NotAsked | Failed ->
+                      list.append(base, [FetchOrgSettingsUsers])
+                    _ -> base
+                  }
+                permissions.Metrics -> {
+                  case org_metrics_overview {
+                    NotAsked | Failed ->
+                      list.append(base, [FetchOrgMetricsOverview])
+                    _ -> base
+                  }
+                }
+                _ -> base
+              }
+            }
           }
         }
       }

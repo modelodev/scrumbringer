@@ -46,9 +46,9 @@ pub type KanbanConfig(msg) {
   )
 }
 
-/// Card with computed progress
+/// Card with computed progress and task list
 type CardWithProgress {
-  CardWithProgress(card: Card, completed: Int, total: Int)
+  CardWithProgress(card: Card, completed: Int, total: Int, tasks: List(Task))
 }
 
 // =============================================================================
@@ -196,8 +196,42 @@ fn view_card(config: KanbanConfig(msg), cwp: CardWithProgress) -> Element(msg) {
           span([attribute.class("progress-text")], [text(progress_text)]),
         ],
       ),
+      // Task list (Story 4.5 AC29)
+      view_task_list(cwp.tasks),
     ],
   )
+}
+
+/// Renders a compact list of tasks within the card (AC29)
+fn view_task_list(tasks: List(Task)) -> Element(msg) {
+  case list.length(tasks) {
+    0 -> element.none()
+    _ ->
+      div(
+        [
+          attribute.class("kanban-card-tasks"),
+          attribute.attribute("data-testid", "card-tasks"),
+        ],
+        list.map(list.take(tasks, 5), fn(t) {
+          let is_completed = t.status == task_status.Completed
+          let status_class = case is_completed {
+            True -> " completed"
+            False -> ""
+          }
+          let icon = case is_completed {
+            True -> "✓"
+            False -> "•"
+          }
+          div(
+            [attribute.class("kanban-task-item" <> status_class)],
+            [
+              span([attribute.class("task-status-icon")], [text(icon)]),
+              span([attribute.class("task-title")], [text(truncate(t.title, 30))]),
+            ],
+          )
+        }),
+      )
+  }
 }
 
 fn view_context_menu(config: KanbanConfig(msg), card_id: Int) -> Element(msg) {
@@ -243,7 +277,12 @@ fn compute_progress(
     let completed =
       list.count(card_tasks, fn(t) { t.status == task_status.Completed })
     let total = list.length(card_tasks)
-    CardWithProgress(card: card, completed: completed, total: total)
+    CardWithProgress(
+      card: card,
+      completed: completed,
+      total: total,
+      tasks: card_tasks,
+    )
   })
 }
 

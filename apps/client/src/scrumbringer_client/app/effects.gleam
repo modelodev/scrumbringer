@@ -104,3 +104,45 @@ pub fn save_pool_view_mode(mode: pool_prefs.ViewMode) -> Effect(msg) {
 pub fn focus_element(element_id: String) -> Effect(msg) {
   effect.from(fn(_dispatch) { client_ffi.focus_element(element_id) })
 }
+
+// =============================================================================
+// Sidebar Preferences Persistence Effects
+// =============================================================================
+
+/// localStorage key for sidebar collapse state
+const sidebar_storage_key = "scrumbringer:sidebar-collapsed"
+
+/// Save sidebar collapse state to localStorage.
+///
+/// Persists both config and org section collapsed states as "config,org" format.
+pub fn save_sidebar_state(config_collapsed: Bool, org_collapsed: Bool) -> Effect(msg) {
+  effect.from(fn(_dispatch) {
+    let config_str = case config_collapsed {
+      True -> "1"
+      False -> "0"
+    }
+    let org_str = case org_collapsed {
+      True -> "1"
+      False -> "0"
+    }
+    theme.local_storage_set(sidebar_storage_key, config_str <> "," <> org_str)
+  })
+}
+
+/// Load sidebar collapse state from localStorage.
+///
+/// Returns tuple of (config_collapsed, org_collapsed).
+/// Defaults to (False, False) if not found or invalid.
+pub fn load_sidebar_state() -> #(Bool, Bool) {
+  case theme.local_storage_get(sidebar_storage_key) {
+    "" -> #(False, False)
+    val -> {
+      case val {
+        "1,1" -> #(True, True)
+        "1,0" -> #(True, False)
+        "0,1" -> #(False, True)
+        _ -> #(False, False)
+      }
+    }
+  }
+}

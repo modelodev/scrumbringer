@@ -141,6 +141,7 @@ pub type Text {
   NoAvailableTasksRightNow
   CreateFirstTaskToStartUsingPool
   NoTasksMatchYourFilters
+  HideCompletedTasks
   TypeNumber(type_id: Int)
   MetaType
   MetaPriority

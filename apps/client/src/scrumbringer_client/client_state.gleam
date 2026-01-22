@@ -419,11 +419,16 @@ pub type Model {
     member_quick_my_caps: Bool,
     member_pool_filters_visible: Bool,
     member_pool_view_mode: pool_prefs.ViewMode,
+    // List view hide completed tasks filter
+    member_list_hide_completed: Bool,
     // Mobile panel toggle
     member_panel_expanded: Bool,
     // Mobile drawer state
     mobile_left_drawer_open: Bool,
     mobile_right_drawer_open: Bool,
+    // Sidebar section collapse state (persisted in localStorage)
+    sidebar_config_collapsed: Bool,
+    sidebar_org_collapsed: Bool,
     // Member task creation
     member_create_dialog_open: Bool,
     member_create_title: String,
@@ -675,6 +680,8 @@ pub type Msg {
   MemberToggleMyCapabilitiesQuick
   MemberPoolFiltersToggled
   MemberPoolViewModeSet(pool_prefs.ViewMode)
+  // List view hide completed toggle
+  MemberListHideCompletedToggled
   // New view mode for 3-panel layout
   ViewModeChanged(view_mode.ViewMode)
   MemberPanelToggled
@@ -682,6 +689,9 @@ pub type Msg {
   MobileLeftDrawerToggled
   MobileRightDrawerToggled
   MobileDrawersClosed
+  // Sidebar section collapse toggles
+  SidebarConfigToggled
+  SidebarOrgToggled
 
   // Keyboard
   GlobalKeyDown(pool_prefs.KeyEvent)
@@ -1016,11 +1026,16 @@ pub fn default_model() -> Model {
     member_quick_my_caps: True,
     member_pool_filters_visible: False,
     member_pool_view_mode: pool_prefs.Canvas,
+    // List view hide completed tasks filter
+    member_list_hide_completed: False,
     // Mobile panel toggle
     member_panel_expanded: False,
     // Mobile drawer state
     mobile_left_drawer_open: False,
     mobile_right_drawer_open: False,
+    // Sidebar section collapse state (persisted in localStorage)
+    sidebar_config_collapsed: False,
+    sidebar_org_collapsed: False,
     // Member task creation
     member_create_dialog_open: False,
     member_create_title: "",

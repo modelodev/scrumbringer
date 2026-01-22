@@ -19,7 +19,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, li, span, text, ul}
+import lustre/element/html.{button, div, input, label, li, span, text, ul}
 import lustre/event
 
 import domain/card.{type Card}
@@ -40,7 +40,9 @@ pub type GroupedListConfig(msg) {
     tasks: List(Task),
     cards: List(Card),
     expanded_cards: Dict(Int, Bool),
+    hide_completed: Bool,
     on_toggle_card: fn(Int) -> msg,
+    on_toggle_hide_completed: msg,
     on_task_click: fn(Int) -> msg,
     on_task_claim: fn(Int) -> msg,
   )
@@ -57,7 +59,13 @@ type CardGroup {
 
 /// Renders tasks grouped by card
 pub fn view(config: GroupedListConfig(msg)) -> Element(msg) {
-  let groups = group_tasks_by_card(config.tasks, config.cards)
+  // Filter out completed tasks if hide_completed is true
+  let filtered_tasks = case config.hide_completed {
+    True -> list.filter(config.tasks, fn(t) { t.status != Completed })
+    False -> config.tasks
+  }
+
+  let groups = group_tasks_by_card(filtered_tasks, config.cards)
 
   case groups {
     [] ->
@@ -67,7 +75,30 @@ pub fn view(config: GroupedListConfig(msg)) -> Element(msg) {
     _ ->
       div(
         [attribute.class("grouped-list")],
-        list.map(groups, fn(group) { view_card_group(config, group) }),
+        [
+          // Task groups
+          div(
+            [attribute.class("grouped-list-content")],
+            list.map(groups, fn(group) { view_card_group(config, group) }),
+          ),
+          // Hide completed checkbox (AC35)
+          div(
+            [attribute.class("grouped-list-footer")],
+            [
+              label(
+                [attribute.class("checkbox-label")],
+                [
+                  input([
+                    attribute.type_("checkbox"),
+                    attribute.checked(config.hide_completed),
+                    event.on_click(config.on_toggle_hide_completed),
+                  ]),
+                  text(i18n.t(config.locale, i18n_text.HideCompletedTasks)),
+                ],
+              ),
+            ],
+          ),
+        ],
       )
   }
 }
@@ -94,6 +125,11 @@ fn view_card_group(
   let progress_text =
     int.to_string(group.completed) <> "/" <> int.to_string(group.total)
 
+  let progress_percent = case group.total {
+    0 -> 0
+    _ -> group.completed * 100 / group.total
+  }
+
   div(
     [
       attribute.class("card-group"),
@@ -115,7 +151,6 @@ fn view_card_group(
             }),
           ]),
           span([attribute.class("card-title")], [text(title)]),
-          span([attribute.class("card-progress")], [text(progress_text)]),
           // Color indicator if card has color
           case group.card {
             Some(c) ->
@@ -132,6 +167,25 @@ fn view_card_group(
               }
             None -> element.none()
           },
+          // Progress bar (AC34)
+          div(
+            [attribute.class("card-progress-bar-container")],
+            [
+              div(
+                [attribute.class("progress-bar")],
+                [
+                  div(
+                    [
+                      attribute.class("progress-fill"),
+                      attribute.style("width", int.to_string(progress_percent) <> "%"),
+                    ],
+                    [],
+                  ),
+                ],
+              ),
+              span([attribute.class("card-progress")], [text(progress_text)]),
+            ],
+          ),
         ],
       ),
       // Task list (collapsible)

@@ -8,11 +8,21 @@ import scrumbringer_client/member_section
 import scrumbringer_client/permissions
 import scrumbringer_client/router
 
-pub fn parse_admin_members_with_project_test() {
+// Story 4.5: /admin/* redirects to /config/* or /org/*
+pub fn parse_admin_members_redirects_to_config_test() {
   let parsed = router.parse("/admin/members", "?project=2", "")
 
+  // Admin routes now redirect to Config routes
   parsed
-  |> should.equal(router.Parsed(router.Admin(permissions.Members, Some(2))))
+  |> should.equal(router.Redirect(router.Config(permissions.Members, Some(2))))
+}
+
+// Story 4.5: New /config/* routes
+pub fn parse_config_members_with_project_test() {
+  let parsed = router.parse("/config/members", "?project=2", "")
+
+  parsed
+  |> should.equal(router.Parsed(router.Config(permissions.Members, Some(2))))
 }
 
 pub fn parse_member_pool_with_project_test() {
@@ -29,16 +39,19 @@ pub fn parse_accept_invite_token_test() {
   |> should.equal(router.Parsed(router.AcceptInvite("il_token")))
 }
 
-pub fn parse_legacy_hash_redirects_to_pathname_test() {
+// Story 4.5: Legacy hash routes also redirect to Config
+pub fn parse_legacy_hash_redirects_to_config_test() {
   router.parse("/", "?project=2", "#/admin/members")
-  |> should.equal(router.Redirect(router.Admin(permissions.Members, Some(2))))
+  |> should.equal(router.Redirect(router.Config(permissions.Members, Some(2))))
 }
 
+// Story 4.5: Invalid project redirects to Config with None
 pub fn parse_invalid_project_redirects_and_drops_project_test() {
   let parsed = router.parse("/admin/members", "?project=nope", "")
 
+  // Admin routes redirect to Config, and invalid project is dropped
   parsed
-  |> should.equal(router.Redirect(router.Admin(permissions.Members, None)))
+  |> should.equal(router.Redirect(router.Config(permissions.Members, None)))
 }
 
 // Story 4.4: Mobile no longer redirects to my-bar since it's deprecated
@@ -70,9 +83,16 @@ pub fn format_login_test() {
   router.format(router.Login) |> should.equal("/")
 }
 
-pub fn format_admin_with_project_test() {
-  router.format(router.Admin(permissions.Members, Some(2)))
-  |> should.equal("/admin/members?project=2")
+// Story 4.5: Config routes format correctly
+pub fn format_config_with_project_test() {
+  router.format(router.Config(permissions.Members, Some(2)))
+  |> should.equal("/config/members?project=2")
+}
+
+// Story 4.5: Org routes format correctly
+pub fn format_org_invites_test() {
+  router.format(router.Org(permissions.Invites))
+  |> should.equal("/org/invites")
 }
 
 pub fn format_member_pool_with_project_test() {
@@ -80,9 +100,22 @@ pub fn format_member_pool_with_project_test() {
   |> should.equal("/app/pool?project=2")
 }
 
-pub fn roundtrip_admin_members_test() {
-  let route = router.Admin(permissions.Members, Some(2))
+// Story 4.5: Config routes roundtrip correctly
+pub fn roundtrip_config_members_test() {
+  let route = router.Config(permissions.Members, Some(2))
   router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
+}
+
+// Story 4.5: Org routes roundtrip correctly
+pub fn roundtrip_org_invites_test() {
+  let route = router.Org(permissions.Invites)
+  router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
+}
+
+// Story 4.5: Admin routes still format to /admin/* but parsing redirects
+pub fn format_admin_formats_to_admin_path_test() {
+  let route = router.Admin(permissions.Members, Some(2))
+  router.format(route) |> should.equal("/admin/members?project=2")
 }
 
 // Story 4.4: my-bar is deprecated and redirects to Pool

@@ -219,8 +219,9 @@ fn view_project_row(
   model: Model,
   p: OrgMetricsProjectOverview,
 ) -> Element(Msg) {
+  // Story 4.5: project_id no longer needed since we navigate to org Metrics
   let OrgMetricsProjectOverview(
-    project_id: project_id,
+    project_id: _,
     project_name: project_name,
     claimed_count: claimed,
     released_count: released,
@@ -237,11 +238,12 @@ fn view_project_row(
     td([], [text(option_percent_label(rrp))]),
     td([], [text(option_percent_label(pfrp))]),
     td([], [
+      // Story 4.5: Metrics is an org-scoped section
       button(
         [
           attribute.class("btn-xs"),
           event.on_click(NavigateTo(
-            router.Admin(permissions.Metrics, opt.Some(project_id)),
+            router.Org(permissions.Metrics),
             Push,
           )),
         ],

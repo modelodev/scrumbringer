@@ -35,6 +35,7 @@ import domain/org_role
 import domain/project_role.{Member as MemberRole} as project_role
 
 import scrumbringer_client/accept_invite
+import scrumbringer_client/app/effects as app_effects
 
 // API modules
 import scrumbringer_client/api/auth as api_auth
@@ -97,7 +98,9 @@ import scrumbringer_client/client_state.{
   MemberPoolFiltersToggled, MemberPoolMyTasksRectFetched,
   MemberPoolSearchChanged, MemberPoolSearchDebounced, MemberPoolStatusChanged,
   MemberPanelToggled, MobileLeftDrawerToggled, MobileRightDrawerToggled, MobileDrawersClosed,
-  MemberPoolTypeChanged, MemberPoolViewModeSet, MemberPositionEditClosed,
+  SidebarConfigToggled, SidebarOrgToggled,
+  MemberPoolTypeChanged, MemberPoolViewModeSet, MemberListHideCompletedToggled,
+  MemberPositionEditClosed,
   MemberPositionEditOpened, MemberPositionEditSubmitted,
   MemberPositionEditXChanged, MemberPositionEditYChanged, MemberPositionSaved,
   MemberPositionsFetched, MemberProjectTasksFetched, MemberReleaseClicked,
@@ -172,7 +175,15 @@ fn current_route(model: Model) -> router.Route {
       router.ResetPassword(token)
     }
 
-    Admin -> router.Admin(model.active_section, model.selected_project_id)
+    // Story 4.5: Use Config or Org routes based on section type
+    Admin ->
+      case model.active_section {
+        permissions.Invites
+        | permissions.OrgSettings
+        | permissions.Projects
+        | permissions.Metrics -> router.Org(model.active_section)
+        _ -> router.Config(model.active_section, model.selected_project_id)
+      }
 
     Member ->
       router.Member(
@@ -296,6 +307,39 @@ fn apply_route_fields(
       #(model, reset_password_effect(action))
     }
 
+    // Story 4.5: Config routes - project-scoped configuration
+    router.Config(section, project_id) -> {
+      let model =
+        Model(
+          ..model,
+          page: Admin,
+          active_section: section,
+          selected_project_id: project_id,
+          member_drag: opt.None,
+          member_pool_drag_to_claim_armed: False,
+          member_pool_drag_over_my_tasks: False,
+        )
+      let #(model, fx) = refresh_section_for_test(model)
+      #(model, fx)
+    }
+
+    // Story 4.5: Org routes - org-scoped administration
+    router.Org(section) -> {
+      let model =
+        Model(
+          ..model,
+          page: Admin,
+          active_section: section,
+          selected_project_id: opt.None,
+          member_drag: opt.None,
+          member_pool_drag_to_claim_armed: False,
+          member_pool_drag_over_my_tasks: False,
+        )
+      let #(model, fx) = refresh_section_for_test(model)
+      #(model, fx)
+    }
+
+    // Legacy Admin routes - still supported but will redirect via router.parse()
     router.Admin(section, project_id) -> {
       let model =
         Model(
@@ -1649,6 +1693,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     MemberPoolFiltersToggled -> pool_workflow.handle_pool_filters_toggled(model)
     MemberPoolViewModeSet(mode) ->
       pool_workflow.handle_pool_view_mode_set(model, mode)
+    MemberListHideCompletedToggled ->
+      #(
+        Model(..model, member_list_hide_completed: !model.member_list_hide_completed),
+        effect.none(),
+      )
     ViewModeChanged(mode) -> {
       let new_model = Model(..model, view_mode: mode)
       let route =
@@ -1687,6 +1736,22 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           mobile_right_drawer_open: False,
         ),
         effect.none(),
+      )
+    SidebarConfigToggled ->
+      #(
+        Model(..model, sidebar_config_collapsed: !model.sidebar_config_collapsed),
+        app_effects.save_sidebar_state(
+          !model.sidebar_config_collapsed,
+          model.sidebar_org_collapsed,
+        ),
+      )
+    SidebarOrgToggled ->
+      #(
+        Model(..model, sidebar_org_collapsed: !model.sidebar_org_collapsed),
+        app_effects.save_sidebar_state(
+          model.sidebar_config_collapsed,
+          !model.sidebar_org_collapsed,
+        ),
       )
     GlobalKeyDown(event) -> pool_workflow.handle_global_keydown(model, event)
 

@@ -34,9 +34,8 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{
-  a, button, div, h2, h3, label, option, p, select, span, style, text,
-}
+// Story 4.5: Removed label, option, select - no longer used after unified layout
+import lustre/element/html.{a, button, div, h2, h3, p, span, style, text}
 import lustre/event
 
 import domain/org_role
@@ -44,16 +43,18 @@ import domain/project.{type Project}
 import domain/user.{type User}
 
 import gleam/dict
+// Story 4.5: Removed LocaleSelected, ThemeSelected - no longer used
 import scrumbringer_client/client_state.{
   type Model, type Msg, AcceptInvite as AcceptInvitePage, Admin, Loaded,
-  LocaleSelected, Login, LogoutClicked, Member,
+  Login, LogoutClicked, Member,
   MemberCompleteClicked, MemberNowWorkingPauseClicked, MemberNowWorkingStartClicked,
   MemberReleaseClicked, NavigateTo, Push, ProjectSelected,
-  ResetPassword as ResetPasswordPage, ThemeSelected, ToastDismissed,
+  ResetPassword as ResetPasswordPage, ToastDismissed,
   CardDialogCreate, CardDialogDelete, CardDialogEdit, MemberCreateDialogOpened,
   MemberPoolCapabilityChanged, MemberPoolSearchChanged, MemberPoolTypeChanged,
   MemberTaskDetailsOpened, MemberClaimClicked, NoOp, OpenCardDetail, OpenCardDialog, ViewModeChanged,
   MobileLeftDrawerToggled, MobileRightDrawerToggled, MobileDrawersClosed,
+  SidebarConfigToggled, SidebarOrgToggled, MemberListHideCompletedToggled,
 }
 import scrumbringer_client/features/admin/view as admin_view
 import scrumbringer_client/features/auth/view as auth_view
@@ -66,17 +67,17 @@ import scrumbringer_client/features/pool/view as pool_view
 import scrumbringer_client/features/projects/view as projects_view
 import scrumbringer_client/features/skills/view as skills_view
 import scrumbringer_client/features/fichas/view as fichas_view
-import scrumbringer_client/i18n/i18n
+// Story 4.5: i18n module no longer imported directly, using i18n_text via update_helpers
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/member_section
 import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/styles
 import scrumbringer_client/theme
-import scrumbringer_client/ui/css_class as css
+// Story 4.5: css module no longer used after unified layout removal
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/empty_state
-import scrumbringer_client/ui/layout as ui_layout
+// Story 4.5: ui_layout no longer directly imported (used via panels)
 import scrumbringer_client/ui/toast as ui_toast
 import scrumbringer_client/update_helpers
 import scrumbringer_client/client_ffi
@@ -91,43 +92,6 @@ import scrumbringer_client/features/layout/right_panel
 import scrumbringer_client/features/layout/responsive_drawer
 import scrumbringer_client/features/views/grouped_list
 import scrumbringer_client/features/views/kanban_board
-
-// =============================================================================
-// Types
-// =============================================================================
-
-/// Navigation group definition for sidebar rendering.
-type NavGroup {
-  NavGroup(
-    label_key: i18n_text.Text,
-    sections: List(permissions.AdminSection),
-  )
-}
-
-/// All sidebar navigation groups in display order.
-fn nav_groups() -> List(NavGroup) {
-  [
-    NavGroup(i18n_text.NavGroupOrganization, [
-      permissions.Invites,
-      permissions.OrgSettings,
-    ]),
-    NavGroup(i18n_text.NavGroupProjects, [
-      permissions.Projects,
-      permissions.Metrics,
-      permissions.RuleMetrics,
-    ]),
-    NavGroup(i18n_text.NavGroupConfiguration, [
-      permissions.Members,
-      permissions.Capabilities,
-      permissions.TaskTypes,
-    ]),
-    NavGroup(i18n_text.NavGroupContent, [
-      permissions.Cards,
-      permissions.Workflows,
-      permissions.TaskTemplates,
-    ]),
-  ]
-}
 
 // =============================================================================
 // Main View
@@ -180,184 +144,86 @@ pub fn now_working_elapsed_from_ms_for_test(
 }
 
 // =============================================================================
-// Admin Views
+// Admin Views (Story 4.5: Now uses 3-panel layout like Member views)
 // =============================================================================
 
 fn view_admin(model: Model) -> Element(Msg) {
   case model.user {
     opt.None -> auth_view.view_login(model)
 
-    opt.Some(user) -> {
-      let projects = update_helpers.active_projects(model)
-      let selected = update_helpers.selected_project(model)
-      let sections = permissions.visible_sections(user.org_role, projects)
+    opt.Some(user) ->
+      case model.is_mobile {
+        // Mobile: mini-bar + drawer layout (same as member)
+        True ->
+          div([attribute.class("member member-mobile")], [
+            view_mobile_topbar(model, user),
+            div(
+              [
+                attribute.class("content member-content-mobile"),
+                attribute.attribute("id", "main-content"),
+                attribute.attribute("tabindex", "-1"),
+              ],
+              [view_admin_section_content(model, user)],
+            ),
+            now_working_mobile.view_mini_bar(model),
+            now_working_mobile.view_overlay(model),
+            now_working_mobile.view_panel_sheet(model, user.id),
+            view_mobile_left_drawer(model, user),
+            view_mobile_right_drawer(model, user),
+          ])
 
-      div([attribute.class("admin")], [
-        view_topbar(model, user),
-        div([attribute.class("body")], [
-          view_nav(model, sections),
-          // A02: Skip link target
-          div(
-            [
-              attribute.class("content"),
-              attribute.attribute("id", "main-content"),
-              attribute.attribute("tabindex", "-1"),
-            ],
-            [view_section(model, user, projects, selected)],
-          ),
-        ]),
-      ])
-    }
+        // Desktop: 3-panel layout (Story 4.5 unification)
+        False ->
+          div([attribute.class("member")], [
+            view_admin_three_panel(model, user),
+          ])
+      }
   }
 }
 
-fn view_topbar(model: Model, user: User) -> Element(Msg) {
-  let show_project_selector =
-    model.active_section == permissions.Members
-    || model.active_section == permissions.TaskTypes
-    || model.active_section == permissions.Metrics
+/// Renders the admin view using the new unified 3-panel layout (Story 4.5)
+fn view_admin_three_panel(model: Model, user: User) -> Element(Msg) {
+  let projects = update_helpers.active_projects(model)
+  let is_pm = case update_helpers.selected_project(model) {
+    opt.Some(project) -> permissions.is_project_manager(project)
+    opt.None -> False
+  }
+  let is_org_admin = user.org_role == org_role.Admin
 
-  div([attribute.class("topbar")], [
-    div([attribute.class("topbar-title")], [
-      text(i18n.t(model.locale, admin_section_label(model.active_section))),
-    ]),
-    case show_project_selector {
-      True -> view_project_selector(model)
-      False -> element.none()
-    },
-    div([attribute.class("topbar-actions")], [
-      // H01-H03: Group theme and locale in settings group
-      div([attribute.class("topbar-settings-group")], [
-        view_theme_switch(model),
-        view_locale_switch(model),
-      ]),
-      span([attribute.class("user")], [text(user.email)]),
-      button(
-        [
-          event.on_click(NavigateTo(
-            router.Member(
-              model.member_section,
-              model.selected_project_id,
-              opt.Some(model.view_mode),
-            ),
-            Push,
-          )),
-        ],
-        [text(i18n.t(model.locale, i18n_text.Pool))],
-      ),
-      button([event.on_click(LogoutClicked)], [
-        text(i18n.t(model.locale, i18n_text.Logout)),
-      ]),
-    ]),
-  ])
-}
+  // Build panel configs (same left and right as member)
+  let left_content = build_left_panel(model, user, projects, is_pm, is_org_admin)
+  let center_content = build_admin_center_panel(model, user)
+  let right_content = build_right_panel(model, user)
 
-fn view_nav(
-  model: Model,
-  sections: List(permissions.AdminSection),
-) -> Element(Msg) {
-  div([attribute.class("nav")], [
-    h3([], [text(update_helpers.i18n_t(model, i18n_text.Admin))]),
-    case sections {
-      [] ->
-        div([attribute.class("empty")], [
-          text(update_helpers.i18n_t(model, i18n_text.NoAdminPermissions)),
-        ])
-      _ -> view_nav_grouped(model, sections)
-    },
-  ])
-}
-
-/// Renders the admin sidebar with grouped sections and icons.
-///
-/// Uses `nav_groups()` to define the group structure and filters to visible
-/// sections, eliminating repetitive case expressions.
-fn view_nav_grouped(
-  model: Model,
-  visible: List(permissions.AdminSection),
-) -> Element(Msg) {
-  let groups =
-    nav_groups()
-    |> list.filter_map(fn(group) {
-      let NavGroup(label_key, group_sections) = group
-      let visible_sections =
-        list.filter(group_sections, fn(s) { list.contains(visible, s) })
-      case visible_sections {
-        [] -> Error(Nil)
-        _ ->
-          Ok(view_nav_group(
-            model,
-            update_helpers.i18n_t(model, label_key),
-            visible_sections,
-          ))
-      }
-    })
-
-  div([], groups)
-}
-
-/// Renders a navigation group with title and items.
-fn view_nav_group(
-  model: Model,
-  title: String,
-  sections: List(permissions.AdminSection),
-) -> Element(Msg) {
-  div([attribute.class("sidebar-group")], [
-    div([attribute.class("sidebar-group-title")], [text(title)]),
-    div(
-      [attribute.class("sidebar-group-items")],
-      list.map(sections, fn(section) { view_nav_item(model, section) }),
-    ),
-  ])
-}
-
-/// Renders a single navigation item with icon.
-fn view_nav_item(model: Model, section: permissions.AdminSection) -> Element(Msg) {
-  let is_active = section == model.active_section
-  let classes =
-    [css.nav_item(), ..css.when(css.active(), is_active)]
-    |> css.join
-
-  let needs_project =
-    section == permissions.Members || section == permissions.TaskTypes
-
-  let disabled = needs_project && model.selected_project_id == opt.None
-
-  button(
-    [
-      attribute.class(classes),
-      attribute.disabled(disabled),
-      event.on_click(NavigateTo(
-        router.Admin(section, model.selected_project_id),
-        Push,
-      )),
-    ],
-    [
-      view_nav_icon(section, model.theme),
-      span([], [text(i18n.t(model.locale, admin_section_label(section)))]),
-    ],
+  three_panel_layout.view_i18n(
+    left_content,
+    center_content,
+    right_content,
+    update_helpers.i18n_t(model, i18n_text.MainNavigation),
+    update_helpers.i18n_t(model, i18n_text.MyActivity),
   )
 }
 
-/// Returns the heroicon element for an admin section.
-///
-/// Uses type-safe `icons.section_icon()` to map sections to heroicons,
-/// eliminating magic strings and ensuring exhaustive coverage.
-fn view_nav_icon(
-  section: permissions.AdminSection,
-  current_theme: theme.Theme,
-) -> Element(Msg) {
-  let icon = icons.section_icon(section)
-  let url = icons.heroicon_typed_url(icon)
-  let color = theme.icon_filter(current_theme)
-
-  html.img([
-    attribute.src(url),
-    attribute.class(css.to_string(css.nav_item_icon())),
-    attribute.attribute("style", "filter: " <> color),
-    attribute.alt(""),
-  ])
+/// Builds the center panel for admin/config/org routes
+fn build_admin_center_panel(model: Model, user: User) -> Element(Msg) {
+  div(
+    [
+      attribute.class("admin-center-panel"),
+      attribute.attribute("data-testid", "admin-center-panel"),
+    ],
+    [view_admin_section_content(model, user)],
+  )
 }
+
+/// Renders the admin section content (CRUD views)
+fn view_admin_section_content(model: Model, user: User) -> Element(Msg) {
+  let projects = update_helpers.active_projects(model)
+  let selected = update_helpers.selected_project(model)
+  view_section(model, user, projects, selected)
+}
+
+// Story 4.5: Old admin topbar, nav, nav_grouped, nav_group, nav_item, nav_icon
+// functions removed - now using unified 3-panel layout with left_panel.gleam
 
 fn view_section(
   model: Model,
@@ -551,6 +417,14 @@ fn build_left_panel(
   is_pm: Bool,
   is_org_admin: Bool,
 ) -> Element(Msg) {
+  // Story 4.5: Get badge counts for sidebar
+  let pending_invites_count = case model.invite_links {
+    Loaded(links) ->
+      list.count(links, fn(link) { link.used_at == opt.None })
+    _ -> 0
+  }
+
+  // Story 4.5: Use Config and Org routes instead of Admin
   left_panel.view(left_panel.LeftPanelConfig(
     locale: model.locale,
     user: opt.Some(user),
@@ -558,33 +432,42 @@ fn build_left_panel(
     selected_project_id: model.selected_project_id,
     is_pm: is_pm,
     is_org_admin: is_org_admin,
+    // Collapse state
+    config_collapsed: model.sidebar_config_collapsed,
+    org_collapsed: model.sidebar_org_collapsed,
+    // Badge counts
+    pending_invites_count: pending_invites_count,
+    projects_count: list.length(projects),
+    // Event handlers
     on_project_change: ProjectSelected,
     on_new_task: MemberCreateDialogOpened,
     on_new_card: OpenCardDialog(CardDialogCreate),
     on_navigate_config_team: NavigateTo(
-      router.Admin(permissions.Members, model.selected_project_id),
+      router.Config(permissions.Members, model.selected_project_id),
       Push,
     ),
     on_navigate_config_catalog: NavigateTo(
-      router.Admin(permissions.Capabilities, model.selected_project_id),
+      router.Config(permissions.Capabilities, model.selected_project_id),
       Push,
     ),
     on_navigate_config_automation: NavigateTo(
-      router.Admin(permissions.Workflows, model.selected_project_id),
+      router.Config(permissions.Workflows, model.selected_project_id),
       Push,
     ),
     on_navigate_org_invites: NavigateTo(
-      router.Admin(permissions.Invites, model.selected_project_id),
+      router.Org(permissions.Invites),
       Push,
     ),
     on_navigate_org_users: NavigateTo(
-      router.Admin(permissions.OrgSettings, model.selected_project_id),
+      router.Org(permissions.OrgSettings),
       Push,
     ),
     on_navigate_org_projects: NavigateTo(
-      router.Admin(permissions.Projects, model.selected_project_id),
+      router.Org(permissions.Projects),
       Push,
     ),
+    on_toggle_config: SidebarConfigToggled,
+    on_toggle_org: SidebarOrgToggled,
   ))
 }
 
@@ -615,7 +498,9 @@ fn build_center_panel(model: Model, user: User) -> Element(Msg) {
     tasks: tasks,
     cards: cards,
     expanded_cards: dict.new(),
+    hide_completed: model.member_list_hide_completed,
     on_toggle_card: fn(_card_id) { NoOp },
+    on_toggle_hide_completed: MemberListHideCompletedToggled,
     on_task_click: fn(task_id) {
       MemberTaskDetailsOpened(task_id)
     },
@@ -770,90 +655,9 @@ fn parse_filter_id(s: String) -> opt.Option(Int) {
   }
 }
 
-// =============================================================================
-// Shared Components
-// =============================================================================
-
-fn view_theme_switch(model: Model) -> Element(Msg) {
-  ui_layout.theme_switch(model.locale, model.theme, ThemeSelected)
-}
-
-fn view_locale_switch(model: Model) -> Element(Msg) {
-  ui_layout.locale_switch(model.locale, LocaleSelected)
-}
-
-fn view_project_selector(model: Model) -> Element(Msg) {
-  let projects = update_helpers.active_projects(model)
-
-  let selected_id = case model.selected_project_id {
-    opt.Some(id) -> int.to_string(id)
-    opt.None -> ""
-  }
-
-  let empty_label = case model.page {
-    Member -> update_helpers.i18n_t(model, i18n_text.AllProjects)
-    _ -> update_helpers.i18n_t(model, i18n_text.SelectProjectToManageSettings)
-  }
-
-  let helper = case model.page, model.selected_project_id {
-    Member, opt.None ->
-      update_helpers.i18n_t(model, i18n_text.ShowingTasksFromAllProjects)
-    Member, _ -> ""
-    _, opt.None ->
-      update_helpers.i18n_t(
-        model,
-        i18n_text.SelectProjectToManageMembersOrTaskTypes,
-      )
-    _, _ -> ""
-  }
-
-  div([attribute.class("project-selector")], [
-    div([attribute.class("topbar-group")], [
-      label([], [text(update_helpers.i18n_t(model, i18n_text.ProjectLabel))]),
-      select(
-        [
-          attribute.value(selected_id),
-          event.on_input(client_state.ProjectSelected),
-        ],
-        [
-          option([attribute.value("")], empty_label),
-          ..list.map(projects, fn(p) {
-            option([attribute.value(int.to_string(p.id))], p.name)
-          })
-        ],
-      ),
-    ]),
-    case helper == "" {
-      True -> element.none()
-      False -> div([attribute.class("hint")], [text(helper)])
-    },
-  ])
-}
-
-// =============================================================================
-// Helpers
-// =============================================================================
-
-/// Returns the i18n text key for an admin section label.
-///
-/// Used for nav items and topbar title display. Returns an i18n_text.Text
-/// variant for use with i18n.t(). For browser title updates, use
-/// router.update_admin_section_label() instead.
-fn admin_section_label(section: permissions.AdminSection) -> i18n_text.Text {
-  case section {
-    permissions.Invites -> i18n_text.AdminInvites
-    permissions.OrgSettings -> i18n_text.AdminOrgSettings
-    permissions.Projects -> i18n_text.AdminProjects
-    permissions.Metrics -> i18n_text.AdminMetrics
-    permissions.RuleMetrics -> i18n_text.AdminRuleMetrics
-    permissions.Members -> i18n_text.AdminMembers
-    permissions.Capabilities -> i18n_text.AdminCapabilities
-    permissions.TaskTypes -> i18n_text.AdminTaskTypes
-    permissions.Cards -> i18n_text.AdminCards
-    permissions.Workflows -> i18n_text.AdminWorkflows
-    permissions.TaskTemplates -> i18n_text.AdminTaskTemplates
-  }
-}
+// Story 4.5: Removed view_theme_switch, view_locale_switch, view_project_selector,
+// admin_section_label - no longer needed after unified layout
+// Theme/locale switches are now in the layout panels
 
 // =============================================================================
 // Member Right Panel (Unified)

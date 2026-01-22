@@ -40,6 +40,13 @@ pub type LeftPanelConfig(msg) {
     selected_project_id: Option(Int),
     is_pm: Bool,
     is_org_admin: Bool,
+    // Collapse state
+    config_collapsed: Bool,
+    org_collapsed: Bool,
+    // Badge counts
+    pending_invites_count: Int,
+    projects_count: Int,
+    // Event handlers
     on_project_change: fn(String) -> msg,
     on_new_task: msg,
     on_new_card: msg,
@@ -49,6 +56,8 @@ pub type LeftPanelConfig(msg) {
     on_navigate_org_invites: msg,
     on_navigate_org_users: msg,
     on_navigate_org_projects: msg,
+    on_toggle_config: msg,
+    on_toggle_org: msg,
   )
 }
 
@@ -170,47 +179,69 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
 // =============================================================================
 
 fn view_config_section(config: LeftPanelConfig(msg)) -> Element(msg) {
+  let collapsed_class = case config.config_collapsed {
+    True -> " collapsed"
+    False -> ""
+  }
+  let toggle_icon = case config.config_collapsed {
+    True -> "▸"
+    False -> "▾"
+  }
+
   div(
     [
-      attribute.class("panel-section collapsible"),
+      attribute.class("panel-section collapsible" <> collapsed_class),
       attribute.attribute("data-testid", "section-config"),
     ],
     [
-      h4([attribute.class("section-title")], [
-        text(i18n.t(config.locale, i18n_text.Configuration)),
-      ]),
-      div(
-        [attribute.class("section-items")],
+      button(
         [
-          button(
-            [
-              attribute.class("nav-link"),
-              attribute.attribute("data-testid", "nav-team"),
-              attribute.disabled(config.selected_project_id == None),
-              event.on_click(config.on_navigate_config_team),
-            ],
-            [text(i18n.t(config.locale, i18n_text.Team))],
-          ),
-          button(
-            [
-              attribute.class("nav-link"),
-              attribute.attribute("data-testid", "nav-catalog"),
-              attribute.disabled(config.selected_project_id == None),
-              event.on_click(config.on_navigate_config_catalog),
-            ],
-            [text(i18n.t(config.locale, i18n_text.Catalog))],
-          ),
-          button(
-            [
-              attribute.class("nav-link"),
-              attribute.attribute("data-testid", "nav-automation"),
-              attribute.disabled(config.selected_project_id == None),
-              event.on_click(config.on_navigate_config_automation),
-            ],
-            [text(i18n.t(config.locale, i18n_text.Automation))],
-          ),
+          attribute.class("section-header"),
+          event.on_click(config.on_toggle_config),
+        ],
+        [
+          span([attribute.class("section-toggle")], [text(toggle_icon)]),
+          h4([attribute.class("section-title")], [
+            text(i18n.t(config.locale, i18n_text.Configuration)),
+          ]),
         ],
       ),
+      case config.config_collapsed {
+        True -> element.none()
+        False ->
+          div(
+            [attribute.class("section-items")],
+            [
+              button(
+                [
+                  attribute.class("nav-link"),
+                  attribute.attribute("data-testid", "nav-team"),
+                  attribute.disabled(config.selected_project_id == None),
+                  event.on_click(config.on_navigate_config_team),
+                ],
+                [text(i18n.t(config.locale, i18n_text.Team))],
+              ),
+              button(
+                [
+                  attribute.class("nav-link"),
+                  attribute.attribute("data-testid", "nav-catalog"),
+                  attribute.disabled(config.selected_project_id == None),
+                  event.on_click(config.on_navigate_config_catalog),
+                ],
+                [text(i18n.t(config.locale, i18n_text.Catalog))],
+              ),
+              button(
+                [
+                  attribute.class("nav-link"),
+                  attribute.attribute("data-testid", "nav-automation"),
+                  attribute.disabled(config.selected_project_id == None),
+                  event.on_click(config.on_navigate_config_automation),
+                ],
+                [text(i18n.t(config.locale, i18n_text.Automation))],
+              ),
+            ],
+          )
+      },
     ],
   )
 }
@@ -220,46 +251,86 @@ fn view_config_section(config: LeftPanelConfig(msg)) -> Element(msg) {
 // =============================================================================
 
 fn view_org_section(config: LeftPanelConfig(msg)) -> Element(msg) {
+  let collapsed_class = case config.org_collapsed {
+    True -> " collapsed"
+    False -> ""
+  }
+  let toggle_icon = case config.org_collapsed {
+    True -> "▸"
+    False -> "▾"
+  }
+
   div(
     [
-      attribute.class("panel-section collapsible"),
+      attribute.class("panel-section collapsible" <> collapsed_class),
       attribute.attribute("data-testid", "section-org"),
     ],
     [
-      h4([attribute.class("section-title")], [
-        text(i18n.t(config.locale, i18n_text.Organization)),
-      ]),
-      div(
-        [attribute.class("section-items")],
+      button(
         [
-          button(
-            [
-              attribute.class("nav-link"),
-              attribute.attribute("data-testid", "nav-invites"),
-              event.on_click(config.on_navigate_org_invites),
-            ],
-            [text(i18n.t(config.locale, i18n_text.Invites))],
-          ),
-          button(
-            [
-              attribute.class("nav-link"),
-              attribute.attribute("data-testid", "nav-users"),
-              event.on_click(config.on_navigate_org_users),
-            ],
-            [text(i18n.t(config.locale, i18n_text.OrgUsers))],
-          ),
-          button(
-            [
-              attribute.class("nav-link"),
-              attribute.attribute("data-testid", "nav-projects"),
-              event.on_click(config.on_navigate_org_projects),
-            ],
-            [text(i18n.t(config.locale, i18n_text.Projects))],
-          ),
+          attribute.class("section-header"),
+          event.on_click(config.on_toggle_org),
+        ],
+        [
+          span([attribute.class("section-toggle")], [text(toggle_icon)]),
+          h4([attribute.class("section-title")], [
+            text(i18n.t(config.locale, i18n_text.Organization)),
+          ]),
         ],
       ),
+      case config.org_collapsed {
+        True -> element.none()
+        False ->
+          div(
+            [attribute.class("section-items")],
+            [
+              button(
+                [
+                  attribute.class("nav-link"),
+                  attribute.attribute("data-testid", "nav-invites"),
+                  event.on_click(config.on_navigate_org_invites),
+                ],
+                [
+                  text(i18n.t(config.locale, i18n_text.Invites)),
+                  view_badge(config.pending_invites_count),
+                ],
+              ),
+              button(
+                [
+                  attribute.class("nav-link"),
+                  attribute.attribute("data-testid", "nav-users"),
+                  event.on_click(config.on_navigate_org_users),
+                ],
+                [text(i18n.t(config.locale, i18n_text.OrgUsers))],
+              ),
+              button(
+                [
+                  attribute.class("nav-link"),
+                  attribute.attribute("data-testid", "nav-projects"),
+                  event.on_click(config.on_navigate_org_projects),
+                ],
+                [
+                  text(i18n.t(config.locale, i18n_text.Projects)),
+                  view_badge(config.projects_count),
+                ],
+              ),
+            ],
+          )
+      },
     ],
   )
+}
+
+/// Renders a badge with a count (only if count > 0)
+fn view_badge(count: Int) -> Element(msg) {
+  case count > 0 {
+    True ->
+      span(
+        [attribute.class("badge")],
+        [text(int_to_string(count))],
+      )
+    False -> element.none()
+  }
 }
 
 // =============================================================================

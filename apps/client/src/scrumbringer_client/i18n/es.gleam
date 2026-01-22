@@ -150,6 +150,7 @@ pub fn translate(text: Text) -> String {
     text.CreateFirstTaskToStartUsingPool ->
       "Crea tu primera tarea para empezar a usar el Pool."
     text.NoTasksMatchYourFilters -> "Ninguna tarea coincide con tus filtros"
+    text.HideCompletedTasks -> "Ocultar tareas completadas"
     text.TypeNumber(type_id) -> "Tipo #" <> int.to_string(type_id)
     text.MetaType -> "tipo: "
     text.MetaPriority -> "prioridad: "

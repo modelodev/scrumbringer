@@ -73,6 +73,7 @@ import scrumbringer_client/router
 import scrumbringer_client/theme
 
 import scrumbringer_client/i18n/locale as i18n_locale
+import scrumbringer_client/app/effects as app_effects
 
 import scrumbringer_client/client_state.{
   type Model, type Msg, AcceptInvite as AcceptInvitePage, Admin, IconIdle, Login,
@@ -188,16 +189,18 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
     _ -> ""
   }
 
+  // Story 4.5: Config and Org routes use Admin page type
   let page = case route {
     router.Login -> Login
     router.AcceptInvite(_) -> AcceptInvitePage
     router.ResetPassword(_) -> ResetPasswordPage
-    router.Admin(_, _) -> Admin
+    router.Admin(_, _) | router.Config(_, _) | router.Org(_) -> Admin
     router.Member(_, _, _) -> Member
   }
 
   let active_section = case route {
-    router.Admin(section, _) -> section
+    router.Admin(section, _) | router.Config(section, _) | router.Org(section) ->
+      section
     _ -> permissions.Invites
   }
 
@@ -207,7 +210,10 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
   }
 
   let selected_project_id = case route {
-    router.Admin(_, project_id) | router.Member(_, project_id, _) -> project_id
+    router.Admin(_, project_id)
+    | router.Config(_, project_id)
+    | router.Member(_, project_id, _) -> project_id
+    router.Org(_) -> opt.None
     _ -> opt.None
   }
 
@@ -232,6 +238,10 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
   let pool_view_mode =
     theme.local_storage_get(pool_prefs.view_mode_storage_key)
     |> pool_prefs.deserialize_view_mode
+
+  // Load sidebar collapse state from localStorage
+  let #(sidebar_config_collapsed, sidebar_org_collapsed) =
+    app_effects.load_sidebar_state()
 
   let model =
     Model(
@@ -350,9 +360,14 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       member_quick_my_caps: True,
       member_pool_filters_visible: pool_filters_visible,
       member_pool_view_mode: pool_view_mode,
+      // List view hide completed tasks filter
+      member_list_hide_completed: False,
       member_panel_expanded: False,
       mobile_left_drawer_open: False,
       mobile_right_drawer_open: False,
+      // Sidebar collapse state (persisted in localStorage)
+      sidebar_config_collapsed: sidebar_config_collapsed,
+      sidebar_org_collapsed: sidebar_org_collapsed,
       member_create_dialog_open: False,
       member_create_title: "",
       member_create_description: "",
