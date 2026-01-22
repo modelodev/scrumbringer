@@ -660,6 +660,13 @@ pub fn base_css() -> String {
     ".progress-bar-mini { flex: 1; height: 4px; background: var(--sb-border); border-radius: 2px; overflow: hidden; }",
     ".progress-bar-mini .progress-bar-fill { height: 100%; background: var(--sb-primary); border-radius: 2px; }",
     ".card-progress { font-size: 12px; color: var(--sb-muted); font-variant-numeric: tabular-nums; }",
+    // My Metrics section (Story 4.7 Task 6.1)
+    ".my-metrics-section { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-top: 1px solid var(--sb-border); }",
+    ".metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }",
+    ".metric-item { display: flex; flex-direction: column; align-items: center; padding: 8px; background: var(--sb-elevated); border-radius: 8px; }",
+    ".metric-value { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }",
+    ".metric-label { font-size: 11px; color: var(--sb-muted); text-align: center; }",
+    ".metrics-loading { color: var(--sb-muted); font-size: 14px; text-align: center; padding: 12px; }",
     // =============================================================================
     // View Mode Toggle (Story 4.4)
     // =============================================================================

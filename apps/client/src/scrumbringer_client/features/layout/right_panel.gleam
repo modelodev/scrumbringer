@@ -22,6 +22,7 @@ import lustre/element.{type Element}
 import lustre/element/html.{button, div, h4, span, text}
 import lustre/event
 
+import domain/metrics.{type MyMetrics}
 import domain/task.{type Task}
 import domain/user.{type User}
 import scrumbringer_client/i18n/i18n
@@ -66,6 +67,8 @@ pub type RightPanelConfig(msg) {
     // Drag-to-claim state for Pool view (Story 4.7)
     drag_armed: Bool,
     drag_over_my_tasks: Bool,
+    // My Metrics section (Story 4.7 Task 6.1)
+    my_metrics: Option(MyMetrics),
   )
 }
 
@@ -87,6 +90,8 @@ pub fn view(config: RightPanelConfig(msg)) -> Element(msg) {
       view_my_tasks(config),
       // My Cards section (placeholder for now)
       view_my_cards(config),
+      // My Metrics section (Story 4.7 Task 6.1)
+      view_my_metrics(config),
       // Profile and logout
       view_profile(config),
     ],
@@ -320,6 +325,80 @@ fn view_my_card_item(
           span([attribute.class("card-progress")], [text(progress_text)]),
         ],
       ),
+    ],
+  )
+}
+
+// =============================================================================
+// My Metrics Section (Story 4.7 Task 6.1)
+// =============================================================================
+
+fn view_my_metrics(config: RightPanelConfig(msg)) -> Element(msg) {
+  div(
+    [
+      attribute.class("my-metrics-section"),
+      attribute.attribute("data-testid", "my-metrics"),
+    ],
+    [
+      h4([attribute.class("section-title")], [
+        text(i18n.t(config.locale, i18n_text.MyMetrics)),
+      ]),
+      case config.my_metrics {
+        None ->
+          div([attribute.class("metrics-loading")], [
+            text(i18n.t(config.locale, i18n_text.LoadingEllipsis)),
+          ])
+        Some(metrics) -> {
+          let total = metrics.claimed_count
+          let completion_pct = case total {
+            0 -> 0
+            _ -> { metrics.completed_count * 100 } / total
+          }
+          let release_pct = case total {
+            0 -> 0
+            _ -> { metrics.released_count * 100 } / total
+          }
+          div([attribute.class("metrics-grid")], [
+            // Claimed
+            div([attribute.class("metric-item")], [
+              span([attribute.class("metric-value")], [
+                text(int.to_string(metrics.claimed_count)),
+              ]),
+              span([attribute.class("metric-label")], [
+                text(i18n.t(config.locale, i18n_text.Claimed)),
+              ]),
+            ]),
+            // Completed
+            div([attribute.class("metric-item")], [
+              span([attribute.class("metric-value")], [
+                text(int.to_string(metrics.completed_count)),
+              ]),
+              span([attribute.class("metric-label")], [
+                text(
+                  i18n.t(config.locale, i18n_text.Completed)
+                  <> " ("
+                  <> int.to_string(completion_pct)
+                  <> "%)",
+                ),
+              ]),
+            ]),
+            // Released
+            div([attribute.class("metric-item")], [
+              span([attribute.class("metric-value")], [
+                text(int.to_string(metrics.released_count)),
+              ]),
+              span([attribute.class("metric-label")], [
+                text(
+                  i18n.t(config.locale, i18n_text.Released)
+                  <> " ("
+                  <> int.to_string(release_pct)
+                  <> "%)",
+                ),
+              ]),
+            ]),
+          ])
+        }
+      },
     ],
   )
 }

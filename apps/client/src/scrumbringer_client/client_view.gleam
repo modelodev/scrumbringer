@@ -695,6 +695,11 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
     // Drag-to-claim state for Pool view (Story 4.7)
     drag_armed: model.member_pool_drag_to_claim_armed,
     drag_over_my_tasks: model.member_pool_drag_over_my_tasks,
+    // My Metrics (Story 4.7 Task 6.1)
+    my_metrics: case model.member_metrics {
+      Loaded(m) -> opt.Some(m)
+      _ -> opt.None
+    },
   ))
 }
 
