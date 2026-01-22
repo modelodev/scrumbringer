@@ -23,6 +23,7 @@
 //// - **member_remove.gleam**: Member remove handlers
 //// - **search.gleam**: Org users search handlers
 
+import gleam/dict
 import gleam/list
 import gleam/option as opt
 
@@ -33,7 +34,9 @@ import domain/project.{type ProjectMember, ProjectMember}
 import domain/project_role.{type ProjectRole}
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, Login, MemberRoleChanged, Model,
+  type Model, type Msg, CapabilityMembersFetched, CapabilityMembersSaved, Failed,
+  Loaded, Login, MemberCapabilitiesFetched, MemberCapabilitiesSaved,
+  MemberRoleChanged, Model,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -178,6 +181,328 @@ pub fn handle_member_role_changed_error(
 }
 
 // =============================================================================
+// Member Capabilities Handlers (Story 4.7 AC10-14)
+// =============================================================================
+
+/// Handle opening the member capabilities dialog.
+pub fn handle_member_capabilities_dialog_opened(
+  model: Model,
+  user_id: Int,
+) -> #(Model, Effect(Msg)) {
+  case model.selected_project_id {
+    opt.Some(project_id) -> {
+      // Check if we have cached capabilities for this user
+      let selected = case dict.get(model.member_capabilities_cache, user_id) {
+        Ok(ids) -> ids
+        Error(_) -> []
+      }
+      #(
+        Model(
+          ..model,
+          member_capabilities_dialog_user_id: opt.Some(user_id),
+          member_capabilities_loading: True,
+          member_capabilities_selected: selected,
+          member_capabilities_error: opt.None,
+        ),
+        api_projects.get_member_capabilities(
+          project_id,
+          user_id,
+          MemberCapabilitiesFetched,
+        ),
+      )
+    }
+    opt.None -> #(model, effect.none())
+  }
+}
+
+/// Handle closing the member capabilities dialog.
+pub fn handle_member_capabilities_dialog_closed(
+  model: Model,
+) -> #(Model, Effect(Msg)) {
+  #(
+    Model(
+      ..model,
+      member_capabilities_dialog_user_id: opt.None,
+      member_capabilities_selected: [],
+      member_capabilities_error: opt.None,
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle toggling a capability checkbox.
+pub fn handle_member_capabilities_toggled(
+  model: Model,
+  capability_id: Int,
+) -> #(Model, Effect(Msg)) {
+  let selected = case list.contains(model.member_capabilities_selected, capability_id) {
+    True -> list.filter(model.member_capabilities_selected, fn(id) { id != capability_id })
+    False -> [capability_id, ..model.member_capabilities_selected]
+  }
+  #(Model(..model, member_capabilities_selected: selected), effect.none())
+}
+
+/// Handle save button click.
+pub fn handle_member_capabilities_save_clicked(
+  model: Model,
+) -> #(Model, Effect(Msg)) {
+  case model.selected_project_id, model.member_capabilities_dialog_user_id {
+    opt.Some(project_id), opt.Some(user_id) -> #(
+      Model(..model, member_capabilities_saving: True),
+      api_projects.set_member_capabilities(
+        project_id,
+        user_id,
+        model.member_capabilities_selected,
+        MemberCapabilitiesSaved,
+      ),
+    )
+    _, _ -> #(model, effect.none())
+  }
+}
+
+/// Handle capabilities fetch success.
+pub fn handle_member_capabilities_fetched_ok(
+  model: Model,
+  result: api_projects.MemberCapabilities,
+) -> #(Model, Effect(Msg)) {
+  // Update cache and selected list
+  let cache = dict.insert(
+    model.member_capabilities_cache,
+    result.user_id,
+    result.capability_ids,
+  )
+  #(
+    Model(
+      ..model,
+      member_capabilities_loading: False,
+      member_capabilities_cache: cache,
+      member_capabilities_selected: result.capability_ids,
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle capabilities fetch error.
+pub fn handle_member_capabilities_fetched_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  case err.status {
+    401 -> update_helpers.reset_to_login(model)
+    _ -> #(
+      Model(
+        ..model,
+        member_capabilities_loading: False,
+        member_capabilities_error: opt.Some(err.message),
+      ),
+      effect.none(),
+    )
+  }
+}
+
+/// Handle capabilities save success.
+pub fn handle_member_capabilities_saved_ok(
+  model: Model,
+  result: api_projects.MemberCapabilities,
+) -> #(Model, Effect(Msg)) {
+  // Update cache and close dialog
+  let cache = dict.insert(
+    model.member_capabilities_cache,
+    result.user_id,
+    result.capability_ids,
+  )
+  #(
+    Model(
+      ..model,
+      member_capabilities_saving: False,
+      member_capabilities_cache: cache,
+      member_capabilities_dialog_user_id: opt.None,
+      member_capabilities_selected: [],
+      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.SkillsSaved)),
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle capabilities save error.
+pub fn handle_member_capabilities_saved_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  case err.status {
+    401 -> update_helpers.reset_to_login(model)
+    _ -> #(
+      Model(
+        ..model,
+        member_capabilities_saving: False,
+        member_capabilities_error: opt.Some(err.message),
+      ),
+      effect.none(),
+    )
+  }
+}
+
+// =============================================================================
+// Capability Members Handlers (Story 4.7 AC16-17)
+// =============================================================================
+
+/// Handle opening the capability members dialog.
+pub fn handle_capability_members_dialog_opened(
+  model: Model,
+  capability_id: Int,
+) -> #(Model, Effect(Msg)) {
+  case model.selected_project_id {
+    opt.Some(project_id) -> {
+      // Check if we have cached members for this capability
+      let selected = case dict.get(model.capability_members_cache, capability_id) {
+        Ok(ids) -> ids
+        Error(_) -> []
+      }
+      #(
+        Model(
+          ..model,
+          capability_members_dialog_capability_id: opt.Some(capability_id),
+          capability_members_loading: True,
+          capability_members_selected: selected,
+          capability_members_error: opt.None,
+        ),
+        api_projects.get_capability_members(
+          project_id,
+          capability_id,
+          CapabilityMembersFetched,
+        ),
+      )
+    }
+    opt.None -> #(model, effect.none())
+  }
+}
+
+/// Handle closing the capability members dialog.
+pub fn handle_capability_members_dialog_closed(
+  model: Model,
+) -> #(Model, Effect(Msg)) {
+  #(
+    Model(
+      ..model,
+      capability_members_dialog_capability_id: opt.None,
+      capability_members_selected: [],
+      capability_members_error: opt.None,
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle toggling a member checkbox.
+pub fn handle_capability_members_toggled(
+  model: Model,
+  user_id: Int,
+) -> #(Model, Effect(Msg)) {
+  let selected = case list.contains(model.capability_members_selected, user_id) {
+    True -> list.filter(model.capability_members_selected, fn(id) { id != user_id })
+    False -> [user_id, ..model.capability_members_selected]
+  }
+  #(Model(..model, capability_members_selected: selected), effect.none())
+}
+
+/// Handle save button click.
+pub fn handle_capability_members_save_clicked(
+  model: Model,
+) -> #(Model, Effect(Msg)) {
+  case model.selected_project_id, model.capability_members_dialog_capability_id {
+    opt.Some(project_id), opt.Some(capability_id) -> #(
+      Model(..model, capability_members_saving: True),
+      api_projects.set_capability_members(
+        project_id,
+        capability_id,
+        model.capability_members_selected,
+        CapabilityMembersSaved,
+      ),
+    )
+    _, _ -> #(model, effect.none())
+  }
+}
+
+/// Handle capability members fetch success.
+pub fn handle_capability_members_fetched_ok(
+  model: Model,
+  result: api_projects.CapabilityMembers,
+) -> #(Model, Effect(Msg)) {
+  let cache = dict.insert(
+    model.capability_members_cache,
+    result.capability_id,
+    result.user_ids,
+  )
+  #(
+    Model(
+      ..model,
+      capability_members_loading: False,
+      capability_members_cache: cache,
+      capability_members_selected: result.user_ids,
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle capability members fetch error.
+pub fn handle_capability_members_fetched_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  case err.status {
+    401 -> update_helpers.reset_to_login(model)
+    _ -> #(
+      Model(
+        ..model,
+        capability_members_loading: False,
+        capability_members_error: opt.Some(err.message),
+      ),
+      effect.none(),
+    )
+  }
+}
+
+/// Handle capability members save success.
+pub fn handle_capability_members_saved_ok(
+  model: Model,
+  result: api_projects.CapabilityMembers,
+) -> #(Model, Effect(Msg)) {
+  let cache = dict.insert(
+    model.capability_members_cache,
+    result.capability_id,
+    result.user_ids,
+  )
+  #(
+    Model(
+      ..model,
+      capability_members_saving: False,
+      capability_members_cache: cache,
+      capability_members_dialog_capability_id: opt.None,
+      capability_members_selected: [],
+      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.MembersSaved)),
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle capability members save error.
+pub fn handle_capability_members_saved_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  case err.status {
+    401 -> update_helpers.reset_to_login(model)
+    _ -> #(
+      Model(
+        ..model,
+        capability_members_saving: False,
+        capability_members_error: opt.Some(err.message),
+      ),
+      effect.none(),
+    )
+  }
+}
+
+// =============================================================================
 // Re-exports: Search
 // =============================================================================
 
@@ -194,11 +519,27 @@ pub const handle_org_users_search_results_error = search.handle_org_users_search
 // =============================================================================
 
 /// Handle members fetch success.
+/// Also preloads capability data for all members to show counts immediately.
 pub fn handle_members_fetched_ok(
   model: Model,
   members: List(ProjectMember),
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, members: Loaded(members)), effect.none())
+  // Preload capabilities for all members (AC15 optimization)
+  let preload_fx = case model.selected_project_id {
+    opt.Some(project_id) ->
+      members
+      |> list.map(fn(m) {
+        api_projects.get_member_capabilities(
+          project_id,
+          m.user_id,
+          MemberCapabilitiesFetched,
+        )
+      })
+      |> effect.batch
+    opt.None -> effect.none()
+  }
+
+  #(Model(..model, members: Loaded(members)), preload_fx)
 }
 
 /// Handle members fetch error.

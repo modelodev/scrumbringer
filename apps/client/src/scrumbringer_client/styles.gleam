@@ -44,6 +44,9 @@ pub fn base_css() -> String {
     ".filters-row button { padding: 8px 12px; }",
     ".filters-row .filter-tooltip { display: none; position: absolute; left: 0; top: -26px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 999px; padding: 2px 8px; font-size: 12px; color: var(--sb-text); white-space: nowrap; }",
     "@media (max-width: 1024px) { .filters-row { gap: 8px; } .filters-row .filter-label { display: none; } .filters-row .filter-icon { display: inline; } .filters-row .field { min-width: 56px; } .filters-row select, .filters-row input { padding: 6px; } .filters-row .field:hover .filter-tooltip, .filters-row .field:focus-within .filter-tooltip { display: inline-flex; } }",
+    ".filter-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }",
+    ".filter-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; background: var(--sb-accent); color: var(--sb-bg); border-radius: 10px; font-size: 12px; font-weight: 600; }",
+    ".btn-clear-filters { font-size: 12px; padding: 4px 10px !important; height: 28px !important; }",
     ".hint { color: var(--sb-muted); font-size: 0.9em; }",
     ".empty { color: var(--sb-muted); }",
     ".loading { color: var(--sb-info); }",
@@ -229,6 +232,8 @@ pub fn base_css() -> String {
     ".empty-state-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: var(--sb-text); }",
     ".empty-state-description { font-size: 14px; color: var(--sb-muted); max-width: 320px; margin-bottom: 16px; line-height: 1.5; }",
     ".empty-state-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }",
+    // AC32: Empty state actionable hints
+    ".empty-state-hint { font-size: 12px; color: var(--sb-link); text-align: center; margin-top: 8px; opacity: 0.8; }",
     // =====================================================
     // UX IMPROVEMENTS - Info Callout/Banner (E09, E10, E01)
     // =====================================================
@@ -249,6 +254,18 @@ pub fn base_css() -> String {
     ".table-actions { display: flex; gap: 4px; justify-content: flex-end; }",
     ".table-actions button { padding: 4px 8px; min-width: 32px; min-height: 32px; }",
     ".table td.actions-cell { text-align: right; }",
+    // DataTable component (extends .table)
+    ".data-table { width: 100%; border-collapse: collapse; }",
+    ".data-table th { text-align: left; color: var(--sb-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; padding: 10px 12px; border-bottom: 2px solid var(--sb-border); background: var(--sb-surface); }",
+    ".data-table td { padding: 10px 12px; border-bottom: 1px solid var(--sb-border); vertical-align: middle; }",
+    ".data-table tbody tr:nth-child(even) { background: color-mix(in oklab, var(--sb-surface) 50%, var(--sb-bg)); }",
+    ".data-table tbody tr:hover { background: var(--sb-elevated); }",
+    ".data-table th.sortable { cursor: pointer; user-select: none; }",
+    ".data-table th.sortable:hover { background: var(--sb-hover); }",
+    ".data-table th .sort-icon { margin-left: 4px; opacity: 0.4; font-size: 10px; }",
+    ".data-table th.sortable:hover .sort-icon { opacity: 1; }",
+    // DataTable responsive collapse (card view on mobile)
+    "@media (max-width: 640px) { .data-table, .data-table thead, .data-table tbody, .data-table th, .data-table td, .data-table tr { display: block; } .data-table thead { position: absolute; top: -9999px; left: -9999px; } .data-table tr { margin-bottom: 12px; border: 1px solid var(--sb-border); border-radius: 8px; padding: 12px; background: var(--sb-surface); } .data-table td { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border: none; border-bottom: 1px solid var(--sb-border); } .data-table td:last-child { border-bottom: none; } .data-table td::before { content: attr(data-label); font-weight: 600; color: var(--sb-muted); font-size: 12px; text-transform: uppercase; } }",
     ".usage-badge { font-size: 12px; color: var(--sb-muted); }",
     // =====================================================
     // UX IMPROVEMENTS - Form Sections (E07)
@@ -292,6 +309,10 @@ pub fn base_css() -> String {
     // A06: Focus states
     ":focus-visible { outline: 2px solid var(--sb-primary); outline-offset: 2px; }",
     ":focus:not(:focus-visible) { outline: none; }",
+    // A07: Reduced motion (AC41)
+    "@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; } }",
+    // A08: Touch targets (AC38) - explicit class for guaranteed 44px minimum
+    ".touch-target { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }",
     // =====================================================
     // UX IMPROVEMENTS - Settings Menu (H01-H03)
     // =====================================================
@@ -305,8 +326,9 @@ pub fn base_css() -> String {
     ".settings-menu-item select { min-width: 100px; }",
     // =====================================================
     // UX IMPROVEMENTS - Responsive Mobile (RM01-RM04)
+    // AC38: All interactive elements must have min 44px touch targets on mobile
     // =====================================================
-    "@media (max-width: 768px) { button, a.btn, .clickable { min-height: 44px; min-width: 44px; } .topbar { flex-wrap: wrap; gap: 8px; padding: 10px; } .topbar-actions { width: 100%; justify-content: space-between; } .user { display: none; } .user-avatar { display: flex; width: 32px; height: 32px; border-radius: 50%; background: var(--sb-primary); color: var(--sb-inverse); align-items: center; justify-content: center; font-weight: 600; } }",
+    "@media (max-width: 768px) { button, a.btn, .clickable, select, input[type='checkbox'], input[type='radio'], .btn-xs, .btn-icon, .nav-item { min-height: 44px; } button, a.btn, .clickable, .btn-icon { min-width: 44px; } select { padding: 10px 12px; font-size: 16px; } input { min-height: 44px; padding: 10px 12px; font-size: 16px; } .btn-xs { min-height: 44px; padding: 10px 16px; } .filters-row select, .filters-row input, .filters-row button { min-height: 44px; height: 44px; } .topbar { flex-wrap: wrap; gap: 8px; padding: 10px; } .topbar-actions { width: 100%; justify-content: space-between; } .user { display: none; } .user-avatar { display: flex; width: 32px; height: 32px; border-radius: 50%; background: var(--sb-primary); color: var(--sb-inverse); align-items: center; justify-content: center; font-weight: 600; } }",
     ".hamburger-menu { display: none; }",
     "@media (max-width: 768px) { .hamburger-menu { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; } .admin .nav { position: fixed; left: -280px; top: 0; bottom: 0; width: 280px; z-index: 100; transition: left 0.3s ease; background: var(--sb-surface); border-right: 1px solid var(--sb-border); border-radius: 0; padding-top: 60px; } .admin .nav.open { left: 0; } .admin .nav-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; } .admin .nav.open + .nav-overlay { display: block; } }",
     // =====================================================
@@ -606,9 +628,15 @@ pub fn base_css() -> String {
     ".btn-action:hover { border-color: var(--sb-primary); }",
     ".btn-action:disabled { opacity: 0.5; cursor: not-allowed; }",
     ".btn-icon-prefix { font-weight: 700; color: var(--sb-primary); }",
-    ".nav-link { display: block; width: 100%; padding: 8px 12px; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: var(--sb-text); }",
+    // Navigation links within TRABAJO section (Story 4.7 AC2, AC3)
+    ".nav-links { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }",
+    ".nav-link { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: var(--sb-text); }",
     ".nav-link:hover { background: var(--sb-elevated); }",
     ".nav-link:disabled { opacity: 0.5; cursor: not-allowed; }",
+    ".nav-link.active { background: var(--sb-elevated); border-color: var(--sb-primary); }",
+    ".nav-icon { font-size: 14px; }",
+    ".nav-label { flex: 1; }",
+    ".active-indicator { color: var(--sb-primary); font-size: 8px; }",
     // =============================================================================
     // Right Panel Components (Story 4.4)
     // =============================================================================
@@ -623,6 +651,15 @@ pub fn base_css() -> String {
     ".user-info { text-align: center; }",
     ".user-email { color: var(--sb-muted); font-size: 14px; }",
     ".btn-logout { width: 100%; }",
+    // My cards list (right panel)
+    ".my-cards-list { display: flex; flex-direction: column; gap: 6px; }",
+    ".my-card-item { display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 10px 12px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 8px; cursor: pointer; text-align: left; }",
+    ".my-card-item:hover { border-color: var(--sb-primary); background: var(--sb-surface); }",
+    ".my-card-item .card-title { font-weight: 500; font-size: 14px; }",
+    ".card-progress-row { display: flex; align-items: center; gap: 8px; }",
+    ".progress-bar-mini { flex: 1; height: 4px; background: var(--sb-border); border-radius: 2px; overflow: hidden; }",
+    ".progress-bar-mini .progress-bar-fill { height: 100%; background: var(--sb-primary); border-radius: 2px; }",
+    ".card-progress { font-size: 12px; color: var(--sb-muted); font-variant-numeric: tabular-nums; }",
     // =============================================================================
     // View Mode Toggle (Story 4.4)
     // =============================================================================
@@ -677,6 +714,9 @@ pub fn base_css() -> String {
     ".kanban-column-header h4 { margin: 0; font-size: 14px; font-weight: 600; }",
     ".column-count { font-size: 12px; color: var(--sb-muted); background: var(--sb-elevated); padding: 2px 8px; border-radius: 10px; }",
     ".kanban-column-content { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }",
+    ".kanban-empty-column { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px 16px; border: 2px dashed var(--sb-border); border-radius: 10px; color: var(--sb-muted); text-align: center; min-height: 100px; }",
+    ".kanban-empty-column .empty-icon { font-size: 24px; opacity: 0.6; }",
+    ".kanban-empty-column .empty-text { font-size: 13px; }",
     ".kanban-card { background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 10px; padding: 12px; }",
     ".kanban-card-header { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }",
     ".kanban-card-title { flex: 1; background: transparent; border: none; cursor: pointer; text-align: left; font-weight: 500; padding: 0; display: flex; align-items: center; gap: 6px; }",
@@ -685,7 +725,8 @@ pub fn base_css() -> String {
     ".kanban-card:hover .kanban-card-menu { opacity: 1; }",
     ".kanban-card-desc { font-size: 13px; color: var(--sb-muted); margin-bottom: 8px; line-height: 1.4; }",
     ".kanban-card-progress { display: flex; align-items: center; gap: 8px; }",
-    ".progress-bar { flex: 1; height: 6px; background: var(--sb-border); border-radius: 3px; overflow: hidden; }",
+    // Note: .progress-bar defined in UX IMPROVEMENTS section (L385). kanban uses flex container for layout.
+    ".kanban-card-progress .progress-bar { flex: 1; }",
     ".progress-fill { height: 100%; background: var(--sb-success); transition: width 0.3s ease; }",
     ".progress-text { font-size: 12px; color: var(--sb-muted); min-width: 40px; text-align: right; }",
     ".btn-danger { color: var(--sb-danger); }",

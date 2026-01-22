@@ -146,6 +146,12 @@ pub fn translate(text: Text) -> String {
     text.MyCapabilitiesHint -> "Filtrar tareas que coinciden con mis capacidades"
     text.SearchLabel -> "Buscar"
     text.SearchPlaceholder -> "q"
+    text.ClearFilters -> "Limpiar"
+    text.ActiveFilters(count) ->
+      int.to_string(count) <> " filtro" <> case count {
+        1 -> " activo"
+        _ -> "s activos"
+      }
     text.NoAvailableTasksRightNow -> "No hay tareas disponibles ahora"
     text.CreateFirstTaskToStartUsingPool ->
       "Crea tu primera tarea para empezar a usar el Pool."
@@ -182,6 +188,7 @@ pub fn translate(text: Text) -> String {
     text.RoleManager -> "manager"
     text.AdminProjects -> "Proyectos"
     text.AdminMetrics -> "Métricas"
+    text.OrgMetrics -> "Métricas Org"
     text.AdminMembers -> "Miembros"
     text.AdminCapabilities -> "Capacidades"
     text.AdminTaskTypes -> "Tipos de tarea"
@@ -291,6 +298,13 @@ pub fn translate(text: Text) -> String {
     text.RemoveMemberConfirm(user_email, project_name) ->
       "¿Quitar " <> user_email <> " de " <> project_name <> "?"
     text.Remove -> "Quitar"
+    // Member capabilities (Story 4.7 AC10-14)
+    text.CapabilitiesForUser(user_email) -> "Capacidades de " <> user_email
+    text.NoCapabilitiesDefined -> "No hay capacidades definidas para este proyecto"
+    // Capability members (Story 4.7 AC16-17)
+    text.MembersForCapability(capability_name) -> "Miembros con " <> capability_name
+    text.MembersSaved -> "Miembros guardados"
+    text.NoMembersDefined -> "No hay miembros en este proyecto"
 
     // User Projects dialog
     text.UserProjectsTitle(user_email) -> "Proyectos de " <> user_email
@@ -371,6 +385,7 @@ pub fn translate(text: Text) -> String {
     text.NoCardsYet -> "Aún no hay fichas"
     text.CardTaskCount(completed, total) ->
       int.to_string(completed) <> "/" <> int.to_string(total)
+    text.KanbanEmptyColumn -> "Sin fichas aquí"
 
     // Workflows
     text.AdminWorkflows -> "Automatizaciones"
@@ -378,6 +393,8 @@ pub fn translate(text: Text) -> String {
     text.WorkflowsOrgTitle -> "Automatizaciones de la organización"
     text.WorkflowsProjectTitle(project_name) ->
       "Automatizaciones - " <> project_name
+    text.SelectProjectForWorkflows ->
+      "Selecciona un proyecto para gestionar automatizaciones"
     text.WorkflowName -> "Nombre"
     text.WorkflowDescription -> "Descripción"
     text.WorkflowScope -> "Alcance"
@@ -525,5 +542,8 @@ pub fn translate(text: Text) -> String {
     text.MyCards -> "Mis Fichas"
     text.NoTasksClaimed -> "Sin tareas reclamadas"
     text.NoCardsAssigned -> "Sin fichas asignadas"
+    // AC32: Empty state hints
+    text.NoTasksClaimedHint -> "Explora Pool para reclamar una tarea"
+    text.NoCardsAssignedHint -> "Ver Fichas para ver las disponibles"
   }
 }

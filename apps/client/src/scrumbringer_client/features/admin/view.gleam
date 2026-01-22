@@ -88,6 +88,10 @@ import scrumbringer_client/client_state.{
   WorkflowCrudCreated, WorkflowCrudDeleted, WorkflowCrudUpdated,
   WorkflowDialogCreate, WorkflowDialogDelete, WorkflowDialogEdit,
   CloseWorkflowDialog, OpenWorkflowDialog, WorkflowRulesClicked,
+  MemberCapabilitiesDialogClosed, MemberCapabilitiesDialogOpened,
+  MemberCapabilitiesSaveClicked, MemberCapabilitiesToggled,
+  CapabilityMembersDialogClosed, CapabilityMembersDialogOpened,
+  CapabilityMembersSaveClicked, CapabilityMembersToggled,
 }
 
 // Workflows
@@ -491,6 +495,12 @@ pub fn view_capabilities(model: Model) -> Element(Msg) {
     view_capabilities_list(model, model.capabilities),
     // Create capability dialog
     view_capabilities_create_dialog(model),
+    // Capability members dialog (AC17)
+    case model.capability_members_dialog_capability_id {
+      opt.Some(capability_id) ->
+        view_capability_members_dialog(model, capability_id)
+      opt.None -> element.none()
+    },
   ])
 }
 
@@ -596,6 +606,12 @@ pub fn view_members(
         // Remove member confirmation dialog
         case model.members_remove_confirm {
           opt.Some(user) -> view_remove_member_dialog(model, project.name, user)
+          opt.None -> element.none()
+        },
+        // Member capabilities dialog (AC11-14)
+        case model.member_capabilities_dialog_user_id {
+          opt.Some(user_id) ->
+            view_member_capabilities_dialog(model, user_id)
           opt.None -> element.none()
         },
       ])
@@ -778,12 +794,45 @@ fn view_capabilities_list(
             thead([], [
               tr([], [
                 th([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.AdminMembers)),
+                ]),
               ]),
             ]),
             keyed.tbody(
               [],
               list.map(capabilities, fn(c) {
-                #(int.to_string(c.id), tr([], [td([], [text(c.name)])]))
+                // Get member count from cache (AC16)
+                let member_count = case
+                  dict.get(model.capability_members_cache, c.id)
+                {
+                  Ok(ids) -> list.length(ids)
+                  Error(_) -> 0
+                }
+                #(
+                  int.to_string(c.id),
+                  tr([], [
+                    td([], [text(c.name)]),
+                    // Members cell with count and edit button (AC16)
+                    td([attribute.class("members-cell")], [
+                      span([attribute.class("member-count")], [
+                        text(int.to_string(member_count)),
+                      ]),
+                      button(
+                        [
+                          attribute.class("btn-icon btn-xs"),
+                          attribute.attribute("aria-label", "Edit members"),
+                          attribute.attribute(
+                            "data-testid",
+                            "capability-members-btn",
+                          ),
+                          event.on_click(CapabilityMembersDialogOpened(c.id)),
+                        ],
+                        [text("\u{1F465}")],
+                      ),
+                    ]),
+                  ]),
+                )
               }),
             ),
           ])
@@ -834,6 +883,9 @@ fn view_members_table(
                 th([], [text(update_helpers.i18n_t(model, i18n_text.User))]),
                 th([], [text(update_helpers.i18n_t(model, i18n_text.UserId))]),
                 th([], [text(update_helpers.i18n_t(model, i18n_text.Role))]),
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.Capabilities)),
+                ]),
                 th([], [text(update_helpers.i18n_t(model, i18n_text.CreatedAt))]),
                 th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
               ]),
@@ -852,12 +904,40 @@ fn view_members_table(
                     )
                 }
 
+                // Get capability count from cache (AC15)
+                let cap_count = case
+                  dict.get(model.member_capabilities_cache, m.user_id)
+                {
+                  Ok(ids) -> list.length(ids)
+                  Error(_) -> 0
+                }
+
                 #(
                   int.to_string(m.user_id),
                   tr([], [
                     td([], [text(email)]),
                     td([], [text(int.to_string(m.user_id))]),
                     td([], [view_member_role_cell(model, m, is_org_admin)]),
+                    // Capabilities cell with count and edit button (AC10, AC15)
+                    td([attribute.class("capabilities-cell")], [
+                      span([attribute.class("cap-count")], [
+                        text(int.to_string(cap_count)),
+                      ]),
+                      button(
+                        [
+                          attribute.class("btn-icon btn-xs"),
+                          attribute.attribute("aria-label", "Edit capabilities"),
+                          attribute.attribute(
+                            "data-testid",
+                            "member-capabilities-btn",
+                          ),
+                          event.on_click(MemberCapabilitiesDialogOpened(
+                            m.user_id,
+                          )),
+                        ],
+                        [text("⚙️")],
+                      ),
+                    ]),
                     td([], [text(m.created_at)]),
                     td([], [
                       button([event.on_click(MemberRemoveClicked(m.user_id))], [
@@ -1081,6 +1161,238 @@ fn view_remove_member_dialog(
             text(case model.members_remove_in_flight {
               True -> update_helpers.i18n_t(model, i18n_text.Removing)
               False -> update_helpers.i18n_t(model, i18n_text.Remove)
+            }),
+          ],
+        ),
+      ]),
+    ]),
+  ])
+}
+
+/// Member capabilities dialog (AC11-14).
+/// Shows checkboxes for all project capabilities, allowing assignment.
+fn view_member_capabilities_dialog(model: Model, user_id: Int) -> Element(Msg) {
+  // Get user email for display
+  let user_email = case
+    update_helpers.resolve_org_user(model.org_users_cache, user_id)
+  {
+    opt.Some(user) -> user.email
+    opt.None ->
+      update_helpers.i18n_t(model, i18n_text.UserNumber(user_id))
+  }
+
+  // Get all capabilities for the project
+  let capabilities = case model.capabilities {
+    Loaded(caps) -> caps
+    _ -> []
+  }
+
+  div([attribute.class("modal")], [
+    div([attribute.class("modal-content capabilities-dialog")], [
+      h3([], [
+        text(
+          update_helpers.i18n_t(model, i18n_text.CapabilitiesForUser(user_email)),
+        ),
+      ]),
+      // Error display
+      case model.member_capabilities_error {
+        opt.Some(err) -> div([attribute.class("error")], [text(err)])
+        opt.None -> element.none()
+      },
+      // Loading state
+      case model.member_capabilities_loading {
+        True ->
+          div([attribute.class("loading")], [
+            text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+          ])
+        False ->
+          // Capabilities checkbox list (AC12)
+          case capabilities {
+            [] ->
+              div([attribute.class("empty")], [
+                text(
+                  update_helpers.i18n_t(model, i18n_text.NoCapabilitiesDefined),
+                ),
+              ])
+            _ ->
+              div(
+                [
+                  attribute.class("capabilities-checklist"),
+                  attribute.attribute("data-testid", "capabilities-checklist"),
+                ],
+                list.map(capabilities, fn(cap) {
+                  let is_selected =
+                    list.contains(model.member_capabilities_selected, cap.id)
+                  label(
+                    [
+                      attribute.class("checkbox-label"),
+                      attribute.attribute(
+                        "data-capability-id",
+                        int.to_string(cap.id),
+                      ),
+                    ],
+                    [
+                      input([
+                        attribute.type_("checkbox"),
+                        attribute.checked(is_selected),
+                        event.on_check(fn(_) {
+                          MemberCapabilitiesToggled(cap.id)
+                        }),
+                      ]),
+                      span([attribute.class("capability-name")], [
+                        text(cap.name),
+                      ]),
+                    ],
+                  )
+                }),
+              )
+          }
+      },
+      // Actions
+      div([attribute.class("actions")], [
+        button([event.on_click(MemberCapabilitiesDialogClosed)], [
+          text(update_helpers.i18n_t(model, i18n_text.Cancel)),
+        ]),
+        button(
+          [
+            attribute.class("btn-primary"),
+            event.on_click(MemberCapabilitiesSaveClicked),
+            attribute.disabled(
+              model.member_capabilities_saving
+              || model.member_capabilities_loading,
+            ),
+          ],
+          [
+            text(case model.member_capabilities_saving {
+              True -> update_helpers.i18n_t(model, i18n_text.Saving)
+              False -> update_helpers.i18n_t(model, i18n_text.Save)
+            }),
+          ],
+        ),
+      ]),
+    ]),
+  ])
+}
+
+// =============================================================================
+// Capability Members Dialog (Story 4.7 AC16-17)
+// =============================================================================
+
+fn view_capability_members_dialog(
+  model: Model,
+  capability_id: Int,
+) -> Element(Msg) {
+  // Get capability name for display
+  let capability_name = case model.capabilities {
+    Loaded(caps) ->
+      case list.find(caps, fn(c) { c.id == capability_id }) {
+        Ok(cap) -> cap.name
+        Error(_) -> "Capability #" <> int.to_string(capability_id)
+      }
+    _ -> "Capability #" <> int.to_string(capability_id)
+  }
+
+  // Get project members for the checkbox list
+  let members = case model.members {
+    Loaded(ms) -> ms
+    _ -> []
+  }
+
+  div([attribute.class("modal")], [
+    div([attribute.class("modal-content members-dialog")], [
+      h3([], [
+        text(
+          update_helpers.i18n_t(
+            model,
+            i18n_text.MembersForCapability(capability_name),
+          ),
+        ),
+      ]),
+      // Error display
+      case model.capability_members_error {
+        opt.Some(err) -> div([attribute.class("error")], [text(err)])
+        opt.None -> element.none()
+      },
+      // Loading state
+      case model.capability_members_loading {
+        True ->
+          div([attribute.class("loading")], [
+            text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+          ])
+        False ->
+          // Members checkbox list (AC17)
+          case members {
+            [] ->
+              div([attribute.class("empty")], [
+                text(update_helpers.i18n_t(model, i18n_text.NoMembersDefined)),
+              ])
+            _ ->
+              div(
+                [
+                  attribute.class("members-checklist"),
+                  attribute.attribute("data-testid", "members-checklist"),
+                ],
+                list.map(members, fn(member) {
+                  // Get member email from cache
+                  let email = case
+                    update_helpers.resolve_org_user(
+                      model.org_users_cache,
+                      member.user_id,
+                    )
+                  {
+                    opt.Some(user) -> user.email
+                    opt.None ->
+                      update_helpers.i18n_t(
+                        model,
+                        i18n_text.UserNumber(member.user_id),
+                      )
+                  }
+                  let is_selected =
+                    list.contains(
+                      model.capability_members_selected,
+                      member.user_id,
+                    )
+                  label(
+                    [
+                      attribute.class("checkbox-label"),
+                      attribute.attribute(
+                        "data-member-id",
+                        int.to_string(member.user_id),
+                      ),
+                    ],
+                    [
+                      input([
+                        attribute.type_("checkbox"),
+                        attribute.checked(is_selected),
+                        event.on_check(fn(_) {
+                          CapabilityMembersToggled(member.user_id)
+                        }),
+                      ]),
+                      span([attribute.class("member-email")], [text(email)]),
+                    ],
+                  )
+                }),
+              )
+          }
+      },
+      // Actions
+      div([attribute.class("actions")], [
+        button([event.on_click(CapabilityMembersDialogClosed)], [
+          text(update_helpers.i18n_t(model, i18n_text.Cancel)),
+        ]),
+        button(
+          [
+            attribute.class("btn-primary"),
+            event.on_click(CapabilityMembersSaveClicked),
+            attribute.disabled(
+              model.capability_members_saving
+              || model.capability_members_loading,
+            ),
+          ],
+          [
+            text(case model.capability_members_saving {
+              True -> update_helpers.i18n_t(model, i18n_text.Saving)
+              False -> update_helpers.i18n_t(model, i18n_text.Save)
             }),
           ],
         ),
@@ -1558,43 +1870,37 @@ fn view_workflows_list(
   model: Model,
   selected_project: opt.Option(Project),
 ) -> Element(Msg) {
-  div([attribute.class("section")], [
-    // Section header with add button
-    div([attribute.class("admin-section-header")], [
-      div([attribute.class("admin-section-title")], [
-        span([attribute.class("admin-section-icon")], [text("\u{2699}\u{FE0F}")]),
-        text(update_helpers.i18n_t(model, i18n_text.WorkflowsOrgTitle)),
-      ]),
-      dialog.add_button(
-        model,
-        i18n_text.CreateWorkflow,
-        OpenWorkflowDialog(WorkflowDialogCreate),
-      ),
-    ]),
-    // Org workflows table
-    view_workflows_table(model, model.workflows_org, opt.None),
-    // Project workflows section (if project selected)
-    case selected_project {
-      opt.Some(project) ->
-        div([], [
-          hr([]),
-          h2([], [
+  // Workflows are project-scoped, so require a project to be selected (AC22)
+  case selected_project {
+    opt.None ->
+      div([attribute.class("section")], [
+        div([attribute.class("empty")], [
+          text(update_helpers.i18n_t(model, i18n_text.SelectProjectForWorkflows)),
+        ]),
+      ])
+    opt.Some(project) ->
+      div([attribute.class("section")], [
+        // Section header with add button
+        div([attribute.class("admin-section-header")], [
+          div([attribute.class("admin-section-title")], [
+            span([attribute.class("admin-section-icon")], [text("\u{2699}\u{FE0F}")]),
             text(update_helpers.i18n_t(
               model,
               i18n_text.WorkflowsProjectTitle(project.name),
             )),
           ]),
-          view_workflows_table(
+          dialog.add_button(
             model,
-            model.workflows_project,
-            opt.Some(project),
+            i18n_text.CreateWorkflow,
+            OpenWorkflowDialog(WorkflowDialogCreate),
           ),
-        ])
-      opt.None -> element.none()
-    },
-    // Workflow CRUD dialog component (handles create, edit, delete)
-    view_workflow_crud_dialog(model),
-  ])
+        ]),
+        // Project workflows table (AC23)
+        view_workflows_table(model, model.workflows_project, opt.Some(project)),
+        // Workflow CRUD dialog component (handles create, edit, delete)
+        view_workflow_crud_dialog(model),
+      ])
+  }
 }
 
 /// Render the workflow-crud-dialog Lustre component.

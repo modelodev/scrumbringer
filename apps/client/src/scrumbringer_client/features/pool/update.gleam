@@ -98,6 +98,22 @@ pub fn handle_pool_search_debounced(
   member_refresh(model)
 }
 
+/// Clear all pool filters at once.
+pub fn handle_clear_filters(
+  model: Model,
+  member_refresh: fn(Model) -> #(Model, Effect(Msg)),
+) -> #(Model, Effect(Msg)) {
+  let model =
+    Model(
+      ..model,
+      member_filters_type_id: "",
+      member_filters_capability_id: "",
+      member_filters_q: "",
+      member_quick_my_caps: False,
+    )
+  member_refresh(model)
+}
+
 // =============================================================================
 // View Mode and Filter Visibility
 // =============================================================================
@@ -193,6 +209,33 @@ pub fn handle_global_keydown(
               Model(..model, member_create_dialog_open: True),
               effect.none(),
             )
+          }
+        }
+
+        pool_prefs.CloseDialog -> {
+          // Close any open dialog
+          case
+            model.member_create_dialog_open,
+            opt.is_some(model.member_notes_task_id),
+            opt.is_some(model.member_position_edit_task)
+          {
+            True, _, _ -> #(
+              Model(..model, member_create_dialog_open: False),
+              effect.none(),
+            )
+            _, True, _ -> #(
+              Model(..model, member_notes_task_id: opt.None),
+              effect.none(),
+            )
+            _, _, True -> #(
+              Model(
+                ..model,
+                member_position_edit_task: opt.None,
+                member_position_edit_error: opt.None,
+              ),
+              effect.none(),
+            )
+            _, _, _ -> #(model, effect.none())
           }
         }
       }

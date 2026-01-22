@@ -95,7 +95,7 @@ import scrumbringer_client/client_state.{
   MemberNoteContentChanged, MemberNoteSubmitted, MemberNotesFetched,
   MemberNowWorkingPauseClicked, MemberNowWorkingStartClicked,
   MemberPoolCapabilityChanged, MemberPoolDragToClaimArmed,
-  MemberPoolFiltersToggled, MemberPoolMyTasksRectFetched,
+  MemberClearFilters, MemberPoolFiltersToggled, MemberPoolMyTasksRectFetched,
   MemberPoolSearchChanged, MemberPoolSearchDebounced, MemberPoolStatusChanged,
   MemberPanelToggled, MobileLeftDrawerToggled, MobileRightDrawerToggled, MobileDrawersClosed,
   SidebarConfigToggled, SidebarOrgToggled,
@@ -105,7 +105,14 @@ import scrumbringer_client/client_state.{
   MemberPositionEditXChanged, MemberPositionEditYChanged, MemberPositionSaved,
   MemberPositionsFetched, MemberProjectTasksFetched, MemberReleaseClicked,
   MemberRemoveCancelled, MemberRemoveClicked, MemberRemoveConfirmed,
-  MemberRemoved, MemberRoleChanged, MemberRoleChangeRequested, MemberSaveCapabilitiesClicked, MemberTaskClaimed,
+  MemberRemoved, MemberRoleChanged, MemberRoleChangeRequested,
+  MemberCapabilitiesDialogOpened, MemberCapabilitiesDialogClosed,
+  MemberCapabilitiesToggled, MemberCapabilitiesSaveClicked,
+  MemberCapabilitiesFetched, MemberCapabilitiesSaved,
+  CapabilityMembersDialogOpened, CapabilityMembersDialogClosed,
+  CapabilityMembersToggled, CapabilityMembersSaveClicked,
+  CapabilityMembersFetched, CapabilityMembersSaved,
+  MemberSaveCapabilitiesClicked, MemberTaskClaimed,
   MemberTaskCompleted, MemberTaskCreated, MemberTaskDetailsClosed,
   MemberTaskDetailsOpened, MemberTaskReleased, MemberTaskTypesFetched,
   MemberToggleCapability, MemberToggleMyCapabilitiesQuick,
@@ -1630,6 +1637,42 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     MemberRoleChanged(Error(err)) ->
       admin_workflow.handle_member_role_changed_error(model, err)
 
+    // Member capabilities dialog (Story 4.7 AC10-14)
+    MemberCapabilitiesDialogOpened(user_id) ->
+      admin_workflow.handle_member_capabilities_dialog_opened(model, user_id)
+    MemberCapabilitiesDialogClosed ->
+      admin_workflow.handle_member_capabilities_dialog_closed(model)
+    MemberCapabilitiesToggled(capability_id) ->
+      admin_workflow.handle_member_capabilities_toggled(model, capability_id)
+    MemberCapabilitiesSaveClicked ->
+      admin_workflow.handle_member_capabilities_save_clicked(model)
+    MemberCapabilitiesFetched(Ok(result)) ->
+      admin_workflow.handle_member_capabilities_fetched_ok(model, result)
+    MemberCapabilitiesFetched(Error(err)) ->
+      admin_workflow.handle_member_capabilities_fetched_error(model, err)
+    MemberCapabilitiesSaved(Ok(result)) ->
+      admin_workflow.handle_member_capabilities_saved_ok(model, result)
+    MemberCapabilitiesSaved(Error(err)) ->
+      admin_workflow.handle_member_capabilities_saved_error(model, err)
+
+    // Capability members dialog (Story 4.7 AC16-17)
+    CapabilityMembersDialogOpened(capability_id) ->
+      admin_workflow.handle_capability_members_dialog_opened(model, capability_id)
+    CapabilityMembersDialogClosed ->
+      admin_workflow.handle_capability_members_dialog_closed(model)
+    CapabilityMembersToggled(user_id) ->
+      admin_workflow.handle_capability_members_toggled(model, user_id)
+    CapabilityMembersSaveClicked ->
+      admin_workflow.handle_capability_members_save_clicked(model)
+    CapabilityMembersFetched(Ok(result)) ->
+      admin_workflow.handle_capability_members_fetched_ok(model, result)
+    CapabilityMembersFetched(Error(err)) ->
+      admin_workflow.handle_capability_members_fetched_error(model, err)
+    CapabilityMembersSaved(Ok(result)) ->
+      admin_workflow.handle_capability_members_saved_ok(model, result)
+    CapabilityMembersSaved(Error(err)) ->
+      admin_workflow.handle_capability_members_saved_error(model, err)
+
     OrgUsersSearchChanged(query) ->
       admin_workflow.handle_org_users_search_changed(model, query)
 
@@ -1691,6 +1734,8 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     MemberToggleMyCapabilitiesQuick ->
       pool_workflow.handle_toggle_my_capabilities_quick(model)
     MemberPoolFiltersToggled -> pool_workflow.handle_pool_filters_toggled(model)
+    MemberClearFilters ->
+      pool_workflow.handle_clear_filters(model, member_refresh)
     MemberPoolViewModeSet(mode) ->
       pool_workflow.handle_pool_view_mode_set(model, mode)
     MemberListHideCompletedToggled ->

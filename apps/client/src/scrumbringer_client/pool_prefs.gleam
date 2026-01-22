@@ -69,31 +69,37 @@ pub type ShortcutAction {
   ToggleFilters
   FocusSearch
   OpenCreate
+  CloseDialog
 }
 
 /// Maps a key event to its corresponding shortcut action.
+/// AC40: n (nueva tarea), f (filtros), / (búsqueda), Esc (cerrar)
 pub fn shortcut_action(event: KeyEvent) -> ShortcutAction {
   let KeyEvent(
     key: key,
-    ctrl: ctrl,
-    meta: meta,
-    shift: shift,
+    ctrl: _ctrl,
+    meta: _meta,
+    shift: _shift,
     is_editing: editing,
     modal_open: modal_open,
   ) = event
 
-  case editing || modal_open {
-    True -> NoAction
-    False -> {
-      let cmd = ctrl || meta
-      let key = string.lowercase(key)
+  let key = string.lowercase(key)
 
-      case cmd, shift, key {
-        True, True, "f" -> ToggleFilters
-        True, False, "k" -> FocusSearch
-        False, False, "n" -> OpenCreate
-        _, _, _ -> NoAction
+  // Esc always works to close dialogs
+  case key {
+    "escape" -> CloseDialog
+    _ ->
+      // Other shortcuts don't work when editing or modal is open
+      case editing || modal_open {
+        True -> NoAction
+        False ->
+          case key {
+            "n" -> OpenCreate
+            "f" -> ToggleFilters
+            "/" -> FocusSearch
+            _ -> NoAction
+          }
       }
-    }
   }
 }

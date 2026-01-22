@@ -5,7 +5,10 @@
 ////
 //// Responsibilities:
 //// - Project selector dropdown
-//// - Work section (New Task, New Card buttons for PM/Admin)
+//// - Work section (visible for ALL roles - AC1, AC7-9)
+////   - New Task button: ALL members
+////   - New Card button: PM/Admin only
+////   - Navigation links: Pool, Lista, Tarjetas (ALL members)
 //// - Configuration section (PM/Admin only)
 //// - Organization section (Org Admin only)
 ////
@@ -23,6 +26,7 @@ import lustre/event
 
 import domain/project.{type Project}
 import domain/user.{type User}
+import domain/view_mode.{type ViewMode, Cards, List, Pool}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -40,6 +44,8 @@ pub type LeftPanelConfig(msg) {
     selected_project_id: Option(Int),
     is_pm: Bool,
     is_org_admin: Bool,
+    // Current view mode for active indicator (AC3)
+    current_view_mode: Option(ViewMode),
     // Collapse state
     config_collapsed: Bool,
     org_collapsed: Bool,
@@ -50,12 +56,19 @@ pub type LeftPanelConfig(msg) {
     on_project_change: fn(String) -> msg,
     on_new_task: msg,
     on_new_card: msg,
+    // Navigation to work views (AC2)
+    on_navigate_pool: msg,
+    on_navigate_list: msg,
+    on_navigate_cards: msg,
+    // Config navigation
     on_navigate_config_team: msg,
     on_navigate_config_catalog: msg,
     on_navigate_config_automation: msg,
+    on_navigate_config_metrics: msg,
     on_navigate_org_invites: msg,
     on_navigate_org_users: msg,
     on_navigate_org_projects: msg,
+    on_navigate_org_metrics: msg,
     on_toggle_config: msg,
     on_toggle_org: msg,
   )
@@ -74,11 +87,9 @@ pub fn view(config: LeftPanelConfig(msg)) -> Element(msg) {
     [
       // Project selector - always visible
       view_project_selector(config),
-      // Work section - New Task/Card buttons for PM/Admin
-      case config.is_pm || config.is_org_admin {
-        True -> view_work_section(config)
-        False -> element.none()
-      },
+      // Work section - ALWAYS visible for ALL roles (AC1, AC7-9)
+      // Contains: New Task (all), New Card (PM+), navigation links (all)
+      view_work_section(config),
       // Configuration section - PM/Admin only
       case config.is_pm || config.is_org_admin {
         True -> view_config_section(config)
@@ -141,11 +152,15 @@ fn view_project_selector(config: LeftPanelConfig(msg)) -> Element(msg) {
 
 fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
   div(
-    [attribute.class("panel-section")],
+    [
+      attribute.class("panel-section"),
+      attribute.attribute("data-testid", "section-work"),
+    ],
     [
       h4([attribute.class("section-title")], [
         text(i18n.t(config.locale, i18n_text.Work)),
       ]),
+      // New Task button - ALL roles (AC7)
       button(
         [
           attribute.class("btn-action"),
@@ -158,18 +173,89 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
           text(i18n.t(config.locale, i18n_text.NewTask)),
         ],
       ),
-      button(
+      // New Card button - PM/Admin only (AC8, AC9)
+      case config.is_pm || config.is_org_admin {
+        True ->
+          button(
+            [
+              attribute.class("btn-action"),
+              attribute.attribute("data-testid", "btn-new-card"),
+              attribute.disabled(config.selected_project_id == None),
+              event.on_click(config.on_new_card),
+            ],
+            [
+              span([attribute.class("btn-icon-prefix")], [text("+")]),
+              text(i18n.t(config.locale, i18n_text.NewCard)),
+            ],
+          )
+        False -> element.none()
+      },
+      // Navigation links - ALL roles (AC2)
+      div(
+        [attribute.class("nav-links")],
         [
-          attribute.class("btn-action"),
-          attribute.attribute("data-testid", "btn-new-card"),
-          attribute.disabled(config.selected_project_id == None),
-          event.on_click(config.on_new_card),
-        ],
-        [
-          span([attribute.class("btn-icon-prefix")], [text("+")]),
-          text(i18n.t(config.locale, i18n_text.NewCard)),
+          view_nav_link(
+            config,
+            Pool,
+            "nav-pool",
+            "🎯",
+            i18n_text.Pool,
+            config.on_navigate_pool,
+          ),
+          view_nav_link(
+            config,
+            List,
+            "nav-list",
+            "≡",
+            i18n_text.List,
+            config.on_navigate_list,
+          ),
+          view_nav_link(
+            config,
+            Cards,
+            "nav-cards",
+            "🎴",
+            i18n_text.MemberFichas,
+            config.on_navigate_cards,
+          ),
         ],
       ),
+    ],
+  )
+}
+
+/// Renders a navigation link with active indicator (AC3)
+fn view_nav_link(
+  config: LeftPanelConfig(msg),
+  mode: ViewMode,
+  testid: String,
+  icon: String,
+  label_key: i18n_text.Text,
+  on_click_msg: msg,
+) -> Element(msg) {
+  let is_active = config.current_view_mode == Some(mode)
+  let active_class = case is_active {
+    True -> " active"
+    False -> ""
+  }
+  let active_indicator = case is_active {
+    True -> span([attribute.class("active-indicator")], [text("●")])
+    False -> element.none()
+  }
+
+  button(
+    [
+      attribute.class("nav-link" <> active_class),
+      attribute.attribute("data-testid", testid),
+      attribute.disabled(config.selected_project_id == None),
+      event.on_click(on_click_msg),
+    ],
+    [
+      span([attribute.class("nav-icon")], [text(icon)]),
+      span([attribute.class("nav-label")], [
+        text(i18n.t(config.locale, label_key)),
+      ]),
+      active_indicator,
     ],
   )
 }
@@ -238,6 +324,19 @@ fn view_config_section(config: LeftPanelConfig(msg)) -> Element(msg) {
                   event.on_click(config.on_navigate_config_automation),
                 ],
                 [text(i18n.t(config.locale, i18n_text.Automation))],
+              ),
+              // AC31: Metrics link in Configuration section for PM/Admin
+              button(
+                [
+                  attribute.class("nav-link"),
+                  attribute.attribute("data-testid", "nav-metrics"),
+                  attribute.disabled(config.selected_project_id == None),
+                  event.on_click(config.on_navigate_config_metrics),
+                ],
+                [
+                  span([attribute.class("nav-icon")], [text("📈")]),
+                  text(i18n.t(config.locale, i18n_text.AdminMetrics)),
+                ],
               ),
             ],
           )
@@ -312,6 +411,18 @@ fn view_org_section(config: LeftPanelConfig(msg)) -> Element(msg) {
                 [
                   text(i18n.t(config.locale, i18n_text.Projects)),
                   view_badge(config.projects_count),
+                ],
+              ),
+              // AC32: Org Metrics link for Org Admin
+              button(
+                [
+                  attribute.class("nav-link"),
+                  attribute.attribute("data-testid", "nav-org-metrics"),
+                  event.on_click(config.on_navigate_org_metrics),
+                ],
+                [
+                  span([attribute.class("nav-icon")], [text("📊")]),
+                  text(i18n.t(config.locale, i18n_text.OrgMetrics)),
                 ],
               ),
             ],

@@ -189,3 +189,127 @@ pub fn update_member_role(
     to_msg,
   )
 }
+
+// =============================================================================
+// Member Capabilities (Story 4.7)
+// =============================================================================
+
+/// Result of getting member capabilities.
+pub type MemberCapabilities {
+  MemberCapabilities(user_id: Int, capability_ids: List(Int))
+}
+
+/// Get a member's capability IDs.
+pub fn get_member_capabilities(
+  project_id: Int,
+  user_id: Int,
+  to_msg: fn(ApiResult(MemberCapabilities)) -> msg,
+) -> Effect(msg) {
+  let decoder = {
+    use ids <- decode.field("capability_ids", decode.list(decode.int))
+    decode.success(MemberCapabilities(user_id: user_id, capability_ids: ids))
+  }
+  core.request(
+    "GET",
+    "/api/v1/projects/"
+      <> int.to_string(project_id)
+      <> "/members/"
+      <> int.to_string(user_id)
+      <> "/capabilities",
+    option.None,
+    decoder,
+    to_msg,
+  )
+}
+
+/// Set a member's capability IDs (replaces all existing).
+pub fn set_member_capabilities(
+  project_id: Int,
+  user_id: Int,
+  capability_ids: List(Int),
+  to_msg: fn(ApiResult(MemberCapabilities)) -> msg,
+) -> Effect(msg) {
+  let body =
+    json.object([
+      #("capability_ids", json.array(capability_ids, of: json.int)),
+    ])
+  let decoder = {
+    use ids <- decode.field("capability_ids", decode.list(decode.int))
+    decode.success(MemberCapabilities(user_id: user_id, capability_ids: ids))
+  }
+  core.request(
+    "PUT",
+    "/api/v1/projects/"
+      <> int.to_string(project_id)
+      <> "/members/"
+      <> int.to_string(user_id)
+      <> "/capabilities",
+    option.Some(body),
+    decoder,
+    to_msg,
+  )
+}
+
+// =============================================================================
+// Capability Members (Story 4.7 AC16-17, AC20-21)
+// =============================================================================
+
+/// Result of getting capability members.
+pub type CapabilityMembers {
+  CapabilityMembers(capability_id: Int, user_ids: List(Int))
+}
+
+/// Get a capability's member user IDs.
+pub fn get_capability_members(
+  project_id: Int,
+  capability_id: Int,
+  to_msg: fn(ApiResult(CapabilityMembers)) -> msg,
+) -> Effect(msg) {
+  let decoder = {
+    use ids <- decode.field("user_ids", decode.list(decode.int))
+    decode.success(CapabilityMembers(
+      capability_id: capability_id,
+      user_ids: ids,
+    ))
+  }
+  core.request(
+    "GET",
+    "/api/v1/projects/"
+      <> int.to_string(project_id)
+      <> "/capabilities/"
+      <> int.to_string(capability_id)
+      <> "/members",
+    option.None,
+    decoder,
+    to_msg,
+  )
+}
+
+/// Set a capability's member user IDs (replaces all existing).
+pub fn set_capability_members(
+  project_id: Int,
+  capability_id: Int,
+  user_ids: List(Int),
+  to_msg: fn(ApiResult(CapabilityMembers)) -> msg,
+) -> Effect(msg) {
+  let body =
+    json.object([#("user_ids", json.array(user_ids, of: json.int))])
+  let decoder = {
+    use ids <- decode.field("user_ids", decode.list(decode.int))
+    decode.success(CapabilityMembers(
+      capability_id: capability_id,
+      user_ids: ids,
+    ))
+  }
+  core.request(
+    "PUT",
+    "/api/v1/projects/"
+      <> int.to_string(project_id)
+      <> "/capabilities/"
+      <> int.to_string(capability_id)
+      <> "/members",
+    option.Some(body),
+    decoder,
+    to_msg,
+  )
+}

@@ -6044,3 +6044,57 @@ RETURNING
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
+
+// =============================================================================
+// Capability Members (Story 4.7 AC20-21) - Manually added
+// =============================================================================
+
+/// A row you get from running the `capability_members_list` query.
+pub type CapabilityMembersListRow {
+  CapabilityMembersListRow(project_id: Int, capability_id: Int, user_id: Int)
+}
+
+/// name: list_capability_members
+pub fn capability_members_list(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(CapabilityMembersListRow), pog.QueryError) {
+  let decoder = {
+    use project_id <- decode.field(0, decode.int)
+    use capability_id <- decode.field(1, decode.int)
+    use user_id <- decode.field(2, decode.int)
+    decode.success(CapabilityMembersListRow(project_id:, capability_id:, user_id:))
+  }
+
+  "-- name: list_capability_members
+select
+  pmc.project_id,
+  pmc.capability_id,
+  pmc.user_id
+from project_member_capabilities pmc
+where pmc.project_id = $1 and pmc.capability_id = $2
+order by pmc.user_id asc;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// name: delete_all_capability_members
+pub fn capability_members_delete_all(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(Nil), pog.QueryError) {
+  "-- name: delete_all_capability_members
+delete from project_member_capabilities
+where project_id = $1 and capability_id = $2;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.execute(db)
+}

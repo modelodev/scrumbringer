@@ -53,6 +53,11 @@ pub type EmojiIcon {
   Backpack
   Clock
   Inbox
+  // Empty state icons
+  Clipboard
+  FolderEmoji
+  UsersEmoji
+  Sparkles
 }
 
 /// Converts an emoji icon to its string representation.
@@ -69,6 +74,11 @@ pub fn emoji_to_string(icon: EmojiIcon) -> String {
     Backpack -> "🎒"
     Clock -> "⏱"
     Inbox -> "📥"
+    // Empty state icons
+    Clipboard -> "📋"
+    FolderEmoji -> "📁"
+    UsersEmoji -> "👥"
+    Sparkles -> "✨"
   }
 }
 

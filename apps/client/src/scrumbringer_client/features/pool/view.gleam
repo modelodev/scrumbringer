@@ -454,9 +454,20 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
   }
   let card_border_class = color_picker.border_class(card_color_opt)
 
+  // Get saved position or generate deterministic initial position based on task ID
   let #(x, y) = case dict.get(model.member_positions_by_task, id) {
     Ok(xy) -> xy
-    Error(_) -> #(0, 0)
+    Error(_) -> {
+      // Generate spread-out initial positions using task ID as seed
+      // This ensures consistent initial layout that doesn't overlap
+      let canvas_width = 700
+      let canvas_height = 500
+      let padding = 50
+      // Use prime multipliers for better distribution
+      let initial_x = { { id * 137 } % { canvas_width - padding } } + { padding / 2 }
+      let initial_y = { { id * 89 } % { canvas_height - padding } } + { padding / 2 }
+      #(initial_x, initial_y)
+    }
   }
 
   let size = member_visuals.priority_to_px(priority)

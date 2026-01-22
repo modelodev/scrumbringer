@@ -41,13 +41,15 @@ import lustre/event
 import domain/org_role
 import domain/project.{type Project}
 import domain/user.{type User}
+import domain/view_mode
 
 import gleam/dict
 // Story 4.5: Removed LocaleSelected, ThemeSelected - no longer used
 import scrumbringer_client/client_state.{
   type Model, type Msg, AcceptInvite as AcceptInvitePage, Admin, Loaded,
   Login, LogoutClicked, Member,
-  MemberCompleteClicked, MemberNowWorkingPauseClicked, MemberNowWorkingStartClicked,
+  MemberCompleteClicked, MemberDragEnded, MemberDragMoved,
+  MemberNowWorkingPauseClicked, MemberNowWorkingStartClicked,
   MemberReleaseClicked, NavigateTo, Push, ProjectSelected,
   ResetPassword as ResetPasswordPage, ToastDismissed,
   CardDialogCreate, CardDialogDelete, CardDialogEdit, MemberCreateDialogOpened,
@@ -425,6 +427,13 @@ fn build_left_panel(
   }
 
   // Story 4.5: Use Config and Org routes instead of Admin
+  // Story 4.7: TRABAJO section visible for all roles (AC1, AC7-9)
+  // Only show active view indicator when on Member page (AC3)
+  let current_view = case model.page {
+    Member -> opt.Some(model.view_mode)
+    _ -> opt.None
+  }
+
   left_panel.view(left_panel.LeftPanelConfig(
     locale: model.locale,
     user: opt.Some(user),
@@ -432,6 +441,8 @@ fn build_left_panel(
     selected_project_id: model.selected_project_id,
     is_pm: is_pm,
     is_org_admin: is_org_admin,
+    // Current view mode for active indicator (AC3) - only when on Member page
+    current_view_mode: current_view,
     // Collapse state
     config_collapsed: model.sidebar_config_collapsed,
     org_collapsed: model.sidebar_org_collapsed,
@@ -442,6 +453,32 @@ fn build_left_panel(
     on_project_change: ProjectSelected,
     on_new_task: MemberCreateDialogOpened,
     on_new_card: OpenCardDialog(CardDialogCreate),
+    // Navigation to work views (AC2)
+    on_navigate_pool: NavigateTo(
+      router.Member(
+        member_section.Pool,
+        model.selected_project_id,
+        opt.Some(view_mode.Pool),
+      ),
+      Push,
+    ),
+    on_navigate_list: NavigateTo(
+      router.Member(
+        member_section.Pool,
+        model.selected_project_id,
+        opt.Some(view_mode.List),
+      ),
+      Push,
+    ),
+    on_navigate_cards: NavigateTo(
+      router.Member(
+        member_section.Pool,
+        model.selected_project_id,
+        opt.Some(view_mode.Cards),
+      ),
+      Push,
+    ),
+    // Config navigation
     on_navigate_config_team: NavigateTo(
       router.Config(permissions.Members, model.selected_project_id),
       Push,
@@ -454,6 +491,11 @@ fn build_left_panel(
       router.Config(permissions.Workflows, model.selected_project_id),
       Push,
     ),
+    // AC31: Metrics link for PM/Admin
+    on_navigate_config_metrics: NavigateTo(
+      router.Config(permissions.RuleMetrics, model.selected_project_id),
+      Push,
+    ),
     on_navigate_org_invites: NavigateTo(
       router.Org(permissions.Invites),
       Push,
@@ -464,6 +506,11 @@ fn build_left_panel(
     ),
     on_navigate_org_projects: NavigateTo(
       router.Org(permissions.Projects),
+      Push,
+    ),
+    // AC32: Org Metrics link for Org Admin
+    on_navigate_org_metrics: NavigateTo(
+      router.Org(permissions.Metrics),
       Push,
     ),
     on_toggle_config: SidebarConfigToggled,
@@ -542,6 +589,9 @@ fn build_center_panel(model: Model, user: User) -> Element(Msg) {
     pool_content: pool_content,
     list_content: list_content,
     cards_content: cards_content,
+    // Drag handlers for pool (Story 4.7 fix)
+    on_drag_move: MemberDragMoved,
+    on_drag_end: MemberDragEnded,
   ))
 }
 
@@ -642,6 +692,9 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
     on_card_click: fn(card_id) {
       OpenCardDetail(card_id)
     },
+    // Drag-to-claim state for Pool view (Story 4.7)
+    drag_armed: model.member_pool_drag_to_claim_armed,
+    drag_over_my_tasks: model.member_pool_drag_over_my_tasks,
   ))
 }
 
@@ -691,23 +744,51 @@ fn view_claimed_tasks_section(model: Model, user: User) -> Element(Msg) {
     _ -> []
   }
 
-  div([], [
-    h3([], [text(update_helpers.i18n_t(model, i18n_text.MyTasks))]),
-    case claimed_tasks {
-      [] ->
-        empty_state.simple(
-          icons.Hand,
-          update_helpers.i18n_t(model, i18n_text.NoClaimedTasks),
-        )
-      _ ->
-        div(
-          [attribute.class("task-list")],
-          list.map(claimed_tasks, fn(t) {
-            view_claimed_task_row(model, user, t, active_task_id)
-          }),
-        )
-    },
-  ])
+  // Dropzone class for drag-to-claim visual feedback
+  let dropzone_class = case
+    model.member_pool_drag_to_claim_armed,
+    model.member_pool_drag_over_my_tasks
+  {
+    True, True -> "pool-my-tasks-dropzone drop-over"
+    True, False -> "pool-my-tasks-dropzone drag-active"
+    False, _ -> "pool-my-tasks-dropzone"
+  }
+
+  div(
+    [
+      attribute.attribute("id", "pool-my-tasks"),
+      attribute.class(dropzone_class),
+    ],
+    [
+      // Dropzone hint when dragging
+      case model.member_pool_drag_to_claim_armed {
+        True ->
+          div([attribute.class("dropzone-hint")], [
+            text(
+              update_helpers.i18n_t(model, i18n_text.Claim)
+              <> ": "
+              <> update_helpers.i18n_t(model, i18n_text.MyTasks),
+            ),
+          ])
+        False -> element.none()
+      },
+      h3([], [text(update_helpers.i18n_t(model, i18n_text.MyTasks))]),
+      case claimed_tasks {
+        [] ->
+          empty_state.simple(
+            icons.Hand,
+            update_helpers.i18n_t(model, i18n_text.NoClaimedTasks),
+          )
+        _ ->
+          div(
+            [attribute.class("task-list")],
+            list.map(claimed_tasks, fn(t) {
+              view_claimed_task_row(model, user, t, active_task_id)
+            }),
+          )
+      },
+    ],
+  )
 }
 
 /// Renders a claimed task row with start/complete/release actions.

@@ -145,6 +145,12 @@ pub fn translate(text: Text) -> String {
     text.MyCapabilitiesHint -> "Filter tasks matching my capabilities"
     text.SearchLabel -> "Search"
     text.SearchPlaceholder -> "q"
+    text.ClearFilters -> "Clear"
+    text.ActiveFilters(count) ->
+      int.to_string(count) <> " active filter" <> case count {
+        1 -> ""
+        _ -> "s"
+      }
     text.NoAvailableTasksRightNow -> "No available tasks right now"
     text.CreateFirstTaskToStartUsingPool ->
       "Create your first task to start using the Pool."
@@ -181,6 +187,7 @@ pub fn translate(text: Text) -> String {
     text.RoleManager -> "manager"
     text.AdminProjects -> "Projects"
     text.AdminMetrics -> "Metrics"
+    text.OrgMetrics -> "Org Metrics"
     text.AdminMembers -> "Members"
     text.AdminCapabilities -> "Capabilities"
     text.AdminTaskTypes -> "Task Types"
@@ -286,6 +293,13 @@ pub fn translate(text: Text) -> String {
     text.RemoveMemberConfirm(user_email, project_name) ->
       "Remove " <> user_email <> " from " <> project_name <> "?"
     text.Remove -> "Remove"
+    // Member capabilities (Story 4.7 AC10-14)
+    text.CapabilitiesForUser(user_email) -> "Capabilities for " <> user_email
+    text.NoCapabilitiesDefined -> "No capabilities defined for this project"
+    // Capability members (Story 4.7 AC16-17)
+    text.MembersForCapability(capability_name) -> "Members with " <> capability_name
+    text.MembersSaved -> "Members saved"
+    text.NoMembersDefined -> "No members in this project"
 
     // User Projects dialog
     text.UserProjectsTitle(user_email) -> "Projects for " <> user_email
@@ -364,12 +378,15 @@ pub fn translate(text: Text) -> String {
     text.NoCardsYet -> "No cards yet"
     text.CardTaskCount(completed, total) ->
       int.to_string(completed) <> "/" <> int.to_string(total)
+    text.KanbanEmptyColumn -> "No cards here"
 
     // Workflows
     text.AdminWorkflows -> "Workflows"
     text.WorkflowsTitle -> "Workflows"
     text.WorkflowsOrgTitle -> "Organization Workflows"
     text.WorkflowsProjectTitle(project_name) -> "Workflows - " <> project_name
+    text.SelectProjectForWorkflows ->
+      "Select a project to manage workflows"
     text.WorkflowName -> "Name"
     text.WorkflowDescription -> "Description"
     text.WorkflowScope -> "Scope"
@@ -516,5 +533,8 @@ pub fn translate(text: Text) -> String {
     text.MyCards -> "My Cards"
     text.NoTasksClaimed -> "No tasks claimed"
     text.NoCardsAssigned -> "No cards assigned"
+    // AC32: Empty state hints
+    text.NoTasksClaimedHint -> "Browse Pool to claim a task"
+    text.NoCardsAssignedHint -> "View Fichas to see available cards"
   }
 }

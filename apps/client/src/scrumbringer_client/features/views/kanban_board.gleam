@@ -27,6 +27,7 @@ import domain/task_status
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/utils/text as text_utils
 
 // =============================================================================
 // Types
@@ -59,15 +60,20 @@ type CardWithProgress {
 pub fn view(config: KanbanConfig(msg)) -> Element(msg) {
   let cards_with_progress = compute_progress(config.cards, config.tasks)
 
+  // AC42: Filter out empty cards (cards with 0 tasks)
+  // Empty cards are only visible in /config/cards management view
+  let non_empty_cards =
+    list.filter(cards_with_progress, fn(cwp) { cwp.total > 0 })
+
   // Group by state
   let pendiente =
-    list.filter(cards_with_progress, fn(cwp) {
+    list.filter(non_empty_cards, fn(cwp) {
       cwp.card.state == Pendiente
     })
   let en_curso =
-    list.filter(cards_with_progress, fn(cwp) { cwp.card.state == EnCurso })
+    list.filter(non_empty_cards, fn(cwp) { cwp.card.state == EnCurso })
   let cerrada =
-    list.filter(cards_with_progress, fn(cwp) { cwp.card.state == Cerrada })
+    list.filter(non_empty_cards, fn(cwp) { cwp.card.state == Cerrada })
 
   div(
     [attribute.class("kanban-board")],
@@ -114,8 +120,27 @@ fn view_column(
       ),
       div(
         [attribute.class("kanban-column-content")],
-        list.map(cards, fn(cwp) { view_card(config, cwp) }),
+        case cards {
+          [] -> [view_empty_column(config)]
+          _ -> list.map(cards, fn(cwp) { view_card(config, cwp) })
+        },
       ),
+    ],
+  )
+}
+
+/// Renders an empty state for kanban columns (AC27)
+fn view_empty_column(config: KanbanConfig(msg)) -> Element(msg) {
+  div(
+    [
+      attribute.class("kanban-empty-column"),
+      attribute.attribute("data-testid", "kanban-empty-column"),
+    ],
+    [
+      span([attribute.class("empty-icon")], [text("📋")]),
+      span([attribute.class("empty-text")], [
+        text(i18n.t(config.locale, i18n_text.KanbanEmptyColumn)),
+      ]),
     ],
   )
 }
@@ -174,7 +199,7 @@ fn view_card(config: KanbanConfig(msg), cwp: CardWithProgress) -> Element(msg) {
         "" -> element.none()
         desc ->
           div([attribute.class("kanban-card-desc")], [
-            text(truncate(desc, 80)),
+            text(text_utils.truncate(desc, 80)),
           ])
       },
       // Progress bar
@@ -226,7 +251,7 @@ fn view_task_list(tasks: List(Task)) -> Element(msg) {
             [attribute.class("kanban-task-item" <> status_class)],
             [
               span([attribute.class("task-status-icon")], [text(icon)]),
-              span([attribute.class("task-title")], [text(truncate(t.title, 30))]),
+              span([attribute.class("task-title")], [text(text_utils.truncate(t.title, 30))]),
             ],
           )
         }),
@@ -285,12 +310,3 @@ fn compute_progress(
     )
   })
 }
-
-fn truncate(s: String, max_len: Int) -> String {
-  case string.length(s) > max_len {
-    True -> string.slice(s, 0, max_len) <> "..."
-    False -> s
-  }
-}
-
-import gleam/string

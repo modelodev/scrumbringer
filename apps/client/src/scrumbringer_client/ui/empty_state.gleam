@@ -83,3 +83,49 @@ pub fn simple(icon: icons.EmojiIcon, description: String) -> Element(msg) {
     ]),
   ])
 }
+
+// =============================================================================
+// Factory Functions for Common Empty States
+// =============================================================================
+
+/// Empty state for no active tasks (member view).
+/// Icon: ✋
+pub fn no_tasks(title: String, description: String) -> EmptyStateConfig(msg) {
+  new(icons.Hand, title, description)
+}
+
+/// Empty state for no cards/fichas.
+/// Icon: 📋
+pub fn no_cards(title: String, description: String) -> EmptyStateConfig(msg) {
+  new(icons.Clipboard, title, description)
+}
+
+/// Empty state for no projects.
+/// Icon: 📁
+pub fn no_projects(title: String, description: String) -> EmptyStateConfig(msg) {
+  new(icons.FolderEmoji, title, description)
+}
+
+/// Empty state for no team members.
+/// Icon: 👥
+pub fn no_members(title: String, description: String) -> EmptyStateConfig(msg) {
+  new(icons.UsersEmoji, title, description)
+}
+
+/// Empty state for no search results.
+/// Icon: 🔍
+pub fn no_results(title: String, description: String) -> EmptyStateConfig(msg) {
+  new(icons.Search, title, description)
+}
+
+/// Empty state for all tasks completed (celebration).
+/// Icon: ✨
+pub fn all_done(title: String, description: String) -> EmptyStateConfig(msg) {
+  new(icons.Sparkles, title, description)
+}
+
+/// Empty state for inbox/notifications.
+/// Icon: 📥
+pub fn empty_inbox(title: String, description: String) -> EmptyStateConfig(msg) {
+  new(icons.Inbox, title, description)
+}

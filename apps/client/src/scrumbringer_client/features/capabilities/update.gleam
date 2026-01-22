@@ -19,6 +19,7 @@
 //// - **client_update.gleam**: Dispatches capability messages to handlers here
 //// - **api/org.gleam**: Provides API effects for capability operations
 
+import gleam/list
 import gleam/option as opt
 import gleam/string
 
@@ -26,11 +27,13 @@ import lustre/effect.{type Effect}
 
 // API modules
 import scrumbringer_client/api/org as api_org
+import scrumbringer_client/api/projects as api_projects
 // Domain types
 import domain/api_error.{type ApiError}
 import domain/capability.{type Capability}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, CapabilityCreated, Failed, Loaded, Model,
+  type Model, type Msg, CapabilityCreated, CapabilityMembersFetched, Failed,
+  Loaded, Model,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -40,11 +43,27 @@ import scrumbringer_client/update_helpers
 // =============================================================================
 
 /// Handle capabilities fetch success.
+/// Also preloads member counts for each capability (AC16 optimization).
 pub fn handle_capabilities_fetched_ok(
   model: Model,
   capabilities: List(Capability),
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, capabilities: Loaded(capabilities)), effect.none())
+  // Preload member counts for all capabilities
+  let preload_fx = case model.selected_project_id {
+    opt.Some(project_id) ->
+      capabilities
+      |> list.map(fn(c) {
+        api_projects.get_capability_members(
+          project_id,
+          c.id,
+          CapabilityMembersFetched,
+        )
+      })
+      |> effect.batch
+    opt.None -> effect.none()
+  }
+
+  #(Model(..model, capabilities: Loaded(capabilities)), preload_fx)
 }
 
 /// Handle capabilities fetch error.

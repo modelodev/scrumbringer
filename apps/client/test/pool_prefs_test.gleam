@@ -31,20 +31,22 @@ pub fn view_mode_roundtrip_test() {
 }
 
 pub fn shortcut_action_ignores_when_editing_or_modal_test() {
+  // f should be ignored when editing
   pool_prefs.shortcut_action(pool_prefs.KeyEvent(
-    "k",
+    "f",
     False,
-    True,
+    False,
     False,
     True,
     False,
   ))
   |> should.equal(pool_prefs.NoAction)
 
+  // n should be ignored when modal is open
   pool_prefs.shortcut_action(pool_prefs.KeyEvent(
-    "k",
+    "n",
     False,
-    True,
+    False,
     False,
     False,
     True,
@@ -53,26 +55,29 @@ pub fn shortcut_action_ignores_when_editing_or_modal_test() {
 }
 
 pub fn shortcut_action_maps_core_shortcuts_test() {
+  // f -> ToggleFilters (AC40)
   pool_prefs.shortcut_action(pool_prefs.KeyEvent(
-    "F",
-    True,
+    "f",
     False,
-    True,
+    False,
+    False,
     False,
     False,
   ))
   |> should.equal(pool_prefs.ToggleFilters)
 
+  // / -> FocusSearch (AC40)
   pool_prefs.shortcut_action(pool_prefs.KeyEvent(
-    "k",
+    "/",
     False,
-    True,
+    False,
     False,
     False,
     False,
   ))
   |> should.equal(pool_prefs.FocusSearch)
 
+  // n -> OpenCreate (AC40)
   pool_prefs.shortcut_action(pool_prefs.KeyEvent(
     "n",
     False,
@@ -82,4 +87,15 @@ pub fn shortcut_action_maps_core_shortcuts_test() {
     False,
   ))
   |> should.equal(pool_prefs.OpenCreate)
+
+  // Escape -> CloseDialog (AC40)
+  pool_prefs.shortcut_action(pool_prefs.KeyEvent(
+    "Escape",
+    False,
+    False,
+    False,
+    False,
+    False,
+  ))
+  |> should.equal(pool_prefs.CloseDialog)
 }

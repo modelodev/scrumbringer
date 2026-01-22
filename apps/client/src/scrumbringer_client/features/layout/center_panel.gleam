@@ -12,6 +12,7 @@
 //// - Individual view implementations (delegated to view modules)
 //// - State management (handled by parent)
 
+import gleam/dynamic/decode
 import gleam/option.{type Option, None, Some}
 import lustre/attribute
 import lustre/element.{type Element}
@@ -49,6 +50,9 @@ pub type CenterPanelConfig(msg) {
     pool_content: Element(msg),
     list_content: Element(msg),
     cards_content: Element(msg),
+    // Drag handlers for pool (Story 4.7 fix)
+    on_drag_move: fn(Int, Int) -> msg,
+    on_drag_end: msg,
   )
 }
 
@@ -179,13 +183,26 @@ fn view_content(config: CenterPanelConfig(msg)) -> Element(msg) {
     Cards -> "kanban-board"
   }
 
-  div(
-    [
+  // Add drag handlers for Pool view (Story 4.7 fix)
+  let attrs = case config.view_mode {
+    Pool -> [
+      attribute.class("center-content pool-drag-area"),
+      attribute.attribute("data-testid", testid),
+      event.on("mousemove", {
+        use x <- decode.field("clientX", decode.int)
+        use y <- decode.field("clientY", decode.int)
+        decode.success(config.on_drag_move(x, y))
+      }),
+      event.on("mouseup", decode.success(config.on_drag_end)),
+      event.on("mouseleave", decode.success(config.on_drag_end)),
+    ]
+    _ -> [
       attribute.class("center-content"),
       attribute.attribute("data-testid", testid),
-    ],
-    [content],
-  )
+    ]
+  }
+
+  div(attrs, [content])
 }
 
 // =============================================================================

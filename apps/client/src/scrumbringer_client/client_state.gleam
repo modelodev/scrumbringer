@@ -345,6 +345,20 @@ pub type Model {
     members_remove_confirm: Option(OrgUser),
     members_remove_in_flight: Bool,
     members_remove_error: Option(String),
+    // Member capabilities dialog (Story 4.7 AC10-14)
+    member_capabilities_dialog_user_id: Option(Int),
+    member_capabilities_loading: Bool,
+    member_capabilities_saving: Bool,
+    member_capabilities_cache: Dict(Int, List(Int)),
+    member_capabilities_selected: List(Int),
+    member_capabilities_error: Option(String),
+    // Capability members dialog (Story 4.7 AC16-17)
+    capability_members_dialog_capability_id: Option(Int),
+    capability_members_loading: Bool,
+    capability_members_saving: Bool,
+    capability_members_cache: Dict(Int, List(Int)),
+    capability_members_selected: List(Int),
+    capability_members_error: Option(String),
     // Org user search
     org_users_search_query: String,
     org_users_search_token: Int,
@@ -594,6 +608,22 @@ pub type Msg {
   MemberRoleChangeRequested(Int, ProjectRole)
   MemberRoleChanged(ApiResult(api_projects.RoleChangeResult))
 
+  // Member capabilities dialog (Story 4.7 AC10-14)
+  MemberCapabilitiesDialogOpened(Int)
+  MemberCapabilitiesDialogClosed
+  MemberCapabilitiesToggled(Int)
+  MemberCapabilitiesSaveClicked
+  MemberCapabilitiesFetched(ApiResult(api_projects.MemberCapabilities))
+  MemberCapabilitiesSaved(ApiResult(api_projects.MemberCapabilities))
+
+  // Capability members dialog (Story 4.7 AC16-17)
+  CapabilityMembersDialogOpened(Int)
+  CapabilityMembersDialogClosed
+  CapabilityMembersToggled(Int)
+  CapabilityMembersSaveClicked
+  CapabilityMembersFetched(ApiResult(api_projects.CapabilityMembers))
+  CapabilityMembersSaved(ApiResult(api_projects.CapabilityMembers))
+
   // Org user search
   OrgUsersSearchChanged(String)
   OrgUsersSearchDebounced(String)
@@ -679,6 +709,7 @@ pub type Msg {
   MemberPoolSearchDebounced(String)
   MemberToggleMyCapabilitiesQuick
   MemberPoolFiltersToggled
+  MemberClearFilters
   MemberPoolViewModeSet(pool_prefs.ViewMode)
   // List view hide completed toggle
   MemberListHideCompletedToggled
@@ -952,6 +983,13 @@ pub fn default_model() -> Model {
     members_remove_confirm: option.None,
     members_remove_in_flight: False,
     members_remove_error: option.None,
+    // Member capabilities dialog (Story 4.7 AC10-14)
+    member_capabilities_dialog_user_id: option.None,
+    member_capabilities_loading: False,
+    member_capabilities_saving: False,
+    member_capabilities_cache: dict.new(),
+    member_capabilities_selected: [],
+    member_capabilities_error: option.None,
     // Org user search
     org_users_search_query: "",
     org_users_search_token: 0,
@@ -1069,5 +1107,12 @@ pub fn default_model() -> Model {
     member_note_content: "",
     member_note_in_flight: False,
     member_note_error: option.None,
+    // Capability members (Story 4.7 AC16-17)
+    capability_members_dialog_capability_id: option.None,
+    capability_members_loading: False,
+    capability_members_saving: False,
+    capability_members_cache: dict.new(),
+    capability_members_selected: [],
+    capability_members_error: option.None,
   )
 }

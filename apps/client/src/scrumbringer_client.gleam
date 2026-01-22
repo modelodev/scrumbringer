@@ -421,6 +421,20 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       task_templates_org: NotAsked,
       task_templates_project: NotAsked,
       task_templates_dialog_mode: opt.None,
+      // Member capabilities (Story 4.7 AC10-14)
+      member_capabilities_dialog_user_id: opt.None,
+      member_capabilities_loading: False,
+      member_capabilities_saving: False,
+      member_capabilities_cache: dict.new(),
+      member_capabilities_selected: [],
+      member_capabilities_error: opt.None,
+      // Capability members (Story 4.7 AC16-17)
+      capability_members_dialog_capability_id: opt.None,
+      capability_members_loading: False,
+      capability_members_saving: False,
+      capability_members_cache: dict.new(),
+      capability_members_selected: [],
+      capability_members_error: opt.None,
     )
 
   let base_effect = case page {

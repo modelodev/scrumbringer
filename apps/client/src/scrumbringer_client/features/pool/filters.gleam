@@ -23,6 +23,7 @@
 
 import gleam/int
 import gleam/list
+import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
@@ -31,12 +32,33 @@ import lustre/event
 
 import scrumbringer_client/client_state.{
   type Model, type Msg, Loaded,
-  MemberPoolCapabilityChanged, MemberPoolSearchChanged,
+  MemberClearFilters, MemberPoolCapabilityChanged, MemberPoolSearchChanged,
   MemberPoolSearchDebounced, MemberPoolTypeChanged,
   MemberToggleMyCapabilitiesQuick,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
+
+/// Counts how many filters are currently active.
+fn count_active_filters(model: Model) -> Int {
+  let type_active = case string.is_empty(model.member_filters_type_id) {
+    True -> 0
+    False -> 1
+  }
+  let cap_active = case string.is_empty(model.member_filters_capability_id) {
+    True -> 0
+    False -> 1
+  }
+  let search_active = case string.is_empty(model.member_filters_q) {
+    True -> 0
+    False -> 1
+  }
+  let my_caps_active = case model.member_quick_my_caps {
+    True -> 1
+    False -> 0
+  }
+  type_active + cap_active + search_active + my_caps_active
+}
 
 /// Renders the filter panel with type, capability, and search filters.
 pub fn view(model: Model) -> Element(Msg) {
@@ -85,12 +107,47 @@ pub fn view(model: Model) -> Element(Msg) {
     False -> "btn-xs btn-icon"
   }
 
+  let active_count = count_active_filters(model)
+
   div([attribute.class("filters-row")], [
     view_type_filter(model, type_options),
     view_capability_filter(model, capability_options),
     view_my_capabilities_toggle(model, my_caps_class, my_caps_active),
     view_search_filter(model),
+    view_filter_actions(model, active_count),
   ])
+}
+
+/// Renders the filter badge and clear button.
+fn view_filter_actions(model: Model, active_count: Int) -> Element(Msg) {
+  case active_count {
+    0 -> element.none()
+    count ->
+      div([attribute.class("filter-actions")], [
+        span(
+          [
+            attribute.class("filter-badge"),
+            attribute.attribute(
+              "aria-label",
+              update_helpers.i18n_t(model, i18n_text.ActiveFilters(count)),
+            ),
+          ],
+          [text(int.to_string(count))],
+        ),
+        button(
+          [
+            attribute.class("btn-xs btn-clear-filters"),
+            attribute.attribute("data-testid", "clear-filters-btn"),
+            attribute.attribute(
+              "title",
+              update_helpers.i18n_t(model, i18n_text.ClearFilters),
+            ),
+            event.on_click(MemberClearFilters),
+          ],
+          [text(update_helpers.i18n_t(model, i18n_text.ClearFilters))],
+        ),
+      ])
+  }
 }
 
 fn view_type_filter(model: Model, options: List(element.Element(Msg))) -> Element(Msg) {

@@ -138,6 +138,8 @@ pub type Text {
   MyCapabilitiesOff
   SearchLabel
   SearchPlaceholder
+  ClearFilters
+  ActiveFilters(count: Int)
   NoAvailableTasksRightNow
   CreateFirstTaskToStartUsingPool
   NoTasksMatchYourFilters
@@ -172,6 +174,7 @@ pub type Text {
   RoleManager
   AdminProjects
   AdminMetrics
+  OrgMetrics
   AdminMembers
   AdminCapabilities
   AdminTaskTypes
@@ -272,6 +275,13 @@ pub type Text {
   RemoveMemberTitle
   RemoveMemberConfirm(user_email: String, project_name: String)
   Remove
+  // Member capabilities (Story 4.7 AC10-14)
+  CapabilitiesForUser(user_email: String)
+  NoCapabilitiesDefined
+  // Capability members (Story 4.7 AC16-17)
+  MembersForCapability(capability_name: String)
+  MembersSaved
+  NoMembersDefined
 
   // User Projects dialog
   UserProjectsTitle(user_email: String)
@@ -336,12 +346,14 @@ pub type Text {
   CardDeleteConfirm(card_title: String)
   NoCardsYet
   CardTaskCount(completed: Int, total: Int)
+  KanbanEmptyColumn
 
   // Workflows
   AdminWorkflows
   WorkflowsTitle
   WorkflowsOrgTitle
   WorkflowsProjectTitle(project_name: String)
+  SelectProjectForWorkflows
   WorkflowName
   WorkflowDescription
   WorkflowScope
@@ -485,4 +497,7 @@ pub type Text {
   MyCards
   NoTasksClaimed
   NoCardsAssigned
+  // AC32: Empty state hints with CTAs
+  NoTasksClaimedHint
+  NoCardsAssignedHint
 }

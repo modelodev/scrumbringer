@@ -259,10 +259,20 @@ fn group_tasks_by_card(tasks: List(Task), cards: List(Card)) -> List(CardGroup) 
   let card_map =
     list.fold(cards, dict.new(), fn(acc, card) { dict.insert(acc, card.id, card) })
 
-  // Group tasks by card_id
+  // Group tasks by card_id, consolidating tasks with invalid/missing cards to key 0
+  // AC24: All tasks without a valid card should be in ONE "Sin ficha" section
   let grouped =
     list.fold(tasks, dict.new(), fn(acc, task) {
-      let key = option.unwrap(task.card_id, 0)
+      // Use card_id if it exists AND is valid (exists in card_map), otherwise 0
+      let key = case task.card_id {
+        Some(cid) ->
+          case dict.has_key(card_map, cid) {
+            True -> cid
+            False -> 0
+            // Invalid card_id -> consolidate to "Sin ficha"
+          }
+        None -> 0
+      }
       let existing = dict.get(acc, key) |> option.from_result |> option.unwrap([])
       dict.insert(acc, key, [task, ..existing])
     })

@@ -302,3 +302,135 @@ fn capability_json(capability: capabilities_db.Capability) -> json.Json {
     #("created_at", json.string(created_at)),
   ])
 }
+
+// =============================================================================
+// Capability Members (Story 4.7 AC20-21) - Reverse direction
+// =============================================================================
+
+/// Routes /api/projects/:id/capabilities/:cap_id/members requests.
+pub fn handle_capability_members(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+  capability_id: Int,
+) -> wisp.Response {
+  case req.method {
+    http.Get -> handle_get_capability_members(req, ctx, project_id, capability_id)
+    http.Put -> handle_put_capability_members(req, ctx, project_id, capability_id)
+    _ -> wisp.method_not_allowed([http.Get, http.Put])
+  }
+}
+
+fn handle_get_capability_members(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+  capability_id: Int,
+) -> wisp.Response {
+  use <- wisp.require_method(req, http.Get)
+
+  case auth.require_current_user(req, ctx) {
+    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+
+    Ok(user) -> {
+      let auth.Ctx(db: db, ..) = ctx
+
+      // Must be a member of the project
+      case projects_db.is_project_member(db, project_id, user.id) {
+        Ok(True) -> {
+          case capabilities_db.list_capability_members(db, project_id, capability_id) {
+            Ok(members) -> {
+              let ids = list.map(members, fn(m) { m.user_id })
+              api.ok(json.object([#("user_ids", ids_json(ids))]))
+            }
+            Error(_) -> api.error(500, "INTERNAL", "Database error")
+          }
+        }
+        Ok(False) -> api.error(403, "FORBIDDEN", "Not a member of this project")
+        Error(_) -> api.error(500, "INTERNAL", "Database error")
+      }
+    }
+  }
+}
+
+fn handle_put_capability_members(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+  capability_id: Int,
+) -> wisp.Response {
+  use <- wisp.require_method(req, http.Put)
+
+  case auth.require_current_user(req, ctx) {
+    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+
+    Ok(user) -> {
+      // Only managers can set capability members
+      let auth.Ctx(db: db, ..) = ctx
+
+      case require_project_manager(db, user, project_id) {
+        Error(resp) -> resp
+        Ok(Nil) -> update_capability_members(req, ctx, project_id, capability_id)
+      }
+    }
+  }
+}
+
+fn update_capability_members(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+  capability_id: Int,
+) -> wisp.Response {
+  case csrf.require_double_submit(req) {
+    Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+
+    Ok(Nil) -> {
+      use data <- wisp.require_json(req)
+
+      let decoder = {
+        use ids <- decode.field("user_ids", decode.list(decode.int))
+        decode.success(ids)
+      }
+
+      case decode.run(data, decoder) {
+        Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+
+        Ok(new_ids) -> {
+          let auth.Ctx(db: db, ..) = ctx
+
+          // First, verify all user IDs are project members
+          let validation_result = list.try_map(new_ids, fn(user_id) {
+            case projects_db.is_project_member(db, project_id, user_id) {
+              Ok(True) -> Ok(user_id)
+              Ok(False) -> Error("invalid")
+              Error(_) -> Error("db_error")
+            }
+          })
+
+          case validation_result {
+            Error("invalid") ->
+              api.error(422, "VALIDATION_ERROR", "Invalid user_id (not a project member)")
+            Error(_) ->
+              api.error(500, "INTERNAL", "Database error")
+            Ok(_) -> {
+              // Remove all existing and add new ones
+              case capabilities_db.remove_all_capability_members(db, project_id, capability_id) {
+                Error(_) -> api.error(500, "INTERNAL", "Database error")
+                Ok(Nil) -> {
+                  let add_result = list.try_map(new_ids, fn(user_id) {
+                    capabilities_db.add_member_capability(db, project_id, user_id, capability_id)
+                  })
+                  case add_result {
+                    Ok(_) -> api.ok(json.object([#("user_ids", ids_json(new_ids))]))
+                    Error(_) -> api.error(500, "INTERNAL", "Database error")
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -156,3 +156,41 @@ pub fn remove_all_member_capabilities(
   use _ <- result.try(sql.project_member_capabilities_delete_all(db, project_id, user_id))
   Ok(Nil)
 }
+
+// =============================================================================
+// Capability Members (Story 4.7 AC20-21) - Reverse direction
+// =============================================================================
+
+/// A user ID that has a specific capability.
+pub type CapabilityMember {
+  CapabilityMember(project_id: Int, capability_id: Int, user_id: Int)
+}
+
+/// Lists all members who have a specific capability.
+pub fn list_capability_members(
+  db: pog.Connection,
+  project_id: Int,
+  capability_id: Int,
+) -> Result(List(CapabilityMember), pog.QueryError) {
+  use returned <- result.try(sql.capability_members_list(db, project_id, capability_id))
+
+  returned.rows
+  |> list.map(fn(row) {
+    CapabilityMember(
+      project_id: row.project_id,
+      capability_id: row.capability_id,
+      user_id: row.user_id,
+    )
+  })
+  |> Ok
+}
+
+/// Removes all members from a capability.
+pub fn remove_all_capability_members(
+  db: pog.Connection,
+  project_id: Int,
+  capability_id: Int,
+) -> Result(Nil, pog.QueryError) {
+  use _ <- result.try(sql.capability_members_delete_all(db, project_id, capability_id))
+  Ok(Nil)
+}

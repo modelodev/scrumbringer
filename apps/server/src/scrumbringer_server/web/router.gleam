@@ -171,6 +171,12 @@ pub fn route(req: wisp.Request, ctx: RouterCtx) -> wisp.Response {
         Ok(pid), Ok(uid) -> capabilities.handle_member_capabilities(req, auth_ctx(ctx), pid, uid)
         _, _ -> wisp.not_found()
       }
+    // Reverse direction: capability → members (Story 4.7 AC20-21)
+    ["api", "v1", "projects", project_id, "capabilities", capability_id, "members"] ->
+      case int.parse(project_id), int.parse(capability_id) {
+        Ok(pid), Ok(cid) -> capabilities.handle_capability_members(req, auth_ctx(ctx), pid, cid)
+        _, _ -> wisp.not_found()
+      }
 
     // Me routes
     ["api", "v1", "me", "task-positions"] ->

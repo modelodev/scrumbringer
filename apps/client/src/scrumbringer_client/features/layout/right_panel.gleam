@@ -27,6 +27,8 @@ import domain/user.{type User}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/empty_state
+import scrumbringer_client/ui/icons
 
 // =============================================================================
 // Types
@@ -61,6 +63,9 @@ pub type RightPanelConfig(msg) {
     on_task_release: fn(Int) -> msg,
     on_card_click: fn(Int) -> msg,
     on_logout: msg,
+    // Drag-to-claim state for Pool view (Story 4.7)
+    drag_armed: Bool,
+    drag_over_my_tasks: Bool,
   )
 }
 
@@ -160,19 +165,46 @@ fn view_active_task(
 // =============================================================================
 
 fn view_my_tasks(config: RightPanelConfig(msg)) -> Element(msg) {
+  // Dropzone class for drag-to-claim visual feedback (Story 4.7)
+  let dropzone_class = case config.drag_armed, config.drag_over_my_tasks {
+    True, True -> "my-tasks-section pool-my-tasks-dropzone drop-over"
+    True, False -> "my-tasks-section pool-my-tasks-dropzone drag-active"
+    False, _ -> "my-tasks-section pool-my-tasks-dropzone"
+  }
+
   div(
     [
-      attribute.class("my-tasks-section"),
+      attribute.attribute("id", "pool-my-tasks"),
+      attribute.class(dropzone_class),
       attribute.attribute("data-testid", "my-tasks"),
     ],
     [
+      // Dropzone hint when dragging (Story 4.7)
+      case config.drag_armed {
+        True ->
+          div([attribute.class("dropzone-hint")], [
+            text(
+              i18n.t(config.locale, i18n_text.Claim)
+              <> ": "
+              <> i18n.t(config.locale, i18n_text.MyTasks),
+            ),
+          ])
+        False -> element.none()
+      },
       h4([attribute.class("section-title")], [
         text(i18n.t(config.locale, i18n_text.MyTasks)),
       ]),
       case config.my_tasks {
         [] ->
-          div([attribute.class("empty-state")], [
-            text(i18n.t(config.locale, i18n_text.NoTasksClaimed)),
+          div([], [
+            empty_state.simple(
+              icons.Hand,
+              i18n.t(config.locale, i18n_text.NoTasksClaimed),
+            ),
+            // AC32: Actionable hint
+            div([attribute.class("empty-state-hint")], [
+              text(i18n.t(config.locale, i18n_text.NoTasksClaimedHint)),
+            ]),
           ])
         tasks ->
           div(
@@ -230,8 +262,15 @@ fn view_my_cards(config: RightPanelConfig(msg)) -> Element(msg) {
       ]),
       case config.my_cards {
         [] ->
-          div([attribute.class("empty-state")], [
-            text(i18n.t(config.locale, i18n_text.NoCardsAssigned)),
+          div([], [
+            empty_state.simple(
+              icons.Clipboard,
+              i18n.t(config.locale, i18n_text.NoCardsAssigned),
+            ),
+            // AC32: Actionable hint
+            div([attribute.class("empty-state-hint")], [
+              text(i18n.t(config.locale, i18n_text.NoCardsAssignedHint)),
+            ]),
           ])
         cards ->
           div(
@@ -250,6 +289,11 @@ fn view_my_card_item(
   let progress_text =
     int.to_string(card.completed) <> "/" <> int.to_string(card.total)
 
+  let progress_percent = case card.total {
+    0 -> 0
+    t -> { card.completed * 100 } / t
+  }
+
   button(
     [
       attribute.class("my-card-item"),
@@ -258,7 +302,24 @@ fn view_my_card_item(
     ],
     [
       span([attribute.class("card-title")], [text(card.card_title)]),
-      span([attribute.class("card-progress")], [text(progress_text)]),
+      div(
+        [attribute.class("card-progress-row")],
+        [
+          div(
+            [attribute.class("progress-bar-mini")],
+            [
+              div(
+                [
+                  attribute.class("progress-bar-fill"),
+                  attribute.style("width", int.to_string(progress_percent) <> "%"),
+                ],
+                [],
+              ),
+            ],
+          ),
+          span([attribute.class("card-progress")], [text(progress_text)]),
+        ],
+      ),
     ],
   )
 }
