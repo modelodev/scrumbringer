@@ -200,6 +200,176 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
 ---
 
+## UI Components & View Functions
+
+### View Functions vs Lustre Components
+
+Lustre ofrece dos formas de estructurar código UI reutilizable:
+
+| Tipo | Cuándo usar | Estado | Ejemplo |
+|------|-------------|--------|---------|
+| **View Function** | UI estático o que depende solo de props | Sin estado propio | `section_header.view()`, `data_table.view()` |
+| **Component** | UI con estado interno, eventos propios, ciclo de vida | Estado encapsulado | Diálogos modales complejos, editores rich-text |
+
+**Regla general:** Preferir **View Functions** siempre que sea posible. Solo usar Components cuando se necesite estado interno aislado del modelo principal.
+
+```gleam
+// View Function (preferido) - recibe datos, devuelve Element
+pub fn view(config: Config) -> Element(msg) {
+  div([], [text(config.title)])
+}
+
+// Component (solo si necesita estado interno)
+// Ver: https://hexdocs.pm/lustre/4.3.2/guide/08-components.html
+pub fn component() -> Component(Model, Msg, msg) {
+  lustre.component(init, update, view, on_attribute_change())
+}
+```
+
+### Componentes Reutilizables del Proyecto
+
+El proyecto tiene componentes UI establecidos en `ui/`. **Usar siempre estos en lugar de crear código ad-hoc:**
+
+| Componente | Ubicación | Uso |
+|------------|-----------|-----|
+| `section_header` | `ui/section_header.gleam` | Cabeceras de sección con icono y acción opcional |
+| `data_table` | `ui/data_table.gleam` | Tablas con Remote state, columnas tipadas, acciones |
+| `dialog` | `ui/dialog.gleam` | Diálogos modales con footer de acciones |
+| `toast` | `ui/toast.gleam` | Notificaciones temporales |
+| `icons` | `ui/icons.gleam` | Sistema de iconos Heroicons |
+| `badge` | `ui/badge.gleam` | Badges de estado |
+
+#### Uso de section_header
+
+```gleam
+// Cabecera simple
+section_header.view(icons.Projects, "Proyectos")
+
+// Cabecera con botón de acción
+section_header.view_with_action(
+  icons.Projects,
+  t(i18n_text.Projects),
+  dialog.add_button(model, i18n_text.CreateProject, ProjectCreateDialogOpened),
+)
+```
+
+#### Uso de data_table
+
+```gleam
+// Tabla con Remote data (maneja Loading/Failed/Loaded automáticamente)
+data_table.view_remote(
+  model.projects,  // Remote(List(Project))
+  loading_msg: t(i18n_text.LoadingEllipsis),
+  empty_msg: t(i18n_text.NoProjectsYet),
+  config: data_table.new()
+    |> data_table.with_columns([
+      data_table.column(t(i18n_text.Name), fn(p: Project) { text(p.name) }),
+      data_table.column_with_class(
+        t(i18n_text.Actions),
+        fn(p: Project) { view_project_actions(model, p) },
+        "col-actions",
+        "cell-actions",
+      ),
+    ])
+    |> data_table.with_key(fn(p: Project) { int.to_string(p.id) }),
+)
+```
+
+### Sistema de Iconos (Heroicons)
+
+**Siempre usar `icons.nav_icon()` para iconos.** El proyecto usa Heroicons Outline.
+
+```gleam
+// Icono simple
+icons.nav_icon(icons.Pencil, icons.Small)
+
+// Botón de acción con icono y tooltip
+button(
+  [
+    attribute.class("btn-xs btn-icon"),
+    attribute.attribute("title", t(i18n_text.EditProject)),
+    attribute.attribute("aria-label", t(i18n_text.EditProject)),
+    event.on_click(EditClicked(id)),
+  ],
+  [icons.nav_icon(icons.Pencil, icons.Small)],
+)
+```
+
+**Tamaños disponibles:** `XSmall`, `Small`, `Medium`, `Large`
+
+**Iconos comunes:**
+- Navegación: `Pool`, `List`, `Cards`, `Team`, `Catalog`
+- Acciones: `Pencil` (editar), `Trash` (eliminar), `Copy`, `Refresh`, `Plus`
+- Estado: `Check`, `Warning`, `Info`
+
+### Layout de 3 Paneles
+
+La aplicación sigue un layout de 3 paneles consistente:
+
+| Panel | Ubicación | Responsabilidad |
+|-------|-----------|-----------------|
+| **Izquierdo** (Sidebar) | `features/layout/left_panel.gleam` | Navegación principal, selector de proyecto, botones de creación |
+| **Central** | Varía por ruta | Visualización de datos, tablas, canvas, formularios |
+| **Derecho** | `features/layout/right_panel.gleam` | Estado del usuario: tareas asignadas, tarjetas, preferencias |
+
+**No mezclar responsabilidades entre paneles.**
+
+### Cuándo Componentizar
+
+**Crear un componente/módulo reutilizable cuando:**
+
+1. **Repetición:** El mismo patrón de UI aparece en 2+ lugares
+2. **Complejidad:** El fragmento tiene >50 líneas o lógica de renderizado compleja
+3. **Estado interno:** Necesita manejar estado propio (expandido/colapsado, hover, etc.)
+4. **Testabilidad:** Beneficiaría de tests aislados
+
+**Señales de código que necesita extracción:**
+
+```gleam
+// ❌ MALO: Código repetido en múltiples vistas
+fn view_users_table(model: Model) -> Element(Msg) {
+  case model.users {
+    NotAsked | Loading -> div([class("loading")], [text("Cargando...")])
+    Failed(err) -> div([class("error")], [text(err.message)])
+    Loaded(users) -> table([class("table")], [...])
+  }
+}
+
+fn view_projects_table(model: Model) -> Element(Msg) {
+  case model.projects {
+    NotAsked | Loading -> div([class("loading")], [text("Cargando...")])
+    Failed(err) -> div([class("error")], [text(err.message)])
+    Loaded(projects) -> table([class("table")], [...])
+  }
+}
+
+// ✅ BUENO: Usar data_table.view_remote() que maneja todos los estados
+data_table.view_remote(model.users, loading_msg: "...", empty_msg: "...", config: ...)
+data_table.view_remote(model.projects, loading_msg: "...", empty_msg: "...", config: ...)
+```
+
+**Checklist antes de implementar UI:**
+
+- [ ] ¿Existe ya un componente en `ui/` que haga esto?
+- [ ] ¿Este patrón aparece en otra parte del proyecto?
+- [ ] ¿Podría generalizarse para uso futuro?
+- [ ] ¿Usa `icons.nav_icon()` para iconos?
+- [ ] ¿Usa `section_header` para cabeceras de sección?
+- [ ] ¿Usa `data_table` para tablas con datos remotos?
+- [ ] ¿Usa `dialog` para modales?
+
+### Patrones de Interacción Consistentes
+
+| Elemento | Patrón |
+|----------|--------|
+| Botones de acción en tablas | Icono con `title` tooltip, clase `btn-xs btn-icon` |
+| Filtros con fecha | Auto-refresh al cambiar (no botón "Actualizar" manual) |
+| Botones de rango rápido | Estado visual activo (`btn-chip-active`) |
+| Empty states | Icono + título + descripción orientada a la acción |
+| Errores de API | Mostrar via `toast` o inline en el contexto |
+
+---
+
 ## SQL Conventions
 
 ### Query Files
@@ -521,6 +691,8 @@ test: add tests for claim conflict scenarios
 - **SQL stays in SQL:** keep queries as `.sql` files and generate typed bindings; naming should follow `verb_table[_condition]`.
 - **Codec in shared:** encode/decode JSON for shared types in `shared` so client/server share the same shape.
 - **Prefer Option over sentinel values:** model nullability with `Option`, not empty strings or magic values.
+- **Regenerate after schema changes:** after any DB migration, regenerate SQL bindings immediately to catch type mismatches at compile time, not runtime.
+- **Dual watch mode:** run both `gleam run -m server --target erlang` and `gleam build --target javascript --watch` simultaneously for instant cross-boundary type error feedback.
 
 ### Lessons from `gloogle`
 

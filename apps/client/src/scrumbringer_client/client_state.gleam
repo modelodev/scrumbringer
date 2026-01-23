@@ -817,6 +817,8 @@ pub type Msg {
   AdminRuleMetricsFetched(ApiResult(List(api_workflows.OrgWorkflowMetricsSummary)))
   AdminRuleMetricsFromChanged(String)
   AdminRuleMetricsToChanged(String)
+  AdminRuleMetricsFromChangedAndRefresh(String)
+  AdminRuleMetricsToChangedAndRefresh(String)
   AdminRuleMetricsRefreshClicked
   AdminRuleMetricsQuickRangeClicked(String, String)
   // Rule metrics drill-down

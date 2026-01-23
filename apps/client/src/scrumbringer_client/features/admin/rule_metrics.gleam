@@ -44,6 +44,40 @@ pub fn handle_to_changed(model: Model, to: String) -> #(Model, Effect(Msg)) {
   #(Model(..model, admin_rule_metrics_to: to), effect.none())
 }
 
+/// Handle from date change with auto-refresh.
+pub fn handle_from_changed_and_refresh(
+  model: Model,
+  from: String,
+) -> #(Model, Effect(Msg)) {
+  let to = model.admin_rule_metrics_to
+  // Only fetch if both dates are set
+  case from == "" || to == "" {
+    True -> #(Model(..model, admin_rule_metrics_from: from), effect.none())
+    False -> {
+      let model =
+        Model(..model, admin_rule_metrics_from: from, admin_rule_metrics: Loading)
+      #(model, api_workflows.get_org_rule_metrics(from, to, AdminRuleMetricsFetched))
+    }
+  }
+}
+
+/// Handle to date change with auto-refresh.
+pub fn handle_to_changed_and_refresh(
+  model: Model,
+  to: String,
+) -> #(Model, Effect(Msg)) {
+  let from = model.admin_rule_metrics_from
+  // Only fetch if both dates are set
+  case from == "" || to == "" {
+    True -> #(Model(..model, admin_rule_metrics_to: to), effect.none())
+    False -> {
+      let model =
+        Model(..model, admin_rule_metrics_to: to, admin_rule_metrics: Loading)
+      #(model, api_workflows.get_org_rule_metrics(from, to, AdminRuleMetricsFetched))
+    }
+  }
+}
+
 /// Handle refresh clicked.
 pub fn handle_refresh_clicked(model: Model) -> #(Model, Effect(Msg)) {
   let from = model.admin_rule_metrics_from

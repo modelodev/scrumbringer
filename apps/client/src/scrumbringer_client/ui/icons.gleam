@@ -272,6 +272,8 @@ pub type NavIcon {
   Globe
   UserCircle
   Logout
+  // Informational icons
+  Info
 }
 
 /// Icon size variants for consistent sizing.
@@ -354,6 +356,8 @@ pub fn nav_icon(icon: NavIcon, size: IconSize) -> Element(a) {
     Globe -> outline.globe_alt()
     UserCircle -> outline.user_circle()
     Logout -> outline.arrow_right_start_on_rectangle()
+    // Informational icons
+    Info -> outline.information_circle()
   }
 
   let px = icon_size_px(size)
@@ -430,6 +434,8 @@ pub fn nav_icon_with_class(
     Globe -> outline.globe_alt()
     UserCircle -> outline.user_circle()
     Logout -> outline.arrow_right_start_on_rectangle()
+    // Informational icons
+    Info -> outline.information_circle()
   }
 
   let px = icon_size_px(size)

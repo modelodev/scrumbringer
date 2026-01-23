@@ -60,9 +60,9 @@ import scrumbringer_client/i18n/locale
 import scrumbringer_client/client_state.{
   type Model, type Msg, type Remote,
   AdminRuleMetricsDrilldownClicked, AdminRuleMetricsDrilldownClosed,
-  AdminRuleMetricsExecPageChanged, AdminRuleMetricsFromChanged,
-  AdminRuleMetricsQuickRangeClicked, AdminRuleMetricsRefreshClicked,
-  AdminRuleMetricsToChanged,
+  AdminRuleMetricsExecPageChanged,
+  AdminRuleMetricsFromChangedAndRefresh, AdminRuleMetricsQuickRangeClicked,
+  AdminRuleMetricsToChangedAndRefresh,
   AdminRuleMetricsWorkflowExpanded, CapabilityCreateDialogClosed,
   CapabilityCreateDialogOpened, CapabilityCreateNameChanged,
   CapabilityCreateSubmitted, CardCrudCreated, CardCrudDeleted, CardCrudUpdated,
@@ -2600,80 +2600,66 @@ fn view_task_templates_table(
 
 /// Rule metrics tab view.
 pub fn view_rule_metrics(model: Model) -> Element(Msg) {
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
   let is_loading = case model.admin_rule_metrics {
     Loading -> True
     _ -> False
   }
-  let has_dates =
-    model.admin_rule_metrics_from != "" && model.admin_rule_metrics_to != ""
 
   div([attribute.class("section")], [
     // Header with icon (Story 4.8: consistent icons via section_header)
-    section_header.view(
-      icons.Metrics,
-      update_helpers.i18n_t(model, i18n_text.RuleMetricsTitle),
-    ),
+    section_header.view(icons.Metrics, t(i18n_text.RuleMetricsTitle)),
+    // Description tooltip
+    div([attribute.class("section-description")], [
+      icons.nav_icon(icons.Info, icons.Small),
+      text(" " <> t(i18n_text.RuleMetricsDescription)),
+    ]),
     // Card wrapper
     div([attribute.class("admin-card")], [
-      // Quick range buttons (S3/S4)
+      // Quick range buttons with active state
       div([attribute.class("quick-ranges")], [
-        span([attribute.class("quick-ranges-label")], [text("Rango rápido:")]),
-        view_quick_range_button("7 días", 7),
-        view_quick_range_button("30 días", 30),
-        view_quick_range_button("90 días", 90),
+        span([attribute.class("quick-ranges-label")], [
+          text(t(i18n_text.RuleMetricsQuickRange)),
+        ]),
+        view_quick_range_button(model, t(i18n_text.RuleMetrics7Days), 7),
+        view_quick_range_button(model, t(i18n_text.RuleMetrics30Days), 30),
+        view_quick_range_button(model, t(i18n_text.RuleMetrics90Days), 90),
       ]),
-      // Date range inputs with subtle hint (T2)
+      // Date range inputs - auto-refresh on change
       div([attribute.class("filters-row")], [
         div([attribute.class("field")], [
           label([attribute.class("filter-label")], [
-            text(update_helpers.i18n_t(model, i18n_text.RuleMetricsFrom)),
+            text(t(i18n_text.RuleMetricsFrom)),
           ]),
           input([
             attribute.type_("date"),
             attribute.value(model.admin_rule_metrics_from),
-            event.on_input(AdminRuleMetricsFromChanged),
-            attribute.attribute("aria-label", "Fecha inicio"),
+            // Auto-refresh on date change
+            event.on_input(AdminRuleMetricsFromChangedAndRefresh),
+            attribute.attribute("aria-label", t(i18n_text.RuleMetricsFrom)),
           ]),
         ]),
         div([attribute.class("field")], [
           label([attribute.class("filter-label")], [
-            text(update_helpers.i18n_t(model, i18n_text.RuleMetricsTo)),
+            text(t(i18n_text.RuleMetricsTo)),
           ]),
           input([
             attribute.type_("date"),
             attribute.value(model.admin_rule_metrics_to),
-            event.on_input(AdminRuleMetricsToChanged),
-            attribute.attribute("aria-label", "Fecha fin"),
+            // Auto-refresh on date change
+            event.on_input(AdminRuleMetricsToChangedAndRefresh),
+            attribute.attribute("aria-label", t(i18n_text.RuleMetricsTo)),
           ]),
         ]),
-        // Refresh button with icon (S5) and loading state (S2)
-        div([attribute.class("field")], [
-          label(
-            [
-              attribute.class("filter-label"),
-              attribute.attribute("style", "visibility: hidden;"),
-            ],
-            [text("\u{00A0}")],
-          ),
-          button(
-            [
-              attribute.class("btn-secondary"),
-              event.on_click(AdminRuleMetricsRefreshClicked),
-              attribute.disabled(!has_dates || is_loading),
-            ],
-            [
-              case is_loading {
-                True -> span([attribute.class("btn-spinner")], [])
-                False -> span([attribute.class("btn-icon-left")], [icons.nav_icon(icons.Refresh, icons.Small)])
-              },
-              text(case is_loading {
-                True -> "Cargando..."
-                False ->
-                  update_helpers.i18n_t(model, i18n_text.RuleMetricsRefresh)
-              }),
-            ],
-          ),
-        ]),
+        // Loading indicator (replaces manual refresh button)
+        case is_loading {
+          True ->
+            div([attribute.class("field loading-indicator")], [
+              span([attribute.class("btn-spinner")], []),
+              text(" " <> t(i18n_text.LoadingEllipsis)),
+            ])
+          False -> element.none()
+        },
       ]),
     ]),
     // Results
@@ -2681,14 +2667,28 @@ pub fn view_rule_metrics(model: Model) -> Element(Msg) {
   ])
 }
 
-/// Quick range button helper.
-fn view_quick_range_button(label: String, days: Int) -> Element(Msg) {
+/// Quick range button helper with active state.
+fn view_quick_range_button(model: Model, label: String, days: Int) -> Element(Msg) {
   let today = client_ffi.date_today()
   let from = client_ffi.date_days_ago(days)
+
+  // Check if this range is currently active
+  let is_active =
+    model.admin_rule_metrics_from == from && model.admin_rule_metrics_to == today
+
+  let class = case is_active {
+    True -> "btn-chip btn-chip-active"
+    False -> "btn-chip"
+  }
+
   button(
     [
-      attribute.class("btn-chip"),
+      attribute.class(class),
       event.on_click(AdminRuleMetricsQuickRangeClicked(from, today)),
+      attribute.attribute("aria-pressed", case is_active {
+        True -> "true"
+        False -> "false"
+      }),
     ],
     [text(label)],
   )

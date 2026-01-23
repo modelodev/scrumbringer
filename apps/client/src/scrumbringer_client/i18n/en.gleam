@@ -486,12 +486,18 @@ pub fn translate(text: Text) -> String {
     // Rule Metrics Tab
     text.AdminRuleMetrics -> "Rule Metrics"
     text.RuleMetricsTitle -> "Rule Metrics"
+    text.RuleMetricsDescription ->
+      "View how many times automation rules have been executed and their effectiveness."
     text.RuleMetricsHelp ->
       "View rule execution metrics for workflows. Select a date range (max 90 days) to see applied and suppressed counts."
     text.RuleMetricsFrom -> "From"
     text.RuleMetricsTo -> "To"
     text.RuleMetricsRefresh -> "Refresh"
-    text.RuleMetricsSelectRange -> "Select a date range and click Refresh"
+    text.RuleMetricsQuickRange -> "Quick range:"
+    text.RuleMetrics7Days -> "7 days"
+    text.RuleMetrics30Days -> "30 days"
+    text.RuleMetrics90Days -> "90 days"
+    text.RuleMetricsSelectRange -> "Select a date range"
     text.RuleMetricsNoData -> "No metrics data for the selected range"
     text.RuleMetricsRuleCount -> "Rules"
     text.RuleMetricsEvaluated -> "Evaluated"

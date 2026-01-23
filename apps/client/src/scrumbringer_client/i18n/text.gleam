@@ -448,10 +448,15 @@ pub type Text {
   // Rule Metrics Tab
   AdminRuleMetrics
   RuleMetricsTitle
+  RuleMetricsDescription
   RuleMetricsHelp
   RuleMetricsFrom
   RuleMetricsTo
   RuleMetricsRefresh
+  RuleMetricsQuickRange
+  RuleMetrics7Days
+  RuleMetrics30Days
+  RuleMetrics90Days
   RuleMetricsSelectRange
   RuleMetricsNoData
   RuleMetricsRuleCount

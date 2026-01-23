@@ -67,8 +67,10 @@ import scrumbringer_client/client_state.{
   AdminRuleMetricsDrilldownClicked, AdminRuleMetricsDrilldownClosed,
   AdminRuleMetricsExecPageChanged, AdminRuleMetricsExecutionsFetched,
   AdminRuleMetricsFetched, AdminRuleMetricsFromChanged,
+  AdminRuleMetricsFromChangedAndRefresh,
   AdminRuleMetricsQuickRangeClicked, AdminRuleMetricsRefreshClicked,
   AdminRuleMetricsRuleDetailsFetched, AdminRuleMetricsToChanged,
+  AdminRuleMetricsToChangedAndRefresh,
   AdminRuleMetricsWorkflowDetailsFetched,
   AdminRuleMetricsWorkflowExpanded, CapabilitiesFetched,
   CapabilityCreateDialogClosed, CapabilityCreateDialogOpened,
@@ -2183,6 +2185,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       admin_workflow.handle_rule_metrics_tab_from_changed(model, from)
     AdminRuleMetricsToChanged(to) ->
       admin_workflow.handle_rule_metrics_tab_to_changed(model, to)
+    AdminRuleMetricsFromChangedAndRefresh(from) ->
+      admin_workflow.handle_rule_metrics_tab_from_changed_and_refresh(model, from)
+    AdminRuleMetricsToChangedAndRefresh(to) ->
+      admin_workflow.handle_rule_metrics_tab_to_changed_and_refresh(model, to)
     AdminRuleMetricsRefreshClicked ->
       admin_workflow.handle_rule_metrics_tab_refresh_clicked(model)
     AdminRuleMetricsQuickRangeClicked(from, to) ->
