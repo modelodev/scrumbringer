@@ -101,12 +101,14 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme
 import scrumbringer_client/ui/card_badge
 import scrumbringer_client/ui/color_picker
+import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/icon_catalog
 import scrumbringer_client/ui/icon_picker
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/section_header
 import scrumbringer_client/update_helpers
+import scrumbringer_client/utils/format_date
 
 // =============================================================================
 // =============================================================================
@@ -115,140 +117,142 @@ import scrumbringer_client/update_helpers
 
 /// Organization settings view - manage user roles.
 pub fn view_org_settings(model: Model) -> Element(Msg) {
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
+
   div([attribute.class("section")], [
     // Section header with subtitle (Story 4.8: consistent icons + help text)
     section_header.view_with_subtitle(
       icons.OrgUsers,
-      update_helpers.i18n_t(model, i18n_text.OrgUsers),
-      update_helpers.i18n_t(model, i18n_text.OrgSettingsHelp),
+      t(i18n_text.OrgUsers),
+      t(i18n_text.OrgSettingsHelp),
     ),
-    case model.org_settings_users {
-      NotAsked ->
-        div([], [
-          text(update_helpers.i18n_t(
-            model,
-            i18n_text.OpenThisSectionToLoadUsers,
-          )),
-        ])
-      Loading ->
-        div(
-          [
-            attribute.class("loading"),
-          ],
-          [text(update_helpers.i18n_t(model, i18n_text.LoadingUsers))],
-        )
+    // Users table
+    view_org_settings_table(model),
+    // User projects dialog
+    view_user_projects_dialog(model),
+  ])
+}
 
-      Failed(err) -> div([attribute.class("error")], [text(err.message)])
+fn view_org_settings_table(model: Model) -> Element(Msg) {
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
 
-      Loaded(users) -> {
-        let pending_count = dict.size(model.org_settings_role_drafts)
-        let has_pending = pending_count > 0
+  case model.org_settings_users {
+    NotAsked ->
+      div([attribute.class("empty")], [
+        text(t(i18n_text.OpenThisSectionToLoadUsers)),
+      ])
 
-        div([], [
-          table([attribute.class("table")], [
-            thead([], [
-              tr([], [
-                th([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.OrgRole))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.AdminProjects))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
-              ]),
-            ]),
-            keyed.tbody(
-              [],
-              list.map(users, fn(u) {
-                let draft = case dict.get(model.org_settings_role_drafts, u.id) {
-                  Ok(role) -> role
-                  Error(_) -> u.org_role
-                }
+    Loading ->
+      div([attribute.class("empty")], [text(t(i18n_text.LoadingUsers))])
 
-                let has_change = case dict.get(model.org_settings_role_drafts, u.id) {
-                  Ok(_) -> True
-                  Error(_) -> False
-                }
+    Failed(err) ->
+      div([attribute.class("error")], [text(err.message)])
 
-                let inline_error = case
-                  model.org_settings_error_user_id,
-                  model.org_settings_error
-                {
-                  opt.Some(id), opt.Some(message) if id == u.id -> message
-                  _, _ -> ""
-                }
+    Loaded(users) -> {
+      let pending_count = dict.size(model.org_settings_role_drafts)
+      let has_pending = pending_count > 0
 
-                #(
-                  int.to_string(u.id),
-                  tr([], [
-                    td([], [text(u.email)]),
-                    td([], [
-                      select(
-                        [
-                          attribute.value(draft),
-                          attribute.disabled(model.org_settings_save_in_flight),
-                          event.on_input(fn(value) {
-                            OrgSettingsRoleChanged(u.id, value)
-                          }),
-                        ],
-                        [
-                          option(
-                            [attribute.value("admin")],
-                            update_helpers.i18n_t(model, i18n_text.RoleAdmin),
-                          ),
-                          option(
-                            [attribute.value("member")],
-                            update_helpers.i18n_t(model, i18n_text.RoleMember),
-                          ),
-                        ],
-                      ),
-                      // Pending change indicator
-                      case has_change {
-                        True -> span([attribute.class("pending-indicator")], [text(" *")])
-                        False -> element.none()
-                      },
-                      case inline_error == "" {
-                        True -> element.none()
-                        False ->
-                          div([attribute.class("error")], [text(inline_error)])
-                      },
-                    ]),
-                    td([], [
-                      // Projects summary (lazy loaded)
-                      text(format_projects_summary(model, u.id)),
-                    ]),
-                    td([], [
-                      button(
-                        [
-                          attribute.class("btn-secondary btn-sm"),
-                          event.on_click(UserProjectsDialogOpened(u)),
-                        ],
-                        [text(update_helpers.i18n_t(model, i18n_text.Manage))],
-                      ),
-                    ]),
-                  ]),
-                )
-              }),
-            ),
-          ]),
-          // Save all button at bottom
-          div([attribute.class("save-all-row")], [
-            case has_pending {
-              True ->
-                span([attribute.class("pending-count")], [
-                  text(int.to_string(pending_count) <> " " <> update_helpers.i18n_t(model, i18n_text.PendingChanges)),
-                ])
-              False -> element.none()
+      div([], [
+        // Table using data_table
+        data_table.new()
+        |> data_table.with_columns([
+          // Email
+          data_table.column(t(i18n_text.EmailLabel), fn(u: OrgUser) {
+            text(u.email)
+          }),
+          // Org Role (dropdown with change indicator)
+          data_table.column(t(i18n_text.OrgRole), fn(u: OrgUser) {
+            view_org_role_cell(model, u)
+          }),
+          // Projects summary
+          data_table.column(t(i18n_text.AdminProjects), fn(u: OrgUser) {
+            text(format_projects_summary(model, u.id))
+          }),
+          // Actions
+          data_table.column_with_class(
+            t(i18n_text.Actions),
+            fn(u: OrgUser) {
+              button(
+                [
+                  attribute.class("btn-xs btn-icon"),
+                  attribute.attribute("title", t(i18n_text.Manage)),
+                  attribute.attribute("aria-label", t(i18n_text.Manage)),
+                  event.on_click(UserProjectsDialogOpened(u)),
+                ],
+                [icons.nav_icon(icons.Cog, icons.Small)],
+              )
             },
-            button(
-              [
-                attribute.disabled(!has_pending || model.org_settings_save_in_flight),
-                event.on_click(OrgSettingsSaveAllClicked),
-              ],
-              [text(update_helpers.i18n_t(model, i18n_text.SaveOrgRoleChanges))],
-            ),
-          ]),
-          // User projects dialog
-          view_user_projects_dialog(model),
+            "col-actions",
+            "cell-actions",
+          ),
         ])
-      }
+        |> data_table.with_rows(users, fn(u: OrgUser) { int.to_string(u.id) })
+        |> data_table.view(),
+        // Save all button at bottom
+        div([attribute.class("save-all-row")], [
+          case has_pending {
+            True ->
+              span([attribute.class("pending-count")], [
+                text(
+                  int.to_string(pending_count)
+                  <> " "
+                  <> t(i18n_text.PendingChanges),
+                ),
+              ])
+            False -> element.none()
+          },
+          button(
+            [
+              attribute.disabled(!has_pending || model.org_settings_save_in_flight),
+              event.on_click(OrgSettingsSaveAllClicked),
+            ],
+            [text(t(i18n_text.SaveOrgRoleChanges))],
+          ),
+        ]),
+      ])
+    }
+  }
+}
+
+fn view_org_role_cell(model: Model, u: OrgUser) -> Element(Msg) {
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
+
+  let draft = case dict.get(model.org_settings_role_drafts, u.id) {
+    Ok(role) -> role
+    Error(_) -> u.org_role
+  }
+
+  let has_change = dict.has_key(model.org_settings_role_drafts, u.id)
+
+  let inline_error = case
+    model.org_settings_error_user_id,
+    model.org_settings_error
+  {
+    opt.Some(id), opt.Some(message) if id == u.id -> message
+    _, _ -> ""
+  }
+
+  div([], [
+    select(
+      [
+        attribute.value(draft),
+        attribute.disabled(model.org_settings_save_in_flight),
+        event.on_input(fn(value) { OrgSettingsRoleChanged(u.id, value) }),
+      ],
+      [
+        option([attribute.value("admin")], t(i18n_text.RoleAdmin)),
+        option([attribute.value("member")], t(i18n_text.RoleMember)),
+      ],
+    ),
+    // Pending change indicator
+    case has_change {
+      True -> span([attribute.class("pending-indicator")], [text(" *")])
+      False -> element.none()
+    },
+    // Inline error
+    case inline_error == "" {
+      True -> element.none()
+      False -> div([attribute.class("error")], [text(inline_error)])
     },
   ])
 }
@@ -767,85 +771,58 @@ fn view_capabilities_list(
   model: Model,
   capabilities: Remote(List(Capability)),
 ) -> Element(Msg) {
-  case capabilities {
-    NotAsked | Loading ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
-      ])
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
 
-    Failed(err) ->
-      case err.status == 403 {
-        True ->
-          div([attribute.class("not-permitted")], [
-            text(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-          ])
-        False -> div([attribute.class("error")], [text(err.message)])
-      }
-
-    Loaded(capabilities) ->
-      case capabilities {
-        [] ->
-          div([attribute.class("empty")], [
-            text(update_helpers.i18n_t(model, i18n_text.NoCapabilitiesYet)),
-          ])
-        _ ->
-          table([attribute.class("table")], [
-            thead([], [
-              tr([], [
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
-                th([attribute.class("col-number")], [
-                  text(update_helpers.i18n_t(model, i18n_text.AdminMembers)),
-                ]),
-                th([attribute.class("col-actions")], [
-                  text(update_helpers.i18n_t(model, i18n_text.Actions)),
-                ]),
-              ]),
-            ]),
-            keyed.tbody(
-              [],
-              list.map(capabilities, fn(c) {
-                // Get member count from cache (AC16)
-                let member_count = case
-                  dict.get(model.capability_members_cache, c.id)
-                {
-                  Ok(ids) -> list.length(ids)
-                  Error(_) -> 0
-                }
-                #(
-                  int.to_string(c.id),
-                  tr([], [
-                    td([], [text(c.name)]),
-                    // Members count only (Story 4.8 UX: action moved to ACCIONES)
-                    td([attribute.class("cell-number")], [
-                      span([attribute.class("count-badge")], [
-                        text(int.to_string(member_count)),
-                      ]),
-                    ]),
-                    // Actions column (Story 4.8 UX)
-                    td([attribute.class("cell-actions")], [
-                      button(
-                        [
-                          attribute.class("btn-icon btn-xs"),
-                          attribute.attribute(
-                            "title",
-                            update_helpers.i18n_t(model, i18n_text.ManageMembers),
-                          ),
-                          attribute.attribute(
-                            "data-testid",
-                            "capability-members-btn",
-                          ),
-                          event.on_click(CapabilityMembersDialogOpened(c.id)),
-                        ],
-                        [icons.nav_icon(icons.OrgUsers, icons.Small)],
-                      ),
-                    ]),
-                  ]),
-                )
-              }),
-            ),
-          ])
-      }
+  // Helper to get member count from cache
+  let get_member_count = fn(cap_id: Int) -> Int {
+    case dict.get(model.capability_members_cache, cap_id) {
+      Ok(ids) -> list.length(ids)
+      Error(_) -> 0
+    }
   }
+
+  data_table.view_remote_with_forbidden(
+    capabilities,
+    loading_msg: t(i18n_text.LoadingEllipsis),
+    empty_msg: t(i18n_text.NoCapabilitiesYet),
+    forbidden_msg: t(i18n_text.NotPermitted),
+    config: data_table.new()
+      |> data_table.with_columns([
+        // Name
+        data_table.column(t(i18n_text.Name), fn(c: Capability) {
+          text(c.name)
+        }),
+        // Members count (AC16)
+        data_table.column_with_class(
+          t(i18n_text.AdminMembers),
+          fn(c: Capability) {
+            span([attribute.class("count-badge")], [
+              text(int.to_string(get_member_count(c.id))),
+            ])
+          },
+          "col-number",
+          "cell-number",
+        ),
+        // Actions (Story 4.8 UX)
+        data_table.column_with_class(
+          t(i18n_text.Actions),
+          fn(c: Capability) {
+            button(
+              [
+                attribute.class("btn-icon btn-xs"),
+                attribute.attribute("title", t(i18n_text.ManageMembers)),
+                attribute.attribute("data-testid", "capability-members-btn"),
+                event.on_click(CapabilityMembersDialogOpened(c.id)),
+              ],
+              [icons.nav_icon(icons.OrgUsers, icons.Small)],
+            )
+          },
+          "col-actions",
+          "cell-actions",
+        ),
+      ])
+      |> data_table.with_key(fn(c: Capability) { int.to_string(c.id) }),
+  )
 }
 
 // =============================================================================
@@ -857,122 +834,104 @@ fn view_members_table(
   members: Remote(List(ProjectMember)),
   cache: Remote(List(OrgUser)),
 ) -> Element(Msg) {
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
+
   // Check if current user is org admin (can change roles)
   let is_org_admin = case model.user {
     opt.Some(user) -> user.org_role == org_role.Admin
     opt.None -> False
   }
 
-  case members {
-    NotAsked | Loading ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
-      ])
-
-    Failed(err) ->
-      case err.status == 403 {
-        True ->
-          div([attribute.class("not-permitted")], [
-            text(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-          ])
-        False -> div([attribute.class("error")], [text(err.message)])
-      }
-
-    Loaded(members) ->
-      case members {
-        [] ->
-          div([attribute.class("empty")], [
-            text(update_helpers.i18n_t(model, i18n_text.NoMembersYet)),
-          ])
-        _ ->
-          table([attribute.class("table")], [
-            thead([], [
-              tr([], [
-                th([], [text(update_helpers.i18n_t(model, i18n_text.User))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.UserId))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Role))]),
-                th([attribute.class("col-number")], [
-                  text(update_helpers.i18n_t(model, i18n_text.Capabilities)),
-                ]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.CreatedAt))]),
-                th([attribute.class("col-actions")], [
-                  text(update_helpers.i18n_t(model, i18n_text.Actions)),
-                ]),
-              ]),
-            ]),
-            keyed.tbody(
-              [],
-              list.map(members, fn(m) {
-                let email = case
-                  update_helpers.resolve_org_user(cache, m.user_id)
-                {
-                  opt.Some(user) -> user.email
-                  opt.None ->
-                    update_helpers.i18n_t(
-                      model,
-                      i18n_text.UserNumber(m.user_id),
-                    )
-                }
-
-                // Get capability count from cache (AC15)
-                let cap_count = case
-                  dict.get(model.member_capabilities_cache, m.user_id)
-                {
-                  Ok(ids) -> list.length(ids)
-                  Error(_) -> 0
-                }
-
-                #(
-                  int.to_string(m.user_id),
-                  tr([], [
-                    td([], [text(email)]),
-                    td([], [text(int.to_string(m.user_id))]),
-                    td([], [view_member_role_cell(model, m, is_org_admin)]),
-                    // Capabilities count only (Story 4.8 UX: action moved to ACCIONES)
-                    td([attribute.class("cell-number")], [
-                      span([attribute.class("count-badge")], [
-                        text(int.to_string(cap_count)),
-                      ]),
-                    ]),
-                    td([], [text(m.created_at)]),
-                    // Actions column: manage capabilities + remove (Story 4.8 UX)
-                    td([attribute.class("cell-actions")], [
-                      button(
-                        [
-                          attribute.class("btn-icon btn-xs"),
-                          attribute.attribute(
-                            "title",
-                            update_helpers.i18n_t(model, i18n_text.ManageCapabilities),
-                          ),
-                          attribute.attribute(
-                            "data-testid",
-                            "member-capabilities-btn",
-                          ),
-                          event.on_click(MemberCapabilitiesDialogOpened(
-                            m.user_id,
-                          )),
-                        ],
-                        [icons.nav_icon(icons.Cog, icons.Small)],
-                      ),
-                      button(
-                        [
-                          attribute.class("btn-icon btn-xs btn-danger-icon"),
-                          attribute.attribute(
-                            "title",
-                            update_helpers.i18n_t(model, i18n_text.Remove),
-                          ),
-                          event.on_click(MemberRemoveClicked(m.user_id)),
-                        ],
-                        [icons.nav_icon(icons.Trash, icons.Small)],
-                      ),
-                    ]),
-                  ]),
-                )
-              }),
-            ),
-          ])
-      }
+  // Helper to resolve user email from cache
+  let resolve_email = fn(user_id: Int) -> String {
+    case update_helpers.resolve_org_user(cache, user_id) {
+      opt.Some(user) -> user.email
+      opt.None -> t(i18n_text.UserNumber(user_id))
+    }
   }
+
+  // Helper to get capability count from cache
+  let get_cap_count = fn(user_id: Int) -> Int {
+    case dict.get(model.member_capabilities_cache, user_id) {
+      Ok(ids) -> list.length(ids)
+      Error(_) -> 0
+    }
+  }
+
+  data_table.view_remote_with_forbidden(
+    members,
+    loading_msg: t(i18n_text.LoadingEllipsis),
+    empty_msg: t(i18n_text.NoMembersYet),
+    forbidden_msg: t(i18n_text.NotPermitted),
+    config: data_table.new()
+      |> data_table.with_columns([
+        // User email
+        data_table.column(t(i18n_text.User), fn(m: ProjectMember) {
+          text(resolve_email(m.user_id))
+        }),
+        // User ID
+        data_table.column(t(i18n_text.UserId), fn(m: ProjectMember) {
+          text(int.to_string(m.user_id))
+        }),
+        // Role (dropdown for admins, text for others)
+        data_table.column(t(i18n_text.Role), fn(m: ProjectMember) {
+          view_member_role_cell(model, m, is_org_admin)
+        }),
+        // Capabilities count (AC15)
+        data_table.column_with_class(
+          t(i18n_text.Capabilities),
+          fn(m: ProjectMember) {
+            span([attribute.class("count-badge")], [
+              text(int.to_string(get_cap_count(m.user_id))),
+            ])
+          },
+          "col-number",
+          "cell-number",
+        ),
+        // Created date
+        data_table.column(t(i18n_text.CreatedAt), fn(m: ProjectMember) {
+          text(format_date.date_only(m.created_at))
+        }),
+        // Actions (Story 4.8 UX)
+        data_table.column_with_class(
+          t(i18n_text.Actions),
+          fn(m: ProjectMember) { view_member_actions(model, m) },
+          "col-actions",
+          "cell-actions",
+        ),
+      ])
+      |> data_table.with_key(fn(m: ProjectMember) { int.to_string(m.user_id) }),
+  )
+}
+
+fn view_member_actions(model: Model, m: ProjectMember) -> Element(Msg) {
+  div([attribute.class("actions-row")], [
+    // Manage capabilities button
+    button(
+      [
+        attribute.class("btn-icon btn-xs"),
+        attribute.attribute(
+          "title",
+          update_helpers.i18n_t(model, i18n_text.ManageCapabilities),
+        ),
+        attribute.attribute("data-testid", "member-capabilities-btn"),
+        event.on_click(MemberCapabilitiesDialogOpened(m.user_id)),
+      ],
+      [icons.nav_icon(icons.Cog, icons.Small)],
+    ),
+    // Remove button
+    button(
+      [
+        attribute.class("btn-icon btn-xs btn-danger-icon"),
+        attribute.attribute(
+          "title",
+          update_helpers.i18n_t(model, i18n_text.Remove),
+        ),
+        event.on_click(MemberRemoveClicked(m.user_id)),
+      ],
+      [icons.nav_icon(icons.Trash, icons.Small)],
+    ),
+  ])
 }
 
 /// Render role cell - dropdown for org admins, text for project managers.
@@ -2051,84 +2010,67 @@ fn view_workflows_table(
   workflows: Remote(List(Workflow)),
   _project: opt.Option(Project),
 ) -> Element(Msg) {
-  case workflows {
-    NotAsked | Loading ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
+
+  data_table.view_remote_with_forbidden(
+    workflows,
+    loading_msg: t(i18n_text.LoadingEllipsis),
+    empty_msg: t(i18n_text.NoWorkflowsYet),
+    forbidden_msg: t(i18n_text.NotPermitted),
+    config: data_table.new()
+      |> data_table.with_columns([
+        // Name
+        data_table.column(t(i18n_text.WorkflowName), fn(w: Workflow) {
+          text(w.name)
+        }),
+        // Active status
+        data_table.column(t(i18n_text.WorkflowActive), fn(w: Workflow) {
+          text(case w.active {
+            True -> "✓"
+            False -> "✗"
+          })
+        }),
+        // Rules count
+        data_table.column(t(i18n_text.WorkflowRules), fn(w: Workflow) {
+          text(int.to_string(w.rule_count))
+        }),
+        // Actions
+        data_table.column_with_class(
+          t(i18n_text.Actions),
+          fn(w: Workflow) { view_workflow_actions(model, w) },
+          "col-actions",
+          "cell-actions",
+        ),
       ])
+      |> data_table.with_key(fn(w: Workflow) { int.to_string(w.id) }),
+  )
+}
 
-    Failed(err) ->
-      case err.status == 403 {
-        True ->
-          div([attribute.class("not-permitted")], [
-            text(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-          ])
-        False -> div([attribute.class("error")], [text(err.message)])
-      }
+fn view_workflow_actions(model: Model, w: Workflow) -> Element(Msg) {
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
 
-    Loaded(workflows) ->
-      case workflows {
-        [] ->
-          div([attribute.class("empty")], [
-            text(update_helpers.i18n_t(model, i18n_text.NoWorkflowsYet)),
-          ])
-        _ ->
-          table([attribute.class("table")], [
-            thead([], [
-              tr([], [
-                th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.WorkflowName)),
-                ]),
-                th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.WorkflowActive)),
-                ]),
-                th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.WorkflowRules)),
-                ]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
-              ]),
-            ]),
-            keyed.tbody(
-              [],
-              list.map(workflows, fn(w) {
-                #(
-                  int.to_string(w.id),
-                  tr([], [
-                    td([], [text(w.name)]),
-                    td([], [
-                      text(case w.active {
-                        True -> "✓"
-                        False -> "✗"
-                      }),
-                    ]),
-                    td([], [text(int.to_string(w.rule_count))]),
-                    td([], [
-                      button(
-                        [event.on_click(OpenWorkflowDialog(WorkflowDialogEdit(w)))],
-                        [
-                          text(update_helpers.i18n_t(
-                            model,
-                            i18n_text.EditWorkflow,
-                          )),
-                        ],
-                      ),
-                      button(
-                        [event.on_click(OpenWorkflowDialog(WorkflowDialogDelete(w)))],
-                        [
-                          text(update_helpers.i18n_t(
-                            model,
-                            i18n_text.DeleteWorkflow,
-                          )),
-                        ],
-                      ),
-                    ]),
-                  ]),
-                )
-              }),
-            ),
-          ])
-      }
-  }
+  div([attribute.class("actions-row")], [
+    // Edit button
+    button(
+      [
+        attribute.class("btn-xs btn-icon"),
+        attribute.attribute("title", t(i18n_text.EditWorkflow)),
+        attribute.attribute("aria-label", t(i18n_text.EditWorkflow)),
+        event.on_click(OpenWorkflowDialog(WorkflowDialogEdit(w))),
+      ],
+      [icons.nav_icon(icons.Pencil, icons.Small)],
+    ),
+    // Delete button
+    button(
+      [
+        attribute.class("btn-xs btn-icon btn-delete"),
+        attribute.attribute("title", t(i18n_text.DeleteWorkflow)),
+        attribute.attribute("aria-label", t(i18n_text.DeleteWorkflow)),
+        event.on_click(OpenWorkflowDialog(WorkflowDialogDelete(w))),
+      ],
+      [icons.nav_icon(icons.Trash, icons.Small)],
+    ),
+  ])
 }
 
 

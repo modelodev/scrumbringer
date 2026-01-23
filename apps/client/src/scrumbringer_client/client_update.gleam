@@ -127,7 +127,10 @@ import scrumbringer_client/client_state.{
   UserProjectRemoveClicked, UserProjectRemoved, UserProjectRoleChangeRequested, UserProjectRoleChanged,
   OrgUsersSearchResults, ProjectCreateDialogOpened, ProjectCreateDialogClosed,
   ProjectCreateNameChanged, ProjectCreateSubmitted,
-  ProjectCreated, ProjectSelected, ProjectsFetched, Push, Rect, Replace,
+  ProjectCreated, ProjectEditDialogOpened, ProjectEditDialogClosed,
+  ProjectEditNameChanged, ProjectEditSubmitted, ProjectUpdated,
+  ProjectDeleteConfirmOpened, ProjectDeleteConfirmClosed, ProjectDeleteSubmitted,
+  ProjectDeleted, ProjectSelected, ProjectsFetched, Push, Rect, Replace,
   ResetPassword as ResetPasswordPage, ResetPasswordMsg,
   RuleAttachTemplateSelected, RuleAttachTemplateSubmitted,
   OpenRuleDialog, CloseRuleDialog, RuleCrudCreated, RuleCrudUpdated, RuleCrudDeleted,
@@ -1616,6 +1619,30 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       projects_workflow.handle_project_created_ok(model, project)
     ProjectCreated(Error(err)) ->
       projects_workflow.handle_project_created_error(model, err)
+    // Project Edit (Story 4.8 AC39)
+    ProjectEditDialogOpened(project_id, project_name) ->
+      projects_workflow.handle_project_edit_dialog_opened(model, project_id, project_name)
+    ProjectEditDialogClosed ->
+      projects_workflow.handle_project_edit_dialog_closed(model)
+    ProjectEditNameChanged(name) ->
+      projects_workflow.handle_project_edit_name_changed(model, name)
+    ProjectEditSubmitted ->
+      projects_workflow.handle_project_edit_submitted(model)
+    ProjectUpdated(Ok(project)) ->
+      projects_workflow.handle_project_updated_ok(model, project)
+    ProjectUpdated(Error(err)) ->
+      projects_workflow.handle_project_updated_error(model, err)
+    // Project Delete (Story 4.8 AC39)
+    ProjectDeleteConfirmOpened(project_id, project_name) ->
+      projects_workflow.handle_project_delete_confirm_opened(model, project_id, project_name)
+    ProjectDeleteConfirmClosed ->
+      projects_workflow.handle_project_delete_confirm_closed(model)
+    ProjectDeleteSubmitted ->
+      projects_workflow.handle_project_delete_submitted(model)
+    ProjectDeleted(Ok(_)) ->
+      projects_workflow.handle_project_deleted_ok(model)
+    ProjectDeleted(Error(err)) ->
+      projects_workflow.handle_project_deleted_error(model, err)
 
     InviteCreateDialogOpened ->
       invite_links_workflow.handle_invite_create_dialog_opened(model)

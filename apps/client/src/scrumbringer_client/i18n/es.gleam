@@ -82,6 +82,7 @@ pub fn translate(text: Text) -> String {
     text.Creating -> "Creando…"
     text.Copy -> "Copiar"
     text.Save -> "Guardar"
+    text.Saved -> "Guardado"
     text.SaveNewPassword -> "Guardar nueva contraseña"
     text.Saving -> "Guardando…"
     text.Register -> "Registrarse"
@@ -94,6 +95,9 @@ pub fn translate(text: Text) -> String {
     text.Add -> "Añadir"
     text.Adding -> "Añadiendo…"
     text.Removing -> "Quitando…"
+    text.Delete -> "Eliminar"
+    text.Deleting -> "Eliminando…"
+    text.Deleted -> "Eliminado"
     text.NoneOption -> "Ninguna"
     text.Start -> "Empezar"
     text.LoggingIn -> "Iniciando sesión…"
@@ -289,6 +293,14 @@ pub fn translate(text: Text) -> String {
     text.Name -> "Nombre"
     text.MyRole -> "Mi rol"
     text.NoProjectsYet -> "Aún no hay proyectos"
+    // Project edit/delete (Story 4.8 AC39)
+    text.EditProject -> "Editar proyecto"
+    text.DeleteProject -> "Eliminar proyecto"
+    text.DeleteProjectTitle -> "Eliminar proyecto"
+    text.DeleteProjectConfirm(name) -> "¿Eliminar \"" <> name <> "\" permanentemente?"
+    text.DeleteProjectWarning ->
+      "Esta acción no se puede deshacer. Se eliminarán todas las tareas, tarjetas y miembros asociados."
+    text.MembersCount -> "Miembros"
 
     // Capabilities
     text.Capabilities -> "Capacidades"

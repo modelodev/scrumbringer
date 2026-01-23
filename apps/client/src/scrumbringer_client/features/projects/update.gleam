@@ -21,6 +21,7 @@
 //// - **api/projects.gleam**: Provides API effects for project operations
 
 import gleam/int
+import gleam/list
 import gleam/option as opt
 import gleam/string
 
@@ -33,7 +34,8 @@ import scrumbringer_client/api/tasks as api_tasks
 import domain/api_error.{type ApiError}
 import domain/project.{type Project}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Admin, Failed, Loaded, Login, Member, Model, ProjectCreated,
+  type Model, type Msg, Admin, Failed, Loaded, Login, Member, Model,
+  ProjectCreated, ProjectDeleted, ProjectUpdated,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -268,6 +270,254 @@ pub fn handle_project_created_error(
         ..model,
         projects_create_in_flight: False,
         projects_create_error: opt.Some(err.message),
+      ),
+      effect.none(),
+    )
+  }
+}
+
+// =============================================================================
+// Project Edit Handlers (Story 4.8 AC39)
+// =============================================================================
+
+/// Handle project edit dialog opened.
+pub fn handle_project_edit_dialog_opened(
+  model: Model,
+  project_id: Int,
+  project_name: String,
+) -> #(Model, Effect(Msg)) {
+  #(
+    Model(
+      ..model,
+      projects_edit_dialog_open: True,
+      projects_edit_id: opt.Some(project_id),
+      projects_edit_name: project_name,
+      projects_edit_error: opt.None,
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle project edit dialog closed.
+pub fn handle_project_edit_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
+  #(
+    Model(
+      ..model,
+      projects_edit_dialog_open: False,
+      projects_edit_id: opt.None,
+      projects_edit_name: "",
+      projects_edit_error: opt.None,
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle project edit name input change.
+pub fn handle_project_edit_name_changed(
+  model: Model,
+  name: String,
+) -> #(Model, Effect(Msg)) {
+  #(Model(..model, projects_edit_name: name), effect.none())
+}
+
+/// Handle project edit form submission.
+pub fn handle_project_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
+  case model.projects_edit_in_flight, model.projects_edit_id {
+    True, _ -> #(model, effect.none())
+    _, opt.None -> #(model, effect.none())
+    False, opt.Some(project_id) -> {
+      let name = string.trim(model.projects_edit_name)
+
+      case name == "" {
+        True -> #(
+          Model(
+            ..model,
+            projects_edit_error: opt.Some(update_helpers.i18n_t(
+              model,
+              i18n_text.NameRequired,
+            )),
+          ),
+          effect.none(),
+        )
+        False -> {
+          let model =
+            Model(..model, projects_edit_in_flight: True, projects_edit_error: opt.None)
+          #(model, api_projects.update_project(project_id, name, ProjectUpdated))
+        }
+      }
+    }
+  }
+}
+
+/// Handle project updated success.
+pub fn handle_project_updated_ok(
+  model: Model,
+  project: Project,
+) -> #(Model, Effect(Msg)) {
+  // Update the project in the list
+  let updated_projects = case model.projects {
+    Loaded(projects) ->
+      projects
+      |> list.map(fn(p) {
+        case p.id == project.id {
+          True ->
+            project.Project(
+              ..p,
+              name: project.name,
+            )
+          False -> p
+        }
+      })
+    _ -> []
+  }
+
+  #(
+    Model(
+      ..model,
+      projects: Loaded(updated_projects),
+      projects_edit_dialog_open: False,
+      projects_edit_in_flight: False,
+      projects_edit_id: opt.None,
+      projects_edit_name: "",
+      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.Saved)),
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle project updated error.
+pub fn handle_project_updated_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  case err.status {
+    401 -> update_helpers.reset_to_login(model)
+    403 -> #(
+      Model(
+        ..model,
+        projects_edit_in_flight: False,
+        projects_edit_error: opt.Some(update_helpers.i18n_t(
+          model,
+          i18n_text.NotPermitted,
+        )),
+      ),
+      effect.none(),
+    )
+    _ -> #(
+      Model(
+        ..model,
+        projects_edit_in_flight: False,
+        projects_edit_error: opt.Some(err.message),
+      ),
+      effect.none(),
+    )
+  }
+}
+
+// =============================================================================
+// Project Delete Handlers (Story 4.8 AC39)
+// =============================================================================
+
+/// Handle project delete confirm opened.
+pub fn handle_project_delete_confirm_opened(
+  model: Model,
+  project_id: Int,
+  project_name: String,
+) -> #(Model, Effect(Msg)) {
+  #(
+    Model(
+      ..model,
+      projects_delete_confirm_open: True,
+      projects_delete_id: opt.Some(project_id),
+      projects_delete_name: project_name,
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle project delete confirm closed.
+pub fn handle_project_delete_confirm_closed(model: Model) -> #(Model, Effect(Msg)) {
+  #(
+    Model(
+      ..model,
+      projects_delete_confirm_open: False,
+      projects_delete_id: opt.None,
+      projects_delete_name: "",
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle project delete submission.
+pub fn handle_project_delete_submitted(model: Model) -> #(Model, Effect(Msg)) {
+  case model.projects_delete_in_flight, model.projects_delete_id {
+    True, _ -> #(model, effect.none())
+    _, opt.None -> #(model, effect.none())
+    False, opt.Some(project_id) -> {
+      let model = Model(..model, projects_delete_in_flight: True)
+      #(model, api_projects.delete_project(project_id, ProjectDeleted))
+    }
+  }
+}
+
+/// Handle project deleted success.
+pub fn handle_project_deleted_ok(model: Model) -> #(Model, Effect(Msg)) {
+  let deleted_id = model.projects_delete_id
+
+  // Remove the project from the list
+  let updated_projects = case model.projects {
+    Loaded(projects) ->
+      projects
+      |> list.filter(fn(p) {
+        case deleted_id {
+          opt.Some(id) -> p.id != id
+          opt.None -> True
+        }
+      })
+    _ -> []
+  }
+
+  // Clear selection if the deleted project was selected
+  let selected = case model.selected_project_id, deleted_id {
+    opt.Some(sel), opt.Some(del) if sel == del -> opt.None
+    _, _ -> model.selected_project_id
+  }
+
+  #(
+    Model(
+      ..model,
+      projects: Loaded(updated_projects),
+      selected_project_id: selected,
+      projects_delete_confirm_open: False,
+      projects_delete_in_flight: False,
+      projects_delete_id: opt.None,
+      projects_delete_name: "",
+      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.Deleted)),
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle project deleted error.
+pub fn handle_project_deleted_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  case err.status {
+    401 -> update_helpers.reset_to_login(model)
+    403 -> #(
+      Model(
+        ..model,
+        projects_delete_in_flight: False,
+        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+      ),
+      effect.none(),
+    )
+    _ -> #(
+      Model(
+        ..model,
+        projects_delete_in_flight: False,
+        toast: opt.Some(err.message),
       ),
       effect.none(),
     )

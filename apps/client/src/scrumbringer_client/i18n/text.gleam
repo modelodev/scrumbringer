@@ -75,6 +75,7 @@ pub type Text {
   Copying
   CopyFailed
   Save
+  Saved
   SaveNewPassword
   Saving
   Register
@@ -87,6 +88,9 @@ pub type Text {
   Add
   Adding
   Removing
+  Delete
+  Deleting
+  Deleted
   NoneOption
   Start
   LoggingIn
@@ -269,6 +273,13 @@ pub type Text {
   Name
   MyRole
   NoProjectsYet
+  // Project edit/delete (Story 4.8 AC39)
+  EditProject
+  DeleteProject
+  DeleteProjectTitle
+  DeleteProjectConfirm(project_name: String)
+  DeleteProjectWarning
+  MembersCount
 
   // Capabilities
   Capabilities

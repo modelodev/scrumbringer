@@ -22,10 +22,16 @@ import domain/project_role.{type ProjectRole}
 /// ## Example
 ///
 /// ```gleam
-/// Project(id: 1, name: "Sprint Tracker", my_role: Manager)
+/// Project(id: 1, name: "Sprint Tracker", my_role: Manager, created_at: "2026-01-15", members_count: 5)
 /// ```
 pub type Project {
-  Project(id: Int, name: String, my_role: ProjectRole)
+  Project(
+    id: Int,
+    name: String,
+    my_role: ProjectRole,
+    created_at: String,
+    members_count: Int,
+  )
 }
 
 /// A member of a project with their role.

@@ -317,6 +317,11 @@ pub fn base_css() -> String {
     ".modal-confirm-actions { display: flex; gap: 12px; justify-content: center; }",
     ".btn-danger { background: var(--sb-danger); border-color: var(--sb-danger); color: var(--sb-inverse); }",
     ".btn-danger:hover { background: color-mix(in oklab, var(--sb-danger) 85%, black); border-color: color-mix(in oklab, var(--sb-danger) 85%, black); }",
+    // Delete button hover (Story 4.8 AC39)
+    ".btn-delete:hover { color: var(--sb-danger); border-color: var(--sb-danger); }",
+    // Dialog warning text (Story 4.8 AC39)
+    ".dialog-message { font-size: 15px; margin-bottom: 12px; }",
+    ".dialog-warning { font-size: 13px; color: var(--sb-muted); line-height: 1.5; padding: 10px 12px; background: color-mix(in oklab, var(--sb-warning) 10%, transparent); border-radius: 6px; border-left: 3px solid var(--sb-warning); }",
     // =====================================================
     // UX IMPROVEMENTS - Skeleton Loading (IF03)
     // =====================================================

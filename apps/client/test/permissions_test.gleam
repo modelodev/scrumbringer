@@ -6,7 +6,7 @@ import scrumbringer_client/permissions
 import domain/org_role
 
 pub fn visible_sections_org_admin_test() {
-  let projects = [Project(id: 1, name: "P1", my_role: Member)]
+  let projects = [Project(id: 1, name: "P1", my_role: Member, created_at: "", members_count: 0)]
 
   permissions.visible_sections(org_role.Admin, projects)
   |> should.equal([
@@ -22,7 +22,7 @@ pub fn visible_sections_org_admin_test() {
 }
 
 pub fn visible_sections_org_admin_and_project_admin_test() {
-  let projects = [Project(id: 1, name: "P1", my_role: Manager)]
+  let projects = [Project(id: 1, name: "P1", my_role: Manager, created_at: "", members_count: 0)]
 
   permissions.visible_sections(org_role.Admin, projects)
   |> should.equal([
@@ -41,7 +41,7 @@ pub fn visible_sections_org_admin_and_project_admin_test() {
 }
 
 pub fn visible_sections_project_manager_only_test() {
-  let projects = [Project(id: 1, name: "P1", my_role: Manager)]
+  let projects = [Project(id: 1, name: "P1", my_role: Manager, created_at: "", members_count: 0)]
 
   // Project managers get access to project-scoped sections including capabilities
   permissions.visible_sections(org_role.Member, projects)
@@ -57,7 +57,7 @@ pub fn visible_sections_project_manager_only_test() {
 }
 
 pub fn can_access_members_requires_selected_project_or_any_admin_test() {
-  let projects = [Project(id: 1, name: "P1", my_role: Manager)]
+  let projects = [Project(id: 1, name: "P1", my_role: Manager, created_at: "", members_count: 0)]
 
   permissions.can_access_section(
     permissions.Members,
@@ -71,7 +71,7 @@ pub fn can_access_members_requires_selected_project_or_any_admin_test() {
     permissions.Members,
     org_role.Member,
     projects,
-    option.Some(Project(id: 2, name: "P2", my_role: Member)),
+    option.Some(Project(id: 2, name: "P2", my_role: Member, created_at: "", members_count: 0)),
   )
   |> should.equal(False)
 }

@@ -170,7 +170,14 @@ fn user_project_decoder() -> decode.Decoder(Project) {
   use id <- decode.field("id", decode.int)
   use name <- decode.field("name", decode.string)
   use my_role <- decode.field("role", project_role_decoder())
-  decode.success(Project(id: id, name: name, my_role: my_role))
+  // Note: created_at and members_count not returned by this endpoint
+  decode.success(Project(
+    id: id,
+    name: name,
+    my_role: my_role,
+    created_at: "",
+    members_count: 0,
+  ))
 }
 
 /// List projects that a user is a member of.

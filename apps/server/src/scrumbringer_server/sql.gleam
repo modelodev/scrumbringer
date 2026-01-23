@@ -2094,6 +2094,7 @@ pub type ProjectsForUserRow {
     name: String,
     created_at: String,
     my_role: String,
+    members_count: Int,
   )
 }
 
@@ -2112,12 +2113,14 @@ pub fn projects_for_user(
     use name <- decode.field(2, decode.string)
     use created_at <- decode.field(3, decode.string)
     use my_role <- decode.field(4, decode.string)
+    use members_count <- decode.field(5, decode.int)
     decode.success(ProjectsForUserRow(
       id:,
       org_id:,
       name:,
       created_at:,
       my_role:,
+      members_count:,
     ))
   }
 
@@ -2127,7 +2130,8 @@ select
   p.org_id,
   p.name,
   to_char(p.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
-  pm.role as my_role
+  pm.role as my_role,
+  (select count(*) from project_members where project_id = p.id) as members_count
 from projects p
 join project_members pm on pm.project_id = p.id
 where pm.user_id = $1
@@ -2135,6 +2139,99 @@ order by p.name asc;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `project_update` query.
+pub type ProjectUpdateRow {
+  ProjectUpdateRow(id: Int, org_id: Int, name: String, created_at: String)
+}
+
+/// name: project_update
+pub fn project_update(
+  db: pog.Connection,
+  project_id: Int,
+  name: String,
+) -> Result(pog.Returned(ProjectUpdateRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use org_id <- decode.field(1, decode.int)
+    use name <- decode.field(2, decode.string)
+    use created_at <- decode.field(3, decode.string)
+    decode.success(ProjectUpdateRow(id:, org_id:, name:, created_at:))
+  }
+
+  "-- name: project_update
+update projects
+set name = $2
+where id = $1
+returning
+  id,
+  org_id,
+  name,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(project_id))
+  |> pog.parameter(pog.text(name))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `project_delete` query.
+pub type ProjectDeleteRow {
+  ProjectDeleteRow(id: Int)
+}
+
+/// name: project_delete
+pub fn project_delete(
+  db: pog.Connection,
+  project_id: Int,
+) -> Result(pog.Returned(ProjectDeleteRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(ProjectDeleteRow(id:))
+  }
+
+  "-- name: project_delete
+with
+  deleted_rules as (
+    delete from rules
+    where workflow_id in (select id from workflows where project_id = $1)
+  ),
+  deleted_workflows as (
+    delete from workflows where project_id = $1
+  ),
+  deleted_task_templates as (
+    delete from task_templates where project_id = $1
+  ),
+  deleted_member_capabilities as (
+    delete from member_capabilities
+    where project_id = $1
+  ),
+  deleted_capabilities as (
+    delete from capabilities where project_id = $1
+  ),
+  deleted_task_types as (
+    delete from task_types where project_id = $1
+  ),
+  deleted_tasks as (
+    delete from tasks
+    where card_id in (select id from cards where project_id = $1)
+  ),
+  deleted_cards as (
+    delete from cards where project_id = $1
+  ),
+  deleted_members as (
+    delete from project_members where project_id = $1
+  )
+delete from projects
+where id = $1
+returning id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(project_id))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

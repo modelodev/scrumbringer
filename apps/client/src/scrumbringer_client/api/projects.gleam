@@ -46,7 +46,15 @@ fn project_decoder() -> decode.Decoder(Project) {
   use id <- decode.field("id", decode.int)
   use name <- decode.field("name", decode.string)
   use my_role <- decode.field("my_role", project_role_decoder())
-  decode.success(Project(id: id, name: name, my_role: my_role))
+  use created_at <- decode.field("created_at", decode.string)
+  use members_count <- decode.field("members_count", decode.int)
+  decode.success(Project(
+    id: id,
+    name: name,
+    my_role: my_role,
+    created_at: created_at,
+    members_count: members_count,
+  ))
 }
 
 fn project_member_decoder() -> decode.Decoder(ProjectMember) {
@@ -310,6 +318,40 @@ pub fn set_capability_members(
       <> "/members",
     option.Some(body),
     decoder,
+    to_msg,
+  )
+}
+
+// =============================================================================
+// Project CRUD (Story 4.8 AC39)
+// =============================================================================
+
+/// Update a project's name.
+pub fn update_project(
+  project_id: Int,
+  name: String,
+  to_msg: fn(ApiResult(Project)) -> msg,
+) -> Effect(msg) {
+  let body = json.object([#("name", json.string(name))])
+  let decoder = decode.field("project", project_decoder(), decode.success)
+  core.request(
+    "PATCH",
+    "/api/v1/projects/" <> int.to_string(project_id),
+    option.Some(body),
+    decoder,
+    to_msg,
+  )
+}
+
+/// Delete a project.
+pub fn delete_project(
+  project_id: Int,
+  to_msg: fn(ApiResult(Nil)) -> msg,
+) -> Effect(msg) {
+  core.request_nil(
+    "DELETE",
+    "/api/v1/projects/" <> int.to_string(project_id),
+    option.None,
     to_msg,
   )
 }

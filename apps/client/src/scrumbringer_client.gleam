@@ -441,6 +441,16 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       capability_members_cache: dict.new(),
       capability_members_selected: [],
       capability_members_error: opt.None,
+      // Project edit/delete (Story 4.8 AC39)
+      projects_edit_dialog_open: False,
+      projects_edit_id: opt.None,
+      projects_edit_name: "",
+      projects_edit_in_flight: False,
+      projects_edit_error: opt.None,
+      projects_delete_confirm_open: False,
+      projects_delete_id: opt.None,
+      projects_delete_name: "",
+      projects_delete_in_flight: False,
     )
 
   let base_effect = case page {

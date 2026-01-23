@@ -299,6 +299,17 @@ pub type Model {
     projects_create_name: String,
     projects_create_in_flight: Bool,
     projects_create_error: Option(String),
+    // Project edit (Story 4.8 AC39)
+    projects_edit_dialog_open: Bool,
+    projects_edit_id: Option(Int),
+    projects_edit_name: String,
+    projects_edit_in_flight: Bool,
+    projects_edit_error: Option(String),
+    // Project delete (Story 4.8 AC39)
+    projects_delete_confirm_open: Bool,
+    projects_delete_id: Option(Int),
+    projects_delete_name: String,
+    projects_delete_in_flight: Bool,
     // Capabilities
     capabilities: Remote(List(Capability)),
     capabilities_create_dialog_open: Bool,
@@ -559,6 +570,17 @@ pub type Msg {
   ProjectCreateNameChanged(String)
   ProjectCreateSubmitted
   ProjectCreated(ApiResult(Project))
+  // Project Edit (Story 4.8 AC39)
+  ProjectEditDialogOpened(Int, String)
+  ProjectEditDialogClosed
+  ProjectEditNameChanged(String)
+  ProjectEditSubmitted
+  ProjectUpdated(ApiResult(Project))
+  // Project Delete (Story 4.8 AC39)
+  ProjectDeleteConfirmOpened(Int, String)
+  ProjectDeleteConfirmClosed
+  ProjectDeleteSubmitted
+  ProjectDeleted(ApiResult(Nil))
 
   // Invite links
   InviteCreateDialogOpened
@@ -950,6 +972,17 @@ pub fn default_model() -> Model {
     projects_create_name: "",
     projects_create_in_flight: False,
     projects_create_error: option.None,
+    // Project edit (Story 4.8 AC39)
+    projects_edit_dialog_open: False,
+    projects_edit_id: option.None,
+    projects_edit_name: "",
+    projects_edit_in_flight: False,
+    projects_edit_error: option.None,
+    // Project delete (Story 4.8 AC39)
+    projects_delete_confirm_open: False,
+    projects_delete_id: option.None,
+    projects_delete_name: "",
+    projects_delete_in_flight: False,
     // Capabilities
     capabilities: NotAsked,
     capabilities_create_dialog_open: False,

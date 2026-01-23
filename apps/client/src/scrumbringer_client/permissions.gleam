@@ -39,7 +39,7 @@ pub fn is_org_admin(role: OrgRole) -> Bool {
 /// Returns true if the user is a manager of the project.
 pub fn is_project_manager(project: Project) -> Bool {
   case project {
-    Project(_, _, Manager) -> True
+    Project(my_role: Manager, ..) -> True
     _ -> False
   }
 }

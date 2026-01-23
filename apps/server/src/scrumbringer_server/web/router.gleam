@@ -93,6 +93,8 @@ pub fn route(req: wisp.Request, ctx: RouterCtx) -> wisp.Response {
 
     // Project routes
     ["api", "v1", "projects"] -> projects.handle_projects(req, auth_ctx(ctx))
+    ["api", "v1", "projects", project_id] ->
+      projects.handle_project(req, auth_ctx(ctx), project_id)
     ["api", "v1", "projects", project_id, "members"] ->
       projects.handle_members(req, auth_ctx(ctx), project_id)
     ["api", "v1", "projects", project_id, "members", user_id] ->

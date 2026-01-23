@@ -22,6 +22,7 @@ pub type Project {
     name: String,
     created_at: String,
     my_role: String,
+    members_count: Int,
   )
 }
 
@@ -60,6 +61,7 @@ pub fn create_project(
         name: row.name,
         created_at: row.created_at,
         my_role: row.my_role,
+        members_count: 1,  // Creator is the first member
       ))
 
     [] ->
@@ -85,6 +87,7 @@ pub fn list_projects_for_user(
       name: row.name,
       created_at: row.created_at,
       my_role: row.my_role,
+      members_count: row.members_count,
     )
   })
   |> Ok
@@ -325,5 +328,53 @@ fn do_update_member_role(
 
     Ok(pog.Returned(rows: [], ..)) -> Error(UpdateMemberNotFound)
     Error(e) -> Error(UpdateDbError(e))
+  }
+}
+
+// =============================================================================
+// Project Update/Delete (Story 4.8 AC39)
+// =============================================================================
+
+pub type UpdateProjectError {
+  UpdateProjectNotFound
+  UpdateProjectDbError(pog.QueryError)
+}
+
+pub type DeleteProjectError {
+  DeleteProjectNotFound
+  DeleteProjectDbError(pog.QueryError)
+}
+
+/// Update a project's name.
+pub fn update_project(
+  db: pog.Connection,
+  project_id: Int,
+  name: String,
+) -> Result(Project, UpdateProjectError) {
+  case sql.project_update(db, project_id, name) {
+    Ok(pog.Returned(rows: [row, ..], ..)) ->
+      Ok(Project(
+        id: row.id,
+        org_id: row.org_id,
+        name: row.name,
+        created_at: row.created_at,
+        my_role: "manager",  // Only managers can update
+        members_count: 0,  // Not returned by update query
+      ))
+
+    Ok(pog.Returned(rows: [], ..)) -> Error(UpdateProjectNotFound)
+    Error(e) -> Error(UpdateProjectDbError(e))
+  }
+}
+
+/// Delete a project and all related data.
+pub fn delete_project(
+  db: pog.Connection,
+  project_id: Int,
+) -> Result(Int, DeleteProjectError) {
+  case sql.project_delete(db, project_id) {
+    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(row.id)
+    Ok(pog.Returned(rows: [], ..)) -> Error(DeleteProjectNotFound)
+    Error(e) -> Error(DeleteProjectDbError(e))
   }
 }

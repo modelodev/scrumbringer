@@ -234,11 +234,13 @@ fn view_task_item(config: GroupedListConfig(msg), task: Task) -> Element(msg) {
         text(i18n.t(config.locale, i18n_text.ClaimedBy) <> " " <> claimed_email),
       ])
     }
-    _ ->
-      // Available or Completed - show status label
+    Completed ->
+      // Completed - show status label
       span([attribute.class("task-status")], [
         text(task_status_label(config.locale, task.status)),
       ])
+    // Available tasks: no label needed (claim icon is sufficient indicator)
+    _ -> element.none()
   }
 
   li(

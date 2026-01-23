@@ -81,6 +81,7 @@ pub fn translate(text: Text) -> String {
     text.Creating -> "Creating…"
     text.Copy -> "Copy"
     text.Save -> "Save"
+    text.Saved -> "Saved"
     text.SaveNewPassword -> "Save new password"
     text.Saving -> "Saving…"
     text.Register -> "Register"
@@ -93,6 +94,9 @@ pub fn translate(text: Text) -> String {
     text.Add -> "Add"
     text.Adding -> "Adding…"
     text.Removing -> "Removing…"
+    text.Delete -> "Delete"
+    text.Deleting -> "Deleting…"
+    text.Deleted -> "Deleted"
     text.NoneOption -> "None"
     text.Start -> "Start"
     text.LoggingIn -> "Logging in…"
@@ -285,6 +289,14 @@ pub fn translate(text: Text) -> String {
     text.Name -> "Name"
     text.MyRole -> "My Role"
     text.NoProjectsYet -> "No projects yet"
+    // Project edit/delete (Story 4.8 AC39)
+    text.EditProject -> "Edit project"
+    text.DeleteProject -> "Delete project"
+    text.DeleteProjectTitle -> "Delete project"
+    text.DeleteProjectConfirm(name) -> "Permanently delete \"" <> name <> "\"?"
+    text.DeleteProjectWarning ->
+      "This action cannot be undone. All tasks, cards and members will be deleted."
+    text.MembersCount -> "Members"
 
     // Capabilities
     text.Capabilities -> "Capabilities"

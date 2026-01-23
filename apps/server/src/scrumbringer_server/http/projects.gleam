@@ -60,6 +60,115 @@ pub fn handle_member(
   }
 }
 
+/// Handle PATCH/DELETE /api/v1/projects/:id
+pub fn handle_project(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+) -> wisp.Response {
+  case req.method {
+    http.Patch -> handle_project_update(req, ctx, project_id)
+    http.Delete -> handle_project_delete(req, ctx, project_id)
+    _ -> wisp.method_not_allowed([http.Patch, http.Delete])
+  }
+}
+
+fn handle_project_update(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+) -> wisp.Response {
+  case auth.require_current_user(req, ctx) {
+    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+
+    Ok(user) -> {
+      case csrf.require_double_submit(req) {
+        Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+
+        Ok(Nil) -> {
+          case int.parse(project_id) {
+            Error(_) -> api.error(404, "NOT_FOUND", "Project not found")
+
+            Ok(project_id) -> {
+              let auth.Ctx(db: db, ..) = ctx
+
+              // Only org admins can update projects
+              case user.org_role {
+                org_role.Admin -> {
+                  use body <- wisp.require_json(req)
+                  let decoder = decode.field("name", decode.string, decode.success)
+
+                  case decode.run(body, decoder) {
+                    Error(_) -> api.error(400, "INVALID_BODY", "Invalid request body")
+
+                    Ok(name) -> {
+                      case projects_db.update_project(db, project_id, name) {
+                        Ok(project) ->
+                          api.ok(json.object([#("project", project_json(project))]))
+
+                        Error(projects_db.UpdateProjectNotFound) ->
+                          api.error(404, "NOT_FOUND", "Project not found")
+
+                        Error(projects_db.UpdateProjectDbError(_)) ->
+                          api.error(500, "INTERNAL", "Database error")
+                      }
+                    }
+                  }
+                }
+
+                _ -> api.error(403, "FORBIDDEN", "Only org admins can update projects")
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+fn handle_project_delete(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+) -> wisp.Response {
+  case auth.require_current_user(req, ctx) {
+    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+
+    Ok(user) -> {
+      case csrf.require_double_submit(req) {
+        Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+
+        Ok(Nil) -> {
+          case int.parse(project_id) {
+            Error(_) -> api.error(404, "NOT_FOUND", "Project not found")
+
+            Ok(project_id) -> {
+              let auth.Ctx(db: db, ..) = ctx
+
+              // Only org admins can delete projects
+              case user.org_role {
+                org_role.Admin -> {
+                  case projects_db.delete_project(db, project_id) {
+                    Ok(_) -> api.no_content()
+
+                    Error(projects_db.DeleteProjectNotFound) ->
+                      api.error(404, "NOT_FOUND", "Project not found")
+
+                    Error(projects_db.DeleteProjectDbError(_)) ->
+                      api.error(500, "INTERNAL", "Database error")
+                  }
+                }
+
+                _ -> api.error(403, "FORBIDDEN", "Only org admins can delete projects")
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 fn handle_member_delete(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -425,6 +534,7 @@ fn project_json(project: projects_db.Project) -> json.Json {
     name: name,
     created_at: created_at,
     my_role: my_role,
+    members_count: members_count,
   ) = project
 
   json.object([
@@ -433,6 +543,7 @@ fn project_json(project: projects_db.Project) -> json.Json {
     #("name", json.string(name)),
     #("created_at", json.string(created_at)),
     #("my_role", json.string(my_role)),
+    #("members_count", json.int(members_count)),
   ])
 }
 
