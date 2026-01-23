@@ -27,6 +27,7 @@ import domain/task_status
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/icons
 import scrumbringer_client/utils/text as text_utils
 
 // =============================================================================
@@ -137,7 +138,7 @@ fn view_empty_column(config: KanbanConfig(msg)) -> Element(msg) {
       attribute.attribute("data-testid", "kanban-empty-column"),
     ],
     [
-      span([attribute.class("empty-icon")], [text("📋")]),
+      span([attribute.class("empty-icon")], [icons.nav_icon(icons.ClipboardDoc, icons.Medium)]),
       span([attribute.class("empty-text")], [
         text(i18n.t(config.locale, i18n_text.KanbanEmptyColumn)),
       ]),
@@ -273,7 +274,7 @@ fn view_context_menu(config: KanbanConfig(msg), card_id: Int) -> Element(msg) {
           attribute.attribute("aria-label", "Edit card"),
           event.on_click(config.on_card_edit(card_id)),
         ],
-        [text("✏")],
+        [icons.nav_icon(icons.Pencil, icons.Small)],
       ),
       button(
         [
@@ -282,7 +283,7 @@ fn view_context_menu(config: KanbanConfig(msg), card_id: Int) -> Element(msg) {
           attribute.attribute("aria-label", "Delete card"),
           event.on_click(config.on_card_delete(card_id)),
         ],
-        [text("🗑")],
+        [icons.nav_icon(icons.Trash, icons.Small)],
       ),
     ],
   )

@@ -1,13 +1,15 @@
 //// Right Panel - Activity and profile panel
 ////
 //// Mission: Render the right panel with user activity (my tasks, my cards),
-//// active task timer, and profile/logout controls.
+//// active task timer, preferences, and profile/logout controls.
 ////
 //// Responsibilities:
 //// - "My Tasks" section with claimed tasks
 //// - "My Cards" section with user's card progress
+//// - "My Metrics" section with personal stats
 //// - Active task timer with controls
-//// - Profile info and logout button
+//// - Preferences section (theme, language)
+//// - Profile info and logout button (always at bottom)
 ////
 //// Non-responsibilities:
 //// - Layout structure (handled by ThreePanelLayout)
@@ -19,7 +21,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, h4, span, text}
+import lustre/element/html.{button, div, h4, label, option, select, span, text}
 import lustre/event
 
 import domain/metrics.{type MyMetrics}
@@ -28,7 +30,7 @@ import domain/user.{type User}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/ui/empty_state
+import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/icons
 
 // =============================================================================
@@ -69,6 +71,10 @@ pub type RightPanelConfig(msg) {
     drag_over_my_tasks: Bool,
     // My Metrics section (Story 4.7 Task 6.1)
     my_metrics: Option(MyMetrics),
+    // Preferences section (Story 4.8 UX)
+    current_theme: Theme,
+    on_theme_change: fn(String) -> msg,
+    on_locale_change: fn(String) -> msg,
   )
 }
 
@@ -81,19 +87,33 @@ pub fn view(config: RightPanelConfig(msg)) -> Element(msg) {
   div(
     [attribute.class("right-panel-content")],
     [
-      // Active task timer (if any)
-      case config.active_task {
-        Some(active) -> view_active_task(config, active)
-        None -> element.none()
-      },
-      // My Tasks section
-      view_my_tasks(config),
-      // My Cards section (placeholder for now)
-      view_my_cards(config),
-      // My Metrics section (Story 4.7 Task 6.1)
-      view_my_metrics(config),
-      // Profile and logout
-      view_profile(config),
+      // Activity sections (top)
+      div(
+        [attribute.class("right-panel-activity")],
+        [
+          // Active task timer (if any)
+          case config.active_task {
+            Some(active) -> view_active_task(config, active)
+            None -> element.none()
+          },
+          // My Tasks section
+          view_my_tasks(config),
+          // My Cards section
+          view_my_cards(config),
+          // My Metrics section (Story 4.7 Task 6.1)
+          view_my_metrics(config),
+        ],
+      ),
+      // Footer sections (bottom - pushed down with flex spacer)
+      div(
+        [attribute.class("right-panel-footer")],
+        [
+          // Preferences section (Story 4.8 UX)
+          view_preferences(config),
+          // Profile and logout (always at very bottom)
+          view_profile(config),
+        ],
+      ),
     ],
   )
 }
@@ -112,7 +132,8 @@ fn view_active_task(
       attribute.attribute("data-testid", "active-task"),
     ],
     [
-      h4([attribute.class("section-title")], [
+      h4([attribute.class("section-title section-title-with-icon")], [
+        icons.nav_icon(icons.Play, icons.Small),
         text(i18n.t(config.locale, i18n_text.InProgress)),
       ]),
       div(
@@ -170,6 +191,18 @@ fn view_active_task(
 // =============================================================================
 
 fn view_my_tasks(config: RightPanelConfig(msg)) -> Element(msg) {
+  // Story 4.8 UX: Filter out active task from list (avoid duplication)
+  let active_task_id = case config.active_task {
+    Some(active) -> Some(active.task_id)
+    None -> None
+  }
+  let filtered_tasks = list.filter(config.my_tasks, fn(task) {
+    case active_task_id {
+      Some(id) -> task.id != id
+      None -> True
+    }
+  })
+
   // Dropzone class for drag-to-claim visual feedback (Story 4.7)
   let dropzone_class = case config.drag_armed, config.drag_over_my_tasks {
     True, True -> "my-tasks-section pool-my-tasks-dropzone drop-over"
@@ -177,10 +210,16 @@ fn view_my_tasks(config: RightPanelConfig(msg)) -> Element(msg) {
     False, _ -> "my-tasks-section pool-my-tasks-dropzone"
   }
 
+  let is_empty = list.is_empty(filtered_tasks)
+  let section_class = case is_empty {
+    True -> dropzone_class <> " section-collapsed"
+    False -> dropzone_class
+  }
+
   div(
     [
       attribute.attribute("id", "pool-my-tasks"),
-      attribute.class(dropzone_class),
+      attribute.class(section_class),
       attribute.attribute("data-testid", "my-tasks"),
     ],
     [
@@ -196,21 +235,24 @@ fn view_my_tasks(config: RightPanelConfig(msg)) -> Element(msg) {
           ])
         False -> element.none()
       },
-      h4([attribute.class("section-title")], [
+      // Story 4.8: Compact header with icon
+      h4([attribute.class("section-title section-title-with-icon")], [
+        icons.nav_icon(icons.ClipboardDoc, icons.Small),
         text(i18n.t(config.locale, i18n_text.MyTasks)),
+        case is_empty {
+          True ->
+            span([attribute.class("section-empty-indicator")], [
+              text(" (0)"),
+            ])
+          False ->
+            span([attribute.class("section-count")], [
+              text(" (" <> int.to_string(list.length(filtered_tasks)) <> ")"),
+            ])
+        },
       ]),
-      case config.my_tasks {
-        [] ->
-          div([], [
-            empty_state.simple(
-              icons.Hand,
-              i18n.t(config.locale, i18n_text.NoTasksClaimed),
-            ),
-            // AC32: Actionable hint
-            div([attribute.class("empty-state-hint")], [
-              text(i18n.t(config.locale, i18n_text.NoTasksClaimedHint)),
-            ]),
-          ])
+      // Hide empty state content when collapsed
+      case filtered_tasks {
+        [] -> element.none()
         tasks ->
           div(
             [attribute.class("task-list")],
@@ -256,27 +298,36 @@ fn view_my_task_item(config: RightPanelConfig(msg), task: Task) -> Element(msg) 
 // =============================================================================
 
 fn view_my_cards(config: RightPanelConfig(msg)) -> Element(msg) {
+  let is_empty = list.is_empty(config.my_cards)
+  let section_class = case is_empty {
+    True -> "my-cards-section section-collapsed"
+    False -> "my-cards-section"
+  }
+
   div(
     [
-      attribute.class("my-cards-section"),
+      attribute.class(section_class),
       attribute.attribute("data-testid", "my-cards"),
     ],
     [
-      h4([attribute.class("section-title")], [
+      // Story 4.8: Compact header with icon
+      h4([attribute.class("section-title section-title-with-icon")], [
+        icons.nav_icon(icons.Cards, icons.Small),
         text(i18n.t(config.locale, i18n_text.MyCards)),
+        case is_empty {
+          True ->
+            span([attribute.class("section-empty-indicator")], [
+              text(" (0)"),
+            ])
+          False ->
+            span([attribute.class("section-count")], [
+              text(" (" <> int.to_string(list.length(config.my_cards)) <> ")"),
+            ])
+        },
       ]),
+      // Hide empty state content when collapsed
       case config.my_cards {
-        [] ->
-          div([], [
-            empty_state.simple(
-              icons.Clipboard,
-              i18n.t(config.locale, i18n_text.NoCardsAssigned),
-            ),
-            // AC32: Actionable hint
-            div([attribute.class("empty-state-hint")], [
-              text(i18n.t(config.locale, i18n_text.NoCardsAssignedHint)),
-            ]),
-          ])
+        [] -> element.none()
         cards ->
           div(
             [attribute.class("my-cards-list")],
@@ -340,7 +391,8 @@ fn view_my_metrics(config: RightPanelConfig(msg)) -> Element(msg) {
       attribute.attribute("data-testid", "my-metrics"),
     ],
     [
-      h4([attribute.class("section-title")], [
+      h4([attribute.class("section-title section-title-with-icon")], [
+        icons.nav_icon(icons.ChartUp, icons.Small),
         text(i18n.t(config.locale, i18n_text.MyMetrics)),
       ]),
       case config.my_metrics {
@@ -404,7 +456,85 @@ fn view_my_metrics(config: RightPanelConfig(msg)) -> Element(msg) {
 }
 
 // =============================================================================
-// Profile Section
+// Preferences Section (Story 4.8 UX)
+// =============================================================================
+
+fn view_preferences(config: RightPanelConfig(msg)) -> Element(msg) {
+  let current_theme = theme.serialize(config.current_theme)
+  let current_locale = locale.serialize(config.locale)
+
+  div(
+    [
+      attribute.class("preferences-section"),
+      attribute.attribute("data-testid", "preferences"),
+    ],
+    [
+      h4([attribute.class("section-title section-title-with-icon")], [
+        icons.nav_icon(icons.Cog, icons.Small),
+        text(i18n.t(config.locale, i18n_text.Preferences)),
+      ]),
+      div(
+        [attribute.class("preferences-grid")],
+        [
+          // Theme selector
+          label(
+            [attribute.class("preference-item")],
+            [
+              span([attribute.class("preference-icon")], [
+                case config.current_theme {
+                  theme.Dark -> icons.nav_icon(icons.Moon, icons.Small)
+                  theme.Default -> icons.nav_icon(icons.Sun, icons.Small)
+                },
+              ]),
+              select(
+                [
+                  attribute.class("preference-select"),
+                  attribute.value(current_theme),
+                  attribute.attribute("data-testid", "theme-selector"),
+                  event.on_input(config.on_theme_change),
+                ],
+                [
+                  option(
+                    [attribute.value("default")],
+                    i18n.t(config.locale, i18n_text.ThemeDefault),
+                  ),
+                  option(
+                    [attribute.value("dark")],
+                    i18n.t(config.locale, i18n_text.ThemeDark),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // Language selector
+          label(
+            [attribute.class("preference-item")],
+            [
+              span([attribute.class("preference-icon")], [
+                icons.nav_icon(icons.Globe, icons.Small),
+              ]),
+              select(
+                [
+                  attribute.class("preference-select"),
+                  attribute.value(current_locale),
+                  attribute.attribute("data-testid", "locale-selector"),
+                  event.on_input(config.on_locale_change),
+                ],
+                [
+                  option([attribute.value("es")], "Español"),
+                  option([attribute.value("en")], "English"),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    ],
+  )
+}
+
+// =============================================================================
+// Profile Section (Story 4.8 UX: always at bottom)
 // =============================================================================
 
 fn view_profile(config: RightPanelConfig(msg)) -> Element(msg) {
@@ -416,6 +546,7 @@ fn view_profile(config: RightPanelConfig(msg)) -> Element(msg) {
           div(
             [attribute.class("user-info")],
             [
+              icons.nav_icon(icons.UserCircle, icons.Medium),
               span([attribute.class("user-email")], [text(user.email)]),
             ],
           )
@@ -427,7 +558,10 @@ fn view_profile(config: RightPanelConfig(msg)) -> Element(msg) {
           attribute.attribute("data-testid", "logout-btn"),
           event.on_click(config.on_logout),
         ],
-        [text(i18n.t(config.locale, i18n_text.Logout))],
+        [
+          icons.nav_icon(icons.Logout, icons.Small),
+          text(i18n.t(config.locale, i18n_text.Logout)),
+        ],
       ),
     ],
   )

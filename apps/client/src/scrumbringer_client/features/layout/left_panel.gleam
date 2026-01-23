@@ -30,6 +30,7 @@ import domain/view_mode.{type ViewMode, Cards, List, Pool}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/icons
 
 // =============================================================================
 // Types
@@ -163,7 +164,7 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
       // New Task button - ALL roles (AC7)
       button(
         [
-          attribute.class("btn-action"),
+          attribute.class("btn-action btn-action-primary"),
           attribute.attribute("data-testid", "btn-new-task"),
           attribute.disabled(config.selected_project_id == None),
           event.on_click(config.on_new_task),
@@ -178,7 +179,7 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
         True ->
           button(
             [
-              attribute.class("btn-action"),
+              attribute.class("btn-action btn-action-primary"),
               attribute.attribute("data-testid", "btn-new-card"),
               attribute.disabled(config.selected_project_id == None),
               event.on_click(config.on_new_card),
@@ -198,7 +199,7 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
             config,
             Pool,
             "nav-pool",
-            "🎯",
+            icons.Pool,
             i18n_text.Pool,
             config.on_navigate_pool,
           ),
@@ -206,7 +207,7 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
             config,
             List,
             "nav-list",
-            "≡",
+            icons.List,
             i18n_text.List,
             config.on_navigate_list,
           ),
@@ -214,7 +215,7 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
             config,
             Cards,
             "nav-cards",
-            "🎴",
+            icons.Cards,
             i18n_text.MemberFichas,
             config.on_navigate_cards,
           ),
@@ -229,7 +230,7 @@ fn view_nav_link(
   config: LeftPanelConfig(msg),
   mode: ViewMode,
   testid: String,
-  icon: String,
+  icon: icons.NavIcon,
   label_key: i18n_text.Text,
   on_click_msg: msg,
 ) -> Element(msg) {
@@ -251,7 +252,7 @@ fn view_nav_link(
       event.on_click(on_click_msg),
     ],
     [
-      span([attribute.class("nav-icon")], [text(icon)]),
+      icons.nav_icon(icon, icons.Small),
       span([attribute.class("nav-label")], [
         text(i18n.t(config.locale, label_key)),
       ]),
@@ -305,7 +306,12 @@ fn view_config_section(config: LeftPanelConfig(msg)) -> Element(msg) {
                   attribute.disabled(config.selected_project_id == None),
                   event.on_click(config.on_navigate_config_team),
                 ],
-                [text(i18n.t(config.locale, i18n_text.Team))],
+                [
+                  icons.nav_icon(icons.Team, icons.Small),
+                  span([attribute.class("nav-label")], [
+                    text(i18n.t(config.locale, i18n_text.Team)),
+                  ]),
+                ],
               ),
               button(
                 [
@@ -314,7 +320,12 @@ fn view_config_section(config: LeftPanelConfig(msg)) -> Element(msg) {
                   attribute.disabled(config.selected_project_id == None),
                   event.on_click(config.on_navigate_config_catalog),
                 ],
-                [text(i18n.t(config.locale, i18n_text.Catalog))],
+                [
+                  icons.nav_icon(icons.Catalog, icons.Small),
+                  span([attribute.class("nav-label")], [
+                    text(i18n.t(config.locale, i18n_text.Catalog)),
+                  ]),
+                ],
               ),
               button(
                 [
@@ -323,7 +334,12 @@ fn view_config_section(config: LeftPanelConfig(msg)) -> Element(msg) {
                   attribute.disabled(config.selected_project_id == None),
                   event.on_click(config.on_navigate_config_automation),
                 ],
-                [text(i18n.t(config.locale, i18n_text.Automation))],
+                [
+                  icons.nav_icon(icons.Automation, icons.Small),
+                  span([attribute.class("nav-label")], [
+                    text(i18n.t(config.locale, i18n_text.Automation)),
+                  ]),
+                ],
               ),
               // AC31: Metrics link in Configuration section for PM/Admin
               button(
@@ -334,8 +350,10 @@ fn view_config_section(config: LeftPanelConfig(msg)) -> Element(msg) {
                   event.on_click(config.on_navigate_config_metrics),
                 ],
                 [
-                  span([attribute.class("nav-icon")], [text("📈")]),
-                  text(i18n.t(config.locale, i18n_text.AdminMetrics)),
+                  icons.nav_icon(icons.Metrics, icons.Small),
+                  span([attribute.class("nav-label")], [
+                    text(i18n.t(config.locale, i18n_text.AdminMetrics)),
+                  ]),
                 ],
               ),
             ],
@@ -390,7 +408,10 @@ fn view_org_section(config: LeftPanelConfig(msg)) -> Element(msg) {
                   event.on_click(config.on_navigate_org_invites),
                 ],
                 [
-                  text(i18n.t(config.locale, i18n_text.Invites)),
+                  icons.nav_icon(icons.Invites, icons.Small),
+                  span([attribute.class("nav-label")], [
+                    text(i18n.t(config.locale, i18n_text.Invites)),
+                  ]),
                   view_badge(config.pending_invites_count),
                 ],
               ),
@@ -400,7 +421,12 @@ fn view_org_section(config: LeftPanelConfig(msg)) -> Element(msg) {
                   attribute.attribute("data-testid", "nav-users"),
                   event.on_click(config.on_navigate_org_users),
                 ],
-                [text(i18n.t(config.locale, i18n_text.OrgUsers))],
+                [
+                  icons.nav_icon(icons.OrgUsers, icons.Small),
+                  span([attribute.class("nav-label")], [
+                    text(i18n.t(config.locale, i18n_text.OrgUsers)),
+                  ]),
+                ],
               ),
               button(
                 [
@@ -409,7 +435,10 @@ fn view_org_section(config: LeftPanelConfig(msg)) -> Element(msg) {
                   event.on_click(config.on_navigate_org_projects),
                 ],
                 [
-                  text(i18n.t(config.locale, i18n_text.Projects)),
+                  icons.nav_icon(icons.Projects, icons.Small),
+                  span([attribute.class("nav-label")], [
+                    text(i18n.t(config.locale, i18n_text.Projects)),
+                  ]),
                   view_badge(config.projects_count),
                 ],
               ),
@@ -421,8 +450,10 @@ fn view_org_section(config: LeftPanelConfig(msg)) -> Element(msg) {
                   event.on_click(config.on_navigate_org_metrics),
                 ],
                 [
-                  span([attribute.class("nav-icon")], [text("📊")]),
-                  text(i18n.t(config.locale, i18n_text.OrgMetrics)),
+                  icons.nav_icon(icons.OrgMetrics, icons.Small),
+                  span([attribute.class("nav-label")], [
+                    text(i18n.t(config.locale, i18n_text.OrgMetrics)),
+                  ]),
                 ],
               ),
             ],

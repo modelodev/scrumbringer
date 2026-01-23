@@ -48,6 +48,7 @@ import scrumbringer_client/client_state.{
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/reset_password
+import scrumbringer_client/ui/icons
 import scrumbringer_client/update_helpers
 
 /// Renders the login page with email/password form.
@@ -70,7 +71,7 @@ pub fn view_login(model: Model) -> Element(Msg) {
     case model.login_error {
       opt.Some(err) ->
         div([attribute.class("error-banner")], [
-          span([attribute.class("error-banner-icon")], [text("⚠")]),
+          span([attribute.class("error-banner-icon")], [icons.nav_icon(icons.Warning, icons.Small)]),
           span([], [text(err)]),
         ])
       opt.None -> element.none()

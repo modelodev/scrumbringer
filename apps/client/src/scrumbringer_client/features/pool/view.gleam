@@ -43,8 +43,7 @@ import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, Loading, MemberClaimClicked,
   MemberCompleteClicked, MemberCreateDialogOpened, MemberDragEnded,
-  MemberDragMoved, MemberDragStarted, MemberPoolFiltersToggled,
-  MemberPoolViewModeSet, MemberReleaseClicked, NotAsked,
+  MemberDragMoved, MemberDragStarted, MemberReleaseClicked, NotAsked,
 }
 import scrumbringer_client/features/admin/view as admin_view
 import scrumbringer_client/features/my_bar/view as my_bar_view
@@ -110,64 +109,9 @@ pub fn view_pool_main(model: Model, _user: User) -> Element(Msg) {
       ])
 
     _ -> {
-      let filters_toggle_label = case model.member_pool_filters_visible {
-        True -> update_helpers.i18n_t(model, i18n_text.HideFilters)
-        False -> update_helpers.i18n_t(model, i18n_text.ShowFilters)
-      }
-
-      let canvas_classes = case model.member_pool_view_mode {
-        pool_prefs.Canvas -> "btn-xs btn-active"
-        pool_prefs.List -> "btn-xs"
-      }
-
-      let list_classes = case model.member_pool_view_mode {
-        pool_prefs.List -> "btn-xs btn-active"
-        pool_prefs.Canvas -> "btn-xs"
-      }
-
       div([attribute.class("section")], [
-        div([attribute.class("actions")], [
-          button(
-            [
-              attribute.class("btn-xs"),
-              event.on_click(MemberPoolFiltersToggled),
-            ],
-            [text(filters_toggle_label)],
-          ),
-          button(
-            [
-              attribute.class(canvas_classes),
-              attribute.attribute(
-                "aria-label",
-                update_helpers.i18n_t(model, i18n_text.ViewCanvas),
-              ),
-              event.on_click(MemberPoolViewModeSet(pool_prefs.Canvas)),
-            ],
-            [text(update_helpers.i18n_t(model, i18n_text.Canvas))],
-          ),
-          button(
-            [
-              attribute.class(list_classes),
-              attribute.attribute(
-                "aria-label",
-                update_helpers.i18n_t(model, i18n_text.ViewList),
-              ),
-              event.on_click(MemberPoolViewModeSet(pool_prefs.List)),
-            ],
-            [text(update_helpers.i18n_t(model, i18n_text.List))],
-          ),
-          button(
-            [
-              attribute.class("btn-xs"),
-              event.on_click(MemberCreateDialogOpened),
-            ],
-            [text(update_helpers.i18n_t(model, i18n_text.NewTaskShortcut))],
-          ),
-        ]),
-        case model.member_pool_filters_visible {
-          True -> pool_filters.view(model)
-          False -> element.none()
-        },
+        // Unified toolbar: view mode, filters toggle, and new task - all in one row
+        pool_filters.view_unified_toolbar(model),
         view_tasks(model),
         case model.member_create_dialog_open {
           True -> pool_dialogs.view_create_dialog(model)
@@ -392,7 +336,7 @@ pub fn view_pool_task_row(model: Model, task: Task) -> Element(Msg) {
         event.on_click(MemberClaimClicked(id, version)),
         attribute.disabled(disable_actions),
       ],
-      [text("✋")],
+      [icons.nav_icon(icons.HandRaised, icons.Small)],
     )
 
   div([attribute.class("task-row")], [
@@ -521,7 +465,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
           event.on_click(MemberClaimClicked(id, version)),
           attribute.disabled(disable_actions),
         ],
-        [text("✋")],
+        [icons.nav_icon(icons.HandRaised, icons.Small)],
       )
 
     Claimed(_), True ->
@@ -539,7 +483,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
           event.on_click(MemberReleaseClicked(id, version)),
           attribute.disabled(disable_actions),
         ],
-        [text("⟲")],
+        [icons.nav_icon(icons.Refresh, icons.Small)],
       )
 
     _, _ -> element.none()
@@ -564,7 +508,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
           decode.success(MemberDragStarted(id, ox, oy))
         }),
       ],
-      [text("⠿")],
+      [icons.nav_icon(icons.DragHandle, icons.Small)],
     )
 
   let complete_action = case status, is_mine {
@@ -583,7 +527,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
           event.on_click(MemberCompleteClicked(id, version)),
           attribute.disabled(disable_actions),
         ],
-        [text("☑")],
+        [icons.nav_icon(icons.CheckCircle, icons.Small)],
       )
 
     _, _ -> element.none()

@@ -58,6 +58,7 @@ import scrumbringer_client/theme
 import scrumbringer_client/update_helpers
 
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/toast
 
 import scrumbringer_client/client_state.{
   type Model, type Msg, type NavMode, type Remote,
@@ -140,7 +141,7 @@ import scrumbringer_client/client_state.{
   TaskTypeCreateIconSearchChanged, TaskTypeCreateIconCategoryChanged,
   TaskTypeCreateNameChanged, TaskTypeCreateSubmitted, TaskTypeCreated,
   TaskTypeIconErrored, TaskTypeIconLoaded, TaskTypesFetched, ThemeSelected,
-  NoOp, ToastDismissed, UrlChanged, ViewModeChanged,
+  NoOp, ToastDismissed, ToastShow, ToastDismiss, ToastTick, UrlChanged, ViewModeChanged,
   CloseWorkflowDialog, OpenWorkflowDialog, WorkflowCrudCreated,
   WorkflowCrudDeleted, WorkflowCrudUpdated, WorkflowRulesClicked,
   WorkflowsProjectFetched,
@@ -420,6 +421,7 @@ fn build_snapshot(model: Model) -> hydration.Snapshot {
     capabilities: remote_state(model.capabilities),
     my_capability_ids: remote_state(model.member_my_capability_ids),
     org_settings_users: remote_state(model.org_settings_users),
+    org_users_cache: remote_state(model.org_users_cache),
     members: remote_state(model.members),
     members_project_id: model.members_project_id,
     task_types: remote_state(model.task_types),
@@ -642,6 +644,21 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
 
                   #(m, [
                     api_org.list_org_users("", OrgSettingsUsersFetched),
+                    ..fx
+                  ])
+                }
+              }
+            }
+
+            // AC7: Fetch org users cache for member views (Lista)
+            hydration.FetchOrgUsersCache -> {
+              case m.org_users_cache {
+                Loading | Loaded(_) -> #(m, fx)
+
+                _ -> {
+                  let m = Model(..m, org_users_cache: Loading)
+                  #(m, [
+                    api_org.list_org_users("", OrgUsersCacheFetched),
                     ..fx
                   ])
                 }
@@ -1372,6 +1389,40 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       auth_workflow.handle_logout_finished_error(model, err, replace_url)
 
     ToastDismissed -> #(Model(..model, toast: opt.None), effect.none())
+
+    // New toast system (Story 4.8)
+    ToastShow(message, variant) -> {
+      let now = client_ffi.now_ms()
+      let next_state = toast.show(model.toast_state, message, variant, now)
+      // Schedule tick for auto-dismiss
+      let tick_effect = effect.from(fn(dispatch) {
+        client_ffi.set_timeout(toast.auto_dismiss_ms, fn(_) {
+          dispatch(ToastTick(client_ffi.now_ms()))
+        })
+        Nil
+      })
+      #(Model(..model, toast_state: next_state), tick_effect)
+    }
+
+    ToastDismiss(id) -> {
+      let next_state = toast.dismiss(model.toast_state, id)
+      #(Model(..model, toast_state: next_state), effect.none())
+    }
+
+    ToastTick(now) -> {
+      let #(next_state, should_schedule) = toast.tick(model.toast_state, now)
+      let tick_effect = case should_schedule {
+        True ->
+          effect.from(fn(dispatch) {
+            client_ffi.set_timeout(1000, fn(_) {
+              dispatch(ToastTick(client_ffi.now_ms()))
+            })
+            Nil
+          })
+        False -> effect.none()
+      }
+      #(Model(..model, toast_state: next_state), tick_effect)
+    }
 
     ThemeSelected(value) -> {
       let next_theme = theme.deserialize(value)

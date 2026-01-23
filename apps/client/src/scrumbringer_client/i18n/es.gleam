@@ -101,8 +101,9 @@ pub fn translate(text: Text) -> String {
     text.LoadingEllipsis -> "Cargando…"
 
     // Settings controls
+    text.Preferences -> "Preferencias"
     text.ThemeLabel -> "Tema"
-    text.ThemeDefault -> "Por defecto"
+    text.ThemeDefault -> "Claro"
     text.ThemeDark -> "Oscuro"
     text.LanguageLabel -> "Idioma"
     text.LanguageEs -> "Español"
@@ -163,6 +164,9 @@ pub fn translate(text: Text) -> String {
     text.MetaCreated -> "creada: "
     text.PriorityShort(priority) -> "P" <> int.to_string(priority)
     text.Claim -> "Reclamar"
+    text.ClaimThisTask -> "Reclamar esta tarea"
+    text.ClaimedBy -> "Reclamada por"
+    text.UnknownUser -> "Usuario desconocido"
     text.Drag -> "Arrastrar"
     text.StartNowWorking -> "Empezar en curso"
     text.PauseNowWorking -> "Pausar en curso"
@@ -272,6 +276,12 @@ pub fn translate(text: Text) -> String {
     text.State -> "Estado"
     text.CreatedAt -> "Creado"
     text.Regenerate -> "Regenerar"
+    // Invite link states (Story 4.8)
+    text.InviteStateActive -> "Pendiente"
+    text.InviteStateUsed -> "Usada"
+    text.InviteStateExpired -> "Expirada"
+    text.CopyLink -> "Copiar link"
+    text.LinkCopied -> "¡Link copiado!"
 
     // Projects
     text.Projects -> "Proyectos"
@@ -360,14 +370,14 @@ pub fn translate(text: Text) -> String {
       }
     }
 
-    // Cards
-    text.AdminCards -> "Fichas"
-    text.CardsTitle(project_name) -> "Fichas - " <> project_name
+    // Cards (Tarjetas)
+    text.AdminCards -> "Tarjetas"
+    text.CardsTitle(project_name) -> "Tarjetas - " <> project_name
     text.SelectProjectToManageCards ->
-      "Selecciona un proyecto para gestionar fichas."
-    text.CreateCard -> "Crear ficha"
-    text.EditCard -> "Editar ficha"
-    text.DeleteCard -> "Eliminar ficha"
+      "Selecciona un proyecto para gestionar tarjetas."
+    text.CreateCard -> "Crear tarjeta"
+    text.EditCard -> "Editar tarjeta"
+    text.DeleteCard -> "Eliminar tarjeta"
     text.CardTitle -> "Título"
     text.CardDescription -> "Descripción"
     text.CardState -> "Estado"
@@ -376,16 +386,16 @@ pub fn translate(text: Text) -> String {
     text.CardStateCerrada -> "Cerrada"
     text.CardTasks -> "Tareas"
     text.CardProgress -> "Progreso"
-    text.CardCreated -> "Ficha creada"
-    text.CardUpdated -> "Ficha actualizada"
-    text.CardDeleted -> "Ficha eliminada"
+    text.CardCreated -> "Tarjeta creada"
+    text.CardUpdated -> "Tarjeta actualizada"
+    text.CardDeleted -> "Tarjeta eliminada"
     text.CardDeleteBlocked -> "No se puede eliminar: tiene tareas"
     text.CardDeleteConfirm(card_title) ->
-      "¿Eliminar la ficha \"" <> card_title <> "\"?"
-    text.NoCardsYet -> "Aún no hay fichas"
+      "¿Eliminar la tarjeta \"" <> card_title <> "\"?"
+    text.NoCardsYet -> "Aún no hay tarjetas"
     text.CardTaskCount(completed, total) ->
       int.to_string(completed) <> "/" <> int.to_string(total)
-    text.KanbanEmptyColumn -> "Sin fichas aquí"
+    text.KanbanEmptyColumn -> "Sin tarjetas aquí"
 
     // Workflows
     text.AdminWorkflows -> "Automatizaciones"
@@ -418,7 +428,7 @@ pub fn translate(text: Text) -> String {
     text.RuleGoal -> "Objetivo"
     text.RuleResourceType -> "Tipo recurso"
     text.RuleResourceTypeTask -> "Tarea"
-    text.RuleResourceTypeCard -> "Ficha"
+    text.RuleResourceTypeCard -> "Tarjeta"
     text.RuleToState -> "Estado destino"
     text.RuleTaskType -> "Tipo de tarea"
     text.RuleActive -> "Activo"
@@ -492,9 +502,9 @@ pub fn translate(text: Text) -> String {
     text.OutcomeSuppressed -> "Suprimida"
 
     // Story 3.4 - Member Card Views
-    text.MemberFichas -> "Fichas"
-    text.MemberFichasEmpty -> "No hay fichas"
-    text.MemberFichasEmptyHint -> "Las fichas agrupan tareas relacionadas"
+    text.MemberFichas -> "Tarjetas"
+    text.MemberFichasEmpty -> "No hay tarjetas"
+    text.MemberFichasEmptyHint -> "Las tarjetas agrupan tareas relacionadas"
 
     // Color picker
     text.ColorLabel -> "Color"
@@ -509,7 +519,7 @@ pub fn translate(text: Text) -> String {
     text.ColorPink -> "Rosa"
 
     // Card grouping
-    text.UngroupedTasks -> "Sin ficha"
+    text.UngroupedTasks -> "Sin tarjeta"
     text.CardProgressCount(completed, total) ->
       int.to_string(completed) <> "/" <> int.to_string(total)
 
@@ -527,7 +537,7 @@ pub fn translate(text: Text) -> String {
 
     // Secciones del panel izquierdo
     text.Work -> "Trabajo"
-    text.NewCard -> "Nueva Ficha"
+    text.NewCard -> "Nueva tarjeta"
     text.Configuration -> "Configuración"
     text.Team -> "Equipo"
     text.Catalog -> "Catálogo"
@@ -539,11 +549,11 @@ pub fn translate(text: Text) -> String {
     // Secciones del panel derecho
     text.InProgress -> "En Curso"
     text.Resume -> "Reanudar"
-    text.MyCards -> "Mis Fichas"
+    text.MyCards -> "Mis tarjetas"
     text.NoTasksClaimed -> "Sin tareas reclamadas"
-    text.NoCardsAssigned -> "Sin fichas asignadas"
+    text.NoCardsAssigned -> "Sin tarjetas asignadas"
     // AC32: Empty state hints
     text.NoTasksClaimedHint -> "Explora Pool para reclamar una tarea"
-    text.NoCardsAssignedHint -> "Ver Fichas para ver las disponibles"
+    text.NoCardsAssignedHint -> "Ver Tarjetas para ver las disponibles"
   }
 }

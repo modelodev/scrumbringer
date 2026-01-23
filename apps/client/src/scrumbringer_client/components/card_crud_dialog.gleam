@@ -40,6 +40,7 @@ import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/icons
 
 // =============================================================================
 // Internal Types
@@ -600,8 +601,8 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
         attribute.attribute("aria-modal", "true"),
       ],
       [
-        // Header
-        view_header(model, i18n_text.CreateCard, "\u{1F0CF}"),
+        // Header (Story 4.8 UX: Heroicon instead of emoji)
+        view_header(model, i18n_text.CreateCard, icons.Cards),
         // Error
         view_error(model.create_error),
         // Body
@@ -682,8 +683,8 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
         attribute.attribute("aria-modal", "true"),
       ],
       [
-        // Header
-        view_header(model, i18n_text.EditCard, "\u{270F}"),
+        // Header (Story 4.8 UX: Heroicon instead of emoji)
+        view_header(model, i18n_text.EditCard, icons.Pencil),
         // Error
         view_error(model.edit_error),
         // Body
@@ -762,8 +763,8 @@ fn view_delete_dialog(model: Model, card: Card) -> Element(Msg) {
         attribute.attribute("aria-modal", "true"),
       ],
       [
-        // Header
-        view_header(model, i18n_text.DeleteCard, "\u{1F5D1}"),
+        // Header (Story 4.8 UX: Heroicon instead of emoji)
+        view_header(model, i18n_text.DeleteCard, icons.Trash),
         // Error
         view_error(model.delete_error),
         // Body
@@ -794,10 +795,12 @@ fn view_delete_dialog(model: Model, card: Card) -> Element(Msg) {
   ])
 }
 
-fn view_header(model: Model, title_key: i18n_text.Text, icon: String) -> Element(Msg) {
+fn view_header(model: Model, title_key: i18n_text.Text, icon: icons.NavIcon) -> Element(Msg) {
   div([attribute.class("dialog-header")], [
     div([attribute.class("dialog-title")], [
-      span([attribute.class("dialog-icon")], [text(icon)]),
+      span([attribute.class("dialog-icon")], [
+        icons.nav_icon(icon, icons.Medium),
+      ]),
       h3([], [text(t(model.locale, title_key))]),
     ]),
     button(

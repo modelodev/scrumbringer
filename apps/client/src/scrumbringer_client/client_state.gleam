@@ -93,6 +93,8 @@ import scrumbringer_client/pool_prefs
 import scrumbringer_client/reset_password
 import scrumbringer_client/router
 import scrumbringer_client/theme
+import scrumbringer_client/ui/toast
+import scrumbringer_client/domain/ids.{type ToastId}
 
 // ----------------------------------------------------------------------------
 // Remote data loading state
@@ -262,6 +264,8 @@ pub type Model {
     is_mobile: Bool,
     active_section: permissions.AdminSection,
     toast: Option(String),
+    // New toast system with auto-dismiss (Story 4.8)
+    toast_state: toast.ToastState,
     theme: theme.Theme,
     locale: i18n_locale.Locale,
     // Login form
@@ -530,8 +534,12 @@ pub type Msg {
   LogoutClicked
   LogoutFinished(ApiResult(Nil))
 
-  // Toast
+  // Toast (legacy)
   ToastDismissed
+  // Toast (new system with auto-dismiss, Story 4.8)
+  ToastShow(String, toast.ToastVariant)
+  ToastDismiss(ToastId)
+  ToastTick(Int)
 
   // Preferences
   ThemeSelected(String)
@@ -888,6 +896,7 @@ pub fn default_model() -> Model {
     is_mobile: False,
     active_section: permissions.Invites,
     toast: option.None,
+    toast_state: toast.init(),
     theme: theme.Default,
     locale: i18n_locale.En,
     // Login form
@@ -1064,8 +1073,8 @@ pub fn default_model() -> Model {
     member_quick_my_caps: True,
     member_pool_filters_visible: False,
     member_pool_view_mode: pool_prefs.Canvas,
-    // List view hide completed tasks filter
-    member_list_hide_completed: False,
+    // List view hide completed tasks filter (AC6: ON by default)
+    member_list_hide_completed: True,
     // Mobile panel toggle
     member_panel_expanded: False,
     // Mobile drawer state

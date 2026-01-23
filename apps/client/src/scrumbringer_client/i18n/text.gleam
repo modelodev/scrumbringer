@@ -94,6 +94,7 @@ pub type Text {
   LoadingEllipsis
 
   // Settings controls
+  Preferences
   ThemeLabel
   ThemeDefault
   ThemeDark
@@ -150,6 +151,9 @@ pub type Text {
   MetaCreated
   PriorityShort(priority: Int)
   Claim
+  ClaimThisTask
+  ClaimedBy
+  UnknownUser
   Drag
   StartNowWorking
   PauseNowWorking
@@ -252,6 +256,12 @@ pub type Text {
   State
   CreatedAt
   Regenerate
+  // Invite link states (Story 4.8)
+  InviteStateActive
+  InviteStateUsed
+  InviteStateExpired
+  CopyLink
+  LinkCopied
 
   // Projects
   Projects

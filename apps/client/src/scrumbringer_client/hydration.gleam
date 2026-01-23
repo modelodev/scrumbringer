@@ -50,6 +50,7 @@ pub type Snapshot {
     capabilities: ResourceState,
     my_capability_ids: ResourceState,
     org_settings_users: ResourceState,
+    org_users_cache: ResourceState,
     members: ResourceState,
     members_project_id: Option(Int),
     task_types: ResourceState,
@@ -71,6 +72,7 @@ pub type Command {
   FetchCapabilities
   FetchMeCapabilityIds
   FetchOrgSettingsUsers
+  FetchOrgUsersCache
   FetchMembers(project_id: Int)
   FetchTaskTypes(project_id: Int)
   RefreshMember
@@ -90,6 +92,7 @@ pub fn plan(route: router.Route, snapshot: Snapshot) -> List(Command) {
     capabilities: capabilities,
     my_capability_ids: my_capability_ids,
     org_settings_users: org_settings_users,
+    org_users_cache: org_users_cache,
     members: members,
     members_project_id: members_project_id,
     task_types: task_types,
@@ -164,6 +167,12 @@ pub fn plan(route: router.Route, snapshot: Snapshot) -> List(Command) {
 
                   let base = case capabilities {
                     NotAsked | Failed -> list.append(base, [FetchCapabilities])
+                    _ -> base
+                  }
+
+                  // Story 4.8: Fetch My Metrics for right panel (fix perpetual "Cargando...")
+                  let base = case me_metrics {
+                    NotAsked | Failed -> list.append(base, [FetchMeMetrics])
                     _ -> base
                   }
 
@@ -257,6 +266,11 @@ pub fn plan(route: router.Route, snapshot: Snapshot) -> List(Command) {
                 NotAsked | Failed -> list.append(base, [FetchCapabilities])
                 _ -> base
               }
+              // Story 4.8: Fetch My Metrics for right panel (fix perpetual "Cargando...")
+              let base = case me_metrics {
+                NotAsked | Failed -> list.append(base, [FetchMeMetrics])
+                _ -> base
+              }
               case section {
                 permissions.OrgSettings ->
                   case org_settings_users {
@@ -307,6 +321,12 @@ pub fn plan(route: router.Route, snapshot: Snapshot) -> List(Command) {
 
           let base = case me_metrics {
             NotAsked | Failed -> list.append(base, [FetchMeMetrics])
+            _ -> base
+          }
+
+          // AC7: Fetch org users cache to show who claimed tasks in Lista view
+          let base = case org_users_cache {
+            NotAsked | Failed -> list.append(base, [FetchOrgUsersCache])
             _ -> base
           }
 

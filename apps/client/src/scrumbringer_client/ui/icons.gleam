@@ -9,7 +9,8 @@
 ////
 //// - Type-safe emoji icon constants
 //// - Type-safe heroicon definitions for admin navigation
-//// - Render heroicon outline SVG icons
+//// - Type-safe navigation icons with exhaustive pattern matching
+//// - Render heroicon outline SVG icons (inline via gleroglero)
 //// - Render task type icons with theme awareness
 ////
 //// ## Non-responsibilities
@@ -23,13 +24,16 @@
 //// - **features/my_bar/view.gleam**: Uses for task type icons
 //// - **features/pool/view.gleam**: Uses for task type icons
 //// - **client_view.gleam**: Uses for admin navigation icons
+//// - **features/layout/sidebar.gleam**: Uses NavIcon for sidebar
 
 import gleam/int
 import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{img}
+import lustre/element/html.{img, span}
+
+import gleroglero/outline
 
 import scrumbringer_client/client_state.{type Msg}
 import scrumbringer_client/permissions
@@ -201,4 +205,237 @@ fn theme_class(theme: Theme) -> String {
     theme.Dark -> "icon-theme-dark"
     theme.Default -> ""
   }
+}
+
+// =============================================================================
+// Navigation Icons (Type-Safe, Exhaustive)
+// =============================================================================
+
+/// Navigation icons for sidebar - exhaustive ADT ensures all cases are handled.
+///
+/// Using an ADT (Algebraic Data Type) instead of strings provides:
+/// - Compile-time verification that all icons are handled
+/// - No typos possible
+/// - Easy refactoring with compiler help
+pub type NavIcon {
+  // TRABAJO section
+  Pool
+  List
+  Cards
+  // CONFIGURACION section
+  Team
+  Catalog
+  Automation
+  Metrics
+  Workflows
+  TaskTypes
+  TaskTemplates
+  // ORGANIZACION section
+  Invites
+  OrgUsers
+  Projects
+  OrgMetrics
+  // Actions
+  Copy
+  Plus
+  Check
+  XMark
+  // Additional UI icons (Story 4.8 - emoji replacement)
+  Warning
+  Star
+  StarOutline
+  HandRaised
+  ClipboardDoc
+  InboxEmpty
+  ChartUp
+  CheckCircle
+  // Filter icons
+  MagnifyingGlass
+  Crosshairs
+  TagLabel
+  // Action icons
+  Pencil
+  Trash
+  Refresh
+  DragHandle
+  Pause
+  Play
+  Return
+  Cog
+  EmptyMailbox
+  Close
+  // Right panel icons (Story 4.8 UX)
+  Sun
+  Moon
+  Globe
+  UserCircle
+  Logout
+}
+
+/// Icon size variants for consistent sizing.
+pub type IconSize {
+  Small
+  Medium
+  Large
+}
+
+/// Get pixel size for an IconSize variant.
+pub fn icon_size_px(size: IconSize) -> Int {
+  case size {
+    Small -> 16
+    Medium -> 20
+    Large -> 24
+  }
+}
+
+/// Render a navigation icon as inline SVG.
+///
+/// Uses exhaustive pattern matching - compiler ensures all icons are handled.
+///
+/// ## Example
+///
+/// ```gleam
+/// icons.nav_icon(icons.Pool, icons.Medium)
+/// ```
+pub fn nav_icon(icon: NavIcon, size: IconSize) -> Element(a) {
+  let svg = case icon {
+    Pool -> outline.square_3_stack_3d()
+    List -> outline.queue_list()
+    Cards -> outline.rectangle_stack()
+    Team -> outline.user_group()
+    Catalog -> outline.tag()
+    Automation -> outline.bolt()
+    Metrics -> outline.chart_bar()
+    Workflows -> outline.cog_6_tooth()
+    TaskTypes -> outline.tag()
+    TaskTemplates -> outline.document_duplicate()
+    Invites -> outline.envelope()
+    OrgUsers -> outline.users()
+    Projects -> outline.folder()
+    OrgMetrics -> outline.chart_pie()
+    Copy -> outline.clipboard_document()
+    Plus -> outline.plus()
+    Check -> outline.check()
+    XMark -> outline.x_mark()
+    // Additional UI icons
+    Warning -> outline.exclamation_triangle()
+    Star -> outline.star()
+    StarOutline -> outline.star()
+    HandRaised -> outline.hand_raised()
+    ClipboardDoc -> outline.clipboard_document_list()
+    InboxEmpty -> outline.inbox()
+    ChartUp -> outline.arrow_trending_up()
+    CheckCircle -> outline.check_circle()
+    // Filter icons
+    MagnifyingGlass -> outline.magnifying_glass()
+    Crosshairs -> outline.cursor_arrow_rays()
+    TagLabel -> outline.tag()
+    // Action icons
+    Pencil -> outline.pencil()
+    Trash -> outline.trash()
+    Refresh -> outline.arrow_path()
+    DragHandle -> outline.bars_3()
+    Pause -> outline.pause()
+    Play -> outline.play()
+    Return -> outline.arrow_uturn_left()
+    Cog -> outline.cog_6_tooth()
+    EmptyMailbox -> outline.inbox()
+    Close -> outline.x_mark()
+    // Right panel icons (Story 4.8 UX)
+    Sun -> outline.sun()
+    Moon -> outline.moon()
+    Globe -> outline.globe_alt()
+    UserCircle -> outline.user_circle()
+    Logout -> outline.arrow_right_start_on_rectangle()
+  }
+
+  let px = icon_size_px(size)
+  span(
+    [
+      attribute.class("nav-icon"),
+      attribute.attribute(
+        "style",
+        "display:inline-flex;align-items:center;justify-content:center;width:"
+          <> int.to_string(px)
+          <> "px;height:"
+          <> int.to_string(px)
+          <> "px;",
+      ),
+    ],
+    [svg],
+  )
+}
+
+/// Render a navigation icon with custom class.
+pub fn nav_icon_with_class(
+  icon: NavIcon,
+  size: IconSize,
+  class_name: String,
+) -> Element(a) {
+  let svg = case icon {
+    Pool -> outline.square_3_stack_3d()
+    List -> outline.queue_list()
+    Cards -> outline.rectangle_stack()
+    Team -> outline.user_group()
+    Catalog -> outline.tag()
+    Automation -> outline.bolt()
+    Metrics -> outline.chart_bar()
+    Workflows -> outline.cog_6_tooth()
+    TaskTypes -> outline.tag()
+    TaskTemplates -> outline.document_duplicate()
+    Invites -> outline.envelope()
+    OrgUsers -> outline.users()
+    Projects -> outline.folder()
+    OrgMetrics -> outline.chart_pie()
+    Copy -> outline.clipboard_document()
+    Plus -> outline.plus()
+    Check -> outline.check()
+    XMark -> outline.x_mark()
+    // Additional UI icons
+    Warning -> outline.exclamation_triangle()
+    Star -> outline.star()
+    StarOutline -> outline.star()
+    HandRaised -> outline.hand_raised()
+    ClipboardDoc -> outline.clipboard_document_list()
+    InboxEmpty -> outline.inbox()
+    ChartUp -> outline.arrow_trending_up()
+    CheckCircle -> outline.check_circle()
+    // Filter icons
+    MagnifyingGlass -> outline.magnifying_glass()
+    Crosshairs -> outline.cursor_arrow_rays()
+    TagLabel -> outline.tag()
+    // Action icons
+    Pencil -> outline.pencil()
+    Trash -> outline.trash()
+    Refresh -> outline.arrow_path()
+    DragHandle -> outline.bars_3()
+    Pause -> outline.pause()
+    Play -> outline.play()
+    Return -> outline.arrow_uturn_left()
+    Cog -> outline.cog_6_tooth()
+    EmptyMailbox -> outline.inbox()
+    Close -> outline.x_mark()
+    // Right panel icons (Story 4.8 UX)
+    Sun -> outline.sun()
+    Moon -> outline.moon()
+    Globe -> outline.globe_alt()
+    UserCircle -> outline.user_circle()
+    Logout -> outline.arrow_right_start_on_rectangle()
+  }
+
+  let px = icon_size_px(size)
+  span(
+    [
+      attribute.class("nav-icon " <> class_name),
+      attribute.attribute(
+        "style",
+        "display:inline-flex;align-items:center;justify-content:center;width:"
+          <> int.to_string(px)
+          <> "px;height:"
+          <> int.to_string(px)
+          <> "px;",
+      ),
+    ],
+    [svg],
+  )
 }

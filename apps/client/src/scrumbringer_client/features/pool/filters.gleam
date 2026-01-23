@@ -32,11 +32,12 @@ import lustre/event
 
 import scrumbringer_client/client_state.{
   type Model, type Msg, Loaded,
-  MemberClearFilters, MemberPoolCapabilityChanged, MemberPoolSearchChanged,
-  MemberPoolSearchDebounced, MemberPoolTypeChanged,
+  MemberClearFilters, MemberCreateDialogOpened, MemberPoolCapabilityChanged,
+  MemberPoolSearchChanged, MemberPoolSearchDebounced, MemberPoolTypeChanged,
   MemberToggleMyCapabilitiesQuick,
 }
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/icons
 import scrumbringer_client/update_helpers
 
 /// Counts how many filters are currently active.
@@ -164,7 +165,7 @@ fn view_type_filter(model: Model, options: List(element.Element(Msg))) -> Elemen
         ),
         attribute.attribute("aria-hidden", "true"),
       ],
-      [text("🏷")],
+      [icons.nav_icon(icons.TagLabel, icons.Small)],
     ),
     label(
       [
@@ -206,7 +207,7 @@ fn view_capability_filter(model: Model, options: List(element.Element(Msg))) -> 
         ),
         attribute.attribute("aria-hidden", "true"),
       ],
-      [text("🎯")],
+      [icons.nav_icon(icons.Crosshairs, icons.Small)],
     ),
     label(
       [
@@ -248,7 +249,7 @@ fn view_my_capabilities_toggle(
         ),
         attribute.attribute("aria-hidden", "true"),
       ],
-      [text("★")],
+      [icons.nav_icon(icons.Star, icons.Small)],
     ),
     label([attribute.class("filter-label")], [
       text(update_helpers.i18n_t(model, i18n_text.MyCapabilitiesLabel)),
@@ -272,10 +273,10 @@ fn view_my_capabilities_toggle(
         event.on_click(MemberToggleMyCapabilitiesQuick),
       ],
       [
-        text(case is_active {
-          True -> "★"
-          False -> "☆"
-        }),
+        case is_active {
+          True -> icons.nav_icon(icons.Star, icons.Small)
+          False -> icons.nav_icon(icons.StarOutline, icons.Small)
+        },
       ],
     ),
   ])
@@ -295,7 +296,7 @@ fn view_search_filter(model: Model) -> Element(Msg) {
         ),
         attribute.attribute("aria-hidden", "true"),
       ],
-      [text("⌕")],
+      [icons.nav_icon(icons.MagnifyingGlass, icons.Small)],
     ),
     label(
       [
@@ -321,3 +322,33 @@ fn view_search_filter(model: Model) -> Element(Msg) {
     ]),
   ])
 }
+
+// =============================================================================
+// Unified Toolbar (Story 4.8: Single collapsible bar)
+// =============================================================================
+
+/// Renders a minimal toolbar with just the new task button.
+///
+/// Story 4.8 AC40-42: Pool is always canvas mode. Lista is accessible only
+/// from main navigation (sidebar). Filters are shown in center_panel header.
+pub fn view_unified_toolbar(model: Model) -> Element(Msg) {
+  // Simple toolbar: only "Nueva tarea" button
+  // Filters are handled by center_panel (top right: Tipo, Capacidad, Buscar)
+  div([attribute.class("pool-toolbar pool-toolbar-minimal")], [
+    div([attribute.class("pool-toolbar-spacer")], []),
+    div([attribute.class("pool-toolbar-right")], [
+      button(
+        [
+          attribute.class("btn-sm btn-primary"),
+          attribute.attribute("data-testid", "btn-new-task-pool"),
+          event.on_click(MemberCreateDialogOpened),
+        ],
+        [
+          span([attribute.class("btn-icon-left")], [text("+")]),
+          text(update_helpers.i18n_t(model, i18n_text.NewTask)),
+        ],
+      ),
+    ]),
+  ])
+}
+

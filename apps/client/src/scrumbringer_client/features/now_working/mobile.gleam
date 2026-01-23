@@ -198,7 +198,7 @@ fn view_session_row(model: Model, session: SessionInfo) -> Element(Msg) {
           attribute.disabled(disable_actions),
           event.on_click(MemberNowWorkingPauseClicked),
         ],
-        [text("⏸")],
+        [icons.nav_icon(icons.Pause, icons.Small)],
       ),
       button(
         [
@@ -210,7 +210,7 @@ fn view_session_row(model: Model, session: SessionInfo) -> Element(Msg) {
           attribute.disabled(disable_actions),
           event.on_click(MemberCompleteClicked(task_id, version)),
         ],
-        [text("✓")],
+        [icons.nav_icon(icons.Check, icons.Small)],
       ),
     ]),
   ])
@@ -240,7 +240,7 @@ fn view_claimed_row(model: Model, task: Task) -> Element(Msg) {
           attribute.disabled(disable_actions),
           event.on_click(MemberNowWorkingStartClicked(id)),
         ],
-        [text("▶")],
+        [icons.nav_icon(icons.Play, icons.Small)],
       ),
       button(
         [
@@ -252,7 +252,7 @@ fn view_claimed_row(model: Model, task: Task) -> Element(Msg) {
           attribute.disabled(disable_actions),
           event.on_click(MemberReleaseClicked(id, version)),
         ],
-        [text("↩")],
+        [icons.nav_icon(icons.Return, icons.Small)],
       ),
     ]),
   ])

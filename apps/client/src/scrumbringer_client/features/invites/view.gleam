@@ -32,6 +32,8 @@ import lustre/element/html.{
 import lustre/element/keyed
 import lustre/event
 
+import gleam/string
+
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, InviteCreateDialogClosed,
@@ -40,6 +42,7 @@ import scrumbringer_client/client_state.{
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/dialog
+import scrumbringer_client/ui/icons
 import scrumbringer_client/update_helpers
 
 // =============================================================================
@@ -154,22 +157,40 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
               [],
               list.map(links, fn(link) {
                 let full = build_full_url(origin, link.url_path)
+                let state_label = translate_invite_state(model, link.state)
 
                 #(link.email, tr([], [
                   td([], [text(link.email)]),
-                  td([], [text(link.state)]),
-                  td([], [text(link.created_at)]),
-                  td([], [text(full)]),
                   td([], [
+                    span(
+                      [attribute.class("badge badge-" <> state_badge_class(link.state))],
+                      [text(state_label)],
+                    ),
+                  ]),
+                  td([], [text(link.created_at)]),
+                  // Story 4.8: Copy button instead of full URL text
+                  td([attribute.class("link-cell")], [
                     button(
                       [
+                        attribute.class("btn-xs btn-icon"),
+                        attribute.attribute(
+                          "title",
+                          update_helpers.i18n_t(model, i18n_text.CopyLink),
+                        ),
+                        attribute.attribute(
+                          "aria-label",
+                          update_helpers.i18n_t(model, i18n_text.CopyLink),
+                        ),
                         attribute.disabled(model.invite_link_in_flight),
                         event.on_click(InviteLinkCopyClicked(full)),
                       ],
-                      [text(update_helpers.i18n_t(model, i18n_text.Copy))],
+                      [icons.nav_icon(icons.Copy, icons.Small)],
                     ),
+                  ]),
+                  td([], [
                     button(
                       [
+                        attribute.class("btn-xs"),
                         attribute.disabled(model.invite_link_in_flight),
                         event.on_click(InviteLinkRegenerateClicked(link.email)),
                       ],
@@ -228,5 +249,30 @@ fn build_full_url(origin: String, url_path: String) -> String {
   case origin {
     "" -> url_path
     _ -> origin <> url_path
+  }
+}
+
+// =============================================================================
+// Invite State Helpers (Story 4.8)
+// =============================================================================
+
+/// Translate invite link state to current locale.
+fn translate_invite_state(model: Model, state: String) -> String {
+  case string.lowercase(state) {
+    "active" -> update_helpers.i18n_t(model, i18n_text.InviteStateActive)
+    "used" -> update_helpers.i18n_t(model, i18n_text.InviteStateUsed)
+    "invalidated" | "expired" ->
+      update_helpers.i18n_t(model, i18n_text.InviteStateExpired)
+    _ -> state
+  }
+}
+
+/// Get badge class variant based on state.
+fn state_badge_class(state: String) -> String {
+  case string.lowercase(state) {
+    "active" -> "warning"
+    "used" -> "success"
+    "invalidated" | "expired" -> "neutral"
+    _ -> "neutral"
   }
 }

@@ -44,19 +44,20 @@ import domain/user.{type User}
 import domain/view_mode
 
 import gleam/dict
-// Story 4.5: Removed LocaleSelected, ThemeSelected - no longer used
 import scrumbringer_client/client_state.{
   type Model, type Msg, AcceptInvite as AcceptInvitePage, Admin, Loaded,
   Login, LogoutClicked, Member,
   MemberCompleteClicked, MemberDragEnded, MemberDragMoved,
   MemberNowWorkingPauseClicked, MemberNowWorkingStartClicked,
   MemberReleaseClicked, NavigateTo, Push, ProjectSelected,
-  ResetPassword as ResetPasswordPage, ToastDismissed,
+  ResetPassword as ResetPasswordPage, ToastDismissed, ToastDismiss,
   CardDialogCreate, CardDialogDelete, CardDialogEdit, MemberCreateDialogOpened,
   MemberPoolCapabilityChanged, MemberPoolSearchChanged, MemberPoolTypeChanged,
   MemberTaskDetailsOpened, MemberClaimClicked, NoOp, OpenCardDetail, OpenCardDialog, ViewModeChanged,
   MobileLeftDrawerToggled, MobileRightDrawerToggled, MobileDrawersClosed,
   SidebarConfigToggled, SidebarOrgToggled, MemberListHideCompletedToggled,
+  // Story 4.8 UX: Re-added for preferences panel in right sidebar
+  ThemeSelected, LocaleSelected,
 }
 import scrumbringer_client/features/admin/view as admin_view
 import scrumbringer_client/features/auth/view as auth_view
@@ -66,6 +67,7 @@ import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/mobile as now_working_mobile
 import scrumbringer_client/features/now_working/panel as now_working_panel
 import scrumbringer_client/features/pool/view as pool_view
+import scrumbringer_client/features/pool/dialogs as pool_dialogs
 import scrumbringer_client/features/projects/view as projects_view
 import scrumbringer_client/features/skills/view as skills_view
 import scrumbringer_client/features/fichas/view as fichas_view
@@ -116,11 +118,25 @@ pub fn view(model: Model) -> Element(Msg) {
         ],
         [text(update_helpers.i18n_t(model, i18n_text.SkipToContent))],
       ),
+      // Legacy toast (backward compatibility)
       ui_toast.view(
         model.toast,
         update_helpers.i18n_t(model, i18n_text.Dismiss),
         ToastDismissed,
       ),
+      // New toast system with auto-dismiss (Story 4.8)
+      ui_toast.view_container(model.toast_state, fn(id) { ToastDismiss(id) }),
+      // Global card dialog (Story 4.8 UX: renders on any page when open)
+      case model.selected_project_id, model.cards_dialog_mode {
+        opt.Some(project_id), opt.Some(_) ->
+          admin_view.view_card_crud_dialog(model, project_id)
+        _, _ -> element.none()
+      },
+      // Global task creation dialog (Story 4.8 UX: renders on any page when open)
+      case model.member_create_dialog_open {
+        True -> pool_dialogs.view_create_dialog(model)
+        False -> element.none()
+      },
       case model.page {
         Login -> auth_view.view_login(model)
         AcceptInvitePage -> auth_view.view_accept_invite(model)
@@ -540,10 +556,16 @@ fn build_center_panel(model: Model, user: User) -> Element(Msg) {
 
   // Build view-specific content
   let pool_content = pool_view.view_pool_main(model, user)
+  // AC7: Extract org users for displaying claimed-by info
+  let org_users = case model.org_users_cache {
+    Loaded(users) -> users
+    _ -> []
+  }
   let list_content = grouped_list.view(grouped_list.GroupedListConfig(
     locale: model.locale,
     tasks: tasks,
     cards: cards,
+    org_users: org_users,
     expanded_cards: dict.new(),
     hide_completed: model.member_list_hide_completed,
     on_toggle_card: fn(_card_id) { NoOp },
@@ -551,7 +573,7 @@ fn build_center_panel(model: Model, user: User) -> Element(Msg) {
     on_task_click: fn(task_id) {
       MemberTaskDetailsOpened(task_id)
     },
-    on_task_claim: fn(task_id) { MemberClaimClicked(task_id, 0) },
+    on_task_claim: fn(task_id, version) { MemberClaimClicked(task_id, version) },
   ))
   let cards_content = kanban_board.view(kanban_board.KanbanConfig(
     locale: model.locale,
@@ -700,6 +722,10 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
       Loaded(m) -> opt.Some(m)
       _ -> opt.None
     },
+    // Preferences (Story 4.8 UX)
+    current_theme: model.theme,
+    on_theme_change: ThemeSelected,
+    on_locale_change: LocaleSelected,
   ))
 }
 
@@ -821,7 +847,7 @@ fn view_claimed_task_row(
           attribute.disabled(disable_actions),
           event.on_click(MemberNowWorkingPauseClicked),
         ],
-        [text("⏸")],
+        [icons.nav_icon(icons.Pause, icons.Small)],
       )
     False ->
       button(
@@ -834,7 +860,7 @@ fn view_claimed_task_row(
           attribute.disabled(disable_actions),
           event.on_click(MemberNowWorkingStartClicked(id)),
         ],
-        [text("▶")],
+        [icons.nav_icon(icons.Play, icons.Small)],
       )
   }
 
@@ -864,7 +890,7 @@ fn view_claimed_task_row(
           attribute.disabled(disable_actions),
           event.on_click(MemberCompleteClicked(id, version)),
         ],
-        [text("✓")],
+        [icons.nav_icon(icons.Check, icons.Small)],
       ),
       button(
         [
@@ -876,7 +902,7 @@ fn view_claimed_task_row(
           attribute.disabled(disable_actions),
           event.on_click(MemberReleaseClicked(id, version)),
         ],
-        [text("↩")],
+        [icons.nav_icon(icons.Return, icons.Small)],
       ),
     ]),
   ])

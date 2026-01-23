@@ -104,6 +104,7 @@ import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/icon_catalog
 import scrumbringer_client/ui/icon_picker
+import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/info_callout
 import scrumbringer_client/update_helpers
 
@@ -935,7 +936,7 @@ fn view_members_table(
                             m.user_id,
                           )),
                         ],
-                        [text("⚙️")],
+                        [icons.nav_icon(icons.Cog, icons.Small)],
                       ),
                     ]),
                     td([], [text(m.created_at)]),
@@ -1635,7 +1636,8 @@ pub fn view_cards(
 }
 
 /// Render the card-crud-dialog Lustre component.
-fn view_card_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
+/// Made public for use in client_view.gleam (Story 4.8 UX: global dialog rendering)
+pub fn view_card_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
   case model.cards_dialog_mode {
     opt.None -> element.none()
     opt.Some(mode) -> {
@@ -1779,13 +1781,13 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
         [] ->
           // E08: Improved empty state with guidance
           div([attribute.class("empty-state")], [
-            div([attribute.class("empty-state-icon")], [text("📋")]),
+            div([attribute.class("empty-state-icon")], [icons.nav_icon(icons.ClipboardDoc, icons.Large)]),
             div([attribute.class("empty-state-title")], [
               text(update_helpers.i18n_t(model, i18n_text.NoCardsYet)),
             ]),
             div([attribute.class("empty-state-description")], [
               text(
-                "Las fichas agrupan tareas relacionadas. Crea tu primera ficha para organizar el trabajo.",
+                "Las tarjetas agrupan tareas relacionadas. Crea tu primera tarjeta para organizar el trabajo.",
               ),
             ]),
           ])
@@ -2660,7 +2662,7 @@ pub fn view_rule_metrics(model: Model) -> Element(Msg) {
     // Header with icon (T1)
     div([attribute.class("admin-section-header")], [
       div([attribute.class("admin-section-title")], [
-        span([attribute.class("admin-section-icon")], [text("📊")]),
+        span([attribute.class("admin-section-icon")], [icons.nav_icon(icons.Metrics, icons.Medium)]),
         text(update_helpers.i18n_t(model, i18n_text.RuleMetricsTitle)),
       ]),
     ]),
@@ -2715,7 +2717,7 @@ pub fn view_rule_metrics(model: Model) -> Element(Msg) {
             [
               case is_loading {
                 True -> span([attribute.class("btn-spinner")], [])
-                False -> span([attribute.class("btn-icon-left")], [text("↻")])
+                False -> span([attribute.class("btn-icon-left")], [icons.nav_icon(icons.Refresh, icons.Small)])
               },
               text(case is_loading {
                 True -> "Cargando..."
@@ -2751,7 +2753,7 @@ fn view_rule_metrics_results(model: Model) -> Element(Msg) {
     NotAsked ->
       // Empty state with icon and action hint (T5)
       div([attribute.class("empty-state")], [
-        div([attribute.class("empty-state-icon")], [text("📈")]),
+        div([attribute.class("empty-state-icon")], [icons.nav_icon(icons.ChartUp, icons.Large)]),
         div([attribute.class("empty-state-title")], [
           text("Sin datos que mostrar"),
         ]),
@@ -2770,7 +2772,7 @@ fn view_rule_metrics_results(model: Model) -> Element(Msg) {
 
     Failed(err) ->
       div([attribute.class("error-state")], [
-        span([attribute.class("error-icon")], [text("⚠️")]),
+        span([attribute.class("error-icon")], [icons.nav_icon(icons.Warning, icons.Small)]),
         text(err.message),
       ])
 
@@ -2778,7 +2780,7 @@ fn view_rule_metrics_results(model: Model) -> Element(Msg) {
       case workflows {
         [] ->
           div([attribute.class("empty-state")], [
-            div([attribute.class("empty-state-icon")], [text("📭")]),
+            div([attribute.class("empty-state-icon")], [icons.nav_icon(icons.EmptyMailbox, icons.Large)]),
             div([attribute.class("empty-state-title")], [
               text("No hay ejecuciones"),
             ]),
@@ -2791,7 +2793,7 @@ fn view_rule_metrics_results(model: Model) -> Element(Msg) {
         _ ->
           div([attribute.class("admin-card")], [
             div([attribute.class("admin-card-header")], [
-              span([], [text("📋")]),
+              span([], [icons.nav_icon(icons.ClipboardDoc, icons.Small)]),
               text(" Resultados"),
             ]),
             view_rule_metrics_table(model, model.admin_rule_metrics),

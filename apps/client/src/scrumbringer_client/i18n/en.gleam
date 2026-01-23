@@ -100,8 +100,9 @@ pub fn translate(text: Text) -> String {
     text.LoadingEllipsis -> "Loading…"
 
     // Settings controls
+    text.Preferences -> "Preferences"
     text.ThemeLabel -> "Theme"
-    text.ThemeDefault -> "Default"
+    text.ThemeDefault -> "Light"
     text.ThemeDark -> "Dark"
     text.LanguageLabel -> "Language"
     text.LanguageEs -> "Spanish"
@@ -162,6 +163,9 @@ pub fn translate(text: Text) -> String {
     text.MetaCreated -> "created: "
     text.PriorityShort(priority) -> "P" <> int.to_string(priority)
     text.Claim -> "Claim"
+    text.ClaimThisTask -> "Claim this task"
+    text.ClaimedBy -> "Claimed by"
+    text.UnknownUser -> "Unknown user"
     text.Drag -> "Drag"
     text.StartNowWorking -> "Start now working"
     text.PauseNowWorking -> "Pause now working"
@@ -268,6 +272,12 @@ pub fn translate(text: Text) -> String {
     text.State -> "State"
     text.CreatedAt -> "Created"
     text.Regenerate -> "Regenerate"
+    // Invite link states (Story 4.8)
+    text.InviteStateActive -> "Pending"
+    text.InviteStateUsed -> "Used"
+    text.InviteStateExpired -> "Expired"
+    text.CopyLink -> "Copy link"
+    text.LinkCopied -> "Link copied!"
 
     // Projects
     text.Projects -> "Projects"
@@ -535,6 +545,6 @@ pub fn translate(text: Text) -> String {
     text.NoCardsAssigned -> "No cards assigned"
     // AC32: Empty state hints
     text.NoTasksClaimedHint -> "Browse Pool to claim a task"
-    text.NoCardsAssignedHint -> "View Fichas to see available cards"
+    text.NoCardsAssignedHint -> "View Cards to see available cards"
   }
 }

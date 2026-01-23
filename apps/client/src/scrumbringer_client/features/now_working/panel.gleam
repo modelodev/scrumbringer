@@ -50,7 +50,7 @@ pub fn view(model: Model) -> Element(Msg) {
   let error_el = case model.member_now_working_error {
     opt.Some(err) ->
       div([attribute.class("error-banner")], [
-        span([attribute.class("error-banner-icon")], [text("⚠")]),
+        span([attribute.class("error-banner-icon")], [icons.nav_icon(icons.Warning, icons.Small)]),
         span([], [text(err)]),
       ])
     opt.None -> element.none()

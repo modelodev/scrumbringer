@@ -26,6 +26,23 @@ pub fn base_css() -> String {
 .dropzone-hint { font-size: 12px; color: var(--sb-muted); margin-bottom: 6px; }",
     "@media (max-width: 1280px) { .pool-right { width: 320px; } }
 @media (max-width: 1024px) { .pool-layout { flex-direction: column; } .pool-right { width: 100%; } }",
+    // Pool unified toolbar (Story 4.8 - simplified)
+    ".pool-toolbar { display: flex; align-items: center; gap: 12px; padding: 8px 0; margin-bottom: 12px; }",
+    ".pool-toolbar-minimal { justify-content: flex-end; }",
+    ".pool-toolbar-spacer { flex: 1; }",
+    ".pool-toolbar-left { display: flex; gap: 4px; }",
+    ".pool-toolbar-center { flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }",
+    ".pool-toolbar-right { display: flex; gap: 4px; }",
+    ".btn-filter-toggle { position: relative; }",
+    ".btn-filter-toggle.has-active { border-color: var(--sb-accent); }",
+    ".filter-count-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 4px; margin-left: 4px; background: var(--sb-accent); color: var(--sb-bg); border-radius: 8px; font-size: 10px; font-weight: 600; }",
+    ".pool-inline-filters { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }",
+    ".pool-inline-filters .filter-select { height: 28px; padding: 4px 8px; font-size: 12px; min-width: 100px; max-width: 140px; }",
+    ".pool-inline-filters .filter-search { height: 28px; padding: 4px 8px; font-size: 12px; width: 120px; }",
+    ".pool-inline-filters .btn-xs { height: 28px; padding: 4px 8px; }",
+    ".pool-inline-filters .btn-clear { padding: 4px 6px; font-size: 11px; color: var(--sb-muted); }",
+    ".pool-inline-filters .btn-clear:hover { color: var(--sb-danger); border-color: var(--sb-danger); }",
+    "@media (max-width: 768px) { .pool-toolbar { flex-wrap: wrap; } .pool-toolbar-center { order: 3; width: 100%; } }",
     ".topbar { display: flex; align-items: center; gap: 12px; justify-content: space-between; background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 12px; padding: 12px; }",
     ".topbar-title { font-weight: 700; }",
     ".topbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }",
@@ -85,7 +102,7 @@ pub fn base_css() -> String {
     ".nav-item { width: 100%; text-align: left; }",
     ".nav-item.active { border-color: var(--sb-primary); }",
     ".actions { display: flex; gap: 8px; flex-wrap: wrap; }",
-    ".modal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; }",
+    ".modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; }",
     ".modal::before { content: \"\"; position: absolute; inset: 0; background: var(--sb-bg); opacity: 0.85; }",
     ".modal-content { position: relative; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 12px; padding: 16px; width: min(720px, 100%); max-height: 85vh; overflow: auto; }",
     // Modal header with close button
@@ -410,6 +427,34 @@ pub fn base_css() -> String {
     ".toast { animation: toast-slide-in 0.3s ease; }",
     "@keyframes toast-slide-in { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }",
     // =====================================================
+    // STORY 4.8 - Badge Component & Toast Variants
+    // =====================================================
+    // Badge base styles
+    ".badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }",
+    ".badge-inline { padding: 1px 6px; font-size: 11px; vertical-align: middle; }",
+    // Badge variants
+    ".badge-primary { background: color-mix(in oklab, var(--sb-primary) 15%, var(--sb-elevated)); border: 1px solid color-mix(in oklab, var(--sb-primary) 40%, var(--sb-border)); color: var(--sb-primary); }",
+    ".badge-success { background: color-mix(in oklab, var(--sb-success) 15%, var(--sb-elevated)); border: 1px solid color-mix(in oklab, var(--sb-success) 40%, var(--sb-border)); color: var(--sb-success); }",
+    ".badge-warning { background: color-mix(in oklab, var(--sb-warning) 15%, var(--sb-elevated)); border: 1px solid color-mix(in oklab, var(--sb-warning) 40%, var(--sb-border)); color: var(--sb-warning); }",
+    ".badge-danger { background: color-mix(in oklab, var(--sb-danger) 15%, var(--sb-elevated)); border: 1px solid color-mix(in oklab, var(--sb-danger) 40%, var(--sb-border)); color: var(--sb-danger); }",
+    ".badge-neutral { background: var(--sb-elevated); border: 1px solid var(--sb-border); color: var(--sb-muted); }",
+    // Toast container for multiple toasts
+    ".toast-container { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 50; display: flex; flex-direction: column; gap: 8px; max-width: calc(100vw - 24px); }",
+    // Toast variants
+    ".toast-success { border-color: color-mix(in oklab, var(--sb-success) 40%, var(--sb-border)); }",
+    ".toast-success .toast-icon { color: var(--sb-success); }",
+    ".toast-error { border-color: color-mix(in oklab, var(--sb-danger) 40%, var(--sb-border)); }",
+    ".toast-error .toast-icon { color: var(--sb-danger); }",
+    ".toast-warning { border-color: color-mix(in oklab, var(--sb-warning) 40%, var(--sb-border)); }",
+    ".toast-warning .toast-icon { color: var(--sb-warning); }",
+    ".toast-info { border-color: color-mix(in oklab, var(--sb-info) 40%, var(--sb-border)); }",
+    ".toast-info .toast-icon { color: var(--sb-info); }",
+    ".toast-icon { font-size: 14px; flex-shrink: 0; }",
+    ".toast-message { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }",
+    // Nav icon styling
+    ".nav-icon { flex-shrink: 0; }",
+    ".nav-icon svg { width: 100%; height: 100%; }",
+    // =====================================================
     // STORY 3.4 - Card Colors & Color Picker
     // =====================================================
     // Card border (left edge) for task cards in Pool
@@ -443,6 +488,8 @@ pub fn base_css() -> String {
     ".color-picker-arrow { margin-left: auto; color: var(--sb-muted); }",
     ".color-picker-dropdown { position: absolute; top: 100%; left: 0; margin-top: 4px; min-width: 180px; background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 10px; padding: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 50; display: none; }",
     ".color-picker.open .color-picker-dropdown { display: block; }",
+    // Story 4.8 UX: Color picker inside dialogs needs higher z-index
+    ".dialog .color-picker-dropdown { z-index: 1010; }",
     ".color-picker-option { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; cursor: pointer; }",
     ".color-picker-option:hover { background: var(--sb-hover); }",
     ".color-picker-option.selected { background: color-mix(in oklab, var(--sb-primary) 12%, var(--sb-surface)); }",
@@ -586,6 +633,8 @@ pub fn base_css() -> String {
     ".dialog-close:hover { background: var(--sb-hover); color: var(--sb-text); }",
     // Dialog body
     ".dialog-body { padding: 20px; overflow-y: auto; flex: 1; }",
+    // Story 4.8 UX: Allow color picker dropdown to overflow dialog-body when open
+    ".dialog-body:has(.color-picker.open) { overflow: visible; }",
     // Dialog error
     ".dialog-error { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: color-mix(in oklab, var(--sb-danger) 10%, var(--sb-surface)); border: 1px solid color-mix(in oklab, var(--sb-danger) 30%, var(--sb-border)); border-radius: 10px; margin: 0 20px 0 20px; margin-top: -4px; color: var(--sb-danger); font-size: 14px; }",
     // Dialog footer
@@ -624,10 +673,14 @@ pub fn base_css() -> String {
     ".project-selector-dropdown { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--sb-border); background: var(--sb-elevated); font-weight: 500; }",
     ".panel-section { display: flex; flex-direction: column; gap: 8px; }",
     ".section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--sb-muted); margin: 0 0 4px 0; }",
-    ".btn-action { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 12px; text-align: left; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 10px; cursor: pointer; }",
-    ".btn-action:hover { border-color: var(--sb-primary); }",
+    ".btn-action { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: var(--sb-text); }",
+    ".btn-action:hover { background: var(--sb-elevated); }",
     ".btn-action:disabled { opacity: 0.5; cursor: not-allowed; }",
     ".btn-icon-prefix { font-weight: 700; color: var(--sb-primary); }",
+    // Primary action buttons (Story 4.8 UX: solid button for clear affordance)
+    ".btn-action-primary { background: var(--sb-primary); border: 1px solid var(--sb-primary); color: var(--sb-inverse); font-weight: 500; }",
+    ".btn-action-primary:hover { background: var(--sb-primary-hover); border-color: var(--sb-primary-hover); }",
+    ".btn-action-primary .btn-icon-prefix { color: inherit; }",
     // Navigation links within TRABAJO section (Story 4.7 AC2, AC3)
     ".nav-links { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }",
     ".nav-link { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: var(--sb-text); }",
@@ -640,7 +693,7 @@ pub fn base_css() -> String {
     // =============================================================================
     // Right Panel Components (Story 4.4)
     // =============================================================================
-    ".right-panel-content { display: flex; flex-direction: column; gap: 16px; }",
+    ".right-panel-content { display: flex; flex-direction: column; gap: 16px; height: 100%; }",
     ".active-task-section, .my-tasks-section, .my-cards-section { display: flex; flex-direction: column; gap: 8px; }",
     ".active-task-card { background: var(--sb-elevated); border: 1px solid var(--sb-primary); border-radius: 10px; padding: 12px; }",
     ".task-timer { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: center; margin: 8px 0; }",
@@ -667,6 +720,24 @@ pub fn base_css() -> String {
     ".metric-value { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }",
     ".metric-label { font-size: 11px; color: var(--sb-muted); text-align: center; }",
     ".metrics-loading { color: var(--sb-muted); font-size: 14px; text-align: center; padding: 12px; }",
+    // Right panel layout (Story 4.8 UX)
+    ".right-panel-activity { display: flex; flex-direction: column; gap: 16px; flex: 1; }",
+    ".right-panel-footer { display: flex; flex-direction: column; gap: 12px; margin-top: auto; padding-top: 16px; border-top: 1px solid var(--sb-border); }",
+    // Section titles with icons (Story 4.8 UX)
+    ".section-title-with-icon { display: flex; align-items: center; gap: 8px; }",
+    ".section-title-with-icon .nav-icon { color: var(--sb-muted); }",
+    // Preferences section (Story 4.8 UX)
+    ".preferences-section { display: flex; flex-direction: column; gap: 8px; }",
+    ".preferences-grid { display: flex; flex-direction: column; gap: 8px; }",
+    ".preference-item { display: flex; align-items: center; gap: 8px; cursor: pointer; }",
+    ".preference-icon { display: flex; align-items: center; color: var(--sb-muted); }",
+    ".preference-select { flex: 1; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--sb-border); background: var(--sb-elevated); font-size: 14px; cursor: pointer; }",
+    ".preference-select:hover { border-color: var(--sb-primary); }",
+    // Profile section updates (Story 4.8 UX)
+    ".profile-section .user-info { display: flex; align-items: center; gap: 8px; justify-content: center; }",
+    ".profile-section .user-info .nav-icon { color: var(--sb-muted); }",
+    ".btn-logout { display: flex; align-items: center; justify-content: center; gap: 8px; }",
+    ".btn-logout .nav-icon { color: inherit; }",
     // =============================================================================
     // View Mode Toggle (Story 4.4)
     // =============================================================================
@@ -707,7 +778,12 @@ pub fn base_css() -> String {
     ".task-item.status-completed { border-left: 3px solid var(--sb-muted); opacity: 0.7; }",
     ".task-item-content { flex: 1; background: transparent; border: none; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; padding: 0; }",
     ".task-status { font-size: 12px; color: var(--sb-muted); }",
+    // AC7: Claimed by user display
+    ".task-claimed-by { font-size: 12px; color: var(--sb-info); font-style: italic; }",
+    // AC9: Claim button as icon with tooltip
     ".btn-claim { background: var(--sb-success); color: white; border-color: var(--sb-success); }",
+    ".btn-claim.btn-icon { padding: 6px; border-radius: 6px; display: flex; align-items: center; justify-content: center; min-width: 28px; min-height: 28px; }",
+    ".btn-claim.btn-icon:hover { background: var(--sb-success-hover, #059669); }",
     // =============================================================================
     // Kanban Board View (Story 4.4)
     // =============================================================================

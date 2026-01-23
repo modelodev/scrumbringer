@@ -22,6 +22,7 @@ import scrumbringer_client/client_state.{
   MemberToggleCapability,
 }
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/info_callout
 import scrumbringer_client/update_helpers
 
@@ -34,7 +35,7 @@ pub fn view_skills(model: Model) -> Element(Msg) {
     case model.member_my_capabilities_error {
       opt.Some(err) ->
         div([attribute.class("error-banner")], [
-          span([attribute.class("error-banner-icon")], [text("⚠")]),
+          span([attribute.class("error-banner-icon")], [icons.nav_icon(icons.Warning, icons.Small)]),
           span([], [text(err)]),
         ])
       opt.None -> element.none()

@@ -23,11 +23,13 @@ import lustre/element/html.{button, div, input, label, li, span, text, ul}
 import lustre/event
 
 import domain/card.{type Card}
+import domain/org.{type OrgUser}
 import domain/task.{type Task}
 import domain/task_status.{Available, Claimed, Completed, Ongoing, Taken}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/icons
 
 // =============================================================================
 // Types
@@ -39,12 +41,13 @@ pub type GroupedListConfig(msg) {
     locale: Locale,
     tasks: List(Task),
     cards: List(Card),
+    org_users: List(OrgUser),
     expanded_cards: Dict(Int, Bool),
     hide_completed: Bool,
     on_toggle_card: fn(Int) -> msg,
     on_toggle_hide_completed: msg,
     on_task_click: fn(Int) -> msg,
-    on_task_claim: fn(Int) -> msg,
+    on_task_claim: fn(Int, Int) -> msg,
   )
 }
 
@@ -215,6 +218,29 @@ fn view_task_item(config: GroupedListConfig(msg), task: Task) -> Element(msg) {
     Completed -> "status-completed"
   }
 
+  // AC7: Show claimed by user when task is Claimed (based on status, not claimed_by)
+  let status_display = case task.status {
+    Claimed(_) -> {
+      // Task is claimed - try to find who claimed it
+      let claimed_email = case task.claimed_by {
+        Some(user_id) ->
+          list.find(config.org_users, fn(u) { u.id == user_id })
+          |> option.from_result
+          |> option.map(fn(u) { u.email })
+          |> option.unwrap(i18n.t(config.locale, i18n_text.UnknownUser))
+        None -> i18n.t(config.locale, i18n_text.UnknownUser)
+      }
+      span([attribute.class("task-claimed-by")], [
+        text(i18n.t(config.locale, i18n_text.ClaimedBy) <> " " <> claimed_email),
+      ])
+    }
+    _ ->
+      // Available or Completed - show status label
+      span([attribute.class("task-status")], [
+        text(task_status_label(config.locale, task.status)),
+      ])
+  }
+
   li(
     [
       attribute.class("task-item " <> status_class),
@@ -228,21 +254,22 @@ fn view_task_item(config: GroupedListConfig(msg), task: Task) -> Element(msg) {
         ],
         [
           span([attribute.class("task-title")], [text(task.title)]),
-          span([attribute.class("task-status")], [
-            text(task_status_label(config.locale, task.status)),
-          ]),
+          // AC7: Show claimed by user or status
+          status_display,
         ],
       ),
-      // Claim button for available tasks
+      // AC9: Claim button as icon with tooltip for available tasks only
       case task.status {
-        task_status.Available ->
+        Available ->
           button(
             [
-              attribute.class("btn-xs btn-claim"),
+              attribute.class("btn-xs btn-claim btn-icon"),
               attribute.attribute("data-testid", "task-claim-btn"),
-              event.on_click(config.on_task_claim(task.id)),
+              attribute.attribute("title", i18n.t(config.locale, i18n_text.ClaimThisTask)),
+              attribute.attribute("aria-label", i18n.t(config.locale, i18n_text.Claim)),
+              event.on_click(config.on_task_claim(task.id, task.version)),
             ],
-            [text(i18n.t(config.locale, i18n_text.Claim))],
+            [icons.nav_icon(icons.HandRaised, icons.Small)],
           )
         _ -> element.none()
       },

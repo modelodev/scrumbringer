@@ -71,6 +71,7 @@ import scrumbringer_client/pool_prefs
 import scrumbringer_client/reset_password
 import scrumbringer_client/router
 import scrumbringer_client/theme
+import scrumbringer_client/ui/toast
 
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/app/effects as app_effects
@@ -251,6 +252,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       is_mobile: is_mobile,
       active_section: active_section,
       toast: opt.None,
+      toast_state: toast.init(),
       theme: active_theme,
       locale: active_locale,
       login_email: "",
@@ -360,8 +362,8 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       member_quick_my_caps: True,
       member_pool_filters_visible: pool_filters_visible,
       member_pool_view_mode: pool_view_mode,
-      // List view hide completed tasks filter
-      member_list_hide_completed: False,
+      // List view hide completed tasks filter (AC6: ON by default)
+      member_list_hide_completed: True,
       member_panel_expanded: False,
       mobile_left_drawer_open: False,
       mobile_right_drawer_open: False,

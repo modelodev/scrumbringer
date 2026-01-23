@@ -1,14 +1,14 @@
-//// Center Panel - Main content area with view mode switching
+//// Center Panel - Main content area with filters and view content
 ////
 //// Mission: Render the center panel content based on current view mode,
-//// including toolbar with mode toggle, filters, and view content.
+//// including toolbar with filters and view content.
 ////
 //// Responsibilities:
-//// - View mode toggle (Pool, List, Cards)
-//// - Filter controls
+//// - Filter controls (type, capability, search)
 //// - Content routing based on view mode
 ////
 //// Non-responsibilities:
+//// - View mode navigation (handled by sidebar - Story 4.8 UX)
 //// - Individual view implementations (delegated to view modules)
 //// - State management (handled by parent)
 
@@ -22,7 +22,6 @@ import lustre/event
 import domain/capability.{type Capability}
 import domain/task_type.{type TaskType}
 import domain/view_mode.{type ViewMode, Cards, List, Pool}
-import scrumbringer_client/features/layout/view_mode_toggle
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -77,13 +76,7 @@ fn view_toolbar(config: CenterPanelConfig(msg)) -> Element(msg) {
   div(
     [attribute.class("center-toolbar")],
     [
-      // View mode toggle
-      view_mode_toggle.view(view_mode_toggle.ToggleConfig(
-        locale: config.locale,
-        current_mode: config.view_mode,
-        on_mode_change: config.on_view_mode_change,
-      )),
-      // Filters
+      // Filters only - navigation moved to sidebar (Story 4.8 UX)
       view_filters(config),
     ],
   )

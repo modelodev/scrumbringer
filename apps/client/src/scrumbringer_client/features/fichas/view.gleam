@@ -40,6 +40,7 @@ import scrumbringer_client/client_state.{
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/color_picker
+import scrumbringer_client/ui/icons
 import scrumbringer_client/update_helpers
 
 // =============================================================================
@@ -100,7 +101,7 @@ fn view_empty_state(model: Model) -> Element(Msg) {
   div([attribute.class("empty-state")], [
     div(
       [attribute.class("empty-state-icon")],
-      [text("📋")],
+      [icons.nav_icon(icons.ClipboardDoc, icons.Large)],
     ),
     div([attribute.class("empty-state-title")], [
       text(update_helpers.i18n_t(model, i18n_text.MemberFichasEmpty)),

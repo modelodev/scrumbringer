@@ -17,6 +17,7 @@ pub fn admin_members_unknown_auth_requires_fetch_me_test() {
       capabilities: hydration.NotAsked,
       my_capability_ids: hydration.NotAsked,
       org_settings_users: hydration.NotAsked,
+      org_users_cache: hydration.NotAsked,
       members: hydration.NotAsked,
       members_project_id: None,
       task_types: hydration.NotAsked,
@@ -43,6 +44,7 @@ pub fn admin_members_authed_admin_plans_projects_then_members_test() {
       capabilities: hydration.NotAsked,
       my_capability_ids: hydration.NotAsked,
       org_settings_users: hydration.NotAsked,
+      org_users_cache: hydration.NotAsked,
       members: hydration.NotAsked,
       members_project_id: None,
       task_types: hydration.NotAsked,
@@ -60,6 +62,7 @@ pub fn admin_members_authed_admin_plans_projects_then_members_test() {
     hydration.FetchProjects,
     hydration.FetchInviteLinks,
     hydration.FetchCapabilities,
+    hydration.FetchMeMetrics,
   ])
 
   let snap_with_projects =
@@ -71,6 +74,7 @@ pub fn admin_members_authed_admin_plans_projects_then_members_test() {
       capabilities: hydration.Loaded,
       my_capability_ids: hydration.NotAsked,
       org_settings_users: hydration.NotAsked,
+      org_users_cache: hydration.NotAsked,
       members: hydration.NotAsked,
       members_project_id: None,
       task_types: hydration.NotAsked,
@@ -84,7 +88,7 @@ pub fn admin_members_authed_admin_plans_projects_then_members_test() {
     )
 
   hydration.plan(router.Admin(permissions.Members, Some(2)), snap_with_projects)
-  |> should.equal([hydration.FetchMembers(project_id: 2)])
+  |> should.equal([hydration.FetchMeMetrics, hydration.FetchMembers(project_id: 2)])
 }
 
 pub fn admin_route_non_admin_redirects_to_member_pool_test() {
@@ -97,6 +101,7 @@ pub fn admin_route_non_admin_redirects_to_member_pool_test() {
       capabilities: hydration.Loaded,
       my_capability_ids: hydration.Loaded,
       org_settings_users: hydration.NotAsked,
+      org_users_cache: hydration.NotAsked,
       members: hydration.NotAsked,
       members_project_id: None,
       task_types: hydration.NotAsked,
@@ -127,6 +132,7 @@ pub fn admin_members_project_manager_not_loaded_fetches_projects_test() {
       capabilities: hydration.NotAsked,
       my_capability_ids: hydration.NotAsked,
       org_settings_users: hydration.NotAsked,
+      org_users_cache: hydration.NotAsked,
       members: hydration.NotAsked,
       members_project_id: None,
       task_types: hydration.NotAsked,
@@ -155,6 +161,7 @@ pub fn admin_members_project_manager_loaded_grants_access_test() {
       capabilities: hydration.NotAsked,
       my_capability_ids: hydration.NotAsked,
       org_settings_users: hydration.NotAsked,
+      org_users_cache: hydration.NotAsked,
       members: hydration.NotAsked,
       members_project_id: None,
       task_types: hydration.NotAsked,
@@ -171,6 +178,7 @@ pub fn admin_members_project_manager_loaded_grants_access_test() {
   hydration.plan(router.Admin(permissions.Members, Some(8)), snap)
   |> should.equal([
     hydration.FetchCapabilities,
+    hydration.FetchMeMetrics,
     hydration.FetchMembers(project_id: 8),
   ])
 }
@@ -187,6 +195,7 @@ pub fn admin_org_level_section_pm_redirects_test() {
       capabilities: hydration.NotAsked,
       my_capability_ids: hydration.NotAsked,
       org_settings_users: hydration.NotAsked,
+      org_users_cache: hydration.NotAsked,
       members: hydration.NotAsked,
       members_project_id: None,
       task_types: hydration.NotAsked,
@@ -216,6 +225,7 @@ pub fn member_pool_with_projects_loaded_only_refreshes_member_test() {
       capabilities: hydration.Loaded,
       my_capability_ids: hydration.Loaded,
       org_settings_users: hydration.NotAsked,
+      org_users_cache: hydration.NotAsked,
       members: hydration.NotAsked,
       members_project_id: None,
       task_types: hydration.NotAsked,

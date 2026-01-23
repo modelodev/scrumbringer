@@ -85,7 +85,7 @@ pub fn view_bar(model: Model, user: User) -> Element(Msg) {
         // MB01: Error display with banner
         Failed(err) ->
           div([attribute.class("error-banner")], [
-            span([attribute.class("error-banner-icon")], [text("⚠")]),
+            span([attribute.class("error-banner-icon")], [icons.nav_icon(icons.Warning, icons.Small)]),
             span([], [text(err.message)]),
           ])
 
@@ -334,7 +334,7 @@ pub fn view_member_bar_task_row(
         event.on_click(MemberClaimClicked(id, version)),
         attribute.disabled(disable_actions),
       ],
-      [text("✋")],
+      [icons.nav_icon(icons.HandRaised, icons.Small)],
     )
 
   let release_action =
@@ -347,7 +347,7 @@ pub fn view_member_bar_task_row(
         event.on_click(MemberReleaseClicked(id, version)),
         attribute.disabled(disable_actions),
       ],
-      [text("⟲")],
+      [icons.nav_icon(icons.Refresh, icons.Small)],
     )
 
   let complete_action =
@@ -360,7 +360,7 @@ pub fn view_member_bar_task_row(
         event.on_click(MemberCompleteClicked(id, version)),
         attribute.disabled(disable_actions),
       ],
-      [text("☑")],
+      [icons.nav_icon(icons.CheckCircle, icons.Small)],
     )
 
   let start_action =

@@ -37,7 +37,9 @@ import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
   type Model, type Msg, Admin, ForgotPasswordCopyFinished, ForgotPasswordFinished,
   Login, LoginDomValuesRead, LoginFinished, LogoutFinished, Member, Model,
+  ToastShow,
 }
+import scrumbringer_client/ui/toast
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
 
@@ -122,14 +124,20 @@ pub fn handle_login_finished_ok(
       auth_checked: True,
       login_in_flight: False,
       login_password: "",
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.LoggedIn)),
     )
 
   let #(model, boot) = bootstrap_fn(model)
   let #(model, hyd_fx) = hydrate_fn(model)
+
+  // Story 4.8: Use new toast system with auto-dismiss
+  let toast_message = update_helpers.i18n_t(model, i18n_text.LoggedIn)
+  let toast_effect = effect.from(fn(dispatch) {
+    dispatch(ToastShow(toast_message, toast.Success))
+  })
+
   #(
     model,
-    effect.batch([boot, hyd_fx, replace_url_fn(model)]),
+    effect.batch([boot, hyd_fx, replace_url_fn(model), toast_effect]),
   )
 }
 

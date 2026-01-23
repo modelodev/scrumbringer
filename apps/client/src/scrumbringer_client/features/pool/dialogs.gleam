@@ -27,7 +27,7 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, h3, input, label, option, p, select, text}
+import lustre/element/html.{button, div, h3, input, label, option, p, select, span, text}
 import lustre/event
 
 import domain/task
@@ -42,6 +42,7 @@ import scrumbringer_client/client_state.{
   MemberTaskDetailsClosed, NotAsked,
 }
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/icons
 import scrumbringer_client/update_helpers
 
 // =============================================================================
@@ -50,70 +51,100 @@ import scrumbringer_client/update_helpers
 
 /// Renders the task creation dialog.
 pub fn view_create_dialog(model: Model) -> Element(Msg) {
-  div([attribute.class("modal")], [
-    div([attribute.class("modal-content")], [
-      h3([], [text(update_helpers.i18n_t(model, i18n_text.NewTask))]),
-      case model.member_create_error {
-        opt.Some(err) -> div([attribute.class("error")], [text(err)])
-        opt.None -> element.none()
-      },
-      div([attribute.class("field")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.Title))]),
-        input([
-          attribute.type_("text"),
-          attribute.attribute("maxlength", "56"),
-          attribute.value(model.member_create_title),
-          event.on_input(MemberCreateTitleChanged),
-        ]),
-      ]),
-      div([attribute.class("field")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.Description))]),
-        input([
-          attribute.type_("text"),
-          attribute.value(model.member_create_description),
-          event.on_input(MemberCreateDescriptionChanged),
-        ]),
-      ]),
-      div([attribute.class("field")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.Priority))]),
-        input([
-          attribute.type_("number"),
-          attribute.value(model.member_create_priority),
-          event.on_input(MemberCreatePriorityChanged),
-        ]),
-      ]),
-      div([attribute.class("field")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.TypeLabel))]),
-        select(
-          [
-            attribute.value(model.member_create_type_id),
-            event.on_input(MemberCreateTypeIdChanged),
-          ],
-          case model.member_task_types {
-            Loaded(task_types) -> [
-              option(
-                [attribute.value("")],
-                update_helpers.i18n_t(model, i18n_text.SelectType),
-              ),
-              ..list.map(task_types, fn(tt) {
-                option([attribute.value(int.to_string(tt.id))], tt.name)
-              })
-            ]
-            _ -> [
-              option(
-                [attribute.value("")],
-                update_helpers.i18n_t(model, i18n_text.LoadingEllipsis),
-              ),
-            ]
-          },
-        ),
-      ]),
-      div([attribute.class("actions")], [
-        button([event.on_click(MemberCreateDialogClosed)], [
-          text(update_helpers.i18n_t(model, i18n_text.Cancel)),
+  div([attribute.class("dialog-overlay")], [
+    div([attribute.class("dialog dialog-md")], [
+      // Header with icon (Story 4.8 UX: consistent with card dialog)
+      div([attribute.class("dialog-header")], [
+        div([attribute.class("dialog-title")], [
+          span([attribute.class("dialog-icon")], [
+            icons.nav_icon(icons.ClipboardDoc, icons.Medium),
+          ]),
+          h3([], [text(update_helpers.i18n_t(model, i18n_text.NewTask))]),
         ]),
         button(
           [
+            attribute.class("dialog-close"),
+            attribute.attribute("aria-label", "Close"),
+            event.on_click(MemberCreateDialogClosed),
+          ],
+          [text("×")],
+        ),
+      ]),
+      // Error message (if any)
+      case model.member_create_error {
+        opt.Some(err) ->
+          div([attribute.class("dialog-error")], [
+            icons.nav_icon(icons.Warning, icons.Small),
+            text(err),
+          ])
+        opt.None -> element.none()
+      },
+      // Body with form fields
+      div([attribute.class("dialog-body")], [
+        div([attribute.class("field")], [
+          label([], [text(update_helpers.i18n_t(model, i18n_text.Title))]),
+          input([
+            attribute.type_("text"),
+            attribute.attribute("maxlength", "56"),
+            attribute.value(model.member_create_title),
+            event.on_input(MemberCreateTitleChanged),
+          ]),
+        ]),
+        div([attribute.class("field")], [
+          label([], [text(update_helpers.i18n_t(model, i18n_text.Description))]),
+          input([
+            attribute.type_("text"),
+            attribute.value(model.member_create_description),
+            event.on_input(MemberCreateDescriptionChanged),
+          ]),
+        ]),
+        div([attribute.class("field")], [
+          label([], [text(update_helpers.i18n_t(model, i18n_text.Priority))]),
+          input([
+            attribute.type_("number"),
+            attribute.value(model.member_create_priority),
+            event.on_input(MemberCreatePriorityChanged),
+          ]),
+        ]),
+        div([attribute.class("field")], [
+          label([], [text(update_helpers.i18n_t(model, i18n_text.TypeLabel))]),
+          select(
+            [
+              attribute.value(model.member_create_type_id),
+              event.on_input(MemberCreateTypeIdChanged),
+            ],
+            case model.member_task_types {
+              Loaded(task_types) -> [
+                option(
+                  [attribute.value("")],
+                  update_helpers.i18n_t(model, i18n_text.SelectType),
+                ),
+                ..list.map(task_types, fn(tt) {
+                  option([attribute.value(int.to_string(tt.id))], tt.name)
+                })
+              ]
+              _ -> [
+                option(
+                  [attribute.value("")],
+                  update_helpers.i18n_t(model, i18n_text.LoadingEllipsis),
+                ),
+              ]
+            },
+          ),
+        ]),
+      ]),
+      // Footer with actions
+      div([attribute.class("dialog-footer")], [
+        button(
+          [
+            attribute.class("btn-secondary"),
+            event.on_click(MemberCreateDialogClosed),
+          ],
+          [text(update_helpers.i18n_t(model, i18n_text.Cancel))],
+        ),
+        button(
+          [
+            attribute.class("btn-primary"),
             event.on_click(MemberCreateSubmitted),
             attribute.disabled(model.member_create_in_flight),
           ],
