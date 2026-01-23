@@ -264,6 +264,8 @@ pub type NavIcon {
   Cog
   EmptyMailbox
   Close
+  // Sub-section icons (Story 4.8 UX)
+  Rules
   // Right panel icons (Story 4.8 UX)
   Sun
   Moon
@@ -344,6 +346,8 @@ pub fn nav_icon(icon: NavIcon, size: IconSize) -> Element(a) {
     Cog -> outline.cog_6_tooth()
     EmptyMailbox -> outline.inbox()
     Close -> outline.x_mark()
+    // Sub-section icons (Story 4.8 UX)
+    Rules -> outline.document_text()
     // Right panel icons (Story 4.8 UX)
     Sun -> outline.sun()
     Moon -> outline.moon()
@@ -418,6 +422,8 @@ pub fn nav_icon_with_class(
     Cog -> outline.cog_6_tooth()
     EmptyMailbox -> outline.inbox()
     Close -> outline.x_mark()
+    // Sub-section icons (Story 4.8 UX)
+    Rules -> outline.document_text()
     // Right panel icons (Story 4.8 UX)
     Sun -> outline.sun()
     Moon -> outline.moon()

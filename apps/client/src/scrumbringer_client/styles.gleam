@@ -653,10 +653,13 @@ pub fn base_css() -> String {
     ".btn-add:hover { background: var(--sb-primary-hover); }",
     ".btn-add:active { transform: scale(0.98); }",
     ".btn-add::before { content: '+'; font-weight: 700; font-size: 1.1em; }",
-    // Admin section header with action button
-    ".admin-section-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; margin-bottom: 16px; border-bottom: 1px solid var(--sb-border); }",
+    // Admin section header with action button (Story 4.8 UX: consistent height)
+    ".admin-section-header-wrapper { margin-bottom: 16px; }",
+    ".admin-section-header { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding-bottom: 12px; border-bottom: 1px solid var(--sb-border); }",
     ".admin-section-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--sb-muted); }",
     ".admin-section-icon { font-size: 16px; }",
+    ".admin-section-action { display: flex; align-items: center; }",
+    ".admin-section-subtitle { margin: 12px 0 0 0; padding: 10px 14px; font-size: 13px; line-height: 1.5; color: var(--sb-muted); background: var(--sb-elevated); border-radius: 8px; border-left: 3px solid var(--sb-primary); }",
     // Story 4.8 AC25: Unified vertical layout for capability checklists
     ".capabilities-checklist, .members-checklist { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; padding: 4px 0; }",
     ".capabilities-checklist .checkbox-label, .members-checklist .checkbox-label { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 8px; cursor: pointer; transition: all 0.15s ease; }",

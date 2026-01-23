@@ -45,6 +45,7 @@ import scrumbringer_client/client_state.{
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/section_header
 import scrumbringer_client/update_helpers
 
 // =============================================================================
@@ -56,18 +57,16 @@ pub fn view_invites(model: Model) -> Element(Msg) {
   let origin = client_ffi.location_origin()
 
   div([attribute.class("section")], [
-    // Section header with add button (consistent pattern)
-    div([attribute.class("admin-section-header")], [
-      div([attribute.class("admin-section-title")], [
-        span([attribute.class("admin-section-icon")], [text("\u{1F517}")]),
-        text(update_helpers.i18n_t(model, i18n_text.InvitesTitle)),
-      ]),
+    // Section header with add button (Story 4.8: consistent icons)
+    section_header.view_with_action(
+      icons.Invites,
+      update_helpers.i18n_t(model, i18n_text.InvitesTitle),
       dialog.add_button(
         model,
         i18n_text.CreateInviteLink,
         InviteCreateDialogOpened,
       ),
-    ]),
+    ),
     // Latest invite link result (if any)
     view_latest_invite(model, origin),
     // Invite links list
@@ -211,7 +210,7 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
   dialog.view(
     dialog.DialogConfig(
       title: update_helpers.i18n_t(model, i18n_text.CreateInviteLink),
-      icon: opt.Some("\u{1F517}"),
+      icon: opt.None,
       size: dialog.DialogMd,
       on_close: InviteCreateDialogClosed,
     ),

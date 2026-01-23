@@ -40,12 +40,19 @@ import scrumbringer_client/client_state.{
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/router
+import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/remote as ui_remote
+import scrumbringer_client/ui/section_header
 import scrumbringer_client/update_helpers
 
 /// Renders the metrics section with overview and project panels.
 pub fn view_metrics(model: Model, selected: opt.Option(Project)) -> Element(Msg) {
   div([attribute.class("section")], [
+    // Section header (Story 4.8: consistent icons)
+    section_header.view(
+      icons.OrgMetrics,
+      update_helpers.i18n_t(model, i18n_text.OrgMetrics),
+    ),
     view_overview_panel(model),
     view_project_panel(model, selected),
   ])

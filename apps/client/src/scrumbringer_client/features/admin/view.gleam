@@ -105,7 +105,7 @@ import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/icon_catalog
 import scrumbringer_client/ui/icon_picker
 import scrumbringer_client/ui/icons
-import scrumbringer_client/ui/info_callout
+import scrumbringer_client/ui/section_header
 import scrumbringer_client/update_helpers
 
 // =============================================================================
@@ -116,7 +116,12 @@ import scrumbringer_client/update_helpers
 /// Organization settings view - manage user roles.
 pub fn view_org_settings(model: Model) -> Element(Msg) {
   div([attribute.class("section")], [
-    p([], [text(update_helpers.i18n_t(model, i18n_text.OrgSettingsHelp))]),
+    // Section header with subtitle (Story 4.8: consistent icons + help text)
+    section_header.view_with_subtitle(
+      icons.OrgUsers,
+      update_helpers.i18n_t(model, i18n_text.OrgUsers),
+      update_helpers.i18n_t(model, i18n_text.OrgSettingsHelp),
+    ),
     case model.org_settings_users {
       NotAsked ->
         div([], [
@@ -258,7 +263,7 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
             model,
             i18n_text.UserProjectsTitle(user.email),
           ),
-          icon: opt.Some("\u{1F4C2}"),
+          icon: opt.None,
           size: dialog.DialogMd,
           on_close: UserProjectsDialogClosed,
         ),
@@ -486,18 +491,16 @@ pub fn view_capabilities(model: Model) -> Element(Msg) {
   }
 
   div([attribute.class("section")], [
-    // Section header with add button
-    div([attribute.class("admin-section-header")], [
-      div([attribute.class("admin-section-title")], [
-        span([attribute.class("admin-section-icon")], [text("\u{1F3AF}")]),
-        text(update_helpers.i18n_t(model, i18n_text.Capabilities)),
-      ]),
+    // Section header with add button (Story 4.8: consistent icons)
+    section_header.view_with_action(
+      icons.Catalog,
+      update_helpers.i18n_t(model, i18n_text.Capabilities),
       dialog.add_button(
         model,
         i18n_text.CreateCapability,
         CapabilityCreateDialogOpened,
       ),
-    ]),
+    ),
     // Capabilities list
     view_capabilities_list(model, model.capabilities),
     // Create capability dialog
@@ -516,7 +519,7 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
   dialog.view(
     dialog.DialogConfig(
       title: update_helpers.i18n_t(model, i18n_text.CreateCapability),
-      icon: opt.Some("\u{1F3AF}"),
+      icon: opt.None,
       size: dialog.DialogSm,
       on_close: CapabilityCreateDialogClosed,
     ),
@@ -586,19 +589,13 @@ pub fn view_members(
 
     opt.Some(project) ->
       div([attribute.class("section")], [
-        // Section header with add button
-        div([attribute.class("admin-section-header")], [
-          div([attribute.class("admin-section-title")], [
-            span([attribute.class("admin-section-icon")], [text("\u{1F465}")]),
-            text(update_helpers.i18n_t(
-              model,
-              i18n_text.MembersTitle(project.name),
-            )),
-          ]),
+        // Section header with subtitle and action (Story 4.8: consistent icons + help text)
+        section_header.view_full(
+          icons.Team,
+          update_helpers.i18n_t(model, i18n_text.MembersTitle(project.name)),
+          update_helpers.i18n_t(model, i18n_text.MembersHelp),
           dialog.add_button(model, i18n_text.AddMember, MemberAddDialogOpened),
-        ]),
-        // Help callout for Members section
-        info_callout.simple(update_helpers.i18n_t(model, i18n_text.MembersHelp)),
+        ),
         // Members list
         case model.members_remove_error {
           opt.Some(err) -> div([attribute.class("error")], [text(err)])
@@ -641,21 +638,16 @@ pub fn view_task_types(
 
     opt.Some(project) ->
       div([attribute.class("section")], [
-        // Section header with add button
-        div([attribute.class("admin-section-header")], [
-          div([attribute.class("admin-section-title")], [
-            span([attribute.class("admin-section-icon")], [text("\u{1F3AF}")]),
-            text(update_helpers.i18n_t(
-              model,
-              i18n_text.TaskTypesTitle(project.name),
-            )),
-          ]),
+        // Section header with add button (Story 4.8: consistent icons)
+        section_header.view_with_action(
+          icons.TaskTypes,
+          update_helpers.i18n_t(model, i18n_text.TaskTypesTitle(project.name)),
           dialog.add_button(
             model,
             i18n_text.CreateTaskType,
             TaskTypeCreateDialogOpened,
           ),
-        ]),
+        ),
         // Task types list
         view_task_types_list(model, model.task_types, model.theme),
         // Create task type dialog
@@ -669,7 +661,7 @@ fn view_task_types_create_dialog(model: Model) -> Element(Msg) {
   dialog.view(
     dialog.DialogConfig(
       title: update_helpers.i18n_t(model, i18n_text.CreateTaskType),
-      icon: opt.Some("\u{1F3AF}"),
+      icon: opt.None,
       size: dialog.DialogMd,
       on_close: TaskTypeCreateDialogClosed,
     ),
@@ -1649,21 +1641,16 @@ pub fn view_cards(
 
     opt.Some(project) ->
       div([attribute.class("section")], [
-        // Section header with add button
-        div([attribute.class("admin-section-header")], [
-          div([attribute.class("admin-section-title")], [
-            span([attribute.class("admin-section-icon")], [text("\u{1F0CF}")]),
-            text(update_helpers.i18n_t(
-              model,
-              i18n_text.CardsTitle(project.name),
-            )),
-          ]),
+        // Section header with add button (Story 4.8: consistent icons)
+        section_header.view_with_action(
+          icons.Cards,
+          update_helpers.i18n_t(model, i18n_text.CardsTitle(project.name)),
           dialog.add_button(
             model,
             i18n_text.CreateCard,
             OpenCardDialog(CardDialogCreate),
           ),
-        ]),
+        ),
         // Cards list
         view_cards_list(model, model.cards),
         // Card CRUD dialog component (handles create, edit, delete)
@@ -1919,21 +1906,16 @@ fn view_workflows_list(
       ])
     opt.Some(project) ->
       div([attribute.class("section")], [
-        // Section header with add button
-        div([attribute.class("admin-section-header")], [
-          div([attribute.class("admin-section-title")], [
-            span([attribute.class("admin-section-icon")], [text("\u{2699}\u{FE0F}")]),
-            text(update_helpers.i18n_t(
-              model,
-              i18n_text.WorkflowsProjectTitle(project.name),
-            )),
-          ]),
+        // Section header with add button (Story 4.8: consistent icons)
+        section_header.view_with_action(
+          icons.Workflows,
+          update_helpers.i18n_t(model, i18n_text.WorkflowsProjectTitle(project.name)),
           dialog.add_button(
             model,
             i18n_text.CreateWorkflow,
             OpenWorkflowDialog(WorkflowDialogCreate),
           ),
-        ]),
+        ),
         // Project workflows table (AC23)
         view_workflows_table(model, model.workflows_project, opt.Some(project)),
         // Workflow CRUD dialog component (handles create, edit, delete)
@@ -2165,14 +2147,12 @@ fn view_workflow_rules(model: Model, workflow_id: Int) -> Element(Msg) {
 
   div([attribute.class("section")], [
     button([event.on_click(RulesBackClicked)], [text("← Back to Workflows")]),
-    // Section header with add button
-    div([attribute.class("admin-section-header")], [
-      div([attribute.class("admin-section-title")], [
-        span([attribute.class("admin-section-icon")], [text("\u{1F4DC}")]),
-        text(update_helpers.i18n_t(model, i18n_text.RulesTitle(workflow_name))),
-      ]),
+    // Section header with add button (Story 4.8: consistent icons)
+    section_header.view_with_action(
+      icons.Rules,
+      update_helpers.i18n_t(model, i18n_text.RulesTitle(workflow_name)),
       dialog.add_button(model, i18n_text.CreateRule, OpenRuleDialog(RuleDialogCreate)),
-    ]),
+    ),
     view_rules_table(model, model.rules, model.rules_metrics),
     // Rule CRUD dialog component (handles create/edit/delete internally)
     view_rule_crud_dialog(model, workflow_id),
@@ -2422,21 +2402,17 @@ pub fn view_task_templates(
   selected_project: opt.Option(Project),
 ) -> Element(Msg) {
   div([attribute.class("section")], [
-    // Section header with add button
-    div([attribute.class("admin-section-header")], [
-      div([attribute.class("admin-section-title")], [
-        span([attribute.class("admin-section-icon")], [text("\u{1F4CB}")]),
-        text(update_helpers.i18n_t(model, i18n_text.TaskTemplatesOrgTitle)),
-      ]),
+    // Section header with subtitle and action (Story 4.8: consistent icons + help text)
+    section_header.view_full(
+      icons.TaskTemplates,
+      update_helpers.i18n_t(model, i18n_text.TaskTemplatesOrgTitle),
+      update_helpers.i18n_t(model, i18n_text.TaskTemplateVariablesHelp),
       dialog.add_button(
         model,
         i18n_text.CreateTaskTemplate,
         OpenTaskTemplateDialog(TaskTemplateDialogCreate),
       ),
-    ]),
-    p([], [
-      text(update_helpers.i18n_t(model, i18n_text.TaskTemplateVariablesHelp)),
-    ]),
+    ),
     view_task_templates_table(model, model.task_templates_org),
     // Project templates section (if project selected)
     case selected_project {
@@ -2690,13 +2666,11 @@ pub fn view_rule_metrics(model: Model) -> Element(Msg) {
     model.admin_rule_metrics_from != "" && model.admin_rule_metrics_to != ""
 
   div([attribute.class("section")], [
-    // Header with icon (T1)
-    div([attribute.class("admin-section-header")], [
-      div([attribute.class("admin-section-title")], [
-        span([attribute.class("admin-section-icon")], [icons.nav_icon(icons.Metrics, icons.Medium)]),
-        text(update_helpers.i18n_t(model, i18n_text.RuleMetricsTitle)),
-      ]),
-    ]),
+    // Header with icon (Story 4.8: consistent icons via section_header)
+    section_header.view(
+      icons.Metrics,
+      update_helpers.i18n_t(model, i18n_text.RuleMetricsTitle),
+    ),
     // Card wrapper
     div([attribute.class("admin-card")], [
       // Quick range buttons (S3/S4)

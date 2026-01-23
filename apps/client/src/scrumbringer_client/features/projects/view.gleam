@@ -19,7 +19,7 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, form, input, label, span, table, td, text, th, thead, tr}
+import lustre/element/html.{button, div, form, input, label, table, td, text, th, thead, tr}
 import lustre/element/keyed
 import lustre/event
 
@@ -32,6 +32,8 @@ import scrumbringer_client/client_state.{
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/dialog
+import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/section_header
 import scrumbringer_client/update_helpers
 
 // =============================================================================
@@ -41,18 +43,16 @@ import scrumbringer_client/update_helpers
 /// Main projects section view.
 pub fn view_projects(model: Model) -> Element(Msg) {
   div([attribute.class("section")], [
-    // Section header with add button
-    div([attribute.class("admin-section-header")], [
-      div([attribute.class("admin-section-title")], [
-        span([attribute.class("admin-section-icon")], [text("\u{1F4C1}")]),
-        text(update_helpers.i18n_t(model, i18n_text.Projects)),
-      ]),
+    // Section header with add button (Story 4.8: consistent icons)
+    section_header.view_with_action(
+      icons.Projects,
+      update_helpers.i18n_t(model, i18n_text.Projects),
       dialog.add_button(
         model,
         i18n_text.CreateProject,
         ProjectCreateDialogOpened,
       ),
-    ]),
+    ),
     // Projects list
     view_projects_list(model, model.projects),
     // Create project dialog
@@ -69,7 +69,7 @@ fn view_projects_create_dialog(model: Model) -> Element(Msg) {
   dialog.view(
     dialog.DialogConfig(
       title: update_helpers.i18n_t(model, i18n_text.CreateProject),
-      icon: opt.Some("\u{1F4C1}"),
+      icon: opt.None,
       size: dialog.DialogSm,
       on_close: ProjectCreateDialogClosed,
     ),
