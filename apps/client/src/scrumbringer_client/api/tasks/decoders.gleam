@@ -40,6 +40,7 @@ pub const parse_task_status = task_status.parse_task_status
 // =============================================================================
 
 /// Decoder for TaskType.
+/// Story 4.9 AC15: Added tasks_count field.
 pub fn task_type_decoder() -> decode.Decoder(TaskType) {
   use id <- decode.field("id", decode.int)
   use name <- decode.field("name", decode.string)
@@ -51,11 +52,14 @@ pub fn task_type_decoder() -> decode.Decoder(TaskType) {
     decode.optional(decode.int),
   )
 
+  use tasks_count <- decode.optional_field("tasks_count", 0, decode.int)
+
   decode.success(TaskType(
     id: id,
     name: name,
     icon: icon,
     capability_id: capability_id,
+    tasks_count: tasks_count,
   ))
 }
 

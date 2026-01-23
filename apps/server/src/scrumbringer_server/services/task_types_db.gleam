@@ -1,7 +1,9 @@
 //// Database operations for task types within projects.
 ////
 //// Provides CRUD operations for task types including listing,
-//// creating, and verifying task type membership in projects.
+//// creating, updating, deleting, and verifying task type membership in projects.
+////
+//// Story 4.9: Added update, delete, and tasks_count support.
 
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -11,6 +13,7 @@ import pog
 import scrumbringer_server/sql
 
 /// A task type that categorizes tasks within a project.
+/// Story 4.9 AC15: Added tasks_count field.
 pub type TaskType {
   TaskType(
     id: Int,
@@ -18,6 +21,7 @@ pub type TaskType {
     name: String,
     icon: String,
     capability_id: Option(Int),
+    tasks_count: Int,
   )
 }
 
@@ -29,13 +33,29 @@ pub type CreateTaskTypeError {
   NoRowReturned
 }
 
+/// Errors that can occur when updating a task type.
+/// Story 4.9 AC13
+pub type UpdateTaskTypeError {
+  UpdateNotFound
+  UpdateDbError(pog.QueryError)
+}
+
+/// Errors that can occur when deleting a task type.
+/// Story 4.9 AC14
+pub type DeleteTaskTypeError {
+  DeleteNotFound
+  DeleteHasTasks
+  DeleteDbError(pog.QueryError)
+}
+
 /// Lists all task types for a given project.
+/// Story 4.9 AC15: Includes tasks_count for each type.
 ///
 /// ## Example
 ///
 /// ```gleam
 /// list_task_types_for_project(db, project_id: 1)
-/// // -> Ok([TaskType(id: 1, name: "Bug", ...)])
+/// // -> Ok([TaskType(id: 1, name: "Bug", tasks_count: 5, ...)])
 /// ```
 pub fn list_task_types_for_project(
   db: pog.Connection,
@@ -51,6 +71,7 @@ pub fn list_task_types_for_project(
       name: row.name,
       icon: row.icon,
       capability_id: capability_option(row.capability_id),
+      tasks_count: row.tasks_count,
     )
   })
   |> Ok
@@ -84,6 +105,7 @@ pub fn create_task_type(
         name: row.name,
         icon: row.icon,
         capability_id: capability_option(row.capability_id),
+        tasks_count: 0,
       ))
 
     Ok(pog.Returned(rows: [], ..)) -> Error(NoRowReturned)
@@ -102,6 +124,67 @@ pub fn create_task_type(
 
         _ -> Error(DbError(error))
       }
+  }
+}
+
+/// Updates an existing task type.
+/// Story 4.9 AC13: Edit task type name, icon, or capability.
+///
+/// ## Example
+///
+/// ```gleam
+/// update_task_type(db, type_id: 1, name: "Bug Fix", icon: "bug-ant", capability_id: Some(2))
+/// // -> Ok(TaskType(...))
+/// ```
+pub fn update_task_type(
+  db: pog.Connection,
+  type_id: Int,
+  name: String,
+  icon: String,
+  capability_id: Option(Int),
+) -> Result(TaskType, UpdateTaskTypeError) {
+  let capability_param = case capability_id {
+    None -> 0
+    Some(id) -> id
+  }
+
+  case sql.task_types_update(db, type_id, name, icon, capability_param) {
+    Ok(pog.Returned(rows: [row, ..], ..)) ->
+      Ok(TaskType(
+        id: row.id,
+        project_id: row.project_id,
+        name: row.name,
+        icon: row.icon,
+        capability_id: capability_option(row.capability_id),
+        tasks_count: 0,
+      ))
+
+    Ok(pog.Returned(rows: [], ..)) -> Error(UpdateNotFound)
+
+    Error(error) -> Error(UpdateDbError(error))
+  }
+}
+
+/// Deletes a task type if it has no associated tasks.
+/// Story 4.9 AC14: Delete task type (only if no tasks use it).
+///
+/// ## Example
+///
+/// ```gleam
+/// delete_task_type(db, type_id: 1)
+/// // -> Ok(1)  // returns deleted id
+/// // -> Error(DeleteHasTasks)  // if tasks exist
+/// ```
+pub fn delete_task_type(
+  db: pog.Connection,
+  type_id: Int,
+) -> Result(Int, DeleteTaskTypeError) {
+  case sql.task_types_delete(db, type_id) {
+    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(row.id)
+
+    Ok(pog.Returned(rows: [], ..)) -> Error(DeleteHasTasks)
+
+    Error(error) -> Error(DeleteDbError(error))
   }
 }
 

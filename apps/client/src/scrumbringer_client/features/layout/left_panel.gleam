@@ -63,8 +63,12 @@ pub type LeftPanelConfig(msg) {
     on_navigate_cards: msg,
     // Config navigation
     on_navigate_config_team: msg,
-    on_navigate_config_catalog: msg,
-    on_navigate_config_automation: msg,
+    on_navigate_config_capabilities: msg,
+    // Story 4.9: New config section navigation
+    on_navigate_config_cards: msg,
+    on_navigate_config_task_types: msg,
+    on_navigate_config_templates: msg,
+    on_navigate_config_rules: msg,
     on_navigate_config_metrics: msg,
     on_navigate_org_invites: msg,
     on_navigate_org_users: msg,
@@ -72,6 +76,24 @@ pub type LeftPanelConfig(msg) {
     on_navigate_org_metrics: msg,
     on_toggle_config: msg,
     on_toggle_org: msg,
+  )
+}
+
+// =============================================================================
+// View Helpers
+// =============================================================================
+
+/// Visual separator for grouping nav items (Story 4.9 AC3)
+fn view_nav_separator() -> Element(msg) {
+  div(
+    [
+      attribute.class("nav-separator"),
+      attribute.style("height", "1px"),
+      attribute.style("background", "var(--sb-border)"),
+      attribute.style("margin", "8px 12px"),
+      attribute.style("opacity", "0.5"),
+    ],
+    [],
   )
 }
 
@@ -316,31 +338,82 @@ fn view_config_section(config: LeftPanelConfig(msg)) -> Element(msg) {
               button(
                 [
                   attribute.class("nav-link"),
-                  attribute.attribute("data-testid", "nav-catalog"),
+                  attribute.attribute("data-testid", "nav-capabilities"),
                   attribute.disabled(config.selected_project_id == None),
-                  event.on_click(config.on_navigate_config_catalog),
+                  event.on_click(config.on_navigate_config_capabilities),
                 ],
                 [
-                  icons.nav_icon(icons.Catalog, icons.Small),
+                  icons.nav_icon(icons.Crosshairs, icons.Small),
                   span([attribute.class("nav-label")], [
-                    text(i18n.t(config.locale, i18n_text.Catalog)),
+                    text(i18n.t(config.locale, i18n_text.Capabilities)),
                   ]),
                 ],
               ),
+              // Story 4.9 AC3: Separator - ORGANIZACIÓN DEL TRABAJO group
+              view_nav_separator(),
+              // Story 4.9: Cards Config nav item
               button(
                 [
                   attribute.class("nav-link"),
-                  attribute.attribute("data-testid", "nav-automation"),
+                  attribute.attribute("data-testid", "nav-cards-config"),
                   attribute.disabled(config.selected_project_id == None),
-                  event.on_click(config.on_navigate_config_automation),
+                  event.on_click(config.on_navigate_config_cards),
+                ],
+                [
+                  icons.nav_icon(icons.Cards, icons.Small),
+                  span([attribute.class("nav-label")], [
+                    text(i18n.t(config.locale, i18n_text.CardsConfig)),
+                  ]),
+                ],
+              ),
+              // Story 4.9: Task Types nav item
+              button(
+                [
+                  attribute.class("nav-link"),
+                  attribute.attribute("data-testid", "nav-task-types"),
+                  attribute.disabled(config.selected_project_id == None),
+                  event.on_click(config.on_navigate_config_task_types),
+                ],
+                [
+                  icons.nav_icon(icons.TaskTypes, icons.Small),
+                  span([attribute.class("nav-label")], [
+                    text(i18n.t(config.locale, i18n_text.TaskTypes)),
+                  ]),
+                ],
+              ),
+              // Story 4.9 AC3: Separator - AUTOMATIZACIÓN group
+              view_nav_separator(),
+              button(
+                [
+                  attribute.class("nav-link"),
+                  attribute.attribute("data-testid", "nav-rules"),
+                  attribute.disabled(config.selected_project_id == None),
+                  event.on_click(config.on_navigate_config_rules),
                 ],
                 [
                   icons.nav_icon(icons.Automation, icons.Small),
                   span([attribute.class("nav-label")], [
-                    text(i18n.t(config.locale, i18n_text.Automation)),
+                    text(i18n.t(config.locale, i18n_text.Rules)),
                   ]),
                 ],
               ),
+              // Story 4.9: Templates nav item
+              button(
+                [
+                  attribute.class("nav-link"),
+                  attribute.attribute("data-testid", "nav-templates"),
+                  attribute.disabled(config.selected_project_id == None),
+                  event.on_click(config.on_navigate_config_templates),
+                ],
+                [
+                  icons.nav_icon(icons.TaskTemplates, icons.Small),
+                  span([attribute.class("nav-label")], [
+                    text(i18n.t(config.locale, i18n_text.Templates)),
+                  ]),
+                ],
+              ),
+              // Story 4.9 AC3: Separator - RESULTADOS group
+              view_nav_separator(),
               // AC31: Metrics link in Configuration section for PM/Admin
               button(
                 [

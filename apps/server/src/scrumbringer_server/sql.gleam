@@ -187,6 +187,76 @@ order by name asc;
   |> pog.execute(db)
 }
 
+/// name: delete_all_capability_members
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn capability_members_delete_all(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(Nil), pog.QueryError) {
+  let decoder = decode.map(decode.dynamic, fn(_) { Nil })
+
+  "-- name: delete_all_capability_members
+delete from project_member_capabilities
+where project_id = $1 and capability_id = $2;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `capability_members_list` query
+/// defined in `./src/scrumbringer_server/sql/capability_members_list.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type CapabilityMembersListRow {
+  CapabilityMembersListRow(project_id: Int, capability_id: Int, user_id: Int)
+}
+
+/// name: list_capability_members
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn capability_members_list(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(CapabilityMembersListRow), pog.QueryError) {
+  let decoder = {
+    use project_id <- decode.field(0, decode.int)
+    use capability_id <- decode.field(1, decode.int)
+    use user_id <- decode.field(2, decode.int)
+    decode.success(CapabilityMembersListRow(
+      project_id:,
+      capability_id:,
+      user_id:,
+    ))
+  }
+
+  "-- name: list_capability_members
+select
+  pmc.project_id,
+  pmc.capability_id,
+  pmc.user_id
+from project_member_capabilities pmc
+where pmc.project_id = $1 and pmc.capability_id = $2
+order by pmc.user_id asc;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `cards_create` query
 /// defined in `./src/scrumbringer_server/sql/cards_create.sql`.
 ///
@@ -1427,6 +1497,76 @@ select 1 as ok;
   |> pog.execute(db)
 }
 
+/// A row you get from running the `project_delete` query
+/// defined in `./src/scrumbringer_server/sql/project_delete.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type ProjectDeleteRow {
+  ProjectDeleteRow(id: Int)
+}
+
+/// name: project_delete
+/// Delete a project and all related data (cascade)
+/// Returns the deleted project id if successful
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn project_delete(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(ProjectDeleteRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(ProjectDeleteRow(id:))
+  }
+
+  "-- name: project_delete
+-- Delete a project and all related data (cascade)
+-- Returns the deleted project id if successful
+with
+  deleted_rules as (
+    delete from rules
+    where workflow_id in (select id from workflows where project_id = $1)
+  ),
+  deleted_workflows as (
+    delete from workflows where project_id = $1
+  ),
+  deleted_task_templates as (
+    delete from task_templates where project_id = $1
+  ),
+  deleted_member_capabilities as (
+    delete from project_member_capabilities
+    where project_id = $1
+  ),
+  deleted_capabilities as (
+    delete from capabilities where project_id = $1
+  ),
+  deleted_task_types as (
+    delete from task_types where project_id = $1
+  ),
+  deleted_tasks as (
+    delete from tasks
+    where card_id in (select id from cards where project_id = $1)
+  ),
+  deleted_cards as (
+    delete from cards where project_id = $1
+  ),
+  deleted_members as (
+    delete from project_members where project_id = $1
+  )
+delete from projects
+where id = $1
+returning id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `project_member_capabilities_delete` query
 /// defined in `./src/scrumbringer_server/sql/project_member_capabilities_delete.sql`.
 ///
@@ -2017,6 +2157,51 @@ RETURNING
   |> pog.execute(db)
 }
 
+/// A row you get from running the `project_update` query
+/// defined in `./src/scrumbringer_server/sql/project_update.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type ProjectUpdateRow {
+  ProjectUpdateRow(id: Int, org_id: Int, name: String, created_at: String)
+}
+
+/// name: project_update
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn project_update(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: String,
+) -> Result(pog.Returned(ProjectUpdateRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use org_id <- decode.field(1, decode.int)
+    use name <- decode.field(2, decode.string)
+    use created_at <- decode.field(3, decode.string)
+    decode.success(ProjectUpdateRow(id:, org_id:, name:, created_at:))
+  }
+
+  "-- name: project_update
+update projects
+set name = $2
+where id = $1
+returning
+  id,
+  org_id,
+  name,
+  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `projects_create` query
 /// defined in `./src/scrumbringer_server/sql/projects_create.sql`.
 ///
@@ -2139,99 +2324,6 @@ order by p.name asc;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
-/// A row you get from running the `project_update` query.
-pub type ProjectUpdateRow {
-  ProjectUpdateRow(id: Int, org_id: Int, name: String, created_at: String)
-}
-
-/// name: project_update
-pub fn project_update(
-  db: pog.Connection,
-  project_id: Int,
-  name: String,
-) -> Result(pog.Returned(ProjectUpdateRow), pog.QueryError) {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    use org_id <- decode.field(1, decode.int)
-    use name <- decode.field(2, decode.string)
-    use created_at <- decode.field(3, decode.string)
-    decode.success(ProjectUpdateRow(id:, org_id:, name:, created_at:))
-  }
-
-  "-- name: project_update
-update projects
-set name = $2
-where id = $1
-returning
-  id,
-  org_id,
-  name,
-  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(project_id))
-  |> pog.parameter(pog.text(name))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
-/// A row you get from running the `project_delete` query.
-pub type ProjectDeleteRow {
-  ProjectDeleteRow(id: Int)
-}
-
-/// name: project_delete
-pub fn project_delete(
-  db: pog.Connection,
-  project_id: Int,
-) -> Result(pog.Returned(ProjectDeleteRow), pog.QueryError) {
-  let decoder = {
-    use id <- decode.field(0, decode.int)
-    decode.success(ProjectDeleteRow(id:))
-  }
-
-  "-- name: project_delete
-with
-  deleted_rules as (
-    delete from rules
-    where workflow_id in (select id from workflows where project_id = $1)
-  ),
-  deleted_workflows as (
-    delete from workflows where project_id = $1
-  ),
-  deleted_task_templates as (
-    delete from task_templates where project_id = $1
-  ),
-  deleted_member_capabilities as (
-    delete from member_capabilities
-    where project_id = $1
-  ),
-  deleted_capabilities as (
-    delete from capabilities where project_id = $1
-  ),
-  deleted_task_types as (
-    delete from task_types where project_id = $1
-  ),
-  deleted_tasks as (
-    delete from tasks
-    where card_id in (select id from cards where project_id = $1)
-  ),
-  deleted_cards as (
-    delete from cards where project_id = $1
-  ),
-  deleted_members as (
-    delete from project_members where project_id = $1
-  )
-delete from projects
-where id = $1
-returning id;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(project_id))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -4141,10 +4233,12 @@ pub type TaskTemplatesListForOrgRow {
     priority: Int,
     created_by: Int,
     created_at: String,
+    rules_count: Int,
   )
 }
 
 /// name: list_task_templates_for_org
+/// Story 4.9 AC20: Include rules_count for each template
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -4164,6 +4258,7 @@ pub fn task_templates_list_for_org(
     use priority <- decode.field(7, decode.int)
     use created_by <- decode.field(8, decode.int)
     use created_at <- decode.field(9, decode.string)
+    use rules_count <- decode.field(10, decode.int)
     decode.success(TaskTemplatesListForOrgRow(
       id:,
       org_id:,
@@ -4175,10 +4270,12 @@ pub fn task_templates_list_for_org(
       priority:,
       created_by:,
       created_at:,
+      rules_count:,
     ))
   }
 
   "-- name: list_task_templates_for_org
+-- Story 4.9 AC20: Include rules_count for each template
 SELECT
   t.id,
   t.org_id,
@@ -4189,9 +4286,15 @@ SELECT
   tt.name as type_name,
   t.priority,
   t.created_by,
-  to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+  to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  coalesce(rule_counts.count, 0) as rules_count
 FROM task_templates t
 JOIN task_types tt on tt.id = t.type_id
+LEFT JOIN (
+  SELECT template_id, count(*) as count
+  FROM rule_templates
+  GROUP BY template_id
+) rule_counts ON rule_counts.template_id = t.id
 WHERE t.org_id = $1
   AND t.project_id is null
 ORDER BY t.created_at DESC;
@@ -4220,10 +4323,12 @@ pub type TaskTemplatesListForProjectRow {
     priority: Int,
     created_by: Int,
     created_at: String,
+    rules_count: Int,
   )
 }
 
 /// name: list_task_templates_for_project
+/// Story 4.9 AC20: Include rules_count for each template
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -4243,6 +4348,7 @@ pub fn task_templates_list_for_project(
     use priority <- decode.field(7, decode.int)
     use created_by <- decode.field(8, decode.int)
     use created_at <- decode.field(9, decode.string)
+    use rules_count <- decode.field(10, decode.int)
     decode.success(TaskTemplatesListForProjectRow(
       id:,
       org_id:,
@@ -4254,10 +4360,12 @@ pub fn task_templates_list_for_project(
       priority:,
       created_by:,
       created_at:,
+      rules_count:,
     ))
   }
 
   "-- name: list_task_templates_for_project
+-- Story 4.9 AC20: Include rules_count for each template
 SELECT
   t.id,
   t.org_id,
@@ -4268,9 +4376,15 @@ SELECT
   tt.name as type_name,
   t.priority,
   t.created_by,
-  to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+  to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  coalesce(rule_counts.count, 0) as rules_count
 FROM task_templates t
 JOIN task_types tt on tt.id = t.type_id
+LEFT JOIN (
+  SELECT template_id, count(*) as count
+  FROM rule_templates
+  GROUP BY template_id
+) rule_counts ON rule_counts.template_id = t.id
 WHERE t.project_id = $1
 ORDER BY t.created_at DESC;
 "
@@ -4467,6 +4581,48 @@ returning
   |> pog.execute(db)
 }
 
+/// A row you get from running the `task_types_delete` query
+/// defined in `./src/scrumbringer_server/sql/task_types_delete.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskTypesDeleteRow {
+  TaskTypesDeleteRow(id: Int)
+}
+
+/// name: delete_task_type
+/// Story 4.9 AC14: Delete task type (only if no tasks use it)
+/// Returns empty if type has associated tasks (foreign key constraint)
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_types_delete(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(TaskTypesDeleteRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(TaskTypesDeleteRow(id:))
+  }
+
+  "-- name: delete_task_type
+-- Story 4.9 AC14: Delete task type (only if no tasks use it)
+-- Returns empty if type has associated tasks (foreign key constraint)
+delete from task_types
+where id = $1
+  and not exists (
+    select 1 from tasks t where t.type_id = $1
+  )
+returning id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `task_types_is_in_project` query
 /// defined in `./src/scrumbringer_server/sql/task_types_is_in_project.sql`.
 ///
@@ -4520,10 +4676,12 @@ pub type TaskTypesListRow {
     name: String,
     icon: String,
     capability_id: Int,
+    tasks_count: Int,
   )
 }
 
 /// name: list_task_types_for_project
+/// Story 4.9 AC15: Include tasks_count for each task type
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -4538,7 +4696,77 @@ pub fn task_types_list(
     use name <- decode.field(2, decode.string)
     use icon <- decode.field(3, decode.string)
     use capability_id <- decode.field(4, decode.int)
+    use tasks_count <- decode.field(5, decode.int)
     decode.success(TaskTypesListRow(
+      id:,
+      project_id:,
+      name:,
+      icon:,
+      capability_id:,
+      tasks_count:,
+    ))
+  }
+
+  "-- name: list_task_types_for_project
+-- Story 4.9 AC15: Include tasks_count for each task type
+select
+  tt.id,
+  tt.project_id,
+  tt.name,
+  tt.icon,
+  coalesce(tt.capability_id, 0) as capability_id,
+  coalesce(task_counts.count, 0) as tasks_count
+from task_types tt
+left join (
+  select type_id, count(*) as count
+  from tasks
+  group by type_id
+) task_counts on task_counts.type_id = tt.id
+where tt.project_id = $1
+order by tt.name asc;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `task_types_update` query
+/// defined in `./src/scrumbringer_server/sql/task_types_update.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskTypesUpdateRow {
+  TaskTypesUpdateRow(
+    id: Int,
+    project_id: Int,
+    name: String,
+    icon: String,
+    capability_id: Int,
+  )
+}
+
+/// name: update_task_type
+/// Story 4.9 AC13: Update task type name, icon, or capability
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_types_update(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: String,
+  arg_3: String,
+  arg_4: Int,
+) -> Result(pog.Returned(TaskTypesUpdateRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use project_id <- decode.field(1, decode.int)
+    use name <- decode.field(2, decode.string)
+    use icon <- decode.field(3, decode.string)
+    use capability_id <- decode.field(4, decode.int)
+    decode.success(TaskTypesUpdateRow(
       id:,
       project_id:,
       name:,
@@ -4547,19 +4775,26 @@ pub fn task_types_list(
     ))
   }
 
-  "-- name: list_task_types_for_project
-select
+  "-- name: update_task_type
+-- Story 4.9 AC13: Update task type name, icon, or capability
+update task_types
+set
+  name = $2,
+  icon = $3,
+  capability_id = case when $4 = 0 then null else $4 end
+where id = $1
+returning
   id,
   project_id,
   name,
   icon,
-  coalesce(capability_id, 0) as capability_id
-from task_types
-where project_id = $1
-order by name asc;
+  coalesce(capability_id, 0) as capability_id;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.parameter(pog.text(arg_3))
+  |> pog.parameter(pog.int(arg_4))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -6139,59 +6374,5 @@ RETURNING
   |> pog.parameter(pog.text(arg_5))
   |> pog.parameter(pog.int(arg_6))
   |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
-// =============================================================================
-// Capability Members (Story 4.7 AC20-21) - Manually added
-// =============================================================================
-
-/// A row you get from running the `capability_members_list` query.
-pub type CapabilityMembersListRow {
-  CapabilityMembersListRow(project_id: Int, capability_id: Int, user_id: Int)
-}
-
-/// name: list_capability_members
-pub fn capability_members_list(
-  db: pog.Connection,
-  arg_1: Int,
-  arg_2: Int,
-) -> Result(pog.Returned(CapabilityMembersListRow), pog.QueryError) {
-  let decoder = {
-    use project_id <- decode.field(0, decode.int)
-    use capability_id <- decode.field(1, decode.int)
-    use user_id <- decode.field(2, decode.int)
-    decode.success(CapabilityMembersListRow(project_id:, capability_id:, user_id:))
-  }
-
-  "-- name: list_capability_members
-select
-  pmc.project_id,
-  pmc.capability_id,
-  pmc.user_id
-from project_member_capabilities pmc
-where pmc.project_id = $1 and pmc.capability_id = $2
-order by pmc.user_id asc;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(arg_1))
-  |> pog.parameter(pog.int(arg_2))
-  |> pog.returning(decoder)
-  |> pog.execute(db)
-}
-
-/// name: delete_all_capability_members
-pub fn capability_members_delete_all(
-  db: pog.Connection,
-  arg_1: Int,
-  arg_2: Int,
-) -> Result(pog.Returned(Nil), pog.QueryError) {
-  "-- name: delete_all_capability_members
-delete from project_member_capabilities
-where project_id = $1 and capability_id = $2;
-"
-  |> pog.query
-  |> pog.parameter(pog.int(arg_1))
-  |> pog.parameter(pog.int(arg_2))
   |> pog.execute(db)
 }

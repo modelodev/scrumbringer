@@ -349,7 +349,7 @@ pub fn view_remote(
 
     Loaded(rows) ->
       case rows {
-        [] -> div([class("empty")], [text(empty_msg)])
+        [] -> view_empty(config.empty_state, empty_msg)
         _ -> view(DataTableConfig(..config, rows: rows))
       }
   }
@@ -358,6 +358,8 @@ pub fn view_remote(
 /// Render a table with Remote data and custom error handling.
 ///
 /// Use when you need special handling for 403/forbidden errors.
+/// If config has an empty_state set via with_empty_state(), it will be used
+/// instead of the empty_msg text.
 pub fn view_remote_with_forbidden(
   remote: Remote(List(row)),
   loading_msg loading_msg: String,
@@ -377,9 +379,17 @@ pub fn view_remote_with_forbidden(
 
     Loaded(rows) ->
       case rows {
-        [] -> div([class("empty")], [text(empty_msg)])
+        [] -> view_empty(config.empty_state, empty_msg)
         _ -> view(DataTableConfig(..config, rows: rows))
       }
+  }
+}
+
+/// Helper to render empty state - uses custom element if provided, otherwise text
+fn view_empty(empty_state: Option(Element(msg)), empty_msg: String) -> Element(msg) {
+  case empty_state {
+    Some(custom) -> custom
+    None -> div([class("empty")], [text(empty_msg)])
   }
 }
 

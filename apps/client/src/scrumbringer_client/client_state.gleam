@@ -75,7 +75,7 @@ import domain/task.{
   type WorkSessionsPayload,
 }
 import domain/task_type.{type TaskType}
-import domain/card.{type Card}
+import domain/card.{type Card, type CardState}
 import domain/workflow.{type Rule, type RuleTemplate, type TaskTemplate, type Workflow}
 import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/api/projects as api_projects
@@ -226,6 +226,19 @@ pub type RuleDialogMode {
   RuleDialogDelete(Rule)
 }
 
+/// Dialog mode for Task Type CRUD operations.
+///
+/// Used by the parent to control which dialog the task-type-crud-dialog
+/// component should display:
+/// - `TaskTypeDialogCreate`: Show create new task type form
+/// - `TaskTypeDialogEdit(TaskType)`: Show edit form for given task type
+/// - `TaskTypeDialogDelete(TaskType)`: Show delete confirmation for given task type
+pub type TaskTypeDialogMode {
+  TaskTypeDialogCreate
+  TaskTypeDialogEdit(TaskType)
+  TaskTypeDialogDelete(TaskType)
+}
+
 // ----------------------------------------------------------------------------
 // Navigation mode
 // ----------------------------------------------------------------------------
@@ -316,6 +329,10 @@ pub type Model {
     capabilities_create_name: String,
     capabilities_create_in_flight: Bool,
     capabilities_create_error: Option(String),
+    // Capability delete (Story 4.9 AC9)
+    capability_delete_dialog_id: Option(Int),
+    capability_delete_in_flight: Bool,
+    capability_delete_error: Option(String),
     // Members
     members: Remote(List(ProjectMember)),
     members_project_id: Option(Int),
@@ -378,9 +395,11 @@ pub type Model {
     org_users_search_query: String,
     org_users_search_token: Int,
     org_users_search_results: Remote(List(OrgUser)),
-    // Task types
+    // Task types - list data and dialog mode (component handles CRUD state internally)
     task_types: Remote(List(TaskType)),
     task_types_project_id: Option(Int),
+    task_types_dialog_mode: Option(TaskTypeDialogMode),
+    // Legacy create dialog fields (used when component is not available)
     task_types_create_dialog_open: Bool,
     task_types_create_name: String,
     task_types_create_icon: String,
@@ -394,6 +413,11 @@ pub type Model {
     cards: Remote(List(Card)),
     cards_project_id: Option(Int),
     cards_dialog_mode: Option(CardDialogMode),
+    // Cards - filters (Story 4.9 AC7-8, UX improvements)
+    cards_show_empty: Bool,
+    cards_show_completed: Bool,
+    cards_state_filter: Option(CardState),
+    cards_search: String,
     // Card detail (member view) - only open state, component manages internal state
     card_detail_open: Option(Int),
     // Workflows
@@ -601,6 +625,11 @@ pub type Msg {
   CapabilityCreateNameChanged(String)
   CapabilityCreateSubmitted
   CapabilityCreated(ApiResult(Capability))
+  // Capability delete (Story 4.9 AC9)
+  CapabilityDeleteDialogOpened(Int)
+  CapabilityDeleteDialogClosed
+  CapabilityDeleteSubmitted
+  CapabilityDeleted(ApiResult(Int))
 
   // Members
   MembersFetched(ApiResult(List(ProjectMember)))
@@ -676,6 +705,13 @@ pub type Msg {
   TaskTypeCreateCapabilityChanged(String)
   TaskTypeCreateSubmitted
   TaskTypeCreated(ApiResult(TaskType))
+  // Task types - dialog mode control (component pattern)
+  OpenTaskTypeDialog(TaskTypeDialogMode)
+  CloseTaskTypeDialog
+  // Task types - component events (task-type-crud-dialog emits these)
+  TaskTypeCrudCreated(TaskType)
+  TaskTypeCrudUpdated(TaskType)
+  TaskTypeCrudDeleted(Int)
 
   // Cards - list loading
   CardsFetched(ApiResult(List(Card)))
@@ -686,6 +722,11 @@ pub type Msg {
   CardCrudCreated(Card)
   CardCrudUpdated(Card)
   CardCrudDeleted(Int)
+  // Cards - filter changes (Story 4.9 AC7-8, UX improvements)
+  CardsShowEmptyToggled
+  CardsShowCompletedToggled
+  CardsStateFilterChanged(String)
+  CardsSearchChanged(String)
 
   // Card detail (member view) - component manages internal state
   OpenCardDetail(Int)
@@ -991,6 +1032,10 @@ pub fn default_model() -> Model {
     capabilities_create_name: "",
     capabilities_create_in_flight: False,
     capabilities_create_error: option.None,
+    // Capability delete (Story 4.9 AC9)
+    capability_delete_dialog_id: option.None,
+    capability_delete_in_flight: False,
+    capability_delete_error: option.None,
     // Members
     members: NotAsked,
     members_project_id: option.None,
@@ -1046,9 +1091,10 @@ pub fn default_model() -> Model {
     org_users_search_query: "",
     org_users_search_token: 0,
     org_users_search_results: NotAsked,
-    // Task types
+    // Task types - list data and dialog mode
     task_types: NotAsked,
     task_types_project_id: option.None,
+    task_types_dialog_mode: option.None,
     task_types_create_dialog_open: False,
     task_types_create_name: "",
     task_types_create_icon: "",
@@ -1062,6 +1108,11 @@ pub fn default_model() -> Model {
     cards: NotAsked,
     cards_project_id: option.None,
     cards_dialog_mode: option.None,
+    // Cards - filters (Story 4.9 AC7-8, UX improvements)
+    cards_show_empty: False,
+    cards_show_completed: False,
+    cards_state_filter: option.None,
+    cards_search: "",
     // Card detail (member view) - only open state, component manages internal state
     card_detail_open: option.None,
     // Workflows

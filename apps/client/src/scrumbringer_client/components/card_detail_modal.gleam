@@ -259,11 +259,13 @@ fn task_type_decoder() -> Decoder(TaskType) {
   use name <- decode.field("name", decode.string)
   use icon <- decode.field("icon", decode.string)
   use capability_id <- decode.optional_field("capability_id", option.None, decode.optional(decode.int))
+  use tasks_count <- decode.optional_field("tasks_count", 0, decode.int)
   decode.success(task_type.TaskType(
     id: id,
     name: name,
     icon: icon,
     capability_id: capability_id,
+    tasks_count: tasks_count,
   ))
 }
 

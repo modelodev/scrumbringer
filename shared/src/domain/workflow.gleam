@@ -33,6 +33,7 @@ pub type Rule {
 }
 
 /// Task template blueprint for automation.
+/// Story 4.9 AC20: Added rules_count field.
 pub type TaskTemplate {
   TaskTemplate(
     id: Int,
@@ -45,6 +46,7 @@ pub type TaskTemplate {
     priority: Int,
     created_by: Int,
     created_at: String,
+    rules_count: Int,
   )
 }
 

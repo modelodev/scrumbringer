@@ -336,6 +336,7 @@ fn update_template(
   }
 }
 
+/// Story 4.9 AC20: Added rules_count field.
 fn template_json(template: task_templates_db.TaskTemplate) -> json.Json {
   let task_templates_db.TaskTemplate(
     id: id,
@@ -348,6 +349,7 @@ fn template_json(template: task_templates_db.TaskTemplate) -> json.Json {
     priority: priority,
     created_by: created_by,
     created_at: created_at,
+    rules_count: rules_count,
   ) = template
 
   json.object([
@@ -361,5 +363,6 @@ fn template_json(template: task_templates_db.TaskTemplate) -> json.Json {
     #("priority", json.int(priority)),
     #("created_by", json.int(created_by)),
     #("created_at", json.string(created_at)),
+    #("rules_count", json.int(rules_count)),
   ])
 }

@@ -33,6 +33,7 @@ import scrumbringer_client/client_state.{
   ProjectEditDialogOpened, ProjectEditNameChanged, ProjectEditSubmitted,
 }
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/icons
@@ -273,38 +274,10 @@ fn view_projects_list(model: Model) -> Element(Msg) {
 }
 
 fn view_project_actions(model: Model, p: Project) -> Element(Msg) {
-  div([attribute.class("actions-row")], [
-    // Edit button
-    button(
-      [
-        attribute.class("btn-xs btn-icon"),
-        attribute.attribute(
-          "title",
-          update_helpers.i18n_t(model, i18n_text.EditProject),
-        ),
-        attribute.attribute(
-          "aria-label",
-          update_helpers.i18n_t(model, i18n_text.EditProject),
-        ),
-        event.on_click(ProjectEditDialogOpened(p.id, p.name)),
-      ],
-      [icons.nav_icon(icons.Pencil, icons.Small)],
-    ),
-    // Delete button
-    button(
-      [
-        attribute.class("btn-xs btn-icon btn-delete"),
-        attribute.attribute(
-          "title",
-          update_helpers.i18n_t(model, i18n_text.DeleteProject),
-        ),
-        attribute.attribute(
-          "aria-label",
-          update_helpers.i18n_t(model, i18n_text.DeleteProject),
-        ),
-        event.on_click(ProjectDeleteConfirmOpened(p.id, p.name)),
-      ],
-      [icons.nav_icon(icons.Trash, icons.Small)],
-    ),
-  ])
+  action_buttons.edit_delete_row(
+    edit_title: update_helpers.i18n_t(model, i18n_text.EditProject),
+    edit_click: ProjectEditDialogOpened(p.id, p.name),
+    delete_title: update_helpers.i18n_t(model, i18n_text.DeleteProject),
+    delete_click: ProjectDeleteConfirmOpened(p.id, p.name),
+  )
 }

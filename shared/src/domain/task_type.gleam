@@ -17,11 +17,12 @@ import gleam/option.{type Option}
 // =============================================================================
 
 /// A task type definition with optional capability requirement.
+/// Story 4.9 AC15: Added tasks_count field.
 ///
 /// ## Example
 ///
 /// ```gleam
-/// TaskType(id: 1, name: "Bug Fix", icon: "bug", capability_id: Some(3))
+/// TaskType(id: 1, name: "Bug Fix", icon: "bug", capability_id: Some(3), tasks_count: 5)
 /// ```
 pub type TaskType {
   TaskType(
@@ -29,6 +30,7 @@ pub type TaskType {
     name: String,
     icon: String,
     capability_id: Option(Int),
+    tasks_count: Int,
   )
 }
 

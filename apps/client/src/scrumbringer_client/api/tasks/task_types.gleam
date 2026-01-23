@@ -77,3 +77,47 @@ pub fn create_task_type(
     to_msg,
   )
 }
+
+/// Story 4.9 AC13: Update an existing task type.
+pub fn update_task_type(
+  type_id: Int,
+  name: String,
+  icon: String,
+  capability_id: option.Option(Int),
+  to_msg: fn(core.ApiResult(TaskType)) -> msg,
+) -> Effect(msg) {
+  let base = [#("name", json.string(name)), #("icon", json.string(icon))]
+
+  let entries = case capability_id {
+    option.Some(id) -> list.append(base, [#("capability_id", json.int(id))])
+    option.None -> base
+  }
+
+  let body = json.object(entries)
+  let decoder =
+    decode.field("task_type", decoders.task_type_decoder(), decode.success)
+
+  core.request(
+    "PATCH",
+    "/api/v1/task-types/" <> int.to_string(type_id),
+    option.Some(body),
+    decoder,
+    to_msg,
+  )
+}
+
+/// Story 4.9 AC14: Delete a task type (only if no tasks use it).
+pub fn delete_task_type(
+  type_id: Int,
+  to_msg: fn(core.ApiResult(Int)) -> msg,
+) -> Effect(msg) {
+  let decoder = decode.field("id", decode.int, decode.success)
+
+  core.request(
+    "DELETE",
+    "/api/v1/task-types/" <> int.to_string(type_id),
+    option.None,
+    decoder,
+    to_msg,
+  )
+}

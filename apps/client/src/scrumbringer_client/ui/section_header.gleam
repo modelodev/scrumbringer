@@ -28,7 +28,7 @@
 ////
 //// // Header with action button
 //// section_header.view_with_action(
-////   icons.Catalog,
+////   icons.Crosshairs,
 ////   "Capacidades",
 ////   dialog.add_button(model, i18n_text.CreateCapability, OpenDialog),
 //// )

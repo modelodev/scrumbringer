@@ -501,11 +501,24 @@ fn build_left_panel(
       router.Config(permissions.Members, model.selected_project_id),
       Push,
     ),
-    on_navigate_config_catalog: NavigateTo(
+    on_navigate_config_capabilities: NavigateTo(
       router.Config(permissions.Capabilities, model.selected_project_id),
       Push,
     ),
-    on_navigate_config_automation: NavigateTo(
+    // Story 4.9: New config section navigation
+    on_navigate_config_cards: NavigateTo(
+      router.Config(permissions.Cards, model.selected_project_id),
+      Push,
+    ),
+    on_navigate_config_task_types: NavigateTo(
+      router.Config(permissions.TaskTypes, model.selected_project_id),
+      Push,
+    ),
+    on_navigate_config_templates: NavigateTo(
+      router.Config(permissions.TaskTemplates, model.selected_project_id),
+      Push,
+    ),
+    on_navigate_config_rules: NavigateTo(
       router.Config(permissions.Workflows, model.selected_project_id),
       Push,
     ),

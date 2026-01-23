@@ -21,6 +21,7 @@
 //// - **api/tasks.gleam**: Provides API effects for task type operations
 
 import gleam/int
+import gleam/list
 import gleam/option as opt
 import gleam/string
 
@@ -32,8 +33,8 @@ import scrumbringer_client/api/tasks as api_tasks
 import domain/api_error.{type ApiError}
 import domain/task_type.{type TaskType}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, IconError, IconIdle, IconOk, Loaded,
-  Model, TaskTypeCreated,
+  type Model, type Msg, type TaskTypeDialogMode, Failed, IconError, IconIdle,
+  IconOk, Loaded, Model, TaskTypeCreated,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -299,4 +300,89 @@ pub fn handle_task_type_created_error(
       effect.none(),
     )
   }
+}
+
+// =============================================================================
+// Task Type Dialog Mode Handlers (component pattern)
+// =============================================================================
+
+/// Handle task type dialog open (using new component pattern).
+pub fn handle_open_task_type_dialog(
+  model: Model,
+  mode: TaskTypeDialogMode,
+) -> #(Model, Effect(Msg)) {
+  #(Model(..model, task_types_dialog_mode: opt.Some(mode)), effect.none())
+}
+
+/// Handle task type dialog close (using new component pattern).
+pub fn handle_close_task_type_dialog(model: Model) -> #(Model, Effect(Msg)) {
+  #(Model(..model, task_types_dialog_mode: opt.None), effect.none())
+}
+
+/// Handle task type created from component event.
+pub fn handle_task_type_crud_created(
+  model: Model,
+  _task_type: TaskType,
+  refresh_fn: fn(Model) -> #(Model, Effect(Msg)),
+) -> #(Model, Effect(Msg)) {
+  let model =
+    Model(
+      ..model,
+      task_types_dialog_mode: opt.None,
+      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskTypeCreated)),
+    )
+  // Refresh task types list to include the new type
+  refresh_fn(model)
+}
+
+/// Handle task type updated from component event.
+pub fn handle_task_type_crud_updated(
+  model: Model,
+  task_type: TaskType,
+) -> #(Model, Effect(Msg)) {
+  // Update task type in the list
+  let updated_list = case model.task_types {
+    Loaded(task_types) ->
+      Loaded(
+        task_types
+        |> list.map(fn(tt) {
+          case tt.id == task_type.id {
+            True -> task_type
+            False -> tt
+          }
+        }),
+      )
+    other -> other
+  }
+  #(
+    Model(
+      ..model,
+      task_types: updated_list,
+      task_types_dialog_mode: opt.None,
+      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskTypeUpdated)),
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle task type deleted from component event.
+pub fn handle_task_type_crud_deleted(
+  model: Model,
+  type_id: Int,
+) -> #(Model, Effect(Msg)) {
+  // Remove task type from the list
+  let updated_list = case model.task_types {
+    Loaded(task_types) ->
+      Loaded(list.filter(task_types, fn(tt) { tt.id != type_id }))
+    other -> other
+  }
+  #(
+    Model(
+      ..model,
+      task_types: updated_list,
+      task_types_dialog_mode: opt.None,
+      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskTypeDeleted)),
+    ),
+    effect.none(),
+  )
 }

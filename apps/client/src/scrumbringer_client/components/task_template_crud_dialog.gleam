@@ -169,8 +169,9 @@ fn template_property_decoder() -> Decoder(Msg) {
   use type_id <- decode.field("type_id", decode.int)
   use type_name <- decode.field("type_name", decode.string)
   use priority <- decode.field("priority", decode.int)
-  use created_by <- decode.field("created_by", decode.int)
-  use created_at <- decode.field("created_at", decode.string)
+  use _created_by <- decode.field("created_by", decode.int)
+  use _created_at <- decode.field("created_at", decode.string)
+  use rules_count <- decode.optional_field("rules_count", 0, decode.int)
   use mode <- decode.field("_mode", decode.string)
   let template =
     TaskTemplate(
@@ -182,8 +183,9 @@ fn template_property_decoder() -> Decoder(Msg) {
       type_id: type_id,
       type_name: type_name,
       priority: priority,
-      created_by: created_by,
-      created_at: created_at,
+      created_by: 0,
+      created_at: "",
+      rules_count: rules_count,
     )
   case mode {
     "edit" -> decode.success(ModeReceived(ModeEdit(template)))
@@ -206,6 +208,7 @@ fn task_type_decoder() -> Decoder(TaskType) {
     name: name,
     icon: icon,
     capability_id: option.None,
+    tasks_count: 0,
   ))
 }
 

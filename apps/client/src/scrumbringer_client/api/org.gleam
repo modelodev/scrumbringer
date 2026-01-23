@@ -300,6 +300,25 @@ pub fn create_project_capability(
   )
 }
 
+/// Delete a capability from a project (Story 4.9 AC9).
+pub fn delete_project_capability(
+  project_id: Int,
+  capability_id: Int,
+  to_msg: fn(ApiResult(Int)) -> msg,
+) -> Effect(msg) {
+  let decoder = decode.field("id", decode.int, decode.success)
+  core.request(
+    "DELETE",
+    "/api/v1/projects/"
+      <> int.to_string(project_id)
+      <> "/capabilities/"
+      <> int.to_string(capability_id),
+    option.None,
+    decoder,
+    to_msg,
+  )
+}
+
 // =============================================================================
 // Invite API Functions
 // =============================================================================

@@ -43,6 +43,7 @@ pub fn translate(text: Text) -> String {
     text.LoggedOut -> "Logged out"
     text.ProjectCreated -> "Project created"
     text.CapabilityCreated -> "Capability created"
+    text.CapabilityDeleted -> "Capability deleted"
     text.InviteLinkCreated -> "Invite link created"
     text.InviteLinkRegenerated -> "Invite link regenerated"
     text.RoleUpdated -> "Role updated"
@@ -301,6 +302,9 @@ pub fn translate(text: Text) -> String {
     // Capabilities
     text.Capabilities -> "Capabilities"
     text.CreateCapability -> "Create Capability"
+    text.DeleteCapability -> "Delete Capability"
+    text.ConfirmDeleteCapability(name) ->
+      "Delete capability \"" <> name <> "\"? This action cannot be undone."
     text.CapabilityNamePlaceholder -> "e.g., Frontend, Backend, UX..."
     text.NoCapabilitiesYet -> "No capabilities yet"
 
@@ -351,6 +355,26 @@ pub fn translate(text: Text) -> String {
       "Select a project to manage task types."
     text.TaskTypesTitle(project_name) -> "Task Types - " <> project_name
     text.CreateTaskType -> "Create Task Type"
+    text.EditTaskType -> "Edit Task Type"
+    text.DeleteTaskType -> "Delete Task Type"
+    text.ConfirmDeleteTaskType(name) -> "Delete task type \"" <> name <> "\"?"
+    text.TaskTypeHasTasks(count) ->
+      "Cannot delete: has " <> int.to_string(count) <> " task" <> case count {
+        1 -> ""
+        _ -> "s"
+      }
+    text.TaskTypeName -> "Type name"
+    text.TaskTypeUpdated -> "Task type updated"
+    text.TaskTypeDeleted -> "Task type deleted"
+
+    // Contextual hints (Story 4.9 AC21-22)
+    text.RulesHintTemplates ->
+      "Rules use templates to create tasks. Manage templates in "
+    text.RulesHintTemplatesLink -> "Templates"
+    text.TemplatesHintRules ->
+      "Templates define what tasks to create. Rules determine when to create them. See "
+    text.TemplatesHintRulesLink -> "Rules"
+
     text.IdentitySection -> "Identity"
     text.AppearanceSection -> "Appearance"
     text.ConfigurationSection -> "Configuration"
@@ -556,8 +580,15 @@ pub fn translate(text: Text) -> String {
     text.NewCard -> "New Card"
     text.Configuration -> "Configuration"
     text.Team -> "Team"
-    text.Catalog -> "Catalog"
-    text.Automation -> "Automation"
+    // Note: text.Capabilities already translated in Capabilities section
+    // Story 4.9: New config nav items
+    text.CardsConfig -> "Cards"
+    text.TaskTypes -> "Task Types"
+    text.Templates -> "Templates"
+    text.Rules -> "Rules"
+    // Story 4.9: Cards config filters (UX improvements)
+    text.ShowEmptyCards -> "Show empty"
+    text.ShowCompletedCards -> "Show completed"
     text.Organization -> "Organization"
     text.OrgUsers -> "Users"
     text.Invites -> "Invitations"

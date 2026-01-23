@@ -213,6 +213,7 @@ fn task_type_decoder() -> Decoder(TaskType) {
     name: name,
     icon: icon,
     capability_id: option.None,
+    tasks_count: 0,
   ))
 }
 

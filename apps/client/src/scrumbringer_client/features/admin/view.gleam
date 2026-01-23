@@ -36,7 +36,7 @@ import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{
-  button, div, form, h2, h3, hr, img, input, label, option, p, select, span,
+  a, button, div, form, h2, h3, hr, img, input, label, option, p, select, span,
   table, td, text, th, thead, tr,
 }
 import lustre/element/keyed
@@ -65,8 +65,12 @@ import scrumbringer_client/client_state.{
   AdminRuleMetricsToChangedAndRefresh,
   AdminRuleMetricsWorkflowExpanded, CapabilityCreateDialogClosed,
   CapabilityCreateDialogOpened, CapabilityCreateNameChanged,
-  CapabilityCreateSubmitted, CardCrudCreated, CardCrudDeleted, CardCrudUpdated,
-  CardDialogCreate, CardDialogDelete, CardDialogEdit, CloseCardDialog,
+  CapabilityCreateSubmitted, CapabilityDeleteDialogClosed,
+  CapabilityDeleteDialogOpened, CapabilityDeleteSubmitted,
+  CardCrudCreated, CardCrudDeleted, CardCrudUpdated,
+  CardDialogCreate, CardDialogDelete, CardDialogEdit,
+  CardsSearchChanged, CardsShowCompletedToggled, CardsShowEmptyToggled, CardsStateFilterChanged,
+  CloseCardDialog,
   CloseRuleDialog, CloseTaskTemplateDialog, Failed, Loaded,
   Loading, MemberAddDialogClosed, MemberAddDialogOpened, MemberAddRoleChanged,
   MemberAddSubmitted, MemberAddUserSelected, MemberRemoveCancelled,
@@ -78,10 +82,9 @@ import scrumbringer_client/client_state.{
   RuleDialogDelete, RuleDialogEdit, RulesBackClicked, TaskTemplateCrudCreated,
   TaskTemplateCrudDeleted, TaskTemplateCrudUpdated, TaskTemplateDialogCreate,
   TaskTemplateDialogDelete, TaskTemplateDialogEdit,
-  TaskTypeCreateCapabilityChanged, TaskTypeCreateDialogClosed,
-  TaskTypeCreateDialogOpened, TaskTypeCreateIconCategoryChanged,
-  TaskTypeCreateIconChanged, TaskTypeCreateIconSearchChanged,
-  TaskTypeCreateNameChanged, TaskTypeCreateSubmitted,
+  OpenTaskTypeDialog, CloseTaskTypeDialog,
+  TaskTypeCrudCreated, TaskTypeCrudUpdated, TaskTypeCrudDeleted,
+  TaskTypeDialogCreate, TaskTypeDialogDelete, TaskTypeDialogEdit,
   UserProjectRemoveClicked, UserProjectsAddProjectChanged, UserProjectsAddRoleChanged,
   UserProjectsAddSubmitted, UserProjectsDialogClosed, UserProjectsDialogOpened,
   UserProjectRoleChangeRequested,
@@ -99,12 +102,10 @@ import scrumbringer_client/client_state.{
 // Rule Metrics Tab
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme
-import scrumbringer_client/ui/card_badge
-import scrumbringer_client/ui/color_picker
+import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/icon_catalog
-import scrumbringer_client/ui/icon_picker
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/section_header
 import scrumbringer_client/update_helpers
@@ -497,7 +498,7 @@ pub fn view_capabilities(model: Model) -> Element(Msg) {
   div([attribute.class("section")], [
     // Section header with add button (Story 4.8: consistent icons)
     section_header.view_with_action(
-      icons.Catalog,
+      icons.Crosshairs,
       update_helpers.i18n_t(model, i18n_text.Capabilities),
       dialog.add_button(
         model,
@@ -515,6 +516,8 @@ pub fn view_capabilities(model: Model) -> Element(Msg) {
         view_capability_members_dialog(model, capability_id, project_name)
       opt.None -> element.none()
     },
+    // Delete capability dialog (Story 4.9 AC9)
+    view_capability_delete_dialog(model),
   ])
 }
 
@@ -570,6 +573,61 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
           text(case model.capabilities_create_in_flight {
             True -> update_helpers.i18n_t(model, i18n_text.Creating)
             False -> update_helpers.i18n_t(model, i18n_text.Create)
+          }),
+        ],
+      ),
+    ],
+  )
+}
+
+/// Dialog for deleting a capability (Story 4.9 AC9).
+fn view_capability_delete_dialog(model: Model) -> Element(Msg) {
+  // Get capability name for the confirmation message
+  let capability_name = case model.capability_delete_dialog_id {
+    opt.Some(id) ->
+      case model.capabilities {
+        Loaded(caps) ->
+          caps
+          |> list.find(fn(c) { c.id == id })
+          |> result.map(fn(c) { c.name })
+          |> result.unwrap("")
+        _ -> ""
+      }
+    opt.None -> ""
+  }
+
+  dialog.view(
+    dialog.DialogConfig(
+      title: update_helpers.i18n_t(model, i18n_text.DeleteCapability),
+      icon: opt.None,
+      size: dialog.DialogSm,
+      on_close: CapabilityDeleteDialogClosed,
+    ),
+    opt.is_some(model.capability_delete_dialog_id),
+    model.capability_delete_error,
+    // Confirmation content
+    [
+      p([], [
+        text(update_helpers.i18n_t(
+          model,
+          i18n_text.ConfirmDeleteCapability(capability_name),
+        )),
+      ]),
+    ],
+    // Footer buttons
+    [
+      dialog.cancel_button(model, CapabilityDeleteDialogClosed),
+      button(
+        [
+          attribute.type_("button"),
+          attribute.class("btn btn-danger"),
+          attribute.disabled(model.capability_delete_in_flight),
+          event.on_click(CapabilityDeleteSubmitted),
+        ],
+        [
+          text(case model.capability_delete_in_flight {
+            True -> update_helpers.i18n_t(model, i18n_text.Deleting)
+            False -> update_helpers.i18n_t(model, i18n_text.Delete)
           }),
         ],
       ),
@@ -649,118 +707,97 @@ pub fn view_task_types(
           dialog.add_button(
             model,
             i18n_text.CreateTaskType,
-            TaskTypeCreateDialogOpened,
+            OpenTaskTypeDialog(TaskTypeDialogCreate),
           ),
         ),
         // Task types list
         view_task_types_list(model, model.task_types, model.theme),
-        // Create task type dialog
-        view_task_types_create_dialog(model),
+        // Task type CRUD dialog component (handles create, edit, delete)
+        view_task_type_crud_dialog(model, project.id),
       ])
   }
 }
 
-/// Dialog for creating a new task type.
-fn view_task_types_create_dialog(model: Model) -> Element(Msg) {
-  dialog.view(
-    dialog.DialogConfig(
-      title: update_helpers.i18n_t(model, i18n_text.CreateTaskType),
-      icon: opt.None,
-      size: dialog.DialogMd,
-      on_close: TaskTypeCreateDialogClosed,
-    ),
-    model.task_types_create_dialog_open,
-    model.task_types_create_error,
-    // Form content
-    [
-      form(
+/// Render the task-type-crud-dialog Lustre component.
+fn view_task_type_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
+  case model.task_types_dialog_mode {
+    opt.None -> element.none()
+    opt.Some(mode) -> {
+      let #(mode_str, type_json) = case mode {
+        TaskTypeDialogCreate -> #("create", attribute.none())
+        TaskTypeDialogEdit(task_type) ->
+          #("edit", attribute.property("task-type", task_type_to_property_json(task_type, "edit")))
+        TaskTypeDialogDelete(task_type) ->
+          #("delete", attribute.property("task-type", task_type_to_property_json(task_type, "delete")))
+      }
+
+      element.element(
+        "task-type-crud-dialog",
         [
-          event.on_submit(fn(_) { TaskTypeCreateSubmitted }),
-          attribute.id("task-type-create-form"),
+          // Attributes (strings)
+          attribute.attribute("locale", locale.serialize(model.locale)),
+          attribute.attribute("project-id", int.to_string(project_id)),
+          attribute.attribute("mode", mode_str),
+          // Property for task type data (edit/delete modes)
+          type_json,
+          // Event listeners for component events
+          event.on("type-created", decode_task_type_created_event()),
+          event.on("type-updated", decode_task_type_updated_event()),
+          event.on("type-deleted", decode_task_type_deleted_event()),
+          event.on("close-requested", decode_task_type_close_event()),
         ],
-        [
-          // Section: Identity
-          div([attribute.class("form-section")], [
-            div([attribute.class("form-section-title")], [
-              text(update_helpers.i18n_t(model, i18n_text.IdentitySection)),
-            ]),
-            div([attribute.class("field")], [
-              label([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
-              input([
-                attribute.type_("text"),
-                attribute.value(model.task_types_create_name),
-                event.on_input(TaskTypeCreateNameChanged),
-                attribute.required(True),
-                attribute.attribute("aria-label", "Task type name"),
-              ]),
-            ]),
-          ]),
-          // Section: Appearance
-          div([attribute.class("form-section")], [
-            div([attribute.class("form-section-title")], [
-              text(update_helpers.i18n_t(model, i18n_text.AppearanceSection)),
-            ]),
-            div([attribute.class("field")], [
-              label([], [text(update_helpers.i18n_t(model, i18n_text.Icon))]),
-              // Selected icon preview
-              case model.task_types_create_icon == "" {
-                True -> element.none()
-                False ->
-                  div([attribute.class("icon-preview-selected")], [
-                    icon_catalog.render(model.task_types_create_icon, 32),
-                    span([attribute.class("icon-preview-name")], [
-                      text(model.task_types_create_icon),
-                    ]),
-                  ])
-              },
-              // Icon picker grid
-              view_icon_picker_grid(model),
-            ]),
-          ]),
-          // Section: Configuration
-          div([attribute.class("form-section")], [
-            div([attribute.class("form-section-title")], [
-              text(update_helpers.i18n_t(model, i18n_text.ConfigurationSection)),
-            ]),
-            div([attribute.class("field")], [
-              label([], [
-                text(update_helpers.i18n_t(model, i18n_text.CapabilityOptional)),
-              ]),
-              view_capability_selector(
-                model,
-                model.capabilities,
-                model.task_types_create_capability_id,
-              ),
-            ]),
-          ]),
-        ],
-      ),
-    ],
-    // Footer buttons
-    [
-      dialog.cancel_button(model, TaskTypeCreateDialogClosed),
-      button(
-        [
-          attribute.type_("submit"),
-          attribute.form("task-type-create-form"),
-          attribute.disabled(
-            model.task_types_create_in_flight
-            || !icon_catalog.exists(model.task_types_create_icon),
-          ),
-          attribute.class(case model.task_types_create_in_flight {
-            True -> "btn-loading"
-            False -> ""
-          }),
-        ],
-        [
-          text(case model.task_types_create_in_flight {
-            True -> update_helpers.i18n_t(model, i18n_text.Creating)
-            False -> update_helpers.i18n_t(model, i18n_text.Create)
-          }),
-        ],
-      ),
-    ],
-  )
+        [],
+      )
+    }
+  }
+}
+
+/// Convert TaskType to JSON for property passing.
+fn task_type_to_property_json(task_type: TaskType, mode: String) -> json.Json {
+  json.object([
+    #("id", json.int(task_type.id)),
+    #("name", json.string(task_type.name)),
+    #("icon", json.string(task_type.icon)),
+    #("capability_id", case task_type.capability_id {
+      opt.Some(id) -> json.int(id)
+      opt.None -> json.null()
+    }),
+    #("tasks_count", json.int(task_type.tasks_count)),
+    #("_mode", json.string(mode)),
+  ])
+}
+
+/// Decoder for type-created event.
+fn decode_task_type_created_event() -> decode.Decoder(Msg) {
+  use task_type <- decode.field("detail", task_type_decoder())
+  decode.success(TaskTypeCrudCreated(task_type))
+}
+
+/// Decoder for type-updated event.
+fn decode_task_type_updated_event() -> decode.Decoder(Msg) {
+  use task_type <- decode.field("detail", task_type_decoder())
+  decode.success(TaskTypeCrudUpdated(task_type))
+}
+
+/// Decoder for type-deleted event.
+fn decode_task_type_deleted_event() -> decode.Decoder(Msg) {
+  use id <- decode.field("detail", decode.field("id", decode.int, decode.success))
+  decode.success(TaskTypeCrudDeleted(id))
+}
+
+/// Decoder for close-requested event.
+fn decode_task_type_close_event() -> decode.Decoder(Msg) {
+  decode.success(CloseTaskTypeDialog)
+}
+
+/// Decoder for TaskType from JSON (used in custom events).
+fn task_type_decoder() -> decode.Decoder(TaskType) {
+  use id <- decode.field("id", decode.int)
+  use name <- decode.field("name", decode.string)
+  use icon <- decode.field("icon", decode.string)
+  use capability_id <- decode.optional_field("capability_id", opt.None, decode.optional(decode.int))
+  use tasks_count <- decode.optional_field("tasks_count", 0, decode.int)
+  decode.success(task_type.TaskType(id: id, name: name, icon: icon, capability_id: capability_id, tasks_count: tasks_count))
 }
 
 // =============================================================================
@@ -803,19 +840,32 @@ fn view_capabilities_list(
           "col-number",
           "cell-number",
         ),
-        // Actions (Story 4.8 UX)
+        // Actions (Story 4.8 UX, Story 4.9 AC9)
         data_table.column_with_class(
           t(i18n_text.Actions),
           fn(c: Capability) {
-            button(
-              [
-                attribute.class("btn-icon btn-xs"),
-                attribute.attribute("title", t(i18n_text.ManageMembers)),
-                attribute.attribute("data-testid", "capability-members-btn"),
-                event.on_click(CapabilityMembersDialogOpened(c.id)),
-              ],
-              [icons.nav_icon(icons.OrgUsers, icons.Small)],
-            )
+            div([attribute.class("btn-group")], [
+              // Manage members button
+              button(
+                [
+                  attribute.class("btn-icon btn-xs"),
+                  attribute.attribute("title", t(i18n_text.ManageMembers)),
+                  attribute.attribute("data-testid", "capability-members-btn"),
+                  event.on_click(CapabilityMembersDialogOpened(c.id)),
+                ],
+                [icons.nav_icon(icons.OrgUsers, icons.Small)],
+              ),
+              // Delete button (Story 4.9 AC9)
+              button(
+                [
+                  attribute.class("btn-icon btn-xs btn-danger-ghost"),
+                  attribute.attribute("title", t(i18n_text.Delete)),
+                  attribute.attribute("data-testid", "capability-delete-btn"),
+                  event.on_click(CapabilityDeleteDialogOpened(c.id)),
+                ],
+                [icons.nav_icon(icons.Trash, icons.Small)],
+              ),
+            ])
           },
           "col-actions",
           "cell-actions",
@@ -1458,129 +1508,66 @@ pub fn view_task_type_icon_inline(
   }
 }
 
-fn view_icon_picker_grid(model: Model) -> Element(Msg) {
-  icon_picker.view(
-    model.task_types_create_icon_search,
-    model.task_types_create_icon_category,
-    model.task_types_create_icon,
-    fn(picker_msg) {
-      case picker_msg {
-        icon_picker.SearchChanged(q) -> TaskTypeCreateIconSearchChanged(q)
-        icon_picker.CategoryChanged(c) -> TaskTypeCreateIconCategoryChanged(c)
-        icon_picker.IconSelected(id) -> TaskTypeCreateIconChanged(id)
-      }
-    },
-  )
-}
-
-fn view_capability_selector(
-  model: Model,
-  capabilities: Remote(List(Capability)),
-  selected: opt.Option(String),
-) -> Element(Msg) {
-  case capabilities {
-    Loaded(capabilities) -> {
-      let selected_value = opt.unwrap(selected, "")
-
-      select(
-        [
-          attribute.value(selected_value),
-          event.on_input(TaskTypeCreateCapabilityChanged),
-        ],
-        [
-          option(
-            [attribute.value("")],
-            update_helpers.i18n_t(model, i18n_text.NoneOption),
-          ),
-          ..list.map(capabilities, fn(c) {
-            option([attribute.value(int.to_string(c.id))], c.name)
-          })
-        ],
-      )
-    }
-
-    _ ->
-      div(
-        [
-          attribute.class("empty"),
-        ],
-        [text(update_helpers.i18n_t(model, i18n_text.LoadingCapabilities))],
-      )
-  }
-}
-
 fn view_task_types_list(
   model: Model,
   task_types: Remote(List(TaskType)),
   theme: theme.Theme,
 ) -> Element(Msg) {
-  case task_types {
-    NotAsked | Loading ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+  // Story 4.9: Refactored to use data_table.view_remote_with_forbidden
+  let empty_state =
+    div([attribute.class("empty")], [
+      h2([], [text(update_helpers.i18n_t(model, i18n_text.NoTaskTypesYet))]),
+      p([], [text(update_helpers.i18n_t(model, i18n_text.TaskTypesExplain))]),
+      p([], [text(update_helpers.i18n_t(model, i18n_text.CreateFirstTaskTypeHint))]),
+    ])
+
+  data_table.view_remote_with_forbidden(
+    task_types,
+    loading_msg: update_helpers.i18n_t(model, i18n_text.LoadingEllipsis),
+    empty_msg: "",
+    forbidden_msg: update_helpers.i18n_t(model, i18n_text.NotPermitted),
+    config: data_table.new()
+      |> data_table.with_empty_state(empty_state)
+      |> data_table.with_columns([
+        data_table.column(
+          update_helpers.i18n_t(model, i18n_text.Name),
+          fn(tt: TaskType) { text(tt.name) },
+        ),
+        data_table.column(
+          update_helpers.i18n_t(model, i18n_text.Icon),
+          fn(tt: TaskType) { view_task_type_icon_inline(tt.icon, 20, theme) },
+        ),
+        data_table.column(
+          update_helpers.i18n_t(model, i18n_text.CapabilityLabel),
+          fn(tt: TaskType) {
+            case tt.capability_id {
+              opt.Some(id) -> text(int.to_string(id))
+              opt.None -> text("-")
+            }
+          },
+        ),
+        data_table.column(
+          update_helpers.i18n_t(model, i18n_text.CardTasks),
+          fn(tt: TaskType) { text(int.to_string(tt.tasks_count)) },
+        ),
+        data_table.column_with_class(
+          update_helpers.i18n_t(model, i18n_text.Actions),
+          fn(tt: TaskType) {
+            action_buttons.edit_delete_row_with_testid(
+              edit_title: update_helpers.i18n_t(model, i18n_text.EditTaskType),
+              edit_click: OpenTaskTypeDialog(TaskTypeDialogEdit(tt)),
+              edit_testid: "task-type-edit-btn",
+              delete_title: update_helpers.i18n_t(model, i18n_text.DeleteTaskType),
+              delete_click: OpenTaskTypeDialog(TaskTypeDialogDelete(tt)),
+              delete_testid: "task-type-delete-btn",
+            )
+          },
+          "col-actions",
+          "cell-actions",
+        ),
       ])
-
-    Failed(err) ->
-      case err.status == 403 {
-        True ->
-          div(
-            [
-              attribute.class("not-permitted"),
-            ],
-            [text(update_helpers.i18n_t(model, i18n_text.NotPermitted))],
-          )
-        False -> div([attribute.class("error")], [text(err.message)])
-      }
-
-    Loaded(task_types) ->
-      case task_types {
-        [] ->
-          div([attribute.class("empty")], [
-            h2([], [
-              text(update_helpers.i18n_t(model, i18n_text.NoTaskTypesYet)),
-            ]),
-            p([], [
-              text(update_helpers.i18n_t(model, i18n_text.TaskTypesExplain)),
-            ]),
-            p([], [
-              text(update_helpers.i18n_t(
-                model,
-                i18n_text.CreateFirstTaskTypeHint,
-              )),
-            ]),
-          ])
-        _ ->
-          table([attribute.class("table")], [
-            thead([], [
-              tr([], [
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Icon))]),
-                th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.CapabilityLabel)),
-                ]),
-              ]),
-            ]),
-            keyed.tbody(
-              [],
-              list.map(task_types, fn(tt) {
-                #(
-                  int.to_string(tt.id),
-                  tr([], [
-                    td([], [text(tt.name)]),
-                    td([], [view_task_type_icon_inline(tt.icon, 20, theme)]),
-                    td([], [
-                      case tt.capability_id {
-                        opt.Some(id) -> text(int.to_string(id))
-                        opt.None -> text("-")
-                      },
-                    ]),
-                  ]),
-                )
-              }),
-            ),
-          ])
-      }
-  }
+      |> data_table.with_key(fn(tt) { int.to_string(tt.id) }),
+  )
 }
 
 // =============================================================================
@@ -1610,8 +1597,10 @@ pub fn view_cards(
             OpenCardDialog(CardDialogCreate),
           ),
         ),
-        // Cards list
-        view_cards_list(model, model.cards),
+        // Story 4.9 AC7-8: Filters bar
+        view_cards_filters(model),
+        // Cards list (filtered)
+        view_cards_list(model, filter_cards(model)),
         // Card CRUD dialog component (handles create, edit, delete)
         view_card_crud_dialog(model, project.id),
       ])
@@ -1743,96 +1732,227 @@ fn card_to_property_json(c: Card, mode: String) -> json.Json {
   ])
 }
 
-fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
-  case cards {
-    NotAsked | Loading ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
-      ])
-
-    Failed(err) ->
-      case err.status == 403 {
-        True ->
-          div([attribute.class("not-permitted")], [
-            text(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-          ])
-        False -> div([attribute.class("error")], [text(err.message)])
-      }
-
-    Loaded(cards) ->
-      case cards {
-        [] ->
-          // E08: Improved empty state with guidance
-          div([attribute.class("empty-state")], [
-            div([attribute.class("empty-state-icon")], [icons.nav_icon(icons.ClipboardDoc, icons.Large)]),
-            div([attribute.class("empty-state-title")], [
-              text(update_helpers.i18n_t(model, i18n_text.NoCardsYet)),
-            ]),
-            div([attribute.class("empty-state-description")], [
-              text(
-                "Las tarjetas agrupan tareas relacionadas. Crea tu primera tarjeta para organizar el trabajo.",
-              ),
-            ]),
-          ])
-        _ ->
-          table([attribute.class("table")], [
-            thead([], [
-              tr([], [
-                th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.CardTitle)),
-                ]),
-                th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.CardState)),
-                ]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.CardTasks))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
-              ]),
-            ]),
-            keyed.tbody(
-              [],
-              list.map(cards, fn(c) {
-                let card_color = case c.color {
-                  opt.Some(s) -> color_picker.string_to_color(s)
-                  opt.None -> opt.None
-                }
-                #(
-                  int.to_string(c.id),
-                  tr([], [
-                    td([attribute.class("card-title-cell")], [
-                      // Card initials badge (DRY: uses shared card_badge component)
-                      card_badge.view(c.title, card_color, opt.None),
-                      text(c.title),
-                    ]),
-                    td([], [text(view_card_state_label(model, c.state))]),
-                    td([], [
-                      text(update_helpers.i18n_t(
-                        model,
-                        i18n_text.CardTaskCount(c.completed_count, c.task_count),
-                      )),
-                    ]),
-                    td([], [
-                      button([event.on_click(OpenCardDialog(CardDialogEdit(c.id)))], [
-                        text(update_helpers.i18n_t(model, i18n_text.EditCard)),
-                      ]),
-                      button([event.on_click(OpenCardDialog(CardDialogDelete(c.id)))], [
-                        text(update_helpers.i18n_t(model, i18n_text.DeleteCard)),
-                      ]),
-                    ]),
-                  ]),
-                )
-              }),
+/// Story 4.9 AC7-8: Filter bar for cards (UX improved - inline layout)
+fn view_cards_filters(model: Model) -> Element(Msg) {
+  div(
+    [
+      attribute.class("filters-bar filters-inline"),
+      attribute.attribute("data-testid", "cards-filters"),
+    ],
+    [
+      // Search input first (with icon placeholder)
+      div([attribute.class("filter-group filter-search")], [
+        input([
+          attribute.type_("search"),
+          attribute.placeholder(update_helpers.i18n_t(model, i18n_text.SearchPlaceholder)),
+          attribute.value(model.cards_search),
+          event.on_input(CardsSearchChanged),
+        ]),
+      ]),
+      // State filter dropdown (AC8)
+      div([attribute.class("filter-group")], [
+        label([], [text(update_helpers.i18n_t(model, i18n_text.CardState))]),
+        select(
+          [
+            attribute.class("filter-select"),
+            attribute.attribute("data-testid", "cards-state-filter"),
+            event.on_input(CardsStateFilterChanged),
+          ],
+          [
+            option(
+              [attribute.value(""), attribute.selected(model.cards_state_filter == opt.None)],
+              update_helpers.i18n_t(model, i18n_text.AllOption),
             ),
-          ])
-      }
+            option(
+              [
+                attribute.value("pendiente"),
+                attribute.selected(model.cards_state_filter == opt.Some(card.Pendiente)),
+              ],
+              update_helpers.i18n_t(model, i18n_text.CardStatePendiente),
+            ),
+            option(
+              [
+                attribute.value("en_curso"),
+                attribute.selected(model.cards_state_filter == opt.Some(card.EnCurso)),
+              ],
+              update_helpers.i18n_t(model, i18n_text.CardStateEnCurso),
+            ),
+            option(
+              [
+                attribute.value("cerrada"),
+                attribute.selected(model.cards_state_filter == opt.Some(card.Cerrada)),
+              ],
+              update_helpers.i18n_t(model, i18n_text.CardStateCerrada),
+            ),
+          ],
+        ),
+      ]),
+      // Show empty checkbox (AC7) - unchecked by default
+      div([attribute.class("filter-group")], [
+        label([attribute.class("checkbox-label")], [
+          input([
+            attribute.type_("checkbox"),
+            attribute.checked(model.cards_show_empty),
+            attribute.attribute("data-testid", "show-empty-cards"),
+            event.on_check(fn(_) { CardsShowEmptyToggled }),
+          ]),
+          text(update_helpers.i18n_t(model, i18n_text.ShowEmptyCards)),
+        ]),
+      ]),
+      // Show completed checkbox - unchecked by default
+      div([attribute.class("filter-group")], [
+        label([attribute.class("checkbox-label")], [
+          input([
+            attribute.type_("checkbox"),
+            attribute.checked(model.cards_show_completed),
+            attribute.attribute("data-testid", "show-completed-cards"),
+            event.on_check(fn(_) { CardsShowCompletedToggled }),
+          ]),
+          text(update_helpers.i18n_t(model, i18n_text.ShowCompletedCards)),
+        ]),
+      ]),
+    ],
+  )
+}
+
+/// Story 4.9: Filter cards based on model filters (UX improved)
+fn filter_cards(model: Model) -> Remote(List(Card)) {
+  case model.cards {
+    Loaded(cards) -> {
+      let filtered =
+        cards
+        |> list.filter(fn(c) {
+          // Filter by state dropdown
+          let state_match = case model.cards_state_filter {
+            opt.None -> True
+            opt.Some(state) -> c.state == state
+          }
+          // Filter by empty (show_empty = False by default = hide cards with 0 tasks)
+          let empty_match = case model.cards_show_empty {
+            True -> True
+            False -> c.task_count > 0
+          }
+          // Filter by completed (show_completed = False by default = hide Cerrada cards)
+          let completed_match = case model.cards_show_completed {
+            True -> True
+            False -> c.state != card.Cerrada
+          }
+          // Filter by search
+          let search_match = case string.is_empty(model.cards_search) {
+            True -> True
+            False ->
+              string.contains(
+                string.lowercase(c.title),
+                string.lowercase(model.cards_search),
+              )
+          }
+          state_match && empty_match && completed_match && search_match
+        })
+      Loaded(filtered)
+    }
+    other -> other
   }
 }
 
-fn view_card_state_label(model: Model, state: card.CardState) -> String {
-  case state {
-    card.Pendiente -> update_helpers.i18n_t(model, i18n_text.CardStatePendiente)
-    card.EnCurso -> update_helpers.i18n_t(model, i18n_text.CardStateEnCurso)
-    card.Cerrada -> update_helpers.i18n_t(model, i18n_text.CardStateCerrada)
+fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
+  // E08: Improved empty state with guidance - using data_table.view_remote_with_forbidden
+  let empty_state =
+    div([attribute.class("empty-state")], [
+      div([attribute.class("empty-state-icon")], [icons.nav_icon(icons.ClipboardDoc, icons.Large)]),
+      div([attribute.class("empty-state-title")], [
+        text(update_helpers.i18n_t(model, i18n_text.NoCardsYet)),
+      ]),
+      div([attribute.class("empty-state-description")], [
+        text("Las tarjetas agrupan tareas relacionadas. Crea tu primera tarjeta para organizar el trabajo."),
+      ]),
+    ])
+
+  data_table.view_remote_with_forbidden(
+    cards,
+    loading_msg: update_helpers.i18n_t(model, i18n_text.LoadingEllipsis),
+    empty_msg: "",
+    forbidden_msg: update_helpers.i18n_t(model, i18n_text.NotPermitted),
+    config: data_table.new()
+      |> data_table.with_empty_state(empty_state)
+      |> data_table.with_columns([
+        // UX: Título con indicador de color (círculo)
+        data_table.column_with_class(
+          update_helpers.i18n_t(model, i18n_text.CardTitle),
+          fn(c: Card) {
+            let color_style = case c.color {
+              opt.Some(hex) -> "background-color: " <> hex <> ";"
+              opt.None -> "background-color: var(--sb-muted);"
+            }
+            div([attribute.class("card-title-with-color")], [
+              span([
+                attribute.class("card-color-dot"),
+                attribute.attribute("style", color_style),
+              ], []),
+              text(c.title),
+            ])
+          },
+          "",
+          "card-title-cell",
+        ),
+        // UX: Estado con badge de color semántico
+        data_table.column(
+          update_helpers.i18n_t(model, i18n_text.CardState),
+          fn(c: Card) { view_card_state_badge(model, c.state) },
+        ),
+        // UX: Progreso con mini barra + texto
+        data_table.column(
+          update_helpers.i18n_t(model, i18n_text.CardTasks),
+          fn(c: Card) { view_card_progress(c.completed_count, c.task_count) },
+        ),
+        // UX: Acciones con iconos (como Task Types)
+        data_table.column_with_class(
+          update_helpers.i18n_t(model, i18n_text.Actions),
+          fn(c: Card) {
+            action_buttons.edit_delete_row_with_testid(
+              edit_title: update_helpers.i18n_t(model, i18n_text.EditCard),
+              edit_click: OpenCardDialog(CardDialogEdit(c.id)),
+              edit_testid: "card-edit-btn",
+              delete_title: update_helpers.i18n_t(model, i18n_text.DeleteCard),
+              delete_click: OpenCardDialog(CardDialogDelete(c.id)),
+              delete_testid: "card-delete-btn",
+            )
+          },
+          "col-actions",
+          "cell-actions",
+        ),
+      ])
+      |> data_table.with_key(fn(c) { int.to_string(c.id) }),
+  )
+}
+
+/// UX: State badge with semantic color
+fn view_card_state_badge(model: Model, state: card.CardState) -> Element(Msg) {
+  let #(label, class) = case state {
+    card.Pendiente -> #(update_helpers.i18n_t(model, i18n_text.CardStatePendiente), "state-badge state-pending")
+    card.EnCurso -> #(update_helpers.i18n_t(model, i18n_text.CardStateEnCurso), "state-badge state-active")
+    card.Cerrada -> #(update_helpers.i18n_t(model, i18n_text.CardStateCerrada), "state-badge state-completed")
   }
+  span([attribute.class(class)], [text(label)])
+}
+
+/// UX: Progress bar + count
+fn view_card_progress(completed: Int, total: Int) -> Element(Msg) {
+  let percent = case total {
+    0 -> 0
+    _ -> { completed * 100 } / total
+  }
+  let width_style = "width: " <> int.to_string(percent) <> "%;"
+  div([attribute.class("card-progress-cell")], [
+    div([attribute.class("progress-bar-mini")], [
+      div([
+        attribute.class("progress-fill-mini"),
+        attribute.attribute("style", width_style),
+      ], []),
+    ]),
+    span([attribute.class("progress-text-mini")], [
+      text(int.to_string(completed) <> "/" <> int.to_string(total)),
+    ]),
+  ])
 }
 
 // =============================================================================
@@ -1875,12 +1995,31 @@ fn view_workflows_list(
             OpenWorkflowDialog(WorkflowDialogCreate),
           ),
         ),
+        // Story 4.9 AC21: Contextual hint with link to Templates
+        view_rules_hint(model),
         // Project workflows table (AC23)
         view_workflows_table(model, model.workflows_project, opt.Some(project)),
         // Workflow CRUD dialog component (handles create, edit, delete)
         view_workflow_crud_dialog(model),
       ])
   }
+}
+
+/// Story 4.9 AC21: Contextual hint linking Rules to Templates.
+fn view_rules_hint(model: Model) -> Element(Msg) {
+  div([attribute.class("info-callout")], [
+    span([attribute.class("info-callout-icon")], [text("\u{1F4A1}")]),
+    span([attribute.class("info-callout-text")], [
+      text(update_helpers.i18n_t(model, i18n_text.RulesHintTemplates)),
+      a(
+        [
+          attribute.href("/config/templates"),
+          attribute.class("info-callout-link"),
+        ],
+        [text(update_helpers.i18n_t(model, i18n_text.RulesHintTemplatesLink) <> " \u{2192}")],
+      ),
+    ]),
+  ])
 }
 
 /// Render the workflow-crud-dialog Lustre component.
@@ -2355,6 +2494,8 @@ pub fn view_task_templates(
         OpenTaskTemplateDialog(TaskTemplateDialogCreate),
       ),
     ),
+    // Story 4.9 AC22: Contextual hint with link to Rules
+    view_templates_hint(model),
     view_task_templates_table(model, model.task_templates_org),
     // Project templates section (if project selected)
     case selected_project {
@@ -2373,6 +2514,23 @@ pub fn view_task_templates(
     },
     // Task template CRUD dialog component
     view_task_template_crud_dialog(model),
+  ])
+}
+
+/// Story 4.9 AC22: Contextual hint linking Templates to Rules.
+fn view_templates_hint(model: Model) -> Element(Msg) {
+  div([attribute.class("info-callout")], [
+    span([attribute.class("info-callout-icon")], [text("\u{1F4A1}")]),
+    span([attribute.class("info-callout-text")], [
+      text(update_helpers.i18n_t(model, i18n_text.TemplatesHintRules)),
+      a(
+        [
+          attribute.href("/config/workflows"),
+          attribute.class("info-callout-link"),
+        ],
+        [text(update_helpers.i18n_t(model, i18n_text.TemplatesHintRulesLink) <> " \u{2192}")],
+      ),
+    ]),
   ])
 }
 
@@ -2493,6 +2651,7 @@ fn decode_task_template_close_requested_event() -> decode.Decoder(Msg) {
 }
 
 /// Decoder for TaskTemplate from JSON (used in custom events).
+/// Story 4.9 AC20: Added rules_count field.
 fn task_template_decoder() -> decode.Decoder(TaskTemplate) {
   use id <- decode.field("id", decode.int)
   use org_id <- decode.field("org_id", decode.int)
@@ -2502,8 +2661,9 @@ fn task_template_decoder() -> decode.Decoder(TaskTemplate) {
   use type_id <- decode.field("type_id", decode.int)
   use type_name <- decode.field("type_name", decode.string)
   use priority <- decode.field("priority", decode.int)
-  use created_by <- decode.field("created_by", decode.int)
-  use created_at <- decode.field("created_at", decode.string)
+  use _created_by <- decode.field("created_by", decode.int)
+  use _created_at <- decode.field("created_at", decode.string)
+  use rules_count <- decode.optional_field("rules_count", 0, decode.int)
   decode.success(workflow.TaskTemplate(
     id: id,
     org_id: org_id,
@@ -2513,8 +2673,9 @@ fn task_template_decoder() -> decode.Decoder(TaskTemplate) {
     type_id: type_id,
     type_name: type_name,
     priority: priority,
-    created_by: created_by,
-    created_at: created_at,
+    created_by: 0,
+    created_at: "",
+    rules_count: rules_count,
   ))
 }
 
@@ -2522,76 +2683,44 @@ fn view_task_templates_table(
   model: Model,
   templates: Remote(List(TaskTemplate)),
 ) -> Element(Msg) {
-  case templates {
-    NotAsked | Loading ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
-      ])
-
-    Failed(err) ->
-      case err.status == 403 {
-        True ->
-          div([attribute.class("not-permitted")], [
-            text(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-          ])
-        False -> div([attribute.class("error")], [text(err.message)])
-      }
-
-    Loaded(templates) ->
-      case templates {
-        [] ->
-          div([attribute.class("empty")], [
-            text(update_helpers.i18n_t(model, i18n_text.NoTaskTemplatesYet)),
-          ])
-        _ ->
-          table([attribute.class("table")], [
-            thead([], [
-              tr([], [
-                th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.TaskTemplateName)),
-                ]),
-                th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.TaskTemplateType)),
-                ]),
-                th([], [
-                  text(update_helpers.i18n_t(
-                    model,
-                    i18n_text.TaskTemplatePriority,
-                  )),
-                ]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
+  // Refactored to use data_table.view_remote_with_forbidden
+  data_table.view_remote_with_forbidden(
+    templates,
+    loading_msg: update_helpers.i18n_t(model, i18n_text.LoadingEllipsis),
+    empty_msg: update_helpers.i18n_t(model, i18n_text.NoTaskTemplatesYet),
+    forbidden_msg: update_helpers.i18n_t(model, i18n_text.NotPermitted),
+    config: data_table.new()
+      |> data_table.with_columns([
+        data_table.column(
+          update_helpers.i18n_t(model, i18n_text.TaskTemplateName),
+          fn(t: TaskTemplate) { text(t.name) },
+        ),
+        data_table.column(
+          update_helpers.i18n_t(model, i18n_text.TaskTemplateType),
+          fn(t: TaskTemplate) { text(t.type_name) },
+        ),
+        data_table.column(
+          update_helpers.i18n_t(model, i18n_text.TaskTemplatePriority),
+          fn(t: TaskTemplate) { text(int.to_string(t.priority)) },
+        ),
+        data_table.column_with_class(
+          update_helpers.i18n_t(model, i18n_text.Actions),
+          fn(t: TaskTemplate) {
+            div([], [
+              button([event.on_click(OpenTaskTemplateDialog(TaskTemplateDialogEdit(t)))], [
+                text(update_helpers.i18n_t(model, i18n_text.EditTaskTemplate)),
               ]),
-            ]),
-            keyed.tbody(
-              [],
-              list.map(templates, fn(t) {
-                #(
-                  int.to_string(t.id),
-                  tr([], [
-                    td([], [text(t.name)]),
-                    td([], [text(t.type_name)]),
-                    td([], [text(int.to_string(t.priority))]),
-                    td([], [
-                      button([event.on_click(OpenTaskTemplateDialog(TaskTemplateDialogEdit(t)))], [
-                        text(update_helpers.i18n_t(
-                          model,
-                          i18n_text.EditTaskTemplate,
-                        )),
-                      ]),
-                      button([event.on_click(OpenTaskTemplateDialog(TaskTemplateDialogDelete(t)))], [
-                        text(update_helpers.i18n_t(
-                          model,
-                          i18n_text.DeleteTaskTemplate,
-                        )),
-                      ]),
-                    ]),
-                  ]),
-                )
-              }),
-            ),
-          ])
-      }
-  }
+              button([event.on_click(OpenTaskTemplateDialog(TaskTemplateDialogDelete(t)))], [
+                text(update_helpers.i18n_t(model, i18n_text.DeleteTaskTemplate)),
+              ]),
+            ])
+          },
+          "col-actions",
+          "cell-actions",
+        ),
+      ])
+      |> data_table.with_key(fn(t) { int.to_string(t.id) }),
+  )
 }
 
 // =============================================================================

@@ -56,6 +56,7 @@ fn make_task_type(id: Int, name: String) -> TaskType {
     name: name,
     icon: "📋",
     capability_id: option.None,
+    tasks_count: 0,
   )
 }
 

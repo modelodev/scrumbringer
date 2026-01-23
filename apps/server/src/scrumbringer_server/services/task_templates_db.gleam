@@ -10,6 +10,7 @@ import helpers/option as option_helpers
 import pog
 import scrumbringer_server/sql
 
+/// Story 4.9 AC20: Added rules_count field.
 pub type TaskTemplate {
   TaskTemplate(
     id: Int,
@@ -22,6 +23,7 @@ pub type TaskTemplate {
     priority: Int,
     created_by: Int,
     created_at: String,
+    rules_count: Int,
   )
 }
 
@@ -45,6 +47,7 @@ pub type DeleteTemplateError {
 // Helpers
 // =============================================================================
 
+/// Story 4.9 AC20: Includes rules_count from SQL.
 fn from_list_project_row(
   row: sql.TaskTemplatesListForProjectRow,
 ) -> TaskTemplate {
@@ -59,6 +62,7 @@ fn from_list_project_row(
     priority: row.priority,
     created_by: row.created_by,
     created_at: row.created_at,
+    rules_count: row.rules_count,
   )
 }
 
@@ -74,6 +78,7 @@ fn from_get_row(row: sql.TaskTemplatesGetRow) -> TaskTemplate {
     priority: row.priority,
     created_by: row.created_by,
     created_at: row.created_at,
+    rules_count: 0,
   )
 }
 
@@ -89,6 +94,7 @@ fn from_create_row(row: sql.TaskTemplatesCreateRow) -> TaskTemplate {
     priority: row.priority,
     created_by: row.created_by,
     created_at: row.created_at,
+    rules_count: 0,
   )
 }
 
@@ -104,6 +110,7 @@ fn from_update_row(row: sql.TaskTemplatesUpdateRow) -> TaskTemplate {
     priority: row.priority,
     created_by: row.created_by,
     created_at: row.created_at,
+    rules_count: 0,
   )
 }
 

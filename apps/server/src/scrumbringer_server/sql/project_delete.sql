@@ -13,7 +13,7 @@ with
     delete from task_templates where project_id = $1
   ),
   deleted_member_capabilities as (
-    delete from member_capabilities
+    delete from project_member_capabilities
     where project_id = $1
   ),
   deleted_capabilities as (

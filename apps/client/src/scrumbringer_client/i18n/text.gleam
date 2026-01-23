@@ -38,6 +38,7 @@ pub type Text {
   LoggedOut
   ProjectCreated
   CapabilityCreated
+  CapabilityDeleted
   InviteLinkCreated
   InviteLinkRegenerated
   RoleUpdated
@@ -284,6 +285,8 @@ pub type Text {
   // Capabilities
   Capabilities
   CreateCapability
+  DeleteCapability
+  ConfirmDeleteCapability(name: String)
   CapabilityNamePlaceholder
   NoCapabilitiesYet
 
@@ -325,6 +328,20 @@ pub type Text {
   SelectProjectToManageTaskTypes
   TaskTypesTitle(project_name: String)
   CreateTaskType
+  EditTaskType
+  DeleteTaskType
+  ConfirmDeleteTaskType(name: String)
+  TaskTypeHasTasks(count: Int)
+  TaskTypeName
+  TaskTypeUpdated
+  TaskTypeDeleted
+
+  // Contextual hints (Story 4.9 AC21-22)
+  RulesHintTemplates
+  RulesHintTemplatesLink
+  TemplatesHintRules
+  TemplatesHintRulesLink
+
   IdentitySection
   AppearanceSection
   ConfigurationSection
@@ -516,8 +533,15 @@ pub type Text {
   NewCard
   Configuration
   Team
-  Catalog
-  Automation
+  // Note: Capabilities is already defined in the Capabilities section above
+  // Story 4.9: New config nav items
+  CardsConfig
+  TaskTypes
+  Templates
+  Rules
+  // Story 4.9: Cards config filters (UX improvements)
+  ShowEmptyCards
+  ShowCompletedCards
   Organization
   OrgUsers
   Invites

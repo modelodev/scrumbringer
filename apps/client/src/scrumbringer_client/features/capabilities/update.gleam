@@ -2,11 +2,12 @@
 ////
 //// ## Mission
 ////
-//// Handles capability (skill) creation and listing.
+//// Handles capability (skill) creation, deletion, and listing.
 ////
 //// ## Responsibilities
 ////
 //// - Capability create form state and submission
+//// - Capability delete dialog and submission (Story 4.9 AC9)
 //// - Capability fetch responses
 ////
 //// ## Non-responsibilities
@@ -197,6 +198,112 @@ pub fn handle_capability_created_error(
         ..model,
         capabilities_create_in_flight: False,
         capabilities_create_error: opt.Some(err.message),
+      ),
+      effect.none(),
+    )
+  }
+}
+
+// =============================================================================
+// Capability Delete Handlers (Story 4.9 AC9)
+// =============================================================================
+
+/// Handle capability delete dialog open.
+pub fn handle_capability_delete_dialog_opened(
+  model: Model,
+  capability_id: Int,
+) -> #(Model, Effect(Msg)) {
+  #(
+    Model(
+      ..model,
+      capability_delete_dialog_id: opt.Some(capability_id),
+      capability_delete_in_flight: False,
+      capability_delete_error: opt.None,
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle capability delete dialog close.
+pub fn handle_capability_delete_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
+  #(
+    Model(
+      ..model,
+      capability_delete_dialog_id: opt.None,
+      capability_delete_in_flight: False,
+      capability_delete_error: opt.None,
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle capability delete form submission.
+pub fn handle_capability_delete_submitted(model: Model) -> #(Model, Effect(Msg)) {
+  case model.capability_delete_in_flight, model.capability_delete_dialog_id, model.selected_project_id {
+    True, _, _ -> #(model, effect.none())
+    _, opt.None, _ -> #(model, effect.none())
+    _, _, opt.None -> #(model, effect.none())
+    False, opt.Some(capability_id), opt.Some(project_id) -> {
+      let model = Model(..model, capability_delete_in_flight: True, capability_delete_error: opt.None)
+      #(
+        model,
+        api_org.delete_project_capability(
+          project_id,
+          capability_id,
+          client_state.CapabilityDeleted,
+        ),
+      )
+    }
+  }
+}
+
+/// Handle capability deleted success.
+pub fn handle_capability_deleted_ok(
+  model: Model,
+  deleted_id: Int,
+) -> #(Model, Effect(Msg)) {
+  let updated = case model.capabilities {
+    Loaded(capabilities) ->
+      Loaded(list.filter(capabilities, fn(c) { c.id != deleted_id }))
+    other -> other
+  }
+
+  #(
+    Model(
+      ..model,
+      capabilities: updated,
+      capability_delete_dialog_id: opt.None,
+      capability_delete_in_flight: False,
+      capability_delete_error: opt.None,
+      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.CapabilityDeleted)),
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle capability deleted error.
+pub fn handle_capability_deleted_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  case err.status {
+    401 -> update_helpers.reset_to_login(model)
+    403 -> #(
+      Model(
+        ..model,
+        capability_delete_in_flight: False,
+        capability_delete_error: opt.Some(update_helpers.i18n_t(
+          model,
+          i18n_text.NotPermitted,
+        )),
+      ),
+      effect.none(),
+    )
+    _ -> #(
+      Model(
+        ..model,
+        capability_delete_in_flight: False,
+        capability_delete_error: opt.Some(err.message),
       ),
       effect.none(),
     )

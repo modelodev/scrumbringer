@@ -101,6 +101,9 @@ pub fn route(req: wisp.Request, ctx: RouterCtx) -> wisp.Response {
       projects.handle_member(req, auth_ctx(ctx), project_id, user_id)
     ["api", "v1", "projects", project_id, "task-types"] ->
       tasks.handle_task_types(req, auth_ctx(ctx), project_id)
+    // Story 4.9: Individual task type routes (PATCH, DELETE)
+    ["api", "v1", "task-types", type_id] ->
+      tasks.handle_task_type(req, auth_ctx(ctx), type_id)
     ["api", "v1", "projects", project_id, "tasks"] ->
       tasks.handle_project_tasks(req, auth_ctx(ctx), project_id)
     ["api", "v1", "projects", project_id, "task-templates"] ->
@@ -177,6 +180,12 @@ pub fn route(req: wisp.Request, ctx: RouterCtx) -> wisp.Response {
     ["api", "v1", "projects", project_id, "capabilities", capability_id, "members"] ->
       case int.parse(project_id), int.parse(capability_id) {
         Ok(pid), Ok(cid) -> capabilities.handle_capability_members(req, auth_ctx(ctx), pid, cid)
+        _, _ -> wisp.not_found()
+      }
+    // Single capability operations (DELETE) - Story 4.9 AC9
+    ["api", "v1", "projects", project_id, "capabilities", capability_id] ->
+      case int.parse(project_id), int.parse(capability_id) {
+        Ok(pid), Ok(cid) -> capabilities.handle_capability(req, auth_ctx(ctx), pid, cid)
         _, _ -> wisp.not_found()
       }
 

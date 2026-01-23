@@ -69,6 +69,7 @@ fn rule_decoder() -> decode.Decoder(Rule) {
   ))
 }
 
+/// Story 4.9 AC20: Added rules_count field.
 fn task_template_decoder() -> decode.Decoder(TaskTemplate) {
   use id <- decode.field("id", decode.int)
   use org_id <- decode.field("org_id", decode.int)
@@ -80,6 +81,7 @@ fn task_template_decoder() -> decode.Decoder(TaskTemplate) {
   use priority <- decode.field("priority", decode.int)
   use created_by <- decode.field("created_by", decode.int)
   use created_at <- decode.field("created_at", decode.string)
+  use rules_count <- decode.optional_field("rules_count", 0, decode.int)
   decode.success(TaskTemplate(
     id: id,
     org_id: org_id,
@@ -91,6 +93,7 @@ fn task_template_decoder() -> decode.Decoder(TaskTemplate) {
     priority: priority,
     created_by: created_by,
     created_at: created_at,
+    rules_count: rules_count,
   ))
 }
 

@@ -103,6 +103,11 @@ pub const list_task_types = task_types.list_task_types
 
 pub const create_task_type = task_types.create_task_type
 
+// Story 4.9 AC13-14: Update and delete task types
+pub const update_task_type = task_types.update_task_type
+
+pub const delete_task_type = task_types.delete_task_type
+
 // =============================================================================
 // Re-export Functions: Operations
 // =============================================================================

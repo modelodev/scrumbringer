@@ -66,6 +66,20 @@ pub fn handle_task_types(
   }
 }
 
+/// Handle single task type routes (PATCH, DELETE).
+/// Story 4.9 AC13-14
+pub fn handle_task_type(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  type_id: String,
+) -> wisp.Response {
+  case req.method {
+    http.Patch -> handle_task_type_update(req, ctx, type_id)
+    http.Delete -> handle_task_type_delete(req, ctx, type_id)
+    _ -> wisp.method_not_allowed([http.Patch, http.Delete])
+  }
+}
+
 /// Handle project tasks routes (GET list, POST create).
 pub fn handle_project_tasks(
   req: wisp.Request,
@@ -245,6 +259,132 @@ fn handle_task_types_create(
                     Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
                   }
                 }
+              }
+            }
+          }
+      }
+  }
+}
+
+/// Story 4.9 AC13: Update task type (PATCH).
+fn handle_task_type_update(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  type_id: String,
+) -> wisp.Response {
+  case auth.require_current_user(req, ctx) {
+    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+
+    Ok(user) ->
+      case csrf.require_double_submit(req) {
+        Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+
+        Ok(Nil) ->
+          case int.parse(type_id) {
+            Error(_) -> api.error(404, "NOT_FOUND", "Not found")
+
+            Ok(type_id) -> {
+              let auth.Ctx(db: db, ..) = ctx
+
+              use data <- wisp.require_json(req)
+
+              let decoder = {
+                use name <- decode.field("name", decode.string)
+                use icon <- decode.field("icon", decode.string)
+                use capability_id <- decode.optional_field(
+                  "capability_id",
+                  0,
+                  decode.int,
+                )
+                decode.success(#(name, icon, capability_id))
+              }
+
+              case decode.run(data, decoder) {
+                Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+
+                Ok(#(name, icon, capability_id)) -> {
+                  let cap_opt = case capability_id {
+                    0 -> None
+                    id -> Some(id)
+                  }
+
+                  case
+                    workflow.handle(
+                      db,
+                      workflow_types.UpdateTaskType(
+                        type_id,
+                        user.id,
+                        name,
+                        icon,
+                        cap_opt,
+                      ),
+                    )
+                  {
+                    Ok(workflow_types.TaskTypeUpdated(task_type)) ->
+                      api.ok(
+                        json.object([
+                          #("task_type", presenters.task_type_json(task_type)),
+                        ]),
+                      )
+
+                    Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
+                    Error(workflow_types.NotFound) ->
+                      api.error(404, "NOT_FOUND", "Not found")
+                    Error(workflow_types.NotAuthorized) ->
+                      api.error(403, "FORBIDDEN", "Forbidden")
+                    Error(workflow_types.ValidationError(msg)) ->
+                      api.error(422, "VALIDATION_ERROR", msg)
+                    Error(workflow_types.DbError(_)) ->
+                      api.error(500, "INTERNAL", "Database error")
+                    Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
+                  }
+                }
+              }
+            }
+          }
+      }
+  }
+}
+
+/// Story 4.9 AC14: Delete task type (DELETE).
+fn handle_task_type_delete(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  type_id: String,
+) -> wisp.Response {
+  case auth.require_current_user(req, ctx) {
+    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+
+    Ok(user) ->
+      case csrf.require_double_submit(req) {
+        Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+
+        Ok(Nil) ->
+          case int.parse(type_id) {
+            Error(_) -> api.error(404, "NOT_FOUND", "Not found")
+
+            Ok(type_id) -> {
+              let auth.Ctx(db: db, ..) = ctx
+
+              case
+                workflow.handle(
+                  db,
+                  workflow_types.DeleteTaskType(type_id, user.id),
+                )
+              {
+                Ok(workflow_types.TaskTypeDeleted(deleted_id)) ->
+                  api.ok(json.object([#("id", json.int(deleted_id))]))
+
+                Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
+                Error(workflow_types.NotFound) ->
+                  api.error(404, "NOT_FOUND", "Not found")
+                Error(workflow_types.TaskTypeInUse) ->
+                  api.error(409, "CONFLICT", "Task type is in use by tasks")
+                Error(workflow_types.NotAuthorized) ->
+                  api.error(403, "FORBIDDEN", "Forbidden")
+                Error(workflow_types.DbError(_)) ->
+                  api.error(500, "INTERNAL", "Database error")
+                Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
               }
             }
           }

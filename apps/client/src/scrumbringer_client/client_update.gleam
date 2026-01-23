@@ -46,6 +46,7 @@ import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/api/tasks as api_tasks
 
 // Domain types
+import domain/card
 import domain/task.{TaskFilters}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/hydration
@@ -75,7 +76,10 @@ import scrumbringer_client/client_state.{
   AdminRuleMetricsWorkflowExpanded, CapabilitiesFetched,
   CapabilityCreateDialogClosed, CapabilityCreateDialogOpened,
   CapabilityCreateNameChanged, CapabilityCreateSubmitted, CapabilityCreated,
+  CapabilityDeleteDialogClosed, CapabilityDeleteDialogOpened,
+  CapabilityDeleteSubmitted, CapabilityDeleted,
   CardCrudCreated, CardCrudDeleted, CardCrudUpdated, CardsFetched,
+  CardsSearchChanged, CardsShowCompletedToggled, CardsShowEmptyToggled, CardsStateFilterChanged,
   CloseCardDetail, CloseCardDialog, Failed,
   ForgotPasswordClicked, ForgotPasswordCopyClicked, ForgotPasswordCopyFinished,
   ForgotPasswordDismissed, ForgotPasswordEmailChanged, ForgotPasswordFinished,
@@ -145,7 +149,10 @@ import scrumbringer_client/client_state.{
   TaskTypeCreateDialogOpened, TaskTypeCreateIconChanged,
   TaskTypeCreateIconSearchChanged, TaskTypeCreateIconCategoryChanged,
   TaskTypeCreateNameChanged, TaskTypeCreateSubmitted, TaskTypeCreated,
-  TaskTypeIconErrored, TaskTypeIconLoaded, TaskTypesFetched, ThemeSelected,
+  TaskTypeIconErrored, TaskTypeIconLoaded, TaskTypesFetched,
+  OpenTaskTypeDialog, CloseTaskTypeDialog,
+  TaskTypeCrudCreated, TaskTypeCrudUpdated, TaskTypeCrudDeleted,
+  ThemeSelected,
   NoOp, ToastDismissed, ToastShow, ToastDismiss, ToastTick, UrlChanged, ViewModeChanged,
   CloseWorkflowDialog, OpenWorkflowDialog, WorkflowCrudCreated,
   WorkflowCrudDeleted, WorkflowCrudUpdated, WorkflowRulesClicked,
@@ -1689,6 +1696,17 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       capabilities_workflow.handle_capability_created_ok(model, capability)
     CapabilityCreated(Error(err)) ->
       capabilities_workflow.handle_capability_created_error(model, err)
+    // Capability delete (Story 4.9 AC9)
+    CapabilityDeleteDialogOpened(capability_id) ->
+      capabilities_workflow.handle_capability_delete_dialog_opened(model, capability_id)
+    CapabilityDeleteDialogClosed ->
+      capabilities_workflow.handle_capability_delete_dialog_closed(model)
+    CapabilityDeleteSubmitted ->
+      capabilities_workflow.handle_capability_delete_submitted(model)
+    CapabilityDeleted(Ok(deleted_id)) ->
+      capabilities_workflow.handle_capability_deleted_ok(model, deleted_id)
+    CapabilityDeleted(Error(err)) ->
+      capabilities_workflow.handle_capability_deleted_error(model, err)
 
     MembersFetched(Ok(members)) ->
       admin_workflow.handle_members_fetched_ok(model, members)
@@ -1870,6 +1888,22 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       )
     TaskTypeCreated(Error(err)) ->
       task_types_workflow.handle_task_type_created_error(model, err)
+    // Task types - dialog mode control (component pattern)
+    OpenTaskTypeDialog(mode) ->
+      task_types_workflow.handle_open_task_type_dialog(model, mode)
+    CloseTaskTypeDialog ->
+      task_types_workflow.handle_close_task_type_dialog(model)
+    // Task types - component events
+    TaskTypeCrudCreated(task_type) ->
+      task_types_workflow.handle_task_type_crud_created(
+        model,
+        task_type,
+        refresh_section_for_test,
+      )
+    TaskTypeCrudUpdated(task_type) ->
+      task_types_workflow.handle_task_type_crud_updated(model, task_type)
+    TaskTypeCrudDeleted(type_id) ->
+      task_types_workflow.handle_task_type_crud_deleted(model, type_id)
 
     MemberPoolStatusChanged(v) ->
       pool_workflow.handle_pool_status_changed(model, v, member_refresh)
@@ -2292,6 +2326,23 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       admin_workflow.handle_card_crud_updated(model, card)
     CardCrudDeleted(card_id) ->
       admin_workflow.handle_card_crud_deleted(model, card_id)
+    // Cards - filter changes (Story 4.9 AC7-8, UX improvements)
+    CardsShowEmptyToggled ->
+      #(Model(..model, cards_show_empty: !model.cards_show_empty), effect.none())
+    CardsShowCompletedToggled ->
+      #(Model(..model, cards_show_completed: !model.cards_show_completed), effect.none())
+    CardsStateFilterChanged(state_str) -> {
+      let filter = case state_str {
+        "" -> opt.None
+        "pendiente" -> opt.Some(card.Pendiente)
+        "en_curso" -> opt.Some(card.EnCurso)
+        "cerrada" -> opt.Some(card.Cerrada)
+        _ -> opt.None
+      }
+      #(Model(..model, cards_state_filter: filter), effect.none())
+    }
+    CardsSearchChanged(query) ->
+      #(Model(..model, cards_search: query), effect.none())
 
     // Card detail (member view) handlers - component manages internal state
     OpenCardDetail(card_id) ->

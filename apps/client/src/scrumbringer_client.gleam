@@ -89,6 +89,7 @@ import scrumbringer_client/components/card_crud_dialog
 import scrumbringer_client/components/card_detail_modal
 import scrumbringer_client/components/rule_crud_dialog
 import scrumbringer_client/components/task_template_crud_dialog
+import scrumbringer_client/components/task_type_crud_dialog
 import scrumbringer_client/components/workflow_crud_dialog
 
 // =============================================================================
@@ -130,6 +131,10 @@ pub fn main() {
     Error(_) -> Nil
   }
   case rule_crud_dialog.register() {
+    Ok(_) -> Nil
+    Error(_) -> Nil
+  }
+  case task_type_crud_dialog.register() {
     Ok(_) -> Nil
     Error(_) -> Nil
   }
@@ -285,6 +290,10 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       capabilities_create_name: "",
       capabilities_create_in_flight: False,
       capabilities_create_error: opt.None,
+      // Capability delete (Story 4.9 AC9)
+      capability_delete_dialog_id: opt.None,
+      capability_delete_in_flight: False,
+      capability_delete_error: opt.None,
       members: NotAsked,
       members_project_id: opt.None,
       org_users_cache: NotAsked,
@@ -327,6 +336,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       org_users_search_results: NotAsked,
       task_types: NotAsked,
       task_types_project_id: opt.None,
+      task_types_dialog_mode: opt.None,
       task_types_create_dialog_open: False,
       task_types_create_name: "",
       task_types_create_icon: "",
@@ -406,6 +416,11 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       cards: NotAsked,
       cards_project_id: opt.None,
       cards_dialog_mode: opt.None,
+      // Cards - filters (Story 4.9 AC7-8, UX improvements)
+      cards_show_empty: False,
+      cards_show_completed: False,
+      cards_state_filter: opt.None,
+      cards_search: "",
       // Card detail (member view) - only open state, component manages internal state
       card_detail_open: opt.None,
       // Workflows - list and dialog mode (component handles CRUD state internally)

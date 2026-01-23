@@ -1,13 +1,14 @@
 //// HTTP handlers for project capabilities (skills).
 ////
-//// Provides endpoints for listing and creating capabilities within a project,
+//// Provides endpoints for listing, creating, and deleting capabilities within a project,
 //// as well as managing project member capability selections.
 ////
 //// Routes:
-//// - GET  /api/projects/:id/capabilities - List capabilities for project
-//// - POST /api/projects/:id/capabilities - Create capability (manager only)
-//// - GET  /api/projects/:id/members/:user_id/capabilities - Get member capabilities
-//// - PUT  /api/projects/:id/members/:user_id/capabilities - Set member capabilities
+//// - GET    /api/projects/:id/capabilities - List capabilities for project
+//// - POST   /api/projects/:id/capabilities - Create capability (manager only)
+//// - DELETE /api/projects/:id/capabilities/:cap_id - Delete capability (manager only)
+//// - GET    /api/projects/:id/members/:user_id/capabilities - Get member capabilities
+//// - PUT    /api/projects/:id/members/:user_id/capabilities - Set member capabilities
 
 import domain/org_role
 import gleam/dynamic/decode
@@ -32,6 +33,19 @@ pub fn handle_project_capabilities(
     http.Get -> handle_list(req, ctx, project_id)
     http.Post -> handle_create(req, ctx, project_id)
     _ -> wisp.method_not_allowed([http.Get, http.Post])
+  }
+}
+
+/// Routes /api/projects/:id/capabilities/:cap_id requests (Story 4.9 AC9).
+pub fn handle_capability(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+  capability_id: Int,
+) -> wisp.Response {
+  case req.method {
+    http.Delete -> handle_delete(req, ctx, project_id, capability_id)
+    _ -> wisp.method_not_allowed([http.Delete])
   }
 }
 
@@ -116,6 +130,52 @@ fn require_project_manager(
         Ok(True) -> Ok(Nil)
         Ok(False) -> Error(api.error(403, "FORBIDDEN", "Not a project manager"))
         Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+      }
+    }
+  }
+}
+
+/// Story 4.9 AC9: Delete a capability (manager only).
+fn handle_delete(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+  capability_id: Int,
+) -> wisp.Response {
+  case auth.require_current_user(req, ctx) {
+    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+
+    Ok(user) -> {
+      let auth.Ctx(db: db, ..) = ctx
+
+      case require_project_manager(db, user, project_id) {
+        Error(resp) -> resp
+        Ok(Nil) -> delete_capability(req, ctx, project_id, capability_id)
+      }
+    }
+  }
+}
+
+fn delete_capability(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+  capability_id: Int,
+) -> wisp.Response {
+  case csrf.require_double_submit(req) {
+    Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+
+    Ok(Nil) -> {
+      let auth.Ctx(db: db, ..) = ctx
+
+      case capabilities_db.delete_capability(db, project_id, capability_id) {
+        Ok(True) ->
+          api.ok(json.object([#("id", json.int(capability_id))]))
+
+        Ok(False) ->
+          api.error(404, "NOT_FOUND", "Capability not found")
+
+        Error(_) -> api.error(500, "INTERNAL", "Database error")
       }
     }
   }

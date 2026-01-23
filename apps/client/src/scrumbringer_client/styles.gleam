@@ -680,6 +680,28 @@ pub fn base_css() -> String {
     ".count-badge { display: inline-block; min-width: 28px; height: 24px; line-height: 22px; padding: 0 8px; background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--sb-muted); text-align: center; vertical-align: middle; box-sizing: border-box; }",
     ".btn-danger-icon { color: var(--sb-danger); }",
     ".btn-danger-icon:hover { background: color-mix(in oklab, var(--sb-danger) 15%, transparent); }",
+    // UX: Cards config improvements (Sally UX review)
+    // Inline filters layout
+    ".filters-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }",
+    ".filters-inline .filter-group { margin-bottom: 0; }",
+    ".filters-inline .filter-search { flex: 1; min-width: 150px; max-width: 250px; }",
+    // Card title with color dot
+    ".card-title-with-color { display: flex; align-items: center; gap: 10px; }",
+    ".card-color-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; border: 1px solid color-mix(in oklab, currentColor 20%, transparent); }",
+    // State badges with semantic colors
+    ".state-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }",
+    ".state-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }",
+    ".state-pending { background: color-mix(in oklab, var(--sb-warning) 15%, transparent); color: var(--sb-warning); }",
+    ".state-pending::before { background: var(--sb-warning); }",
+    ".state-active { background: color-mix(in oklab, var(--sb-info) 15%, transparent); color: var(--sb-info); }",
+    ".state-active::before { background: var(--sb-info); }",
+    ".state-completed { background: color-mix(in oklab, var(--sb-success) 15%, transparent); color: var(--sb-success); }",
+    ".state-completed::before { background: var(--sb-success); }",
+    // Mini progress bar for cards table
+    ".card-progress-cell { display: flex; align-items: center; gap: 8px; }",
+    ".progress-bar-mini { width: 60px; height: 6px; background: var(--sb-border); border-radius: 3px; overflow: hidden; }",
+    ".progress-fill-mini { height: 100%; background: var(--sb-success); transition: width 0.3s ease; }",
+    ".progress-text-mini { font-size: 12px; color: var(--sb-muted); font-variant-numeric: tabular-nums; }",
     // Responsive dialog
     "@media (max-width: 640px) { .dialog { max-height: 100vh; border-radius: 0; } .dialog-overlay { padding: 0; } .dialog-sm, .dialog-md, .dialog-lg, .dialog-xl { width: 100%; height: 100%; } .dialog-body { padding: 16px; } .dialog-header, .dialog-footer { padding: 12px 16px; } }",
     // =============================================================================
@@ -845,8 +867,6 @@ pub fn base_css() -> String {
     ".kanban-card-progress .progress-bar { flex: 1; }",
     ".progress-fill { height: 100%; background: var(--sb-success); transition: width 0.3s ease; }",
     ".progress-text { font-size: 12px; color: var(--sb-muted); min-width: 40px; text-align: right; }",
-    ".btn-danger { color: var(--sb-danger); }",
-    ".btn-danger:hover { background: color-mix(in oklab, var(--sb-danger) 10%, transparent); }",
     // =============================================================================
     // Kanban Task Items (Story 4.8 UX - Homogeneous with Lista view)
     // =============================================================================

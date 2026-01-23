@@ -40,6 +40,20 @@ pub type Message {
     capability_id: Option(Int),
   )
 
+  /// Update an existing task type.
+  /// Story 4.9 AC13
+  UpdateTaskType(
+    type_id: Int,
+    user_id: Int,
+    name: String,
+    icon: String,
+    capability_id: Option(Int),
+  )
+
+  /// Delete a task type (only if no tasks use it).
+  /// Story 4.9 AC14
+  DeleteTaskType(type_id: Int, user_id: Int)
+
   /// List tasks with filters.
   ListTasks(project_id: Int, user_id: Int, filters: TaskFilters)
 
@@ -89,6 +103,8 @@ pub type TaskUpdates {
 pub type Response {
   TaskTypesList(List(task_types_db.TaskType))
   TaskTypeCreated(task_types_db.TaskType)
+  TaskTypeUpdated(task_types_db.TaskType)
+  TaskTypeDeleted(Int)
   TasksList(List(tasks_mappers.Task))
   TaskResult(tasks_mappers.Task)
 }
@@ -110,6 +126,10 @@ pub type Error {
 
   /// Task type name already exists.
   TaskTypeAlreadyExists
+
+  /// Task type has tasks associated (cannot delete).
+  /// Story 4.9 AC14, AC23
+  TaskTypeInUse
 
   /// Task is already claimed by someone else.
   AlreadyClaimed

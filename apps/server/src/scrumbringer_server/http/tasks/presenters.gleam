@@ -35,6 +35,7 @@ import scrumbringer_server/services/task_types_db
 /// let json = task_type_json(task_type)
 /// // {"id": 1, "project_id": 10, "name": "Bug", "icon": "🐛", "capability_id": null}
 /// ```
+/// Story 4.9 AC15: Added tasks_count field.
 pub fn task_type_json(task_type: task_types_db.TaskType) -> json.Json {
   let task_types_db.TaskType(
     id: id,
@@ -42,6 +43,7 @@ pub fn task_type_json(task_type: task_types_db.TaskType) -> json.Json {
     name: name,
     icon: icon,
     capability_id: capability_id,
+    tasks_count: tasks_count,
   ) = task_type
 
   json.object([
@@ -50,6 +52,7 @@ pub fn task_type_json(task_type: task_types_db.TaskType) -> json.Json {
     #("name", json.string(name)),
     #("icon", json.string(icon)),
     #("capability_id", option_int_json(capability_id)),
+    #("tasks_count", json.int(tasks_count)),
   ])
 }
 
