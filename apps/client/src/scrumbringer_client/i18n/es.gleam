@@ -515,7 +515,11 @@ pub fn translate(text: Text) -> String {
     text.TaskTemplateDeleted -> "Plantilla eliminada"
     text.TaskTemplateDeleteConfirm(name) -> "¿Eliminar la plantilla \"" <> name <> "\"?"
     text.TaskTemplateVariablesHelp ->
-      "Variables: {{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}"
+      "Variables: {{father}} (tarea/tarjeta origen), {{from_state}} (estado anterior), {{to_state}} (estado nuevo), {{project}} (nombre del proyecto), {{user}} (usuario que disparó)"
+    text.TaskTemplateDescriptionHint ->
+      "Usa variables en la descripción: {{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}"
+    text.AvailableVariables -> "Variables disponibles"
+    text.SelectTaskType -> "Selecciona tipo"
 
     // Rule Metrics Tab
     text.AdminRuleMetrics -> "Métricas de reglas"

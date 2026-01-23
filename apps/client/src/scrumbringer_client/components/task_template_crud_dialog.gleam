@@ -9,7 +9,7 @@
 //// - Handle create dialog: name, description, type_id, priority fields
 //// - Handle edit dialog: prefill from template, submit updates
 //// - Handle delete confirmation dialog
-//// - Emit events to parent for template-created, template-updated, template-deleted
+//// - Emit events to parent for task-template-created, task-template-updated, task-template-deleted
 //// - Support both org-scoped and project-scoped templates
 ////
 //// ## Relations
@@ -31,7 +31,7 @@ import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html.{
   button, div, form, h3, input, label, option as html_option, p, select, span,
-  text,
+  text, textarea,
 }
 import lustre/event
 
@@ -558,19 +558,19 @@ fn reset_delete_fields(model: Model) -> Model {
 
 fn emit_template_created(template: TaskTemplate) -> Effect(Msg) {
   effect.from(fn(_dispatch) {
-    emit_custom_event("template-created", template_to_json(template))
+    emit_custom_event("task-template-created", template_to_json(template))
   })
 }
 
 fn emit_template_updated(template: TaskTemplate) -> Effect(Msg) {
   effect.from(fn(_dispatch) {
-    emit_custom_event("template-updated", template_to_json(template))
+    emit_custom_event("task-template-updated", template_to_json(template))
   })
 }
 
 fn emit_template_deleted(template_id: Int) -> Effect(Msg) {
   effect.from(fn(_dispatch) {
-    emit_custom_event("template-deleted", json.object([#("id", json.int(template_id))]))
+    emit_custom_event("task-template-deleted", json.object([#("id", json.int(template_id))]))
   })
 }
 
@@ -662,20 +662,31 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
                   attribute.attribute("aria-label", "Template name"),
                 ]),
               ]),
-              // Description field
+              // Description field (textarea with variables hint)
               div([attribute.class("field")], [
                 label([], [text(t(model.locale, i18n_text.TaskTemplateDescription))]),
-                input([
-                  attribute.type_("text"),
-                  attribute.value(model.create_description),
-                  event.on_input(CreateDescriptionChanged),
-                  attribute.attribute("aria-label", "Template description"),
+                textarea(
+                  [
+                    attribute.rows(4),
+                    attribute.value(model.create_description),
+                    event.on_input(CreateDescriptionChanged),
+                    attribute.attribute("aria-label", "Template description"),
+                  ],
+                  model.create_description,
+                ),
+                div([attribute.class("field-variables-hint")], [
+                  span([attribute.class("field-variables-label")], [
+                    text(t(model.locale, i18n_text.AvailableVariables) <> ": "),
+                  ]),
+                  span([attribute.class("field-variables-list")], [
+                    text("{{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}"),
+                  ]),
                 ]),
               ]),
               // Task Type selector
               div([attribute.class("field")], [
                 label([], [text(t(model.locale, i18n_text.TaskTemplateType))]),
-                view_task_type_selector(model.task_types, model.create_type_id, CreateTypeIdChanged),
+                view_task_type_selector(model.locale, model.task_types, model.create_type_id, CreateTypeIdChanged),
               ]),
               // Priority selector
               div([attribute.class("field")], [
@@ -742,19 +753,30 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
                   attribute.required(True),
                 ]),
               ]),
-              // Description field
+              // Description field (textarea with variables hint)
               div([attribute.class("field")], [
                 label([], [text(t(model.locale, i18n_text.TaskTemplateDescription))]),
-                input([
-                  attribute.type_("text"),
-                  attribute.value(model.edit_description),
-                  event.on_input(EditDescriptionChanged),
+                textarea(
+                  [
+                    attribute.rows(4),
+                    attribute.value(model.edit_description),
+                    event.on_input(EditDescriptionChanged),
+                  ],
+                  model.edit_description,
+                ),
+                div([attribute.class("field-variables-hint")], [
+                  span([attribute.class("field-variables-label")], [
+                    text(t(model.locale, i18n_text.AvailableVariables) <> ": "),
+                  ]),
+                  span([attribute.class("field-variables-list")], [
+                    text("{{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}"),
+                  ]),
                 ]),
               ]),
               // Task Type selector
               div([attribute.class("field")], [
                 label([], [text(t(model.locale, i18n_text.TaskTemplateType))]),
-                view_task_type_selector(model.task_types, model.edit_type_id, EditTypeIdChanged),
+                view_task_type_selector(model.locale, model.task_types, model.edit_type_id, EditTypeIdChanged),
               ]),
               // Priority selector
               div([attribute.class("field")], [
@@ -868,6 +890,7 @@ fn view_cancel_button(locale: Locale, on_click_msg: Msg) -> Element(Msg) {
 }
 
 fn view_task_type_selector(
+  locale: Locale,
   task_types: List(TaskType),
   selected_id: Option(Int),
   on_change: fn(String) -> Msg,
@@ -883,17 +906,14 @@ fn view_task_type_selector(
       attribute.required(True),
     ],
     [
-      html_option([attribute.value("")], "-- Select type --"),
+      html_option([attribute.value("")], t(locale, i18n_text.SelectTaskType)),
       ..list.map(task_types, fn(tt) {
         html_option(
           [
             attribute.value(int.to_string(tt.id)),
             attribute.selected(option.Some(tt.id) == selected_id),
           ],
-          case tt.icon {
-            "" -> tt.name
-            icon -> icon <> " " <> tt.name
-          },
+          tt.name,
         )
       })
     ],

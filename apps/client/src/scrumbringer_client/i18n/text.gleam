@@ -461,6 +461,9 @@ pub type Text {
   TaskTemplateDeleted
   TaskTemplateDeleteConfirm(template_name: String)
   TaskTemplateVariablesHelp
+  TaskTemplateDescriptionHint
+  AvailableVariables
+  SelectTaskType
 
   // Rule Metrics Tab
   AdminRuleMetrics

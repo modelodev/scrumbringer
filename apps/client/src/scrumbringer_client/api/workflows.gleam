@@ -158,7 +158,7 @@ pub fn rules_payload_decoder() -> decode.Decoder(List(Rule)) {
 
 /// Decoder for task template wrapped in envelope.
 pub fn task_template_payload_decoder() -> decode.Decoder(TaskTemplate) {
-  decode.field("task_template", task_template_decoder(), decode.success)
+  decode.field("template", task_template_decoder(), decode.success)
 }
 
 /// Decoder for list of task templates.
@@ -443,7 +443,7 @@ pub fn create_project_template(
       #("priority", json.int(priority)),
     ])
   let decoder =
-    decode.field("task_template", task_template_decoder(), decode.success)
+    decode.field("template", task_template_decoder(), decode.success)
   core.request(
     "POST",
     "/api/v1/projects/" <> int.to_string(project_id) <> "/task-templates",
@@ -470,7 +470,7 @@ pub fn update_template(
       #("priority", json.int(priority)),
     ])
   let decoder =
-    decode.field("task_template", task_template_decoder(), decode.success)
+    decode.field("template", task_template_decoder(), decode.success)
   core.request(
     "PATCH",
     "/api/v1/task-templates/" <> int.to_string(template_id),

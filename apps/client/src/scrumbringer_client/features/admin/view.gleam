@@ -90,6 +90,7 @@ import scrumbringer_client/client_state.{
   UserProjectRoleChangeRequested,
   WorkflowCrudCreated, WorkflowCrudDeleted, WorkflowCrudUpdated,
   WorkflowDialogCreate, WorkflowDialogDelete, WorkflowDialogEdit,
+  WorkflowRulesClicked,
   CloseWorkflowDialog, OpenWorkflowDialog,
   MemberCapabilitiesDialogClosed, MemberCapabilitiesDialogOpened,
   MemberCapabilitiesSaveClicked, MemberCapabilitiesToggled,
@@ -856,14 +857,10 @@ fn view_capabilities_list(
                 [icons.nav_icon(icons.OrgUsers, icons.Small)],
               ),
               // Delete button (Story 4.9 AC9)
-              button(
-                [
-                  attribute.class("btn-icon btn-xs btn-danger-ghost"),
-                  attribute.attribute("title", t(i18n_text.Delete)),
-                  attribute.attribute("data-testid", "capability-delete-btn"),
-                  event.on_click(CapabilityDeleteDialogOpened(c.id)),
-                ],
-                [icons.nav_icon(icons.Trash, icons.Small)],
+              action_buttons.delete_button_with_testid(
+                t(i18n_text.Delete),
+                CapabilityDeleteDialogOpened(c.id),
+                "capability-delete-btn",
               ),
             ])
           },
@@ -2188,27 +2185,20 @@ fn view_workflows_table(
 fn view_workflow_actions(model: Model, w: Workflow) -> Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
 
-  div([attribute.class("actions-row")], [
+  div([attribute.class("btn-group")], [
+    // Rules button - navigate to rules view
+    button(
+      [
+        attribute.class("btn-icon btn-xs"),
+        attribute.attribute("title", t(i18n_text.WorkflowRules)),
+        event.on_click(WorkflowRulesClicked(w.id)),
+      ],
+      [icons.nav_icon(icons.Cog, icons.Small)],
+    ),
     // Edit button
-    button(
-      [
-        attribute.class("btn-xs btn-icon"),
-        attribute.attribute("title", t(i18n_text.EditWorkflow)),
-        attribute.attribute("aria-label", t(i18n_text.EditWorkflow)),
-        event.on_click(OpenWorkflowDialog(WorkflowDialogEdit(w))),
-      ],
-      [icons.nav_icon(icons.Pencil, icons.Small)],
-    ),
+    action_buttons.edit_button(t(i18n_text.EditWorkflow), OpenWorkflowDialog(WorkflowDialogEdit(w))),
     // Delete button
-    button(
-      [
-        attribute.class("btn-xs btn-icon btn-delete"),
-        attribute.attribute("title", t(i18n_text.DeleteWorkflow)),
-        attribute.attribute("aria-label", t(i18n_text.DeleteWorkflow)),
-        event.on_click(OpenWorkflowDialog(WorkflowDialogDelete(w))),
-      ],
-      [icons.nav_icon(icons.Trash, icons.Small)],
-    ),
+    action_buttons.delete_button(t(i18n_text.DeleteWorkflow), OpenWorkflowDialog(WorkflowDialogDelete(w))),
   ])
 }
 
@@ -2259,99 +2249,77 @@ fn view_rules_table(
   rules: Remote(List(Rule)),
   metrics: Remote(api_workflows.WorkflowMetrics),
 ) -> Element(Msg) {
-  case rules {
-    NotAsked | Loading ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
-      ])
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
 
-    Failed(err) ->
-      case err.status == 403 {
-        True ->
-          div([attribute.class("not-permitted")], [
-            text(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-          ])
-        False -> div([attribute.class("error")], [text(err.message)])
-      }
-
-    Loaded(rules) ->
-      case rules {
-        [] ->
-          div([attribute.class("empty")], [
-            text(update_helpers.i18n_t(model, i18n_text.NoRulesYet)),
-          ])
-        _ ->
-          table([attribute.class("table")], [
-            thead([], [
-              tr([], [
-                th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.RuleName)),
-                ]),
-                th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.RuleResourceType)),
-                ]),
-                th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.RuleToState)),
-                ]),
-                th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.RuleActive)),
-                ]),
-                th([], [
-                  text(update_helpers.i18n_t(
-                    model,
-                    i18n_text.RuleMetricsApplied,
-                  )),
-                ]),
-                th([], [
-                  text(update_helpers.i18n_t(
-                    model,
-                    i18n_text.RuleMetricsSuppressed,
-                  )),
-                ]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
-              ]),
-            ]),
-            keyed.tbody(
-              [],
-              list.map(rules, fn(r) {
-                let #(applied, suppressed) = get_rule_metrics(metrics, r.id)
-                #(
-                  int.to_string(r.id),
-                  tr([], [
-                    td([], [text(r.name)]),
-                    td([], [text(r.resource_type)]),
-                    td([], [text(r.to_state)]),
-                    td([], [
-                      text(case r.active {
-                        True -> "✓"
-                        False -> "✗"
-                      }),
-                    ]),
-                    td([attribute.class("metric-cell")], [
-                      span([attribute.class("metric applied")], [
-                        text(int.to_string(applied)),
-                      ]),
-                    ]),
-                    td([attribute.class("metric-cell")], [
-                      span([attribute.class("metric suppressed")], [
-                        text(int.to_string(suppressed)),
-                      ]),
-                    ]),
-                    td([], [
-                      button([event.on_click(OpenRuleDialog(RuleDialogEdit(r)))], [
-                        text(update_helpers.i18n_t(model, i18n_text.EditRule)),
-                      ]),
-                      button([event.on_click(OpenRuleDialog(RuleDialogDelete(r)))], [
-                        text(update_helpers.i18n_t(model, i18n_text.DeleteRule)),
-                      ]),
-                    ]),
-                  ]),
-                )
-              }),
-            ),
-          ])
-      }
+  // We need to pass metrics to the row renderer, so we create a wrapper type
+  let rules_with_metrics = case rules {
+    Loaded(rs) -> Loaded(list.map(rs, fn(r) { #(r, get_rule_metrics(metrics, r.id)) }))
+    Loading -> Loading
+    NotAsked -> NotAsked
+    Failed(err) -> Failed(err)
   }
+
+  data_table.view_remote_with_forbidden(
+    rules_with_metrics,
+    loading_msg: t(i18n_text.LoadingEllipsis),
+    empty_msg: t(i18n_text.NoRulesYet),
+    forbidden_msg: t(i18n_text.NotPermitted),
+    config: data_table.new()
+      |> data_table.with_columns([
+        // Name
+        data_table.column(t(i18n_text.RuleName), fn(item: #(Rule, #(Int, Int))) {
+          let #(r, _) = item
+          text(r.name)
+        }),
+        // Resource type
+        data_table.column(t(i18n_text.RuleResourceType), fn(item: #(Rule, #(Int, Int))) {
+          let #(r, _) = item
+          text(r.resource_type)
+        }),
+        // To state
+        data_table.column(t(i18n_text.RuleToState), fn(item: #(Rule, #(Int, Int))) {
+          let #(r, _) = item
+          text(r.to_state)
+        }),
+        // Active
+        data_table.column(t(i18n_text.RuleActive), fn(item: #(Rule, #(Int, Int))) {
+          let #(r, _) = item
+          text(case r.active {
+            True -> "✓"
+            False -> "✗"
+          })
+        }),
+        // Applied metrics
+        data_table.column(t(i18n_text.RuleMetricsApplied), fn(item: #(Rule, #(Int, Int))) {
+          let #(_, #(applied, _)) = item
+          span([attribute.class("metric applied")], [text(int.to_string(applied))])
+        }),
+        // Suppressed metrics
+        data_table.column(t(i18n_text.RuleMetricsSuppressed), fn(item: #(Rule, #(Int, Int))) {
+          let #(_, #(_, suppressed)) = item
+          span([attribute.class("metric suppressed")], [text(int.to_string(suppressed))])
+        }),
+        // Actions
+        data_table.column_with_class(
+          t(i18n_text.Actions),
+          fn(item: #(Rule, #(Int, Int))) {
+            let #(r, _) = item
+            action_buttons.edit_delete_row(
+              edit_title: t(i18n_text.EditRule),
+              edit_click: OpenRuleDialog(RuleDialogEdit(r)),
+              delete_title: t(i18n_text.DeleteRule),
+              delete_click: OpenRuleDialog(RuleDialogDelete(r)),
+            )
+          },
+          "col-actions",
+          "cell-actions",
+        ),
+      ])
+      |> data_table.with_key(fn(item: #(Rule, #(Int, Int))) {
+        let #(r, _) = item
+        int.to_string(r.id)
+      }),
+  )
 }
 
 /// Get metrics for a specific rule from the workflow metrics.
@@ -2381,20 +2349,21 @@ fn view_rule_crud_dialog(model: Model, workflow_id: Int) -> Element(Msg) {
     opt.Some(RuleDialogDelete(_)) -> "delete"
   }
 
-  // Build rule property for edit/delete modes
+  // Build rule property for edit/delete modes (includes _mode field for component)
   let rule_prop = case model.rules_dialog_mode {
-    opt.Some(RuleDialogEdit(rule)) -> attribute.property("rule", rule_to_json(rule))
-    opt.Some(RuleDialogDelete(rule)) -> attribute.property("rule", rule_to_json(rule))
+    opt.Some(RuleDialogEdit(rule)) -> attribute.property("rule", rule_to_json(rule, "edit"))
+    opt.Some(RuleDialogDelete(rule)) -> attribute.property("rule", rule_to_json(rule, "delete"))
     _ -> attribute.none()
   }
 
-  // Build task types property
+  // Build task types property (include icon for decoder)
   let task_types_json = case model.task_types {
     Loaded(types) ->
       json.array(types, fn(tt) {
         json.object([
           #("id", json.int(tt.id)),
           #("name", json.string(tt.name)),
+          #("icon", json.string(tt.icon)),
         ])
       })
     _ -> json.array([], fn(_: Nil) { json.null() })
@@ -2419,7 +2388,8 @@ fn view_rule_crud_dialog(model: Model, workflow_id: Int) -> Element(Msg) {
 }
 
 /// Convert a Rule to JSON for property passing to component.
-fn rule_to_json(rule: Rule) -> json.Json {
+/// Includes _mode field to indicate edit or delete operation.
+fn rule_to_json(rule: Rule, mode: String) -> json.Json {
   json.object([
     #("id", json.int(rule.id)),
     #("workflow_id", json.int(rule.workflow_id)),
@@ -2430,6 +2400,7 @@ fn rule_to_json(rule: Rule) -> json.Json {
     #("to_state", json.string(rule.to_state)),
     #("active", json.bool(rule.active)),
     #("created_at", json.string(rule.created_at)),
+    #("_mode", json.string(mode)),
   ])
 }
 
@@ -2477,59 +2448,57 @@ fn decode_close_event(msg: Msg) -> decode.Decoder(Msg) {
 // Task Templates Views
 // =============================================================================
 
-/// Task templates management view.
+/// Task templates management view (project-scoped only).
 pub fn view_task_templates(
   model: Model,
   selected_project: opt.Option(Project),
 ) -> Element(Msg) {
+  // Get title with project name
+  let title = case selected_project {
+    opt.Some(project) ->
+      update_helpers.i18n_t(model, i18n_text.TaskTemplatesProjectTitle(project.name))
+    opt.None ->
+      update_helpers.i18n_t(model, i18n_text.TaskTemplatesTitle)
+  }
+
   div([attribute.class("section")], [
-    // Section header with subtitle and action (Story 4.8: consistent icons + help text)
-    section_header.view_full(
+    // Section header with action button
+    section_header.view_with_action(
       icons.TaskTemplates,
-      update_helpers.i18n_t(model, i18n_text.TaskTemplatesOrgTitle),
-      update_helpers.i18n_t(model, i18n_text.TaskTemplateVariablesHelp),
+      title,
       dialog.add_button(
         model,
         i18n_text.CreateTaskTemplate,
         OpenTaskTemplateDialog(TaskTemplateDialogCreate),
       ),
     ),
-    // Story 4.9 AC22: Contextual hint with link to Rules
+    // Story 4.9: Unified hint with rules link and variables info
     view_templates_hint(model),
-    view_task_templates_table(model, model.task_templates_org),
-    // Project templates section (if project selected)
-    case selected_project {
-      opt.Some(project) ->
-        div([], [
-          hr([]),
-          h2([], [
-            text(update_helpers.i18n_t(
-              model,
-              i18n_text.TaskTemplatesProjectTitle(project.name),
-            )),
-          ]),
-          view_task_templates_table(model, model.task_templates_project),
-        ])
-      opt.None -> element.none()
-    },
+    // Templates table (project-scoped)
+    view_task_templates_table(model, model.task_templates_project),
     // Task template CRUD dialog component
     view_task_template_crud_dialog(model),
   ])
 }
 
-/// Story 4.9 AC22: Contextual hint linking Templates to Rules.
+/// Story 4.9: Unified hint with rules link and variables documentation.
 fn view_templates_hint(model: Model) -> Element(Msg) {
   div([attribute.class("info-callout")], [
     span([attribute.class("info-callout-icon")], [text("\u{1F4A1}")]),
-    span([attribute.class("info-callout-text")], [
-      text(update_helpers.i18n_t(model, i18n_text.TemplatesHintRules)),
-      a(
-        [
-          attribute.href("/config/workflows"),
-          attribute.class("info-callout-link"),
-        ],
-        [text(update_helpers.i18n_t(model, i18n_text.TemplatesHintRulesLink) <> " \u{2192}")],
-      ),
+    div([attribute.class("info-callout-content")], [
+      span([attribute.class("info-callout-text")], [
+        text(update_helpers.i18n_t(model, i18n_text.TemplatesHintRules)),
+        a(
+          [
+            attribute.href("/config/workflows"),
+            attribute.class("info-callout-link"),
+          ],
+          [text(update_helpers.i18n_t(model, i18n_text.TemplatesHintRulesLink) <> " \u{2192}")],
+        ),
+      ]),
+      div([attribute.class("info-callout-variables")], [
+        text(update_helpers.i18n_t(model, i18n_text.TaskTemplateVariablesHelp)),
+      ]),
     ]),
   ])
 }
@@ -2683,43 +2652,52 @@ fn view_task_templates_table(
   model: Model,
   templates: Remote(List(TaskTemplate)),
 ) -> Element(Msg) {
-  // Refactored to use data_table.view_remote_with_forbidden
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
+
   data_table.view_remote_with_forbidden(
     templates,
-    loading_msg: update_helpers.i18n_t(model, i18n_text.LoadingEllipsis),
-    empty_msg: update_helpers.i18n_t(model, i18n_text.NoTaskTemplatesYet),
-    forbidden_msg: update_helpers.i18n_t(model, i18n_text.NotPermitted),
+    loading_msg: t(i18n_text.LoadingEllipsis),
+    empty_msg: t(i18n_text.NoTaskTemplatesYet),
+    forbidden_msg: t(i18n_text.NotPermitted),
     config: data_table.new()
       |> data_table.with_columns([
-        data_table.column(
-          update_helpers.i18n_t(model, i18n_text.TaskTemplateName),
-          fn(t: TaskTemplate) { text(t.name) },
-        ),
-        data_table.column(
-          update_helpers.i18n_t(model, i18n_text.TaskTemplateType),
-          fn(t: TaskTemplate) { text(t.type_name) },
-        ),
-        data_table.column(
-          update_helpers.i18n_t(model, i18n_text.TaskTemplatePriority),
-          fn(t: TaskTemplate) { text(int.to_string(t.priority)) },
-        ),
+        // Name column
+        data_table.column(t(i18n_text.TaskTemplateName), fn(tmpl: TaskTemplate) {
+          text(tmpl.name)
+        }),
+        // Type column (task type)
+        data_table.column(t(i18n_text.TaskTemplateType), fn(tmpl: TaskTemplate) {
+          text(tmpl.type_name)
+        }),
+        // Priority column
         data_table.column_with_class(
-          update_helpers.i18n_t(model, i18n_text.Actions),
-          fn(t: TaskTemplate) {
-            div([], [
-              button([event.on_click(OpenTaskTemplateDialog(TaskTemplateDialogEdit(t)))], [
-                text(update_helpers.i18n_t(model, i18n_text.EditTaskTemplate)),
-              ]),
-              button([event.on_click(OpenTaskTemplateDialog(TaskTemplateDialogDelete(t)))], [
-                text(update_helpers.i18n_t(model, i18n_text.DeleteTaskTemplate)),
-              ]),
+          t(i18n_text.TaskTemplatePriority),
+          fn(tmpl: TaskTemplate) {
+            span([attribute.class("priority-badge")], [
+              text(int.to_string(tmpl.priority)),
             ])
+          },
+          "col-number",
+          "cell-number",
+        ),
+        // Actions column with icon buttons
+        data_table.column_with_class(
+          t(i18n_text.Actions),
+          fn(tmpl: TaskTemplate) {
+            action_buttons.edit_delete_row_with_testid(
+              edit_title: t(i18n_text.EditTaskTemplate),
+              edit_click: OpenTaskTemplateDialog(TaskTemplateDialogEdit(tmpl)),
+              edit_testid: "template-edit-btn",
+              delete_title: t(i18n_text.Delete),
+              delete_click: OpenTaskTemplateDialog(TaskTemplateDialogDelete(tmpl)),
+              delete_testid: "template-delete-btn",
+            )
           },
           "col-actions",
           "cell-actions",
         ),
       ])
-      |> data_table.with_key(fn(t) { int.to_string(t.id) }),
+      |> data_table.with_key(fn(tmpl) { int.to_string(tmpl.id) }),
   )
 }
 

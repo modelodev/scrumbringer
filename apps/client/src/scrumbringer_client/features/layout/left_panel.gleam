@@ -393,7 +393,7 @@ fn view_config_section(config: LeftPanelConfig(msg)) -> Element(msg) {
                 [
                   icons.nav_icon(icons.Automation, icons.Small),
                   span([attribute.class("nav-label")], [
-                    text(i18n.t(config.locale, i18n_text.Rules)),
+                    text(i18n.t(config.locale, i18n_text.AdminWorkflows)),
                   ]),
                 ],
               ),

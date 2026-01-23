@@ -278,7 +278,12 @@ export function register_keydown(callback) {
       const meta = Boolean(event.metaKey)
       const shift = Boolean(event.shiftKey)
       const is_editing = is_editable_element(event.target)
-      const modal_open = Boolean(document.querySelector(".modal"))
+      // Check for dialogs too - Lustre components with shadow DOM may not
+      // expose their internal textarea as the event target
+      const modal_open = Boolean(
+        document.querySelector(".modal") ||
+        document.querySelector(".dialog-overlay")
+      )
 
       // Prevent browser defaults for our shortcuts, but only when we're not
       // typing and no modal is open (story: ignore shortcuts in those cases).

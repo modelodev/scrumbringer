@@ -1033,7 +1033,15 @@ pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
     permissions.TaskTemplates -> {
       let #(model, fx) = admin_workflow.fetch_task_templates(model)
       let #(model, right_panel_fx) = fetch_right_panel_data(model)
-      #(model, effect.batch([fx, ..right_panel_fx]))
+      // Also fetch task types for the template dialog type selector
+      let task_types_fx = case model.selected_project_id, model.task_types {
+        opt.Some(project_id), NotAsked ->
+          api_tasks.list_task_types(project_id, TaskTypesFetched)
+        opt.Some(project_id), Failed(_) ->
+          api_tasks.list_task_types(project_id, TaskTypesFetched)
+        _, _ -> effect.none()
+      }
+      #(model, effect.batch([fx, task_types_fx, ..right_panel_fx]))
     }
   }
 }
