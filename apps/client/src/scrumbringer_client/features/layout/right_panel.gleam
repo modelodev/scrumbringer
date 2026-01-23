@@ -24,7 +24,6 @@ import lustre/element.{type Element}
 import lustre/element/html.{button, div, h4, label, option, select, span, text}
 import lustre/event
 
-import domain/metrics.{type MyMetrics}
 import domain/task.{type Task}
 import domain/user.{type User}
 import scrumbringer_client/i18n/i18n
@@ -59,19 +58,19 @@ pub type RightPanelConfig(msg) {
     user: Option(User),
     my_tasks: List(Task),
     my_cards: List(MyCardProgress),
-    active_task: Option(ActiveTaskInfo),
+    active_tasks: List(ActiveTaskInfo),
     on_task_start: fn(Int) -> msg,
-    on_task_pause: msg,
-    on_task_complete: msg,
+    on_task_pause: fn(Int) -> msg,
+    on_task_complete: fn(Int) -> msg,
     on_task_release: fn(Int) -> msg,
     on_card_click: fn(Int) -> msg,
     on_logout: msg,
     // Drag-to-claim state for Pool view (Story 4.7)
     drag_armed: Bool,
     drag_over_my_tasks: Bool,
-    // My Metrics section (Story 4.7 Task 6.1)
-    my_metrics: Option(MyMetrics),
-    // Preferences section (Story 4.8 UX)
+    // Preferences popup (Story 4.8 UX: moved from inline to popup)
+    preferences_popup_open: Bool,
+    on_preferences_toggle: msg,
     current_theme: Theme,
     on_theme_change: fn(String) -> msg,
     on_locale_change: fn(String) -> msg,
@@ -91,94 +90,111 @@ pub fn view(config: RightPanelConfig(msg)) -> Element(msg) {
       div(
         [attribute.class("right-panel-activity")],
         [
-          // Active task timer (if any)
-          case config.active_task {
-            Some(active) -> view_active_task(config, active)
-            None -> element.none()
-          },
+          // Active tasks section (supports multiple)
+          view_active_tasks_section(config),
           // My Tasks section
           view_my_tasks(config),
           // My Cards section
           view_my_cards(config),
-          // My Metrics section (Story 4.7 Task 6.1)
-          view_my_metrics(config),
         ],
       ),
       // Footer sections (bottom - pushed down with flex spacer)
       div(
         [attribute.class("right-panel-footer")],
         [
-          // Preferences section (Story 4.8 UX)
-          view_preferences(config),
-          // Profile and logout (always at very bottom)
+          // Profile with preferences gear (Story 4.8 UX)
           view_profile(config),
         ],
       ),
+      // Preferences popup (Story 4.8 UX: moved from inline)
+      view_preferences_popup(config),
     ],
   )
 }
 
 // =============================================================================
-// Active Task Timer
+// Active Tasks Section (supports multiple concurrent tasks)
 // =============================================================================
 
-fn view_active_task(
+fn view_active_tasks_section(config: RightPanelConfig(msg)) -> Element(msg) {
+  case config.active_tasks {
+    [] -> element.none()
+    tasks -> {
+      let task_count = list.length(tasks)
+      let header_text = case task_count {
+        1 -> i18n.t(config.locale, i18n_text.InProgress)
+        n ->
+          i18n.t(config.locale, i18n_text.InProgress)
+          <> " ("
+          <> int.to_string(n)
+          <> ")"
+      }
+
+      div(
+        [
+          attribute.class("active-task-section"),
+          attribute.attribute("data-testid", "active-task"),
+        ],
+        [
+          h4([attribute.class("section-title section-title-with-icon")], [
+            icons.nav_icon(icons.Play, icons.Small),
+            text(header_text),
+          ]),
+          div(
+            [attribute.class("active-tasks-list")],
+            list.map(tasks, fn(active) { view_active_task_card(config, active) }),
+          ),
+        ],
+      )
+    }
+  }
+}
+
+fn view_active_task_card(
   config: RightPanelConfig(msg),
   active: ActiveTaskInfo,
 ) -> Element(msg) {
   div(
+    [attribute.class("active-task-card")],
     [
-      attribute.class("active-task-section"),
-      attribute.attribute("data-testid", "active-task"),
-    ],
-    [
-      h4([attribute.class("section-title section-title-with-icon")], [
-        icons.nav_icon(icons.Play, icons.Small),
-        text(i18n.t(config.locale, i18n_text.InProgress)),
-      ]),
+      div([attribute.class("task-title")], [text(active.task_title)]),
       div(
-        [attribute.class("active-task-card")],
         [
-          div([attribute.class("task-title")], [text(active.task_title)]),
-          div(
-            [
-              attribute.class("task-timer"),
-              attribute.attribute("data-testid", "task-timer"),
-            ],
-            [text(active.elapsed_display)],
-          ),
-          div(
-            [attribute.class("task-actions")],
-            [
-              case active.is_paused {
-                True ->
-                  button(
-                    [
-                      attribute.class("btn-xs"),
-                      attribute.attribute("data-testid", "my-task-start-btn"),
-                      event.on_click(config.on_task_start(active.task_id)),
-                    ],
-                    [text(i18n.t(config.locale, i18n_text.Resume))],
-                  )
-                False ->
-                  button(
-                    [
-                      attribute.class("btn-xs"),
-                      attribute.attribute("data-testid", "task-pause-btn"),
-                      event.on_click(config.on_task_pause),
-                    ],
-                    [text(i18n.t(config.locale, i18n_text.Pause))],
-                  )
-              },
+          attribute.class("task-timer"),
+          attribute.attribute("data-testid", "task-timer"),
+        ],
+        [text(active.elapsed_display)],
+      ),
+      div(
+        [attribute.class("task-actions")],
+        [
+          case active.is_paused {
+            True ->
               button(
                 [
                   attribute.class("btn-xs"),
-                  attribute.attribute("data-testid", "task-complete-btn"),
-                  event.on_click(config.on_task_complete),
+                  attribute.attribute("data-testid", "my-task-start-btn"),
+                  event.on_click(config.on_task_start(active.task_id)),
                 ],
-                [text(i18n.t(config.locale, i18n_text.Complete))],
-              ),
+                [text(i18n.t(config.locale, i18n_text.Resume))],
+              )
+            False ->
+              button(
+                [
+                  attribute.class("btn-xs"),
+                  attribute.attribute("data-testid", "task-pause-btn"),
+                  event.on_click(config.on_task_pause(active.task_id)),
+                ],
+                [text(i18n.t(config.locale, i18n_text.Pause))],
+              )
+          },
+          button(
+            [
+              attribute.class("btn-xs"),
+              attribute.attribute("data-testid", "task-complete-btn"),
+              event.on_click(config.on_task_complete(active.task_id)),
             ],
+            [text(i18n.t(config.locale, i18n_text.Complete))],
           ),
         ],
       ),
@@ -191,16 +207,11 @@ fn view_active_task(
 // =============================================================================
 
 fn view_my_tasks(config: RightPanelConfig(msg)) -> Element(msg) {
-  // Story 4.8 UX: Filter out active task from list (avoid duplication)
-  let active_task_id = case config.active_task {
-    Some(active) -> Some(active.task_id)
-    None -> None
-  }
+  // Story 4.8 UX: Filter out ALL active tasks from list (avoid duplication)
+  let active_task_ids =
+    list.map(config.active_tasks, fn(a) { a.task_id })
   let filtered_tasks = list.filter(config.my_tasks, fn(task) {
-    case active_task_id {
-      Some(id) -> task.id != id
-      None -> True
-    }
+    !list.contains(active_task_ids, task.id)
   })
 
   // Dropzone class for drag-to-claim visual feedback (Story 4.7)
@@ -381,160 +392,99 @@ fn view_my_card_item(
 }
 
 // =============================================================================
-// My Metrics Section (Story 4.7 Task 6.1)
+// Preferences Popup (Story 4.8 UX: moved from inline section)
 // =============================================================================
 
-fn view_my_metrics(config: RightPanelConfig(msg)) -> Element(msg) {
-  div(
-    [
-      attribute.class("my-metrics-section"),
-      attribute.attribute("data-testid", "my-metrics"),
-    ],
-    [
-      h4([attribute.class("section-title section-title-with-icon")], [
-        icons.nav_icon(icons.ChartUp, icons.Small),
-        text(i18n.t(config.locale, i18n_text.MyMetrics)),
-      ]),
-      case config.my_metrics {
-        None ->
-          div([attribute.class("metrics-loading")], [
-            text(i18n.t(config.locale, i18n_text.LoadingEllipsis)),
-          ])
-        Some(metrics) -> {
-          let total = metrics.claimed_count
-          let completion_pct = case total {
-            0 -> 0
-            _ -> { metrics.completed_count * 100 } / total
-          }
-          let release_pct = case total {
-            0 -> 0
-            _ -> { metrics.released_count * 100 } / total
-          }
-          div([attribute.class("metrics-grid")], [
-            // Claimed
-            div([attribute.class("metric-item")], [
-              span([attribute.class("metric-value")], [
-                text(int.to_string(metrics.claimed_count)),
-              ]),
-              span([attribute.class("metric-label")], [
-                text(i18n.t(config.locale, i18n_text.Claimed)),
-              ]),
-            ]),
-            // Completed
-            div([attribute.class("metric-item")], [
-              span([attribute.class("metric-value")], [
-                text(int.to_string(metrics.completed_count)),
-              ]),
-              span([attribute.class("metric-label")], [
-                text(
-                  i18n.t(config.locale, i18n_text.Completed)
-                  <> " ("
-                  <> int.to_string(completion_pct)
-                  <> "%)",
-                ),
-              ]),
-            ]),
-            // Released
-            div([attribute.class("metric-item")], [
-              span([attribute.class("metric-value")], [
-                text(int.to_string(metrics.released_count)),
-              ]),
-              span([attribute.class("metric-label")], [
-                text(
-                  i18n.t(config.locale, i18n_text.Released)
-                  <> " ("
-                  <> int.to_string(release_pct)
-                  <> "%)",
-                ),
-              ]),
-            ]),
-          ])
-        }
-      },
-    ],
-  )
-}
+fn view_preferences_popup(config: RightPanelConfig(msg)) -> Element(msg) {
+  case config.preferences_popup_open {
+    False -> element.none()
+    True -> {
+      let current_theme = theme.serialize(config.current_theme)
+      let current_locale = locale.serialize(config.locale)
 
-// =============================================================================
-// Preferences Section (Story 4.8 UX)
-// =============================================================================
-
-fn view_preferences(config: RightPanelConfig(msg)) -> Element(msg) {
-  let current_theme = theme.serialize(config.current_theme)
-  let current_locale = locale.serialize(config.locale)
-
-  div(
-    [
-      attribute.class("preferences-section"),
-      attribute.attribute("data-testid", "preferences"),
-    ],
-    [
-      h4([attribute.class("section-title section-title-with-icon")], [
-        icons.nav_icon(icons.Cog, icons.Small),
-        text(i18n.t(config.locale, i18n_text.Preferences)),
-      ]),
       div(
-        [attribute.class("preferences-grid")],
         [
-          // Theme selector
-          label(
-            [attribute.class("preference-item")],
+          attribute.class("preferences-popup-overlay"),
+          event.on_click(config.on_preferences_toggle),
+        ],
+        [
+          div(
             [
-              span([attribute.class("preference-icon")], [
-                case config.current_theme {
-                  theme.Dark -> icons.nav_icon(icons.Moon, icons.Small)
-                  theme.Default -> icons.nav_icon(icons.Sun, icons.Small)
-                },
-              ]),
-              select(
-                [
-                  attribute.class("preference-select"),
-                  attribute.value(current_theme),
-                  attribute.attribute("data-testid", "theme-selector"),
-                  event.on_input(config.on_theme_change),
-                ],
-                [
-                  option(
-                    [attribute.value("default")],
-                    i18n.t(config.locale, i18n_text.ThemeDefault),
-                  ),
-                  option(
-                    [attribute.value("dark")],
-                    i18n.t(config.locale, i18n_text.ThemeDark),
-                  ),
-                ],
-              ),
+              attribute.class("preferences-popup"),
+              attribute.attribute("data-testid", "preferences-popup"),
             ],
-          ),
-          // Language selector
-          label(
-            [attribute.class("preference-item")],
             [
-              span([attribute.class("preference-icon")], [
-                icons.nav_icon(icons.Globe, icons.Small),
+              h4([attribute.class("popup-title")], [
+                icons.nav_icon(icons.Cog, icons.Small),
+                text(i18n.t(config.locale, i18n_text.Preferences)),
               ]),
-              select(
+              div(
+                [attribute.class("preferences-popup-content")],
                 [
-                  attribute.class("preference-select"),
-                  attribute.value(current_locale),
-                  attribute.attribute("data-testid", "locale-selector"),
-                  event.on_input(config.on_locale_change),
-                ],
-                [
-                  option([attribute.value("es")], "Español"),
-                  option([attribute.value("en")], "English"),
+                  // Theme selector
+                  label(
+                    [attribute.class("preference-item")],
+                    [
+                      span([attribute.class("preference-icon")], [
+                        case config.current_theme {
+                          theme.Dark -> icons.nav_icon(icons.Moon, icons.Small)
+                          theme.Default ->
+                            icons.nav_icon(icons.Sun, icons.Small)
+                        },
+                      ]),
+                      select(
+                        [
+                          attribute.class("preference-select"),
+                          attribute.value(current_theme),
+                          attribute.attribute("data-testid", "theme-selector"),
+                          event.on_input(config.on_theme_change),
+                        ],
+                        [
+                          option(
+                            [attribute.value("default")],
+                            i18n.t(config.locale, i18n_text.ThemeDefault),
+                          ),
+                          option(
+                            [attribute.value("dark")],
+                            i18n.t(config.locale, i18n_text.ThemeDark),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  // Language selector
+                  label(
+                    [attribute.class("preference-item")],
+                    [
+                      span([attribute.class("preference-icon")], [
+                        icons.nav_icon(icons.Globe, icons.Small),
+                      ]),
+                      select(
+                        [
+                          attribute.class("preference-select"),
+                          attribute.value(current_locale),
+                          attribute.attribute("data-testid", "locale-selector"),
+                          event.on_input(config.on_locale_change),
+                        ],
+                        [
+                          option([attribute.value("es")], "Español"),
+                          option([attribute.value("en")], "English"),
+                        ],
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ],
           ),
         ],
-      ),
-    ],
-  )
+      )
+    }
+  }
 }
 
 // =============================================================================
-// Profile Section (Story 4.8 UX: always at bottom)
+// Profile Section (Story 4.8 UX: compact with gear icon for preferences)
 // =============================================================================
 
 fn view_profile(config: RightPanelConfig(msg)) -> Element(msg) {
@@ -546,21 +496,41 @@ fn view_profile(config: RightPanelConfig(msg)) -> Element(msg) {
           div(
             [attribute.class("user-info")],
             [
-              icons.nav_icon(icons.UserCircle, icons.Medium),
+              icons.nav_icon(icons.UserCircle, icons.Small),
               span([attribute.class("user-email")], [text(user.email)]),
             ],
           )
         None -> element.none()
       },
-      button(
+      div(
+        [attribute.class("profile-actions")],
         [
-          attribute.class("btn-logout"),
-          attribute.attribute("data-testid", "logout-btn"),
-          event.on_click(config.on_logout),
-        ],
-        [
-          icons.nav_icon(icons.Logout, icons.Small),
-          text(i18n.t(config.locale, i18n_text.Logout)),
+          // Preferences gear icon (Story 4.8 UX: opens popup)
+          button(
+            [
+              attribute.class("btn-icon-only"),
+              attribute.attribute("data-testid", "preferences-btn"),
+              attribute.attribute(
+                "title",
+                i18n.t(config.locale, i18n_text.Preferences),
+              ),
+              event.on_click(config.on_preferences_toggle),
+            ],
+            [icons.nav_icon(icons.Cog, icons.Small)],
+          ),
+          // Logout button (icon only)
+          button(
+            [
+              attribute.class("btn-icon-only btn-logout"),
+              attribute.attribute("data-testid", "logout-btn"),
+              attribute.attribute(
+                "title",
+                i18n.t(config.locale, i18n_text.Logout),
+              ),
+              event.on_click(config.on_logout),
+            ],
+            [icons.nav_icon(icons.Logout, icons.Small)],
+          ),
         ],
       ),
     ],

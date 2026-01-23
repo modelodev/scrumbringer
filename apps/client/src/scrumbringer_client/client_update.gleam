@@ -99,8 +99,8 @@ import scrumbringer_client/client_state.{
   MemberClearFilters, MemberPoolFiltersToggled, MemberPoolMyTasksRectFetched,
   MemberPoolSearchChanged, MemberPoolSearchDebounced, MemberPoolStatusChanged,
   MemberPanelToggled, MobileLeftDrawerToggled, MobileRightDrawerToggled, MobileDrawersClosed,
-  SidebarConfigToggled, SidebarOrgToggled,
-  MemberPoolTypeChanged, MemberPoolViewModeSet, MemberListHideCompletedToggled,
+  SidebarConfigToggled, SidebarOrgToggled, PreferencesPopupToggled,
+  MemberPoolTypeChanged, MemberPoolViewModeSet, MemberListHideCompletedToggled, MemberListCardToggled,
   MemberPositionEditClosed,
   MemberPositionEditOpened, MemberPositionEditSubmitted,
   MemberPositionEditXChanged, MemberPositionEditYChanged, MemberPositionSaved,
@@ -934,22 +934,31 @@ pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
               AdminMetricsProjectTasksFetched,
             )
 
-          #(model, effect.batch([overview_fx, tasks_fx]))
+          let #(model, right_panel_fx) = fetch_right_panel_data(model)
+          #(model, effect.batch([overview_fx, tasks_fx, ..right_panel_fx]))
         }
       }
     }
 
     permissions.RuleMetrics -> {
       // Initialize with default date range (last 30 days)
-      admin_workflow.handle_rule_metrics_tab_init(model)
+      let #(model, fx) = admin_workflow.handle_rule_metrics_tab_init(model)
+      let #(model, right_panel_fx) = fetch_right_panel_data(model)
+      #(model, effect.batch([fx, ..right_panel_fx]))
     }
 
     permissions.Capabilities ->
       case model.selected_project_id {
-        opt.Some(project_id) -> #(
-          model,
-          api_org.list_project_capabilities(project_id, CapabilitiesFetched),
-        )
+        opt.Some(project_id) -> {
+          let #(model, right_panel_fx) = fetch_right_panel_data(model)
+          #(
+            model,
+            effect.batch([
+              api_org.list_project_capabilities(project_id, CapabilitiesFetched),
+              ..right_panel_fx
+            ]),
+          )
+        }
         opt.None -> #(model, effect.none())
       }
 
@@ -964,11 +973,13 @@ pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
               members_project_id: opt.Some(project_id),
               org_users_cache: Loading,
             )
+          let #(model, right_panel_fx) = fetch_right_panel_data(model)
           #(
             model,
             effect.batch([
               api_projects.list_project_members(project_id, MembersFetched),
               api_org.list_org_users("", OrgUsersCacheFetched),
+              ..right_panel_fx
             ]),
           )
         }
@@ -984,15 +995,72 @@ pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
               task_types: Loading,
               task_types_project_id: opt.Some(project_id),
             )
-          #(model, api_tasks.list_task_types(project_id, TaskTypesFetched))
+          let #(model, right_panel_fx) = fetch_right_panel_data(model)
+          #(
+            model,
+            effect.batch([
+              api_tasks.list_task_types(project_id, TaskTypesFetched),
+              ..right_panel_fx
+            ]),
+          )
         }
       }
 
-    permissions.Cards -> admin_workflow.fetch_cards_for_project(model)
+    permissions.Cards -> {
+      let #(model, fx) = admin_workflow.fetch_cards_for_project(model)
+      let #(model, right_panel_fx) = fetch_right_panel_data(model)
+      #(model, effect.batch([fx, ..right_panel_fx]))
+    }
 
-    permissions.Workflows -> admin_workflow.fetch_workflows(model)
+    permissions.Workflows -> {
+      let #(model, fx) = admin_workflow.fetch_workflows(model)
+      let #(model, right_panel_fx) = fetch_right_panel_data(model)
+      #(model, effect.batch([fx, ..right_panel_fx]))
+    }
 
-    permissions.TaskTemplates -> admin_workflow.fetch_task_templates(model)
+    permissions.TaskTemplates -> {
+      let #(model, fx) = admin_workflow.fetch_task_templates(model)
+      let #(model, right_panel_fx) = fetch_right_panel_data(model)
+      #(model, effect.batch([fx, ..right_panel_fx]))
+    }
+  }
+}
+
+/// Fetches tasks and cards for the right panel in config views.
+/// This ensures "My Tasks" and "My Cards" sections are populated
+/// even when navigating directly to config routes.
+/// Returns updated model (with pending counters) and list of effects.
+fn fetch_right_panel_data(model: Model) -> #(Model, List(Effect(Msg))) {
+  case model.selected_project_id {
+    opt.None -> #(model, [])
+    opt.Some(project_id) -> {
+      // Fetch tasks with no filter to get all tasks
+      let tasks_effect =
+        api_tasks.list_project_tasks(
+          project_id,
+          TaskFilters(
+            status: opt.None,
+            type_id: opt.None,
+            capability_id: opt.None,
+            q: opt.None,
+          ),
+          fn(result) { MemberProjectTasksFetched(project_id, result) },
+        )
+
+      // Fetch cards for "My Cards" section
+      let cards_effect = api_cards.list_cards(project_id, CardsFetched)
+
+      // Update model with pending counter and loading state
+      let model = Model(
+        ..model,
+        member_tasks_pending: 1,
+        member_tasks_by_project: dict.new(),
+        cards: Loading,
+        cards_project_id: opt.Some(project_id),
+      )
+
+      #(model, [tasks_effect, cards_effect])
+    }
   }
 }
 
@@ -1090,18 +1158,17 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
               })
             })
 
-          // Fetch cards when in Fichas section
+          // Story 4.8 UX: Fetch cards for ALL views (Lista, Kanban need them too)
           let #(cards_effects, cards_model_update) = case
-            model.member_section,
             model.selected_project_id
           {
-            member_section.Fichas, opt.Some(project_id) -> #(
+            opt.Some(project_id) -> #(
               [api_cards.list_cards(project_id, CardsFetched)],
               fn(m: Model) {
                 Model(..m, cards: Loading, cards_project_id: opt.Some(project_id))
               },
             )
-            _, _ -> #([], fn(m: Model) { m })
+            opt.None -> #([], fn(m: Model) { m })
           }
 
           let effects =
@@ -1794,6 +1861,16 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         Model(..model, member_list_hide_completed: !model.member_list_hide_completed),
         effect.none(),
       )
+    // Story 4.8 UX: Collapse/expand card groups in Lista view
+    MemberListCardToggled(card_id) -> {
+      let current =
+        dict.get(model.member_list_expanded_cards, card_id)
+        |> opt.from_result
+        |> opt.unwrap(True)
+      let new_cards =
+        dict.insert(model.member_list_expanded_cards, card_id, !current)
+      #(Model(..model, member_list_expanded_cards: new_cards), effect.none())
+    }
     ViewModeChanged(mode) -> {
       let new_model = Model(..model, view_mode: mode)
       let route =
@@ -1848,6 +1925,15 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           model.sidebar_config_collapsed,
           !model.sidebar_org_collapsed,
         ),
+      )
+    // Story 4.8 UX: Preferences popup toggle
+    PreferencesPopupToggled ->
+      #(
+        Model(
+          ..model,
+          preferences_popup_open: !model.preferences_popup_open,
+        ),
+        effect.none(),
       )
     GlobalKeyDown(event) -> pool_workflow.handle_global_keydown(model, event)
 

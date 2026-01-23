@@ -15,15 +15,17 @@
 
 import gleam/int
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
+import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{button, div, h4, span, text}
 import lustre/event
 
-import domain/card.{type Card, Cerrada, EnCurso, Pendiente}
+import domain/card.{type Card, type CardState, Cerrada, EnCurso, Pendiente}
+import domain/org.{type OrgUser}
 import domain/task.{type Task}
-import domain/task_status
+import domain/task_status.{Available, Claimed, Completed, Ongoing, Taken}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -40,11 +42,16 @@ pub type KanbanConfig(msg) {
     locale: Locale,
     cards: List(Card),
     tasks: List(Task),
+    // Story 4.8 UX: Added org_users for task claimed_by display
+    org_users: List(OrgUser),
     is_pm_or_admin: Bool,
     on_card_click: fn(Int) -> msg,
     on_card_edit: fn(Int) -> msg,
     on_card_delete: fn(Int) -> msg,
     on_new_card: msg,
+    // Story 4.8 UX: Task interaction handlers for consistency with Lista view
+    on_task_click: fn(Int) -> msg,
+    on_task_claim: fn(Int, Int) -> msg,
   )
 }
 
@@ -83,18 +90,21 @@ pub fn view(config: KanbanConfig(msg)) -> Element(msg) {
         config,
         i18n.t(config.locale, i18n_text.CardStatePendiente),
         "pendiente",
+        Pendiente,
         pendiente,
       ),
       view_column(
         config,
         i18n.t(config.locale, i18n_text.CardStateEnCurso),
         "en-curso",
+        EnCurso,
         en_curso,
       ),
       view_column(
         config,
         i18n.t(config.locale, i18n_text.CardStateCerrada),
         "cerrada",
+        Cerrada,
         cerrada,
       ),
     ],
@@ -105,6 +115,7 @@ fn view_column(
   config: KanbanConfig(msg),
   title: String,
   column_class: String,
+  column_state: CardState,
   cards: List(CardWithProgress),
 ) -> Element(msg) {
   div(
@@ -122,7 +133,7 @@ fn view_column(
       div(
         [attribute.class("kanban-column-content")],
         case cards {
-          [] -> [view_empty_column(config)]
+          [] -> [view_empty_column(config, column_state)]
           _ -> list.map(cards, fn(cwp) { view_card(config, cwp) })
         },
       ),
@@ -130,18 +141,30 @@ fn view_column(
   )
 }
 
-/// Renders an empty state for kanban columns (AC27)
-fn view_empty_column(config: KanbanConfig(msg)) -> Element(msg) {
+/// Renders an empty state for kanban columns (AC12: different per column)
+fn view_empty_column(config: KanbanConfig(msg), column_state: CardState) -> Element(msg) {
+  // AC12: Different empty state text per column
+  let empty_text = case column_state {
+    Pendiente -> i18n.t(config.locale, i18n_text.KanbanEmptyPendiente)
+    EnCurso -> i18n.t(config.locale, i18n_text.KanbanEmptyEnCurso)
+    Cerrada -> i18n.t(config.locale, i18n_text.KanbanEmptyCerrada)
+  }
+
+  // AC12: Different icon per column state
+  let empty_icon = case column_state {
+    Pendiente -> icons.InboxEmpty
+    EnCurso -> icons.Pause
+    Cerrada -> icons.CheckCircle
+  }
+
   div(
     [
       attribute.class("kanban-empty-column"),
       attribute.attribute("data-testid", "kanban-empty-column"),
     ],
     [
-      span([attribute.class("empty-icon")], [icons.nav_icon(icons.ClipboardDoc, icons.Medium)]),
-      span([attribute.class("empty-text")], [
-        text(i18n.t(config.locale, i18n_text.KanbanEmptyColumn)),
-      ]),
+      span([attribute.class("empty-icon")], [icons.nav_icon(empty_icon, icons.Medium)]),
+      span([attribute.class("empty-text")], [text(empty_text)]),
     ],
   )
 }
@@ -222,14 +245,15 @@ fn view_card(config: KanbanConfig(msg), cwp: CardWithProgress) -> Element(msg) {
           span([attribute.class("progress-text")], [text(progress_text)]),
         ],
       ),
-      // Task list (Story 4.5 AC29)
-      view_task_list(cwp.tasks),
+      // Task list (Story 4.5 AC29, Story 4.8 UX: improved styling)
+      view_task_list(config, cwp.tasks),
     ],
   )
 }
 
-/// Renders a compact list of tasks within the card (AC29)
-fn view_task_list(tasks: List(Task)) -> Element(msg) {
+/// Renders a compact list of tasks within the card (AC29, Story 4.8 UX)
+/// Now uses consistent styling with Vista Lista: status icons, claimed info, claim button
+fn view_task_list(config: KanbanConfig(msg), tasks: List(Task)) -> Element(msg) {
   case list.length(tasks) {
     0 -> element.none()
     _ ->
@@ -239,28 +263,97 @@ fn view_task_list(tasks: List(Task)) -> Element(msg) {
           attribute.attribute("data-testid", "card-tasks"),
         ],
         list.map(list.take(tasks, 5), fn(t) {
-          let is_completed = t.status == task_status.Completed
-          let status_class = case is_completed {
-            True -> " completed"
-            False -> ""
-          }
-          let icon = case is_completed {
-            True -> "✓"
-            False -> "•"
-          }
-          div(
-            [attribute.class("kanban-task-item" <> status_class)],
-            [
-              span([attribute.class("task-status-icon")], [text(icon)]),
-              span([attribute.class("task-title")], [text(text_utils.truncate(t.title, 30))]),
-            ],
-          )
+          view_task_item(config, t)
         }),
       )
   }
 }
 
+/// Renders a single task item with status icon, title, and actions
+/// Story 4.8 UX: Consistent with grouped_list task rendering
+fn view_task_item(config: KanbanConfig(msg), task: Task) -> Element(msg) {
+  let status_class = case task.status {
+    Available -> "status-available"
+    Claimed(Taken) -> "status-taken"
+    Claimed(Ongoing) -> "status-ongoing"
+    Completed -> "status-completed"
+  }
+
+  // Status icon based on task state
+  // Using available icons: small dot for available, UserCircle for taken,
+  // Play for ongoing, Check for completed
+  let status_icon = case task.status {
+    Available ->
+      // Simple dot for available tasks (via CSS styled span)
+      span([attribute.class("status-dot")], [])
+    Claimed(Taken) -> icons.nav_icon(icons.UserCircle, icons.XSmall)
+    Claimed(Ongoing) -> icons.nav_icon(icons.Play, icons.XSmall)
+    Completed -> icons.nav_icon(icons.Check, icons.XSmall)
+  }
+
+  // Secondary info: claimed by for taken/ongoing tasks
+  let secondary_info = case task.status {
+    Claimed(_) -> {
+      let claimed_name = case task.claimed_by {
+        Some(user_id) ->
+          list.find(config.org_users, fn(u) { u.id == user_id })
+          |> option.from_result
+          |> option.map(fn(u) { truncate_email(u.email) })
+          |> option.unwrap("?")
+        None -> "?"
+      }
+      span([attribute.class("task-claimed-by")], [text(claimed_name)])
+    }
+    _ -> element.none()
+  }
+
+  div(
+    [
+      attribute.class("kanban-task-item " <> status_class),
+      attribute.attribute("data-testid", "kanban-task-item"),
+    ],
+    [
+      // Clickable task content
+      button(
+        [
+          attribute.class("kanban-task-content"),
+          event.on_click(config.on_task_click(task.id)),
+        ],
+        [
+          span([attribute.class("task-status-icon")], [status_icon]),
+          span([attribute.class("task-title")], [
+            text(text_utils.truncate(task.title, 25)),
+          ]),
+          secondary_info,
+        ],
+      ),
+      // Claim button for available tasks only
+      case task.status {
+        Available ->
+          button(
+            [
+              attribute.class("btn-claim-mini"),
+              attribute.attribute("title", i18n.t(config.locale, i18n_text.Claim)),
+              event.on_click(config.on_task_claim(task.id, task.version)),
+            ],
+            [icons.nav_icon(icons.HandRaised, icons.XSmall)],
+          )
+        _ -> element.none()
+      },
+    ],
+  )
+}
+
+/// Truncates email to show only the local part (before @)
+fn truncate_email(email: String) -> String {
+  case string.split(email, "@") {
+    [local, ..] -> text_utils.truncate(local, 10)
+    _ -> text_utils.truncate(email, 10)
+  }
+}
+
 fn view_context_menu(config: KanbanConfig(msg), card_id: Int) -> Element(msg) {
+  // Story 4.8 UX: Only edit button in Kanban view (delete via card detail)
   div(
     [
       attribute.class("kanban-card-menu"),
@@ -275,15 +368,6 @@ fn view_context_menu(config: KanbanConfig(msg), card_id: Int) -> Element(msg) {
           event.on_click(config.on_card_edit(card_id)),
         ],
         [icons.nav_icon(icons.Pencil, icons.Small)],
-      ),
-      button(
-        [
-          attribute.class("btn-icon btn-xs btn-danger"),
-          attribute.attribute("data-testid", "card-delete-btn"),
-          attribute.attribute("aria-label", "Delete card"),
-          event.on_click(config.on_card_delete(card_id)),
-        ],
-        [icons.nav_icon(icons.Trash, icons.Small)],
       ),
     ],
   )

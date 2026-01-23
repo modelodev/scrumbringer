@@ -303,13 +303,17 @@ pub fn translate(text: Text) -> String {
     text.RemoveMemberConfirm(user_email, project_name) ->
       "Remove " <> user_email <> " from " <> project_name <> "?"
     text.Remove -> "Remove"
-    // Member capabilities (Story 4.7 AC10-14)
-    text.CapabilitiesForUser(user_email) -> "Capabilities for " <> user_email
+    // Member capabilities (Story 4.7 AC10-14, Story 4.8 AC23)
+    text.CapabilitiesForUser(user_email, project_name) ->
+      "Capabilities for " <> user_email <> " in " <> project_name
     text.NoCapabilitiesDefined -> "No capabilities defined for this project"
-    // Capability members (Story 4.7 AC16-17)
-    text.MembersForCapability(capability_name) -> "Members with " <> capability_name
+    text.ManageCapabilities -> "Manage capabilities"
+    // Capability members (Story 4.7 AC16-17, Story 4.8 AC24)
+    text.MembersForCapability(capability_name, project_name) ->
+      "Members with " <> capability_name <> " in " <> project_name
     text.MembersSaved -> "Members saved"
     text.NoMembersDefined -> "No members in this project"
+    text.ManageMembers -> "Manage members"
 
     // User Projects dialog
     text.UserProjectsTitle(user_email) -> "Projects for " <> user_email
@@ -389,6 +393,9 @@ pub fn translate(text: Text) -> String {
     text.CardTaskCount(completed, total) ->
       int.to_string(completed) <> "/" <> int.to_string(total)
     text.KanbanEmptyColumn -> "No cards here"
+    text.KanbanEmptyPendiente -> "No pending cards"
+    text.KanbanEmptyEnCurso -> "No cards in progress"
+    text.KanbanEmptyCerrada -> "No closed cards"
 
     // Workflows
     text.AdminWorkflows -> "Workflows"

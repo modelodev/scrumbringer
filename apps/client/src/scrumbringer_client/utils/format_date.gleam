@@ -83,6 +83,22 @@ pub fn relative_date_from_ms(timestamp_ms: Int, now_ms: Int) -> String {
   }
 }
 
+/// Extract just the date portion from an ISO timestamp.
+///
+/// Format: "YYYY-MM-DD"
+///
+/// ## Example
+///
+/// ```gleam
+/// date_only("2026-01-21T08:16:58Z")  // "2026-01-21"
+/// ```
+pub fn date_only(iso_timestamp: String) -> String {
+  case string.split(iso_timestamp, "T") {
+    [date_part, ..] -> date_part
+    _ -> iso_timestamp
+  }
+}
+
 /// Format a timestamp as a short date string.
 ///
 /// Format: "21 ene 2026"

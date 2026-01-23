@@ -295,6 +295,21 @@ pub fn now_working_active_task_id(model: Model) -> Option(Int) {
   }
 }
 
+/// Returns ALL active work sessions (for multi-task EN CURSO panel).
+///
+/// ## Example
+///
+/// ```gleam
+/// now_working_all_sessions(model)
+/// // [WorkSession(task_id: 1, ..), WorkSession(task_id: 2, ..)]
+/// ```
+pub fn now_working_all_sessions(model: Model) -> List(WorkSession) {
+  case model.member_work_sessions {
+    Loaded(WorkSessionsPayload(active_sessions: sessions, ..)) -> sessions
+    _ -> []
+  }
+}
+
 // =============================================================================
 // Time Formatting
 // =============================================================================

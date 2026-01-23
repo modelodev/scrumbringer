@@ -87,7 +87,7 @@ import scrumbringer_client/client_state.{
   UserProjectRoleChangeRequested,
   WorkflowCrudCreated, WorkflowCrudDeleted, WorkflowCrudUpdated,
   WorkflowDialogCreate, WorkflowDialogDelete, WorkflowDialogEdit,
-  CloseWorkflowDialog, OpenWorkflowDialog, WorkflowRulesClicked,
+  CloseWorkflowDialog, OpenWorkflowDialog,
   MemberCapabilitiesDialogClosed, MemberCapabilitiesDialogOpened,
   MemberCapabilitiesSaveClicked, MemberCapabilitiesToggled,
   CapabilityMembersDialogClosed, CapabilityMembersDialogOpened,
@@ -479,6 +479,12 @@ fn format_projects_summary(model: Model, user_id: Int) -> String {
 
 /// Capabilities management view.
 pub fn view_capabilities(model: Model) -> Element(Msg) {
+  // Get project name for dialog titles (Story 4.8 AC24)
+  let project_name = case update_helpers.selected_project(model) {
+    opt.Some(project) -> project.name
+    opt.None -> ""
+  }
+
   div([attribute.class("section")], [
     // Section header with add button
     div([attribute.class("admin-section-header")], [
@@ -496,10 +502,10 @@ pub fn view_capabilities(model: Model) -> Element(Msg) {
     view_capabilities_list(model, model.capabilities),
     // Create capability dialog
     view_capabilities_create_dialog(model),
-    // Capability members dialog (AC17)
+    // Capability members dialog (AC17, Story 4.8 AC24)
     case model.capability_members_dialog_capability_id {
       opt.Some(capability_id) ->
-        view_capability_members_dialog(model, capability_id)
+        view_capability_members_dialog(model, capability_id, project_name)
       opt.None -> element.none()
     },
   ])
@@ -609,10 +615,10 @@ pub fn view_members(
           opt.Some(user) -> view_remove_member_dialog(model, project.name, user)
           opt.None -> element.none()
         },
-        // Member capabilities dialog (AC11-14)
+        // Member capabilities dialog (AC11-14, Story 4.8 AC23)
         case model.member_capabilities_dialog_user_id {
           opt.Some(user_id) ->
-            view_member_capabilities_dialog(model, user_id)
+            view_member_capabilities_dialog(model, user_id, project.name)
           opt.None -> element.none()
         },
       ])
@@ -795,8 +801,11 @@ fn view_capabilities_list(
             thead([], [
               tr([], [
                 th([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
-                th([], [
+                th([attribute.class("col-number")], [
                   text(update_helpers.i18n_t(model, i18n_text.AdminMembers)),
+                ]),
+                th([attribute.class("col-actions")], [
+                  text(update_helpers.i18n_t(model, i18n_text.Actions)),
                 ]),
               ]),
             ]),
@@ -814,22 +823,28 @@ fn view_capabilities_list(
                   int.to_string(c.id),
                   tr([], [
                     td([], [text(c.name)]),
-                    // Members cell with count and edit button (AC16)
-                    td([attribute.class("members-cell")], [
-                      span([attribute.class("member-count")], [
+                    // Members count only (Story 4.8 UX: action moved to ACCIONES)
+                    td([attribute.class("cell-number")], [
+                      span([attribute.class("count-badge")], [
                         text(int.to_string(member_count)),
                       ]),
+                    ]),
+                    // Actions column (Story 4.8 UX)
+                    td([attribute.class("cell-actions")], [
                       button(
                         [
                           attribute.class("btn-icon btn-xs"),
-                          attribute.attribute("aria-label", "Edit members"),
+                          attribute.attribute(
+                            "title",
+                            update_helpers.i18n_t(model, i18n_text.ManageMembers),
+                          ),
                           attribute.attribute(
                             "data-testid",
                             "capability-members-btn",
                           ),
                           event.on_click(CapabilityMembersDialogOpened(c.id)),
                         ],
-                        [text("\u{1F465}")],
+                        [icons.nav_icon(icons.OrgUsers, icons.Small)],
                       ),
                     ]),
                   ]),
@@ -884,11 +899,13 @@ fn view_members_table(
                 th([], [text(update_helpers.i18n_t(model, i18n_text.User))]),
                 th([], [text(update_helpers.i18n_t(model, i18n_text.UserId))]),
                 th([], [text(update_helpers.i18n_t(model, i18n_text.Role))]),
-                th([], [
+                th([attribute.class("col-number")], [
                   text(update_helpers.i18n_t(model, i18n_text.Capabilities)),
                 ]),
                 th([], [text(update_helpers.i18n_t(model, i18n_text.CreatedAt))]),
-                th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
+                th([attribute.class("col-actions")], [
+                  text(update_helpers.i18n_t(model, i18n_text.Actions)),
+                ]),
               ]),
             ]),
             keyed.tbody(
@@ -919,15 +936,22 @@ fn view_members_table(
                     td([], [text(email)]),
                     td([], [text(int.to_string(m.user_id))]),
                     td([], [view_member_role_cell(model, m, is_org_admin)]),
-                    // Capabilities cell with count and edit button (AC10, AC15)
-                    td([attribute.class("capabilities-cell")], [
-                      span([attribute.class("cap-count")], [
+                    // Capabilities count only (Story 4.8 UX: action moved to ACCIONES)
+                    td([attribute.class("cell-number")], [
+                      span([attribute.class("count-badge")], [
                         text(int.to_string(cap_count)),
                       ]),
+                    ]),
+                    td([], [text(m.created_at)]),
+                    // Actions column: manage capabilities + remove (Story 4.8 UX)
+                    td([attribute.class("cell-actions")], [
                       button(
                         [
                           attribute.class("btn-icon btn-xs"),
-                          attribute.attribute("aria-label", "Edit capabilities"),
+                          attribute.attribute(
+                            "title",
+                            update_helpers.i18n_t(model, i18n_text.ManageCapabilities),
+                          ),
                           attribute.attribute(
                             "data-testid",
                             "member-capabilities-btn",
@@ -938,12 +962,17 @@ fn view_members_table(
                         ],
                         [icons.nav_icon(icons.Cog, icons.Small)],
                       ),
-                    ]),
-                    td([], [text(m.created_at)]),
-                    td([], [
-                      button([event.on_click(MemberRemoveClicked(m.user_id))], [
-                        text(update_helpers.i18n_t(model, i18n_text.Remove)),
-                      ]),
+                      button(
+                        [
+                          attribute.class("btn-icon btn-xs btn-danger-icon"),
+                          attribute.attribute(
+                            "title",
+                            update_helpers.i18n_t(model, i18n_text.Remove),
+                          ),
+                          event.on_click(MemberRemoveClicked(m.user_id)),
+                        ],
+                        [icons.nav_icon(icons.Trash, icons.Small)],
+                      ),
                     ]),
                   ]),
                 )
@@ -1172,7 +1201,11 @@ fn view_remove_member_dialog(
 
 /// Member capabilities dialog (AC11-14).
 /// Shows checkboxes for all project capabilities, allowing assignment.
-fn view_member_capabilities_dialog(model: Model, user_id: Int) -> Element(Msg) {
+fn view_member_capabilities_dialog(
+  model: Model,
+  user_id: Int,
+  project_name: String,
+) -> Element(Msg) {
   // Get user email for display
   let user_email = case
     update_helpers.resolve_org_user(model.org_users_cache, user_id)
@@ -1192,7 +1225,10 @@ fn view_member_capabilities_dialog(model: Model, user_id: Int) -> Element(Msg) {
     div([attribute.class("modal-content capabilities-dialog")], [
       h3([], [
         text(
-          update_helpers.i18n_t(model, i18n_text.CapabilitiesForUser(user_email)),
+          update_helpers.i18n_t(
+            model,
+            i18n_text.CapabilitiesForUser(user_email, project_name),
+          ),
         ),
       ]),
       // Error display
@@ -1282,6 +1318,7 @@ fn view_member_capabilities_dialog(model: Model, user_id: Int) -> Element(Msg) {
 fn view_capability_members_dialog(
   model: Model,
   capability_id: Int,
+  project_name: String,
 ) -> Element(Msg) {
   // Get capability name for display
   let capability_name = case model.capabilities {
@@ -1305,7 +1342,7 @@ fn view_capability_members_dialog(
         text(
           update_helpers.i18n_t(
             model,
-            i18n_text.MembersForCapability(capability_name),
+            i18n_text.MembersForCapability(capability_name, project_name),
           ),
         ),
       ]),
@@ -2084,12 +2121,6 @@ fn view_workflows_table(
                     ]),
                     td([], [text(int.to_string(w.rule_count))]),
                     td([], [
-                      button([event.on_click(WorkflowRulesClicked(w.id))], [
-                        text(update_helpers.i18n_t(
-                          model,
-                          i18n_text.WorkflowRules,
-                        )),
-                      ]),
                       button(
                         [event.on_click(OpenWorkflowDialog(WorkflowDialogEdit(w)))],
                         [

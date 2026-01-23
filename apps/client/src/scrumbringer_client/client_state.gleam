@@ -439,6 +439,8 @@ pub type Model {
     member_pool_view_mode: pool_prefs.ViewMode,
     // List view hide completed tasks filter
     member_list_hide_completed: Bool,
+    // List view expanded card groups (Story 4.8 UX: collapsible groups)
+    member_list_expanded_cards: dict.Dict(Int, Bool),
     // Mobile panel toggle
     member_panel_expanded: Bool,
     // Mobile drawer state
@@ -447,6 +449,8 @@ pub type Model {
     // Sidebar section collapse state (persisted in localStorage)
     sidebar_config_collapsed: Bool,
     sidebar_org_collapsed: Bool,
+    // Preferences popup (Story 4.8 UX: moved from inline to popup)
+    preferences_popup_open: Bool,
     // Member task creation
     member_create_dialog_open: Bool,
     member_create_title: String,
@@ -721,6 +725,8 @@ pub type Msg {
   MemberPoolViewModeSet(pool_prefs.ViewMode)
   // List view hide completed toggle
   MemberListHideCompletedToggled
+  // List view card group toggle (Story 4.8 UX: collapsible groups)
+  MemberListCardToggled(Int)
   // New view mode for 3-panel layout
   ViewModeChanged(view_mode.ViewMode)
   MemberPanelToggled
@@ -731,6 +737,8 @@ pub type Msg {
   // Sidebar section collapse toggles
   SidebarConfigToggled
   SidebarOrgToggled
+  // Preferences popup toggle (Story 4.8 UX)
+  PreferencesPopupToggled
 
   // Keyboard
   GlobalKeyDown(pool_prefs.KeyEvent)
@@ -1075,6 +1083,8 @@ pub fn default_model() -> Model {
     member_pool_view_mode: pool_prefs.Canvas,
     // List view hide completed tasks filter (AC6: ON by default)
     member_list_hide_completed: True,
+    // List view expanded card groups (Story 4.8 UX: all expanded by default)
+    member_list_expanded_cards: dict.new(),
     // Mobile panel toggle
     member_panel_expanded: False,
     // Mobile drawer state
@@ -1083,6 +1093,8 @@ pub fn default_model() -> Model {
     // Sidebar section collapse state (persisted in localStorage)
     sidebar_config_collapsed: False,
     sidebar_org_collapsed: False,
+    // Preferences popup (Story 4.8 UX)
+    preferences_popup_open: False,
     // Member task creation
     member_create_dialog_open: False,
     member_create_title: "",

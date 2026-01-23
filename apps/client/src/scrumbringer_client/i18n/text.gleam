@@ -285,13 +285,15 @@ pub type Text {
   RemoveMemberTitle
   RemoveMemberConfirm(user_email: String, project_name: String)
   Remove
-  // Member capabilities (Story 4.7 AC10-14)
-  CapabilitiesForUser(user_email: String)
+  // Member capabilities (Story 4.7 AC10-14, Story 4.8 AC23)
+  CapabilitiesForUser(user_email: String, project_name: String)
   NoCapabilitiesDefined
-  // Capability members (Story 4.7 AC16-17)
-  MembersForCapability(capability_name: String)
+  ManageCapabilities
+  // Capability members (Story 4.7 AC16-17, Story 4.8 AC24)
+  MembersForCapability(capability_name: String, project_name: String)
   MembersSaved
   NoMembersDefined
+  ManageMembers
 
   // User Projects dialog
   UserProjectsTitle(user_email: String)
@@ -357,6 +359,9 @@ pub type Text {
   NoCardsYet
   CardTaskCount(completed: Int, total: Int)
   KanbanEmptyColumn
+  KanbanEmptyPendiente
+  KanbanEmptyEnCurso
+  KanbanEmptyCerrada
 
   // Workflows
   AdminWorkflows

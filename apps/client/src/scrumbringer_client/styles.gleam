@@ -203,6 +203,15 @@ pub fn base_css() -> String {
     ".now-working-empty { display: flex; align-items: center; gap: 8px; justify-content: center; padding: 8px 0; color: var(--sb-muted); font-style: italic; }",
     ".now-working-empty-icon { font-size: 1.2em; opacity: 0.7; }",
     ".now-working-section .now-working-actions { justify-content: center; }",
+    // Multi-session support for EN CURSO panel
+    ".now-working-multi { padding: 8px; }",
+    ".now-working-multi::before { display: none; }",
+    ".now-working-sessions { display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; }",
+    ".now-working-session-item { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 8px; position: relative; }",
+    ".now-working-session-item::before { content: ''; position: absolute; top: 10px; right: 10px; width: 6px; height: 6px; background: var(--sb-success); border-radius: 50%; animation: pulse-dot 2s ease-in-out infinite; }",
+    ".now-working-session-item .now-working-task-title { font-size: 0.9rem; font-weight: 600; padding-right: 16px; }",
+    ".now-working-session-item .now-working-timer { font-size: 1.1rem; font-weight: 600; font-family: ui-monospace, monospace; color: var(--sb-primary); }",
+    ".now-working-session-item .now-working-actions { flex-direction: row; justify-content: flex-start; margin-top: 4px; }",
     // Task row active state
     ".task-row-active { background: color-mix(in oklab, var(--sb-primary) 10%, var(--sb-elevated)); border-color: var(--sb-primary); }",
     "@media (max-width: 640px) { .body { flex-direction: column; } .nav { width: 100%; } }",
@@ -648,6 +657,21 @@ pub fn base_css() -> String {
     ".admin-section-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; margin-bottom: 16px; border-bottom: 1px solid var(--sb-border); }",
     ".admin-section-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--sb-muted); }",
     ".admin-section-icon { font-size: 16px; }",
+    // Story 4.8 AC25: Unified vertical layout for capability checklists
+    ".capabilities-checklist, .members-checklist { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; padding: 4px 0; }",
+    ".capabilities-checklist .checkbox-label, .members-checklist .checkbox-label { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 8px; cursor: pointer; transition: all 0.15s ease; }",
+    ".capabilities-checklist .checkbox-label:hover, .members-checklist .checkbox-label:hover { background: var(--sb-hover); border-color: var(--sb-primary); }",
+    ".capabilities-checklist input[type='checkbox'], .members-checklist input[type='checkbox'] { width: 18px; height: 18px; accent-color: var(--sb-primary); cursor: pointer; }",
+    ".capabilities-checklist .capability-name, .members-checklist .member-name, .members-checklist .member-email { font-size: 14px; font-weight: 500; }",
+    // Story 4.8 UX: Table column alignment
+    // Note: Never use display:flex on td elements - it breaks table-cell borders
+    ".col-number, .cell-number { text-align: center; width: 80px; }",
+    "th.col-actions, td.cell-actions { text-align: right; white-space: nowrap; }",
+    ".cell-actions .btn-icon { margin-left: 8px; }",
+    ".cell-actions .btn-icon:first-child { margin-left: 0; }",
+    ".count-badge { display: inline-block; min-width: 28px; height: 24px; line-height: 22px; padding: 0 8px; background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--sb-muted); text-align: center; vertical-align: middle; box-sizing: border-box; }",
+    ".btn-danger-icon { color: var(--sb-danger); }",
+    ".btn-danger-icon:hover { background: color-mix(in oklab, var(--sb-danger) 15%, transparent); }",
     // Responsive dialog
     "@media (max-width: 640px) { .dialog { max-height: 100vh; border-radius: 0; } .dialog-overlay { padding: 0; } .dialog-sm, .dialog-md, .dialog-lg, .dialog-xl { width: 100%; height: 100%; } .dialog-body { padding: 16px; } .dialog-header, .dialog-footer { padding: 12px 16px; } }",
     // =============================================================================
@@ -695,15 +719,15 @@ pub fn base_css() -> String {
     // =============================================================================
     ".right-panel-content { display: flex; flex-direction: column; gap: 16px; height: 100%; }",
     ".active-task-section, .my-tasks-section, .my-cards-section { display: flex; flex-direction: column; gap: 8px; }",
-    ".active-task-card { background: var(--sb-elevated); border: 1px solid var(--sb-primary); border-radius: 10px; padding: 12px; }",
+    ".active-task-card { background: var(--sb-elevated); border: 1px solid var(--sb-primary); border-radius: 10px; padding: 12px; position: relative; }",
+    ".active-task-card::before { content: ''; position: absolute; top: 12px; right: 12px; width: 8px; height: 8px; background: var(--sb-success); border-radius: 50%; animation: pulse-dot 2s ease-in-out infinite; }",
+    ".active-tasks-list { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; }",
+    ".active-tasks-list .active-task-card { padding: 10px; }",
+    ".active-tasks-list .task-timer { font-size: 18px; margin: 4px 0; }",
     ".task-timer { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: center; margin: 8px 0; }",
     ".task-actions { display: flex; gap: 8px; justify-content: center; }",
     ".task-list { display: flex; flex-direction: column; gap: 6px; }",
     ".task-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 8px; }",
-    ".profile-section { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--sb-border); display: flex; flex-direction: column; gap: 8px; }",
-    ".user-info { text-align: center; }",
-    ".user-email { color: var(--sb-muted); font-size: 14px; }",
-    ".btn-logout { width: 100%; }",
     // My cards list (right panel)
     ".my-cards-list { display: flex; flex-direction: column; gap: 6px; }",
     ".my-card-item { display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 10px 12px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 8px; cursor: pointer; text-align: left; }",
@@ -714,30 +738,31 @@ pub fn base_css() -> String {
     ".progress-bar-mini .progress-bar-fill { height: 100%; background: var(--sb-primary); border-radius: 2px; }",
     ".card-progress { font-size: 12px; color: var(--sb-muted); font-variant-numeric: tabular-nums; }",
     // My Metrics section (Story 4.7 Task 6.1)
-    ".my-metrics-section { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-top: 1px solid var(--sb-border); }",
-    ".metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }",
-    ".metric-item { display: flex; flex-direction: column; align-items: center; padding: 8px; background: var(--sb-elevated); border-radius: 8px; }",
-    ".metric-value { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }",
-    ".metric-label { font-size: 11px; color: var(--sb-muted); text-align: center; }",
-    ".metrics-loading { color: var(--sb-muted); font-size: 14px; text-align: center; padding: 12px; }",
     // Right panel layout (Story 4.8 UX)
     ".right-panel-activity { display: flex; flex-direction: column; gap: 16px; flex: 1; }",
     ".right-panel-footer { display: flex; flex-direction: column; gap: 12px; margin-top: auto; padding-top: 16px; border-top: 1px solid var(--sb-border); }",
     // Section titles with icons (Story 4.8 UX)
     ".section-title-with-icon { display: flex; align-items: center; gap: 8px; }",
     ".section-title-with-icon .nav-icon { color: var(--sb-muted); }",
-    // Preferences section (Story 4.8 UX)
-    ".preferences-section { display: flex; flex-direction: column; gap: 8px; }",
-    ".preferences-grid { display: flex; flex-direction: column; gap: 8px; }",
+    // Preferences popup (Story 4.8 UX: moved from inline to popup)
+    ".preferences-popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; z-index: 1000; }",
+    ".preferences-popup { background: var(--sb-surface); border-radius: 12px; padding: 20px; min-width: 280px; max-width: 320px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }",
+    ".popup-title { display: flex; align-items: center; gap: 8px; margin: 0 0 16px 0; font-size: 16px; font-weight: 600; }",
+    ".popup-title .nav-icon { color: var(--sb-muted); }",
+    ".preferences-popup-content { display: flex; flex-direction: column; gap: 12px; }",
     ".preference-item { display: flex; align-items: center; gap: 8px; cursor: pointer; }",
     ".preference-icon { display: flex; align-items: center; color: var(--sb-muted); }",
-    ".preference-select { flex: 1; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--sb-border); background: var(--sb-elevated); font-size: 14px; cursor: pointer; }",
+    ".preference-select { flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--sb-border); background: var(--sb-elevated); font-size: 14px; cursor: pointer; }",
     ".preference-select:hover { border-color: var(--sb-primary); }",
-    // Profile section updates (Story 4.8 UX)
-    ".profile-section .user-info { display: flex; align-items: center; gap: 8px; justify-content: center; }",
-    ".profile-section .user-info .nav-icon { color: var(--sb-muted); }",
-    ".btn-logout { display: flex; align-items: center; justify-content: center; gap: 8px; }",
-    ".btn-logout .nav-icon { color: inherit; }",
+    // Profile section (Story 4.8 UX: compact with icon buttons)
+    ".profile-section { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 0; }",
+    ".profile-section .user-info { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }",
+    ".profile-section .user-info .nav-icon { color: var(--sb-muted); flex-shrink: 0; }",
+    ".profile-section .user-email { font-size: 13px; color: var(--sb-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }",
+    ".profile-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }",
+    ".btn-icon-only { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: var(--sb-muted); transition: all 0.15s ease; }",
+    ".btn-icon-only:hover { background: var(--sb-elevated); color: var(--sb-text); border-color: var(--sb-border); }",
+    ".btn-icon-only.btn-logout:hover { color: var(--sb-error); border-color: var(--sb-error); }",
     // =============================================================================
     // View Mode Toggle (Story 4.4)
     // =============================================================================
@@ -814,6 +839,29 @@ pub fn base_css() -> String {
     ".progress-text { font-size: 12px; color: var(--sb-muted); min-width: 40px; text-align: right; }",
     ".btn-danger { color: var(--sb-danger); }",
     ".btn-danger:hover { background: color-mix(in oklab, var(--sb-danger) 10%, transparent); }",
+    // =============================================================================
+    // Kanban Task Items (Story 4.8 UX - Homogeneous with Lista view)
+    // =============================================================================
+    ".kanban-card-tasks { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--sb-border); display: flex; flex-direction: column; gap: 4px; }",
+    ".kanban-task-item { display: flex; align-items: center; gap: 4px; padding: 4px 6px; border-radius: 6px; font-size: 12px; transition: background 0.15s; }",
+    ".kanban-task-item:hover { background: var(--sb-bg); }",
+    ".kanban-task-content { flex: 1; display: flex; align-items: center; gap: 6px; background: transparent; border: none; cursor: pointer; text-align: left; padding: 0; min-width: 0; }",
+    ".kanban-task-content:hover .task-title { color: var(--sb-primary); }",
+    ".kanban-task-item .task-status-icon { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; }",
+    ".kanban-task-item .task-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--sb-text); }",
+    ".kanban-task-item .task-claimed-by { font-size: 10px; color: var(--sb-muted); flex-shrink: 0; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }",
+    // Status-specific colors
+    ".kanban-task-item.status-available .task-status-icon { color: var(--sb-muted); }",
+    ".kanban-task-item.status-taken .task-status-icon { color: var(--sb-warning); }",
+    ".kanban-task-item.status-ongoing .task-status-icon { color: var(--sb-primary); }",
+    ".kanban-task-item.status-completed .task-status-icon { color: var(--sb-success); }",
+    ".kanban-task-item.status-completed .task-title { text-decoration: line-through; color: var(--sb-muted); }",
+    // Status dot for available tasks
+    ".status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }",
+    // Mini claim button
+    ".btn-claim-mini { background: transparent; border: none; cursor: pointer; padding: 2px; border-radius: 4px; color: var(--sb-muted); opacity: 0; transition: opacity 0.15s, color 0.15s; display: flex; align-items: center; justify-content: center; }",
+    ".kanban-task-item:hover .btn-claim-mini { opacity: 1; }",
+    ".btn-claim-mini:hover { color: var(--sb-primary); background: var(--sb-surface); }",
     // =============================================================================
     // Responsive Drawers (Story 4.4 - Phase 6)
     // =============================================================================

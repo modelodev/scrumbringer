@@ -274,6 +274,8 @@ pub type NavIcon {
 
 /// Icon size variants for consistent sizing.
 pub type IconSize {
+  // Story 4.8 UX: Added XSmall for compact task lists in Kanban
+  XSmall
   Small
   Medium
   Large
@@ -282,6 +284,7 @@ pub type IconSize {
 /// Get pixel size for an IconSize variant.
 pub fn icon_size_px(size: IconSize) -> Int {
   case size {
+    XSmall -> 12
     Small -> 16
     Medium -> 20
     Large -> 24

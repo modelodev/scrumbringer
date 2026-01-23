@@ -364,12 +364,16 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       member_pool_view_mode: pool_view_mode,
       // List view hide completed tasks filter (AC6: ON by default)
       member_list_hide_completed: True,
+      // Story 4.8 UX: Collapse/expand card groups (all expanded by default)
+      member_list_expanded_cards: dict.new(),
       member_panel_expanded: False,
       mobile_left_drawer_open: False,
       mobile_right_drawer_open: False,
       // Sidebar collapse state (persisted in localStorage)
       sidebar_config_collapsed: sidebar_config_collapsed,
       sidebar_org_collapsed: sidebar_org_collapsed,
+      // Preferences popup (Story 4.8 UX)
+      preferences_popup_open: False,
       member_create_dialog_open: False,
       member_create_title: "",
       member_create_description: "",

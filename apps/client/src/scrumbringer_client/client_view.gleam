@@ -56,8 +56,10 @@ import scrumbringer_client/client_state.{
   MemberTaskDetailsOpened, MemberClaimClicked, NoOp, OpenCardDetail, OpenCardDialog, ViewModeChanged,
   MobileLeftDrawerToggled, MobileRightDrawerToggled, MobileDrawersClosed,
   SidebarConfigToggled, SidebarOrgToggled, MemberListHideCompletedToggled,
-  // Story 4.8 UX: Re-added for preferences panel in right sidebar
-  ThemeSelected, LocaleSelected,
+  // Story 4.8 UX: Collapse/expand card groups in Lista view
+  MemberListCardToggled,
+  // Story 4.8 UX: Preferences popup toggle and theme/locale
+  PreferencesPopupToggled, ThemeSelected, LocaleSelected,
 }
 import scrumbringer_client/features/admin/view as admin_view
 import scrumbringer_client/features/auth/view as auth_view
@@ -86,7 +88,7 @@ import scrumbringer_client/ui/toast as ui_toast
 import scrumbringer_client/update_helpers
 import scrumbringer_client/client_ffi
 
-import domain/task.{type Task, ActiveTask, Task}
+import domain/task.{type Task, ActiveTask, Task, WorkSession}
 import domain/task_status.{Claimed, Taken}
 
 import scrumbringer_client/features/layout/three_panel_layout
@@ -566,9 +568,10 @@ fn build_center_panel(model: Model, user: User) -> Element(Msg) {
     tasks: tasks,
     cards: cards,
     org_users: org_users,
-    expanded_cards: dict.new(),
+    // Story 4.8 UX: Use model state for collapse/expand
+    expanded_cards: model.member_list_expanded_cards,
     hide_completed: model.member_list_hide_completed,
-    on_toggle_card: fn(_card_id) { NoOp },
+    on_toggle_card: MemberListCardToggled,
     on_toggle_hide_completed: MemberListHideCompletedToggled,
     on_task_click: fn(task_id) {
       MemberTaskDetailsOpened(task_id)
@@ -579,6 +582,8 @@ fn build_center_panel(model: Model, user: User) -> Element(Msg) {
     locale: model.locale,
     cards: cards,
     tasks: tasks,
+    // Story 4.8 UX: Added org_users for claimed_by display in task items
+    org_users: org_users,
     is_pm_or_admin: {
       let is_pm = case update_helpers.selected_project(model) {
         opt.Some(project) -> permissions.is_project_manager(project)
@@ -594,6 +599,9 @@ fn build_center_panel(model: Model, user: User) -> Element(Msg) {
       OpenCardDialog(CardDialogDelete(card_id))
     },
     on_new_card: OpenCardDialog(CardDialogCreate),
+    // Story 4.8 UX: Task interaction handlers for consistency with Lista view
+    on_task_click: fn(task_id) { MemberTaskDetailsOpened(task_id) },
+    on_task_claim: fn(task_id, version) { MemberClaimClicked(task_id, version) },
   ))
 
   center_panel.view(center_panel.CenterPanelConfig(
@@ -662,14 +670,15 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
     _ -> []
   }
 
-  // Build active task info
-  let active_task_info = case update_helpers.now_working_active_task(model) {
-    opt.Some(ActiveTask(
-      task_id: id,
-      started_at: started_at,
-      accumulated_s: accumulated_s,
-      ..
-    )) -> {
+  // Build active tasks list (supports multiple concurrent tasks)
+  let active_tasks_info =
+    update_helpers.now_working_all_sessions(model)
+    |> list.map(fn(session) {
+      let WorkSession(
+        task_id: id,
+        started_at: started_at,
+        accumulated_s: accumulated_s,
+      ) = session
       // Find task title
       let title = case model.member_tasks {
         Loaded(tasks) ->
@@ -688,25 +697,33 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
         started_ms,
         server_now_ms,
       )
-      opt.Some(right_panel.ActiveTaskInfo(
+      right_panel.ActiveTaskInfo(
         task_id: id,
         task_title: title,
         elapsed_display: elapsed,
         is_paused: False,
-      ))
-    }
-    opt.None -> opt.None
-  }
+      )
+    })
 
   right_panel.view(right_panel.RightPanelConfig(
     locale: model.locale,
     user: opt.Some(user),
     my_tasks: my_tasks,
     my_cards: my_cards,
-    active_task: active_task_info,
+    active_tasks: active_tasks_info,
     on_task_start: MemberNowWorkingStartClicked,
-    on_task_pause: MemberNowWorkingPauseClicked,
-    on_task_complete: NoOp,
+    on_task_pause: fn(_task_id) { MemberNowWorkingPauseClicked },
+    on_task_complete: fn(task_id) {
+      // Find task version for complete action
+      case model.member_tasks {
+        Loaded(tasks) ->
+          case list.find(tasks, fn(t) { t.id == task_id }) {
+            Ok(t) -> MemberCompleteClicked(task_id, t.version)
+            Error(_) -> NoOp
+          }
+        _ -> NoOp
+      }
+    },
     on_logout: LogoutClicked,
     on_task_release: fn(task_id) {
       MemberReleaseClicked(task_id, 0)
@@ -717,12 +734,9 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
     // Drag-to-claim state for Pool view (Story 4.7)
     drag_armed: model.member_pool_drag_to_claim_armed,
     drag_over_my_tasks: model.member_pool_drag_over_my_tasks,
-    // My Metrics (Story 4.7 Task 6.1)
-    my_metrics: case model.member_metrics {
-      Loaded(m) -> opt.Some(m)
-      _ -> opt.None
-    },
-    // Preferences (Story 4.8 UX)
+    // Preferences popup (Story 4.8 UX: moved from inline to popup)
+    preferences_popup_open: model.preferences_popup_open,
+    on_preferences_toggle: PreferencesPopupToggled,
     current_theme: model.theme,
     on_theme_change: ThemeSelected,
     on_locale_change: LocaleSelected,

@@ -24,6 +24,8 @@ import gleam/list
 import gleam/option as opt
 
 import lustre/attribute
+
+import scrumbringer_client/utils/format_date
 import lustre/element.{type Element}
 import lustre/element/html.{
   button, div, form, h3, input, label, span, table, td, text, th, thead,
@@ -167,7 +169,7 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
                       [text(state_label)],
                     ),
                   ]),
-                  td([], [text(link.created_at)]),
+                  td([], [text(format_date.date_only(link.created_at))]),
                   // Story 4.8: Copy button instead of full URL text
                   td([attribute.class("link-cell")], [
                     button(
