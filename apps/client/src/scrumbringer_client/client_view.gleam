@@ -34,6 +34,7 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
+
 // Story 4.5: Removed label, option, select - no longer used after unified layout
 import lustre/element/html.{a, button, div, h2, h3, p, span, style, text}
 import lustre/event
@@ -43,36 +44,36 @@ import domain/project.{type Project}
 import domain/user.{type User}
 import domain/view_mode
 
-import gleam/dict
 import scrumbringer_client/client_state.{
-  type Model, type Msg, AcceptInvite as AcceptInvitePage, Admin, Loaded,
-  Login, LogoutClicked, Member,
-  MemberCompleteClicked, MemberDragEnded, MemberDragMoved,
+  type Model, type Msg, AcceptInvite as AcceptInvitePage, Admin,
+  CardDialogCreate, CardDialogDelete, CardDialogEdit, Loaded, LocaleSelected,
+  Login, LogoutClicked, Member, MemberClaimClicked, MemberCompleteClicked,
+  MemberCreateDialogOpened, MemberDragEnded, MemberDragMoved,
+  MemberListCardToggled, MemberListHideCompletedToggled,
   MemberNowWorkingPauseClicked, MemberNowWorkingStartClicked,
-  MemberReleaseClicked, NavigateTo, Push, ProjectSelected,
-  ResetPassword as ResetPasswordPage, ToastDismissed, ToastDismiss,
-  CardDialogCreate, CardDialogDelete, CardDialogEdit, MemberCreateDialogOpened,
   MemberPoolCapabilityChanged, MemberPoolSearchChanged, MemberPoolTypeChanged,
-  MemberTaskDetailsOpened, MemberClaimClicked, NoOp, OpenCardDetail, OpenCardDialog, ViewModeChanged,
-  MobileLeftDrawerToggled, MobileRightDrawerToggled, MobileDrawersClosed,
-  SidebarConfigToggled, SidebarOrgToggled, MemberListHideCompletedToggled,
-  // Story 4.8 UX: Collapse/expand card groups in Lista view
-  MemberListCardToggled,
-  // Story 4.8 UX: Preferences popup toggle and theme/locale
-  PreferencesPopupToggled, ThemeSelected, LocaleSelected,
+  MemberReleaseClicked, MemberTaskDetailsOpened, MobileDrawersClosed,
+  MobileLeftDrawerToggled, MobileRightDrawerToggled, NavigateTo, NoOp,
+  OpenCardDetail, OpenCardDialog, PreferencesPopupToggled, ProjectSelected, Push,
+  ResetPassword as ResetPasswordPage, SidebarConfigToggled, SidebarOrgToggled,
+  ThemeSelected, ToastDismiss, ToastDismissed, ViewModeChanged,
 }
+
+// Story 4.8 UX: Collapse/expand card groups in Lista view
+// Story 4.8 UX: Preferences popup toggle and theme/locale
 import scrumbringer_client/features/admin/view as admin_view
 import scrumbringer_client/features/auth/view as auth_view
+import scrumbringer_client/features/fichas/view as fichas_view
 import scrumbringer_client/features/invites/view as invites_view
 import scrumbringer_client/features/metrics/view as metrics_view
 import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/mobile as now_working_mobile
 import scrumbringer_client/features/now_working/panel as now_working_panel
-import scrumbringer_client/features/pool/view as pool_view
 import scrumbringer_client/features/pool/dialogs as pool_dialogs
+import scrumbringer_client/features/pool/view as pool_view
 import scrumbringer_client/features/projects/view as projects_view
 import scrumbringer_client/features/skills/view as skills_view
-import scrumbringer_client/features/fichas/view as fichas_view
+
 // Story 4.5: i18n module no longer imported directly, using i18n_text via update_helpers
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/member_section
@@ -80,22 +81,24 @@ import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/styles
 import scrumbringer_client/theme
+
 // Story 4.5: css module no longer used after unified layout removal
-import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/empty_state
+import scrumbringer_client/ui/icons
+
 // Story 4.5: ui_layout no longer directly imported (used via panels)
+import scrumbringer_client/client_ffi
 import scrumbringer_client/ui/toast as ui_toast
 import scrumbringer_client/update_helpers
-import scrumbringer_client/client_ffi
 
 import domain/task.{type Task, ActiveTask, Task, WorkSession}
 import domain/task_status.{Claimed, Taken}
 
-import scrumbringer_client/features/layout/three_panel_layout
-import scrumbringer_client/features/layout/left_panel
 import scrumbringer_client/features/layout/center_panel
-import scrumbringer_client/features/layout/right_panel
+import scrumbringer_client/features/layout/left_panel
 import scrumbringer_client/features/layout/responsive_drawer
+import scrumbringer_client/features/layout/right_panel
+import scrumbringer_client/features/layout/three_panel_layout
 import scrumbringer_client/features/views/grouped_list
 import scrumbringer_client/features/views/kanban_board
 
@@ -112,42 +115,56 @@ pub fn view(model: Model) -> Element(Msg) {
     ],
     [
       style([], styles.base_css()),
-      // A02: Skip link for keyboard navigation
-      a(
-        [
-          attribute.href("#main-content"),
-          attribute.class("skip-link"),
-        ],
-        [text(update_helpers.i18n_t(model, i18n_text.SkipToContent))],
-      ),
-      // Legacy toast (backward compatibility)
-      ui_toast.view(
-        model.toast,
-        update_helpers.i18n_t(model, i18n_text.Dismiss),
-        ToastDismissed,
-      ),
-      // New toast system with auto-dismiss (Story 4.8)
-      ui_toast.view_container(model.toast_state, fn(id) { ToastDismiss(id) }),
-      // Global card dialog (Story 4.8 UX: renders on any page when open)
-      case model.selected_project_id, model.cards_dialog_mode {
-        opt.Some(project_id), opt.Some(_) ->
-          admin_view.view_card_crud_dialog(model, project_id)
-        _, _ -> element.none()
-      },
-      // Global task creation dialog (Story 4.8 UX: renders on any page when open)
-      case model.member_create_dialog_open {
-        True -> pool_dialogs.view_create_dialog(model)
-        False -> element.none()
-      },
-      case model.page {
-        Login -> auth_view.view_login(model)
-        AcceptInvitePage -> auth_view.view_accept_invite(model)
-        ResetPasswordPage -> auth_view.view_reset_password(model)
-        Admin -> view_admin(model)
-        Member -> view_member(model)
-      },
+      view_skip_link(model),
+      view_global_overlays(model),
+      view_page(model),
     ],
   )
+}
+
+fn view_skip_link(model: Model) -> Element(Msg) {
+  // A02: Skip link for keyboard navigation
+  a(
+    [
+      attribute.href("#main-content"),
+      attribute.class("skip-link"),
+    ],
+    [text(update_helpers.i18n_t(model, i18n_text.SkipToContent))],
+  )
+}
+
+fn view_global_overlays(model: Model) -> Element(Msg) {
+  element.fragment([
+    // Legacy toast (backward compatibility)
+    ui_toast.view(
+      model.toast,
+      update_helpers.i18n_t(model, i18n_text.Dismiss),
+      ToastDismissed,
+    ),
+    // New toast system with auto-dismiss (Story 4.8)
+    ui_toast.view_container(model.toast_state, fn(id) { ToastDismiss(id) }),
+    // Global card dialog (Story 4.8 UX: renders on any page when open)
+    case model.selected_project_id, model.cards_dialog_mode {
+      opt.Some(project_id), opt.Some(_) ->
+        admin_view.view_card_crud_dialog(model, project_id)
+      _, _ -> element.none()
+    },
+    // Global task creation dialog (Story 4.8 UX: renders on any page when open)
+    case model.member_create_dialog_open {
+      True -> pool_dialogs.view_create_dialog(model)
+      False -> element.none()
+    },
+  ])
+}
+
+fn view_page(model: Model) -> Element(Msg) {
+  case model.page {
+    Login -> auth_view.view_login(model)
+    AcceptInvitePage -> auth_view.view_accept_invite(model)
+    ResetPasswordPage -> auth_view.view_reset_password(model)
+    Admin -> view_admin(model)
+    Member -> view_member(model)
+  }
 }
 
 /// Test helper for now_working elapsed time calculation.
@@ -211,7 +228,8 @@ fn view_admin_three_panel(model: Model, user: User) -> Element(Msg) {
   let is_org_admin = user.org_role == org_role.Admin
 
   // Build panel configs (same left and right as member)
-  let left_content = build_left_panel(model, user, projects, is_pm, is_org_admin)
+  let left_content =
+    build_left_panel(model, user, projects, is_pm, is_org_admin)
   let center_content = build_admin_center_panel(model, user)
   let right_content = build_right_panel(model, user)
 
@@ -371,7 +389,8 @@ fn view_mobile_left_drawer(model: Model, user: User) -> Element(Msg) {
   }
   let is_org_admin = user.org_role == org_role.Admin
 
-  let left_content = build_left_panel(model, user, projects, is_pm, is_org_admin)
+  let left_content =
+    build_left_panel(model, user, projects, is_pm, is_org_admin)
 
   responsive_drawer.view(
     model.mobile_left_drawer_open,
@@ -416,7 +435,8 @@ fn view_member_three_panel(model: Model, user: User) -> Element(Msg) {
   let is_org_admin = user.org_role == org_role.Admin
 
   // Build panel configs
-  let left_content = build_left_panel(model, user, projects, is_pm, is_org_admin)
+  let left_content =
+    build_left_panel(model, user, projects, is_pm, is_org_admin)
   let center_content = build_center_panel(model, user)
   let right_content = build_right_panel(model, user)
 
@@ -439,8 +459,7 @@ fn build_left_panel(
 ) -> Element(Msg) {
   // Story 4.5: Get badge counts for sidebar
   let pending_invites_count = case model.invite_links {
-    Loaded(links) ->
-      list.count(links, fn(link) { link.used_at == opt.None })
+    Loaded(links) -> list.count(links, fn(link) { link.used_at == opt.None })
     _ -> 0
   }
 
@@ -527,23 +546,11 @@ fn build_left_panel(
       router.Config(permissions.RuleMetrics, model.selected_project_id),
       Push,
     ),
-    on_navigate_org_invites: NavigateTo(
-      router.Org(permissions.Invites),
-      Push,
-    ),
-    on_navigate_org_users: NavigateTo(
-      router.Org(permissions.OrgSettings),
-      Push,
-    ),
-    on_navigate_org_projects: NavigateTo(
-      router.Org(permissions.Projects),
-      Push,
-    ),
+    on_navigate_org_invites: NavigateTo(router.Org(permissions.Invites), Push),
+    on_navigate_org_users: NavigateTo(router.Org(permissions.OrgSettings), Push),
+    on_navigate_org_projects: NavigateTo(router.Org(permissions.Projects), Push),
     // AC32: Org Metrics link for Org Admin
-    on_navigate_org_metrics: NavigateTo(
-      router.Org(permissions.Metrics),
-      Push,
-    ),
+    on_navigate_org_metrics: NavigateTo(router.Org(permissions.Metrics), Push),
     on_toggle_config: SidebarConfigToggled,
     on_toggle_org: SidebarOrgToggled,
   ))
@@ -576,46 +583,46 @@ fn build_center_panel(model: Model, user: User) -> Element(Msg) {
     Loaded(users) -> users
     _ -> []
   }
-  let list_content = grouped_list.view(grouped_list.GroupedListConfig(
-    locale: model.locale,
-    tasks: tasks,
-    cards: cards,
-    org_users: org_users,
-    // Story 4.8 UX: Use model state for collapse/expand
-    expanded_cards: model.member_list_expanded_cards,
-    hide_completed: model.member_list_hide_completed,
-    on_toggle_card: MemberListCardToggled,
-    on_toggle_hide_completed: MemberListHideCompletedToggled,
-    on_task_click: fn(task_id) {
-      MemberTaskDetailsOpened(task_id)
-    },
-    on_task_claim: fn(task_id, version) { MemberClaimClicked(task_id, version) },
-  ))
-  let cards_content = kanban_board.view(kanban_board.KanbanConfig(
-    locale: model.locale,
-    cards: cards,
-    tasks: tasks,
-    // Story 4.8 UX: Added org_users for claimed_by display in task items
-    org_users: org_users,
-    is_pm_or_admin: {
-      let is_pm = case update_helpers.selected_project(model) {
-        opt.Some(project) -> permissions.is_project_manager(project)
-        opt.None -> False
-      }
-      is_pm || user.org_role == org_role.Admin
-    },
-    on_card_click: fn(card_id) { OpenCardDetail(card_id) },
-    on_card_edit: fn(card_id) {
-      OpenCardDialog(CardDialogEdit(card_id))
-    },
-    on_card_delete: fn(card_id) {
-      OpenCardDialog(CardDialogDelete(card_id))
-    },
-    on_new_card: OpenCardDialog(CardDialogCreate),
-    // Story 4.8 UX: Task interaction handlers for consistency with Lista view
-    on_task_click: fn(task_id) { MemberTaskDetailsOpened(task_id) },
-    on_task_claim: fn(task_id, version) { MemberClaimClicked(task_id, version) },
-  ))
+  let list_content =
+    grouped_list.view(grouped_list.GroupedListConfig(
+      locale: model.locale,
+      tasks: tasks,
+      cards: cards,
+      org_users: org_users,
+      // Story 4.8 UX: Use model state for collapse/expand
+      expanded_cards: model.member_list_expanded_cards,
+      hide_completed: model.member_list_hide_completed,
+      on_toggle_card: MemberListCardToggled,
+      on_toggle_hide_completed: MemberListHideCompletedToggled,
+      on_task_click: fn(task_id) { MemberTaskDetailsOpened(task_id) },
+      on_task_claim: fn(task_id, version) {
+        MemberClaimClicked(task_id, version)
+      },
+    ))
+  let cards_content =
+    kanban_board.view(kanban_board.KanbanConfig(
+      locale: model.locale,
+      cards: cards,
+      tasks: tasks,
+      // Story 4.8 UX: Added org_users for claimed_by display in task items
+      org_users: org_users,
+      is_pm_or_admin: {
+        let is_pm = case update_helpers.selected_project(model) {
+          opt.Some(project) -> permissions.is_project_manager(project)
+          opt.None -> False
+        }
+        is_pm || user.org_role == org_role.Admin
+      },
+      on_card_click: fn(card_id) { OpenCardDetail(card_id) },
+      on_card_edit: fn(card_id) { OpenCardDialog(CardDialogEdit(card_id)) },
+      on_card_delete: fn(card_id) { OpenCardDialog(CardDialogDelete(card_id)) },
+      on_new_card: OpenCardDialog(CardDialogCreate),
+      // Story 4.8 UX: Task interaction handlers for consistency with Lista view
+      on_task_click: fn(task_id) { MemberTaskDetailsOpened(task_id) },
+      on_task_claim: fn(task_id, version) {
+        MemberClaimClicked(task_id, version)
+      },
+    ))
 
   center_panel.view(center_panel.CenterPanelConfig(
     locale: model.locale,
@@ -705,11 +712,12 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
       let started_ms = client_ffi.parse_iso_ms(started_at)
       let local_now_ms = client_ffi.now_ms()
       let server_now_ms = local_now_ms - model.now_working_server_offset_ms
-      let elapsed = update_helpers.now_working_elapsed_from_ms(
-        accumulated_s,
-        started_ms,
-        server_now_ms,
-      )
+      let elapsed =
+        update_helpers.now_working_elapsed_from_ms(
+          accumulated_s,
+          started_ms,
+          server_now_ms,
+        )
       right_panel.ActiveTaskInfo(
         task_id: id,
         task_title: title,
@@ -750,9 +758,7 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
         _ -> NoOp
       }
     },
-    on_card_click: fn(card_id) {
-      OpenCardDetail(card_id)
-    },
+    on_card_click: fn(card_id) { OpenCardDetail(card_id) },
     // Drag-to-claim state for Pool view (Story 4.7)
     drag_armed: model.member_pool_drag_to_claim_armed,
     drag_over_my_tasks: model.member_pool_drag_over_my_tasks,

@@ -48,60 +48,56 @@ import gleam/dynamic/decode
 import domain/capability.{type Capability}
 import domain/card.{type Card}
 import domain/org.{type OrgUser}
+import domain/org_role
 import domain/project.{type Project, type ProjectMember}
+import domain/project_role.{Manager, Member}
 import domain/task_type.{type TaskType}
 import domain/workflow.{type Rule, type TaskTemplate, type Workflow, Workflow}
-import domain/project_role.{Manager, Member}
-import domain/org_role
 
 import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/client_ffi
-import scrumbringer_client/features/admin/cards as admin_cards
-import scrumbringer_client/i18n/locale
 import scrumbringer_client/client_state.{
-  type Model, type Msg, type Remote,
-  AdminRuleMetricsDrilldownClicked, AdminRuleMetricsDrilldownClosed,
-  AdminRuleMetricsExecPageChanged,
+  type Model, type Msg, type Remote, AdminRuleMetricsDrilldownClicked,
+  AdminRuleMetricsDrilldownClosed, AdminRuleMetricsExecPageChanged,
   AdminRuleMetricsFromChangedAndRefresh, AdminRuleMetricsQuickRangeClicked,
-  AdminRuleMetricsToChangedAndRefresh,
-  AdminRuleMetricsWorkflowExpanded, CapabilityCreateDialogClosed,
+  AdminRuleMetricsToChangedAndRefresh, AdminRuleMetricsWorkflowExpanded,
+  AttachTemplateModalClosed, AttachTemplateModalOpened, AttachTemplateSelected,
+  AttachTemplateSubmitted, CapabilityCreateDialogClosed,
   CapabilityCreateDialogOpened, CapabilityCreateNameChanged,
   CapabilityCreateSubmitted, CapabilityDeleteDialogClosed,
   CapabilityDeleteDialogOpened, CapabilityDeleteSubmitted,
-  CardCrudCreated, CardCrudDeleted, CardCrudUpdated,
-  CardDialogCreate, CardDialogDelete, CardDialogEdit,
-  CardsSearchChanged, CardsShowCompletedToggled, CardsShowEmptyToggled, CardsStateFilterChanged,
-  CloseCardDialog,
-  CloseRuleDialog, CloseTaskTemplateDialog, Failed, Loaded,
-  Loading, MemberAddDialogClosed, MemberAddDialogOpened, MemberAddRoleChanged,
-  MemberAddSubmitted, MemberAddUserSelected, MemberRemoveCancelled,
-  MemberRemoveClicked, MemberRemoveConfirmed, MemberRoleChangeRequested,
-  NotAsked, OpenCardDialog,
-  OpenRuleDialog, OpenTaskTemplateDialog, OrgSettingsRoleChanged,
-  OrgSettingsSaveAllClicked, OrgUsersSearchChanged, OrgUsersSearchDebounced,
-  RuleCrudCreated, RuleCrudDeleted, RuleCrudUpdated, RuleDialogCreate,
-  RuleDialogDelete, RuleDialogEdit, RulesBackClicked,
-  // Story 4.10: Rule template attachment UI
-  RuleExpandToggled, AttachTemplateModalOpened, AttachTemplateModalClosed,
-  AttachTemplateSelected, AttachTemplateSubmitted, TemplateDetachClicked, NoOp,
-  TaskTemplateCrudCreated,
+  CapabilityMembersDialogClosed, CapabilityMembersDialogOpened,
+  CapabilityMembersSaveClicked, CapabilityMembersToggled, CardCrudCreated,
+  CardCrudDeleted, CardCrudUpdated, CardDialogCreate, CardDialogDelete,
+  CardDialogEdit, CardsSearchChanged, CardsShowCompletedToggled,
+  CardsShowEmptyToggled, CardsStateFilterChanged, CloseCardDialog,
+  CloseRuleDialog, CloseTaskTemplateDialog, CloseTaskTypeDialog,
+  CloseWorkflowDialog, Failed, Loaded, Loading, MemberAddDialogClosed,
+  MemberAddDialogOpened, MemberAddRoleChanged, MemberAddSubmitted,
+  MemberAddUserSelected, MemberCapabilitiesDialogClosed,
+  MemberCapabilitiesDialogOpened, MemberCapabilitiesSaveClicked,
+  MemberCapabilitiesToggled, MemberRemoveCancelled, MemberRemoveClicked,
+  MemberRemoveConfirmed, MemberRoleChangeRequested, NoOp, NotAsked,
+  OpenCardDialog, OpenRuleDialog, OpenTaskTemplateDialog, OpenTaskTypeDialog,
+  OpenWorkflowDialog, OrgSettingsRoleChanged, OrgSettingsSaveAllClicked,
+  OrgUsersSearchChanged, OrgUsersSearchDebounced, RuleCrudCreated,
+  RuleCrudDeleted, RuleCrudUpdated, RuleDialogCreate, RuleDialogDelete,
+  RuleDialogEdit, RuleExpandToggled, RulesBackClicked, TaskTemplateCrudCreated,
   TaskTemplateCrudDeleted, TaskTemplateCrudUpdated, TaskTemplateDialogCreate,
-  TaskTemplateDialogDelete, TaskTemplateDialogEdit,
-  OpenTaskTypeDialog, CloseTaskTypeDialog,
-  TaskTypeCrudCreated, TaskTypeCrudUpdated, TaskTypeCrudDeleted,
-  TaskTypeDialogCreate, TaskTypeDialogDelete, TaskTypeDialogEdit,
-  UserProjectRemoveClicked, UserProjectsAddProjectChanged, UserProjectsAddRoleChanged,
+  TaskTemplateDialogDelete, TaskTemplateDialogEdit, TaskTypeCrudCreated,
+  TaskTypeCrudDeleted, TaskTypeCrudUpdated, TaskTypeDialogCreate,
+  TaskTypeDialogDelete, TaskTypeDialogEdit, TemplateDetachClicked,
+  UserProjectRemoveClicked, UserProjectRoleChangeRequested,
+  UserProjectsAddProjectChanged, UserProjectsAddRoleChanged,
   UserProjectsAddSubmitted, UserProjectsDialogClosed, UserProjectsDialogOpened,
-  UserProjectRoleChangeRequested,
   WorkflowCrudCreated, WorkflowCrudDeleted, WorkflowCrudUpdated,
   WorkflowDialogCreate, WorkflowDialogDelete, WorkflowDialogEdit,
   WorkflowRulesClicked,
-  CloseWorkflowDialog, OpenWorkflowDialog,
-  MemberCapabilitiesDialogClosed, MemberCapabilitiesDialogOpened,
-  MemberCapabilitiesSaveClicked, MemberCapabilitiesToggled,
-  CapabilityMembersDialogClosed, CapabilityMembersDialogOpened,
-  CapabilityMembersSaveClicked, CapabilityMembersToggled,
 }
+import scrumbringer_client/features/admin/cards as admin_cards
+import scrumbringer_client/i18n/locale
+
+// Story 4.10: Rule template attachment UI
 
 // Workflows
 // Task Templates
@@ -152,49 +148,48 @@ fn view_org_settings_table(model: Model) -> Element(Msg) {
     Loading ->
       div([attribute.class("empty")], [text(t(i18n_text.LoadingUsers))])
 
-    Failed(err) ->
-      div([attribute.class("error")], [text(err.message)])
+    Failed(err) -> div([attribute.class("error")], [text(err.message)])
 
     Loaded(users) -> {
       let pending_count = dict.size(model.org_settings_role_drafts)
       let has_pending = pending_count > 0
 
-      div([], [
+      element.fragment([
         // Table using data_table
         data_table.new()
-        |> data_table.with_columns([
-          // Email
-          data_table.column(t(i18n_text.EmailLabel), fn(u: OrgUser) {
-            text(u.email)
-          }),
-          // Org Role (dropdown with change indicator)
-          data_table.column(t(i18n_text.OrgRole), fn(u: OrgUser) {
-            view_org_role_cell(model, u)
-          }),
-          // Projects summary
-          data_table.column(t(i18n_text.AdminProjects), fn(u: OrgUser) {
-            text(format_projects_summary(model, u.id))
-          }),
-          // Actions
-          data_table.column_with_class(
-            t(i18n_text.Actions),
-            fn(u: OrgUser) {
-              button(
-                [
-                  attribute.class("btn-xs btn-icon"),
-                  attribute.attribute("title", t(i18n_text.Manage)),
-                  attribute.attribute("aria-label", t(i18n_text.Manage)),
-                  event.on_click(UserProjectsDialogOpened(u)),
-                ],
-                [icons.nav_icon(icons.Cog, icons.Small)],
-              )
-            },
-            "col-actions",
-            "cell-actions",
-          ),
-        ])
-        |> data_table.with_rows(users, fn(u: OrgUser) { int.to_string(u.id) })
-        |> data_table.view(),
+          |> data_table.with_columns([
+            // Email
+            data_table.column(t(i18n_text.EmailLabel), fn(u: OrgUser) {
+              text(u.email)
+            }),
+            // Org Role (dropdown with change indicator)
+            data_table.column(t(i18n_text.OrgRole), fn(u: OrgUser) {
+              view_org_role_cell(model, u)
+            }),
+            // Projects summary
+            data_table.column(t(i18n_text.AdminProjects), fn(u: OrgUser) {
+              text(format_projects_summary(model, u.id))
+            }),
+            // Actions
+            data_table.column_with_class(
+              t(i18n_text.Actions),
+              fn(u: OrgUser) {
+                button(
+                  [
+                    attribute.class("btn-xs btn-icon"),
+                    attribute.attribute("title", t(i18n_text.Manage)),
+                    attribute.attribute("aria-label", t(i18n_text.Manage)),
+                    event.on_click(UserProjectsDialogOpened(u)),
+                  ],
+                  [icons.nav_icon(icons.Cog, icons.Small)],
+                )
+              },
+              "col-actions",
+              "cell-actions",
+            ),
+          ])
+          |> data_table.with_rows(users, fn(u: OrgUser) { int.to_string(u.id) })
+          |> data_table.view(),
         // Save all button at bottom
         div([attribute.class("save-all-row")], [
           case has_pending {
@@ -210,7 +205,9 @@ fn view_org_settings_table(model: Model) -> Element(Msg) {
           },
           button(
             [
-              attribute.disabled(!has_pending || model.org_settings_save_in_flight),
+              attribute.disabled(
+                !has_pending || model.org_settings_save_in_flight,
+              ),
               event.on_click(OrgSettingsSaveAllClicked),
             ],
             [text(t(i18n_text.SaveOrgRoleChanges))],
@@ -239,7 +236,7 @@ fn view_org_role_cell(model: Model, u: OrgUser) -> Element(Msg) {
     _, _ -> ""
   }
 
-  div([], [
+  element.fragment([
     select(
       [
         attribute.value(draft),
@@ -289,14 +286,16 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
                 text(update_helpers.i18n_t(model, i18n_text.Loading)),
               ])
 
-            Failed(err) ->
-              div([attribute.class("error")], [text(err.message)])
+            Failed(err) -> div([attribute.class("error")], [text(err.message)])
 
             Loaded(projects) ->
               case list.is_empty(projects) {
                 True ->
                   p([attribute.class("empty")], [
-                    text(update_helpers.i18n_t(model, i18n_text.UserProjectsEmpty)),
+                    text(update_helpers.i18n_t(
+                      model,
+                      i18n_text.UserProjectsEmpty,
+                    )),
                   ])
 
                 False ->
@@ -308,7 +307,10 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
                             text(update_helpers.i18n_t(model, i18n_text.Name)),
                           ]),
                           th([], [
-                            text(update_helpers.i18n_t(model, i18n_text.RoleInProject)),
+                            text(update_helpers.i18n_t(
+                              model,
+                              i18n_text.RoleInProject,
+                            )),
                           ]),
                           th([], [
                             text(update_helpers.i18n_t(model, i18n_text.Actions)),
@@ -326,20 +328,33 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
                                 // Editable role dropdown
                                 select(
                                   [
-                                    attribute.value(project_role.to_string(p.my_role)),
-                                    attribute.disabled(model.user_projects_in_flight),
+                                    attribute.value(project_role.to_string(
+                                      p.my_role,
+                                    )),
+                                    attribute.disabled(
+                                      model.user_projects_in_flight,
+                                    ),
                                     event.on_input(fn(value) {
-                                      UserProjectRoleChangeRequested(p.id, value)
+                                      UserProjectRoleChangeRequested(
+                                        p.id,
+                                        value,
+                                      )
                                     }),
                                   ],
                                   [
                                     option(
                                       [attribute.value("manager")],
-                                      update_helpers.i18n_t(model, i18n_text.RoleManager),
+                                      update_helpers.i18n_t(
+                                        model,
+                                        i18n_text.RoleManager,
+                                      ),
                                     ),
                                     option(
                                       [attribute.value("member")],
-                                      update_helpers.i18n_t(model, i18n_text.RoleMember),
+                                      update_helpers.i18n_t(
+                                        model,
+                                        i18n_text.RoleMember,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -351,7 +366,9 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
                                     attribute.disabled(
                                       model.user_projects_in_flight,
                                     ),
-                                    event.on_click(UserProjectRemoveClicked(p.id)),
+                                    event.on_click(UserProjectRemoveClicked(
+                                      p.id,
+                                    )),
                                   ],
                                   [
                                     text(update_helpers.i18n_t(
@@ -379,21 +396,19 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
               // Project selector
               select(
                 [
-                  attribute.value(
-                    case model.user_projects_add_project_id {
-                      opt.Some(id) -> int.to_string(id)
-                      opt.None -> ""
-                    },
-                  ),
+                  attribute.value(case model.user_projects_add_project_id {
+                    opt.Some(id) -> int.to_string(id)
+                    opt.None -> ""
+                  }),
                   attribute.disabled(model.user_projects_in_flight),
                   event.on_input(UserProjectsAddProjectChanged),
                 ],
                 [
-                  option([attribute.value("")], update_helpers.i18n_t(
-                    model,
-                    i18n_text.SelectProject,
-                  )),
-                  ..view_available_projects_options(model),
+                  option(
+                    [attribute.value("")],
+                    update_helpers.i18n_t(model, i18n_text.SelectProject),
+                  ),
+                  ..view_available_projects_options(model)
                 ],
               ),
               // Role selector
@@ -470,7 +485,8 @@ fn format_projects_summary(model: Model, user_id: Int) -> String {
       case count {
         0 -> update_helpers.i18n_t(model, i18n_text.ProjectsSummary(0, ""))
         _ -> {
-          let names = projects
+          let names =
+            projects
             |> list.take(3)
             |> list.map(fn(p) {
               case p.my_role {
@@ -485,7 +501,10 @@ fn format_projects_summary(model: Model, user_id: Int) -> String {
             False -> ""
           }
 
-          update_helpers.i18n_t(model, i18n_text.ProjectsSummary(count, names <> suffix))
+          update_helpers.i18n_t(
+            model,
+            i18n_text.ProjectsSummary(count, names <> suffix),
+          )
         }
       }
     }
@@ -553,9 +572,10 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
               attribute.value(model.capabilities_create_name),
               event.on_input(CapabilityCreateNameChanged),
               attribute.required(True),
-              attribute.placeholder(
-                update_helpers.i18n_t(model, i18n_text.CapabilityNamePlaceholder),
-              ),
+              attribute.placeholder(update_helpers.i18n_t(
+                model,
+                i18n_text.CapabilityNamePlaceholder,
+              )),
               attribute.attribute("aria-label", "Capability name"),
             ]),
           ]),
@@ -731,10 +751,20 @@ fn view_task_type_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
     opt.Some(mode) -> {
       let #(mode_str, type_json) = case mode {
         TaskTypeDialogCreate -> #("create", attribute.none())
-        TaskTypeDialogEdit(task_type) ->
-          #("edit", attribute.property("task-type", task_type_to_property_json(task_type, "edit")))
-        TaskTypeDialogDelete(task_type) ->
-          #("delete", attribute.property("task-type", task_type_to_property_json(task_type, "delete")))
+        TaskTypeDialogEdit(task_type) -> #(
+          "edit",
+          attribute.property(
+            "task-type",
+            task_type_to_property_json(task_type, "edit"),
+          ),
+        )
+        TaskTypeDialogDelete(task_type) -> #(
+          "delete",
+          attribute.property(
+            "task-type",
+            task_type_to_property_json(task_type, "delete"),
+          ),
+        )
       }
 
       element.element(
@@ -787,7 +817,10 @@ fn decode_task_type_updated_event() -> decode.Decoder(Msg) {
 
 /// Decoder for type-deleted event.
 fn decode_task_type_deleted_event() -> decode.Decoder(Msg) {
-  use id <- decode.field("detail", decode.field("id", decode.int, decode.success))
+  use id <- decode.field(
+    "detail",
+    decode.field("id", decode.int, decode.success),
+  )
   decode.success(TaskTypeCrudDeleted(id))
 }
 
@@ -801,9 +834,19 @@ fn task_type_decoder() -> decode.Decoder(TaskType) {
   use id <- decode.field("id", decode.int)
   use name <- decode.field("name", decode.string)
   use icon <- decode.field("icon", decode.string)
-  use capability_id <- decode.optional_field("capability_id", opt.None, decode.optional(decode.int))
+  use capability_id <- decode.optional_field(
+    "capability_id",
+    opt.None,
+    decode.optional(decode.int),
+  )
   use tasks_count <- decode.optional_field("tasks_count", 0, decode.int)
-  decode.success(task_type.TaskType(id: id, name: name, icon: icon, capability_id: capability_id, tasks_count: tasks_count))
+  decode.success(task_type.TaskType(
+    id: id,
+    name: name,
+    icon: icon,
+    capability_id: capability_id,
+    tasks_count: tasks_count,
+  ))
 }
 
 // =============================================================================
@@ -832,9 +875,7 @@ fn view_capabilities_list(
     config: data_table.new()
       |> data_table.with_columns([
         // Name
-        data_table.column(t(i18n_text.Name), fn(c: Capability) {
-          text(c.name)
-        }),
+        data_table.column(t(i18n_text.Name), fn(c: Capability) { text(c.name) }),
         // Members count (AC16)
         data_table.column_with_class(
           t(i18n_text.AdminMembers),
@@ -1214,8 +1255,7 @@ fn view_member_capabilities_dialog(
     update_helpers.resolve_org_user(model.org_users_cache, user_id)
   {
     opt.Some(user) -> user.email
-    opt.None ->
-      update_helpers.i18n_t(model, i18n_text.UserNumber(user_id))
+    opt.None -> update_helpers.i18n_t(model, i18n_text.UserNumber(user_id))
   }
 
   // Get all capabilities for the project
@@ -1227,12 +1267,10 @@ fn view_member_capabilities_dialog(
   div([attribute.class("modal")], [
     div([attribute.class("modal-content capabilities-dialog")], [
       h3([], [
-        text(
-          update_helpers.i18n_t(
-            model,
-            i18n_text.CapabilitiesForUser(user_email, project_name),
-          ),
-        ),
+        text(update_helpers.i18n_t(
+          model,
+          i18n_text.CapabilitiesForUser(user_email, project_name),
+        )),
       ]),
       // Error display
       case model.member_capabilities_error {
@@ -1250,9 +1288,10 @@ fn view_member_capabilities_dialog(
           case capabilities {
             [] ->
               div([attribute.class("empty")], [
-                text(
-                  update_helpers.i18n_t(model, i18n_text.NoCapabilitiesDefined),
-                ),
+                text(update_helpers.i18n_t(
+                  model,
+                  i18n_text.NoCapabilitiesDefined,
+                )),
               ])
             _ ->
               div(
@@ -1342,12 +1381,10 @@ fn view_capability_members_dialog(
   div([attribute.class("modal")], [
     div([attribute.class("modal-content members-dialog")], [
       h3([], [
-        text(
-          update_helpers.i18n_t(
-            model,
-            i18n_text.MembersForCapability(capability_name, project_name),
-          ),
-        ),
+        text(update_helpers.i18n_t(
+          model,
+          i18n_text.MembersForCapability(capability_name, project_name),
+        )),
       ]),
       // Error display
       case model.capability_members_error {
@@ -1520,7 +1557,9 @@ fn view_task_types_list(
     div([attribute.class("empty")], [
       h2([], [text(update_helpers.i18n_t(model, i18n_text.NoTaskTypesYet))]),
       p([], [text(update_helpers.i18n_t(model, i18n_text.TaskTypesExplain))]),
-      p([], [text(update_helpers.i18n_t(model, i18n_text.CreateFirstTaskTypeHint))]),
+      p([], [
+        text(update_helpers.i18n_t(model, i18n_text.CreateFirstTaskTypeHint)),
+      ]),
     ])
 
   data_table.view_remote_with_forbidden(
@@ -1559,7 +1598,10 @@ fn view_task_types_list(
               edit_title: update_helpers.i18n_t(model, i18n_text.EditTaskType),
               edit_click: OpenTaskTypeDialog(TaskTypeDialogEdit(tt)),
               edit_testid: "task-type-edit-btn",
-              delete_title: update_helpers.i18n_t(model, i18n_text.DeleteTaskType),
+              delete_title: update_helpers.i18n_t(
+                model,
+                i18n_text.DeleteTaskType,
+              ),
               delete_click: OpenTaskTypeDialog(TaskTypeDialogDelete(tt)),
               delete_testid: "task-type-delete-btn",
             )
@@ -1619,12 +1661,18 @@ pub fn view_card_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
         CardDialogCreate -> #("create", attribute.none())
         CardDialogEdit(card_id) ->
           case admin_cards.find_card(model, card_id) {
-            opt.Some(card) -> #("edit", attribute.property("card", card_to_property_json(card, "edit")))
+            opt.Some(card) -> #(
+              "edit",
+              attribute.property("card", card_to_property_json(card, "edit")),
+            )
             opt.None -> #("edit", attribute.none())
           }
         CardDialogDelete(card_id) ->
           case admin_cards.find_card(model, card_id) {
-            opt.Some(card) -> #("delete", attribute.property("card", card_to_property_json(card, "delete")))
+            opt.Some(card) -> #(
+              "delete",
+              attribute.property("card", card_to_property_json(card, "delete")),
+            )
             opt.None -> #("delete", attribute.none())
           }
       }
@@ -1664,7 +1712,10 @@ fn decode_card_updated_event() -> decode.Decoder(Msg) {
 
 /// Decoder for card-deleted event.
 fn decode_card_deleted_event() -> decode.Decoder(Msg) {
-  use id <- decode.field("detail", decode.field("id", decode.int, decode.success))
+  use id <- decode.field(
+    "detail",
+    decode.field("id", decode.int, decode.success),
+  )
   decode.success(CardCrudDeleted(id))
 }
 
@@ -1746,7 +1797,10 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
       div([attribute.class("filter-group filter-search")], [
         input([
           attribute.type_("search"),
-          attribute.placeholder(update_helpers.i18n_t(model, i18n_text.SearchPlaceholder)),
+          attribute.placeholder(update_helpers.i18n_t(
+            model,
+            i18n_text.SearchPlaceholder,
+          )),
           attribute.value(model.cards_search),
           event.on_input(CardsSearchChanged),
         ]),
@@ -1762,27 +1816,36 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
           ],
           [
             option(
-              [attribute.value(""), attribute.selected(model.cards_state_filter == opt.None)],
+              [
+                attribute.value(""),
+                attribute.selected(model.cards_state_filter == opt.None),
+              ],
               update_helpers.i18n_t(model, i18n_text.AllOption),
             ),
             option(
               [
                 attribute.value("pendiente"),
-                attribute.selected(model.cards_state_filter == opt.Some(card.Pendiente)),
+                attribute.selected(
+                  model.cards_state_filter == opt.Some(card.Pendiente),
+                ),
               ],
               update_helpers.i18n_t(model, i18n_text.CardStatePendiente),
             ),
             option(
               [
                 attribute.value("en_curso"),
-                attribute.selected(model.cards_state_filter == opt.Some(card.EnCurso)),
+                attribute.selected(
+                  model.cards_state_filter == opt.Some(card.EnCurso),
+                ),
               ],
               update_helpers.i18n_t(model, i18n_text.CardStateEnCurso),
             ),
             option(
               [
                 attribute.value("cerrada"),
-                attribute.selected(model.cards_state_filter == opt.Some(card.Cerrada)),
+                attribute.selected(
+                  model.cards_state_filter == opt.Some(card.Cerrada),
+                ),
               ],
               update_helpers.i18n_t(model, i18n_text.CardStateCerrada),
             ),
@@ -1860,12 +1923,16 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
   // E08: Improved empty state with guidance - using data_table.view_remote_with_forbidden
   let empty_state =
     div([attribute.class("empty-state")], [
-      div([attribute.class("empty-state-icon")], [icons.nav_icon(icons.ClipboardDoc, icons.Large)]),
+      div([attribute.class("empty-state-icon")], [
+        icons.nav_icon(icons.ClipboardDoc, icons.Large),
+      ]),
       div([attribute.class("empty-state-title")], [
         text(update_helpers.i18n_t(model, i18n_text.NoCardsYet)),
       ]),
       div([attribute.class("empty-state-description")], [
-        text("Las tarjetas agrupan tareas relacionadas. Crea tu primera tarjeta para organizar el trabajo."),
+        text(
+          "Las tarjetas agrupan tareas relacionadas. Crea tu primera tarjeta para organizar el trabajo.",
+        ),
       ]),
     ])
 
@@ -1886,10 +1953,13 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
               opt.None -> "background-color: var(--sb-muted);"
             }
             div([attribute.class("card-title-with-color")], [
-              span([
-                attribute.class("card-color-dot"),
-                attribute.attribute("style", color_style),
-              ], []),
+              span(
+                [
+                  attribute.class("card-color-dot"),
+                  attribute.attribute("style", color_style),
+                ],
+                [],
+              ),
               text(c.title),
             ])
           },
@@ -1930,9 +2000,18 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
 /// UX: State badge with semantic color
 fn view_card_state_badge(model: Model, state: card.CardState) -> Element(Msg) {
   let #(label, class) = case state {
-    card.Pendiente -> #(update_helpers.i18n_t(model, i18n_text.CardStatePendiente), "state-badge state-pending")
-    card.EnCurso -> #(update_helpers.i18n_t(model, i18n_text.CardStateEnCurso), "state-badge state-active")
-    card.Cerrada -> #(update_helpers.i18n_t(model, i18n_text.CardStateCerrada), "state-badge state-completed")
+    card.Pendiente -> #(
+      update_helpers.i18n_t(model, i18n_text.CardStatePendiente),
+      "state-badge state-pending",
+    )
+    card.EnCurso -> #(
+      update_helpers.i18n_t(model, i18n_text.CardStateEnCurso),
+      "state-badge state-active",
+    )
+    card.Cerrada -> #(
+      update_helpers.i18n_t(model, i18n_text.CardStateCerrada),
+      "state-badge state-completed",
+    )
   }
   span([attribute.class(class)], [text(label)])
 }
@@ -1946,10 +2025,13 @@ fn view_card_progress(completed: Int, total: Int) -> Element(Msg) {
   let width_style = "width: " <> int.to_string(percent) <> "%;"
   div([attribute.class("card-progress-cell")], [
     div([attribute.class("progress-bar-mini")], [
-      div([
-        attribute.class("progress-fill-mini"),
-        attribute.attribute("style", width_style),
-      ], []),
+      div(
+        [
+          attribute.class("progress-fill-mini"),
+          attribute.attribute("style", width_style),
+        ],
+        [],
+      ),
     ]),
     span([attribute.class("progress-text-mini")], [
       text(int.to_string(completed) <> "/" <> int.to_string(total)),
@@ -1990,7 +2072,10 @@ fn view_workflows_list(
         // Section header with add button (Story 4.8: consistent icons)
         section_header.view_with_action(
           icons.Workflows,
-          update_helpers.i18n_t(model, i18n_text.WorkflowsProjectTitle(project.name)),
+          update_helpers.i18n_t(
+            model,
+            i18n_text.WorkflowsProjectTitle(project.name),
+          ),
           dialog.add_button(
             model,
             i18n_text.CreateWorkflow,
@@ -2018,7 +2103,12 @@ fn view_rules_hint(model: Model) -> Element(Msg) {
           attribute.href("/config/templates"),
           attribute.class("info-callout-link"),
         ],
-        [text(update_helpers.i18n_t(model, i18n_text.RulesHintTemplatesLink) <> " \u{2192}")],
+        [
+          text(
+            update_helpers.i18n_t(model, i18n_text.RulesHintTemplatesLink)
+            <> " \u{2192}",
+          ),
+        ],
       ),
     ]),
   ])
@@ -2040,7 +2130,10 @@ fn view_workflow_crud_dialog(model: Model) -> Element(Msg) {
         )
         WorkflowDialogEdit(workflow) -> #(
           "edit",
-          attribute.property("workflow", workflow_to_property_json(workflow, "edit")),
+          attribute.property(
+            "workflow",
+            workflow_to_property_json(workflow, "edit"),
+          ),
           case workflow.project_id {
             opt.Some(id) -> attribute.attribute("project-id", int.to_string(id))
             opt.None -> attribute.none()
@@ -2048,7 +2141,10 @@ fn view_workflow_crud_dialog(model: Model) -> Element(Msg) {
         )
         WorkflowDialogDelete(workflow) -> #(
           "delete",
-          attribute.property("workflow", workflow_to_property_json(workflow, "delete")),
+          attribute.property(
+            "workflow",
+            workflow_to_property_json(workflow, "delete"),
+          ),
           case workflow.project_id {
             opt.Some(id) -> attribute.attribute("project-id", int.to_string(id))
             opt.None -> attribute.none()
@@ -2113,7 +2209,10 @@ fn decode_workflow_updated_event() -> decode.Decoder(Msg) {
 
 /// Decoder for workflow-deleted event.
 fn decode_workflow_deleted_event() -> decode.Decoder(Msg) {
-  use id <- decode.field("detail", decode.field("id", decode.int, decode.success))
+  use id <- decode.field(
+    "detail",
+    decode.field("id", decode.int, decode.success),
+  )
   decode.success(WorkflowCrudDeleted(id))
 }
 
@@ -2201,12 +2300,17 @@ fn view_workflow_actions(model: Model, w: Workflow) -> Element(Msg) {
       [icons.nav_icon(icons.Cog, icons.Small)],
     ),
     // Edit button
-    action_buttons.edit_button(t(i18n_text.EditWorkflow), OpenWorkflowDialog(WorkflowDialogEdit(w))),
+    action_buttons.edit_button(
+      t(i18n_text.EditWorkflow),
+      OpenWorkflowDialog(WorkflowDialogEdit(w)),
+    ),
     // Delete button
-    action_buttons.delete_button(t(i18n_text.DeleteWorkflow), OpenWorkflowDialog(WorkflowDialogDelete(w))),
+    action_buttons.delete_button(
+      t(i18n_text.DeleteWorkflow),
+      OpenWorkflowDialog(WorkflowDialogDelete(w)),
+    ),
   ])
 }
-
 
 // =============================================================================
 // Rules Views
@@ -2227,7 +2331,11 @@ fn view_workflow_rules(model: Model, workflow_id: Int) -> Element(Msg) {
     section_header.view_with_action(
       icons.Rules,
       update_helpers.i18n_t(model, i18n_text.RulesTitle(workflow_name)),
-      dialog.add_button(model, i18n_text.CreateRule, OpenRuleDialog(RuleDialogCreate)),
+      dialog.add_button(
+        model,
+        i18n_text.CreateRule,
+        OpenRuleDialog(RuleDialogCreate),
+      ),
     ),
     view_rules_table(model, model.rules, model.rules_metrics),
     // Rule CRUD dialog component (handles create/edit/delete internally)
@@ -2262,7 +2370,8 @@ fn view_rules_table(
 
     Failed(err) ->
       case err.status {
-        403 -> div([attribute.class("forbidden")], [text(t(i18n_text.NotPermitted))])
+        403 ->
+          div([attribute.class("forbidden")], [text(t(i18n_text.NotPermitted))])
         _ -> div([attribute.class("error")], [text(err.message)])
       }
 
@@ -2288,7 +2397,11 @@ fn view_rules_table(
           keyed.tbody(
             [],
             list.flat_map(rs, fn(r) {
-              view_rule_row_expandable(model, r, get_rule_metrics(metrics, r.id))
+              view_rule_row_expandable(
+                model,
+                r,
+                get_rule_metrics(metrics, r.id),
+              )
             }),
           ),
         ]),
@@ -2340,10 +2453,12 @@ fn view_rule_row_expandable(
               attribute.class("rule-expand-icon"),
               attribute.title(expand_title),
             ],
-            [text(case is_expanded {
-              True -> "▼"
-              False -> "▶"
-            })],
+            [
+              text(case is_expanded {
+                True -> "▼"
+                False -> "▶"
+              }),
+            ],
           ),
         ]),
         // Name
@@ -2358,14 +2473,17 @@ fn view_rule_row_expandable(
                 _ -> Error(Nil)
               }
               case task_type_info {
-                Ok(tt) -> span([attribute.class("resource-type-task")], [
-                  text("task"),
-                  span([attribute.class("resource-type-separator")], [text(" · ")]),
-                  span([attribute.class("task-type-inline")], [
-                    icons.view_task_type_icon_inline(tt.icon, 14, model.theme),
-                  ]),
-                  text(" " <> tt.name),
-                ])
+                Ok(tt) ->
+                  span([attribute.class("resource-type-task")], [
+                    text("task"),
+                    span([attribute.class("resource-type-separator")], [
+                      text(" · "),
+                    ]),
+                    span([attribute.class("task-type-inline")], [
+                      icons.view_task_type_icon_inline(tt.icon, 14, model.theme),
+                    ]),
+                    text(" " <> tt.name),
+                  ])
                 // Fallback if task type not found
                 Error(_) -> text("task")
               }
@@ -2378,40 +2496,51 @@ fn view_rule_row_expandable(
         // Active status with completeness indicator (AC6-8)
         td([attribute.class("cell-status")], [
           case rule.active {
-            True -> case template_count > 0 {
-              // AC8: Active rule with templates shows check
-              True -> span([attribute.class("rule-complete-indicator")], [
-                icons.nav_icon(icons.Check, icons.Small),
-              ])
-              // AC6-7: Active rule without templates shows warning
-              False -> span(
-                [
-                  attribute.class("rule-incomplete-indicator"),
-                  attribute.title(t(i18n_text.NoTemplatesWontCreateTasks)),
-                ],
-                [icons.nav_icon(icons.Warning, icons.Small)],
-              )
-            }
+            True ->
+              case template_count > 0 {
+                // AC8: Active rule with templates shows check
+                True ->
+                  span([attribute.class("rule-complete-indicator")], [
+                    icons.nav_icon(icons.Check, icons.Small),
+                  ])
+                // AC6-7: Active rule without templates shows warning
+                False ->
+                  span(
+                    [
+                      attribute.class("rule-incomplete-indicator"),
+                      attribute.title(t(i18n_text.NoTemplatesWontCreateTasks)),
+                    ],
+                    [icons.nav_icon(icons.Warning, icons.Small)],
+                  )
+              }
             // Inactive rules show X
-            False -> span([attribute.class("rule-inactive-indicator")], [
-              icons.nav_icon(icons.XMark, icons.Small),
-            ])
+            False ->
+              span([attribute.class("rule-inactive-indicator")], [
+                icons.nav_icon(icons.XMark, icons.Small),
+              ])
           },
         ]),
         // Templates count badge
         td([attribute.class("cell-templates")], [
           case template_count {
             0 -> span([attribute.class("badge badge-empty")], [text("0")])
-            n -> span([attribute.class("badge badge-count")], [text(int.to_string(n))])
+            n ->
+              span([attribute.class("badge badge-count")], [
+                text(int.to_string(n)),
+              ])
           },
         ]),
         // Applied metrics
         td([attribute.class("metric-cell")], [
-          span([attribute.class("metric applied")], [text(int.to_string(applied))]),
+          span([attribute.class("metric applied")], [
+            text(int.to_string(applied)),
+          ]),
         ]),
         // Suppressed metrics
         td([attribute.class("metric-cell")], [
-          span([attribute.class("metric suppressed")], [text(int.to_string(suppressed))]),
+          span([attribute.class("metric suppressed")], [
+            text(int.to_string(suppressed)),
+          ]),
         ]),
         // Actions - use class to prevent row click via CSS/JS
         td([attribute.class("cell-actions cell-no-expand")], [
@@ -2439,49 +2568,56 @@ fn view_rule_templates_expansion(
 ) -> #(String, Element(Msg)) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
 
-  let content = div([attribute.class("templates-expansion")], [
-    div([attribute.class("templates-header")], [
-      span([attribute.class("templates-title")], [
-        text(t(i18n_text.AttachedTemplates)),
-      ]),
-      button(
-        [
-          attribute.class("btn btn-sm btn-primary"),
-          // Stop propagation to prevent any parent click handlers from interfering
-          event.on_click(AttachTemplateModalOpened(rule.id))
-            |> event.stop_propagation,
-        ],
-        [
-          span([attribute.class("btn-icon-prefix")], [text("+")]),
-          text(t(i18n_text.AttachTemplate)),
-        ],
-      ),
-    ]),
-    case rule.templates {
-      // AC13: Empathetic hint for empty templates
-      [] -> div([attribute.class("templates-empty-hint")], [
-        span([attribute.class("hint-icon")], [
-          icons.nav_icon(icons.Info, icons.Medium),
+  let content =
+    div([attribute.class("templates-expansion")], [
+      div([attribute.class("templates-header")], [
+        span([attribute.class("templates-title")], [
+          text(t(i18n_text.AttachedTemplates)),
         ]),
-        p([], [text(t(i18n_text.AttachTemplateHint))]),
-      ])
-      templates -> div([attribute.class("templates-list")],
-        list.map(templates, fn(tmpl) {
-          view_attached_template_item(model, rule.id, tmpl)
-        }),
-      )
-    },
-  ])
+        button(
+          [
+            attribute.class("btn btn-sm btn-primary"),
+            // Stop propagation to prevent any parent click handlers from interfering
+            event.on_click(AttachTemplateModalOpened(rule.id))
+              |> event.stop_propagation,
+          ],
+          [
+            span([attribute.class("btn-icon-prefix")], [text("+")]),
+            text(t(i18n_text.AttachTemplate)),
+          ],
+        ),
+      ]),
+      case rule.templates {
+        // AC13: Empathetic hint for empty templates
+        [] ->
+          div([attribute.class("templates-empty-hint")], [
+            span([attribute.class("hint-icon")], [
+              icons.nav_icon(icons.Info, icons.Medium),
+            ]),
+            p([], [text(t(i18n_text.AttachTemplateHint))]),
+          ])
+        templates ->
+          div(
+            [attribute.class("templates-list")],
+            list.map(templates, fn(tmpl) {
+              view_attached_template_item(model, rule.id, tmpl)
+            }),
+          )
+      },
+    ])
 
   #(
     "rule-exp-" <> int.to_string(rule.id),
-    tr([
-      attribute.class("expansion-row"),
-      // Prevent clicks in expansion row from bubbling up
-      event.on_click(NoOp) |> event.stop_propagation,
-    ], [
-      td([attribute.attribute("colspan", "9")], [content]),
-    ]),
+    tr(
+      [
+        attribute.class("expansion-row"),
+        // Prevent clicks in expansion row from bubbling up
+        event.on_click(NoOp) |> event.stop_propagation,
+      ],
+      [
+        td([attribute.attribute("colspan", "9")], [content]),
+      ],
+    ),
   )
 }
 
@@ -2493,7 +2629,8 @@ fn view_attached_template_item(
   tmpl: workflow.RuleTemplate,
 ) -> Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
-  let is_detaching = set.contains(model.detaching_templates, #(rule_id, tmpl.id))
+  let is_detaching =
+    set.contains(model.detaching_templates, #(rule_id, tmpl.id))
 
   // Find task type info for icon (if available)
   let task_type_info = case model.task_types {
@@ -2506,9 +2643,10 @@ fn view_attached_template_item(
     div([attribute.class("attached-template-info")], [
       // Task type icon
       case task_type_info {
-        Ok(tt) -> span([attribute.class("template-type-icon")], [
-          icons.view_task_type_icon_inline(tt.icon, 16, model.theme),
-        ])
+        Ok(tt) ->
+          span([attribute.class("template-type-icon")], [
+            icons.view_task_type_icon_inline(tt.icon, 16, model.theme),
+          ])
         Error(_) -> element.none()
       },
       // Template name
@@ -2521,11 +2659,13 @@ fn view_attached_template_item(
       ]),
       // Detach button using action_buttons per coding standards
       case is_detaching {
-        True -> span([attribute.class("detaching")], [text(t(i18n_text.Detaching))])
-        False -> action_buttons.delete_button(
-          t(i18n_text.RemoveTemplate),
-          TemplateDetachClicked(rule_id, tmpl.id),
-        )
+        True ->
+          span([attribute.class("detaching")], [text(t(i18n_text.Detaching))])
+        False ->
+          action_buttons.delete_button(
+            t(i18n_text.RemoveTemplate),
+            TemplateDetachClicked(rule_id, tmpl.id),
+          )
       },
     ]),
   ])
@@ -2555,14 +2695,19 @@ fn view_attach_template_modal(model: Model) -> Element(Msg) {
       }
 
       // AC10, AC11: Filter to project templates, exclude already attached
-      let available_templates = case model.task_templates_org, model.task_templates_project {
+      let available_templates = case
+        model.task_templates_org,
+        model.task_templates_project
+      {
         Loaded(org), Loaded(proj) -> {
           list.filter(list.append(org, proj), fn(tmpl) {
             !list.contains(attached_ids, tmpl.id)
           })
         }
-        Loaded(org), _ -> list.filter(org, fn(tmpl) { !list.contains(attached_ids, tmpl.id) })
-        _, Loaded(proj) -> list.filter(proj, fn(tmpl) { !list.contains(attached_ids, tmpl.id) })
+        Loaded(org), _ ->
+          list.filter(org, fn(tmpl) { !list.contains(attached_ids, tmpl.id) })
+        _, Loaded(proj) ->
+          list.filter(proj, fn(tmpl) { !list.contains(attached_ids, tmpl.id) })
         _, _ -> []
       }
 
@@ -2581,34 +2726,41 @@ fn view_attach_template_modal(model: Model) -> Element(Msg) {
           div([attribute.class("modal-body")], [
             case available_templates {
               // AC14-15: Empty state with link to Templates section
-              [] -> div([attribute.class("modal-empty-state")], [
-                icons.nav_icon(icons.TaskTemplates, icons.Large),
-                p([], [text(t(i18n_text.NoTemplatesInProject))]),
-                a(
-                  [
-                    attribute.href("/config/templates"),
-                    attribute.class("link-to-templates"),
-                  ],
-                  [text(t(i18n_text.CreateTemplateLink))],
-                ),
-              ])
+              [] ->
+                div([attribute.class("modal-empty-state")], [
+                  icons.nav_icon(icons.TaskTemplates, icons.Large),
+                  p([], [text(t(i18n_text.NoTemplatesInProject))]),
+                  a(
+                    [
+                      attribute.href("/config/templates"),
+                      attribute.class("link-to-templates"),
+                    ],
+                    [text(t(i18n_text.CreateTemplateLink))],
+                  ),
+                ])
               // AC12: Radio buttons for template selection
-              templates -> div([attribute.class("form")], [
-                p([attribute.class("form-hint")], [
-                  text(t(i18n_text.AvailableTemplatesInProject)),
-                ]),
-                div([attribute.class("radio-group template-radio-list")],
-                  list.map(templates, fn(tmpl) {
-                    view_template_radio_option(model, tmpl)
-                  }),
-                ),
-                // Hint about already attached templates
-                p([attribute.class("form-hint-secondary")], [
-                  icons.nav_icon(icons.Info, icons.Small),
-                  text(" " <> t(i18n_text.AttachedTemplates) <> ": " <>
-                    int.to_string(list.length(attached_ids))),
-                ]),
-              ])
+              templates ->
+                div([attribute.class("form")], [
+                  p([attribute.class("form-hint")], [
+                    text(t(i18n_text.AvailableTemplatesInProject)),
+                  ]),
+                  div(
+                    [attribute.class("radio-group template-radio-list")],
+                    list.map(templates, fn(tmpl) {
+                      view_template_radio_option(model, tmpl)
+                    }),
+                  ),
+                  // Hint about already attached templates
+                  p([attribute.class("form-hint-secondary")], [
+                    icons.nav_icon(icons.Info, icons.Small),
+                    text(
+                      " "
+                      <> t(i18n_text.AttachedTemplates)
+                      <> ": "
+                      <> int.to_string(list.length(attached_ids)),
+                    ),
+                  ]),
+                ])
             },
           ]),
           div([attribute.class("modal-footer")], [
@@ -2621,21 +2773,25 @@ fn view_attach_template_modal(model: Model) -> Element(Msg) {
             ),
             // AC20: Loading state on submit button
             case model.attach_template_loading {
-              True -> button(
-                [
-                  attribute.class("btn btn-primary"),
-                  attribute.disabled(True),
-                ],
-                [text(t(i18n_text.Attaching))],
-              )
-              False -> button(
-                [
-                  attribute.class("btn btn-primary"),
-                  attribute.disabled(opt.is_none(model.attach_template_selected)),
-                  event.on_click(AttachTemplateSubmitted),
-                ],
-                [text(t(i18n_text.Attach))],
-              )
+              True ->
+                button(
+                  [
+                    attribute.class("btn btn-primary"),
+                    attribute.disabled(True),
+                  ],
+                  [text(t(i18n_text.Attaching))],
+                )
+              False ->
+                button(
+                  [
+                    attribute.class("btn btn-primary"),
+                    attribute.disabled(opt.is_none(
+                      model.attach_template_selected,
+                    )),
+                    event.on_click(AttachTemplateSubmitted),
+                  ],
+                  [text(t(i18n_text.Attach))],
+                )
             },
           ]),
         ]),
@@ -2646,10 +2802,7 @@ fn view_attach_template_modal(model: Model) -> Element(Msg) {
 
 /// Render a radio button option for template selection.
 /// AC12: Radio buttons with template name, type icon, and priority.
-fn view_template_radio_option(
-  model: Model,
-  tmpl: TaskTemplate,
-) -> Element(Msg) {
+fn view_template_radio_option(model: Model, tmpl: TaskTemplate) -> Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
   let is_selected = model.attach_template_selected == opt.Some(tmpl.id)
   let radio_id = "template-radio-" <> int.to_string(tmpl.id)
@@ -2660,37 +2813,44 @@ fn view_template_radio_option(
     _ -> Error(Nil)
   }
 
-  div([
-    attribute.class("radio-option" <> case is_selected {
-      True -> " selected"
-      False -> ""
-    }),
-    // Put click handler on the whole div so clicking label works
-    event.on_click(AttachTemplateSelected(tmpl.id)),
-  ], [
-    input([
-      attribute.type_("radio"),
-      attribute.name("template-selection"),
-      attribute.id(radio_id),
-      attribute.value(int.to_string(tmpl.id)),
-      attribute.checked(is_selected),
-    ]),
-    label([attribute.for(radio_id), attribute.class("radio-label")], [
-      // Task type icon
-      case task_type_info {
-        Ok(tt) -> span([attribute.class("template-type-icon")], [
-          icons.view_task_type_icon_inline(tt.icon, 16, model.theme),
-        ])
-        Error(_) -> element.none()
-      },
-      // Template name
-      span([attribute.class("template-name")], [text(tmpl.name)]),
-      // Priority
-      span([attribute.class("template-priority")], [
-        text(t(i18n_text.PriorityShort(tmpl.priority))),
+  div(
+    [
+      attribute.class(
+        "radio-option"
+        <> case is_selected {
+          True -> " selected"
+          False -> ""
+        },
+      ),
+      // Put click handler on the whole div so clicking label works
+      event.on_click(AttachTemplateSelected(tmpl.id)),
+    ],
+    [
+      input([
+        attribute.type_("radio"),
+        attribute.name("template-selection"),
+        attribute.id(radio_id),
+        attribute.value(int.to_string(tmpl.id)),
+        attribute.checked(is_selected),
       ]),
-    ]),
-  ])
+      label([attribute.for(radio_id), attribute.class("radio-label")], [
+        // Task type icon
+        case task_type_info {
+          Ok(tt) ->
+            span([attribute.class("template-type-icon")], [
+              icons.view_task_type_icon_inline(tt.icon, 16, model.theme),
+            ])
+          Error(_) -> element.none()
+        },
+        // Template name
+        span([attribute.class("template-name")], [text(tmpl.name)]),
+        // Priority
+        span([attribute.class("template-priority")], [
+          text(t(i18n_text.PriorityShort(tmpl.priority))),
+        ]),
+      ]),
+    ],
+  )
 }
 
 /// Get metrics for a specific rule from the workflow metrics.
@@ -2722,8 +2882,10 @@ fn view_rule_crud_dialog(model: Model, workflow_id: Int) -> Element(Msg) {
 
   // Build rule property for edit/delete modes (includes _mode field for component)
   let rule_prop = case model.rules_dialog_mode {
-    opt.Some(RuleDialogEdit(rule)) -> attribute.property("rule", rule_to_json(rule, "edit"))
-    opt.Some(RuleDialogDelete(rule)) -> attribute.property("rule", rule_to_json(rule, "delete"))
+    opt.Some(RuleDialogEdit(rule)) ->
+      attribute.property("rule", rule_to_json(rule, "edit"))
+    opt.Some(RuleDialogDelete(rule)) ->
+      attribute.property("rule", rule_to_json(rule, "delete"))
     _ -> attribute.none()
   }
 
@@ -2778,32 +2940,36 @@ fn rule_to_json(rule: Rule, mode: String) -> json.Json {
 /// Decode rule event from component custom event.
 /// Story 4.10: Added templates field (defaults to empty list from component events).
 fn decode_rule_event(to_msg: fn(Rule) -> Msg) -> decode.Decoder(Msg) {
-  decode.at(
-    ["detail"],
-    {
-      use id <- decode.field("id", decode.int)
-      use workflow_id <- decode.field("workflow_id", decode.int)
-      use name <- decode.field("name", decode.string)
-      use goal <- decode.field("goal", decode.optional(decode.string))
-      use resource_type <- decode.field("resource_type", decode.string)
-      use task_type_id <- decode.field("task_type_id", decode.optional(decode.int))
-      use to_state <- decode.field("to_state", decode.string)
-      use active <- decode.field("active", decode.bool)
-      use created_at <- decode.field("created_at", decode.string)
-      decode.success(to_msg(workflow.Rule(
-        id: id,
-        workflow_id: workflow_id,
-        name: name,
-        goal: goal,
-        resource_type: resource_type,
-        task_type_id: task_type_id,
-        to_state: to_state,
-        active: active,
-        created_at: created_at,
-        templates: [],
-      )))
-    },
-  )
+  decode.at(["detail"], {
+    use id <- decode.field("id", decode.int)
+    use workflow_id <- decode.field("workflow_id", decode.int)
+    use name <- decode.field("name", decode.string)
+    use goal <- decode.field("goal", decode.optional(decode.string))
+    use resource_type <- decode.field("resource_type", decode.string)
+    use task_type_id <- decode.field(
+      "task_type_id",
+      decode.optional(decode.int),
+    )
+    use to_state <- decode.field("to_state", decode.string)
+    use active <- decode.field("active", decode.bool)
+    use created_at <- decode.field("created_at", decode.string)
+    decode.success(
+      to_msg(
+        workflow.Rule(
+          id: id,
+          workflow_id: workflow_id,
+          name: name,
+          goal: goal,
+          resource_type: resource_type,
+          task_type_id: task_type_id,
+          to_state: to_state,
+          active: active,
+          created_at: created_at,
+          templates: [],
+        ),
+      ),
+    )
+  })
 }
 
 /// Decode rule ID from delete event.
@@ -2829,9 +2995,11 @@ pub fn view_task_templates(
   // Get title with project name
   let title = case selected_project {
     opt.Some(project) ->
-      update_helpers.i18n_t(model, i18n_text.TaskTemplatesProjectTitle(project.name))
-    opt.None ->
-      update_helpers.i18n_t(model, i18n_text.TaskTemplatesTitle)
+      update_helpers.i18n_t(
+        model,
+        i18n_text.TaskTemplatesProjectTitle(project.name),
+      )
+    opt.None -> update_helpers.i18n_t(model, i18n_text.TaskTemplatesTitle)
   }
 
   div([attribute.class("section")], [
@@ -2866,7 +3034,12 @@ fn view_templates_hint(model: Model) -> Element(Msg) {
             attribute.href("/config/workflows"),
             attribute.class("info-callout-link"),
           ],
-          [text(update_helpers.i18n_t(model, i18n_text.TemplatesHintRulesLink) <> " \u{2192}")],
+          [
+            text(
+              update_helpers.i18n_t(model, i18n_text.TemplatesHintRulesLink)
+              <> " \u{2192}",
+            ),
+          ],
         ),
       ]),
       div([attribute.class("info-callout-variables")], [
@@ -2892,7 +3065,10 @@ fn view_task_template_crud_dialog(model: Model) -> Element(Msg) {
         )
         TaskTemplateDialogEdit(template) -> #(
           "edit",
-          attribute.property("template", task_template_to_property_json(template, "edit")),
+          attribute.property(
+            "template",
+            task_template_to_property_json(template, "edit"),
+          ),
           case template.project_id {
             opt.Some(id) -> attribute.attribute("project-id", int.to_string(id))
             opt.None -> attribute.none()
@@ -2900,7 +3076,10 @@ fn view_task_template_crud_dialog(model: Model) -> Element(Msg) {
         )
         TaskTemplateDialogDelete(template) -> #(
           "delete",
-          attribute.property("template", task_template_to_property_json(template, "delete")),
+          attribute.property(
+            "template",
+            task_template_to_property_json(template, "delete"),
+          ),
           case template.project_id {
             opt.Some(id) -> attribute.attribute("project-id", int.to_string(id))
             opt.None -> attribute.none()
@@ -2918,12 +3097,27 @@ fn view_task_template_crud_dialog(model: Model) -> Element(Msg) {
           // Property for template data (edit/delete modes)
           template_json,
           // Property for task types list
-          attribute.property("task-types", task_types_to_property_json(model.task_types)),
+          attribute.property(
+            "task-types",
+            task_types_to_property_json(model.task_types),
+          ),
           // Event listeners for component events
-          event.on("task-template-created", decode_task_template_created_event()),
-          event.on("task-template-updated", decode_task_template_updated_event()),
-          event.on("task-template-deleted", decode_task_template_deleted_event()),
-          event.on("close-requested", decode_task_template_close_requested_event()),
+          event.on(
+            "task-template-created",
+            decode_task_template_created_event(),
+          ),
+          event.on(
+            "task-template-updated",
+            decode_task_template_updated_event(),
+          ),
+          event.on(
+            "task-template-deleted",
+            decode_task_template_deleted_event(),
+          ),
+          event.on(
+            "close-requested",
+            decode_task_template_close_requested_event(),
+          ),
         ],
         [],
       )
@@ -2932,7 +3126,10 @@ fn view_task_template_crud_dialog(model: Model) -> Element(Msg) {
 }
 
 /// Convert task template to JSON for property passing to component.
-fn task_template_to_property_json(template: TaskTemplate, mode: String) -> json.Json {
+fn task_template_to_property_json(
+  template: TaskTemplate,
+  mode: String,
+) -> json.Json {
   json.object([
     #("id", json.int(template.id)),
     #("org_id", json.int(template.org_id)),
@@ -2983,7 +3180,10 @@ fn decode_task_template_updated_event() -> decode.Decoder(Msg) {
 
 /// Decoder for task-template-deleted event.
 fn decode_task_template_deleted_event() -> decode.Decoder(Msg) {
-  use id <- decode.field("detail", decode.field("id", decode.int, decode.success))
+  use id <- decode.field(
+    "detail",
+    decode.field("id", decode.int, decode.success),
+  )
   decode.success(TaskTemplateCrudDeleted(id))
 }
 
@@ -3062,7 +3262,9 @@ fn view_task_templates_table(
               edit_click: OpenTaskTemplateDialog(TaskTemplateDialogEdit(tmpl)),
               edit_testid: "template-edit-btn",
               delete_title: t(i18n_text.Delete),
-              delete_click: OpenTaskTemplateDialog(TaskTemplateDialogDelete(tmpl)),
+              delete_click: OpenTaskTemplateDialog(TaskTemplateDialogDelete(
+                tmpl,
+              )),
               delete_testid: "template-delete-btn",
             )
           },
@@ -3148,13 +3350,18 @@ pub fn view_rule_metrics(model: Model) -> Element(Msg) {
 }
 
 /// Quick range button helper with active state.
-fn view_quick_range_button(model: Model, label: String, days: Int) -> Element(Msg) {
+fn view_quick_range_button(
+  model: Model,
+  label: String,
+  days: Int,
+) -> Element(Msg) {
   let today = client_ffi.date_today()
   let from = client_ffi.date_days_ago(days)
 
   // Check if this range is currently active
   let is_active =
-    model.admin_rule_metrics_from == from && model.admin_rule_metrics_to == today
+    model.admin_rule_metrics_from == from
+    && model.admin_rule_metrics_to == today
 
   let class = case is_active {
     True -> "btn-chip btn-chip-active"
@@ -3180,7 +3387,9 @@ fn view_rule_metrics_results(model: Model) -> Element(Msg) {
     NotAsked ->
       // Empty state with icon and action hint (T5)
       div([attribute.class("empty-state")], [
-        div([attribute.class("empty-state-icon")], [icons.nav_icon(icons.ChartUp, icons.Large)]),
+        div([attribute.class("empty-state-icon")], [
+          icons.nav_icon(icons.ChartUp, icons.Large),
+        ]),
         div([attribute.class("empty-state-title")], [
           text("Sin datos que mostrar"),
         ]),
@@ -3199,7 +3408,9 @@ fn view_rule_metrics_results(model: Model) -> Element(Msg) {
 
     Failed(err) ->
       div([attribute.class("error-state")], [
-        span([attribute.class("error-icon")], [icons.nav_icon(icons.Warning, icons.Small)]),
+        span([attribute.class("error-icon")], [
+          icons.nav_icon(icons.Warning, icons.Small),
+        ]),
         text(err.message),
       ])
 
@@ -3207,7 +3418,9 @@ fn view_rule_metrics_results(model: Model) -> Element(Msg) {
       case workflows {
         [] ->
           div([attribute.class("empty-state")], [
-            div([attribute.class("empty-state-icon")], [icons.nav_icon(icons.EmptyMailbox, icons.Large)]),
+            div([attribute.class("empty-state-icon")], [
+              icons.nav_icon(icons.EmptyMailbox, icons.Large),
+            ]),
             div([attribute.class("empty-state-title")], [
               text("No hay ejecuciones"),
             ]),
