@@ -35,7 +35,6 @@ import scrumbringer_server/http/csrf
 import scrumbringer_server/persistence/auth/login as auth_login
 import scrumbringer_server/persistence/auth/registration as auth_registration
 import scrumbringer_server/services/auth_logic
-import scrumbringer_server/services/authorization
 import scrumbringer_server/services/jwt
 import scrumbringer_server/services/org_invite_links_db
 import scrumbringer_server/services/rate_limit
@@ -324,26 +323,4 @@ fn auth_error_response(error: auth_logic.AuthError) -> wisp.Response {
 fn new_csrf_token() -> String {
   crypto.strong_random_bytes(32)
   |> bit_array.base64_url_encode(False)
-}
-
-// =============================================================================
-// Authorization Helpers
-// =============================================================================
-
-/// Check if user is a member of the given project.
-pub fn is_project_member(
-  db: pog.Connection,
-  user_id: Int,
-  project_id: Int,
-) -> Bool {
-  authorization.is_project_member(db, user_id, project_id)
-}
-
-/// Check if user is a manager of the given project.
-pub fn is_project_manager(
-  db: pog.Connection,
-  user_id: Int,
-  project_id: Int,
-) -> Bool {
-  authorization.is_project_manager(db, user_id, project_id)
 }

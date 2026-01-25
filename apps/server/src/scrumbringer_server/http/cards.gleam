@@ -32,6 +32,7 @@ import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
+import scrumbringer_server/services/authorization
 import scrumbringer_server/services/cards_db
 import wisp
 
@@ -64,7 +65,7 @@ fn handle_list(
       let auth.Ctx(db: db, ..) = ctx
 
       // Check user is member of project
-      case auth.is_project_member(db, user.id, project_id) {
+      case authorization.is_project_member(db, user.id, project_id) {
         False -> api.error(403, "FORBIDDEN", "Not a member of this project")
         True -> {
           case cards_db.list_cards(db, project_id) {
@@ -82,14 +83,23 @@ fn require_project_admin(
   user_id: Int,
   project_id: Int,
 ) -> Result(Nil, wisp.Response) {
-  case auth.is_project_manager(db, user_id, project_id) {
+  case authorization.is_project_manager(db, user_id, project_id) {
     True -> Ok(Nil)
     False -> Error(api.error(403, "FORBIDDEN", "Project admin role required"))
   }
 }
 
 /// Valid card colors.
-const valid_colors = ["gray", "red", "orange", "yellow", "green", "blue", "purple", "pink"]
+const valid_colors = [
+  "gray",
+  "red",
+  "orange",
+  "yellow",
+  "green",
+  "blue",
+  "purple",
+  "pink",
+]
 
 fn validate_color(color: String) -> Result(Option(String), wisp.Response) {
   case color {
@@ -97,7 +107,8 @@ fn validate_color(color: String) -> Result(Option(String), wisp.Response) {
     c -> {
       case list.contains(valid_colors, c) {
         True -> Ok(Some(c))
-        False -> Error(api.error(422, "VALIDATION_ERROR", "Invalid color value"))
+        False ->
+          Error(api.error(422, "VALIDATION_ERROR", "Invalid color value"))
       }
     }
   }
@@ -118,16 +129,14 @@ fn decode_card_payload_data(
       case validate_color(color) {
         Error(resp) -> Error(resp)
         Ok(validated_color) ->
-          Ok(
-            #(
-              title,
-              case description {
-                "" -> None
-                s -> Some(s)
-              },
-              validated_color,
-            ),
-          )
+          Ok(#(
+            title,
+            case description {
+              "" -> None
+              s -> Some(s)
+            },
+            validated_color,
+          ))
       }
     }
     Error(_) -> Error(api.error(422, "VALIDATION_ERROR", "Invalid JSON body"))
@@ -210,7 +219,7 @@ fn handle_get(req: wisp.Request, ctx: auth.Ctx, card_id: Int) -> wisp.Response {
 
         Ok(card) -> {
           // Check user is member of the card's project
-          case auth.is_project_member(db, user.id, card.project_id) {
+          case authorization.is_project_member(db, user.id, card.project_id) {
             False -> api.error(403, "FORBIDDEN", "Not a member of this project")
             True -> api.ok(json.object([#("card", card_to_json(card))]))
           }
@@ -251,7 +260,13 @@ fn handle_update(
                     Error(resp) -> resp
                     Ok(#(title, description, color)) -> {
                       case
-                        cards_db.update_card(db, card_id, title, description, color)
+                        cards_db.update_card(
+                          db,
+                          card_id,
+                          title,
+                          description,
+                          color,
+                        )
                       {
                         Ok(updated) ->
                           api.ok(
