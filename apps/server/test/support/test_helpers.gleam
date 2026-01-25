@@ -4,6 +4,7 @@
 ////
 //// Provides consistent, typed factory functions for unit tests that need
 //// to create domain objects without database access.
+//// Any in-memory store usage is test-only and should be treated as volatile.
 ////
 //// ## Usage
 ////

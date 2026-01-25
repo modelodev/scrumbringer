@@ -1,7 +1,8 @@
-//// In-memory store actor for auth state (used in tests).
+//// In-memory store actor for auth state (test-only helper).
 ////
 //// Provides an OTP actor-based store for user registration, login,
 //// and invite handling without requiring a real database.
+//// State is volatile and not supervised; do not use in production.
 
 import gleam/erlang/process
 import gleam/option.{type Option}
