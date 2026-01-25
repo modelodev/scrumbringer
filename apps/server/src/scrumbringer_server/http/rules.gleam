@@ -5,6 +5,7 @@ import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
+import gleam/list
 import helpers/json as json_helpers
 import pog
 import scrumbringer_server/http/api
@@ -85,12 +86,22 @@ fn handle_list(
                 Error(resp) -> resp
                 Ok(Nil) ->
                   case rules_db.list_rules_for_workflow(db, workflow_id) {
-                    Ok(rules) ->
+                    Ok(rules) -> {
+                      // Story 4.10 AC23: Include templates for each rule
+                      let rules_with_templates =
+                        list.map(rules, fn(rule) {
+                          let templates = case rules_db.list_rule_templates(db, rule.id) {
+                            Ok(t) -> t
+                            Error(_) -> []
+                          }
+                          rule_json_with_templates(rule, templates)
+                        })
                       api.ok(
                         json.object([
-                          #("rules", json.array(rules, of: rule_json)),
+                          #("rules", json.preprocessed_array(rules_with_templates)),
                         ]),
                       )
+                    }
                     Error(_) -> api.error(500, "INTERNAL", "Database error")
                   }
               }
@@ -594,7 +605,16 @@ fn template_org_matches(
   org_id == workflow_org_id && project_id == workflow_project_id
 }
 
+/// Rule JSON without templates (for create/update responses where rule has no templates yet).
 fn rule_json(rule: rules_db.Rule) -> json.Json {
+  rule_json_with_templates(rule, [])
+}
+
+/// Story 4.10: Added templates parameter to include attached templates.
+fn rule_json_with_templates(
+  rule: rules_db.Rule,
+  templates: List(rules_db.RuleTemplate),
+) -> json.Json {
   let rules_db.Rule(
     id: id,
     workflow_id: workflow_id,
@@ -617,6 +637,7 @@ fn rule_json(rule: rules_db.Rule) -> json.Json {
     #("to_state", json.string(to_state)),
     #("active", json.bool(active)),
     #("created_at", json.string(created_at)),
+    #("templates", json.array(templates, of: template_json)),
   ])
 }
 

@@ -24,7 +24,7 @@
 import gleam/int
 import gleam/io
 import gleam/list
-import gleam/option.{Some}
+import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import scrumbringer_server
@@ -315,7 +315,8 @@ pub fn seed() -> Result(SeedResult, String) {
   let event_system = fixtures.task_event_full(
     second_bug, alpha_id, org_id, admin_user_id,
     Some("draft"), "resolved", Some(alpha_bug_type),
-    False  // user_triggered = False
+    False,  // user_triggered = False
+    None,   // card_id
   )
   use _ <- result.try(
     rules_engine.evaluate_rules(db, event_system)

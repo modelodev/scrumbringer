@@ -19,6 +19,7 @@
 import gleam/int
 import gleam/list
 import gleam/option as opt
+import gleam/set
 
 import lustre/effect.{type Effect}
 
@@ -28,11 +29,13 @@ import domain/workflow.{
 }
 import scrumbringer_client/client_state.{
   type Model, type Msg, type TaskTemplateDialogMode, type WorkflowDialogMode,
-  Failed, Loaded, Loading, Model, NotAsked, RuleMetricsFetched,
-  RuleTemplateAttached, RuleTemplateDetached, RulesFetched,
-  TaskTemplatesProjectFetched, TaskTypesFetched, WorkflowsProjectFetched,
+  AttachTemplateFailed, AttachTemplateSucceeded, Failed, Loaded, Loading, Model,
+  NotAsked, RuleMetricsFetched, RuleTemplateAttached, RuleTemplateDetached,
+  RulesFetched, TaskTemplatesProjectFetched, TaskTypesFetched,
+  TemplateDetachFailed, TemplateDetachSucceeded, ToastShow, WorkflowsProjectFetched,
 }
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/toast
 import scrumbringer_client/update_helpers
 
 import scrumbringer_client/api/tasks as api_tasks
@@ -526,6 +529,236 @@ pub fn handle_rule_template_detached_error(
         rules_attach_error: opt.Some(err.message),
       ),
       effect.none(),
+    )
+  }
+}
+
+// =============================================================================
+// Story 4.10: Rule Template Attachment UI Handlers
+// =============================================================================
+
+/// Toggle rule expansion to show/hide attached templates.
+pub fn handle_rule_expand_toggled(
+  model: Model,
+  rule_id: Int,
+) -> #(Model, Effect(Msg)) {
+  let expanded = case set.contains(model.rules_expanded, rule_id) {
+    True -> set.delete(model.rules_expanded, rule_id)
+    False -> set.insert(model.rules_expanded, rule_id)
+  }
+  #(Model(..model, rules_expanded: expanded), effect.none())
+}
+
+/// Open the attach template modal for a specific rule.
+/// Also fetches templates if not already loaded.
+pub fn handle_attach_template_modal_opened(
+  model: Model,
+  rule_id: Int,
+) -> #(Model, Effect(Msg)) {
+  // Check if we need to fetch templates
+  let fetch_effect = case model.task_templates_project, model.selected_project_id {
+    // Already loaded or loading - no need to fetch
+    Loaded(_), _ -> effect.none()
+    Loading, _ -> effect.none()
+    // Need to fetch templates for the project
+    _, opt.Some(project_id) ->
+      api_workflows.list_project_templates(project_id, TaskTemplatesProjectFetched)
+    // No project selected - can't fetch
+    _, opt.None -> effect.none()
+  }
+
+  let new_model = Model(
+    ..model,
+    attach_template_modal: opt.Some(rule_id),
+    attach_template_selected: opt.None,
+    attach_template_loading: False,
+    // Set to loading if we're fetching
+    task_templates_project: case model.task_templates_project, model.selected_project_id {
+      Loaded(_), _ -> model.task_templates_project
+      Loading, _ -> model.task_templates_project
+      _, opt.Some(_) -> Loading
+      _, opt.None -> model.task_templates_project
+    },
+  )
+
+  #(new_model, fetch_effect)
+}
+
+/// Close the attach template modal.
+pub fn handle_attach_template_modal_closed(
+  model: Model,
+) -> #(Model, Effect(Msg)) {
+  #(
+    Model(
+      ..model,
+      attach_template_modal: opt.None,
+      attach_template_selected: opt.None,
+      attach_template_loading: False,
+    ),
+    effect.none(),
+  )
+}
+
+/// Handle template selection in the attach modal.
+pub fn handle_attach_template_selected(
+  model: Model,
+  template_id: Int,
+) -> #(Model, Effect(Msg)) {
+  #(Model(..model, attach_template_selected: opt.Some(template_id)), effect.none())
+}
+
+/// Handle submit of template attachment.
+pub fn handle_attach_template_submitted(
+  model: Model,
+) -> #(Model, Effect(Msg)) {
+  case model.attach_template_modal, model.attach_template_selected {
+    opt.Some(rule_id), opt.Some(template_id) -> {
+      // Calculate execution_order based on current templates
+      let order = case model.rules {
+        Loaded(rules) -> {
+          case list.find(rules, fn(r) { r.id == rule_id }) {
+            Ok(rule) -> list.length(rule.templates) + 1
+            Error(_) -> 1
+          }
+        }
+        _ -> 1
+      }
+      #(
+        Model(..model, attach_template_loading: True),
+        api_workflows.attach_template(rule_id, template_id, order, fn(result) {
+          case result {
+            Ok(templates) -> AttachTemplateSucceeded(rule_id, templates)
+            Error(err) -> AttachTemplateFailed(err)
+          }
+        }),
+      )
+    }
+    _, _ -> #(model, effect.none())
+  }
+}
+
+/// Handle successful template attachment.
+/// AC18: Toast "Plantilla asociada" after success.
+pub fn handle_attach_template_succeeded(
+  model: Model,
+  rule_id: Int,
+  templates: List(RuleTemplate),
+) -> #(Model, Effect(Msg)) {
+  // Update the rule's templates in the rules list
+  let updated_rules = case model.rules {
+    Loaded(rules) -> {
+      Loaded(list.map(rules, fn(r) {
+        case r.id == rule_id {
+          True -> workflow.Rule(..r, templates: templates)
+          False -> r
+        }
+      }))
+    }
+    other -> other
+  }
+  // AC18: Show success toast
+  let toast_message = update_helpers.i18n_t(model, i18n_text.TemplateAttached)
+  #(
+    Model(
+      ..model,
+      rules: updated_rules,
+      attach_template_modal: opt.None,
+      attach_template_selected: opt.None,
+      attach_template_loading: False,
+    ),
+    effect.from(fn(dispatch) { dispatch(ToastShow(toast_message, toast.Success)) }),
+  )
+}
+
+/// Handle failed template attachment.
+/// AC22: Error toast if operation fails.
+pub fn handle_attach_template_failed(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  case err.status {
+    401 -> update_helpers.reset_to_login(model)
+    _ -> #(
+      Model(
+        ..model,
+        attach_template_loading: False,
+        rules_attach_error: opt.Some(err.message),
+      ),
+      // AC22: Show error toast
+      effect.from(fn(dispatch) { dispatch(ToastShow(err.message, toast.Error)) }),
+    )
+  }
+}
+
+/// Handle template detach click.
+pub fn handle_template_detach_clicked(
+  model: Model,
+  rule_id: Int,
+  template_id: Int,
+) -> #(Model, Effect(Msg)) {
+  let detaching = set.insert(model.detaching_templates, #(rule_id, template_id))
+  #(
+    Model(..model, detaching_templates: detaching),
+    api_workflows.detach_template(rule_id, template_id, fn(result) {
+      case result {
+        Ok(_) -> TemplateDetachSucceeded(rule_id, template_id)
+        Error(err) -> TemplateDetachFailed(rule_id, template_id, err)
+      }
+    }),
+  )
+}
+
+/// Handle successful template detachment.
+/// AC19: Toast "Plantilla desasociada" after success.
+pub fn handle_template_detach_succeeded(
+  model: Model,
+  rule_id: Int,
+  template_id: Int,
+) -> #(Model, Effect(Msg)) {
+  let detaching = set.delete(model.detaching_templates, #(rule_id, template_id))
+  // Remove template from rule's templates list
+  let updated_rules = case model.rules {
+    Loaded(rules) -> {
+      Loaded(list.map(rules, fn(r) {
+        case r.id == rule_id {
+          True ->
+            workflow.Rule(
+              ..r,
+              templates: list.filter(r.templates, fn(t) { t.id != template_id }),
+            )
+          False -> r
+        }
+      }))
+    }
+    other -> other
+  }
+  // AC19: Show success toast
+  let toast_message = update_helpers.i18n_t(model, i18n_text.TemplateDetached)
+  #(
+    Model(..model, rules: updated_rules, detaching_templates: detaching),
+    effect.from(fn(dispatch) { dispatch(ToastShow(toast_message, toast.Success)) }),
+  )
+}
+
+/// Handle failed template detachment.
+/// AC22: Error toast if operation fails.
+pub fn handle_template_detach_failed(
+  model: Model,
+  rule_id: Int,
+  template_id: Int,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  let detaching = set.delete(model.detaching_templates, #(rule_id, template_id))
+  case err.status {
+    401 -> update_helpers.reset_to_login(model)
+    _ -> #(
+      Model(
+        ..model,
+        detaching_templates: detaching,
+        rules_attach_error: opt.Some(err.message),
+      ),
+      // AC22: Show error toast
+      effect.from(fn(dispatch) { dispatch(ToastShow(err.message, toast.Error)) }),
     )
   }
 }

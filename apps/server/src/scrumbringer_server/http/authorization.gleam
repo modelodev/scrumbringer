@@ -4,11 +4,9 @@
 //// Note: All resources are now project-scoped (no org-scoped workflows/templates).
 
 import pog
-import wisp
-import domain/org_role.{Admin}
-import scrumbringer_server/http/api
+import scrumbringer_server/services/authorization
 import scrumbringer_server/services/store_state.{type StoredUser}
-import scrumbringer_server/services/projects_db
+import wisp
 
 // =============================================================================
 // Authorization Helpers
@@ -22,11 +20,7 @@ pub fn require_project_manager(
   org_id: Int,
   project_id: Int,
 ) -> Result(#(Int, Int), wisp.Response) {
-  case projects_db.is_project_manager(db, project_id, user.id) {
-    Ok(True) -> Ok(#(org_id, project_id))
-    Ok(False) -> Error(api.error(403, "FORBIDDEN", "Forbidden"))
-    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
-  }
+  authorization.require_project_manager(db, user, org_id, project_id)
 }
 
 /// Require user is manager for a project-scoped resource.
@@ -37,10 +31,7 @@ pub fn require_project_manager_simple(
   org_id: Int,
   project_id: Int,
 ) -> Result(Nil, wisp.Response) {
-  case require_project_manager(db, user, org_id, project_id) {
-    Ok(_) -> Ok(Nil)
-    Error(e) -> Error(e)
-  }
+  authorization.require_project_manager_simple(db, user, org_id, project_id)
 }
 
 /// Require user is manager for a project-scoped resource.
@@ -50,12 +41,5 @@ pub fn require_project_manager_with_org_bypass(
   user: StoredUser,
   project_id: Int,
 ) -> Result(Nil, wisp.Response) {
-  case user.org_role {
-    Admin -> Ok(Nil)
-    _ ->
-      case projects_db.is_project_manager(db, project_id, user.id) {
-        Ok(True) -> Ok(Nil)
-        _ -> Error(api.error(403, "FORBIDDEN", "Manager role required"))
-      }
-  }
+  authorization.require_project_manager_with_org_bypass(db, user, project_id)
 }

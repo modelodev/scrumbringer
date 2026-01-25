@@ -20,7 +20,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 
 import scrumbringer_client/member_section
-import scrumbringer_client/permissions
+import scrumbringer_client/permissions.{type AdminSection}
 import scrumbringer_client/router
 import domain/org_role.{type OrgRole, Admin}
 
@@ -83,259 +83,235 @@ pub type Command {
   Redirect(to: router.Route)
 }
 
-pub fn plan(route: router.Route, snapshot: Snapshot) -> List(Command) {
-  let Snapshot(
-    auth: auth,
-    projects: projects,
-    is_any_project_manager: is_any_project_manager,
-    invite_links: invite_links,
-    capabilities: capabilities,
-    my_capability_ids: my_capability_ids,
-    org_settings_users: org_settings_users,
-    org_users_cache: org_users_cache,
-    members: members,
-    members_project_id: members_project_id,
-    task_types: task_types,
-    task_types_project_id: task_types_project_id,
-    member_tasks: member_tasks,
-    active_task: active_task,
-    me_metrics: me_metrics,
-    org_metrics_overview: org_metrics_overview,
-    org_metrics_project_tasks: org_metrics_project_tasks,
-    org_metrics_project_id: org_metrics_project_id,
-  ) = snapshot
+// ----------------------------------------------------------------------------
+// Helpers for declarative hydration
+// ----------------------------------------------------------------------------
 
+/// Returns True if resource needs fetching (not asked or failed).
+fn needs_fetch(state: ResourceState) -> Bool {
+  case state {
+    NotAsked | Failed -> True
+    Loading | Loaded -> False
+  }
+}
+
+/// Returns True if a project-scoped resource needs fetching for target_id.
+fn needs_project_fetch(
+  state: ResourceState,
+  loaded_id: Option(Int),
+  target_id: Option(Int),
+) -> Bool {
+  case state, loaded_id, target_id {
+    Loading, _, _ -> False
+    Loaded, Some(lid), Some(tid) if lid == tid -> False
+    _, _, Some(_) -> True
+    _, _, None -> False
+  }
+}
+
+/// Collects commands from a list of (condition, command) pairs.
+fn collect(requirements: List(#(Bool, Command))) -> List(Command) {
+  list.flat_map(requirements, fn(req) {
+    case req.0 {
+      True -> [req.1]
+      False -> []
+    }
+  })
+}
+
+pub fn plan(route: router.Route, snap: Snapshot) -> List(Command) {
   case route {
     router.AcceptInvite(_) | router.ResetPassword(_) -> []
+    router.Login -> plan_login(snap)
+    router.Config(section, project_id) | router.Admin(section, project_id) ->
+      plan_admin(snap, section, project_id)
+    router.Org(section) -> plan_org(snap, section)
+    router.Member(_, _, _) -> plan_member(snap)
+  }
+}
 
-    router.Login ->
-      case auth {
-        Unknown -> [FetchMe]
-        _ -> []
+// ----------------------------------------------------------------------------
+// Route-specific hydration planners
+// ----------------------------------------------------------------------------
+
+fn plan_login(snap: Snapshot) -> List(Command) {
+  case snap.auth {
+    Unknown -> [FetchMe]
+    _ -> []
+  }
+}
+
+fn plan_admin(
+  snap: Snapshot,
+  section: AdminSection,
+  project_id: Option(Int),
+) -> List(Command) {
+  case snap.auth {
+    Unknown -> [FetchMe]
+    Unauthed -> [Redirect(to: router.Login)]
+    Authed(role) -> plan_admin_authed(snap, section, project_id, role)
+  }
+}
+
+fn plan_admin_authed(
+  snap: Snapshot,
+  section: AdminSection,
+  project_id: Option(Int),
+  role: OrgRole,
+) -> List(Command) {
+  let is_org_admin = role == Admin
+  let is_org_level_section = case section {
+    permissions.Invites
+    | permissions.OrgSettings
+    | permissions.Projects
+    | permissions.Metrics -> True
+    _ -> False
+  }
+
+  // Org-level sections: only org admin
+  // Project-scoped sections: org admin OR any project manager
+  let has_access = case is_org_level_section {
+    True -> is_org_admin
+    False -> is_org_admin || snap.is_any_project_manager
+  }
+
+  // If projects not loaded yet, we can't determine PM status
+  let needs_projects_to_decide =
+    !is_org_admin && !is_org_level_section && snap.projects != Loaded
+
+  case needs_projects_to_decide {
+    True -> [FetchProjects]
+    False ->
+      case has_access {
+        False -> [
+          Redirect(to: router.Member(member_section.Pool, project_id, None)),
+        ]
+        True -> plan_admin_with_access(snap, section, project_id, is_org_admin)
       }
+  }
+}
 
-    // Story 4.5: Config and Admin routes share hydration logic
-    router.Config(section, project_id) | router.Admin(section, project_id) -> {
-      case auth {
-        Unknown -> [FetchMe]
-        Unauthed -> [Redirect(to: router.Login)]
-        Authed(role) -> {
-          // Check access based on org role and project manager status
-          let is_org_admin = role == Admin
-          let is_org_level_section = case section {
-            permissions.Invites
-            | permissions.OrgSettings
-            | permissions.Projects
-            | permissions.Metrics -> True
-            _ -> False
-          }
+fn plan_admin_with_access(
+  snap: Snapshot,
+  section: AdminSection,
+  project_id: Option(Int),
+  is_org_admin: Bool,
+) -> List(Command) {
+  // Base resources for admin/config routes
+  let base =
+    collect([
+      #(needs_fetch(snap.projects), FetchProjects),
+      #(is_org_admin && needs_fetch(snap.invite_links), FetchInviteLinks),
+      #(needs_fetch(snap.capabilities), FetchCapabilities),
+      #(needs_fetch(snap.me_metrics), FetchMeMetrics),
+      #(needs_fetch(snap.active_task), FetchActiveTask),
+    ])
 
-          // Org-level sections: only org admin
-          // Project-scoped sections: org admin OR any project manager
-          let has_access = case is_org_level_section {
-            True -> is_org_admin
-            False -> is_org_admin || is_any_project_manager
-          }
+  // Section-specific resources
+  let section_cmds = case section, project_id, snap.projects {
+    permissions.Members, Some(id), Loaded ->
+      collect([
+        #(
+          needs_project_fetch(snap.members, snap.members_project_id, Some(id)),
+          FetchMembers(project_id: id),
+        ),
+      ])
 
-          // If projects not loaded yet, we can't determine PM status
-          // Fetch projects first before deciding to redirect
-          let needs_projects_to_decide =
-            !is_org_admin && !is_org_level_section && projects != Loaded
+    permissions.TaskTypes, Some(id), Loaded ->
+      collect([
+        #(
+          needs_project_fetch(
+            snap.task_types,
+            snap.task_types_project_id,
+            Some(id),
+          ),
+          FetchTaskTypes(project_id: id),
+        ),
+      ])
 
-          case needs_projects_to_decide {
-            True -> [FetchProjects]
-            False ->
-              case has_access {
-                False -> [
-                  Redirect(to: router.Member(
-                    member_section.Pool,
-                    project_id,
-                    None,
-                  )),
-                ]
-                True -> {
-                  let base = case projects {
-                    NotAsked | Failed -> [FetchProjects]
-                    _ -> []
-                  }
+    permissions.OrgSettings, _, _ ->
+      collect([#(needs_fetch(snap.org_settings_users), FetchOrgSettingsUsers)])
 
-                  let base = case is_org_admin, invite_links {
-                    True, NotAsked | True, Failed ->
-                      list.append(base, [FetchInviteLinks])
-                    _, _ -> base
-                  }
-
-                  let base = case capabilities {
-                    NotAsked | Failed -> list.append(base, [FetchCapabilities])
-                    _ -> base
-                  }
-
-                  // Story 4.8: Fetch My Metrics for right panel (fix perpetual "Cargando...")
-                  let base = case me_metrics {
-                    NotAsked | Failed -> list.append(base, [FetchMeMetrics])
-                    _ -> base
-                  }
-
-                  case section {
-                    permissions.Members ->
-                      case project_id, projects {
-                        Some(id), Loaded ->
-                          case members, members_project_id {
-                            Loading, _ -> base
-                            Loaded, Some(pid) if pid == id -> base
-                            _, _ ->
-                              list.append(base, [FetchMembers(project_id: id)])
-                          }
-
-                        _, _ -> base
-                      }
-
-                    permissions.TaskTypes ->
-                      case project_id, projects {
-                        Some(id), Loaded ->
-                          case task_types, task_types_project_id {
-                            Loading, _ -> base
-                            Loaded, Some(pid) if pid == id -> base
-                            _, _ ->
-                              list.append(base, [FetchTaskTypes(project_id: id)])
-                          }
-
-                        _, _ -> base
-                      }
-
-                    permissions.OrgSettings ->
-                      case org_settings_users {
-                        NotAsked | Failed ->
-                          list.append(base, [FetchOrgSettingsUsers])
-                        _ -> base
-                      }
-
-                    permissions.Metrics -> {
-                      let base = case org_metrics_overview {
-                        NotAsked | Failed ->
-                          list.append(base, [FetchOrgMetricsOverview])
-                        _ -> base
-                      }
-
-                      case project_id {
-                        Some(id) ->
-                          case org_metrics_project_tasks, org_metrics_project_id {
-                            Loading, _ -> base
-                            Loaded, Some(pid) if pid == id -> base
-                            _, _ ->
-                              list.append(base, [
-                                FetchOrgMetricsProjectTasks(project_id: id),
-                              ])
-                          }
-
-                        None -> base
-                      }
-                    }
-
-                    _ -> base
-                  }
-                }
-              }
-          }
-        }
+    permissions.Metrics, _, _ -> {
+      let overview = collect([
+        #(needs_fetch(snap.org_metrics_overview), FetchOrgMetricsOverview),
+      ])
+      let project_tasks = case project_id {
+        Some(id) ->
+          collect([
+            #(
+              needs_project_fetch(
+                snap.org_metrics_project_tasks,
+                snap.org_metrics_project_id,
+                Some(id),
+              ),
+              FetchOrgMetricsProjectTasks(project_id: id),
+            ),
+          ])
+        None -> []
       }
+      list.append(overview, project_tasks)
     }
 
-    // Story 4.5: Org routes (org-scoped, no project_id)
-    router.Org(section) -> {
-      case auth {
-        Unknown -> [FetchMe]
-        Unauthed -> [Redirect(to: router.Login)]
-        Authed(role) -> {
-          let is_org_admin = role == Admin
-          // Org sections require org admin
-          case is_org_admin {
-            False -> [
-              Redirect(to: router.Member(member_section.Pool, None, None)),
-            ]
-            True -> {
-              let base = case projects {
-                NotAsked | Failed -> [FetchProjects]
-                _ -> []
-              }
-              let base = case invite_links {
-                NotAsked | Failed -> list.append(base, [FetchInviteLinks])
-                _ -> base
-              }
-              let base = case capabilities {
-                NotAsked | Failed -> list.append(base, [FetchCapabilities])
-                _ -> base
-              }
-              // Story 4.8: Fetch My Metrics for right panel (fix perpetual "Cargando...")
-              let base = case me_metrics {
-                NotAsked | Failed -> list.append(base, [FetchMeMetrics])
-                _ -> base
-              }
-              case section {
-                permissions.OrgSettings ->
-                  case org_settings_users {
-                    NotAsked | Failed ->
-                      list.append(base, [FetchOrgSettingsUsers])
-                    _ -> base
-                  }
-                permissions.Metrics -> {
-                  case org_metrics_overview {
-                    NotAsked | Failed ->
-                      list.append(base, [FetchOrgMetricsOverview])
-                    _ -> base
-                  }
-                }
-                _ -> base
-              }
-            }
-          }
-        }
-      }
-    }
+    _, _, _ -> []
+  }
 
-    router.Member(_section, _project_id, _view_mode) -> {
-      case auth {
-        Unknown -> [FetchMe]
-        Unauthed -> [Redirect(to: router.Login)]
+  list.append(base, section_cmds)
+}
 
-        Authed(_role) -> {
-          let base = case projects {
-            NotAsked | Failed -> [FetchProjects]
+fn plan_org(snap: Snapshot, section: AdminSection) -> List(Command) {
+  case snap.auth {
+    Unknown -> [FetchMe]
+    Unauthed -> [Redirect(to: router.Login)]
+    Authed(role) -> {
+      case role == Admin {
+        False -> [
+          Redirect(to: router.Member(member_section.Pool, None, None)),
+        ]
+        True -> {
+          // Base resources for org routes
+          let base =
+            collect([
+              #(needs_fetch(snap.projects), FetchProjects),
+              #(needs_fetch(snap.invite_links), FetchInviteLinks),
+              #(needs_fetch(snap.capabilities), FetchCapabilities),
+              #(needs_fetch(snap.me_metrics), FetchMeMetrics),
+              #(needs_fetch(snap.active_task), FetchActiveTask),
+            ])
+
+          // Section-specific resources
+          let section_cmds = case section {
+            permissions.OrgSettings ->
+              collect([
+                #(needs_fetch(snap.org_settings_users), FetchOrgSettingsUsers),
+              ])
+            permissions.Metrics ->
+              collect([
+                #(needs_fetch(snap.org_metrics_overview), FetchOrgMetricsOverview),
+              ])
             _ -> []
           }
 
-          let base = case capabilities {
-            NotAsked | Failed -> list.append(base, [FetchCapabilities])
-            _ -> base
-          }
-
-          let base = case my_capability_ids {
-            NotAsked | Failed -> list.append(base, [FetchMeCapabilityIds])
-            _ -> base
-          }
-
-          let base = case active_task {
-            NotAsked | Failed -> list.append(base, [FetchActiveTask])
-            _ -> base
-          }
-
-          let base = case me_metrics {
-            NotAsked | Failed -> list.append(base, [FetchMeMetrics])
-            _ -> base
-          }
-
-          // AC7: Fetch org users cache to show who claimed tasks in Lista view
-          let base = case org_users_cache {
-            NotAsked | Failed -> list.append(base, [FetchOrgUsersCache])
-            _ -> base
-          }
-
-          case member_tasks {
-            NotAsked | Failed -> list.append(base, [RefreshMember])
-            Loading | Loaded -> base
-          }
+          list.append(base, section_cmds)
         }
       }
     }
+  }
+}
+
+fn plan_member(snap: Snapshot) -> List(Command) {
+  case snap.auth {
+    Unknown -> [FetchMe]
+    Unauthed -> [Redirect(to: router.Login)]
+    Authed(_) ->
+      collect([
+        #(needs_fetch(snap.projects), FetchProjects),
+        #(needs_fetch(snap.capabilities), FetchCapabilities),
+        #(needs_fetch(snap.my_capability_ids), FetchMeCapabilityIds),
+        #(needs_fetch(snap.active_task), FetchActiveTask),
+        #(needs_fetch(snap.me_metrics), FetchMeMetrics),
+        #(needs_fetch(snap.org_users_cache), FetchOrgUsersCache),
+        #(needs_fetch(snap.member_tasks), RefreshMember),
+      ])
   }
 }

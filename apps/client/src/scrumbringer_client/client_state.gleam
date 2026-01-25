@@ -59,6 +59,7 @@
 
 import gleam/dict.{type Dict}
 import gleam/option.{type Option}
+import gleam/set
 
 import domain/user.{type User}
 
@@ -434,6 +435,12 @@ pub type Model {
     rules_attach_template_id: Option(Int),
     rules_attach_in_flight: Bool,
     rules_attach_error: Option(String),
+    // Story 4.10: Rule template attachment UI
+    rules_expanded: set.Set(Int),
+    attach_template_modal: Option(Int),
+    attach_template_selected: Option(Int),
+    attach_template_loading: Bool,
+    detaching_templates: set.Set(#(Int, Int)),
     // Rule metrics (inline display)
     rules_metrics: Remote(api_workflows.WorkflowMetrics),
     // Task templates - list data and dialog mode (component handles CRUD state internally)
@@ -762,6 +769,18 @@ pub type Msg {
   RuleTemplateAttached(ApiResult(List(RuleTemplate)))
   RuleTemplateDetachClicked(Int)
   RuleTemplateDetached(ApiResult(Nil))
+
+  // Story 4.10: Rule template attachment UI
+  RuleExpandToggled(Int)
+  AttachTemplateModalOpened(Int)
+  AttachTemplateModalClosed
+  AttachTemplateSelected(Int)
+  AttachTemplateSubmitted
+  AttachTemplateSucceeded(Int, List(RuleTemplate))
+  AttachTemplateFailed(ApiError)
+  TemplateDetachClicked(Int, Int)
+  TemplateDetachSucceeded(Int, Int)
+  TemplateDetachFailed(Int, Int, ApiError)
 
   // Rule metrics (inline display)
   RuleMetricsFetched(ApiResult(api_workflows.WorkflowMetrics))
@@ -1129,6 +1148,12 @@ pub fn default_model() -> Model {
     rules_attach_template_id: option.None,
     rules_attach_in_flight: False,
     rules_attach_error: option.None,
+    // Story 4.10: Rule template attachment UI
+    rules_expanded: set.new(),
+    attach_template_modal: option.None,
+    attach_template_selected: option.None,
+    attach_template_loading: False,
+    detaching_templates: set.new(),
     // Rule metrics (inline display)
     rules_metrics: NotAsked,
     // Task templates - list and dialog mode (component handles CRUD state internally)

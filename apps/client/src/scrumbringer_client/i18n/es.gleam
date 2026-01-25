@@ -59,6 +59,15 @@ pub fn translate(text: Text) -> String {
     text.SkillsSaved -> "Skills guardadas"
     text.NoteAdded -> "Nota añadida"
 
+    // Task mutation errors
+    text.TaskClaimFailed -> "No se pudo reclamar la tarea"
+    text.TaskReleaseFailed -> "No se pudo liberar la tarea"
+    text.TaskCompleteFailed -> "No se pudo completar la tarea"
+    text.TaskVersionConflict -> "La tarea fue modificada. Por favor recarga."
+    text.TaskAlreadyClaimed -> "La tarea ya está reclamada por otro usuario"
+    text.TaskNotFound -> "Tarea no encontrada"
+    text.TaskMutationRolledBack -> "Acción revertida"
+
     // Validation
     text.NameRequired -> "El nombre es obligatorio"
     text.TitleRequired -> "El título es obligatorio"
@@ -489,6 +498,33 @@ pub fn translate(text: Text) -> String {
     text.DetachTemplate -> "Quitar plantilla"
     text.RuleMetricsApplied -> "Aplicadas"
     text.RuleMetricsSuppressed -> "Suprimidas"
+
+    // Story 4.10: Rule template attachment UI
+    text.ExpandRule -> "Expandir"
+    text.CollapseRule -> "Colapsar"
+    text.AttachedTemplates -> "Plantillas asociadas"
+    text.AttachedTemplatesCount(count) ->
+      int.to_string(count)
+      <> " plantilla"
+      <> case count {
+        1 -> ""
+        _ -> "s"
+      }
+    text.NoTemplatesAttached -> "Sin plantillas asociadas"
+    text.NoTemplatesWontCreateTasks -> "Sin plantillas (no creará tareas)"
+    text.SelectTemplateToAttach -> "Selecciona plantilla a asociar"
+    text.AvailableTemplatesInProject -> "Plantillas disponibles en este proyecto"
+    text.AttachTemplateHint ->
+      "Asocia una plantilla para que esta regla cree tareas automáticamente cuando se active."
+    text.NoTemplatesInProject -> "No hay plantillas en este proyecto"
+    text.CreateTemplateLink -> "Créala en Plantillas"
+    text.Attach -> "Asociar"
+    text.Attaching -> "Asociando…"
+    text.TemplateAttached -> "Plantilla asociada"
+    text.TemplateDetached -> "Plantilla desasociada"
+    text.DetachTemplateConfirm(name) -> "¿Quitar la plantilla \"" <> name <> "\"?"
+    text.Detaching -> "Quitando…"
+    text.RemoveTemplate -> "Quitar plantilla"
 
     // Task States (for Rules)
     text.TaskStateAvailable -> "Disponible"

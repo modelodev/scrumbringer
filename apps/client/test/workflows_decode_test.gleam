@@ -89,9 +89,9 @@ pub fn rules_payload_decoder_decodes_list_test() {
   result |> should.be_ok
 }
 
-pub fn task_template_payload_decoder_decodes_enveloped_template_test() {
+pub fn template_payload_decoder_decodes_enveloped_template_test() {
   let body =
-    "{\"data\":{\"task_template\":{\"id\":1,\"org_id\":1,\"project_id\":null,\"name\":\"Review {{father}}\",\"description\":\"Auto-created review task\",\"type_id\":2,\"type_name\":\"Review\",\"priority\":3,\"created_by\":1,\"created_at\":\"2026-01-15T14:00:00Z\"}}}"
+    "{\"data\":{\"template\":{\"id\":1,\"org_id\":1,\"project_id\":null,\"name\":\"Review {{father}}\",\"description\":\"Auto-created review task\",\"type_id\":2,\"type_name\":\"Review\",\"priority\":3,\"created_by\":1,\"created_at\":\"2026-01-15T14:00:00Z\"}}}"
 
   let decoder =
     decode.field(
@@ -105,9 +105,9 @@ pub fn task_template_payload_decoder_decodes_enveloped_template_test() {
   result |> should.be_ok
 }
 
-pub fn task_template_payload_decoder_decodes_with_project_id_test() {
+pub fn template_payload_decoder_decodes_with_project_id_test() {
   let body =
-    "{\"data\":{\"task_template\":{\"id\":2,\"org_id\":1,\"project_id\":5,\"name\":\"QA Check\",\"description\":null,\"type_id\":3,\"type_name\":\"QA\",\"priority\":2,\"created_by\":2,\"created_at\":\"2026-01-15T15:00:00Z\"}}}"
+    "{\"data\":{\"template\":{\"id\":2,\"org_id\":1,\"project_id\":5,\"name\":\"QA Check\",\"description\":null,\"type_id\":3,\"type_name\":\"QA\",\"priority\":2,\"created_by\":2,\"created_at\":\"2026-01-15T15:00:00Z\"}}}"
 
   let decoder =
     decode.field(
@@ -121,7 +121,7 @@ pub fn task_template_payload_decoder_decodes_with_project_id_test() {
   result |> should.be_ok
 }
 
-pub fn task_templates_payload_decoder_decodes_list_test() {
+pub fn templates_payload_decoder_decodes_list_test() {
   let body =
     "{\"data\":{\"templates\":[{\"id\":1,\"org_id\":1,\"project_id\":null,\"name\":\"Template A\",\"description\":\"First\",\"type_id\":1,\"type_name\":\"Bug\",\"priority\":3,\"created_by\":1,\"created_at\":\"2026-01-15T14:00:00Z\"},{\"id\":2,\"org_id\":1,\"project_id\":3,\"name\":\"Template B\",\"description\":null,\"type_id\":2,\"type_name\":\"Feature\",\"priority\":2,\"created_by\":1,\"created_at\":\"2026-01-15T15:00:00Z\"}]}}"
 
@@ -175,7 +175,7 @@ pub fn rules_payload_decoder_decodes_empty_list_test() {
   result |> should.be_ok
 }
 
-pub fn task_templates_payload_decoder_decodes_empty_list_test() {
+pub fn templates_payload_decoder_decodes_empty_list_test() {
   let body = "{\"data\":{\"templates\":[]}}"
 
   let decoder =

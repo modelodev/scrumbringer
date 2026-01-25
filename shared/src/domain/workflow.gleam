@@ -18,6 +18,7 @@ pub type Workflow {
 }
 
 /// Rule trigger definition within a workflow.
+/// Story 4.10: Added templates field for attached task templates.
 pub type Rule {
   Rule(
     id: Int,
@@ -29,6 +30,7 @@ pub type Rule {
     to_state: String,
     active: Bool,
     created_at: String,
+    templates: List(RuleTemplate),
   )
 }
 

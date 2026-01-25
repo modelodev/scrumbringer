@@ -142,7 +142,12 @@ import scrumbringer_client/client_state.{
   OpenRuleDialog, CloseRuleDialog, RuleCrudCreated, RuleCrudUpdated, RuleCrudDeleted,
   RuleMetricsFetched, RuleTemplateAttached, RuleTemplateDetachClicked, RuleTemplateDetached,
   RuleTemplatesClicked, RuleTemplatesFetched, RulesBackClicked,
-  RulesFetched, TaskTemplatesProjectFetched,
+  RulesFetched,
+  // Story 4.10: Rule template attachment UI
+  RuleExpandToggled, AttachTemplateModalOpened, AttachTemplateModalClosed,
+  AttachTemplateSelected, AttachTemplateSubmitted, AttachTemplateSucceeded, AttachTemplateFailed,
+  TemplateDetachClicked, TemplateDetachSucceeded, TemplateDetachFailed,
+  TaskTemplatesProjectFetched,
   OpenTaskTemplateDialog, CloseTaskTemplateDialog,
   TaskTemplateCrudCreated, TaskTemplateCrudUpdated, TaskTemplateCrudDeleted,
   TaskTypeCreateCapabilityChanged, TaskTypeCreateDialogClosed,
@@ -2420,6 +2425,28 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     RuleTemplateDetached(Ok(_)) -> #(model, effect.none())
     RuleTemplateDetached(Error(err)) ->
       admin_workflow.handle_rule_template_detached_error(model, err)
+
+    // Story 4.10: Rule template attachment UI handlers
+    RuleExpandToggled(rule_id) ->
+      admin_workflow.handle_rule_expand_toggled(model, rule_id)
+    AttachTemplateModalOpened(rule_id) ->
+      admin_workflow.handle_attach_template_modal_opened(model, rule_id)
+    AttachTemplateModalClosed ->
+      admin_workflow.handle_attach_template_modal_closed(model)
+    AttachTemplateSelected(template_id) ->
+      admin_workflow.handle_attach_template_selected(model, template_id)
+    AttachTemplateSubmitted ->
+      admin_workflow.handle_attach_template_submitted(model)
+    AttachTemplateSucceeded(rule_id, templates) ->
+      admin_workflow.handle_attach_template_succeeded(model, rule_id, templates)
+    AttachTemplateFailed(err) ->
+      admin_workflow.handle_attach_template_failed(model, err)
+    TemplateDetachClicked(rule_id, template_id) ->
+      admin_workflow.handle_template_detach_clicked(model, rule_id, template_id)
+    TemplateDetachSucceeded(rule_id, template_id) ->
+      admin_workflow.handle_template_detach_succeeded(model, rule_id, template_id)
+    TemplateDetachFailed(rule_id, template_id, err) ->
+      admin_workflow.handle_template_detach_failed(model, rule_id, template_id, err)
 
     // Task templates handlers
     TaskTemplatesProjectFetched(Ok(templates)) ->

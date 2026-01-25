@@ -641,6 +641,27 @@ pub const handle_rule_template_detached_ok = workflows.handle_rule_template_deta
 
 pub const handle_rule_template_detached_error = workflows.handle_rule_template_detached_error
 
+// Story 4.10: Rule Template Attachment UI Handlers
+pub const handle_rule_expand_toggled = workflows.handle_rule_expand_toggled
+
+pub const handle_attach_template_modal_opened = workflows.handle_attach_template_modal_opened
+
+pub const handle_attach_template_modal_closed = workflows.handle_attach_template_modal_closed
+
+pub const handle_attach_template_selected = workflows.handle_attach_template_selected
+
+pub const handle_attach_template_submitted = workflows.handle_attach_template_submitted
+
+pub const handle_attach_template_succeeded = workflows.handle_attach_template_succeeded
+
+pub const handle_attach_template_failed = workflows.handle_attach_template_failed
+
+pub const handle_template_detach_clicked = workflows.handle_template_detach_clicked
+
+pub const handle_template_detach_succeeded = workflows.handle_template_detach_succeeded
+
+pub const handle_template_detach_failed = workflows.handle_template_detach_failed
+
 // =============================================================================
 // Re-exports: Task Templates
 // =============================================================================

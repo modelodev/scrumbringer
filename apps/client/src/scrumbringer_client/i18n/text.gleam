@@ -53,6 +53,15 @@ pub type Text {
   SkillsSaved
   NoteAdded
 
+  // Task mutation errors
+  TaskClaimFailed
+  TaskReleaseFailed
+  TaskCompleteFailed
+  TaskVersionConflict
+  TaskAlreadyClaimed
+  TaskNotFound
+  TaskMutationRolledBack
+
   // Validation
   NameRequired
   TitleRequired
@@ -436,6 +445,26 @@ pub type Text {
   DetachTemplate
   RuleMetricsApplied
   RuleMetricsSuppressed
+
+  // Story 4.10: Rule template attachment UI
+  ExpandRule
+  CollapseRule
+  AttachedTemplates
+  AttachedTemplatesCount(count: Int)
+  NoTemplatesAttached
+  NoTemplatesWontCreateTasks
+  SelectTemplateToAttach
+  AvailableTemplatesInProject
+  AttachTemplateHint
+  NoTemplatesInProject
+  CreateTemplateLink
+  Attach
+  Attaching
+  TemplateAttached
+  TemplateDetached
+  DetachTemplateConfirm(template_name: String)
+  Detaching
+  RemoveTemplate
 
   // Task States (for Rules)
   TaskStateAvailable

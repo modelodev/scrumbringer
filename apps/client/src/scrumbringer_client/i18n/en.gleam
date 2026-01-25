@@ -58,6 +58,15 @@ pub fn translate(text: Text) -> String {
     text.SkillsSaved -> "Skills saved"
     text.NoteAdded -> "Note added"
 
+    // Task mutation errors
+    text.TaskClaimFailed -> "Could not claim task"
+    text.TaskReleaseFailed -> "Could not release task"
+    text.TaskCompleteFailed -> "Could not complete task"
+    text.TaskVersionConflict -> "Task was modified. Please refresh."
+    text.TaskAlreadyClaimed -> "Task is already claimed by someone else"
+    text.TaskNotFound -> "Task not found"
+    text.TaskMutationRolledBack -> "Action rolled back"
+
     // Validation
     text.NameRequired -> "Name is required"
     text.TitleRequired -> "Title is required"
@@ -479,6 +488,33 @@ pub fn translate(text: Text) -> String {
     text.DetachTemplate -> "Detach Template"
     text.RuleMetricsApplied -> "Applied"
     text.RuleMetricsSuppressed -> "Suppressed"
+
+    // Story 4.10: Rule template attachment UI
+    text.ExpandRule -> "Expand"
+    text.CollapseRule -> "Collapse"
+    text.AttachedTemplates -> "Attached Templates"
+    text.AttachedTemplatesCount(count) ->
+      int.to_string(count)
+      <> " template"
+      <> case count {
+        1 -> ""
+        _ -> "s"
+      }
+    text.NoTemplatesAttached -> "No templates attached"
+    text.NoTemplatesWontCreateTasks -> "No templates (won't create tasks)"
+    text.SelectTemplateToAttach -> "Select template to attach"
+    text.AvailableTemplatesInProject -> "Available templates in this project"
+    text.AttachTemplateHint ->
+      "Attach a template so this rule creates tasks automatically when triggered."
+    text.NoTemplatesInProject -> "No templates in this project"
+    text.CreateTemplateLink -> "Create one in Templates"
+    text.Attach -> "Attach"
+    text.Attaching -> "Attaching…"
+    text.TemplateAttached -> "Template attached"
+    text.TemplateDetached -> "Template detached"
+    text.DetachTemplateConfirm(name) -> "Detach template \"" <> name <> "\"?"
+    text.Detaching -> "Detaching…"
+    text.RemoveTemplate -> "Remove template"
 
     // Task States (for Rules)
     text.TaskStateAvailable -> "Available"

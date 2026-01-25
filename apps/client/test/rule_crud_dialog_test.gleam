@@ -417,6 +417,7 @@ fn make_test_rule() -> Rule {
     to_state: "completed",
     active: True,
     created_at: "2024-01-01T00:00:00Z",
+    templates: [],
   )
 }
 
@@ -431,5 +432,6 @@ fn make_test_rule_with_details() -> Rule {
     to_state: "completed",
     active: True,
     created_at: "2024-01-02T00:00:00Z",
+    templates: [],
   )
 }

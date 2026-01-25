@@ -537,6 +537,7 @@ pub fn handle_task_completed_ok(
 
 /// Handle task mutation error (claim/release/complete).
 /// Restores task list from snapshot (rollback) and shows error toast.
+/// Provides user-friendly error messages based on error code.
 pub fn handle_mutation_error(
   model: Model,
   err: ApiError,
@@ -549,7 +550,34 @@ pub fn handle_mutation_error(
 
   case err.status {
     401 -> update_helpers.reset_to_login(model)
-    _ -> #(Model(..model, toast: opt.Some(err.message)), effect.none())
+    404 -> #(
+      Model(..model, toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskNotFound))),
+      effect.none(),
+    )
+    409 -> {
+      // Conflict - task already claimed
+      let msg = case string.contains(err.code, "CLAIMED") {
+        True -> update_helpers.i18n_t(model, i18n_text.TaskAlreadyClaimed)
+        False -> update_helpers.i18n_t(model, i18n_text.TaskVersionConflict)
+      }
+      #(Model(..model, toast: opt.Some(msg)), effect.none())
+    }
+    422 -> {
+      // Version conflict or validation error
+      let msg = case string.contains(err.code, "VERSION") {
+        True -> update_helpers.i18n_t(model, i18n_text.TaskVersionConflict)
+        False -> err.message
+      }
+      #(Model(..model, toast: opt.Some(msg)), effect.none())
+    }
+    _ -> {
+      // Show rollback notice + original error
+      let msg =
+        update_helpers.i18n_t(model, i18n_text.TaskMutationRolledBack)
+        <> ": "
+        <> err.message
+      #(Model(..model, toast: opt.Some(msg)), effect.none())
+    }
   }
 }
 

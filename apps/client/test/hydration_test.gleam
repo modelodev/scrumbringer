@@ -63,6 +63,7 @@ pub fn admin_members_authed_admin_plans_projects_then_members_test() {
     hydration.FetchInviteLinks,
     hydration.FetchCapabilities,
     hydration.FetchMeMetrics,
+    hydration.FetchActiveTask,
   ])
 
   let snap_with_projects =
@@ -88,7 +89,11 @@ pub fn admin_members_authed_admin_plans_projects_then_members_test() {
     )
 
   hydration.plan(router.Admin(permissions.Members, Some(2)), snap_with_projects)
-  |> should.equal([hydration.FetchMeMetrics, hydration.FetchMembers(project_id: 2)])
+  |> should.equal([
+    hydration.FetchMeMetrics,
+    hydration.FetchActiveTask,
+    hydration.FetchMembers(project_id: 2),
+  ])
 }
 
 pub fn admin_route_non_admin_redirects_to_member_pool_test() {
@@ -179,6 +184,7 @@ pub fn admin_members_project_manager_loaded_grants_access_test() {
   |> should.equal([
     hydration.FetchCapabilities,
     hydration.FetchMeMetrics,
+    hydration.FetchActiveTask,
     hydration.FetchMembers(project_id: 8),
   ])
 }
@@ -225,7 +231,8 @@ pub fn member_pool_with_projects_loaded_only_refreshes_member_test() {
       capabilities: hydration.Loaded,
       my_capability_ids: hydration.Loaded,
       org_settings_users: hydration.NotAsked,
-      org_users_cache: hydration.NotAsked,
+      // AC7: Set to Loaded since this test verifies minimal refresh scenario
+      org_users_cache: hydration.Loaded,
       members: hydration.NotAsked,
       members_project_id: None,
       task_types: hydration.NotAsked,

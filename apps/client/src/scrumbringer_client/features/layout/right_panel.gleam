@@ -19,6 +19,7 @@
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{button, div, h4, label, option, select, span, text}
@@ -30,6 +31,7 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
+import scrumbringer_client/ui/icon_catalog
 import scrumbringer_client/ui/icons
 
 // =============================================================================
@@ -41,6 +43,7 @@ pub type ActiveTaskInfo {
   ActiveTaskInfo(
     task_id: Int,
     task_title: String,
+    task_type_icon: String,
     elapsed_display: String,
     is_paused: Bool,
   )
@@ -74,6 +77,8 @@ pub type RightPanelConfig(msg) {
     current_theme: Theme,
     on_theme_change: fn(String) -> msg,
     on_locale_change: fn(String) -> msg,
+    // Disable actions while mutation in flight
+    disable_actions: Bool,
   )
 }
 
@@ -157,7 +162,20 @@ fn view_active_task_card(
   div(
     [attribute.class("active-task-card")],
     [
-      div([attribute.class("task-title")], [text(active.task_title)]),
+      div(
+        [attribute.class("task-title-row")],
+        [
+          // Task type icon
+          span([attribute.class("task-type-icon")], [
+            view_task_type_icon(
+              active.task_type_icon,
+              14,
+              config.current_theme,
+            ),
+          ]),
+          span([attribute.class("task-title")], [text(active.task_title)]),
+        ],
+      ),
       div(
         [
           attribute.class("task-timer"),
@@ -172,29 +190,44 @@ fn view_active_task_card(
             True ->
               button(
                 [
-                  attribute.class("btn-xs"),
+                  attribute.class("btn-xs btn-icon"),
                   attribute.attribute("data-testid", "my-task-start-btn"),
+                  attribute.attribute(
+                    "title",
+                    i18n.t(config.locale, i18n_text.Resume),
+                  ),
+                  attribute.disabled(config.disable_actions),
                   event.on_click(config.on_task_start(active.task_id)),
                 ],
-                [text(i18n.t(config.locale, i18n_text.Resume))],
+                [icons.nav_icon(icons.Play, icons.Small)],
               )
             False ->
               button(
                 [
-                  attribute.class("btn-xs"),
+                  attribute.class("btn-xs btn-icon"),
                   attribute.attribute("data-testid", "task-pause-btn"),
+                  attribute.attribute(
+                    "title",
+                    i18n.t(config.locale, i18n_text.Pause),
+                  ),
+                  attribute.disabled(config.disable_actions),
                   event.on_click(config.on_task_pause(active.task_id)),
                 ],
-                [text(i18n.t(config.locale, i18n_text.Pause))],
+                [icons.nav_icon(icons.Pause, icons.Small)],
               )
           },
           button(
             [
-              attribute.class("btn-xs"),
+              attribute.class("btn-xs btn-icon"),
               attribute.attribute("data-testid", "task-complete-btn"),
+              attribute.attribute(
+                "title",
+                i18n.t(config.locale, i18n_text.Complete),
+              ),
+              attribute.disabled(config.disable_actions),
               event.on_click(config.on_task_complete(active.task_id)),
             ],
-            [text(i18n.t(config.locale, i18n_text.Complete))],
+            [icons.nav_icon(icons.Check, icons.Small)],
           ),
         ],
       ),
@@ -278,25 +311,50 @@ fn view_my_task_item(config: RightPanelConfig(msg), task: Task) -> Element(msg) 
   div(
     [attribute.class("task-item")],
     [
-      span([attribute.class("task-title")], [text(task.title)]),
+      div(
+        [attribute.class("task-title-row")],
+        [
+          // Task type icon
+          span([attribute.class("task-type-icon")], [
+            view_task_type_icon(
+              task.task_type.icon,
+              14,
+              config.current_theme,
+            ),
+          ]),
+          span([attribute.class("task-title")], [text(task.title)]),
+        ],
+      ),
       div(
         [attribute.class("task-actions")],
         [
+          // Start button (icon)
           button(
             [
-              attribute.class("btn-xs"),
+              attribute.class("btn-xs btn-icon"),
               attribute.attribute("data-testid", "my-task-start-btn"),
+              attribute.attribute(
+                "title",
+                i18n.t(config.locale, i18n_text.Start),
+              ),
+              attribute.disabled(config.disable_actions),
               event.on_click(config.on_task_start(task.id)),
             ],
-            [text(i18n.t(config.locale, i18n_text.Start))],
+            [icons.nav_icon(icons.Play, icons.Small)],
           ),
+          // Release button (icon)
           button(
             [
-              attribute.class("btn-xs"),
+              attribute.class("btn-xs btn-icon"),
               attribute.attribute("data-testid", "my-task-release-btn"),
+              attribute.attribute(
+                "title",
+                i18n.t(config.locale, i18n_text.Release),
+              ),
+              attribute.disabled(config.disable_actions),
               event.on_click(config.on_task_release(task.id)),
             ],
-            [text(i18n.t(config.locale, i18n_text.Release))],
+            [icons.nav_icon(icons.Return, icons.Small)],
           ),
         ],
       ),
@@ -535,4 +593,26 @@ fn view_profile(config: RightPanelConfig(msg)) -> Element(msg) {
       ),
     ],
   )
+}
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+/// Render a task type icon with theme awareness (generic version).
+/// Uses the icon catalog for embedded SVG rendering.
+fn view_task_type_icon(icon_name: String, size: Int, theme: Theme) -> Element(a) {
+  case string.is_empty(icon_name) {
+    True -> element.none()
+    False -> {
+      let class = case theme {
+        theme.Dark -> "icon-theme-dark"
+        theme.Default -> ""
+      }
+      case icon_catalog.exists(icon_name) {
+        True -> icon_catalog.render_with_class(icon_name, size, class)
+        False -> element.none()
+      }
+    }
+  }
 }

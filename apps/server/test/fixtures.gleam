@@ -452,6 +452,47 @@ pub fn create_task(
   }
 }
 
+/// Create a task associated with a card and return its ID.
+pub fn create_task_with_card(
+  handler: Handler,
+  session: Session,
+  project_id: Int,
+  type_id: Int,
+  card_id: Int,
+  title: String,
+) -> Result(Int, String) {
+  let res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks",
+      )
+      |> with_auth(session)
+      |> simulate.json_body(
+        json.object([
+          #("title", json.string(title)),
+          #("description", json.string("Test task with card")),
+          #("type_id", json.int(type_id)),
+          #("priority", json.int(3)),
+          #("card_id", json.int(card_id)),
+        ]),
+      ),
+    )
+
+  case res.status {
+    200 -> decode_entity_id(simulate.read_body(res), TaskEntity)
+    status ->
+      Error(
+        "create_task_with_card failed: status="
+        <> int.to_string(status)
+        <> " title="
+        <> title
+        <> " body="
+        <> simulate.read_body(res),
+      )
+  }
+}
+
 /// Create a card and return its ID.
 pub fn create_card(
   handler: Handler,
@@ -574,6 +615,30 @@ pub fn query_string(
 ) -> Result(String, String) {
   let decoder = {
     use value <- decode.field(0, decode.string)
+    decode.success(value)
+  }
+
+  let query =
+    params
+    |> list.fold(pog.query(sql), fn(query, param) {
+      pog.parameter(query, param)
+    })
+
+  case pog.returning(query, decoder) |> pog.execute(db) {
+    Ok(pog.Returned(rows: [value, ..], ..)) -> Ok(value)
+    Ok(pog.Returned(rows: [], ..)) -> Error("No rows returned")
+    Error(e) -> Error("Query error: " <> string.inspect(e))
+  }
+}
+
+/// Query a nullable integer value from the database.
+pub fn query_nullable_int(
+  db: pog.Connection,
+  sql: String,
+  params: List(pog.Value),
+) -> Result(Option(Int), String) {
+  let decoder = {
+    use value <- decode.field(0, decode.optional(decode.int))
     decode.success(value)
   }
 
@@ -720,7 +785,7 @@ pub fn with_auth(req: wisp.Request, session: Session) -> wisp.Request {
 // Event Construction Helpers
 // =============================================================================
 
-/// Create a StateChangeEvent for a task resource (user_triggered defaults to True).
+/// Create a StateChangeEvent for a task resource (user_triggered defaults to True, card_id None).
 pub fn task_event(
   task_id: Int,
   project_id: Int,
@@ -730,10 +795,28 @@ pub fn task_event(
   to_state: String,
   task_type_id: Option(Int),
 ) -> StateChangeEvent {
-  task_event_full(task_id, project_id, org_id, user_id, from_state, to_state, task_type_id, True)
+  task_event_with_card(
+    task_id, project_id, org_id, user_id, from_state, to_state, task_type_id, None,
+  )
 }
 
-/// Create a StateChangeEvent for a task resource with explicit user_triggered.
+/// Create a StateChangeEvent for a task resource with card_id.
+pub fn task_event_with_card(
+  task_id: Int,
+  project_id: Int,
+  org_id: Int,
+  user_id: Int,
+  from_state: Option(String),
+  to_state: String,
+  task_type_id: Option(Int),
+  card_id: Option(Int),
+) -> StateChangeEvent {
+  task_event_full(
+    task_id, project_id, org_id, user_id, from_state, to_state, task_type_id, True, card_id,
+  )
+}
+
+/// Create a StateChangeEvent for a task with full control (user_triggered, card_id).
 pub fn task_event_full(
   task_id: Int,
   project_id: Int,
@@ -743,6 +826,7 @@ pub fn task_event_full(
   to_state: String,
   task_type_id: Option(Int),
   user_triggered: Bool,
+  card_id: Option(Int),
 ) -> StateChangeEvent {
   StateChangeEvent(
     resource_type: Task,
@@ -754,6 +838,7 @@ pub fn task_event_full(
     user_id: user_id,
     user_triggered: user_triggered,
     task_type_id: task_type_id,
+    card_id: card_id,
   )
 }
 
@@ -789,6 +874,7 @@ pub fn card_event_full(
     user_id: user_id,
     user_triggered: user_triggered,
     task_type_id: None,
+    card_id: None,
   )
 }
 

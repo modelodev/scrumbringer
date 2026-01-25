@@ -692,14 +692,14 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
         started_at: started_at,
         accumulated_s: accumulated_s,
       ) = session
-      // Find task title
-      let title = case model.member_tasks {
+      // Find task title and type icon
+      let #(title, type_icon) = case model.member_tasks {
         Loaded(tasks) ->
-          list.find(tasks, fn(t) { t.id == id })
-          |> opt.from_result
-          |> opt.map(fn(t) { t.title })
-          |> opt.unwrap("Task #" <> int.to_string(id))
-        _ -> "Task #" <> int.to_string(id)
+          case list.find(tasks, fn(t) { t.id == id }) {
+            Ok(t) -> #(t.title, t.task_type.icon)
+            Error(_) -> #("Task #" <> int.to_string(id), "clipboard-document")
+          }
+        _ -> #("Task #" <> int.to_string(id), "clipboard-document")
       }
       // Calculate elapsed time
       let started_ms = client_ffi.parse_iso_ms(started_at)
@@ -713,6 +713,7 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
       right_panel.ActiveTaskInfo(
         task_id: id,
         task_title: title,
+        task_type_icon: type_icon,
         elapsed_display: elapsed,
         is_paused: False,
       )
@@ -739,7 +740,15 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
     },
     on_logout: LogoutClicked,
     on_task_release: fn(task_id) {
-      MemberReleaseClicked(task_id, 0)
+      // Find task version for release action
+      case model.member_tasks {
+        Loaded(tasks) ->
+          case list.find(tasks, fn(t) { t.id == task_id }) {
+            Ok(t) -> MemberReleaseClicked(task_id, t.version)
+            Error(_) -> NoOp
+          }
+        _ -> NoOp
+      }
     },
     on_card_click: fn(card_id) {
       OpenCardDetail(card_id)
@@ -753,6 +762,8 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
     current_theme: model.theme,
     on_theme_change: ThemeSelected,
     on_locale_change: LocaleSelected,
+    disable_actions: model.member_task_mutation_in_flight
+      || model.member_now_working_in_flight,
   ))
 }
 

@@ -119,7 +119,7 @@ pub fn evaluate_rules_skips_non_user_triggered_events_test() {
   // Event with user_triggered = False
   let event = fixtures.task_event_full(
     task_id, project_id, org_id, user_id,
-    Some("claimed"), "completed", Some(type_id), False,
+    Some("claimed"), "completed", Some(type_id), False, None,
   )
 
   let result = rules_engine.evaluate_rules(db, event)

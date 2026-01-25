@@ -254,10 +254,9 @@ fn handle_member_role_update(
                 Ok(target_user_id) -> {
                   let auth.Ctx(db: db, ..) = ctx
 
-                  case require_project_admin(db, project_id, user.id) {
-                    Error(resp) -> resp
-
-                    Ok(Nil) -> {
+                  // Only org admins can change project member roles
+                  case user.org_role {
+                    org_role.Admin -> {
                       use data <- wisp.require_json(req)
 
                       let decoder = {
@@ -304,6 +303,7 @@ fn handle_member_role_update(
                         }
                       }
                     }
+                    _ -> api.error(403, "FORBIDDEN", "Only org admins can change project member roles")
                   }
                 }
               }

@@ -57,6 +57,7 @@
 
 import gleam/dict
 import gleam/option as opt
+import gleam/set
 
 import lustre
 import lustre/effect.{type Effect}
@@ -436,6 +437,12 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
       rules_attach_template_id: opt.None,
       rules_attach_in_flight: False,
       rules_attach_error: opt.None,
+      // Story 4.10: Rule template attachment UI
+      rules_expanded: set.new(),
+      attach_template_modal: opt.None,
+      attach_template_selected: opt.None,
+      attach_template_loading: False,
+      detaching_templates: set.new(),
       // Rule metrics (inline display)
       rules_metrics: NotAsked,
       // Task templates (org/project lists, dialog mode managed by component)

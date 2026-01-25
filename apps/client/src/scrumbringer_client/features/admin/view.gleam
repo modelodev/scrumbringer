@@ -31,6 +31,7 @@ import gleam/json
 import gleam/list
 import gleam/option as opt
 import gleam/result
+import gleam/set
 import gleam/string
 
 import lustre/attribute
@@ -79,7 +80,11 @@ import scrumbringer_client/client_state.{
   OpenRuleDialog, OpenTaskTemplateDialog, OrgSettingsRoleChanged,
   OrgSettingsSaveAllClicked, OrgUsersSearchChanged, OrgUsersSearchDebounced,
   RuleCrudCreated, RuleCrudDeleted, RuleCrudUpdated, RuleDialogCreate,
-  RuleDialogDelete, RuleDialogEdit, RulesBackClicked, TaskTemplateCrudCreated,
+  RuleDialogDelete, RuleDialogEdit, RulesBackClicked,
+  // Story 4.10: Rule template attachment UI
+  RuleExpandToggled, AttachTemplateModalOpened, AttachTemplateModalClosed,
+  AttachTemplateSelected, AttachTemplateSubmitted, TemplateDetachClicked, NoOp,
+  TaskTemplateCrudCreated,
   TaskTemplateCrudDeleted, TaskTemplateCrudUpdated, TaskTemplateDialogCreate,
   TaskTemplateDialogDelete, TaskTemplateDialogEdit,
   OpenTaskTypeDialog, CloseTaskTypeDialog,
@@ -2251,75 +2256,441 @@ fn view_rules_table(
 ) -> Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
 
-  // We need to pass metrics to the row renderer, so we create a wrapper type
-  let rules_with_metrics = case rules {
-    Loaded(rs) -> Loaded(list.map(rs, fn(r) { #(r, get_rule_metrics(metrics, r.id)) }))
-    Loading -> Loading
-    NotAsked -> NotAsked
-    Failed(err) -> Failed(err)
+  case rules {
+    NotAsked | Loading ->
+      div([attribute.class("loading")], [text(t(i18n_text.LoadingEllipsis))])
+
+    Failed(err) ->
+      case err.status {
+        403 -> div([attribute.class("forbidden")], [text(t(i18n_text.NotPermitted))])
+        _ -> div([attribute.class("error")], [text(err.message)])
+      }
+
+    Loaded([]) ->
+      div([attribute.class("empty")], [text(t(i18n_text.NoRulesYet))])
+
+    Loaded(rs) ->
+      div([attribute.class("rules-expandable-table")], [
+        table([attribute.class("table data-table")], [
+          thead([], [
+            tr([], [
+              th([attribute.class("col-expand")], []),
+              th([], [text(t(i18n_text.RuleName))]),
+              th([], [text(t(i18n_text.RuleResourceType))]),
+              th([], [text(t(i18n_text.RuleToState))]),
+              th([], [text(t(i18n_text.RuleActive))]),
+              th([], [text(t(i18n_text.RuleTemplates))]),
+              th([], [text(t(i18n_text.RuleMetricsApplied))]),
+              th([], [text(t(i18n_text.RuleMetricsSuppressed))]),
+              th([attribute.class("col-actions")], [text(t(i18n_text.Actions))]),
+            ]),
+          ]),
+          keyed.tbody(
+            [],
+            list.flat_map(rs, fn(r) {
+              view_rule_row_expandable(model, r, get_rule_metrics(metrics, r.id))
+            }),
+          ),
+        ]),
+        // Attach template modal
+        view_attach_template_modal(model),
+      ])
+  }
+}
+
+/// Render an expandable rule row with optional expansion for attached templates.
+fn view_rule_row_expandable(
+  model: Model,
+  rule: Rule,
+  rule_metrics: #(Int, Int),
+) -> List(#(String, Element(Msg))) {
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let is_expanded = set.contains(model.rules_expanded, rule.id)
+  let expand_title = case is_expanded {
+    True -> t(i18n_text.CollapseRule)
+    False -> t(i18n_text.ExpandRule)
+  }
+  let #(applied, suppressed) = rule_metrics
+  let template_count = list.length(rule.templates)
+
+  // AC2: Whole row is clickeable (via row class + click handler)
+  // AC5: aria-expanded attribute
+  let row_class = case is_expanded {
+    True -> "rule-row rule-row-expandable rule-row-expanded"
+    False -> "rule-row rule-row-expandable"
   }
 
-  data_table.view_remote_with_forbidden(
-    rules_with_metrics,
-    loading_msg: t(i18n_text.LoadingEllipsis),
-    empty_msg: t(i18n_text.NoRulesYet),
-    forbidden_msg: t(i18n_text.NotPermitted),
-    config: data_table.new()
-      |> data_table.with_columns([
+  let main_row = #(
+    "rule-" <> int.to_string(rule.id),
+    tr(
+      [
+        attribute.class(row_class),
+        attribute.attribute("aria-expanded", case is_expanded {
+          True -> "true"
+          False -> "false"
+        }),
+        // AC2: Click anywhere on the row to expand/collapse
+        event.on_click(RuleExpandToggled(rule.id)),
+      ],
+      [
+        // Expand/collapse icon (AC1: visual indicator) - use triangles for consistency
+        td([attribute.class("cell-expand")], [
+          span(
+            [
+              attribute.class("rule-expand-icon"),
+              attribute.title(expand_title),
+            ],
+            [text(case is_expanded {
+              True -> "▼"
+              False -> "▶"
+            })],
+          ),
+        ]),
         // Name
-        data_table.column(t(i18n_text.RuleName), fn(item: #(Rule, #(Int, Int))) {
-          let #(r, _) = item
-          text(r.name)
-        }),
-        // Resource type
-        data_table.column(t(i18n_text.RuleResourceType), fn(item: #(Rule, #(Int, Int))) {
-          let #(r, _) = item
-          text(r.resource_type)
-        }),
-        // To state
-        data_table.column(t(i18n_text.RuleToState), fn(item: #(Rule, #(Int, Int))) {
-          let #(r, _) = item
-          text(r.to_state)
-        }),
-        // Active
-        data_table.column(t(i18n_text.RuleActive), fn(item: #(Rule, #(Int, Int))) {
-          let #(r, _) = item
-          text(case r.active {
-            True -> "✓"
-            False -> "✗"
-          })
-        }),
-        // Applied metrics
-        data_table.column(t(i18n_text.RuleMetricsApplied), fn(item: #(Rule, #(Int, Int))) {
-          let #(_, #(applied, _)) = item
-          span([attribute.class("metric applied")], [text(int.to_string(applied))])
-        }),
-        // Suppressed metrics
-        data_table.column(t(i18n_text.RuleMetricsSuppressed), fn(item: #(Rule, #(Int, Int))) {
-          let #(_, #(_, suppressed)) = item
-          span([attribute.class("metric suppressed")], [text(int.to_string(suppressed))])
-        }),
-        // Actions
-        data_table.column_with_class(
-          t(i18n_text.Actions),
-          fn(item: #(Rule, #(Int, Int))) {
-            let #(r, _) = item
-            action_buttons.edit_delete_row(
-              edit_title: t(i18n_text.EditRule),
-              edit_click: OpenRuleDialog(RuleDialogEdit(r)),
-              delete_title: t(i18n_text.DeleteRule),
-              delete_click: OpenRuleDialog(RuleDialogDelete(r)),
-            )
+        td([], [text(rule.name)]),
+        // Resource type with task type info if applicable
+        td([attribute.class("cell-resource-type")], [
+          case rule.resource_type, rule.task_type_id {
+            "task", opt.Some(type_id) -> {
+              // Find task type info for icon and name
+              let task_type_info = case model.task_types {
+                Loaded(types) -> list.find(types, fn(tt) { tt.id == type_id })
+                _ -> Error(Nil)
+              }
+              case task_type_info {
+                Ok(tt) -> span([attribute.class("resource-type-task")], [
+                  text("task"),
+                  span([attribute.class("resource-type-separator")], [text(" · ")]),
+                  span([attribute.class("task-type-inline")], [
+                    icons.view_task_type_icon_inline(tt.icon, 14, model.theme),
+                  ]),
+                  text(" " <> tt.name),
+                ])
+                // Fallback if task type not found
+                Error(_) -> text("task")
+              }
+            }
+            resource_type, _ -> text(resource_type)
           },
-          "col-actions",
-          "cell-actions",
-        ),
-      ])
-      |> data_table.with_key(fn(item: #(Rule, #(Int, Int))) {
-        let #(r, _) = item
-        int.to_string(r.id)
-      }),
+        ]),
+        // To state
+        td([], [text(rule.to_state)]),
+        // Active status with completeness indicator (AC6-8)
+        td([attribute.class("cell-status")], [
+          case rule.active {
+            True -> case template_count > 0 {
+              // AC8: Active rule with templates shows check
+              True -> span([attribute.class("rule-complete-indicator")], [
+                icons.nav_icon(icons.Check, icons.Small),
+              ])
+              // AC6-7: Active rule without templates shows warning
+              False -> span(
+                [
+                  attribute.class("rule-incomplete-indicator"),
+                  attribute.title(t(i18n_text.NoTemplatesWontCreateTasks)),
+                ],
+                [icons.nav_icon(icons.Warning, icons.Small)],
+              )
+            }
+            // Inactive rules show X
+            False -> span([attribute.class("rule-inactive-indicator")], [
+              icons.nav_icon(icons.XMark, icons.Small),
+            ])
+          },
+        ]),
+        // Templates count badge
+        td([attribute.class("cell-templates")], [
+          case template_count {
+            0 -> span([attribute.class("badge badge-empty")], [text("0")])
+            n -> span([attribute.class("badge badge-count")], [text(int.to_string(n))])
+          },
+        ]),
+        // Applied metrics
+        td([attribute.class("metric-cell")], [
+          span([attribute.class("metric applied")], [text(int.to_string(applied))]),
+        ]),
+        // Suppressed metrics
+        td([attribute.class("metric-cell")], [
+          span([attribute.class("metric suppressed")], [text(int.to_string(suppressed))]),
+        ]),
+        // Actions - use class to prevent row click via CSS/JS
+        td([attribute.class("cell-actions cell-no-expand")], [
+          action_buttons.edit_delete_row(
+            edit_title: t(i18n_text.EditRule),
+            edit_click: OpenRuleDialog(RuleDialogEdit(rule)),
+            delete_title: t(i18n_text.DeleteRule),
+            delete_click: OpenRuleDialog(RuleDialogDelete(rule)),
+          ),
+        ]),
+      ],
+    ),
   )
+
+  case is_expanded {
+    False -> [main_row]
+    True -> [main_row, view_rule_templates_expansion(model, rule)]
+  }
+}
+
+/// Render the expansion row with attached templates.
+fn view_rule_templates_expansion(
+  model: Model,
+  rule: Rule,
+) -> #(String, Element(Msg)) {
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
+
+  let content = div([attribute.class("templates-expansion")], [
+    div([attribute.class("templates-header")], [
+      span([attribute.class("templates-title")], [
+        text(t(i18n_text.AttachedTemplates)),
+      ]),
+      button(
+        [
+          attribute.class("btn btn-sm btn-primary"),
+          // Stop propagation to prevent any parent click handlers from interfering
+          event.on_click(AttachTemplateModalOpened(rule.id))
+            |> event.stop_propagation,
+        ],
+        [
+          span([attribute.class("btn-icon-prefix")], [text("+")]),
+          text(t(i18n_text.AttachTemplate)),
+        ],
+      ),
+    ]),
+    case rule.templates {
+      // AC13: Empathetic hint for empty templates
+      [] -> div([attribute.class("templates-empty-hint")], [
+        span([attribute.class("hint-icon")], [
+          icons.nav_icon(icons.Info, icons.Medium),
+        ]),
+        p([], [text(t(i18n_text.AttachTemplateHint))]),
+      ])
+      templates -> div([attribute.class("templates-list")],
+        list.map(templates, fn(tmpl) {
+          view_attached_template_item(model, rule.id, tmpl)
+        }),
+      )
+    },
+  ])
+
+  #(
+    "rule-exp-" <> int.to_string(rule.id),
+    tr([
+      attribute.class("expansion-row"),
+      // Prevent clicks in expansion row from bubbling up
+      event.on_click(NoOp) |> event.stop_propagation,
+    ], [
+      td([attribute.attribute("colspan", "9")], [content]),
+    ]),
+  )
+}
+
+/// Render a single attached template item with detach button.
+/// AC4: Template shows name, type icon, and priority.
+fn view_attached_template_item(
+  model: Model,
+  rule_id: Int,
+  tmpl: workflow.RuleTemplate,
+) -> Element(Msg) {
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let is_detaching = set.contains(model.detaching_templates, #(rule_id, tmpl.id))
+
+  // Find task type info for icon (if available)
+  let task_type_info = case model.task_types {
+    Loaded(types) -> list.find(types, fn(tt) { tt.id == tmpl.type_id })
+    _ -> Error(Nil)
+  }
+
+  div([attribute.class("attached-template-row")], [
+    // AC4: Template info with icon + priority
+    div([attribute.class("attached-template-info")], [
+      // Task type icon
+      case task_type_info {
+        Ok(tt) -> span([attribute.class("template-type-icon")], [
+          icons.view_task_type_icon_inline(tt.icon, 16, model.theme),
+        ])
+        Error(_) -> element.none()
+      },
+      // Template name
+      span([attribute.class("attached-template-name")], [text(tmpl.name)]),
+    ]),
+    // AC4: Priority badge
+    div([attribute.class("attached-template-meta")], [
+      span([attribute.class("priority-badge")], [
+        text(t(i18n_text.PriorityShort(tmpl.priority))),
+      ]),
+      // Detach button using action_buttons per coding standards
+      case is_detaching {
+        True -> span([attribute.class("detaching")], [text(t(i18n_text.Detaching))])
+        False -> action_buttons.delete_button(
+          t(i18n_text.RemoveTemplate),
+          TemplateDetachClicked(rule_id, tmpl.id),
+        )
+      },
+    ]),
+  ])
+}
+
+/// Render the attach template modal.
+/// AC9: Modal opens on button click
+/// AC10: Shows only templates from current project
+/// AC11: Already attached templates excluded
+/// AC12: Radio buttons for selection
+/// AC14-15: Empty state with link to Templates
+fn view_attach_template_modal(model: Model) -> Element(Msg) {
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
+
+  case model.attach_template_modal {
+    opt.None -> element.none()
+    opt.Some(rule_id) -> {
+      // Get available templates (exclude already attached ones)
+      let attached_ids = case model.rules {
+        Loaded(rules) -> {
+          case list.find(rules, fn(r) { r.id == rule_id }) {
+            Ok(rule) -> list.map(rule.templates, fn(tmpl) { tmpl.id })
+            Error(_) -> []
+          }
+        }
+        _ -> []
+      }
+
+      // AC10, AC11: Filter to project templates, exclude already attached
+      let available_templates = case model.task_templates_org, model.task_templates_project {
+        Loaded(org), Loaded(proj) -> {
+          list.filter(list.append(org, proj), fn(tmpl) {
+            !list.contains(attached_ids, tmpl.id)
+          })
+        }
+        Loaded(org), _ -> list.filter(org, fn(tmpl) { !list.contains(attached_ids, tmpl.id) })
+        _, Loaded(proj) -> list.filter(proj, fn(tmpl) { !list.contains(attached_ids, tmpl.id) })
+        _, _ -> []
+      }
+
+      div([attribute.class("modal-backdrop")], [
+        div([attribute.class("modal-sm")], [
+          div([attribute.class("modal-header")], [
+            h3([], [text(t(i18n_text.AttachTemplate))]),
+            button(
+              [
+                attribute.class("btn-close"),
+                event.on_click(AttachTemplateModalClosed),
+              ],
+              [icons.nav_icon(icons.Close, icons.Small)],
+            ),
+          ]),
+          div([attribute.class("modal-body")], [
+            case available_templates {
+              // AC14-15: Empty state with link to Templates section
+              [] -> div([attribute.class("modal-empty-state")], [
+                icons.nav_icon(icons.TaskTemplates, icons.Large),
+                p([], [text(t(i18n_text.NoTemplatesInProject))]),
+                a(
+                  [
+                    attribute.href("/config/templates"),
+                    attribute.class("link-to-templates"),
+                  ],
+                  [text(t(i18n_text.CreateTemplateLink))],
+                ),
+              ])
+              // AC12: Radio buttons for template selection
+              templates -> div([attribute.class("form")], [
+                p([attribute.class("form-hint")], [
+                  text(t(i18n_text.AvailableTemplatesInProject)),
+                ]),
+                div([attribute.class("radio-group template-radio-list")],
+                  list.map(templates, fn(tmpl) {
+                    view_template_radio_option(model, tmpl)
+                  }),
+                ),
+                // Hint about already attached templates
+                p([attribute.class("form-hint-secondary")], [
+                  icons.nav_icon(icons.Info, icons.Small),
+                  text(" " <> t(i18n_text.AttachedTemplates) <> ": " <>
+                    int.to_string(list.length(attached_ids))),
+                ]),
+              ])
+            },
+          ]),
+          div([attribute.class("modal-footer")], [
+            button(
+              [
+                attribute.class("btn btn-secondary"),
+                event.on_click(AttachTemplateModalClosed),
+              ],
+              [text(t(i18n_text.Cancel))],
+            ),
+            // AC20: Loading state on submit button
+            case model.attach_template_loading {
+              True -> button(
+                [
+                  attribute.class("btn btn-primary"),
+                  attribute.disabled(True),
+                ],
+                [text(t(i18n_text.Attaching))],
+              )
+              False -> button(
+                [
+                  attribute.class("btn btn-primary"),
+                  attribute.disabled(opt.is_none(model.attach_template_selected)),
+                  event.on_click(AttachTemplateSubmitted),
+                ],
+                [text(t(i18n_text.Attach))],
+              )
+            },
+          ]),
+        ]),
+      ])
+    }
+  }
+}
+
+/// Render a radio button option for template selection.
+/// AC12: Radio buttons with template name, type icon, and priority.
+fn view_template_radio_option(
+  model: Model,
+  tmpl: TaskTemplate,
+) -> Element(Msg) {
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let is_selected = model.attach_template_selected == opt.Some(tmpl.id)
+  let radio_id = "template-radio-" <> int.to_string(tmpl.id)
+
+  // Find task type info for icon
+  let task_type_info = case model.task_types {
+    Loaded(types) -> list.find(types, fn(tt) { tt.id == tmpl.type_id })
+    _ -> Error(Nil)
+  }
+
+  div([
+    attribute.class("radio-option" <> case is_selected {
+      True -> " selected"
+      False -> ""
+    }),
+    // Put click handler on the whole div so clicking label works
+    event.on_click(AttachTemplateSelected(tmpl.id)),
+  ], [
+    input([
+      attribute.type_("radio"),
+      attribute.name("template-selection"),
+      attribute.id(radio_id),
+      attribute.value(int.to_string(tmpl.id)),
+      attribute.checked(is_selected),
+    ]),
+    label([attribute.for(radio_id), attribute.class("radio-label")], [
+      // Task type icon
+      case task_type_info {
+        Ok(tt) -> span([attribute.class("template-type-icon")], [
+          icons.view_task_type_icon_inline(tt.icon, 16, model.theme),
+        ])
+        Error(_) -> element.none()
+      },
+      // Template name
+      span([attribute.class("template-name")], [text(tmpl.name)]),
+      // Priority
+      span([attribute.class("template-priority")], [
+        text(t(i18n_text.PriorityShort(tmpl.priority))),
+      ]),
+    ]),
+  ])
 }
 
 /// Get metrics for a specific rule from the workflow metrics.
@@ -2405,6 +2776,7 @@ fn rule_to_json(rule: Rule, mode: String) -> json.Json {
 }
 
 /// Decode rule event from component custom event.
+/// Story 4.10: Added templates field (defaults to empty list from component events).
 fn decode_rule_event(to_msg: fn(Rule) -> Msg) -> decode.Decoder(Msg) {
   decode.at(
     ["detail"],
@@ -2428,6 +2800,7 @@ fn decode_rule_event(to_msg: fn(Rule) -> Msg) -> decode.Decoder(Msg) {
         to_state: to_state,
         active: active,
         created_at: created_at,
+        templates: [],
       )))
     },
   )

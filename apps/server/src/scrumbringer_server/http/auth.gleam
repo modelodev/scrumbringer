@@ -18,6 +18,7 @@
 //// - JWT operations (see `services/jwt.gleam`)
 //// - Database operations (see `persistence/auth/`)
 
+import domain/org_role
 import gleam/bit_array
 import gleam/crypto
 import gleam/dynamic/decode
@@ -29,18 +30,17 @@ import gleam/option as opt
 import gleam/result
 import gleam/string
 import pog
-import domain/org_role
 import scrumbringer_server/http/api
 import scrumbringer_server/http/csrf
 import scrumbringer_server/persistence/auth/login as auth_login
 import scrumbringer_server/persistence/auth/registration as auth_registration
 import scrumbringer_server/services/auth_logic
+import scrumbringer_server/services/authorization
 import scrumbringer_server/services/jwt
 import scrumbringer_server/services/org_invite_links_db
 import scrumbringer_server/services/rate_limit
 import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/time
-import scrumbringer_server/sql
 import wisp
 
 pub type Ctx {
@@ -331,17 +331,19 @@ fn new_csrf_token() -> String {
 // =============================================================================
 
 /// Check if user is a member of the given project.
-pub fn is_project_member(db: pog.Connection, user_id: Int, project_id: Int) -> Bool {
-  case sql.project_members_is_member(db, project_id, user_id) {
-    Ok(pog.Returned(rows: [row, ..], ..)) -> row.is_member
-    _ -> False
-  }
+pub fn is_project_member(
+  db: pog.Connection,
+  user_id: Int,
+  project_id: Int,
+) -> Bool {
+  authorization.is_project_member(db, user_id, project_id)
 }
 
 /// Check if user is a manager of the given project.
-pub fn is_project_manager(db: pog.Connection, user_id: Int, project_id: Int) -> Bool {
-  case sql.project_members_is_manager(db, project_id, user_id) {
-    Ok(pog.Returned(rows: [row, ..], ..)) -> row.is_manager
-    _ -> False
-  }
+pub fn is_project_manager(
+  db: pog.Connection,
+  user_id: Int,
+  project_id: Int,
+) -> Bool {
+  authorization.is_project_manager(db, user_id, project_id)
 }

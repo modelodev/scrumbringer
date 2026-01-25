@@ -260,9 +260,13 @@ fn handle_create_task(
   {
     Ok(task) -> {
       // Trigger rules engine for task creation (null → available)
-      let _ = evaluate_task_rules_created(
-        db, task.id, project_id, org_id, user_id, type_id,
-      )
+      let card_id_opt = case card_id {
+        id if id > 0 -> Some(id)
+        _ -> None
+      }
+      let ctx =
+        rules_engine.TaskContext(task.id, project_id, org_id, type_id, card_id_opt)
+      let _ = evaluate_task_rules_created(db, ctx, user_id)
       Ok(TaskResult(task))
     }
     Error(tasks_queries.InvalidTypeId) ->
@@ -355,10 +359,15 @@ fn handle_claim_task(
           case tasks_queries.claim_task(db, org_id, task_id, user_id, version) {
             Ok(task) -> {
               // Trigger rules engine for task state change
-              let _ = evaluate_task_rules(
-                db, task_id, current.project_id, org_id, user_id,
-                "available", "claimed", current.type_id,
-              )
+              let ctx =
+                rules_engine.TaskContext(
+                  task_id,
+                  current.project_id,
+                  org_id,
+                  current.type_id,
+                  current.card_id,
+                )
+              let _ = evaluate_task_rules(db, ctx, user_id, "available", "claimed")
 
               // Check for card state change if task belongs to a card
               let _ = maybe_evaluate_card_rules(
@@ -401,10 +410,15 @@ fn handle_release_task(
               {
                 Ok(task) -> {
                   // Trigger rules engine for task state change
-                  let _ = evaluate_task_rules(
-                    db, task_id, current.project_id, org_id, user_id,
-                    "claimed", "available", current.type_id,
-                  )
+                  let ctx =
+                    rules_engine.TaskContext(
+                      task_id,
+                      current.project_id,
+                      org_id,
+                      current.type_id,
+                      current.card_id,
+                    )
+                  let _ = evaluate_task_rules(db, ctx, user_id, "claimed", "available")
 
                   // Check for card state change if task belongs to a card
                   let _ = maybe_evaluate_card_rules(
@@ -451,10 +465,15 @@ fn handle_complete_task(
               {
                 Ok(task) -> {
                   // Trigger rules engine for task state change
-                  let _ = evaluate_task_rules(
-                    db, task_id, current.project_id, org_id, user_id,
-                    "claimed", "completed", current.type_id,
-                  )
+                  let ctx =
+                    rules_engine.TaskContext(
+                      task_id,
+                      current.project_id,
+                      org_id,
+                      current.type_id,
+                      current.card_id,
+                    )
+                  let _ = evaluate_task_rules(db, ctx, user_id, "claimed", "completed")
 
                   // Check for card state change if task belongs to a card
                   let _ = maybe_evaluate_card_rules(
@@ -503,26 +522,12 @@ fn detect_conflict(
 /// the main operation.
 fn evaluate_task_rules(
   db: pog.Connection,
-  task_id: Int,
-  project_id: Int,
-  org_id: Int,
+  ctx: rules_engine.TaskContext,
   user_id: Int,
   from_state: String,
   to_state: String,
-  type_id: Int,
 ) -> Nil {
-  let event = rules_engine.StateChangeEvent(
-    resource_type: rules_engine.Task,
-    resource_id: task_id,
-    from_state: Some(from_state),
-    to_state: to_state,
-    project_id: project_id,
-    org_id: org_id,
-    user_id: user_id,
-    user_triggered: True,
-    task_type_id: Some(type_id),
-  )
-
+  let event = rules_engine.task_event(ctx, user_id, Some(from_state), to_state)
   // Fire and forget - don't block on rules engine
   let _ = rules_engine.evaluate_rules(db, event)
   Nil
@@ -531,24 +536,10 @@ fn evaluate_task_rules(
 /// Evaluate task rules for a newly created task (null → available).
 fn evaluate_task_rules_created(
   db: pog.Connection,
-  task_id: Int,
-  project_id: Int,
-  org_id: Int,
+  ctx: rules_engine.TaskContext,
   user_id: Int,
-  type_id: Int,
 ) -> Nil {
-  let event = rules_engine.StateChangeEvent(
-    resource_type: rules_engine.Task,
-    resource_id: task_id,
-    from_state: None,
-    to_state: "available",
-    project_id: project_id,
-    org_id: org_id,
-    user_id: user_id,
-    user_triggered: True,
-    task_type_id: Some(type_id),
-  )
-
+  let event = rules_engine.task_event(ctx, user_id, None, "available")
   // Fire and forget - don't block on rules engine
   let _ = rules_engine.evaluate_rules(db, event)
   Nil
@@ -575,17 +566,8 @@ fn maybe_evaluate_card_rules(
 
           // We evaluate rules for the current state
           // The rules engine tracks idempotency per (rule, card, state)
-          let event = rules_engine.StateChangeEvent(
-            resource_type: rules_engine.Card,
-            resource_id: cid,
-            from_state: None,
-            to_state: state_str,
-            project_id: project_id,
-            org_id: org_id,
-            user_id: user_id,
-            user_triggered: True,
-            task_type_id: None,
-          )
+          let event =
+            rules_engine.card_event(cid, project_id, org_id, user_id, state_str)
 
           let _ = rules_engine.evaluate_rules(db, event)
           Nil

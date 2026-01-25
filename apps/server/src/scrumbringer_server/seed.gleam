@@ -301,7 +301,7 @@ fn run_seed() -> Result(SeedStats, String) {
   // Resolve bugs
   let resolved = list.take(bug_ids, 3)
   use _ <- result.try(list.try_map(resolved, fn(id) {
-    rules_engine.evaluate_rules(db, StateChangeEvent(Task, id, Some("in_progress"), "resolved", alpha_id, org_id, admin_id, True, Some(alpha_bug_type)))
+    rules_engine.evaluate_rules(db, StateChangeEvent(Task, id, Some("in_progress"), "resolved", alpha_id, org_id, admin_id, True, Some(alpha_bug_type), None))
     |> result.map_error(fn(_) { "eval failed" })
   }))
   let count = mut_count + list.length(resolved)
@@ -310,7 +310,7 @@ fn run_seed() -> Result(SeedStats, String) {
   // Close bugs
   let closed = list.take(bug_ids, 2)
   use _ <- result.try(list.try_map(closed, fn(id) {
-    rules_engine.evaluate_rules(db, StateChangeEvent(Task, id, Some("resolved"), "closed", alpha_id, org_id, admin_id, True, Some(alpha_bug_type)))
+    rules_engine.evaluate_rules(db, StateChangeEvent(Task, id, Some("resolved"), "closed", alpha_id, org_id, admin_id, True, Some(alpha_bug_type), None))
     |> result.map_error(fn(_) { "eval failed" })
   }))
   let count = count + list.length(closed)
@@ -319,7 +319,7 @@ fn run_seed() -> Result(SeedStats, String) {
   // Feature done
   let done = list.take(feature_ids, 2)
   use _ <- result.try(list.try_map(done, fn(id) {
-    rules_engine.evaluate_rules(db, StateChangeEvent(Task, id, Some("in_progress"), "done", alpha_id, org_id, admin_id, True, Some(alpha_feature_type)))
+    rules_engine.evaluate_rules(db, StateChangeEvent(Task, id, Some("in_progress"), "done", alpha_id, org_id, admin_id, True, Some(alpha_feature_type), None))
     |> result.map_error(fn(_) { "eval failed" })
   }))
   let count = count + list.length(done)
@@ -328,7 +328,7 @@ fn run_seed() -> Result(SeedStats, String) {
   // Feature QA
   let assert [first_feature, ..] = feature_ids
   use _ <- result.try(
-    rules_engine.evaluate_rules(db, StateChangeEvent(Task, first_feature, Some("done"), "qa_approved", alpha_id, org_id, admin_id, True, Some(alpha_feature_type)))
+    rules_engine.evaluate_rules(db, StateChangeEvent(Task, first_feature, Some("done"), "qa_approved", alpha_id, org_id, admin_id, True, Some(alpha_feature_type), None))
     |> result.map_error(fn(_) { "eval failed" })
   )
   let count = count + 1
@@ -337,7 +337,7 @@ fn run_seed() -> Result(SeedStats, String) {
   // Card archived
   let archived = list.take(card_ids, 2)
   use _ <- result.try(list.try_map(archived, fn(id) {
-    rules_engine.evaluate_rules(db, StateChangeEvent(Card, id, Some("active"), "archived", alpha_id, org_id, admin_id, True, None))
+    rules_engine.evaluate_rules(db, StateChangeEvent(Card, id, Some("active"), "archived", alpha_id, org_id, admin_id, True, None, None))
     |> result.map_error(fn(_) { "eval failed" })
   }))
   let count = count + list.length(archived)
@@ -345,7 +345,7 @@ fn run_seed() -> Result(SeedStats, String) {
 
   // Beta bugs
   use _ <- result.try(list.try_map(beta_bug_ids, fn(id) {
-    rules_engine.evaluate_rules(db, StateChangeEvent(Task, id, Some("in_progress"), "resolved", beta_id, org_id, admin_id, True, Some(beta_bug_type)))
+    rules_engine.evaluate_rules(db, StateChangeEvent(Task, id, Some("in_progress"), "resolved", beta_id, org_id, admin_id, True, Some(beta_bug_type), None))
     |> result.map_error(fn(_) { "eval failed" })
   }))
   let count = count + list.length(beta_bug_ids)
@@ -354,7 +354,7 @@ fn run_seed() -> Result(SeedStats, String) {
   // Idempotent
   let assert [first_bug, ..] = bug_ids
   use _ <- result.try(
-    rules_engine.evaluate_rules(db, StateChangeEvent(Task, first_bug, Some("claimed"), "resolved", alpha_id, org_id, admin_id, True, Some(alpha_bug_type)))
+    rules_engine.evaluate_rules(db, StateChangeEvent(Task, first_bug, Some("claimed"), "resolved", alpha_id, org_id, admin_id, True, Some(alpha_bug_type), None))
     |> result.map_error(fn(_) { "eval failed" })
   )
   let count = count + 1

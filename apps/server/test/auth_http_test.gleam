@@ -69,7 +69,7 @@ pub fn register_sets_session_and_csrf_cookies_test() {
       string.starts_with(h, "sb_session=")
       && string.contains(h, "HttpOnly")
       && string.contains(h, "Secure")
-      && string.contains(h, "SameSite=Strict")
+      && string.contains(h, "SameSite=Lax")
       && string.contains(h, "Path=/")
     })
 
@@ -81,7 +81,7 @@ pub fn register_sets_session_and_csrf_cookies_test() {
       string.starts_with(h, "sb_csrf=")
       && !string.contains(h, "HttpOnly")
       && string.contains(h, "Secure")
-      && string.contains(h, "SameSite=Strict")
+      && string.contains(h, "SameSite=Lax")
       && string.contains(h, "Path=/")
     })
 
@@ -279,7 +279,7 @@ pub fn login_sets_session_and_csrf_cookies_test() {
       string.starts_with(h, "sb_session=")
       && string.contains(h, "HttpOnly")
       && string.contains(h, "Secure")
-      && string.contains(h, "SameSite=Strict")
+      && string.contains(h, "SameSite=Lax")
       && string.contains(h, "Path=/")
     })
 
@@ -291,7 +291,7 @@ pub fn login_sets_session_and_csrf_cookies_test() {
       string.starts_with(h, "sb_csrf=")
       && !string.contains(h, "HttpOnly")
       && string.contains(h, "Secure")
-      && string.contains(h, "SameSite=Strict")
+      && string.contains(h, "SameSite=Lax")
       && string.contains(h, "Path=/")
     })
 

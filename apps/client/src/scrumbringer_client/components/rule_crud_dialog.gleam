@@ -169,6 +169,7 @@ fn decode_mode(value: String) -> Result(Msg, Nil) {
   }
 }
 
+/// Story 4.10: Added templates field (defaults to empty list for dialog).
 fn rule_property_decoder() -> Decoder(Msg) {
   use id <- decode.field("id", decode.int)
   use workflow_id <- decode.field("workflow_id", decode.int)
@@ -191,6 +192,7 @@ fn rule_property_decoder() -> Decoder(Msg) {
       to_state: to_state,
       active: active,
       created_at: created_at,
+      templates: [],
     )
   case mode {
     "edit" -> decode.success(ModeReceived(ModeEdit(rule)))
@@ -1007,10 +1009,8 @@ fn view_task_type_selector(
             attribute.value(int.to_string(tt.id)),
             attribute.selected(option.Some(tt.id) == selected_id),
           ],
-          case tt.icon {
-            "" -> tt.name
-            icon -> icon <> " " <> tt.name
-          },
+          // Only show name - icons can't be displayed in <select> options
+          tt.name,
         )
       })
     ],

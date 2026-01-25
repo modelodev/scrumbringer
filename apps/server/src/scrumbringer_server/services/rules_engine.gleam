@@ -3,8 +3,15 @@
 ////
 //// Evaluates rules against state change events and creates tasks from templates.
 //// Implements idempotency via rule_executions tracking.
+////
+//// ## Logging
+////
+//// Set SB_RULES_ENGINE_LOG=true to enable debug logging for rule evaluation.
+//// This helps diagnose why rules might not be firing or creating tasks.
 
+import envoy
 import gleam/int
+import gleam/io
 import gleam/list
 import gleam/option.{type Option}
 import gleam/result
@@ -12,6 +19,48 @@ import gleam/string
 import helpers/option as option_helpers
 import pog
 import scrumbringer_server/sql
+
+// =============================================================================
+// Logging
+// =============================================================================
+
+fn is_logging_enabled() -> Bool {
+  case envoy.get("SB_RULES_ENGINE_LOG") {
+    Ok("true") | Ok("1") -> True
+    _ -> False
+  }
+}
+
+fn log(message: String) -> Nil {
+  case is_logging_enabled() {
+    True -> io.println("[RulesEngine] " <> message)
+    False -> Nil
+  }
+}
+
+fn log_event(event: StateChangeEvent) -> Nil {
+  log(
+    "Event: "
+    <> resource_type_to_string(event.resource_type)
+    <> " #"
+    <> int.to_string(event.resource_id)
+    <> " -> "
+    <> event.to_state
+    <> " (project="
+    <> int.to_string(event.project_id)
+    <> ", org="
+    <> int.to_string(event.org_id)
+    <> ", task_type="
+    <> option.map(event.task_type_id, int.to_string)
+    |> option.unwrap("none")
+    <> ", user_triggered="
+    <> case event.user_triggered {
+      True -> "true"
+      False -> "false"
+    }
+    <> ")",
+  )
+}
 
 // =============================================================================
 // Types
@@ -23,7 +72,23 @@ pub type ResourceType {
   Card
 }
 
+/// Context for a task that triggers rules.
+/// Groups related task data to reduce parameter count.
+pub type TaskContext {
+  TaskContext(
+    task_id: Int,
+    project_id: Int,
+    org_id: Int,
+    type_id: Int,
+    card_id: Option(Int),
+  )
+}
+
 /// State change event that may trigger rules.
+///
+/// ## Fields
+/// - `card_id`: For task events, the parent card (if any).
+///   Tasks created by rules inherit this value.
 pub type StateChangeEvent {
   StateChangeEvent(
     resource_type: ResourceType,
@@ -35,6 +100,7 @@ pub type StateChangeEvent {
     user_id: Int,
     user_triggered: Bool,
     task_type_id: Option(Int),
+    card_id: Option(Int),
   )
 }
 
@@ -55,6 +121,54 @@ pub type RuleEngineError {
 }
 
 // =============================================================================
+// Event Builders
+// =============================================================================
+
+/// Build a state change event for a task transition.
+pub fn task_event(
+  ctx: TaskContext,
+  user_id: Int,
+  from_state: Option(String),
+  to_state: String,
+) -> StateChangeEvent {
+  StateChangeEvent(
+    resource_type: Task,
+    resource_id: ctx.task_id,
+    from_state: from_state,
+    to_state: to_state,
+    project_id: ctx.project_id,
+    org_id: ctx.org_id,
+    user_id: user_id,
+    user_triggered: True,
+    task_type_id: option.Some(ctx.type_id),
+    card_id: ctx.card_id,
+  )
+}
+
+/// Build a state change event for a card state change.
+/// Cards don't inherit card_id (they are the parent).
+pub fn card_event(
+  card_id: Int,
+  project_id: Int,
+  org_id: Int,
+  user_id: Int,
+  to_state: String,
+) -> StateChangeEvent {
+  StateChangeEvent(
+    resource_type: Card,
+    resource_id: card_id,
+    from_state: option.None,
+    to_state: to_state,
+    project_id: project_id,
+    org_id: org_id,
+    user_id: user_id,
+    user_triggered: True,
+    task_type_id: option.None,
+    card_id: option.None,
+  )
+}
+
+// =============================================================================
 // Public API
 // =============================================================================
 
@@ -64,18 +178,55 @@ pub fn evaluate_rules(
   db: pog.Connection,
   event: StateChangeEvent,
 ) -> Result(List(RuleResult), RuleEngineError) {
+  log_event(event)
+
   // Skip if not user-triggered
   case event.user_triggered {
-    False -> Ok([])
+    False -> {
+      log("Skipped: event not user-triggered")
+      Ok([])
+    }
     True -> {
       // Find matching active rules
       use rules <- result.try(find_matching_rules(db, event))
 
+      log("Found " <> int.to_string(list.length(rules)) <> " matching rule(s)")
+
       // Evaluate each rule
-      rules
-      |> list.map(fn(rule) { evaluate_single_rule(db, rule, event) })
-      |> result.all
+      let results =
+        rules
+        |> list.map(fn(rule) {
+          log("Evaluating rule: " <> rule.name <> " (id=" <> int.to_string(rule.id) <> ")")
+          evaluate_single_rule(db, rule, event)
+        })
+        |> result.all
+
+      case results {
+        Ok(r) -> {
+          let applied = list.filter(r, fn(rr) {
+            case rr.outcome {
+              Applied(_) -> True
+              Suppressed(_) -> False
+            }
+          })
+          log("Completed: " <> int.to_string(list.length(applied)) <> " rule(s) applied")
+        }
+        Error(e) -> {
+          log("Error during rule evaluation: " <> debug_error(e))
+        }
+      }
+
+      results
     }
+  }
+}
+
+fn debug_error(e: RuleEngineError) -> String {
+  case e {
+    DbError(pog.ConstraintViolated(_, constraint, _)) -> "constraint: " <> constraint
+    DbError(pog.UnexpectedArgumentCount(expected, got)) ->
+      "unexpected args: expected " <> int.to_string(expected) <> ", got " <> int.to_string(got)
+    DbError(_) -> "database error"
   }
 }
 
@@ -167,8 +318,12 @@ fn evaluate_single_rule(
 
   // Check idempotency
   case check_already_executed(db, rule.id, origin_type, event.resource_id) {
-    Error(e) -> Error(e)
+    Error(e) -> {
+      log("  Error checking idempotency: " <> debug_error(e))
+      Error(e)
+    }
     Ok(True) -> {
+      log("  Suppressed: already executed for this resource")
       // Already executed, log suppression
       let _ =
         log_execution(
@@ -186,8 +341,11 @@ fn evaluate_single_rule(
       // Execute: get templates and create tasks
       use templates <- result.try(get_rule_templates(db, rule.id))
 
+      log("  Found " <> int.to_string(list.length(templates)) <> " template(s)")
+
       case templates {
         [] -> {
+          log("  Applied: no templates to execute")
           // No templates, but rule fired
           let _ =
             log_execution(
@@ -207,6 +365,8 @@ fn evaluate_single_rule(
           use tasks_created <- result.try(
             create_tasks_from_templates(db, templates, event),
           )
+
+          log("  Applied: created " <> int.to_string(tasks_created) <> " task(s)")
 
           // Log execution
           let _ =
@@ -313,8 +473,20 @@ fn create_task_from_template(
       user_name,
     )
 
+  // Inherit card_id from triggering task (0 means no card)
+  let card_id_param = option.unwrap(event.card_id, 0)
+
+  log(
+    "    Creating task: \""
+    <> title
+    <> "\" (type="
+    <> int.to_string(template.type_id)
+    <> ", card="
+    <> int.to_string(card_id_param)
+    <> ")",
+  )
+
   // Create task via SQL
-  // Using existing tasks_create query params:
   // $1=type_id, $2=project_id, $3=title, $4=description, $5=priority, $6=created_by, $7=card_id
   case
     sql.tasks_create(
@@ -325,14 +497,22 @@ fn create_task_from_template(
       description,
       template.priority,
       event.user_id,
-      0,
+      card_id_param,
     )
   {
-    Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(row.id)
-    Ok(pog.Returned(rows: [], ..)) ->
+    Ok(pog.Returned(rows: [row, ..], ..)) -> {
+      log("    Created task #" <> int.to_string(row.id))
+      Ok(row.id)
+    }
+    Ok(pog.Returned(rows: [], ..)) -> {
+      log("    Error: task creation returned no rows")
       // This shouldn't happen but treat as no-op
       Error(DbError(pog.UnexpectedArgumentCount(7, 0)))
-    Error(e) -> Error(DbError(e))
+    }
+    Error(e) -> {
+      log("    Error creating task: " <> debug_error(DbError(e)))
+      Error(DbError(e))
+    }
   }
 }
 
