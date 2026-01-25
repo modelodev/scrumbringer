@@ -23,7 +23,9 @@
 //// - **sql.gleam**: Squirrel-generated query functions
 //// - **task_events_db.gleam**: Records audit events
 
+import domain/task_status
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
 import scrumbringer_server/persistence/tasks/mappers.{type Task}
@@ -49,7 +51,7 @@ pub fn list_tasks_for_project(
   db: pog.Connection,
   project_id: Int,
   _user_id: Int,
-  status: String,
+  status: Option(task_status.TaskStatus),
   type_id: Int,
   capability_id: Int,
   q: String,
@@ -57,7 +59,7 @@ pub fn list_tasks_for_project(
   use returned <- result.try(sql.tasks_list(
     db,
     project_id,
-    status,
+    status_filter_to_db_string(status),
     type_id,
     capability_id,
     q,
@@ -66,6 +68,13 @@ pub fn list_tasks_for_project(
   returned.rows
   |> list.map(mappers.from_list_row)
   |> Ok
+}
+
+fn status_filter_to_db_string(status: Option(task_status.TaskStatus)) -> String {
+  case status {
+    None -> ""
+    Some(value) -> task_status.to_db_status(value)
+  }
 }
 
 /// Create a new task in the database.
@@ -204,7 +213,13 @@ pub fn release_task(
 ) -> Result(Task, NotFoundOrDbError) {
   pog.transaction(db, fn(tx) {
     // Best effort: close any active work session before release.
-    let _ = work_sessions_db.close_session_for_task(tx, user_id, task_id, "task_released")
+    let _ =
+      work_sessions_db.close_session_for_task(
+        tx,
+        user_id,
+        task_id,
+        "task_released",
+      )
 
     case sql.tasks_release(tx, task_id, user_id, version) {
       Ok(pog.Returned(rows: [row, ..], ..)) -> {
@@ -241,7 +256,13 @@ pub fn complete_task(
 ) -> Result(Task, NotFoundOrDbError) {
   pog.transaction(db, fn(tx) {
     // Best effort: close any active work session before complete.
-    let _ = work_sessions_db.close_session_for_task(tx, user_id, task_id, "task_completed")
+    let _ =
+      work_sessions_db.close_session_for_task(
+        tx,
+        user_id,
+        task_id,
+        "task_completed",
+      )
 
     case sql.tasks_complete(tx, task_id, user_id, version) {
       Ok(pog.Returned(rows: [row, ..], ..)) -> {

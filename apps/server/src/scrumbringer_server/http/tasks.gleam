@@ -157,7 +157,12 @@ fn handle_task_types_list(
         Ok(project_id) -> {
           let auth.Ctx(db: db, ..) = ctx
 
-          case workflow.handle(db, workflow_types.ListTaskTypes(project_id, user.id)) {
+          case
+            workflow.handle(
+              db,
+              workflow_types.ListTaskTypes(project_id, user.id),
+            )
+          {
             Ok(workflow_types.TaskTypesList(task_types)) ->
               api.ok(
                 json.object([
@@ -420,9 +425,7 @@ fn handle_tasks_list(
             Ok(task_filters) -> {
               let actor_filters =
                 workflow_types.TaskFilters(
-                  status: filters.status_filter_to_db_string(
-                    task_filters.status,
-                  ),
+                  status: task_filters.status,
                   type_id: task_filters.type_id,
                   capability_id: task_filters.capability_id,
                   q: task_filters.q,
@@ -553,7 +556,8 @@ fn handle_task_get(
               api.ok(json.object([#("task", presenters.task_json(task))]))
 
             Ok(_) -> api.error(500, "INTERNAL", "Unexpected response")
-            Error(workflow_types.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
+            Error(workflow_types.NotFound) ->
+              api.error(404, "NOT_FOUND", "Not found")
             Error(workflow_types.DbError(_)) ->
               api.error(500, "INTERNAL", "Database error")
             Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
@@ -622,7 +626,12 @@ fn handle_task_patch(
                   case
                     workflow.handle(
                       db,
-                      workflow_types.UpdateTask(task_id, user.id, version, updates),
+                      workflow_types.UpdateTask(
+                        task_id,
+                        user.id,
+                        version,
+                        updates,
+                      ),
                     )
                   {
                     Ok(workflow_types.TaskResult(task)) ->
@@ -688,7 +697,12 @@ fn handle_task_claim(
                   case
                     workflow.handle(
                       db,
-                      workflow_types.ClaimTask(task_id, user.id, user.org_id, version),
+                      workflow_types.ClaimTask(
+                        task_id,
+                        user.id,
+                        user.org_id,
+                        version,
+                      ),
                     )
                   {
                     Ok(workflow_types.TaskResult(task)) ->
@@ -751,7 +765,12 @@ fn handle_task_release(
                   case
                     workflow.handle(
                       db,
-                      workflow_types.ReleaseTask(task_id, user.id, user.org_id, version),
+                      workflow_types.ReleaseTask(
+                        task_id,
+                        user.id,
+                        user.org_id,
+                        version,
+                      ),
                     )
                   {
                     Ok(workflow_types.TaskResult(task)) ->
@@ -812,7 +831,12 @@ fn handle_task_complete(
                   case
                     workflow.handle(
                       db,
-                      workflow_types.CompleteTask(task_id, user.id, user.org_id, version),
+                      workflow_types.CompleteTask(
+                        task_id,
+                        user.id,
+                        user.org_id,
+                        version,
+                      ),
                     )
                   {
                     Ok(workflow_types.TaskResult(task)) ->

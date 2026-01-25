@@ -88,7 +88,12 @@ pub type Message {
 
 /// Task list filters.
 pub type TaskFilters {
-  TaskFilters(status: String, type_id: Int, capability_id: Int, q: String)
+  TaskFilters(
+    status: Option(TaskStatus),
+    type_id: Int,
+    capability_id: Int,
+    q: String,
+  )
 }
 
 /// Task status ADT for typed status handling.
