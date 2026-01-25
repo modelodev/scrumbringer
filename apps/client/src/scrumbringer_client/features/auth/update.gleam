@@ -31,16 +31,20 @@ import domain/user.{type User}
 
 // API modules
 import scrumbringer_client/api/auth as api_auth
+
 // Domain types
 import domain/api_error.{type ApiError}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Admin, ForgotPasswordCopyFinished, ForgotPasswordFinished,
-  Login, LoginDomValuesRead, LoginFinished, LogoutFinished, Member, Model,
-  ToastShow,
+  type AuthMsg, type Model, type Msg, Admin, ForgotPasswordClicked,
+  ForgotPasswordCopyClicked, ForgotPasswordCopyFinished, ForgotPasswordDismissed,
+  ForgotPasswordEmailChanged, ForgotPasswordFinished, ForgotPasswordSubmitted,
+  Login, LoginDomValuesRead, LoginEmailChanged, LoginFinished,
+  LoginPasswordChanged, LoginSubmitted, LogoutClicked, LogoutFinished, Member,
+  Model, ToastShow, auth_msg,
 }
-import scrumbringer_client/ui/toast
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/toast
 import scrumbringer_client/update_helpers
 
 // =============================================================================
@@ -48,12 +52,18 @@ import scrumbringer_client/update_helpers
 // =============================================================================
 
 /// Handle login email input change.
-pub fn handle_login_email_changed(model: Model, email: String) -> #(Model, Effect(Msg)) {
+pub fn handle_login_email_changed(
+  model: Model,
+  email: String,
+) -> #(Model, Effect(Msg)) {
   #(Model(..model, login_email: email), effect.none())
 }
 
 /// Handle login password input change.
-pub fn handle_login_password_changed(model: Model, password: String) -> #(Model, Effect(Msg)) {
+pub fn handle_login_password_changed(
+  model: Model,
+  password: String,
+) -> #(Model, Effect(Msg)) {
   #(Model(..model, login_password: password), effect.none())
 }
 
@@ -98,7 +108,12 @@ pub fn handle_login_dom_values_read(
 
     False -> {
       let model = Model(..model, login_email: email, login_password: password)
-      #(model, api_auth.login(email, password, LoginFinished))
+      #(
+        model,
+        api_auth.login(email, password, fn(result) {
+          auth_msg(LoginFinished(result))
+        }),
+      )
     }
   }
 }
@@ -131,18 +146,19 @@ pub fn handle_login_finished_ok(
 
   // Story 4.8: Use new toast system with auto-dismiss
   let toast_message = update_helpers.i18n_t(model, i18n_text.LoggedIn)
-  let toast_effect = effect.from(fn(dispatch) {
-    dispatch(ToastShow(toast_message, toast.Success))
-  })
+  let toast_effect =
+    effect.from(fn(dispatch) {
+      dispatch(ToastShow(toast_message, toast.Success))
+    })
 
-  #(
-    model,
-    effect.batch([boot, hyd_fx, replace_url_fn(model), toast_effect]),
-  )
+  #(model, effect.batch([boot, hyd_fx, replace_url_fn(model), toast_effect]))
 }
 
 /// Handle login error.
-pub fn handle_login_finished_error(model: Model, err: ApiError) -> #(Model, Effect(Msg)) {
+pub fn handle_login_finished_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
   let message = case err.status {
     401 | 403 -> update_helpers.i18n_t(model, i18n_text.InvalidCredentials)
     _ -> err.message
@@ -222,7 +238,12 @@ pub fn handle_forgot_password_submitted(model: Model) -> #(Model, Effect(Msg)) {
               forgot_password_copy_status: opt.None,
             )
 
-          #(model, api_auth.request_password_reset(email, ForgotPasswordFinished))
+          #(
+            model,
+            api_auth.request_password_reset(email, fn(result) {
+              auth_msg(ForgotPasswordFinished(result))
+            }),
+          )
         }
       }
     }
@@ -262,7 +283,9 @@ pub fn handle_forgot_password_finished_error(
 }
 
 /// Handle copy reset link click.
-pub fn handle_forgot_password_copy_clicked(model: Model) -> #(Model, Effect(Msg)) {
+pub fn handle_forgot_password_copy_clicked(
+  model: Model,
+) -> #(Model, Effect(Msg)) {
   case model.forgot_password_result {
     opt.None -> #(model, effect.none())
 
@@ -278,7 +301,9 @@ pub fn handle_forgot_password_copy_clicked(model: Model) -> #(Model, Effect(Msg)
             i18n_text.Copying,
           )),
         ),
-        copy_to_clipboard(text, ForgotPasswordCopyFinished),
+        copy_to_clipboard(text, fn(ok) {
+          auth_msg(ForgotPasswordCopyFinished(ok))
+        }),
       )
     }
   }
@@ -319,7 +344,10 @@ pub fn handle_forgot_password_dismissed(model: Model) -> #(Model, Effect(Msg)) {
 
 /// Handle logout click.
 pub fn handle_logout_clicked(model: Model) -> #(Model, Effect(Msg)) {
-  #(Model(..model, toast: opt.None), api_auth.logout(LogoutFinished))
+  #(
+    Model(..model, toast: opt.None),
+    api_auth.logout(fn(result) { auth_msg(LogoutFinished(result)) }),
+  )
 }
 
 /// Handle successful logout.
@@ -363,6 +391,52 @@ pub fn handle_logout_finished_error(
 }
 
 // =============================================================================
+// Auth Message Dispatcher
+// =============================================================================
+
+pub fn update(
+  model: Model,
+  msg: AuthMsg,
+  bootstrap_fn: fn(Model) -> #(Model, Effect(Msg)),
+  hydrate_fn: fn(Model) -> #(Model, Effect(Msg)),
+  replace_url_fn: fn(Model) -> Effect(Msg),
+) -> #(Model, Effect(Msg)) {
+  case msg {
+    LoginEmailChanged(email) -> handle_login_email_changed(model, email)
+    LoginPasswordChanged(password) ->
+      handle_login_password_changed(model, password)
+    LoginSubmitted -> handle_login_submitted(model)
+    LoginDomValuesRead(raw_email, raw_password) ->
+      handle_login_dom_values_read(model, raw_email, raw_password)
+    LoginFinished(Ok(user)) ->
+      handle_login_finished_ok(
+        model,
+        user,
+        bootstrap_fn,
+        hydrate_fn,
+        replace_url_fn,
+      )
+    LoginFinished(Error(err)) -> handle_login_finished_error(model, err)
+    ForgotPasswordClicked -> handle_forgot_password_clicked(model)
+    ForgotPasswordEmailChanged(email) ->
+      handle_forgot_password_email_changed(model, email)
+    ForgotPasswordSubmitted -> handle_forgot_password_submitted(model)
+    ForgotPasswordFinished(Ok(reset)) ->
+      handle_forgot_password_finished_ok(model, reset)
+    ForgotPasswordFinished(Error(err)) ->
+      handle_forgot_password_finished_error(model, err)
+    ForgotPasswordCopyClicked -> handle_forgot_password_copy_clicked(model)
+    ForgotPasswordCopyFinished(ok) ->
+      handle_forgot_password_copy_finished(model, ok)
+    ForgotPasswordDismissed -> handle_forgot_password_dismissed(model)
+    LogoutClicked -> handle_logout_clicked(model)
+    LogoutFinished(Ok(_)) -> handle_logout_finished_ok(model, replace_url_fn)
+    LogoutFinished(Error(err)) ->
+      handle_logout_finished_error(model, err, replace_url_fn)
+  }
+}
+
+// =============================================================================
 // Effects
 // =============================================================================
 
@@ -370,7 +444,7 @@ fn read_login_values_effect() -> Effect(Msg) {
   effect.from(fn(dispatch) {
     let email = client_ffi.input_value("login-email")
     let password = client_ffi.input_value("login-password")
-    dispatch(LoginDomValuesRead(email, password))
+    dispatch(auth_msg(LoginDomValuesRead(email, password)))
     Nil
   })
 }

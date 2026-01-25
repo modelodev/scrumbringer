@@ -25,7 +25,7 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiError}
 import domain/project_role.{type ProjectRole}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Loaded, MemberAdded, Model, NotAsked,
+  type Model, type Msg, Loaded, MemberAdded, Model, NotAsked, admin_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -120,7 +120,7 @@ pub fn handle_member_add_submitted(model: Model) -> #(Model, Effect(Msg)) {
               project_id,
               user.id,
               model.members_add_role,
-              MemberAdded,
+              fn(result) { admin_msg(MemberAdded(result)) },
             ),
           )
         }

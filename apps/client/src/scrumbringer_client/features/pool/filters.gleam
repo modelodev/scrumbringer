@@ -27,14 +27,16 @@ import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, input, label, option, select, span, text}
+import lustre/element/html.{
+  button, div, input, label, option, select, span, text,
+}
 import lustre/event
 
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Loaded,
-  MemberClearFilters, MemberCreateDialogOpened, MemberPoolCapabilityChanged,
-  MemberPoolSearchChanged, MemberPoolSearchDebounced, MemberPoolTypeChanged,
-  MemberToggleMyCapabilitiesQuick,
+  type Model, type Msg, Loaded, MemberClearFilters, MemberCreateDialogOpened,
+  MemberPoolCapabilityChanged, MemberPoolSearchChanged,
+  MemberPoolSearchDebounced, MemberPoolTypeChanged,
+  MemberToggleMyCapabilitiesQuick, pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/icons
@@ -143,7 +145,7 @@ fn view_filter_actions(model: Model, active_count: Int) -> Element(Msg) {
               "title",
               update_helpers.i18n_t(model, i18n_text.ClearFilters),
             ),
-            event.on_click(MemberClearFilters),
+            event.on_click(pool_msg(MemberClearFilters)),
           ],
           [text(update_helpers.i18n_t(model, i18n_text.ClearFilters))],
         ),
@@ -151,7 +153,10 @@ fn view_filter_actions(model: Model, active_count: Int) -> Element(Msg) {
   }
 }
 
-fn view_type_filter(model: Model, options: List(element.Element(Msg))) -> Element(Msg) {
+fn view_type_filter(
+  model: Model,
+  options: List(element.Element(Msg)),
+) -> Element(Msg) {
   div([attribute.class("field")], [
     span([attribute.class("filter-tooltip")], [
       text(update_helpers.i18n_t(model, i18n_text.TypeLabel)),
@@ -182,7 +187,7 @@ fn view_type_filter(model: Model, options: List(element.Element(Msg))) -> Elemen
           update_helpers.i18n_t(model, i18n_text.TypeLabel),
         ),
         attribute.value(model.member_filters_type_id),
-        event.on_input(MemberPoolTypeChanged),
+        event.on_input(fn(value) { pool_msg(MemberPoolTypeChanged(value)) }),
         attribute.disabled(case model.member_task_types {
           Loaded(_) -> False
           _ -> True
@@ -193,7 +198,10 @@ fn view_type_filter(model: Model, options: List(element.Element(Msg))) -> Elemen
   ])
 }
 
-fn view_capability_filter(model: Model, options: List(element.Element(Msg))) -> Element(Msg) {
+fn view_capability_filter(
+  model: Model,
+  options: List(element.Element(Msg)),
+) -> Element(Msg) {
   div([attribute.class("field")], [
     span([attribute.class("filter-tooltip")], [
       text(update_helpers.i18n_t(model, i18n_text.CapabilityLabel)),
@@ -224,7 +232,9 @@ fn view_capability_filter(model: Model, options: List(element.Element(Msg))) -> 
           update_helpers.i18n_t(model, i18n_text.CapabilityLabel),
         ),
         attribute.value(model.member_filters_capability_id),
-        event.on_input(MemberPoolCapabilityChanged),
+        event.on_input(fn(value) {
+          pool_msg(MemberPoolCapabilityChanged(value))
+        }),
       ],
       options,
     ),
@@ -270,7 +280,7 @@ fn view_my_capabilities_toggle(
             False -> update_helpers.i18n_t(model, i18n_text.MyCapabilitiesOff)
           },
         ),
-        event.on_click(MemberToggleMyCapabilitiesQuick),
+        event.on_click(pool_msg(MemberToggleMyCapabilitiesQuick)),
       ],
       [
         case is_active {
@@ -313,8 +323,11 @@ fn view_search_filter(model: Model) -> Element(Msg) {
       ),
       attribute.type_("text"),
       attribute.value(model.member_filters_q),
-      event.on_input(MemberPoolSearchChanged),
-      event.debounce(event.on_input(MemberPoolSearchDebounced), 350),
+      event.on_input(fn(value) { pool_msg(MemberPoolSearchChanged(value)) }),
+      event.debounce(
+        event.on_input(fn(value) { pool_msg(MemberPoolSearchDebounced(value)) }),
+        350,
+      ),
       attribute.placeholder(update_helpers.i18n_t(
         model,
         i18n_text.SearchPlaceholder,
@@ -341,7 +354,7 @@ pub fn view_unified_toolbar(model: Model) -> Element(Msg) {
         [
           attribute.class("btn-sm btn-primary"),
           attribute.attribute("data-testid", "btn-new-task-pool"),
-          event.on_click(MemberCreateDialogOpened),
+          event.on_click(pool_msg(MemberCreateDialogOpened)),
         ],
         [
           span([attribute.class("btn-icon-left")], [text("+")]),
@@ -351,4 +364,3 @@ pub fn view_unified_toolbar(model: Model) -> Element(Msg) {
     ]),
   ])
 }
-

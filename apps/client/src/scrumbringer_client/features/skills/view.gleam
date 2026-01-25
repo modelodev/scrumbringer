@@ -19,7 +19,7 @@ import lustre/event
 
 import scrumbringer_client/client_state.{
   type Model, type Msg, Loaded, MemberSaveCapabilitiesClicked,
-  MemberToggleCapability,
+  MemberToggleCapability, pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/icons
@@ -35,7 +35,9 @@ pub fn view_skills(model: Model) -> Element(Msg) {
     case model.member_my_capabilities_error {
       opt.Some(err) ->
         div([attribute.class("error-banner")], [
-          span([attribute.class("error-banner-icon")], [icons.nav_icon(icons.Warning, icons.Small)]),
+          span([attribute.class("error-banner-icon")], [
+            icons.nav_icon(icons.Warning, icons.Small),
+          ]),
           span([], [text(err)]),
         ])
       opt.None -> element.none()
@@ -44,7 +46,7 @@ pub fn view_skills(model: Model) -> Element(Msg) {
     button(
       [
         attribute.type_("submit"),
-        event.on_click(MemberSaveCapabilitiesClicked),
+        event.on_click(pool_msg(MemberSaveCapabilitiesClicked)),
         attribute.disabled(model.member_my_capabilities_in_flight),
         attribute.class(case model.member_my_capabilities_in_flight {
           True -> "btn-loading"
@@ -83,7 +85,7 @@ fn view_skills_list(model: Model) -> Element(Msg) {
                 True -> "true"
                 False -> "false"
               }),
-              event.on_click(MemberToggleCapability(c.id)),
+              event.on_click(pool_msg(MemberToggleCapability(c.id))),
             ]),
           ])
         }),

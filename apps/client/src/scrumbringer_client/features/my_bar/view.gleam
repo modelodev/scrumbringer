@@ -38,7 +38,9 @@ import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, h2, h3, p, span, table, tbody, td, text, th, thead, tr}
+import lustre/element/html.{
+  button, div, h2, h3, p, span, table, tbody, td, text, th, thead, tr,
+}
 import lustre/element/keyed
 import lustre/event
 
@@ -51,8 +53,8 @@ import domain/user.{type User}
 
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, Loading, MemberClaimClicked,
-  MemberCompleteClicked, MemberNowWorkingPauseClicked, MemberNowWorkingStartClicked,
-  MemberReleaseClicked, NotAsked,
+  MemberCompleteClicked, MemberNowWorkingPauseClicked,
+  MemberNowWorkingStartClicked, MemberReleaseClicked, NotAsked, pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme
@@ -85,7 +87,9 @@ pub fn view_bar(model: Model, user: User) -> Element(Msg) {
         // MB01: Error display with banner
         Failed(err) ->
           div([attribute.class("error-banner")], [
-            span([attribute.class("error-banner-icon")], [icons.nav_icon(icons.Warning, icons.Small)]),
+            span([attribute.class("error-banner-icon")], [
+              icons.nav_icon(icons.Warning, icons.Small),
+            ]),
             span([], [text(err.message)]),
           ])
 
@@ -165,10 +169,26 @@ fn group_tasks_by_card(tasks: List(Task)) -> List(CardGroup) {
       // Get card info from first task in group
       case card_tasks {
         [first, ..] -> {
-          let Task(card_id: card_id, card_title: card_title, card_color: card_color, ..) = first
-          CardGroup(card_id: card_id, card_title: card_title, card_color: card_color, tasks: card_tasks)
+          let Task(
+            card_id: card_id,
+            card_title: card_title,
+            card_color: card_color,
+            ..,
+          ) = first
+          CardGroup(
+            card_id: card_id,
+            card_title: card_title,
+            card_color: card_color,
+            tasks: card_tasks,
+          )
         }
-        [] -> CardGroup(card_id: opt.None, card_title: opt.None, card_color: opt.None, tasks: [])
+        [] ->
+          CardGroup(
+            card_id: opt.None,
+            card_title: opt.None,
+            card_color: opt.None,
+            tasks: [],
+          )
       }
     })
     |> list.filter(fn(g) { !list.is_empty(g.tasks) })
@@ -192,7 +212,12 @@ fn group_tasks_by_card(tasks: List(Task)) -> List(CardGroup) {
 
 /// Render a single card group with header and task list.
 fn view_card_group(model: Model, user: User, group: CardGroup) -> Element(Msg) {
-  let CardGroup(card_id: _card_id, card_title: card_title, card_color: card_color, tasks: tasks) = group
+  let CardGroup(
+    card_id: _card_id,
+    card_title: card_title,
+    card_color: card_color,
+    tasks: tasks,
+  ) = group
 
   let card_color_opt = case card_color {
     opt.None -> opt.None
@@ -213,36 +238,33 @@ fn view_card_group(model: Model, user: User, group: CardGroup) -> Element(Msg) {
     opt.None -> update_helpers.i18n_t(model, i18n_text.UngroupedTasks)
   }
 
-  div(
-    [attribute.class("my-bar-card-group " <> border_class)],
-    [
-      // Group header
-      div(
-        [attribute.class("my-bar-card-header")],
-        [
-          // Card badge (only if has card)
-          case card_title {
-            opt.Some(ct) -> card_badge.view(ct, card_color_opt, opt.None)
-            opt.None -> element.none()
-          },
-          // Card title
-          span([attribute.class("my-bar-card-title")], [text(header_title)]),
-          // Progress count
-          span([attribute.class("my-bar-card-progress")], [
-            text(update_helpers.i18n_t(model, i18n_text.CardProgressCount(completed, total))),
-          ]),
-        ],
-      ),
-      // Task list
-      keyed.div(
-        [attribute.class("task-list")],
-        list.map(tasks, fn(t) {
-          let Task(id: task_id, ..) = t
-          #(int.to_string(task_id), view_member_bar_task_row(model, user, t))
-        }),
-      ),
-    ],
-  )
+  div([attribute.class("my-bar-card-group " <> border_class)], [
+    // Group header
+    div([attribute.class("my-bar-card-header")], [
+      // Card badge (only if has card)
+      case card_title {
+        opt.Some(ct) -> card_badge.view(ct, card_color_opt, opt.None)
+        opt.None -> element.none()
+      },
+      // Card title
+      span([attribute.class("my-bar-card-title")], [text(header_title)]),
+      // Progress count
+      span([attribute.class("my-bar-card-progress")], [
+        text(update_helpers.i18n_t(
+          model,
+          i18n_text.CardProgressCount(completed, total),
+        )),
+      ]),
+    ]),
+    // Task list
+    keyed.div(
+      [attribute.class("task-list")],
+      list.map(tasks, fn(t) {
+        let Task(id: task_id, ..) = t
+        #(int.to_string(task_id), view_member_bar_task_row(model, user, t))
+      }),
+    ),
+  ])
 }
 
 /// Renders the personal metrics panel.
@@ -251,10 +273,9 @@ pub fn view_member_metrics_panel(model: Model) -> Element(Msg) {
     NotAsked | Loading ->
       div([attribute.class("panel")], [
         h3([], [text(update_helpers.i18n_t(model, i18n_text.MyMetrics))]),
-        div(
-          [attribute.class("loading")],
-          [text(update_helpers.i18n_t(model, i18n_text.LoadingMetrics))],
-        ),
+        div([attribute.class("loading")], [
+          text(update_helpers.i18n_t(model, i18n_text.LoadingMetrics)),
+        ]),
       ])
 
     Failed(err) ->
@@ -329,9 +350,15 @@ pub fn view_member_bar_task_row(
     button(
       [
         attribute.class("btn-xs btn-icon"),
-        attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.Claim)),
-        attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Claim)),
-        event.on_click(MemberClaimClicked(id, version)),
+        attribute.attribute(
+          "title",
+          update_helpers.i18n_t(model, i18n_text.Claim),
+        ),
+        attribute.attribute(
+          "aria-label",
+          update_helpers.i18n_t(model, i18n_text.Claim),
+        ),
+        event.on_click(pool_msg(MemberClaimClicked(id, version))),
         attribute.disabled(disable_actions),
       ],
       [icons.nav_icon(icons.HandRaised, icons.Small)],
@@ -341,10 +368,19 @@ pub fn view_member_bar_task_row(
     button(
       [
         attribute.class("btn-xs btn-icon"),
-        attribute.attribute("data-tooltip", update_helpers.i18n_t(model, i18n_text.Release)),
-        attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.Release)),
-        attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Release)),
-        event.on_click(MemberReleaseClicked(id, version)),
+        attribute.attribute(
+          "data-tooltip",
+          update_helpers.i18n_t(model, i18n_text.Release),
+        ),
+        attribute.attribute(
+          "title",
+          update_helpers.i18n_t(model, i18n_text.Release),
+        ),
+        attribute.attribute(
+          "aria-label",
+          update_helpers.i18n_t(model, i18n_text.Release),
+        ),
+        event.on_click(pool_msg(MemberReleaseClicked(id, version))),
         attribute.disabled(disable_actions),
       ],
       [icons.nav_icon(icons.Refresh, icons.Small)],
@@ -354,10 +390,19 @@ pub fn view_member_bar_task_row(
     button(
       [
         attribute.class("btn-xs btn-icon"),
-        attribute.attribute("data-tooltip", update_helpers.i18n_t(model, i18n_text.Complete)),
-        attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.Complete)),
-        attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.Complete)),
-        event.on_click(MemberCompleteClicked(id, version)),
+        attribute.attribute(
+          "data-tooltip",
+          update_helpers.i18n_t(model, i18n_text.Complete),
+        ),
+        attribute.attribute(
+          "title",
+          update_helpers.i18n_t(model, i18n_text.Complete),
+        ),
+        attribute.attribute(
+          "aria-label",
+          update_helpers.i18n_t(model, i18n_text.Complete),
+        ),
+        event.on_click(pool_msg(MemberCompleteClicked(id, version))),
         attribute.disabled(disable_actions),
       ],
       [icons.nav_icon(icons.CheckCircle, icons.Small)],
@@ -367,9 +412,15 @@ pub fn view_member_bar_task_row(
     button(
       [
         attribute.class("btn-xs"),
-        attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.StartNowWorking)),
-        attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.StartNowWorking)),
-        event.on_click(MemberNowWorkingStartClicked(id)),
+        attribute.attribute(
+          "title",
+          update_helpers.i18n_t(model, i18n_text.StartNowWorking),
+        ),
+        attribute.attribute(
+          "aria-label",
+          update_helpers.i18n_t(model, i18n_text.StartNowWorking),
+        ),
+        event.on_click(pool_msg(MemberNowWorkingStartClicked(id))),
         attribute.disabled(disable_actions),
       ],
       [text(update_helpers.i18n_t(model, i18n_text.Start))],
@@ -379,9 +430,15 @@ pub fn view_member_bar_task_row(
     button(
       [
         attribute.class("btn-xs"),
-        attribute.attribute("title", update_helpers.i18n_t(model, i18n_text.PauseNowWorking)),
-        attribute.attribute("aria-label", update_helpers.i18n_t(model, i18n_text.PauseNowWorking)),
-        event.on_click(MemberNowWorkingPauseClicked),
+        attribute.attribute(
+          "title",
+          update_helpers.i18n_t(model, i18n_text.PauseNowWorking),
+        ),
+        attribute.attribute(
+          "aria-label",
+          update_helpers.i18n_t(model, i18n_text.PauseNowWorking),
+        ),
+        event.on_click(pool_msg(MemberNowWorkingPauseClicked)),
         attribute.disabled(disable_actions),
       ],
       [text(update_helpers.i18n_t(model, i18n_text.Pause))],
@@ -499,18 +556,10 @@ pub fn member_bar_status_rank(status: TaskStatus) -> Int {
 
 /// Compare tasks for bar sorting (priority desc, status, created desc).
 pub fn compare_member_bar_tasks(a: Task, b: Task) -> order.Order {
-  let Task(
-    priority: priority_a,
-    status: status_a,
-    created_at: created_at_a,
-    ..,
-  ) = a
-  let Task(
-    priority: priority_b,
-    status: status_b,
-    created_at: created_at_b,
-    ..,
-  ) = b
+  let Task(priority: priority_a, status: status_a, created_at: created_at_a, ..) =
+    a
+  let Task(priority: priority_b, status: status_b, created_at: created_at_b, ..) =
+    b
 
   case int.compare(priority_b, priority_a) {
     order.Eq ->

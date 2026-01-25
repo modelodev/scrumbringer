@@ -46,7 +46,7 @@ import scrumbringer_client/client_state.{
   type Model, type Msg, AcceptInviteMsg, ForgotPasswordClicked,
   ForgotPasswordCopyClicked, ForgotPasswordDismissed, ForgotPasswordEmailChanged,
   ForgotPasswordSubmitted, LoginEmailChanged, LoginPasswordChanged,
-  LoginSubmitted, ResetPasswordMsg,
+  LoginSubmitted, ResetPasswordMsg, auth_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/reset_password
@@ -82,14 +82,14 @@ pub fn view_login(model: Model) -> Element(Msg) {
         ])
       opt.None -> element.none()
     },
-    form([event.on_submit(fn(_) { LoginSubmitted })], [
+    form([event.on_submit(fn(_) { auth_msg(LoginSubmitted) })], [
       div([attribute.class("field")], [
         label([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
         input([
           attribute.attribute("id", "login-email"),
           attribute.type_("email"),
           attribute.value(model.login_email),
-          event.on_input(LoginEmailChanged),
+          event.on_input(fn(value) { auth_msg(LoginEmailChanged(value)) }),
           attribute.required(True),
           // L02: Autofocus on first field
           attribute.autofocus(True),
@@ -102,7 +102,7 @@ pub fn view_login(model: Model) -> Element(Msg) {
           attribute.attribute("id", "login-password"),
           attribute.type_("password"),
           attribute.value(model.login_password),
-          event.on_input(LoginPasswordChanged),
+          event.on_input(fn(value) { auth_msg(LoginPasswordChanged(value)) }),
           attribute.required(True),
           attribute.attribute("aria-label", "Password"),
         ]),
@@ -117,7 +117,7 @@ pub fn view_login(model: Model) -> Element(Msg) {
         [text(submit_label)],
       ),
     ]),
-    button([event.on_click(ForgotPasswordClicked)], [
+    button([event.on_click(auth_msg(ForgotPasswordClicked))], [
       text(update_helpers.i18n_t(model, i18n_text.ForgotPassword)),
     ]),
     case model.forgot_password_open {
@@ -147,19 +147,21 @@ pub fn view_forgot_password(model: Model) -> Element(Msg) {
       opt.Some(err) ->
         div([attrs.error()], [
           span([], [text(err)]),
-          button([event.on_click(ForgotPasswordDismissed)], [
+          button([event.on_click(auth_msg(ForgotPasswordDismissed))], [
             text(update_helpers.i18n_t(model, i18n_text.Dismiss)),
           ]),
         ])
       opt.None -> element.none()
     },
-    form([event.on_submit(fn(_) { ForgotPasswordSubmitted })], [
+    form([event.on_submit(fn(_) { auth_msg(ForgotPasswordSubmitted) })], [
       div([attribute.class("field")], [
         label([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
         input([
           attribute.type_("email"),
           attribute.value(model.forgot_password_email),
-          event.on_input(ForgotPasswordEmailChanged),
+          event.on_input(fn(value) {
+            auth_msg(ForgotPasswordEmailChanged(value))
+          }),
           attribute.required(True),
         ]),
       ]),
@@ -183,7 +185,7 @@ pub fn view_forgot_password(model: Model) -> Element(Msg) {
               attribute.value(link),
               attribute.readonly(True),
             ]),
-            button([event.on_click(ForgotPasswordCopyClicked)], [
+            button([event.on_click(auth_msg(ForgotPasswordCopyClicked))], [
               text(update_helpers.i18n_t(model, i18n_text.Copy)),
             ]),
           ]),

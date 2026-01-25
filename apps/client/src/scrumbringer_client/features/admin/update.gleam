@@ -36,7 +36,7 @@ import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/client_state.{
   type Model, type Msg, CapabilityMembersFetched, CapabilityMembersSaved, Failed,
   Loaded, Login, MemberCapabilitiesFetched, MemberCapabilitiesSaved,
-  MemberRoleChanged, Model,
+  MemberRoleChanged, Model, admin_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -118,12 +118,9 @@ pub fn handle_member_role_change_requested(
   case model.selected_project_id {
     opt.Some(project_id) -> #(
       model,
-      api_projects.update_member_role(
-        project_id,
-        user_id,
-        new_role,
-        MemberRoleChanged,
-      ),
+      api_projects.update_member_role(project_id, user_id, new_role, fn(result) {
+        admin_msg(MemberRoleChanged(result))
+      }),
     )
     opt.None -> #(model, effect.none())
   }
@@ -173,10 +170,7 @@ pub fn handle_member_role_changed_error(
       ),
       effect.none(),
     )
-    _ -> #(
-      Model(..model, toast: opt.Some(err.message)),
-      effect.none(),
-    )
+    _ -> #(Model(..model, toast: opt.Some(err.message)), effect.none())
   }
 }
 
@@ -204,11 +198,9 @@ pub fn handle_member_capabilities_dialog_opened(
           member_capabilities_selected: selected,
           member_capabilities_error: opt.None,
         ),
-        api_projects.get_member_capabilities(
-          project_id,
-          user_id,
-          MemberCapabilitiesFetched,
-        ),
+        api_projects.get_member_capabilities(project_id, user_id, fn(result) {
+          admin_msg(MemberCapabilitiesFetched(result))
+        }),
       )
     }
     opt.None -> #(model, effect.none())
@@ -235,8 +227,13 @@ pub fn handle_member_capabilities_toggled(
   model: Model,
   capability_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  let selected = case list.contains(model.member_capabilities_selected, capability_id) {
-    True -> list.filter(model.member_capabilities_selected, fn(id) { id != capability_id })
+  let selected = case
+    list.contains(model.member_capabilities_selected, capability_id)
+  {
+    True ->
+      list.filter(model.member_capabilities_selected, fn(id) {
+        id != capability_id
+      })
     False -> [capability_id, ..model.member_capabilities_selected]
   }
   #(Model(..model, member_capabilities_selected: selected), effect.none())
@@ -253,7 +250,7 @@ pub fn handle_member_capabilities_save_clicked(
         project_id,
         user_id,
         model.member_capabilities_selected,
-        MemberCapabilitiesSaved,
+        fn(result) { admin_msg(MemberCapabilitiesSaved(result)) },
       ),
     )
     _, _ -> #(model, effect.none())
@@ -266,11 +263,12 @@ pub fn handle_member_capabilities_fetched_ok(
   result: api_projects.MemberCapabilities,
 ) -> #(Model, Effect(Msg)) {
   // Update cache and selected list
-  let cache = dict.insert(
-    model.member_capabilities_cache,
-    result.user_id,
-    result.capability_ids,
-  )
+  let cache =
+    dict.insert(
+      model.member_capabilities_cache,
+      result.user_id,
+      result.capability_ids,
+    )
   #(
     Model(
       ..model,
@@ -306,11 +304,12 @@ pub fn handle_member_capabilities_saved_ok(
   result: api_projects.MemberCapabilities,
 ) -> #(Model, Effect(Msg)) {
   // Update cache and close dialog
-  let cache = dict.insert(
-    model.member_capabilities_cache,
-    result.user_id,
-    result.capability_ids,
-  )
+  let cache =
+    dict.insert(
+      model.member_capabilities_cache,
+      result.user_id,
+      result.capability_ids,
+    )
   #(
     Model(
       ..model,
@@ -354,7 +353,9 @@ pub fn handle_capability_members_dialog_opened(
   case model.selected_project_id {
     opt.Some(project_id) -> {
       // Check if we have cached members for this capability
-      let selected = case dict.get(model.capability_members_cache, capability_id) {
+      let selected = case
+        dict.get(model.capability_members_cache, capability_id)
+      {
         Ok(ids) -> ids
         Error(_) -> []
       }
@@ -369,7 +370,7 @@ pub fn handle_capability_members_dialog_opened(
         api_projects.get_capability_members(
           project_id,
           capability_id,
-          CapabilityMembersFetched,
+          fn(result) { admin_msg(CapabilityMembersFetched(result)) },
         ),
       )
     }
@@ -397,8 +398,11 @@ pub fn handle_capability_members_toggled(
   model: Model,
   user_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  let selected = case list.contains(model.capability_members_selected, user_id) {
-    True -> list.filter(model.capability_members_selected, fn(id) { id != user_id })
+  let selected = case
+    list.contains(model.capability_members_selected, user_id)
+  {
+    True ->
+      list.filter(model.capability_members_selected, fn(id) { id != user_id })
     False -> [user_id, ..model.capability_members_selected]
   }
   #(Model(..model, capability_members_selected: selected), effect.none())
@@ -408,14 +412,17 @@ pub fn handle_capability_members_toggled(
 pub fn handle_capability_members_save_clicked(
   model: Model,
 ) -> #(Model, Effect(Msg)) {
-  case model.selected_project_id, model.capability_members_dialog_capability_id {
+  case
+    model.selected_project_id,
+    model.capability_members_dialog_capability_id
+  {
     opt.Some(project_id), opt.Some(capability_id) -> #(
       Model(..model, capability_members_saving: True),
       api_projects.set_capability_members(
         project_id,
         capability_id,
         model.capability_members_selected,
-        CapabilityMembersSaved,
+        fn(result) { admin_msg(CapabilityMembersSaved(result)) },
       ),
     )
     _, _ -> #(model, effect.none())
@@ -427,11 +434,12 @@ pub fn handle_capability_members_fetched_ok(
   model: Model,
   result: api_projects.CapabilityMembers,
 ) -> #(Model, Effect(Msg)) {
-  let cache = dict.insert(
-    model.capability_members_cache,
-    result.capability_id,
-    result.user_ids,
-  )
+  let cache =
+    dict.insert(
+      model.capability_members_cache,
+      result.capability_id,
+      result.user_ids,
+    )
   #(
     Model(
       ..model,
@@ -466,11 +474,12 @@ pub fn handle_capability_members_saved_ok(
   model: Model,
   result: api_projects.CapabilityMembers,
 ) -> #(Model, Effect(Msg)) {
-  let cache = dict.insert(
-    model.capability_members_cache,
-    result.capability_id,
-    result.user_ids,
-  )
+  let cache =
+    dict.insert(
+      model.capability_members_cache,
+      result.capability_id,
+      result.user_ids,
+    )
   #(
     Model(
       ..model,
@@ -529,11 +538,9 @@ pub fn handle_members_fetched_ok(
     opt.Some(project_id) ->
       members
       |> list.map(fn(m) {
-        api_projects.get_member_capabilities(
-          project_id,
-          m.user_id,
-          MemberCapabilitiesFetched,
-        )
+        api_projects.get_member_capabilities(project_id, m.user_id, fn(result) {
+          admin_msg(MemberCapabilitiesFetched(result))
+        })
       })
       |> effect.batch
     opt.None -> effect.none()

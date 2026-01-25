@@ -29,7 +29,8 @@ import domain/project.{type Project}
 import scrumbringer_client/api/org as api_org
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, Loading, Model, NotAsked,
-  UserProjectAdded, UserProjectRemoved, UserProjectRoleChanged, UserProjectsFetched,
+  UserProjectAdded, UserProjectRemoved, UserProjectRoleChanged,
+  UserProjectsFetched, admin_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -55,7 +56,12 @@ pub fn handle_user_projects_dialog_opened(
       user_projects_error: opt.None,
     )
 
-  #(model, api_org.list_user_projects(user.id, UserProjectsFetched))
+  #(
+    model,
+    api_org.list_user_projects(user.id, fn(result) {
+      admin_msg(UserProjectsFetched(result))
+    }),
+  )
 }
 
 /// Handle closing the user projects dialog.
@@ -93,7 +99,11 @@ pub fn handle_user_projects_fetched_error(
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(..model, user_projects_list: Failed(err), user_projects_error: opt.Some(err.message)),
+    Model(
+      ..model,
+      user_projects_list: Failed(err),
+      user_projects_error: opt.Some(err.message),
+    ),
     effect.none(),
   )
 }
@@ -128,14 +138,21 @@ pub fn handle_user_projects_add_submitted(model: Model) -> #(Model, Effect(Msg))
   case model.user_projects_dialog_user, model.user_projects_add_project_id {
     opt.Some(user), opt.Some(project_id) -> {
       let model =
-        Model(..model, user_projects_in_flight: True, user_projects_error: opt.None)
+        Model(
+          ..model,
+          user_projects_in_flight: True,
+          user_projects_error: opt.None,
+        )
 
-      #(model, api_org.add_user_to_project(
-        user.id,
-        project_id,
-        model.user_projects_add_role,
-        UserProjectAdded,
-      ))
+      #(
+        model,
+        api_org.add_user_to_project(
+          user.id,
+          project_id,
+          model.user_projects_add_role,
+          fn(result) { admin_msg(UserProjectAdded(result)) },
+        ),
+      )
     }
 
     _, _ -> #(model, effect.none())
@@ -190,11 +207,17 @@ pub fn handle_user_project_remove_clicked(
   case model.user_projects_dialog_user {
     opt.Some(user) -> {
       let model =
-        Model(..model, user_projects_in_flight: True, user_projects_error: opt.None)
+        Model(
+          ..model,
+          user_projects_in_flight: True,
+          user_projects_error: opt.None,
+        )
 
       #(
         model,
-        api_org.remove_user_from_project(user.id, project_id, UserProjectRemoved),
+        api_org.remove_user_from_project(user.id, project_id, fn(result) {
+          admin_msg(UserProjectRemoved(result))
+        }),
       )
     }
 
@@ -208,9 +231,18 @@ pub fn handle_user_project_removed_ok(model: Model) -> #(Model, Effect(Msg)) {
   case model.user_projects_dialog_user {
     opt.Some(user) -> {
       let model =
-        Model(..model, user_projects_list: Loading, user_projects_in_flight: False)
+        Model(
+          ..model,
+          user_projects_list: Loading,
+          user_projects_in_flight: False,
+        )
 
-      #(model, api_org.list_user_projects(user.id, UserProjectsFetched))
+      #(
+        model,
+        api_org.list_user_projects(user.id, fn(result) {
+          admin_msg(UserProjectsFetched(result))
+        }),
+      )
     }
 
     opt.None -> #(Model(..model, user_projects_in_flight: False), effect.none())
@@ -245,13 +277,20 @@ pub fn handle_user_project_role_change_requested(
   case model.user_projects_dialog_user {
     opt.Some(user) -> {
       let model =
-        Model(..model, user_projects_in_flight: True, user_projects_error: opt.None)
+        Model(
+          ..model,
+          user_projects_in_flight: True,
+          user_projects_error: opt.None,
+        )
 
       #(
         model,
-        api_org.update_user_project_role(user.id, project_id, new_role, fn(result) {
-          UserProjectRoleChanged(project_id, result)
-        }),
+        api_org.update_user_project_role(
+          user.id,
+          project_id,
+          new_role,
+          fn(result) { admin_msg(UserProjectRoleChanged(project_id, result)) },
+        ),
       )
     }
 
@@ -268,12 +307,14 @@ pub fn handle_user_project_role_changed_ok(
   // Update the project in the list with the new role
   let updated_projects = case model.user_projects_list {
     Loaded(projects) ->
-      Loaded(list.map(projects, fn(p) {
-        case p.id == project_id {
-          True -> updated
-          False -> p
-        }
-      }))
+      Loaded(
+        list.map(projects, fn(p) {
+          case p.id == project_id {
+            True -> updated
+            False -> p
+          }
+        }),
+      )
     other -> other
   }
 

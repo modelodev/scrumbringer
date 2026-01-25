@@ -64,38 +64,39 @@ import gleam/set
 import domain/user.{type User}
 
 import scrumbringer_client/accept_invite
+
 // API types from domain modules
 import domain/api_error.{type ApiError, type ApiResult}
+import domain/capability.{type Capability}
+import domain/card.{type Card, type CardState}
+import domain/metrics.{
+  type MyMetrics, type OrgMetricsOverview, type OrgMetricsProjectTasksPayload,
+}
+import domain/org.{type InviteLink, type OrgUser}
 import domain/project.{type Project, type ProjectMember}
 import domain/project_role.{type ProjectRole, Member as MemberRole}
-import domain/capability.{type Capability}
-import domain/org.{type InviteLink, type OrgUser}
 import domain/task.{
-  type ActiveTaskPayload, type Task,
-  type TaskNote, type TaskPosition,
+  type ActiveTaskPayload, type Task, type TaskNote, type TaskPosition,
   type WorkSessionsPayload,
 }
 import domain/task_type.{type TaskType}
-import domain/card.{type Card, type CardState}
-import domain/workflow.{type Rule, type RuleTemplate, type TaskTemplate, type Workflow}
-import scrumbringer_client/api/workflows as api_workflows
-import scrumbringer_client/api/projects as api_projects
-import domain/metrics.{
-  type MyMetrics, type OrgMetricsOverview,
-  type OrgMetricsProjectTasksPayload,
+import domain/view_mode
+import domain/workflow.{
+  type Rule, type RuleTemplate, type TaskTemplate, type Workflow,
 }
 import scrumbringer_client/api/auth.{type PasswordReset}
+import scrumbringer_client/api/projects as api_projects
+import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/domain/ids.{type ToastId}
 import scrumbringer_client/hydration
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/member_section
 import scrumbringer_client/permissions
-import domain/view_mode
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/reset_password
 import scrumbringer_client/router
 import scrumbringer_client/theme
 import scrumbringer_client/ui/toast
-import scrumbringer_client/domain/ids.{type ToastId}
 
 // ----------------------------------------------------------------------------
 // Remote data loading state
@@ -533,41 +534,12 @@ pub type Model {
 // Messages
 // ----------------------------------------------------------------------------
 
-/// All messages that can be dispatched to the update function.
-///
-/// Messages are grouped by feature area:
-/// - Navigation and routing
-/// - Authentication and user management
-/// - Login and forgot password flows
-/// - Project and capability management
-/// - Member and invite management
-/// - Task pool and filtering
-/// - Drag-and-drop interactions
-/// - Timer and metrics
-pub type Msg {
-  // No operation - used for placeholder handlers
-  NoOp
-  // Pool drag-to-claim
-  MemberPoolMyTasksRectFetched(Int, Int, Int, Int)
-  MemberPoolDragToClaimArmed(Bool)
-
-  // Navigation
-  UrlChanged
-  NavigateTo(router.Route, NavMode)
-
-  // Auth
-  MeFetched(ApiResult(User))
-  AcceptInviteMsg(accept_invite.Msg)
-  ResetPasswordMsg(reset_password.Msg)
-
-  // Login form
+pub type AuthMsg {
   LoginEmailChanged(String)
   LoginPasswordChanged(String)
   LoginSubmitted
   LoginDomValuesRead(String, String)
   LoginFinished(ApiResult(User))
-
-  // Forgot password
   ForgotPasswordClicked
   ForgotPasswordEmailChanged(String)
   ForgotPasswordSubmitted
@@ -575,45 +547,26 @@ pub type Msg {
   ForgotPasswordCopyClicked
   ForgotPasswordCopyFinished(Bool)
   ForgotPasswordDismissed
-
-  // Logout
   LogoutClicked
   LogoutFinished(ApiResult(Nil))
+}
 
-  // Toast (legacy)
-  ToastDismissed
-  // Toast (new system with auto-dismiss, Story 4.8)
-  ToastShow(String, toast.ToastVariant)
-  ToastDismiss(ToastId)
-  ToastTick(Int)
-
-  // Preferences
-  ThemeSelected(String)
-  LocaleSelected(String)
-
-  // Project selection
-  ProjectSelected(String)
-
-  // Projects CRUD
+pub type AdminMsg {
   ProjectsFetched(ApiResult(List(Project)))
   ProjectCreateDialogOpened
   ProjectCreateDialogClosed
   ProjectCreateNameChanged(String)
   ProjectCreateSubmitted
   ProjectCreated(ApiResult(Project))
-  // Project Edit (Story 4.8 AC39)
   ProjectEditDialogOpened(Int, String)
   ProjectEditDialogClosed
   ProjectEditNameChanged(String)
   ProjectEditSubmitted
   ProjectUpdated(ApiResult(Project))
-  // Project Delete (Story 4.8 AC39)
   ProjectDeleteConfirmOpened(Int, String)
   ProjectDeleteConfirmClosed
   ProjectDeleteSubmitted
   ProjectDeleted(ApiResult(Nil))
-
-  // Invite links
   InviteCreateDialogOpened
   InviteCreateDialogClosed
   InviteLinkEmailChanged(String)
@@ -624,21 +577,16 @@ pub type Msg {
   InviteLinkRegenerated(ApiResult(InviteLink))
   InviteLinkCopyClicked(String)
   InviteLinkCopyFinished(Bool)
-
-  // Capabilities
   CapabilitiesFetched(ApiResult(List(Capability)))
   CapabilityCreateDialogOpened
   CapabilityCreateDialogClosed
   CapabilityCreateNameChanged(String)
   CapabilityCreateSubmitted
   CapabilityCreated(ApiResult(Capability))
-  // Capability delete (Story 4.9 AC9)
   CapabilityDeleteDialogOpened(Int)
   CapabilityDeleteDialogClosed
   CapabilityDeleteSubmitted
   CapabilityDeleted(ApiResult(Int))
-
-  // Members
   MembersFetched(ApiResult(List(ProjectMember)))
   OrgUsersCacheFetched(ApiResult(List(OrgUser)))
   OrgSettingsUsersFetched(ApiResult(List(OrgUser)))
@@ -646,8 +594,6 @@ pub type Msg {
   OrgSettingsSaveClicked(Int)
   OrgSettingsSaved(Int, ApiResult(OrgUser))
   OrgSettingsSaveAllClicked
-
-  // User projects dialog
   UserProjectsDialogOpened(OrgUser)
   UserProjectsDialogClosed
   UserProjectsFetched(ApiResult(List(Project)))
@@ -659,47 +605,33 @@ pub type Msg {
   UserProjectRemoved(ApiResult(Nil))
   UserProjectRoleChangeRequested(Int, String)
   UserProjectRoleChanged(Int, ApiResult(Project))
-
-  // Member add dialog
   MemberAddDialogOpened
   MemberAddDialogClosed
   MemberAddRoleChanged(String)
   MemberAddUserSelected(Int)
   MemberAddSubmitted
   MemberAdded(ApiResult(ProjectMember))
-
-  // Member remove
   MemberRemoveClicked(Int)
   MemberRemoveCancelled
   MemberRemoveConfirmed
   MemberRemoved(ApiResult(Nil))
-
-  // Member role change
   MemberRoleChangeRequested(Int, ProjectRole)
   MemberRoleChanged(ApiResult(api_projects.RoleChangeResult))
-
-  // Member capabilities dialog (Story 4.7 AC10-14)
   MemberCapabilitiesDialogOpened(Int)
   MemberCapabilitiesDialogClosed
   MemberCapabilitiesToggled(Int)
   MemberCapabilitiesSaveClicked
   MemberCapabilitiesFetched(ApiResult(api_projects.MemberCapabilities))
   MemberCapabilitiesSaved(ApiResult(api_projects.MemberCapabilities))
-
-  // Capability members dialog (Story 4.7 AC16-17)
   CapabilityMembersDialogOpened(Int)
   CapabilityMembersDialogClosed
   CapabilityMembersToggled(Int)
   CapabilityMembersSaveClicked
   CapabilityMembersFetched(ApiResult(api_projects.CapabilityMembers))
   CapabilityMembersSaved(ApiResult(api_projects.CapabilityMembers))
-
-  // Org user search
   OrgUsersSearchChanged(String)
   OrgUsersSearchDebounced(String)
   OrgUsersSearchResults(Int, ApiResult(List(OrgUser)))
-
-  // Task types
   TaskTypesFetched(ApiResult(List(TaskType)))
   TaskTypeCreateDialogOpened
   TaskTypeCreateDialogClosed
@@ -712,65 +644,142 @@ pub type Msg {
   TaskTypeCreateCapabilityChanged(String)
   TaskTypeCreateSubmitted
   TaskTypeCreated(ApiResult(TaskType))
-  // Task types - dialog mode control (component pattern)
   OpenTaskTypeDialog(TaskTypeDialogMode)
   CloseTaskTypeDialog
-  // Task types - component events (task-type-crud-dialog emits these)
   TaskTypeCrudCreated(TaskType)
   TaskTypeCrudUpdated(TaskType)
   TaskTypeCrudDeleted(Int)
+}
 
-  // Cards - list loading
+pub type PoolMsg {
+  MemberPoolMyTasksRectFetched(Int, Int, Int, Int)
+  MemberPoolDragToClaimArmed(Bool)
+  MemberPoolStatusChanged(String)
+  MemberPoolTypeChanged(String)
+  MemberPoolCapabilityChanged(String)
+  MemberPoolSearchChanged(String)
+  MemberPoolSearchDebounced(String)
+  MemberToggleMyCapabilitiesQuick
+  MemberPoolFiltersToggled
+  MemberClearFilters
+  MemberPoolViewModeSet(pool_prefs.ViewMode)
+  MemberListHideCompletedToggled
+  MemberListCardToggled(Int)
+  ViewModeChanged(view_mode.ViewMode)
+  MemberPanelToggled
+  MobileLeftDrawerToggled
+  MobileRightDrawerToggled
+  MobileDrawersClosed
+  SidebarConfigToggled
+  SidebarOrgToggled
+  PreferencesPopupToggled
+  GlobalKeyDown(pool_prefs.KeyEvent)
+  MemberProjectTasksFetched(Int, ApiResult(List(Task)))
+  MemberTaskTypesFetched(Int, ApiResult(List(TaskType)))
+  MemberCanvasRectFetched(Int, Int)
+  MemberDragStarted(Int, Int, Int)
+  MemberDragMoved(Int, Int)
+  MemberDragEnded
+  MemberCreateDialogOpened
+  MemberCreateDialogClosed
+  MemberCreateTitleChanged(String)
+  MemberCreateDescriptionChanged(String)
+  MemberCreatePriorityChanged(String)
+  MemberCreateTypeIdChanged(String)
+  MemberCreateSubmitted
+  MemberTaskCreated(ApiResult(Task))
+  MemberClaimClicked(Int, Int)
+  MemberReleaseClicked(Int, Int)
+  MemberCompleteClicked(Int, Int)
+  MemberTaskClaimed(ApiResult(Task))
+  MemberTaskReleased(ApiResult(Task))
+  MemberTaskCompleted(ApiResult(Task))
+  MemberNowWorkingStartClicked(Int)
+  MemberNowWorkingPauseClicked
+  MemberActiveTaskFetched(ApiResult(ActiveTaskPayload))
+  MemberActiveTaskStarted(ApiResult(ActiveTaskPayload))
+  MemberActiveTaskPaused(ApiResult(ActiveTaskPayload))
+  MemberActiveTaskHeartbeated(ApiResult(ActiveTaskPayload))
+  MemberWorkSessionsFetched(ApiResult(WorkSessionsPayload))
+  MemberWorkSessionStarted(ApiResult(WorkSessionsPayload))
+  MemberWorkSessionPaused(ApiResult(WorkSessionsPayload))
+  MemberWorkSessionHeartbeated(ApiResult(WorkSessionsPayload))
+  MemberMetricsFetched(ApiResult(MyMetrics))
+  NowWorkingTicked
+  MemberMyCapabilityIdsFetched(ApiResult(List(Int)))
+  MemberToggleCapability(Int)
+  MemberSaveCapabilitiesClicked
+  MemberMyCapabilityIdsSaved(ApiResult(List(Int)))
+  MemberPositionsFetched(ApiResult(List(TaskPosition)))
+  MemberPositionEditOpened(Int)
+  MemberPositionEditClosed
+  MemberPositionEditXChanged(String)
+  MemberPositionEditYChanged(String)
+  MemberPositionEditSubmitted
+  MemberPositionSaved(ApiResult(TaskPosition))
+  MemberTaskDetailsOpened(Int)
+  MemberTaskDetailsClosed
+  MemberNotesFetched(ApiResult(List(TaskNote)))
+  MemberNoteContentChanged(String)
+  MemberNoteSubmitted
+  MemberNoteAdded(ApiResult(TaskNote))
+  AdminMetricsOverviewFetched(ApiResult(OrgMetricsOverview))
+  AdminMetricsProjectTasksFetched(ApiResult(OrgMetricsProjectTasksPayload))
+  AdminRuleMetricsFetched(
+    ApiResult(List(api_workflows.OrgWorkflowMetricsSummary)),
+  )
+  AdminRuleMetricsFromChanged(String)
+  AdminRuleMetricsToChanged(String)
+  AdminRuleMetricsFromChangedAndRefresh(String)
+  AdminRuleMetricsToChangedAndRefresh(String)
+  AdminRuleMetricsRefreshClicked
+  AdminRuleMetricsQuickRangeClicked(String, String)
+  AdminRuleMetricsWorkflowExpanded(Int)
+  AdminRuleMetricsWorkflowDetailsFetched(
+    ApiResult(api_workflows.WorkflowMetrics),
+  )
+  AdminRuleMetricsDrilldownClicked(Int)
+  AdminRuleMetricsDrilldownClosed
+  AdminRuleMetricsRuleDetailsFetched(
+    ApiResult(api_workflows.RuleMetricsDetailed),
+  )
+  AdminRuleMetricsExecutionsFetched(
+    ApiResult(api_workflows.RuleExecutionsResponse),
+  )
+  AdminRuleMetricsExecPageChanged(Int)
   CardsFetched(ApiResult(List(Card)))
-  // Cards - dialog mode control (component pattern)
   OpenCardDialog(CardDialogMode)
   CloseCardDialog
-  // Cards - component events (card-crud-dialog emits these)
   CardCrudCreated(Card)
   CardCrudUpdated(Card)
   CardCrudDeleted(Int)
-  // Cards - filter changes (Story 4.9 AC7-8, UX improvements)
   CardsShowEmptyToggled
   CardsShowCompletedToggled
   CardsStateFilterChanged(String)
   CardsSearchChanged(String)
-
-  // Card detail (member view) - component manages internal state
   OpenCardDetail(Int)
   CloseCardDetail
-
-  // Workflows
   WorkflowsProjectFetched(ApiResult(List(Workflow)))
-  // Workflows - dialog mode control (component pattern)
   OpenWorkflowDialog(WorkflowDialogMode)
   CloseWorkflowDialog
-  // Workflows - component events (workflow-crud-dialog emits these)
   WorkflowCrudCreated(Workflow)
   WorkflowCrudUpdated(Workflow)
   WorkflowCrudDeleted(Int)
   WorkflowRulesClicked(Int)
-
-  // Rules
   RulesFetched(ApiResult(List(Rule)))
   RulesBackClicked
-  // Rules - dialog mode control (component pattern)
   OpenRuleDialog(RuleDialogMode)
   CloseRuleDialog
-  // Rules - component events (rule-crud-dialog emits these)
   RuleCrudCreated(Rule)
   RuleCrudUpdated(Rule)
   RuleCrudDeleted(Int)
   RuleTemplatesClicked(Int)
-
-  // Rule templates
   RuleTemplatesFetched(ApiResult(List(RuleTemplate)))
   RuleAttachTemplateSelected(String)
   RuleAttachTemplateSubmitted
   RuleTemplateAttached(ApiResult(List(RuleTemplate)))
   RuleTemplateDetachClicked(Int)
   RuleTemplateDetached(ApiResult(Nil))
-
-  // Story 4.10: Rule template attachment UI
   RuleExpandToggled(Int)
   AttachTemplateModalOpened(Int)
   AttachTemplateModalClosed
@@ -781,141 +790,51 @@ pub type Msg {
   TemplateDetachClicked(Int, Int)
   TemplateDetachSucceeded(Int, Int)
   TemplateDetachFailed(Int, Int, ApiError)
-
-  // Rule metrics (inline display)
   RuleMetricsFetched(ApiResult(api_workflows.WorkflowMetrics))
-
-  // Task templates
   TaskTemplatesProjectFetched(ApiResult(List(TaskTemplate)))
-  // Task templates - dialog mode control (component pattern)
   OpenTaskTemplateDialog(TaskTemplateDialogMode)
   CloseTaskTemplateDialog
-  // Task templates - component events (task-template-crud-dialog emits these)
   TaskTemplateCrudCreated(TaskTemplate)
   TaskTemplateCrudUpdated(TaskTemplate)
   TaskTemplateCrudDeleted(Int)
+}
 
-  // Pool filters
-  MemberPoolStatusChanged(String)
-  MemberPoolTypeChanged(String)
-  MemberPoolCapabilityChanged(String)
-  MemberPoolSearchChanged(String)
-  MemberPoolSearchDebounced(String)
-  MemberToggleMyCapabilitiesQuick
-  MemberPoolFiltersToggled
-  MemberClearFilters
-  MemberPoolViewModeSet(pool_prefs.ViewMode)
-  // List view hide completed toggle
-  MemberListHideCompletedToggled
-  // List view card group toggle (Story 4.8 UX: collapsible groups)
-  MemberListCardToggled(Int)
-  // New view mode for 3-panel layout
-  ViewModeChanged(view_mode.ViewMode)
-  MemberPanelToggled
-  // Mobile drawer controls
-  MobileLeftDrawerToggled
-  MobileRightDrawerToggled
-  MobileDrawersClosed
-  // Sidebar section collapse toggles
-  SidebarConfigToggled
-  SidebarOrgToggled
-  // Preferences popup toggle (Story 4.8 UX)
-  PreferencesPopupToggled
+/// All messages that can be dispatched to the update function.
+///
+/// Messages are grouped by feature area:
+/// - Navigation and routing
+/// - Authentication and user management
+/// - Admin configuration flows
+/// - Member pool flows
+pub type Msg {
+  NoOp
+  UrlChanged
+  NavigateTo(router.Route, NavMode)
+  MeFetched(ApiResult(User))
+  AcceptInviteMsg(accept_invite.Msg)
+  ResetPasswordMsg(reset_password.Msg)
+  AuthMsg(AuthMsg)
+  AdminMsg(AdminMsg)
+  PoolMsg(PoolMsg)
+  ToastDismissed
+  ToastShow(String, toast.ToastVariant)
+  ToastDismiss(ToastId)
+  ToastTick(Int)
+  ThemeSelected(String)
+  LocaleSelected(String)
+  ProjectSelected(String)
+}
 
-  // Keyboard
-  GlobalKeyDown(pool_prefs.KeyEvent)
+pub fn auth_msg(msg: AuthMsg) -> Msg {
+  AuthMsg(msg)
+}
 
-  // Member tasks
-  MemberProjectTasksFetched(Int, ApiResult(List(Task)))
-  MemberTaskTypesFetched(Int, ApiResult(List(TaskType)))
+pub fn admin_msg(msg: AdminMsg) -> Msg {
+  AdminMsg(msg)
+}
 
-  // Drag-and-drop
-  MemberCanvasRectFetched(Int, Int)
-  MemberDragStarted(Int, Int, Int)
-  MemberDragMoved(Int, Int)
-  MemberDragEnded
-
-  // Task creation
-  MemberCreateDialogOpened
-  MemberCreateDialogClosed
-  MemberCreateTitleChanged(String)
-  MemberCreateDescriptionChanged(String)
-  MemberCreatePriorityChanged(String)
-  MemberCreateTypeIdChanged(String)
-  MemberCreateSubmitted
-  MemberTaskCreated(ApiResult(Task))
-
-  // Task actions
-  MemberClaimClicked(Int, Int)
-  MemberReleaseClicked(Int, Int)
-  MemberCompleteClicked(Int, Int)
-  MemberTaskClaimed(ApiResult(Task))
-  MemberTaskReleased(ApiResult(Task))
-  MemberTaskCompleted(ApiResult(Task))
-
-  // Now working (legacy single-session)
-  MemberNowWorkingStartClicked(Int)
-  MemberNowWorkingPauseClicked
-  MemberActiveTaskFetched(ApiResult(ActiveTaskPayload))
-  MemberActiveTaskStarted(ApiResult(ActiveTaskPayload))
-  MemberActiveTaskPaused(ApiResult(ActiveTaskPayload))
-  MemberActiveTaskHeartbeated(ApiResult(ActiveTaskPayload))
-  // Work sessions (multi-session)
-  MemberWorkSessionsFetched(ApiResult(WorkSessionsPayload))
-  MemberWorkSessionStarted(ApiResult(WorkSessionsPayload))
-  MemberWorkSessionPaused(ApiResult(WorkSessionsPayload))
-  MemberWorkSessionHeartbeated(ApiResult(WorkSessionsPayload))
-  // Metrics
-  MemberMetricsFetched(ApiResult(MyMetrics))
-  AdminMetricsOverviewFetched(ApiResult(OrgMetricsOverview))
-  AdminMetricsProjectTasksFetched(
-    ApiResult(OrgMetricsProjectTasksPayload),
-  )
-  NowWorkingTicked
-
-  // Rule metrics tab
-  AdminRuleMetricsFetched(ApiResult(List(api_workflows.OrgWorkflowMetricsSummary)))
-  AdminRuleMetricsFromChanged(String)
-  AdminRuleMetricsToChanged(String)
-  AdminRuleMetricsFromChangedAndRefresh(String)
-  AdminRuleMetricsToChangedAndRefresh(String)
-  AdminRuleMetricsRefreshClicked
-  AdminRuleMetricsQuickRangeClicked(String, String)
-  // Rule metrics drill-down
-  AdminRuleMetricsWorkflowExpanded(Int)
-  AdminRuleMetricsWorkflowDetailsFetched(ApiResult(api_workflows.WorkflowMetrics))
-  AdminRuleMetricsDrilldownClicked(Int)
-  AdminRuleMetricsDrilldownClosed
-  AdminRuleMetricsRuleDetailsFetched(
-    ApiResult(api_workflows.RuleMetricsDetailed),
-  )
-  AdminRuleMetricsExecutionsFetched(
-    ApiResult(api_workflows.RuleExecutionsResponse),
-  )
-  AdminRuleMetricsExecPageChanged(Int)
-
-  // Member capabilities
-  MemberMyCapabilityIdsFetched(ApiResult(List(Int)))
-  MemberToggleCapability(Int)
-  MemberSaveCapabilitiesClicked
-  MemberMyCapabilityIdsSaved(ApiResult(List(Int)))
-
-  // Position editing
-  MemberPositionsFetched(ApiResult(List(TaskPosition)))
-  MemberPositionEditOpened(Int)
-  MemberPositionEditClosed
-  MemberPositionEditXChanged(String)
-  MemberPositionEditYChanged(String)
-  MemberPositionEditSubmitted
-  MemberPositionSaved(ApiResult(TaskPosition))
-
-  // Task details and notes
-  MemberTaskDetailsOpened(Int)
-  MemberTaskDetailsClosed
-  MemberNotesFetched(ApiResult(List(TaskNote)))
-  MemberNoteContentChanged(String)
-  MemberNoteSubmitted
-  MemberNoteAdded(ApiResult(TaskNote))
+pub fn pool_msg(msg: PoolMsg) -> Msg {
+  PoolMsg(msg)
 }
 
 // ----------------------------------------------------------------------------

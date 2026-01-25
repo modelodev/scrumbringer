@@ -28,7 +28,7 @@ import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
   type Model, type Msg, InviteCreateDialogClosed, InviteCreateDialogOpened,
   InviteLinkCopyClicked, InviteLinkCreateSubmitted, InviteLinkEmailChanged,
-  InviteLinkRegenerateClicked,
+  InviteLinkRegenerateClicked, admin_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/data_table
@@ -54,7 +54,7 @@ pub fn view_invites(model: Model) -> Element(Msg) {
       dialog.add_button(
         model,
         i18n_text.CreateInviteLink,
-        InviteCreateDialogOpened,
+        admin_msg(InviteCreateDialogOpened),
       ),
     ),
     // Latest invite link result (if any)
@@ -97,7 +97,7 @@ fn view_latest_invite(model: Model, origin: String) -> Element(Msg) {
             attribute.readonly(True),
           ]),
         ]),
-        button([event.on_click(InviteLinkCopyClicked(full))], [
+        button([event.on_click(admin_msg(InviteLinkCopyClicked(full)))], [
           text(update_helpers.i18n_t(model, i18n_text.Copy)),
         ]),
         case model.invite_link_copy_status {
@@ -125,9 +125,7 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
         data_table.column(t(i18n_text.State), fn(link: InviteLink) {
           span(
             [
-              attribute.class(
-                "badge badge-" <> state_badge_class(link.state),
-              ),
+              attribute.class("badge badge-" <> state_badge_class(link.state)),
             ],
             [text(translate_invite_state(model, link.state))],
           )
@@ -145,7 +143,7 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
                 attribute.attribute("title", t(i18n_text.CopyLink)),
                 attribute.attribute("aria-label", t(i18n_text.CopyLink)),
                 attribute.disabled(model.invite_link_in_flight),
-                event.on_click(InviteLinkCopyClicked(full)),
+                event.on_click(admin_msg(InviteLinkCopyClicked(full))),
               ],
               [icons.nav_icon(icons.Copy, icons.Small)],
             )
@@ -162,7 +160,9 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
                 attribute.attribute("title", t(i18n_text.Regenerate)),
                 attribute.attribute("aria-label", t(i18n_text.Regenerate)),
                 attribute.disabled(model.invite_link_in_flight),
-                event.on_click(InviteLinkRegenerateClicked(link.email)),
+                event.on_click(
+                  admin_msg(InviteLinkRegenerateClicked(link.email)),
+                ),
               ],
               [icons.nav_icon(icons.Refresh, icons.Small)],
             )
@@ -181,26 +181,29 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
       title: update_helpers.i18n_t(model, i18n_text.CreateInviteLink),
       icon: opt.None,
       size: dialog.DialogMd,
-      on_close: InviteCreateDialogClosed,
+      on_close: admin_msg(InviteCreateDialogClosed),
     ),
     model.invite_create_dialog_open,
     model.invite_link_error,
     [
-      form([event.on_submit(fn(_) { InviteLinkCreateSubmitted })], [
+      form([event.on_submit(fn(_) { admin_msg(InviteLinkCreateSubmitted) })], [
         div([attribute.class("field")], [
           label([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
           input([
             attribute.type_("email"),
             attribute.value(model.invite_link_email),
-            event.on_input(InviteLinkEmailChanged),
+            event.on_input(fn(value) {
+              admin_msg(InviteLinkEmailChanged(value))
+            }),
             attribute.required(True),
-            attribute.placeholder(
-              update_helpers.i18n_t(model, i18n_text.EmailPlaceholderExample),
-            ),
+            attribute.placeholder(update_helpers.i18n_t(
+              model,
+              i18n_text.EmailPlaceholderExample,
+            )),
           ]),
         ]),
         div([attribute.class("dialog-footer")], [
-          dialog.cancel_button(model, InviteCreateDialogClosed),
+          dialog.cancel_button(model, admin_msg(InviteCreateDialogClosed)),
           dialog.submit_button(
             model,
             model.invite_link_in_flight,

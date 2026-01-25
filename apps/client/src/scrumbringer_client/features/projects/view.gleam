@@ -31,6 +31,7 @@ import scrumbringer_client/client_state.{
   ProjectCreateNameChanged, ProjectCreateSubmitted, ProjectDeleteConfirmClosed,
   ProjectDeleteConfirmOpened, ProjectDeleteSubmitted, ProjectEditDialogClosed,
   ProjectEditDialogOpened, ProjectEditNameChanged, ProjectEditSubmitted,
+  admin_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
@@ -55,7 +56,7 @@ pub fn view_projects(model: Model) -> Element(Msg) {
       dialog.add_button(
         model,
         i18n_text.CreateProject,
-        ProjectCreateDialogOpened,
+        admin_msg(ProjectCreateDialogOpened),
       ),
     ),
     // Projects list
@@ -78,7 +79,7 @@ fn view_projects_create_dialog(model: Model) -> Element(Msg) {
       title: update_helpers.i18n_t(model, i18n_text.CreateProject),
       icon: opt.None,
       size: dialog.DialogSm,
-      on_close: ProjectCreateDialogClosed,
+      on_close: admin_msg(ProjectCreateDialogClosed),
     ),
     model.projects_create_dialog_open,
     model.projects_create_error,
@@ -86,7 +87,7 @@ fn view_projects_create_dialog(model: Model) -> Element(Msg) {
     [
       form(
         [
-          event.on_submit(fn(_) { ProjectCreateSubmitted }),
+          event.on_submit(fn(_) { admin_msg(ProjectCreateSubmitted) }),
           attribute.id("project-create-form"),
         ],
         [
@@ -95,7 +96,9 @@ fn view_projects_create_dialog(model: Model) -> Element(Msg) {
             input([
               attribute.type_("text"),
               attribute.value(model.projects_create_name),
-              event.on_input(ProjectCreateNameChanged),
+              event.on_input(fn(value) {
+                admin_msg(ProjectCreateNameChanged(value))
+              }),
               attribute.required(True),
               attribute.autofocus(True),
             ]),
@@ -105,7 +108,7 @@ fn view_projects_create_dialog(model: Model) -> Element(Msg) {
     ],
     // Footer buttons
     [
-      dialog.cancel_button(model, ProjectCreateDialogClosed),
+      dialog.cancel_button(model, admin_msg(ProjectCreateDialogClosed)),
       button(
         [
           attribute.type_("submit"),
@@ -134,7 +137,7 @@ fn view_projects_edit_dialog(model: Model) -> Element(Msg) {
       title: update_helpers.i18n_t(model, i18n_text.EditProject),
       icon: opt.None,
       size: dialog.DialogSm,
-      on_close: ProjectEditDialogClosed,
+      on_close: admin_msg(ProjectEditDialogClosed),
     ),
     model.projects_edit_dialog_open,
     model.projects_edit_error,
@@ -142,7 +145,7 @@ fn view_projects_edit_dialog(model: Model) -> Element(Msg) {
     [
       form(
         [
-          event.on_submit(fn(_) { ProjectEditSubmitted }),
+          event.on_submit(fn(_) { admin_msg(ProjectEditSubmitted) }),
           attribute.id("project-edit-form"),
         ],
         [
@@ -151,7 +154,9 @@ fn view_projects_edit_dialog(model: Model) -> Element(Msg) {
             input([
               attribute.type_("text"),
               attribute.value(model.projects_edit_name),
-              event.on_input(ProjectEditNameChanged),
+              event.on_input(fn(value) {
+                admin_msg(ProjectEditNameChanged(value))
+              }),
               attribute.required(True),
               attribute.autofocus(True),
             ]),
@@ -161,7 +166,7 @@ fn view_projects_edit_dialog(model: Model) -> Element(Msg) {
     ],
     // Footer buttons
     [
-      dialog.cancel_button(model, ProjectEditDialogClosed),
+      dialog.cancel_button(model, admin_msg(ProjectEditDialogClosed)),
       button(
         [
           attribute.type_("submit"),
@@ -190,19 +195,17 @@ fn view_projects_delete_confirm(model: Model) -> Element(Msg) {
       title: update_helpers.i18n_t(model, i18n_text.DeleteProjectTitle),
       icon: opt.None,
       size: dialog.DialogSm,
-      on_close: ProjectDeleteConfirmClosed,
+      on_close: admin_msg(ProjectDeleteConfirmClosed),
     ),
     model.projects_delete_confirm_open,
     opt.None,
     // Content
     [
       p([attribute.class("dialog-message")], [
-        text(
-          update_helpers.i18n_t(
-            model,
-            i18n_text.DeleteProjectConfirm(model.projects_delete_name),
-          ),
-        ),
+        text(update_helpers.i18n_t(
+          model,
+          i18n_text.DeleteProjectConfirm(model.projects_delete_name),
+        )),
       ]),
       p([attribute.class("dialog-warning")], [
         text(update_helpers.i18n_t(model, i18n_text.DeleteProjectWarning)),
@@ -210,12 +213,12 @@ fn view_projects_delete_confirm(model: Model) -> Element(Msg) {
     ],
     // Footer buttons
     [
-      dialog.cancel_button(model, ProjectDeleteConfirmClosed),
+      dialog.cancel_button(model, admin_msg(ProjectDeleteConfirmClosed)),
       button(
         [
           attribute.class("btn-danger"),
           attribute.disabled(model.projects_delete_in_flight),
-          event.on_click(ProjectDeleteSubmitted),
+          event.on_click(admin_msg(ProjectDeleteSubmitted)),
         ],
         [
           text(case model.projects_delete_in_flight {
@@ -276,8 +279,8 @@ fn view_projects_list(model: Model) -> Element(Msg) {
 fn view_project_actions(model: Model, p: Project) -> Element(Msg) {
   action_buttons.edit_delete_row(
     edit_title: update_helpers.i18n_t(model, i18n_text.EditProject),
-    edit_click: ProjectEditDialogOpened(p.id, p.name),
+    edit_click: admin_msg(ProjectEditDialogOpened(p.id, p.name)),
     delete_title: update_helpers.i18n_t(model, i18n_text.DeleteProject),
-    delete_click: ProjectDeleteConfirmOpened(p.id, p.name),
+    delete_click: admin_msg(ProjectDeleteConfirmOpened(p.id, p.name)),
   )
 }

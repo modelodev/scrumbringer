@@ -43,7 +43,7 @@ import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, Loading, MemberClaimClicked,
   MemberCompleteClicked, MemberCreateDialogOpened, MemberDragEnded,
-  MemberDragMoved, MemberDragStarted, MemberReleaseClicked, NotAsked,
+  MemberDragMoved, MemberDragStarted, MemberReleaseClicked, NotAsked, pool_msg,
 }
 import scrumbringer_client/features/admin/view as admin_view
 import scrumbringer_client/features/my_bar/view as my_bar_view
@@ -209,10 +209,10 @@ pub fn view_pool_body(model: Model, user: User) -> Element(Msg) {
       event.on("mousemove", {
         use x <- decode.field("clientX", decode.int)
         use y <- decode.field("clientY", decode.int)
-        decode.success(MemberDragMoved(x, y))
+        decode.success(pool_msg(MemberDragMoved(x, y)))
       }),
-      event.on("mouseup", decode.success(MemberDragEnded)),
-      event.on("mouseleave", decode.success(MemberDragEnded)),
+      event.on("mouseup", decode.success(pool_msg(MemberDragEnded))),
+      event.on("mouseleave", decode.success(pool_msg(MemberDragEnded))),
     ],
     [
       div([attribute.class("content pool-main")], [
@@ -265,7 +265,7 @@ fn view_tasks_onboarding(model: Model) -> Element(Msg) {
   )
   |> empty_state.with_action(
     update_helpers.i18n_t(model, i18n_text.NewTask),
-    MemberCreateDialogOpened,
+    pool_msg(MemberCreateDialogOpened),
   )
   |> empty_state.view
 }
@@ -335,7 +335,7 @@ pub fn view_pool_task_row(model: Model, task: Task) -> Element(Msg) {
           "aria-label",
           update_helpers.i18n_t(model, i18n_text.Claim),
         ),
-        event.on_click(MemberClaimClicked(id, version)),
+        event.on_click(pool_msg(MemberClaimClicked(id, version))),
         attribute.disabled(disable_actions),
       ],
       [icons.nav_icon(icons.HandRaised, icons.Small)],
@@ -466,7 +466,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
             "aria-label",
             update_helpers.i18n_t(model, i18n_text.Claim),
           ),
-          event.on_click(MemberClaimClicked(id, version)),
+          event.on_click(pool_msg(MemberClaimClicked(id, version))),
           attribute.disabled(disable_actions),
         ],
         [icons.nav_icon(icons.HandRaised, icons.Small)],
@@ -484,7 +484,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
             "aria-label",
             update_helpers.i18n_t(model, i18n_text.Release),
           ),
-          event.on_click(MemberReleaseClicked(id, version)),
+          event.on_click(pool_msg(MemberReleaseClicked(id, version))),
           attribute.disabled(disable_actions),
         ],
         [icons.nav_icon(icons.Refresh, icons.Small)],
@@ -509,7 +509,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
         event.on("mousedown", {
           use ox <- decode.field("offsetX", decode.int)
           use oy <- decode.field("offsetY", decode.int)
-          decode.success(MemberDragStarted(id, ox, oy))
+          decode.success(pool_msg(MemberDragStarted(id, ox, oy)))
         }),
       ],
       [icons.nav_icon(icons.DragHandle, icons.Small)],
@@ -528,7 +528,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
             "aria-label",
             update_helpers.i18n_t(model, i18n_text.Complete),
           ),
-          event.on_click(MemberCompleteClicked(id, version)),
+          event.on_click(pool_msg(MemberCompleteClicked(id, version))),
           attribute.disabled(disable_actions),
         ],
         [icons.nav_icon(icons.CheckCircle, icons.Small)],

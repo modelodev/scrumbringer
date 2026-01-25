@@ -24,9 +24,10 @@ import domain/api_error.{type ApiError}
 import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, AdminRuleMetricsExecutionsFetched, AdminRuleMetricsFetched,
-  AdminRuleMetricsRuleDetailsFetched, AdminRuleMetricsWorkflowDetailsFetched,
-  Failed, Loaded, Loading, Model, NotAsked,
+  type Model, type Msg, AdminRuleMetricsExecutionsFetched,
+  AdminRuleMetricsFetched, AdminRuleMetricsRuleDetailsFetched,
+  AdminRuleMetricsWorkflowDetailsFetched, Failed, Loaded, Loading, Model,
+  NotAsked, pool_msg,
 }
 import scrumbringer_client/update_helpers
 
@@ -55,8 +56,17 @@ pub fn handle_from_changed_and_refresh(
     True -> #(Model(..model, admin_rule_metrics_from: from), effect.none())
     False -> {
       let model =
-        Model(..model, admin_rule_metrics_from: from, admin_rule_metrics: Loading)
-      #(model, api_workflows.get_org_rule_metrics(from, to, AdminRuleMetricsFetched))
+        Model(
+          ..model,
+          admin_rule_metrics_from: from,
+          admin_rule_metrics: Loading,
+        )
+      #(
+        model,
+        api_workflows.get_org_rule_metrics(from, to, fn(result) {
+          pool_msg(AdminRuleMetricsFetched(result))
+        }),
+      )
     }
   }
 }
@@ -73,7 +83,12 @@ pub fn handle_to_changed_and_refresh(
     False -> {
       let model =
         Model(..model, admin_rule_metrics_to: to, admin_rule_metrics: Loading)
-      #(model, api_workflows.get_org_rule_metrics(from, to, AdminRuleMetricsFetched))
+      #(
+        model,
+        api_workflows.get_org_rule_metrics(from, to, fn(result) {
+          pool_msg(AdminRuleMetricsFetched(result))
+        }),
+      )
     }
   }
 }
@@ -89,7 +104,12 @@ pub fn handle_refresh_clicked(model: Model) -> #(Model, Effect(Msg)) {
     False -> {
       let model = Model(..model, admin_rule_metrics: Loading)
       // Use org-wide metrics (project filtering can be added later)
-      #(model, api_workflows.get_org_rule_metrics(from, to, AdminRuleMetricsFetched))
+      #(
+        model,
+        api_workflows.get_org_rule_metrics(from, to, fn(result) {
+          pool_msg(AdminRuleMetricsFetched(result))
+        }),
+      )
     }
   }
 }
@@ -107,7 +127,12 @@ pub fn handle_quick_range_clicked(
       admin_rule_metrics_to: to,
       admin_rule_metrics: Loading,
     )
-  #(model, api_workflows.get_org_rule_metrics(from, to, AdminRuleMetricsFetched))
+  #(
+    model,
+    api_workflows.get_org_rule_metrics(from, to, fn(result) {
+      pool_msg(AdminRuleMetricsFetched(result))
+    }),
+  )
 }
 
 // =============================================================================
@@ -136,7 +161,9 @@ pub fn handle_fetched_error(
 /// Initialize the rule metrics tab with default date range (last 30 days).
 pub fn init_tab(model: Model) -> #(Model, Effect(Msg)) {
   // Set default dates if not already set: from 30 days ago to today
-  case model.admin_rule_metrics_from == "" || model.admin_rule_metrics_to == "" {
+  case
+    model.admin_rule_metrics_from == "" || model.admin_rule_metrics_to == ""
+  {
     True -> {
       let to = client_ffi.date_today()
       let from = client_ffi.date_days_ago(30)
@@ -178,10 +205,9 @@ pub fn handle_workflow_expanded(
         )
       #(
         model,
-        api_workflows.get_workflow_metrics(
-          workflow_id,
-          AdminRuleMetricsWorkflowDetailsFetched,
-        ),
+        api_workflows.get_workflow_metrics(workflow_id, fn(result) {
+          pool_msg(AdminRuleMetricsWorkflowDetailsFetched(result))
+        }),
       )
     }
   }
@@ -192,7 +218,10 @@ pub fn handle_workflow_details_fetched_ok(
   model: Model,
   details: api_workflows.WorkflowMetrics,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, admin_rule_metrics_workflow_details: Loaded(details)), effect.none())
+  #(
+    Model(..model, admin_rule_metrics_workflow_details: Loaded(details)),
+    effect.none(),
+  )
 }
 
 /// Handle workflow details fetch error.
@@ -202,7 +231,10 @@ pub fn handle_workflow_details_fetched_error(
 ) -> #(Model, Effect(Msg)) {
   case err.status {
     401 -> update_helpers.reset_to_login(model)
-    _ -> #(Model(..model, admin_rule_metrics_workflow_details: Failed(err)), effect.none())
+    _ -> #(
+      Model(..model, admin_rule_metrics_workflow_details: Failed(err)),
+      effect.none(),
+    )
   }
 }
 
@@ -225,22 +257,14 @@ pub fn handle_drilldown_clicked(
     )
 
   let details_effect =
-    api_workflows.get_rule_metrics_detailed(
-      rule_id,
-      from,
-      to,
-      AdminRuleMetricsRuleDetailsFetched,
-    )
+    api_workflows.get_rule_metrics_detailed(rule_id, from, to, fn(result) {
+      pool_msg(AdminRuleMetricsRuleDetailsFetched(result))
+    })
 
   let executions_effect =
-    api_workflows.get_rule_executions(
-      rule_id,
-      from,
-      to,
-      20,
-      0,
-      AdminRuleMetricsExecutionsFetched,
-    )
+    api_workflows.get_rule_executions(rule_id, from, to, 20, 0, fn(result) {
+      pool_msg(AdminRuleMetricsExecutionsFetched(result))
+    })
 
   #(model, effect.batch([details_effect, executions_effect]))
 }
@@ -264,7 +288,10 @@ pub fn handle_rule_details_fetched_ok(
   model: Model,
   details: api_workflows.RuleMetricsDetailed,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, admin_rule_metrics_rule_details: Loaded(details)), effect.none())
+  #(
+    Model(..model, admin_rule_metrics_rule_details: Loaded(details)),
+    effect.none(),
+  )
 }
 
 /// Handle rule details fetch error.
@@ -274,7 +301,10 @@ pub fn handle_rule_details_fetched_error(
 ) -> #(Model, Effect(Msg)) {
   case err.status {
     401 -> update_helpers.reset_to_login(model)
-    _ -> #(Model(..model, admin_rule_metrics_rule_details: Failed(err)), effect.none())
+    _ -> #(
+      Model(..model, admin_rule_metrics_rule_details: Failed(err)),
+      effect.none(),
+    )
   }
 }
 
@@ -283,7 +313,10 @@ pub fn handle_executions_fetched_ok(
   model: Model,
   response: api_workflows.RuleExecutionsResponse,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, admin_rule_metrics_executions: Loaded(response)), effect.none())
+  #(
+    Model(..model, admin_rule_metrics_executions: Loaded(response)),
+    effect.none(),
+  )
 }
 
 /// Handle executions fetch error.
@@ -293,7 +326,10 @@ pub fn handle_executions_fetched_error(
 ) -> #(Model, Effect(Msg)) {
   case err.status {
     401 -> update_helpers.reset_to_login(model)
-    _ -> #(Model(..model, admin_rule_metrics_executions: Failed(err)), effect.none())
+    _ -> #(
+      Model(..model, admin_rule_metrics_executions: Failed(err)),
+      effect.none(),
+    )
   }
 }
 
@@ -321,7 +357,7 @@ pub fn handle_exec_page_changed(
           to,
           20,
           offset,
-          AdminRuleMetricsExecutionsFetched,
+          fn(result) { pool_msg(AdminRuleMetricsExecutionsFetched(result)) },
         ),
       )
     }

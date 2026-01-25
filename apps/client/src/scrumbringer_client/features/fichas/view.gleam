@@ -36,6 +36,7 @@ import domain/task_status as domain_task_status
 import domain/task_type as domain_task_type
 import scrumbringer_client/client_state.{
   type Model, type Msg, CloseCardDetail, Loaded, Loading, OpenCardDetail,
+  pool_msg,
 }
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/i18n/text as i18n_text
@@ -99,10 +100,9 @@ fn view_fichas_content(model: Model) -> Element(Msg) {
 
 fn view_empty_state(model: Model) -> Element(Msg) {
   div([attribute.class("empty-state")], [
-    div(
-      [attribute.class("empty-state-icon")],
-      [icons.nav_icon(icons.ClipboardDoc, icons.Large)],
-    ),
+    div([attribute.class("empty-state-icon")], [
+      icons.nav_icon(icons.ClipboardDoc, icons.Large),
+    ]),
     div([attribute.class("empty-state-title")], [
       text(update_helpers.i18n_t(model, i18n_text.MemberFichasEmpty)),
     ]),
@@ -126,14 +126,12 @@ fn view_card_item(model: Model, card: Card) -> Element(Msg) {
   let state_label = state_to_label(model, card.state)
 
   let progress_text =
-    int.to_string(card.completed_count)
-    <> "/"
-    <> int.to_string(card.task_count)
+    int.to_string(card.completed_count) <> "/" <> int.to_string(card.task_count)
 
   div(
     [
       attribute.class("ficha-card " <> border_class),
-      event.on_click(OpenCardDetail(card.id)),
+      event.on_click(pool_msg(OpenCardDetail(card.id))),
       attribute.attribute("role", "button"),
       attribute.attribute("tabindex", "0"),
     ],
@@ -146,8 +144,7 @@ fn view_card_item(model: Model, card: Card) -> Element(Msg) {
       ]),
       case card.description {
         "" -> element.none()
-        desc ->
-          div([attribute.class("ficha-description")], [text(desc)])
+        desc -> div([attribute.class("ficha-description")], [text(desc)])
       },
       div([attribute.class("ficha-meta")], [
         span([], [text(progress_text)]),
@@ -232,7 +229,7 @@ fn view_card_detail_modal(model: Model) -> Element(Msg) {
 /// Decoder for custom events that just returns CloseCardDetail.
 /// When task-created fires, we close the modal and let normal refresh handle data.
 fn decode_close_detail_event() -> decode.Decoder(Msg) {
-  decode.success(CloseCardDetail)
+  decode.success(pool_msg(CloseCardDetail))
 }
 
 fn find_card(model: Model, card_id: Int) -> option.Option(Card) {
@@ -284,9 +281,7 @@ fn card_state_to_string(state: CardState) -> String {
   }
 }
 
-fn task_types_to_json(
-  task_types: List(domain_task_type.TaskType),
-) -> json.Json {
+fn task_types_to_json(task_types: List(domain_task_type.TaskType)) -> json.Json {
   json.array(task_types, fn(tt) {
     json.object([
       #("id", json.int(tt.id)),
@@ -309,11 +304,14 @@ fn task_to_json(task: domain_task.Task) -> json.Json {
     #("id", json.int(task.id)),
     #("project_id", json.int(task.project_id)),
     #("type_id", json.int(task.type_id)),
-    #("task_type", json.object([
-      #("id", json.int(task.task_type.id)),
-      #("name", json.string(task.task_type.name)),
-      #("icon", json.string(task.task_type.icon)),
-    ])),
+    #(
+      "task_type",
+      json.object([
+        #("id", json.int(task.task_type.id)),
+        #("name", json.string(task.task_type.name)),
+        #("icon", json.string(task.task_type.icon)),
+      ]),
+    ),
     #("ongoing_by", case task.ongoing_by {
       option.Some(ob) -> json.object([#("user_id", json.int(ob.user_id))])
       option.None -> json.null()
@@ -324,7 +322,10 @@ fn task_to_json(task: domain_task.Task) -> json.Json {
       option.None -> json.null()
     }),
     #("priority", json.int(task.priority)),
-    #("status", json.string(domain_task_status.task_status_to_string(task.status))),
+    #(
+      "status",
+      json.string(domain_task_status.task_status_to_string(task.status)),
+    ),
     #("work_state", json.string(work_state_to_string(task.work_state))),
     #("created_by", json.int(task.created_by)),
     #("claimed_by", case task.claimed_by {

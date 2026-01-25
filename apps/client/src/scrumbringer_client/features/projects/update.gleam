@@ -30,12 +30,13 @@ import lustre/effect.{type Effect}
 // API modules
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/api/tasks as api_tasks
+
 // Domain types
 import domain/api_error.{type ApiError}
 import domain/project.{type Project}
 import scrumbringer_client/client_state.{
   type Model, type Msg, Admin, Failed, Loaded, Login, Member, Model,
-  ProjectCreated, ProjectDeleted, ProjectUpdated,
+  ProjectCreated, ProjectDeleted, ProjectUpdated, admin_msg, pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -54,16 +55,9 @@ pub fn handle_projects_fetched_ok(
   replace_url_fn: fn(Model) -> Effect(Msg),
 ) -> #(Model, Effect(Msg)) {
   let selected =
-    update_helpers.ensure_selected_project(
-      model.selected_project_id,
-      projects,
-    )
+    update_helpers.ensure_selected_project(model.selected_project_id, projects)
   let model =
-    Model(
-      ..model,
-      projects: Loaded(projects),
-      selected_project_id: selected,
-    )
+    Model(..model, projects: Loaded(projects), selected_project_id: selected)
 
   let model = update_helpers.ensure_default_section(model)
 
@@ -96,7 +90,9 @@ pub fn handle_projects_fetched_error(
   case err.status == 401 {
     True -> {
       let model =
-        update_helpers.clear_drag_state(Model(..model, page: Login, user: opt.None))
+        update_helpers.clear_drag_state(
+          Model(..model, page: Login, user: opt.None),
+        )
       #(model, replace_url_fn(model))
     }
 
@@ -123,11 +119,7 @@ pub fn handle_project_selected(
   }
 
   let should_pause =
-    should_pause_fn(
-      model.page == Member,
-      model.selected_project_id,
-      selected,
-    )
+    should_pause_fn(model.page == Member, model.selected_project_id, selected)
 
   let model = case selected {
     opt.None ->
@@ -146,7 +138,10 @@ pub fn handle_project_selected(
       let #(model, fx) = member_refresh_fn(model)
 
       let pause_fx = case should_pause {
-        True -> api_tasks.pause_me_active_task(client_state.MemberActiveTaskPaused)
+        True ->
+          api_tasks.pause_me_active_task(fn(result) {
+            pool_msg(client_state.MemberActiveTaskPaused(result))
+          })
         False -> effect.none()
       }
 
@@ -165,12 +160,16 @@ pub fn handle_project_selected(
 // =============================================================================
 
 /// Handle project create dialog opened.
-pub fn handle_project_create_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
+pub fn handle_project_create_dialog_opened(
+  model: Model,
+) -> #(Model, Effect(Msg)) {
   #(Model(..model, projects_create_dialog_open: True), effect.none())
 }
 
 /// Handle project create dialog closed.
-pub fn handle_project_create_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
+pub fn handle_project_create_dialog_closed(
+  model: Model,
+) -> #(Model, Effect(Msg)) {
   #(
     Model(
       ..model,
@@ -215,7 +214,12 @@ pub fn handle_project_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
               projects_create_in_flight: True,
               projects_create_error: opt.None,
             )
-          #(model, api_projects.create_project(name, ProjectCreated))
+          #(
+            model,
+            api_projects.create_project(name, fn(result) {
+              admin_msg(ProjectCreated(result))
+            }),
+          )
         }
       }
     }
@@ -341,8 +345,17 @@ pub fn handle_project_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
         )
         False -> {
           let model =
-            Model(..model, projects_edit_in_flight: True, projects_edit_error: opt.None)
-          #(model, api_projects.update_project(project_id, name, ProjectUpdated))
+            Model(
+              ..model,
+              projects_edit_in_flight: True,
+              projects_edit_error: opt.None,
+            )
+          #(
+            model,
+            api_projects.update_project(project_id, name, fn(result) {
+              admin_msg(ProjectUpdated(result))
+            }),
+          )
         }
       }
     }
@@ -360,11 +373,7 @@ pub fn handle_project_updated_ok(
       projects
       |> list.map(fn(p) {
         case p.id == project.id {
-          True ->
-            project.Project(
-              ..p,
-              name: project.name,
-            )
+          True -> project.Project(..p, name: project.name)
           False -> p
         }
       })
@@ -436,7 +445,9 @@ pub fn handle_project_delete_confirm_opened(
 }
 
 /// Handle project delete confirm closed.
-pub fn handle_project_delete_confirm_closed(model: Model) -> #(Model, Effect(Msg)) {
+pub fn handle_project_delete_confirm_closed(
+  model: Model,
+) -> #(Model, Effect(Msg)) {
   #(
     Model(
       ..model,
@@ -455,7 +466,12 @@ pub fn handle_project_delete_submitted(model: Model) -> #(Model, Effect(Msg)) {
     _, opt.None -> #(model, effect.none())
     False, opt.Some(project_id) -> {
       let model = Model(..model, projects_delete_in_flight: True)
-      #(model, api_projects.delete_project(project_id, ProjectDeleted))
+      #(
+        model,
+        api_projects.delete_project(project_id, fn(result) {
+          admin_msg(ProjectDeleted(result))
+        }),
+      )
     }
   }
 }
@@ -523,4 +539,3 @@ pub fn handle_project_deleted_error(
     )
   }
 }
-

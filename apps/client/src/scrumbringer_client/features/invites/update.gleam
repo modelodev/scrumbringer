@@ -27,13 +27,14 @@ import lustre/effect.{type Effect}
 
 // API modules
 import scrumbringer_client/api/org as api_org
+
 // Domain types
 import domain/api_error.{type ApiError}
 import domain/org.{type InviteLink}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, InviteLinkCopyFinished, InviteLinkCreated,
-  InviteLinkRegenerated, InviteLinksFetched, Loaded, Model,
+  InviteLinkRegenerated, InviteLinksFetched, Loaded, Model, admin_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -103,7 +104,9 @@ pub fn handle_invite_link_email_changed(
 }
 
 /// Handle invite link create form submission.
-pub fn handle_invite_link_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
+pub fn handle_invite_link_create_submitted(
+  model: Model,
+) -> #(Model, Effect(Msg)) {
   case model.invite_link_in_flight {
     True -> #(model, effect.none())
     False -> {
@@ -128,7 +131,12 @@ pub fn handle_invite_link_create_submitted(model: Model) -> #(Model, Effect(Msg)
               invite_link_error: opt.None,
               invite_link_copy_status: opt.None,
             )
-          #(model, api_org.create_invite_link(email, InviteLinkCreated))
+          #(
+            model,
+            api_org.create_invite_link(email, fn(result) {
+              admin_msg(InviteLinkCreated(result))
+            }),
+          )
         }
       }
     }
@@ -147,13 +155,15 @@ pub fn handle_invite_link_created_ok(
       invite_create_dialog_open: False,
       invite_link_last: opt.Some(link),
       invite_link_email: "",
-      toast: opt.Some(update_helpers.i18n_t(
-        model,
-        i18n_text.InviteLinkCreated,
-      )),
+      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.InviteLinkCreated)),
     )
 
-  #(model, api_org.list_invite_links(InviteLinksFetched))
+  #(
+    model,
+    api_org.list_invite_links(fn(result) {
+      admin_msg(InviteLinksFetched(result))
+    }),
+  )
 }
 
 /// Handle invite link created error.
@@ -220,7 +230,12 @@ pub fn handle_invite_link_regenerate_clicked(
               invite_link_copy_status: opt.None,
               invite_link_email: email,
             )
-          #(model, api_org.regenerate_invite_link(email, InviteLinkRegenerated))
+          #(
+            model,
+            api_org.regenerate_invite_link(email, fn(result) {
+              admin_msg(InviteLinkRegenerated(result))
+            }),
+          )
         }
       }
     }
@@ -244,7 +259,12 @@ pub fn handle_invite_link_regenerated_ok(
       )),
     )
 
-  #(model, api_org.list_invite_links(InviteLinksFetched))
+  #(
+    model,
+    api_org.list_invite_links(fn(result) {
+      admin_msg(InviteLinksFetched(result))
+    }),
+  )
 }
 
 /// Handle invite link regenerated error.
@@ -294,7 +314,7 @@ pub fn handle_invite_link_copy_clicked(
         i18n_text.Copying,
       )),
     ),
-    copy_to_clipboard(text, InviteLinkCopyFinished),
+    copy_to_clipboard(text, fn(ok) { admin_msg(InviteLinkCopyFinished(ok)) }),
   )
 }
 
@@ -308,10 +328,7 @@ pub fn handle_invite_link_copy_finished(
     False -> update_helpers.i18n_t(model, i18n_text.CopyFailed)
   }
 
-  #(
-    Model(..model, invite_link_copy_status: opt.Some(message)),
-    effect.none(),
-  )
+  #(Model(..model, invite_link_copy_status: opt.Some(message)), effect.none())
 }
 
 // =============================================================================

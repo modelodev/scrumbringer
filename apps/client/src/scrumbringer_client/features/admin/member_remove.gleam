@@ -22,7 +22,9 @@ import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError}
 import domain/org.{type OrgUser, OrgUser}
-import scrumbringer_client/client_state.{type Model, type Msg, MemberRemoved, Model}
+import scrumbringer_client/client_state.{
+  type Model, type Msg, MemberRemoved, Model, admin_msg,
+}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
 
@@ -83,7 +85,9 @@ pub fn handle_member_remove_confirmed(model: Model) -> #(Model, Effect(Msg)) {
             )
           #(
             model,
-            api_projects.remove_project_member(project_id, user.id, MemberRemoved),
+            api_projects.remove_project_member(project_id, user.id, fn(result) {
+              admin_msg(MemberRemoved(result))
+            }),
           )
         }
         _, _ -> #(model, effect.none())

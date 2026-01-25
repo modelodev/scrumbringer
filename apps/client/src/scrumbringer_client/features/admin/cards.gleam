@@ -25,7 +25,8 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiError}
 import domain/card.{type Card}
 import scrumbringer_client/client_state.{
-  type CardDialogMode, type Model, type Msg, Failed, Loaded, Loading, Model,
+  type CardDialogMode, type Model, type Msg, CardsFetched, Failed, Loaded,
+  Loading, Model, pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -157,7 +158,12 @@ pub fn fetch_cards_for_project(model: Model) -> #(Model, Effect(Msg)) {
     opt.Some(project_id) -> {
       let model =
         Model(..model, cards: Loading, cards_project_id: opt.Some(project_id))
-      #(model, api_cards.list_cards(project_id, client_state.CardsFetched))
+      #(
+        model,
+        api_cards.list_cards(project_id, fn(result) -> Msg {
+          pool_msg(CardsFetched(result))
+        }),
+      )
     }
     opt.None -> #(model, effect.none())
   }

@@ -27,6 +27,7 @@ import domain/org_role
 import domain/user.{User}
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, Login, Model, OrgSettingsSaved,
+  admin_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -149,7 +150,7 @@ pub fn handle_org_settings_save_clicked(
           #(
             model,
             api_org.update_org_user_role(user_id, role, fn(result) {
-              OrgSettingsSaved(user_id, result)
+              admin_msg(OrgSettingsSaved(user_id, result))
             }),
           )
         }
@@ -184,7 +185,8 @@ pub fn handle_org_settings_saved_ok(
   }
 
   // Remove saved user from drafts
-  let org_settings_role_drafts = dict.delete(model.org_settings_role_drafts, updated.id)
+  let org_settings_role_drafts =
+    dict.delete(model.org_settings_role_drafts, updated.id)
 
   let org_users_cache = case model.org_users_cache {
     Loaded(users) -> Loaded(update_list(users))
@@ -195,8 +197,7 @@ pub fn handle_org_settings_saved_ok(
   let user = case model.user {
     opt.Some(current_user) if current_user.id == updated.id ->
       case org_role.parse(updated.org_role) {
-        Ok(new_role) ->
-          opt.Some(User(..current_user, org_role: new_role))
+        Ok(new_role) -> opt.Some(User(..current_user, org_role: new_role))
         Error(_) -> model.user
       }
     _ -> model.user
@@ -235,7 +236,7 @@ pub fn handle_org_settings_saved_ok(
         org_settings_error_user_id: opt.None,
       ),
       api_org.update_org_user_role(next_user_id, next_role, fn(result) {
-        OrgSettingsSaved(next_user_id, result)
+        admin_msg(OrgSettingsSaved(next_user_id, result))
       }),
     )
   }
@@ -309,7 +310,7 @@ pub fn handle_org_settings_save_all_clicked(
           #(
             model,
             api_org.update_org_user_role(user_id, role, fn(result) {
-              OrgSettingsSaved(user_id, result)
+              admin_msg(OrgSettingsSaved(user_id, result))
             }),
           )
         }

@@ -38,7 +38,7 @@ import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
   type Model, type Msg, MemberCanvasRectFetched, MemberDrag,
   MemberPoolMyTasksRectFetched, MemberPositionSaved, MemberTaskClaimed, Model,
-  Rect, rect_contains_point,
+  Rect, pool_msg, rect_contains_point,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/member_section
@@ -175,7 +175,10 @@ pub fn handle_global_keydown(
   model: Model,
   event: pool_prefs.KeyEvent,
 ) -> #(Model, Effect(Msg)) {
-  case model.page == client_state.Member && model.member_section == member_section.Pool {
+  case
+    model.page == client_state.Member
+    && model.member_section == member_section.Pool
+  {
     False -> #(model, effect.none())
     True -> {
       case pool_prefs.shortcut_action(event) {
@@ -329,11 +332,18 @@ pub fn handle_drag_started(
     model,
     effect.from(fn(dispatch) {
       let #(left, top) = client_ffi.element_client_offset("member-canvas")
-      dispatch(MemberCanvasRectFetched(left, top))
+      dispatch(pool_msg(MemberCanvasRectFetched(left, top)))
 
       let #(dz_left, dz_top, dz_width, dz_height) =
         client_ffi.element_client_rect("pool-my-tasks")
-      dispatch(MemberPoolMyTasksRectFetched(dz_left, dz_top, dz_width, dz_height))
+      dispatch(
+        pool_msg(MemberPoolMyTasksRectFetched(
+          dz_left,
+          dz_top,
+          dz_width,
+          dz_height,
+        )),
+      )
     }),
   )
 }
@@ -401,7 +411,9 @@ pub fn handle_drag_ended(model: Model) -> #(Model, Effect(Msg)) {
                 True -> #(model, effect.none())
                 False -> #(
                   Model(..model, member_task_mutation_in_flight: True),
-                  api_tasks.claim_task(task_id, version, MemberTaskClaimed),
+                  api_tasks.claim_task(task_id, version, fn(result) {
+                    pool_msg(MemberTaskClaimed(result))
+                  }),
                 )
               }
 
@@ -417,7 +429,9 @@ pub fn handle_drag_ended(model: Model) -> #(Model, Effect(Msg)) {
 
           #(
             model,
-            api_tasks.upsert_me_task_position(task_id, x, y, MemberPositionSaved),
+            api_tasks.upsert_me_task_position(task_id, x, y, fn(result) {
+              pool_msg(MemberPositionSaved(result))
+            }),
           )
         }
       }
@@ -500,12 +514,9 @@ pub fn handle_position_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
                 )
               #(
                 model,
-                api_tasks.upsert_me_task_position(
-                  task_id,
-                  x,
-                  y,
-                  MemberPositionSaved,
-                ),
+                api_tasks.upsert_me_task_position(task_id, x, y, fn(result) {
+                  pool_msg(MemberPositionSaved(result))
+                }),
               )
             }
             _, _ -> #(
@@ -559,10 +570,9 @@ pub fn handle_position_saved_error(
         member_position_edit_error: opt.Some(err.message),
         toast: opt.Some(err.message),
       ),
-      api_tasks.list_me_task_positions(
-        model.selected_project_id,
-        client_state.MemberPositionsFetched,
-      ),
+      api_tasks.list_me_task_positions(model.selected_project_id, fn(result) {
+        pool_msg(client_state.MemberPositionsFetched(result))
+      }),
     )
   }
 }

@@ -92,7 +92,7 @@ import scrumbringer_client/client_state.{
   UserProjectsAddSubmitted, UserProjectsDialogClosed, UserProjectsDialogOpened,
   WorkflowCrudCreated, WorkflowCrudDeleted, WorkflowCrudUpdated,
   WorkflowDialogCreate, WorkflowDialogDelete, WorkflowDialogEdit,
-  WorkflowRulesClicked,
+  WorkflowRulesClicked, admin_msg, pool_msg,
 }
 import scrumbringer_client/features/admin/cards as admin_cards
 import scrumbringer_client/i18n/locale
@@ -177,7 +177,7 @@ fn view_org_settings_table(model: Model) -> Element(Msg) {
                     attribute.class("btn-xs btn-icon"),
                     attribute.attribute("title", t(i18n_text.Manage)),
                     attribute.attribute("aria-label", t(i18n_text.Manage)),
-                    event.on_click(UserProjectsDialogOpened(u)),
+                    event.on_click(admin_msg(UserProjectsDialogOpened(u))),
                   ],
                   [icons.nav_icon(icons.Cog, icons.Small)],
                 )
@@ -206,7 +206,7 @@ fn view_org_settings_table(model: Model) -> Element(Msg) {
               attribute.disabled(
                 !has_pending || model.org_settings_save_in_flight,
               ),
-              event.on_click(OrgSettingsSaveAllClicked),
+              event.on_click(admin_msg(OrgSettingsSaveAllClicked)),
             ],
             [text(t(i18n_text.SaveOrgRoleChanges))],
           ),
@@ -239,7 +239,9 @@ fn view_org_role_cell(model: Model, u: OrgUser) -> Element(Msg) {
       [
         attribute.value(draft),
         attribute.disabled(model.org_settings_save_in_flight),
-        event.on_input(fn(value) { OrgSettingsRoleChanged(u.id, value) }),
+        event.on_input(fn(value) {
+          admin_msg(OrgSettingsRoleChanged(u.id, value))
+        }),
       ],
       [
         option([attribute.value("admin")], t(i18n_text.RoleAdmin)),
@@ -271,7 +273,7 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
           ),
           icon: opt.None,
           size: dialog.DialogMd,
-          on_close: UserProjectsDialogClosed,
+          on_close: admin_msg(UserProjectsDialogClosed),
         ),
         True,
         model.user_projects_error,
@@ -333,10 +335,10 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
                                       model.user_projects_in_flight,
                                     ),
                                     event.on_input(fn(value) {
-                                      UserProjectRoleChangeRequested(
+                                      admin_msg(UserProjectRoleChangeRequested(
                                         p.id,
                                         value,
-                                      )
+                                      ))
                                     }),
                                   ],
                                   [
@@ -364,9 +366,9 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
                                     attribute.disabled(
                                       model.user_projects_in_flight,
                                     ),
-                                    event.on_click(UserProjectRemoveClicked(
-                                      p.id,
-                                    )),
+                                    event.on_click(
+                                      admin_msg(UserProjectRemoveClicked(p.id)),
+                                    ),
                                   ],
                                   [
                                     text(update_helpers.i18n_t(
@@ -399,7 +401,9 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
                     opt.None -> ""
                   }),
                   attribute.disabled(model.user_projects_in_flight),
-                  event.on_input(UserProjectsAddProjectChanged),
+                  event.on_input(fn(value) {
+                    admin_msg(UserProjectsAddProjectChanged(value))
+                  }),
                 ],
                 [
                   option(
@@ -414,7 +418,9 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
                 [
                   attribute.value(model.user_projects_add_role),
                   attribute.disabled(model.user_projects_in_flight),
-                  event.on_input(UserProjectsAddRoleChanged),
+                  event.on_input(fn(value) {
+                    admin_msg(UserProjectsAddRoleChanged(value))
+                  }),
                 ],
                 [
                   option(
@@ -433,7 +439,7 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
                     model.user_projects_in_flight
                     || opt.is_none(model.user_projects_add_project_id),
                   ),
-                  event.on_click(UserProjectsAddSubmitted),
+                  event.on_click(admin_msg(UserProjectsAddSubmitted)),
                 ],
                 [text(update_helpers.i18n_t(model, i18n_text.Add))],
               ),
@@ -442,7 +448,7 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
         ],
         // Footer: close button
         [
-          button([event.on_click(UserProjectsDialogClosed)], [
+          button([event.on_click(admin_msg(UserProjectsDialogClosed))], [
             text(update_helpers.i18n_t(model, i18n_text.Close)),
           ]),
         ],
@@ -526,7 +532,7 @@ pub fn view_capabilities(model: Model) -> Element(Msg) {
       dialog.add_button(
         model,
         i18n_text.CreateCapability,
-        CapabilityCreateDialogOpened,
+        admin_msg(CapabilityCreateDialogOpened),
       ),
     ),
     // Capabilities list
@@ -551,7 +557,7 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
       title: update_helpers.i18n_t(model, i18n_text.CreateCapability),
       icon: opt.None,
       size: dialog.DialogSm,
-      on_close: CapabilityCreateDialogClosed,
+      on_close: admin_msg(CapabilityCreateDialogClosed),
     ),
     model.capabilities_create_dialog_open,
     model.capabilities_create_error,
@@ -559,7 +565,7 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
     [
       form(
         [
-          event.on_submit(fn(_) { CapabilityCreateSubmitted }),
+          event.on_submit(fn(_) { admin_msg(CapabilityCreateSubmitted) }),
           attribute.id("capability-create-form"),
         ],
         [
@@ -568,7 +574,9 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
             input([
               attribute.type_("text"),
               attribute.value(model.capabilities_create_name),
-              event.on_input(CapabilityCreateNameChanged),
+              event.on_input(fn(value) {
+                admin_msg(CapabilityCreateNameChanged(value))
+              }),
               attribute.required(True),
               attribute.placeholder(update_helpers.i18n_t(
                 model,
@@ -582,7 +590,7 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
     ],
     // Footer buttons
     [
-      dialog.cancel_button(model, CapabilityCreateDialogClosed),
+      dialog.cancel_button(model, admin_msg(CapabilityCreateDialogClosed)),
       button(
         [
           attribute.type_("submit"),
@@ -625,7 +633,7 @@ fn view_capability_delete_dialog(model: Model) -> Element(Msg) {
       title: update_helpers.i18n_t(model, i18n_text.DeleteCapability),
       icon: opt.None,
       size: dialog.DialogSm,
-      on_close: CapabilityDeleteDialogClosed,
+      on_close: admin_msg(CapabilityDeleteDialogClosed),
     ),
     opt.is_some(model.capability_delete_dialog_id),
     model.capability_delete_error,
@@ -640,13 +648,13 @@ fn view_capability_delete_dialog(model: Model) -> Element(Msg) {
     ],
     // Footer buttons
     [
-      dialog.cancel_button(model, CapabilityDeleteDialogClosed),
+      dialog.cancel_button(model, admin_msg(CapabilityDeleteDialogClosed)),
       button(
         [
           attribute.type_("button"),
           attribute.class("btn btn-danger"),
           attribute.disabled(model.capability_delete_in_flight),
-          event.on_click(CapabilityDeleteSubmitted),
+          event.on_click(admin_msg(CapabilityDeleteSubmitted)),
         ],
         [
           text(case model.capability_delete_in_flight {
@@ -680,7 +688,11 @@ pub fn view_members(
           icons.Team,
           update_helpers.i18n_t(model, i18n_text.MembersTitle(project.name)),
           update_helpers.i18n_t(model, i18n_text.MembersHelp),
-          dialog.add_button(model, i18n_text.AddMember, MemberAddDialogOpened),
+          dialog.add_button(
+            model,
+            i18n_text.AddMember,
+            admin_msg(MemberAddDialogOpened),
+          ),
         ),
         // Members list
         case model.members_remove_error {
@@ -731,7 +743,7 @@ pub fn view_task_types(
           dialog.add_button(
             model,
             i18n_text.CreateTaskType,
-            OpenTaskTypeDialog(TaskTypeDialogCreate),
+            admin_msg(OpenTaskTypeDialog(TaskTypeDialogCreate)),
           ),
         ),
         // Task types list
@@ -804,13 +816,13 @@ fn task_type_to_property_json(task_type: TaskType, mode: String) -> json.Json {
 /// Decoder for type-created event.
 fn decode_task_type_created_event() -> decode.Decoder(Msg) {
   use task_type <- decode.field("detail", task_type_decoder())
-  decode.success(TaskTypeCrudCreated(task_type))
+  decode.success(admin_msg(TaskTypeCrudCreated(task_type)))
 }
 
 /// Decoder for type-updated event.
 fn decode_task_type_updated_event() -> decode.Decoder(Msg) {
   use task_type <- decode.field("detail", task_type_decoder())
-  decode.success(TaskTypeCrudUpdated(task_type))
+  decode.success(admin_msg(TaskTypeCrudUpdated(task_type)))
 }
 
 /// Decoder for type-deleted event.
@@ -819,12 +831,12 @@ fn decode_task_type_deleted_event() -> decode.Decoder(Msg) {
     "detail",
     decode.field("id", decode.int, decode.success),
   )
-  decode.success(TaskTypeCrudDeleted(id))
+  decode.success(admin_msg(TaskTypeCrudDeleted(id)))
 }
 
 /// Decoder for close-requested event.
 fn decode_task_type_close_event() -> decode.Decoder(Msg) {
-  decode.success(CloseTaskTypeDialog)
+  decode.success(admin_msg(CloseTaskTypeDialog))
 }
 
 /// Decoder for TaskType from JSON (used in custom events).
@@ -896,14 +908,14 @@ fn view_capabilities_list(
                   attribute.class("btn-icon btn-xs"),
                   attribute.attribute("title", t(i18n_text.ManageMembers)),
                   attribute.attribute("data-testid", "capability-members-btn"),
-                  event.on_click(CapabilityMembersDialogOpened(c.id)),
+                  event.on_click(admin_msg(CapabilityMembersDialogOpened(c.id))),
                 ],
                 [icons.nav_icon(icons.OrgUsers, icons.Small)],
               ),
               // Delete button (Story 4.9 AC9)
               action_buttons.delete_button_with_testid(
                 t(i18n_text.Delete),
-                CapabilityDeleteDialogOpened(c.id),
+                admin_msg(CapabilityDeleteDialogOpened(c.id)),
                 "capability-delete-btn",
               ),
             ])
@@ -1006,7 +1018,7 @@ fn view_member_actions(model: Model, m: ProjectMember) -> Element(Msg) {
           update_helpers.i18n_t(model, i18n_text.ManageCapabilities),
         ),
         attribute.attribute("data-testid", "member-capabilities-btn"),
-        event.on_click(MemberCapabilitiesDialogOpened(m.user_id)),
+        event.on_click(admin_msg(MemberCapabilitiesDialogOpened(m.user_id))),
       ],
       [icons.nav_icon(icons.Cog, icons.Small)],
     ),
@@ -1018,7 +1030,7 @@ fn view_member_actions(model: Model, m: ProjectMember) -> Element(Msg) {
           "title",
           update_helpers.i18n_t(model, i18n_text.Remove),
         ),
-        event.on_click(MemberRemoveClicked(m.user_id)),
+        event.on_click(admin_msg(MemberRemoveClicked(m.user_id))),
       ],
       [icons.nav_icon(icons.Trash, icons.Small)],
     ),
@@ -1042,7 +1054,7 @@ fn view_member_role_cell(
               "manager" -> Manager
               _ -> Member
             }
-            MemberRoleChangeRequested(member.user_id, new_role)
+            admin_msg(MemberRoleChangeRequested(member.user_id, new_role))
           }),
         ],
         [
@@ -1081,8 +1093,13 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
         input([
           attribute.type_("text"),
           attribute.value(model.org_users_search_query),
-          event.on_input(OrgUsersSearchChanged),
-          event.debounce(event.on_input(OrgUsersSearchDebounced), 350),
+          event.on_input(fn(value) { admin_msg(OrgUsersSearchChanged(value)) }),
+          event.debounce(
+            event.on_input(fn(value) {
+              admin_msg(OrgUsersSearchDebounced(value))
+            }),
+            350,
+          ),
           attribute.placeholder(update_helpers.i18n_t(
             model,
             i18n_text.EmailPlaceholderExample,
@@ -1095,7 +1112,7 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
         select(
           [
             attribute.value(project_role.to_string(model.members_add_role)),
-            event.on_input(MemberAddRoleChanged),
+            event.on_input(fn(value) { admin_msg(MemberAddRoleChanged(value)) }),
           ],
           [
             option(
@@ -1110,12 +1127,12 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
         ),
       ]),
       div([attribute.class("actions")], [
-        button([event.on_click(MemberAddDialogClosed)], [
+        button([event.on_click(admin_msg(MemberAddDialogClosed))], [
           text(update_helpers.i18n_t(model, i18n_text.Cancel)),
         ]),
         button(
           [
-            event.on_click(MemberAddSubmitted),
+            event.on_click(admin_msg(MemberAddSubmitted)),
             attribute.disabled(
               model.members_add_in_flight
               || model.members_add_selected_user == opt.None,
@@ -1189,9 +1206,14 @@ fn view_org_users_search_results(
                     td([], [text(u.org_role)]),
                     td([], [text(u.created_at)]),
                     td([], [
-                      button([event.on_click(MemberAddUserSelected(u.id))], [
-                        text(update_helpers.i18n_t(model, i18n_text.Select)),
-                      ]),
+                      button(
+                        [
+                          event.on_click(admin_msg(MemberAddUserSelected(u.id))),
+                        ],
+                        [
+                          text(update_helpers.i18n_t(model, i18n_text.Select)),
+                        ],
+                      ),
                     ]),
                   ]),
                 )
@@ -1221,12 +1243,12 @@ fn view_remove_member_dialog(
         opt.None -> element.none()
       },
       div([attribute.class("actions")], [
-        button([event.on_click(MemberRemoveCancelled)], [
+        button([event.on_click(admin_msg(MemberRemoveCancelled))], [
           text(update_helpers.i18n_t(model, i18n_text.Cancel)),
         ]),
         button(
           [
-            event.on_click(MemberRemoveConfirmed),
+            event.on_click(admin_msg(MemberRemoveConfirmed)),
             attribute.disabled(model.members_remove_in_flight),
           ],
           [
@@ -1313,7 +1335,7 @@ fn view_member_capabilities_dialog(
                         attribute.type_("checkbox"),
                         attribute.checked(is_selected),
                         event.on_check(fn(_) {
-                          MemberCapabilitiesToggled(cap.id)
+                          admin_msg(MemberCapabilitiesToggled(cap.id))
                         }),
                       ]),
                       span([attribute.class("capability-name")], [
@@ -1327,13 +1349,13 @@ fn view_member_capabilities_dialog(
       },
       // Actions
       div([attribute.class("actions")], [
-        button([event.on_click(MemberCapabilitiesDialogClosed)], [
+        button([event.on_click(admin_msg(MemberCapabilitiesDialogClosed))], [
           text(update_helpers.i18n_t(model, i18n_text.Cancel)),
         ]),
         button(
           [
             attribute.class("btn-primary"),
-            event.on_click(MemberCapabilitiesSaveClicked),
+            event.on_click(admin_msg(MemberCapabilitiesSaveClicked)),
             attribute.disabled(
               model.member_capabilities_saving
               || model.member_capabilities_loading,
@@ -1441,7 +1463,7 @@ fn view_capability_members_dialog(
                         attribute.type_("checkbox"),
                         attribute.checked(is_selected),
                         event.on_check(fn(_) {
-                          CapabilityMembersToggled(member.user_id)
+                          admin_msg(CapabilityMembersToggled(member.user_id))
                         }),
                       ]),
                       span([attribute.class("member-email")], [text(email)]),
@@ -1453,13 +1475,13 @@ fn view_capability_members_dialog(
       },
       // Actions
       div([attribute.class("actions")], [
-        button([event.on_click(CapabilityMembersDialogClosed)], [
+        button([event.on_click(admin_msg(CapabilityMembersDialogClosed))], [
           text(update_helpers.i18n_t(model, i18n_text.Cancel)),
         ]),
         button(
           [
             attribute.class("btn-primary"),
-            event.on_click(CapabilityMembersSaveClicked),
+            event.on_click(admin_msg(CapabilityMembersSaveClicked)),
             attribute.disabled(
               model.capability_members_saving
               || model.capability_members_loading,
@@ -1594,13 +1616,15 @@ fn view_task_types_list(
           fn(tt: TaskType) {
             action_buttons.edit_delete_row_with_testid(
               edit_title: update_helpers.i18n_t(model, i18n_text.EditTaskType),
-              edit_click: OpenTaskTypeDialog(TaskTypeDialogEdit(tt)),
+              edit_click: admin_msg(OpenTaskTypeDialog(TaskTypeDialogEdit(tt))),
               edit_testid: "task-type-edit-btn",
               delete_title: update_helpers.i18n_t(
                 model,
                 i18n_text.DeleteTaskType,
               ),
-              delete_click: OpenTaskTypeDialog(TaskTypeDialogDelete(tt)),
+              delete_click: admin_msg(
+                admin_msg(OpenTaskTypeDialog(TaskTypeDialogDelete(tt))),
+              ),
               delete_testid: "task-type-delete-btn",
             )
           },
@@ -1636,7 +1660,7 @@ pub fn view_cards(
           dialog.add_button(
             model,
             i18n_text.CreateCard,
-            OpenCardDialog(CardDialogCreate),
+            pool_msg(OpenCardDialog(CardDialogCreate)),
           ),
         ),
         // Story 4.9 AC7-8: Filters bar
@@ -1699,13 +1723,13 @@ pub fn view_card_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
 /// Decoder for card-created event.
 fn decode_card_created_event() -> decode.Decoder(Msg) {
   use card <- decode.field("detail", card_decoder())
-  decode.success(CardCrudCreated(card))
+  decode.success(pool_msg(CardCrudCreated(card)))
 }
 
 /// Decoder for card-updated event.
 fn decode_card_updated_event() -> decode.Decoder(Msg) {
   use card <- decode.field("detail", card_decoder())
-  decode.success(CardCrudUpdated(card))
+  decode.success(pool_msg(CardCrudUpdated(card)))
 }
 
 /// Decoder for card-deleted event.
@@ -1714,12 +1738,12 @@ fn decode_card_deleted_event() -> decode.Decoder(Msg) {
     "detail",
     decode.field("id", decode.int, decode.success),
   )
-  decode.success(CardCrudDeleted(id))
+  decode.success(pool_msg(CardCrudDeleted(id)))
 }
 
 /// Decoder for close-requested event.
 fn decode_close_requested_event() -> decode.Decoder(Msg) {
-  decode.success(CloseCardDialog)
+  decode.success(pool_msg(CloseCardDialog))
 }
 
 /// Decoder for Card from JSON (used in custom events).
@@ -1800,7 +1824,7 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
             i18n_text.SearchPlaceholder,
           )),
           attribute.value(model.cards_search),
-          event.on_input(CardsSearchChanged),
+          event.on_input(fn(value) { pool_msg(CardsSearchChanged(value)) }),
         ]),
       ]),
       // State filter dropdown (AC8)
@@ -1810,7 +1834,9 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
           [
             attribute.class("filter-select"),
             attribute.attribute("data-testid", "cards-state-filter"),
-            event.on_input(CardsStateFilterChanged),
+            event.on_input(fn(value) {
+              pool_msg(CardsStateFilterChanged(value))
+            }),
           ],
           [
             option(
@@ -1857,7 +1883,7 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
             attribute.type_("checkbox"),
             attribute.checked(model.cards_show_empty),
             attribute.attribute("data-testid", "show-empty-cards"),
-            event.on_check(fn(_) { CardsShowEmptyToggled }),
+            event.on_check(fn(_) { pool_msg(CardsShowEmptyToggled) }),
           ]),
           text(update_helpers.i18n_t(model, i18n_text.ShowEmptyCards)),
         ]),
@@ -1869,7 +1895,7 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
             attribute.type_("checkbox"),
             attribute.checked(model.cards_show_completed),
             attribute.attribute("data-testid", "show-completed-cards"),
-            event.on_check(fn(_) { CardsShowCompletedToggled }),
+            event.on_check(fn(_) { pool_msg(CardsShowCompletedToggled) }),
           ]),
           text(update_helpers.i18n_t(model, i18n_text.ShowCompletedCards)),
         ]),
@@ -1980,10 +2006,10 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
           fn(c: Card) {
             action_buttons.edit_delete_row_with_testid(
               edit_title: update_helpers.i18n_t(model, i18n_text.EditCard),
-              edit_click: OpenCardDialog(CardDialogEdit(c.id)),
+              edit_click: pool_msg(OpenCardDialog(CardDialogEdit(c.id))),
               edit_testid: "card-edit-btn",
               delete_title: update_helpers.i18n_t(model, i18n_text.DeleteCard),
-              delete_click: OpenCardDialog(CardDialogDelete(c.id)),
+              delete_click: pool_msg(OpenCardDialog(CardDialogDelete(c.id))),
               delete_testid: "card-delete-btn",
             )
           },
@@ -2077,7 +2103,7 @@ fn view_workflows_list(
           dialog.add_button(
             model,
             i18n_text.CreateWorkflow,
-            OpenWorkflowDialog(WorkflowDialogCreate),
+            pool_msg(OpenWorkflowDialog(WorkflowDialogCreate)),
           ),
         ),
         // Story 4.9 AC21: Contextual hint with link to Templates
@@ -2196,13 +2222,13 @@ fn workflow_to_property_json(workflow: Workflow, mode: String) -> json.Json {
 /// Decoder for workflow-created event.
 fn decode_workflow_created_event() -> decode.Decoder(Msg) {
   use workflow <- decode.field("detail", workflow_decoder())
-  decode.success(WorkflowCrudCreated(workflow))
+  decode.success(pool_msg(WorkflowCrudCreated(workflow)))
 }
 
 /// Decoder for workflow-updated event.
 fn decode_workflow_updated_event() -> decode.Decoder(Msg) {
   use workflow <- decode.field("detail", workflow_decoder())
-  decode.success(WorkflowCrudUpdated(workflow))
+  decode.success(pool_msg(WorkflowCrudUpdated(workflow)))
 }
 
 /// Decoder for workflow-deleted event.
@@ -2211,7 +2237,7 @@ fn decode_workflow_deleted_event() -> decode.Decoder(Msg) {
     "detail",
     decode.field("id", decode.int, decode.success),
   )
-  decode.success(WorkflowCrudDeleted(id))
+  decode.success(pool_msg(WorkflowCrudDeleted(id)))
 }
 
 /// Decoder for Workflow from JSON (used in custom events).
@@ -2240,7 +2266,7 @@ fn workflow_decoder() -> decode.Decoder(Workflow) {
 
 /// Decoder for close-requested event from workflow dialog.
 fn decode_workflow_close_requested_event() -> decode.Decoder(Msg) {
-  decode.success(CloseWorkflowDialog)
+  decode.success(pool_msg(CloseWorkflowDialog))
 }
 
 fn view_workflows_table(
@@ -2293,19 +2319,19 @@ fn view_workflow_actions(model: Model, w: Workflow) -> Element(Msg) {
       [
         attribute.class("btn-icon btn-xs"),
         attribute.attribute("title", t(i18n_text.WorkflowRules)),
-        event.on_click(WorkflowRulesClicked(w.id)),
+        event.on_click(pool_msg(WorkflowRulesClicked(w.id))),
       ],
       [icons.nav_icon(icons.Cog, icons.Small)],
     ),
     // Edit button
     action_buttons.edit_button(
       t(i18n_text.EditWorkflow),
-      OpenWorkflowDialog(WorkflowDialogEdit(w)),
+      pool_msg(OpenWorkflowDialog(WorkflowDialogEdit(w))),
     ),
     // Delete button
     action_buttons.delete_button(
       t(i18n_text.DeleteWorkflow),
-      OpenWorkflowDialog(WorkflowDialogDelete(w)),
+      pool_msg(OpenWorkflowDialog(WorkflowDialogDelete(w))),
     ),
   ])
 }
@@ -2324,7 +2350,9 @@ fn view_workflow_rules(model: Model, workflow_id: Int) -> Element(Msg) {
     |> opt.unwrap("Workflow #" <> int.to_string(workflow_id))
 
   div([attribute.class("section")], [
-    button([event.on_click(RulesBackClicked)], [text("← Back to Workflows")]),
+    button([event.on_click(pool_msg(RulesBackClicked))], [
+      text("← Back to Workflows"),
+    ]),
     // Section header with add button (Story 4.8: consistent icons)
     section_header.view_with_action(
       icons.Rules,
@@ -2332,7 +2360,7 @@ fn view_workflow_rules(model: Model, workflow_id: Int) -> Element(Msg) {
       dialog.add_button(
         model,
         i18n_text.CreateRule,
-        OpenRuleDialog(RuleDialogCreate),
+        pool_msg(OpenRuleDialog(RuleDialogCreate)),
       ),
     ),
     view_rules_table(model, model.rules, model.rules_metrics),
@@ -2441,7 +2469,7 @@ fn view_rule_row_expandable(
           False -> "false"
         }),
         // AC2: Click anywhere on the row to expand/collapse
-        event.on_click(RuleExpandToggled(rule.id)),
+        event.on_click(pool_msg(RuleExpandToggled(rule.id))),
       ],
       [
         // Expand/collapse icon (AC1: visual indicator) - use triangles for consistency
@@ -2544,9 +2572,9 @@ fn view_rule_row_expandable(
         td([attribute.class("cell-actions cell-no-expand")], [
           action_buttons.edit_delete_row(
             edit_title: t(i18n_text.EditRule),
-            edit_click: OpenRuleDialog(RuleDialogEdit(rule)),
+            edit_click: pool_msg(OpenRuleDialog(RuleDialogEdit(rule))),
             delete_title: t(i18n_text.DeleteRule),
-            delete_click: OpenRuleDialog(RuleDialogDelete(rule)),
+            delete_click: pool_msg(OpenRuleDialog(RuleDialogDelete(rule))),
           ),
         ]),
       ],
@@ -2576,7 +2604,7 @@ fn view_rule_templates_expansion(
           [
             attribute.class("btn btn-sm btn-primary"),
             // Stop propagation to prevent any parent click handlers from interfering
-            event.on_click(AttachTemplateModalOpened(rule.id))
+            event.on_click(pool_msg(AttachTemplateModalOpened(rule.id)))
               |> event.stop_propagation,
           ],
           [
@@ -2662,7 +2690,7 @@ fn view_attached_template_item(
         False ->
           action_buttons.delete_button(
             t(i18n_text.RemoveTemplate),
-            TemplateDetachClicked(rule_id, tmpl.id),
+            pool_msg(TemplateDetachClicked(rule_id, tmpl.id)),
           )
       },
     ]),
@@ -2716,7 +2744,7 @@ fn view_attach_template_modal(model: Model) -> Element(Msg) {
             button(
               [
                 attribute.class("btn-close"),
-                event.on_click(AttachTemplateModalClosed),
+                event.on_click(pool_msg(AttachTemplateModalClosed)),
               ],
               [icons.nav_icon(icons.Close, icons.Small)],
             ),
@@ -2765,7 +2793,7 @@ fn view_attach_template_modal(model: Model) -> Element(Msg) {
             button(
               [
                 attribute.class("btn btn-secondary"),
-                event.on_click(AttachTemplateModalClosed),
+                event.on_click(pool_msg(AttachTemplateModalClosed)),
               ],
               [text(t(i18n_text.Cancel))],
             ),
@@ -2786,7 +2814,7 @@ fn view_attach_template_modal(model: Model) -> Element(Msg) {
                     attribute.disabled(opt.is_none(
                       model.attach_template_selected,
                     )),
-                    event.on_click(AttachTemplateSubmitted),
+                    event.on_click(pool_msg(AttachTemplateSubmitted)),
                   ],
                   [text(t(i18n_text.Attach))],
                 )
@@ -2821,7 +2849,7 @@ fn view_template_radio_option(model: Model, tmpl: TaskTemplate) -> Element(Msg) 
         },
       ),
       // Put click handler on the whole div so clicking label works
-      event.on_click(AttachTemplateSelected(tmpl.id)),
+      event.on_click(pool_msg(AttachTemplateSelected(tmpl.id))),
     ],
     [
       input([
@@ -2909,10 +2937,19 @@ fn view_rule_crud_dialog(model: Model, workflow_id: Int) -> Element(Msg) {
       rule_prop,
       attribute.property("task-types", task_types_json),
       // Event handlers
-      event.on("rule-created", decode_rule_event(RuleCrudCreated)),
-      event.on("rule-updated", decode_rule_event(RuleCrudUpdated)),
-      event.on("rule-deleted", decode_rule_id_event(RuleCrudDeleted)),
-      event.on("close-requested", decode_close_event(CloseRuleDialog)),
+      event.on(
+        "rule-created",
+        decode_rule_event(fn(rule) { pool_msg(RuleCrudCreated(rule)) }),
+      ),
+      event.on(
+        "rule-updated",
+        decode_rule_event(fn(rule) { pool_msg(RuleCrudUpdated(rule)) }),
+      ),
+      event.on(
+        "rule-deleted",
+        decode_rule_id_event(fn(rule_id) { pool_msg(RuleCrudDeleted(rule_id)) }),
+      ),
+      event.on("close-requested", decode_close_event(pool_msg(CloseRuleDialog))),
     ],
     [],
   )
@@ -3008,7 +3045,7 @@ pub fn view_task_templates(
       dialog.add_button(
         model,
         i18n_text.CreateTaskTemplate,
-        OpenTaskTemplateDialog(TaskTemplateDialogCreate),
+        pool_msg(OpenTaskTemplateDialog(TaskTemplateDialogCreate)),
       ),
     ),
     // Story 4.9: Unified hint with rules link and variables info
@@ -3167,13 +3204,13 @@ fn task_types_to_property_json(task_types: Remote(List(TaskType))) -> json.Json 
 /// Decoder for task-template-created event.
 fn decode_task_template_created_event() -> decode.Decoder(Msg) {
   use template <- decode.field("detail", task_template_decoder())
-  decode.success(TaskTemplateCrudCreated(template))
+  decode.success(pool_msg(TaskTemplateCrudCreated(template)))
 }
 
 /// Decoder for task-template-updated event.
 fn decode_task_template_updated_event() -> decode.Decoder(Msg) {
   use template <- decode.field("detail", task_template_decoder())
-  decode.success(TaskTemplateCrudUpdated(template))
+  decode.success(pool_msg(TaskTemplateCrudUpdated(template)))
 }
 
 /// Decoder for task-template-deleted event.
@@ -3182,12 +3219,12 @@ fn decode_task_template_deleted_event() -> decode.Decoder(Msg) {
     "detail",
     decode.field("id", decode.int, decode.success),
   )
-  decode.success(TaskTemplateCrudDeleted(id))
+  decode.success(pool_msg(TaskTemplateCrudDeleted(id)))
 }
 
 /// Decoder for close-requested event from task template component.
 fn decode_task_template_close_requested_event() -> decode.Decoder(Msg) {
-  decode.success(CloseTaskTemplateDialog)
+  decode.success(pool_msg(CloseTaskTemplateDialog))
 }
 
 /// Decoder for TaskTemplate from JSON (used in custom events).
@@ -3257,12 +3294,14 @@ fn view_task_templates_table(
           fn(tmpl: TaskTemplate) {
             action_buttons.edit_delete_row_with_testid(
               edit_title: t(i18n_text.EditTaskTemplate),
-              edit_click: OpenTaskTemplateDialog(TaskTemplateDialogEdit(tmpl)),
+              edit_click: pool_msg(
+                OpenTaskTemplateDialog(TaskTemplateDialogEdit(tmpl)),
+              ),
               edit_testid: "template-edit-btn",
               delete_title: t(i18n_text.Delete),
-              delete_click: OpenTaskTemplateDialog(TaskTemplateDialogDelete(
-                tmpl,
-              )),
+              delete_click: pool_msg(
+                OpenTaskTemplateDialog(TaskTemplateDialogDelete(tmpl)),
+              ),
               delete_testid: "template-delete-btn",
             )
           },
@@ -3315,7 +3354,9 @@ pub fn view_rule_metrics(model: Model) -> Element(Msg) {
             attribute.type_("date"),
             attribute.value(model.admin_rule_metrics_from),
             // Auto-refresh on date change
-            event.on_input(AdminRuleMetricsFromChangedAndRefresh),
+            event.on_input(fn(value) {
+              pool_msg(AdminRuleMetricsFromChangedAndRefresh(value))
+            }),
             attribute.attribute("aria-label", t(i18n_text.RuleMetricsFrom)),
           ]),
         ]),
@@ -3327,7 +3368,9 @@ pub fn view_rule_metrics(model: Model) -> Element(Msg) {
             attribute.type_("date"),
             attribute.value(model.admin_rule_metrics_to),
             // Auto-refresh on date change
-            event.on_input(AdminRuleMetricsToChangedAndRefresh),
+            event.on_input(fn(value) {
+              pool_msg(AdminRuleMetricsToChangedAndRefresh(value))
+            }),
             attribute.attribute("aria-label", t(i18n_text.RuleMetricsTo)),
           ]),
         ]),
@@ -3369,7 +3412,7 @@ fn view_quick_range_button(
   button(
     [
       attribute.class(class),
-      event.on_click(AdminRuleMetricsQuickRangeClicked(from, today)),
+      event.on_click(pool_msg(AdminRuleMetricsQuickRangeClicked(from, today))),
       attribute.attribute("aria-pressed", case is_active {
         True -> "true"
         False -> "false"
@@ -3527,7 +3570,9 @@ fn view_workflow_row(
     tr(
       [
         attribute.class("workflow-row clickable"),
-        event.on_click(AdminRuleMetricsWorkflowExpanded(w.workflow_id)),
+        event.on_click(
+          pool_msg(AdminRuleMetricsWorkflowExpanded(w.workflow_id)),
+        ),
       ],
       [
         td([attribute.class("expand-col")], [text(expand_icon)]),
@@ -3621,9 +3666,9 @@ fn view_workflow_rules_expansion(
                       button(
                         [
                           attribute.class("btn-small"),
-                          event.on_click(AdminRuleMetricsDrilldownClicked(
-                            r.rule_id,
-                          )),
+                          event.on_click(
+                            pool_msg(AdminRuleMetricsDrilldownClicked(r.rule_id)),
+                          ),
                         ],
                         [
                           text(update_helpers.i18n_t(
@@ -3665,7 +3710,7 @@ fn view_rule_drilldown_modal(model: Model) -> Element(Msg) {
             button(
               [
                 attribute.class("btn-close"),
-                event.on_click(AdminRuleMetricsDrilldownClosed),
+                event.on_click(pool_msg(AdminRuleMetricsDrilldownClosed)),
               ],
               [text("X")],
             ),
@@ -3878,7 +3923,7 @@ fn view_executions_pagination(
           [
             attribute.class("btn-small"),
             attribute.disabled(pagination.offset == 0),
-            event.on_click(AdminRuleMetricsExecPageChanged(0)),
+            event.on_click(pool_msg(AdminRuleMetricsExecPageChanged(0))),
           ],
           [text("<<")],
         ),
@@ -3887,10 +3932,12 @@ fn view_executions_pagination(
             attribute.class("btn-small"),
             attribute.disabled(pagination.offset == 0),
             event.on_click(
-              AdminRuleMetricsExecPageChanged(int.max(
-                0,
-                pagination.offset - pagination.limit,
-              )),
+              pool_msg(
+                AdminRuleMetricsExecPageChanged(int.max(
+                  0,
+                  pagination.offset - pagination.limit,
+                )),
+              ),
             ),
           ],
           [text("<")],
@@ -3906,9 +3953,11 @@ fn view_executions_pagination(
             attribute.disabled(
               pagination.offset + pagination.limit >= pagination.total,
             ),
-            event.on_click(AdminRuleMetricsExecPageChanged(
-              pagination.offset + pagination.limit,
-            )),
+            event.on_click(
+              pool_msg(AdminRuleMetricsExecPageChanged(
+                pagination.offset + pagination.limit,
+              )),
+            ),
           ],
           [text(">")],
         ),
@@ -3918,9 +3967,11 @@ fn view_executions_pagination(
             attribute.disabled(
               pagination.offset + pagination.limit >= pagination.total,
             ),
-            event.on_click(AdminRuleMetricsExecPageChanged(
-              { total_pages - 1 } * pagination.limit,
-            )),
+            event.on_click(
+              pool_msg(AdminRuleMetricsExecPageChanged(
+                { total_pages - 1 } * pagination.limit,
+              )),
+            ),
           ],
           [text(">>")],
         ),

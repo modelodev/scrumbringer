@@ -34,8 +34,8 @@ import domain/task.{type WorkSession, Task, WorkSession}
 
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg,
-  MemberCompleteClicked, MemberNowWorkingPauseClicked,
+  type Model, type Msg, MemberCompleteClicked, MemberNowWorkingPauseClicked,
+  pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/icons
@@ -100,9 +100,7 @@ pub fn view(model: Model) -> Element(Msg) {
           [
             div(
               [attribute.class("now-working-sessions")],
-              list.map(sessions, fn(session) {
-                view_session(model, session)
-              }),
+              list.map(sessions, fn(session) { view_session(model, session) }),
             ),
             error_el,
           ],
@@ -137,7 +135,7 @@ fn view_session(model: Model, session: WorkSession) -> Element(Msg) {
             "title",
             update_helpers.i18n_t(model, i18n_text.Pause),
           ),
-          event.on_click(MemberNowWorkingPauseClicked),
+          event.on_click(pool_msg(MemberNowWorkingPauseClicked)),
         ],
         [icons.nav_icon(icons.Pause, icons.Small)],
       ),
@@ -151,7 +149,7 @@ fn view_session(model: Model, session: WorkSession) -> Element(Msg) {
                 "title",
                 update_helpers.i18n_t(model, i18n_text.Complete),
               ),
-              event.on_click(MemberCompleteClicked(task_id, version)),
+              event.on_click(pool_msg(MemberCompleteClicked(task_id, version))),
             ],
             [icons.nav_icon(icons.Check, icons.Small)],
           ),

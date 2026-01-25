@@ -30,7 +30,7 @@ import domain/api_error.{type ApiError}
 import domain/org.{type OrgUser}
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, Loading, Login, Model, NotAsked,
-  OrgUsersSearchResults,
+  OrgUsersSearchResults, admin_msg,
 }
 
 // API modules
@@ -55,10 +55,7 @@ pub fn handle_org_users_search_debounced(
   query: String,
 ) -> #(Model, Effect(Msg)) {
   case string.trim(query) == "" {
-    True -> #(
-      Model(..model, org_users_search_results: NotAsked),
-      effect.none(),
-    )
+    True -> #(Model(..model, org_users_search_results: NotAsked), effect.none())
     False -> {
       // Generate new token for this request
       let token = model.org_users_search_token + 1
@@ -69,9 +66,12 @@ pub fn handle_org_users_search_debounced(
           org_users_search_token: token,
         )
       // Pass token to API call so it's included in the response message
-      #(model, api_org.list_org_users(query, fn(result) {
-        OrgUsersSearchResults(token, result)
-      }))
+      #(
+        model,
+        api_org.list_org_users(query, fn(result) {
+          admin_msg(OrgUsersSearchResults(token, result))
+        }),
+      )
     }
   }
 }
@@ -89,7 +89,10 @@ pub fn handle_org_users_search_results_ok(
 ) -> #(Model, Effect(Msg)) {
   // Ignore stale results (token doesn't match current expected token)
   case token == model.org_users_search_token {
-    True -> #(Model(..model, org_users_search_results: Loaded(users)), effect.none())
+    True -> #(
+      Model(..model, org_users_search_results: Loaded(users)),
+      effect.none(),
+    )
     False -> #(model, effect.none())
   }
 }

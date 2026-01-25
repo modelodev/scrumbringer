@@ -29,12 +29,13 @@ import lustre/effect.{type Effect}
 // API modules
 import scrumbringer_client/api/org as api_org
 import scrumbringer_client/api/projects as api_projects
+
 // Domain types
 import domain/api_error.{type ApiError}
 import domain/capability.{type Capability}
 import scrumbringer_client/client_state.{
   type Model, type Msg, CapabilityCreated, CapabilityMembersFetched, Failed,
-  Loaded, Model,
+  Loaded, Model, admin_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -54,11 +55,9 @@ pub fn handle_capabilities_fetched_ok(
     opt.Some(project_id) ->
       capabilities
       |> list.map(fn(c) {
-        api_projects.get_capability_members(
-          project_id,
-          c.id,
-          CapabilityMembersFetched,
-        )
+        api_projects.get_capability_members(project_id, c.id, fn(result) {
+          admin_msg(CapabilityMembersFetched(result))
+        })
       })
       |> effect.batch
     opt.None -> effect.none()
@@ -140,7 +139,9 @@ pub fn handle_capability_create_submitted(model: Model) -> #(Model, Effect(Msg))
             )
           #(
             model,
-            api_org.create_project_capability(project_id, name, CapabilityCreated),
+            api_org.create_project_capability(project_id, name, fn(result) {
+              admin_msg(CapabilityCreated(result))
+            }),
           )
         }
       }
@@ -165,10 +166,7 @@ pub fn handle_capability_created_ok(
       capabilities_create_dialog_open: False,
       capabilities_create_in_flight: False,
       capabilities_create_name: "",
-      toast: opt.Some(update_helpers.i18n_t(
-        model,
-        i18n_text.CapabilityCreated,
-      )),
+      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.CapabilityCreated)),
     ),
     effect.none(),
   )
@@ -225,7 +223,9 @@ pub fn handle_capability_delete_dialog_opened(
 }
 
 /// Handle capability delete dialog close.
-pub fn handle_capability_delete_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
+pub fn handle_capability_delete_dialog_closed(
+  model: Model,
+) -> #(Model, Effect(Msg)) {
   #(
     Model(
       ..model,
@@ -239,19 +239,26 @@ pub fn handle_capability_delete_dialog_closed(model: Model) -> #(Model, Effect(M
 
 /// Handle capability delete form submission.
 pub fn handle_capability_delete_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.capability_delete_in_flight, model.capability_delete_dialog_id, model.selected_project_id {
+  case
+    model.capability_delete_in_flight,
+    model.capability_delete_dialog_id,
+    model.selected_project_id
+  {
     True, _, _ -> #(model, effect.none())
     _, opt.None, _ -> #(model, effect.none())
     _, _, opt.None -> #(model, effect.none())
     False, opt.Some(capability_id), opt.Some(project_id) -> {
-      let model = Model(..model, capability_delete_in_flight: True, capability_delete_error: opt.None)
+      let model =
+        Model(
+          ..model,
+          capability_delete_in_flight: True,
+          capability_delete_error: opt.None,
+        )
       #(
         model,
-        api_org.delete_project_capability(
-          project_id,
-          capability_id,
-          client_state.CapabilityDeleted,
-        ),
+        api_org.delete_project_capability(project_id, capability_id, fn(result) {
+          admin_msg(client_state.CapabilityDeleted(result))
+        }),
       )
     }
   }

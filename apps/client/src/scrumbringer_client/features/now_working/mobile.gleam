@@ -31,10 +31,9 @@ import domain/task_status.{Claimed, Taken}
 
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Loaded,
-  MemberCompleteClicked, MemberNowWorkingPauseClicked,
-  MemberNowWorkingStartClicked, MemberPanelToggled,
-  MemberReleaseClicked,
+  type Model, type Msg, Loaded, MemberCompleteClicked,
+  MemberNowWorkingPauseClicked, MemberNowWorkingStartClicked, MemberPanelToggled,
+  MemberReleaseClicked, pool_msg,
 }
 import scrumbringer_client/features/admin/view as admin_view
 import scrumbringer_client/i18n/text as i18n_text
@@ -60,7 +59,7 @@ pub fn view_mini_bar(model: Model) -> Element(Msg) {
   div(
     [
       attribute.class("member-mini-bar"),
-      event.on_click(MemberPanelToggled),
+      event.on_click(pool_msg(MemberPanelToggled)),
     ],
     [
       span([attribute.class("member-mini-bar-expand")], [text(expand_icon)]),
@@ -105,7 +104,7 @@ pub fn view_panel_sheet(model: Model, user_id: Int) -> Element(Msg) {
     div(
       [
         attribute.class("member-panel-sheet-handle"),
-        event.on_click(MemberPanelToggled),
+        event.on_click(pool_msg(MemberPanelToggled)),
       ],
       [],
     ),
@@ -161,7 +160,7 @@ pub fn view_overlay(model: Model) -> Element(Msg) {
       div(
         [
           attribute.class("member-panel-overlay visible"),
-          event.on_click(MemberPanelToggled),
+          event.on_click(pool_msg(MemberPanelToggled)),
         ],
         [],
       )
@@ -176,8 +175,13 @@ pub fn view_overlay(model: Model) -> Element(Msg) {
 /// Row for an active work session (NOW WORKING section).
 /// Actions: Pause, Complete
 fn view_session_row(model: Model, session: SessionInfo) -> Element(Msg) {
-  let SessionInfo(task_id: task_id, title: title, icon: icon, elapsed: elapsed, version: version) =
-    session
+  let SessionInfo(
+    task_id: task_id,
+    title: title,
+    icon: icon,
+    elapsed: elapsed,
+    version: version,
+  ) = session
   let disable_actions =
     model.member_task_mutation_in_flight || model.member_now_working_in_flight
 
@@ -196,7 +200,7 @@ fn view_session_row(model: Model, session: SessionInfo) -> Element(Msg) {
             update_helpers.i18n_t(model, i18n_text.Pause),
           ),
           attribute.disabled(disable_actions),
-          event.on_click(MemberNowWorkingPauseClicked),
+          event.on_click(pool_msg(MemberNowWorkingPauseClicked)),
         ],
         [icons.nav_icon(icons.Pause, icons.Small)],
       ),
@@ -208,7 +212,7 @@ fn view_session_row(model: Model, session: SessionInfo) -> Element(Msg) {
             update_helpers.i18n_t(model, i18n_text.Complete),
           ),
           attribute.disabled(disable_actions),
-          event.on_click(MemberCompleteClicked(task_id, version)),
+          event.on_click(pool_msg(MemberCompleteClicked(task_id, version))),
         ],
         [icons.nav_icon(icons.Check, icons.Small)],
       ),
@@ -238,7 +242,7 @@ fn view_claimed_row(model: Model, task: Task) -> Element(Msg) {
             update_helpers.i18n_t(model, i18n_text.Start),
           ),
           attribute.disabled(disable_actions),
-          event.on_click(MemberNowWorkingStartClicked(id)),
+          event.on_click(pool_msg(MemberNowWorkingStartClicked(id))),
         ],
         [icons.nav_icon(icons.Play, icons.Small)],
       ),
@@ -250,7 +254,7 @@ fn view_claimed_row(model: Model, task: Task) -> Element(Msg) {
             update_helpers.i18n_t(model, i18n_text.Release),
           ),
           attribute.disabled(disable_actions),
-          event.on_click(MemberReleaseClicked(id, version)),
+          event.on_click(pool_msg(MemberReleaseClicked(id, version))),
         ],
         [icons.nav_icon(icons.Return, icons.Small)],
       ),
@@ -277,10 +281,20 @@ type SessionInfo {
 fn get_active_sessions(model: Model) -> List(SessionInfo) {
   case update_helpers.now_working_active_task(model) {
     opt.None -> []
-    opt.Some(ActiveTask(task_id: task_id, started_at: started_at, accumulated_s: accumulated_s, ..)) -> {
-      let task_info = update_helpers.find_task_by_id(model.member_tasks, task_id)
+    opt.Some(ActiveTask(
+      task_id: task_id,
+      started_at: started_at,
+      accumulated_s: accumulated_s,
+      ..,
+    )) -> {
+      let task_info =
+        update_helpers.find_task_by_id(model.member_tasks, task_id)
       let #(title, icon, version) = case task_info {
-        opt.Some(Task(title: t, task_type: tt, version: v, ..)) -> #(t, tt.icon, v)
+        opt.Some(Task(title: t, task_type: tt, version: v, ..)) -> #(
+          t,
+          tt.icon,
+          v,
+        )
         opt.None -> #(
           update_helpers.i18n_t(model, i18n_text.TaskNumber(task_id)),
           "",
@@ -338,9 +352,17 @@ fn aggregate_session_time(_model: Model, sessions: List(SessionInfo)) -> String 
 }
 
 /// Calculate elapsed time string for a session.
-fn calculate_elapsed(model: Model, started_at: String, accumulated_s: Int) -> String {
+fn calculate_elapsed(
+  model: Model,
+  started_at: String,
+  accumulated_s: Int,
+) -> String {
   let started_ms = client_ffi.parse_iso_ms(started_at)
   let local_now_ms = client_ffi.now_ms()
   let server_now_ms = local_now_ms - model.now_working_server_offset_ms
-  update_helpers.now_working_elapsed_from_ms(accumulated_s, started_ms, server_now_ms)
+  update_helpers.now_working_elapsed_from_ms(
+    accumulated_s,
+    started_ms,
+    server_now_ms,
+  )
 }

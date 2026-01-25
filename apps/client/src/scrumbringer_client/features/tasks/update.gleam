@@ -46,6 +46,7 @@ import lustre/effect.{type Effect}
 
 // API modules
 import scrumbringer_client/api/tasks as api_tasks
+
 // Domain types
 import domain/api_error.{type ApiError}
 import domain/task.{type Task, type TaskNote, Task}
@@ -53,7 +54,7 @@ import domain/task_status.{Available, Claimed, Completed, Taken}
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, Loading, MemberNoteAdded,
   MemberNotesFetched, MemberTaskClaimed, MemberTaskCompleted, MemberTaskCreated,
-  MemberTaskReleased, MemberWorkSessionsFetched, Model, NotAsked,
+  MemberTaskReleased, MemberWorkSessionsFetched, Model, NotAsked, pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -264,7 +265,7 @@ fn submit_create(
       description,
       priority,
       type_id,
-      MemberTaskCreated,
+      fn(result) { pool_msg(MemberTaskCreated(result)) },
     ),
   )
 }
@@ -336,7 +337,12 @@ pub fn handle_claim_clicked(
           member_task_mutation_task_id: opt.Some(task_id),
           member_tasks_snapshot: snapshot,
         )
-      #(model, api_tasks.claim_task(task_id, version, MemberTaskClaimed))
+      #(
+        model,
+        api_tasks.claim_task(task_id, version, fn(result) {
+          pool_msg(MemberTaskClaimed(result))
+        }),
+      )
     }
   }
 }
@@ -363,7 +369,12 @@ pub fn handle_release_clicked(
           member_task_mutation_task_id: opt.Some(task_id),
           member_tasks_snapshot: snapshot,
         )
-      #(model, api_tasks.release_task(task_id, version, MemberTaskReleased))
+      #(
+        model,
+        api_tasks.release_task(task_id, version, fn(result) {
+          pool_msg(MemberTaskReleased(result))
+        }),
+      )
     }
   }
 }
@@ -390,7 +401,12 @@ pub fn handle_complete_clicked(
           member_task_mutation_task_id: opt.Some(task_id),
           member_tasks_snapshot: snapshot,
         )
-      #(model, api_tasks.complete_task(task_id, version, MemberTaskCompleted))
+      #(
+        model,
+        api_tasks.complete_task(task_id, version, fn(result) {
+          pool_msg(MemberTaskCompleted(result))
+        }),
+      )
     }
   }
 }
@@ -515,7 +531,15 @@ pub fn handle_task_released_ok(
     )
 
   let #(model, fx) = member_refresh(model)
-  #(model, effect.batch([fx, api_tasks.get_work_sessions(MemberWorkSessionsFetched)]))
+  #(
+    model,
+    effect.batch([
+      fx,
+      api_tasks.get_work_sessions(fn(result) {
+        pool_msg(MemberWorkSessionsFetched(result))
+      }),
+    ]),
+  )
 }
 
 /// Handle successful task completion.
@@ -532,7 +556,15 @@ pub fn handle_task_completed_ok(
     )
 
   let #(model, fx) = member_refresh(model)
-  #(model, effect.batch([fx, api_tasks.get_work_sessions(MemberWorkSessionsFetched)]))
+  #(
+    model,
+    effect.batch([
+      fx,
+      api_tasks.get_work_sessions(fn(result) {
+        pool_msg(MemberWorkSessionsFetched(result))
+      }),
+    ]),
+  )
 }
 
 /// Handle task mutation error (claim/release/complete).
@@ -551,7 +583,10 @@ pub fn handle_mutation_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     404 -> #(
-      Model(..model, toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskNotFound))),
+      Model(
+        ..model,
+        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskNotFound)),
+      ),
       effect.none(),
     )
     409 -> {
@@ -597,7 +632,9 @@ pub fn handle_task_details_opened(
       member_notes: Loading,
       member_note_error: opt.None,
     ),
-    api_tasks.list_task_notes(task_id, MemberNotesFetched),
+    api_tasks.list_task_notes(task_id, fn(result) {
+      pool_msg(MemberNotesFetched(result))
+    }),
   )
 }
 
@@ -669,7 +706,12 @@ pub fn handle_note_submitted(model: Model) -> #(Model, Effect(Msg)) {
                   member_note_in_flight: True,
                   member_note_error: opt.None,
                 )
-              #(model, api_tasks.add_task_note(task_id, content, MemberNoteAdded))
+              #(
+                model,
+                api_tasks.add_task_note(task_id, content, fn(result) {
+                  pool_msg(MemberNoteAdded(result))
+                }),
+              )
             }
           }
         }
@@ -717,11 +759,12 @@ pub fn handle_note_added_error(
       case model.member_notes_task_id {
         opt.Some(task_id) -> #(
           model,
-          api_tasks.list_task_notes(task_id, MemberNotesFetched),
+          api_tasks.list_task_notes(task_id, fn(result) {
+            pool_msg(MemberNotesFetched(result))
+          }),
         )
         opt.None -> #(model, effect.none())
       }
     }
   }
 }
-

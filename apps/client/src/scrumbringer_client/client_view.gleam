@@ -56,7 +56,8 @@ import scrumbringer_client/client_state.{
   MobileLeftDrawerToggled, MobileRightDrawerToggled, NavigateTo, NoOp,
   OpenCardDetail, OpenCardDialog, PreferencesPopupToggled, ProjectSelected, Push,
   ResetPassword as ResetPasswordPage, SidebarConfigToggled, SidebarOrgToggled,
-  ThemeSelected, ToastDismiss, ToastDismissed, ViewModeChanged,
+  ThemeSelected, ToastDismiss, ToastDismissed, ViewModeChanged, auth_msg,
+  pool_msg,
 }
 
 // Story 4.8 UX: Collapse/expand card groups in Lista view
@@ -354,7 +355,7 @@ fn view_mobile_topbar(model: Model, _user: User) -> Element(Msg) {
         attribute.class("mobile-menu-btn"),
         attribute.attribute("data-testid", "mobile-menu-btn"),
         attribute.attribute("aria-label", "Open navigation menu"),
-        event.on_click(MobileLeftDrawerToggled),
+        event.on_click(pool_msg(MobileLeftDrawerToggled)),
       ],
       [icons.view_heroicon_inline("bars-3", 24, model.theme)],
     ),
@@ -373,7 +374,7 @@ fn view_mobile_topbar(model: Model, _user: User) -> Element(Msg) {
         attribute.class("mobile-user-btn"),
         attribute.attribute("data-testid", "mobile-user-btn"),
         attribute.attribute("aria-label", "Open activity panel"),
-        event.on_click(MobileRightDrawerToggled),
+        event.on_click(pool_msg(MobileRightDrawerToggled)),
       ],
       [icons.view_heroicon_inline("user-circle", 24, model.theme)],
     ),
@@ -395,7 +396,7 @@ fn view_mobile_left_drawer(model: Model, user: User) -> Element(Msg) {
   responsive_drawer.view(
     model.mobile_left_drawer_open,
     responsive_drawer.Left,
-    MobileDrawersClosed,
+    pool_msg(MobileDrawersClosed),
     left_content,
   )
 }
@@ -407,7 +408,7 @@ fn view_mobile_right_drawer(model: Model, user: User) -> Element(Msg) {
   responsive_drawer.view(
     model.mobile_right_drawer_open,
     responsive_drawer.Right,
-    MobileDrawersClosed,
+    pool_msg(MobileDrawersClosed),
     right_content,
   )
 }
@@ -488,8 +489,8 @@ fn build_left_panel(
     projects_count: list.length(projects),
     // Event handlers
     on_project_change: ProjectSelected,
-    on_new_task: MemberCreateDialogOpened,
-    on_new_card: OpenCardDialog(CardDialogCreate),
+    on_new_task: pool_msg(MemberCreateDialogOpened),
+    on_new_card: pool_msg(OpenCardDialog(CardDialogCreate)),
     // Navigation to work views (AC2)
     on_navigate_pool: NavigateTo(
       router.Member(
@@ -551,8 +552,8 @@ fn build_left_panel(
     on_navigate_org_projects: NavigateTo(router.Org(permissions.Projects), Push),
     // AC32: Org Metrics link for Org Admin
     on_navigate_org_metrics: NavigateTo(router.Org(permissions.Metrics), Push),
-    on_toggle_config: SidebarConfigToggled,
-    on_toggle_org: SidebarOrgToggled,
+    on_toggle_config: pool_msg(SidebarConfigToggled),
+    on_toggle_org: pool_msg(SidebarOrgToggled),
   ))
 }
 
@@ -592,11 +593,11 @@ fn build_center_panel(model: Model, user: User) -> Element(Msg) {
       // Story 4.8 UX: Use model state for collapse/expand
       expanded_cards: model.member_list_expanded_cards,
       hide_completed: model.member_list_hide_completed,
-      on_toggle_card: MemberListCardToggled,
-      on_toggle_hide_completed: MemberListHideCompletedToggled,
-      on_task_click: fn(task_id) { MemberTaskDetailsOpened(task_id) },
+      on_toggle_card: fn(card_id) { pool_msg(MemberListCardToggled(card_id)) },
+      on_toggle_hide_completed: pool_msg(MemberListHideCompletedToggled),
+      on_task_click: fn(task_id) { pool_msg(MemberTaskDetailsOpened(task_id)) },
       on_task_claim: fn(task_id, version) {
-        MemberClaimClicked(task_id, version)
+        pool_msg(MemberClaimClicked(task_id, version))
       },
     ))
   let cards_content =
@@ -613,35 +614,41 @@ fn build_center_panel(model: Model, user: User) -> Element(Msg) {
         }
         is_pm || user.org_role == org_role.Admin
       },
-      on_card_click: fn(card_id) { OpenCardDetail(card_id) },
-      on_card_edit: fn(card_id) { OpenCardDialog(CardDialogEdit(card_id)) },
-      on_card_delete: fn(card_id) { OpenCardDialog(CardDialogDelete(card_id)) },
-      on_new_card: OpenCardDialog(CardDialogCreate),
+      on_card_click: fn(card_id) { pool_msg(OpenCardDetail(card_id)) },
+      on_card_edit: fn(card_id) {
+        pool_msg(OpenCardDialog(CardDialogEdit(card_id)))
+      },
+      on_card_delete: fn(card_id) {
+        pool_msg(OpenCardDialog(CardDialogDelete(card_id)))
+      },
+      on_new_card: pool_msg(OpenCardDialog(CardDialogCreate)),
       // Story 4.8 UX: Task interaction handlers for consistency with Lista view
-      on_task_click: fn(task_id) { MemberTaskDetailsOpened(task_id) },
+      on_task_click: fn(task_id) { pool_msg(MemberTaskDetailsOpened(task_id)) },
       on_task_claim: fn(task_id, version) {
-        MemberClaimClicked(task_id, version)
+        pool_msg(MemberClaimClicked(task_id, version))
       },
     ))
 
   center_panel.view(center_panel.CenterPanelConfig(
     locale: model.locale,
     view_mode: model.view_mode,
-    on_view_mode_change: ViewModeChanged,
+    on_view_mode_change: fn(mode) { pool_msg(ViewModeChanged(mode)) },
     task_types: task_types,
     capabilities: capabilities,
     type_filter: parse_filter_id(model.member_filters_type_id),
     capability_filter: parse_filter_id(model.member_filters_capability_id),
     search_query: model.member_filters_q,
-    on_type_filter_change: MemberPoolTypeChanged,
-    on_capability_filter_change: MemberPoolCapabilityChanged,
-    on_search_change: MemberPoolSearchChanged,
+    on_type_filter_change: fn(value) { pool_msg(MemberPoolTypeChanged(value)) },
+    on_capability_filter_change: fn(value) {
+      pool_msg(MemberPoolCapabilityChanged(value))
+    },
+    on_search_change: fn(value) { pool_msg(MemberPoolSearchChanged(value)) },
     pool_content: pool_content,
     list_content: list_content,
     cards_content: cards_content,
     // Drag handlers for pool (Story 4.7 fix)
-    on_drag_move: MemberDragMoved,
-    on_drag_end: MemberDragEnded,
+    on_drag_move: fn(x, y) { pool_msg(MemberDragMoved(x, y)) },
+    on_drag_end: pool_msg(MemberDragEnded),
   ))
 }
 
@@ -733,38 +740,40 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
     my_tasks: my_tasks,
     my_cards: my_cards,
     active_tasks: active_tasks_info,
-    on_task_start: MemberNowWorkingStartClicked,
-    on_task_pause: fn(_task_id) { MemberNowWorkingPauseClicked },
+    on_task_start: fn(task_id) {
+      pool_msg(MemberNowWorkingStartClicked(task_id))
+    },
+    on_task_pause: fn(_task_id) { pool_msg(MemberNowWorkingPauseClicked) },
     on_task_complete: fn(task_id) {
       // Find task version for complete action
       case model.member_tasks {
         Loaded(tasks) ->
           case list.find(tasks, fn(t) { t.id == task_id }) {
-            Ok(t) -> MemberCompleteClicked(task_id, t.version)
+            Ok(t) -> pool_msg(MemberCompleteClicked(task_id, t.version))
             Error(_) -> NoOp
           }
         _ -> NoOp
       }
     },
-    on_logout: LogoutClicked,
+    on_logout: auth_msg(LogoutClicked),
     on_task_release: fn(task_id) {
       // Find task version for release action
       case model.member_tasks {
         Loaded(tasks) ->
           case list.find(tasks, fn(t) { t.id == task_id }) {
-            Ok(t) -> MemberReleaseClicked(task_id, t.version)
+            Ok(t) -> pool_msg(MemberReleaseClicked(task_id, t.version))
             Error(_) -> NoOp
           }
         _ -> NoOp
       }
     },
-    on_card_click: fn(card_id) { OpenCardDetail(card_id) },
+    on_card_click: fn(card_id) { pool_msg(OpenCardDetail(card_id)) },
     // Drag-to-claim state for Pool view (Story 4.7)
     drag_armed: model.member_pool_drag_to_claim_armed,
     drag_over_my_tasks: model.member_pool_drag_over_my_tasks,
     // Preferences popup (Story 4.8 UX: moved from inline to popup)
     preferences_popup_open: model.preferences_popup_open,
-    on_preferences_toggle: PreferencesPopupToggled,
+    on_preferences_toggle: pool_msg(PreferencesPopupToggled),
     current_theme: model.theme,
     on_theme_change: ThemeSelected,
     on_locale_change: LocaleSelected,
@@ -889,7 +898,7 @@ fn view_claimed_task_row(
             update_helpers.i18n_t(model, i18n_text.Pause),
           ),
           attribute.disabled(disable_actions),
-          event.on_click(MemberNowWorkingPauseClicked),
+          event.on_click(pool_msg(MemberNowWorkingPauseClicked)),
         ],
         [icons.nav_icon(icons.Pause, icons.Small)],
       )
@@ -902,7 +911,7 @@ fn view_claimed_task_row(
             update_helpers.i18n_t(model, i18n_text.Start),
           ),
           attribute.disabled(disable_actions),
-          event.on_click(MemberNowWorkingStartClicked(id)),
+          event.on_click(pool_msg(MemberNowWorkingStartClicked(id))),
         ],
         [icons.nav_icon(icons.Play, icons.Small)],
       )
@@ -932,7 +941,7 @@ fn view_claimed_task_row(
             update_helpers.i18n_t(model, i18n_text.Complete),
           ),
           attribute.disabled(disable_actions),
-          event.on_click(MemberCompleteClicked(id, version)),
+          event.on_click(pool_msg(MemberCompleteClicked(id, version))),
         ],
         [icons.nav_icon(icons.Check, icons.Small)],
       ),
@@ -944,7 +953,7 @@ fn view_claimed_task_row(
             update_helpers.i18n_t(model, i18n_text.Release),
           ),
           attribute.disabled(disable_actions),
-          event.on_click(MemberReleaseClicked(id, version)),
+          event.on_click(pool_msg(MemberReleaseClicked(id, version))),
         ],
         [icons.nav_icon(icons.Return, icons.Small)],
       ),

@@ -32,7 +32,8 @@ import scrumbringer_client/client_state.{
   AttachTemplateFailed, AttachTemplateSucceeded, Failed, Loaded, Loading, Model,
   NotAsked, RuleMetricsFetched, RuleTemplateAttached, RuleTemplateDetached,
   RulesFetched, TaskTemplatesProjectFetched, TaskTypesFetched,
-  TemplateDetachFailed, TemplateDetachSucceeded, ToastShow, WorkflowsProjectFetched,
+  TemplateDetachFailed, TemplateDetachSucceeded, ToastShow,
+  WorkflowsProjectFetched, pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/toast
@@ -198,15 +199,21 @@ pub fn handle_workflow_rules_clicked(
 
   let task_types_effect = case model.selected_project_id {
     opt.Some(project_id) ->
-      api_tasks.list_task_types(project_id, TaskTypesFetched)
+      api_tasks.list_task_types(project_id, fn(result) {
+        pool_msg(TaskTypesFetched(result))
+      })
     opt.None -> effect.none()
   }
 
   #(
     model,
     effect.batch([
-      api_workflows.list_rules(workflow_id, RulesFetched),
-      api_workflows.get_workflow_metrics(workflow_id, RuleMetricsFetched),
+      api_workflows.list_rules(workflow_id, fn(result) {
+        pool_msg(RulesFetched(result))
+      }),
+      api_workflows.get_workflow_metrics(workflow_id, fn(result) {
+        pool_msg(RuleMetricsFetched(result))
+      }),
       task_types_effect,
     ]),
   )
@@ -418,12 +425,9 @@ pub fn handle_rule_attach_template_submitted(
           // Use execution_order = 0 (will be appended at end on server)
           #(
             model,
-            api_workflows.attach_template(
-              rule_id,
-              template_id,
-              0,
-              RuleTemplateAttached,
-            ),
+            api_workflows.attach_template(rule_id, template_id, 0, fn(result) {
+              pool_msg(RuleTemplateAttached(result))
+            }),
           )
         }
         opt.None -> #(model, effect.none())
@@ -484,11 +488,9 @@ pub fn handle_rule_template_detach_clicked(
         )
       #(
         model,
-        api_workflows.detach_template(
-          rule_id,
-          template_id,
-          RuleTemplateDetached,
-        ),
+        api_workflows.detach_template(rule_id, template_id, fn(result) {
+          pool_msg(RuleTemplateDetached(result))
+        }),
       )
     }
   }
@@ -556,30 +558,39 @@ pub fn handle_attach_template_modal_opened(
   rule_id: Int,
 ) -> #(Model, Effect(Msg)) {
   // Check if we need to fetch templates
-  let fetch_effect = case model.task_templates_project, model.selected_project_id {
+  let fetch_effect = case
+    model.task_templates_project,
+    model.selected_project_id
+  {
     // Already loaded or loading - no need to fetch
     Loaded(_), _ -> effect.none()
     Loading, _ -> effect.none()
     // Need to fetch templates for the project
     _, opt.Some(project_id) ->
-      api_workflows.list_project_templates(project_id, TaskTemplatesProjectFetched)
+      api_workflows.list_project_templates(project_id, fn(result) {
+        pool_msg(TaskTemplatesProjectFetched(result))
+      })
     // No project selected - can't fetch
     _, opt.None -> effect.none()
   }
 
-  let new_model = Model(
-    ..model,
-    attach_template_modal: opt.Some(rule_id),
-    attach_template_selected: opt.None,
-    attach_template_loading: False,
-    // Set to loading if we're fetching
-    task_templates_project: case model.task_templates_project, model.selected_project_id {
-      Loaded(_), _ -> model.task_templates_project
-      Loading, _ -> model.task_templates_project
-      _, opt.Some(_) -> Loading
-      _, opt.None -> model.task_templates_project
-    },
-  )
+  let new_model =
+    Model(
+      ..model,
+      attach_template_modal: opt.Some(rule_id),
+      attach_template_selected: opt.None,
+      attach_template_loading: False,
+      // Set to loading if we're fetching
+      task_templates_project: case
+        model.task_templates_project,
+        model.selected_project_id
+      {
+        Loaded(_), _ -> model.task_templates_project
+        Loading, _ -> model.task_templates_project
+        _, opt.Some(_) -> Loading
+        _, opt.None -> model.task_templates_project
+      },
+    )
 
   #(new_model, fetch_effect)
 }
@@ -604,13 +615,14 @@ pub fn handle_attach_template_selected(
   model: Model,
   template_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, attach_template_selected: opt.Some(template_id)), effect.none())
+  #(
+    Model(..model, attach_template_selected: opt.Some(template_id)),
+    effect.none(),
+  )
 }
 
 /// Handle submit of template attachment.
-pub fn handle_attach_template_submitted(
-  model: Model,
-) -> #(Model, Effect(Msg)) {
+pub fn handle_attach_template_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.attach_template_modal, model.attach_template_selected {
     opt.Some(rule_id), opt.Some(template_id) -> {
       // Calculate execution_order based on current templates
@@ -627,8 +639,9 @@ pub fn handle_attach_template_submitted(
         Model(..model, attach_template_loading: True),
         api_workflows.attach_template(rule_id, template_id, order, fn(result) {
           case result {
-            Ok(templates) -> AttachTemplateSucceeded(rule_id, templates)
-            Error(err) -> AttachTemplateFailed(err)
+            Ok(templates) ->
+              pool_msg(AttachTemplateSucceeded(rule_id, templates))
+            Error(err) -> pool_msg(AttachTemplateFailed(err))
           }
         }),
       )
@@ -647,12 +660,14 @@ pub fn handle_attach_template_succeeded(
   // Update the rule's templates in the rules list
   let updated_rules = case model.rules {
     Loaded(rules) -> {
-      Loaded(list.map(rules, fn(r) {
-        case r.id == rule_id {
-          True -> workflow.Rule(..r, templates: templates)
-          False -> r
-        }
-      }))
+      Loaded(
+        list.map(rules, fn(r) {
+          case r.id == rule_id {
+            True -> workflow.Rule(..r, templates: templates)
+            False -> r
+          }
+        }),
+      )
     }
     other -> other
   }
@@ -666,7 +681,9 @@ pub fn handle_attach_template_succeeded(
       attach_template_selected: opt.None,
       attach_template_loading: False,
     ),
-    effect.from(fn(dispatch) { dispatch(ToastShow(toast_message, toast.Success)) }),
+    effect.from(fn(dispatch) {
+      dispatch(ToastShow(toast_message, toast.Success))
+    }),
   )
 }
 
@@ -701,8 +718,8 @@ pub fn handle_template_detach_clicked(
     Model(..model, detaching_templates: detaching),
     api_workflows.detach_template(rule_id, template_id, fn(result) {
       case result {
-        Ok(_) -> TemplateDetachSucceeded(rule_id, template_id)
-        Error(err) -> TemplateDetachFailed(rule_id, template_id, err)
+        Ok(_) -> pool_msg(TemplateDetachSucceeded(rule_id, template_id))
+        Error(err) -> pool_msg(TemplateDetachFailed(rule_id, template_id, err))
       }
     }),
   )
@@ -719,16 +736,20 @@ pub fn handle_template_detach_succeeded(
   // Remove template from rule's templates list
   let updated_rules = case model.rules {
     Loaded(rules) -> {
-      Loaded(list.map(rules, fn(r) {
-        case r.id == rule_id {
-          True ->
-            workflow.Rule(
-              ..r,
-              templates: list.filter(r.templates, fn(t) { t.id != template_id }),
-            )
-          False -> r
-        }
-      }))
+      Loaded(
+        list.map(rules, fn(r) {
+          case r.id == rule_id {
+            True ->
+              workflow.Rule(
+                ..r,
+                templates: list.filter(r.templates, fn(t) {
+                  t.id != template_id
+                }),
+              )
+            False -> r
+          }
+        }),
+      )
     }
     other -> other
   }
@@ -736,7 +757,9 @@ pub fn handle_template_detach_succeeded(
   let toast_message = update_helpers.i18n_t(model, i18n_text.TemplateDetached)
   #(
     Model(..model, rules: updated_rules, detaching_templates: detaching),
-    effect.from(fn(dispatch) { dispatch(ToastShow(toast_message, toast.Success)) }),
+    effect.from(fn(dispatch) {
+      dispatch(ToastShow(toast_message, toast.Success))
+    }),
   )
 }
 
@@ -836,7 +859,10 @@ pub fn handle_task_template_crud_created(
       task_templates_org: org,
       task_templates_project: project,
       task_templates_dialog_mode: opt.None,
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskTemplateCreated)),
+      toast: opt.Some(update_helpers.i18n_t(
+        model,
+        i18n_text.TaskTemplateCreated,
+      )),
     ),
     effect.none(),
   )
@@ -870,7 +896,10 @@ pub fn handle_task_template_crud_updated(
       task_templates_org: org,
       task_templates_project: project,
       task_templates_dialog_mode: opt.None,
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskTemplateUpdated)),
+      toast: opt.Some(update_helpers.i18n_t(
+        model,
+        i18n_text.TaskTemplateUpdated,
+      )),
     ),
     effect.none(),
   )
@@ -899,7 +928,10 @@ pub fn handle_task_template_crud_deleted(
       task_templates_org: org,
       task_templates_project: project,
       task_templates_dialog_mode: opt.None,
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskTemplateDeleted)),
+      toast: opt.Some(update_helpers.i18n_t(
+        model,
+        i18n_text.TaskTemplateDeleted,
+      )),
     ),
     effect.none(),
   )
@@ -914,7 +946,9 @@ pub fn fetch_workflows(model: Model) -> #(Model, Effect(Msg)) {
   case model.selected_project_id {
     opt.Some(project_id) -> {
       let fetch_effect =
-        api_workflows.list_project_workflows(project_id, WorkflowsProjectFetched)
+        api_workflows.list_project_workflows(project_id, fn(result) {
+          pool_msg(WorkflowsProjectFetched(result))
+        })
       let model = Model(..model, workflows_project: Loading)
       #(model, fetch_effect)
     }
@@ -927,10 +961,9 @@ pub fn fetch_task_templates(model: Model) -> #(Model, Effect(Msg)) {
   case model.selected_project_id {
     opt.Some(project_id) -> {
       let fetch_effect =
-        api_workflows.list_project_templates(
-          project_id,
-          TaskTemplatesProjectFetched,
-        )
+        api_workflows.list_project_templates(project_id, fn(result) {
+          pool_msg(TaskTemplatesProjectFetched(result))
+        })
       let model = Model(..model, task_templates_project: Loading)
       #(model, fetch_effect)
     }

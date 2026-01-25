@@ -26,13 +26,13 @@
 //// Future: Consider code generation for message dispatch if Msg variants
 //// exceed 100.
 
+import domain/org_role
+import domain/project_role.{Member as MemberRole}
 import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option as opt
 import lustre/effect.{type Effect}
-import domain/org_role
-import domain/project_role.{Member as MemberRole} as project_role
 
 import scrumbringer_client/accept_invite
 import scrumbringer_client/app/effects as app_effects
@@ -62,107 +62,103 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/toast
 
 import scrumbringer_client/client_state.{
-  type Model, type Msg, type NavMode, type Remote,
-  AcceptInvite as AcceptInvitePage, AcceptInviteMsg, Admin,
-  AdminMetricsOverviewFetched, AdminMetricsProjectTasksFetched,
+  type AdminMsg, type AuthMsg, type Model, type Msg, type NavMode, type PoolMsg,
+  type Remote, AcceptInvite as AcceptInvitePage, AcceptInviteMsg, Admin,
+  AdminMetricsOverviewFetched, AdminMetricsProjectTasksFetched, AdminMsg,
   AdminRuleMetricsDrilldownClicked, AdminRuleMetricsDrilldownClosed,
   AdminRuleMetricsExecPageChanged, AdminRuleMetricsExecutionsFetched,
   AdminRuleMetricsFetched, AdminRuleMetricsFromChanged,
-  AdminRuleMetricsFromChangedAndRefresh,
-  AdminRuleMetricsQuickRangeClicked, AdminRuleMetricsRefreshClicked,
-  AdminRuleMetricsRuleDetailsFetched, AdminRuleMetricsToChanged,
-  AdminRuleMetricsToChangedAndRefresh,
-  AdminRuleMetricsWorkflowDetailsFetched,
-  AdminRuleMetricsWorkflowExpanded, CapabilitiesFetched,
-  CapabilityCreateDialogClosed, CapabilityCreateDialogOpened,
-  CapabilityCreateNameChanged, CapabilityCreateSubmitted, CapabilityCreated,
-  CapabilityDeleteDialogClosed, CapabilityDeleteDialogOpened,
-  CapabilityDeleteSubmitted, CapabilityDeleted,
-  CardCrudCreated, CardCrudDeleted, CardCrudUpdated, CardsFetched,
-  CardsSearchChanged, CardsShowCompletedToggled, CardsShowEmptyToggled, CardsStateFilterChanged,
-  CloseCardDetail, CloseCardDialog, Failed,
-  ForgotPasswordClicked, ForgotPasswordCopyClicked, ForgotPasswordCopyFinished,
-  ForgotPasswordDismissed, ForgotPasswordEmailChanged, ForgotPasswordFinished,
-  ForgotPasswordSubmitted, GlobalKeyDown, InviteCreateDialogClosed,
-  InviteCreateDialogOpened, InviteLinkCopyClicked,
-  InviteLinkCopyFinished, InviteLinkCreateSubmitted, InviteLinkCreated,
-  InviteLinkEmailChanged, InviteLinkRegenerateClicked, InviteLinkRegenerated,
-  InviteLinksFetched, Loaded, Loading, LocaleSelected, Login, LoginDomValuesRead,
-  LoginEmailChanged, LoginFinished, LoginPasswordChanged, LoginSubmitted,
-  LogoutClicked, LogoutFinished, MeFetched, Member, MemberActiveTaskFetched,
-  MemberActiveTaskHeartbeated, MemberActiveTaskPaused, MemberActiveTaskStarted,
-  MemberAddDialogClosed, MemberAddDialogOpened, MemberAddRoleChanged,
-  MemberAddSubmitted, MemberAddUserSelected, MemberAdded,
-  MemberCanvasRectFetched, MemberClaimClicked, MemberCompleteClicked,
-  MemberCreateDescriptionChanged, MemberCreateDialogClosed,
-  MemberCreateDialogOpened, MemberCreatePriorityChanged, MemberCreateSubmitted,
-  MemberCreateTitleChanged, MemberCreateTypeIdChanged, MemberDragEnded,
-  MemberDragMoved, MemberDragStarted, MemberMetricsFetched,
+  AdminRuleMetricsFromChangedAndRefresh, AdminRuleMetricsQuickRangeClicked,
+  AdminRuleMetricsRefreshClicked, AdminRuleMetricsRuleDetailsFetched,
+  AdminRuleMetricsToChanged, AdminRuleMetricsToChangedAndRefresh,
+  AdminRuleMetricsWorkflowDetailsFetched, AdminRuleMetricsWorkflowExpanded,
+  AttachTemplateFailed, AttachTemplateModalClosed, AttachTemplateModalOpened,
+  AttachTemplateSelected, AttachTemplateSubmitted, AttachTemplateSucceeded,
+  AuthMsg, CapabilitiesFetched, CapabilityCreateDialogClosed,
+  CapabilityCreateDialogOpened, CapabilityCreateNameChanged,
+  CapabilityCreateSubmitted, CapabilityCreated, CapabilityDeleteDialogClosed,
+  CapabilityDeleteDialogOpened, CapabilityDeleteSubmitted, CapabilityDeleted,
+  CapabilityMembersDialogClosed, CapabilityMembersDialogOpened,
+  CapabilityMembersFetched, CapabilityMembersSaveClicked, CapabilityMembersSaved,
+  CapabilityMembersToggled, CardCrudCreated, CardCrudDeleted, CardCrudUpdated,
+  CardsFetched, CardsSearchChanged, CardsShowCompletedToggled,
+  CardsShowEmptyToggled, CardsStateFilterChanged, CloseCardDetail,
+  CloseCardDialog, CloseRuleDialog, CloseTaskTemplateDialog, CloseTaskTypeDialog,
+  CloseWorkflowDialog, Failed, ForgotPasswordClicked, ForgotPasswordCopyClicked,
+  ForgotPasswordCopyFinished, ForgotPasswordDismissed,
+  ForgotPasswordEmailChanged, ForgotPasswordFinished, ForgotPasswordSubmitted,
+  GlobalKeyDown, InviteCreateDialogClosed, InviteCreateDialogOpened,
+  InviteLinkCopyClicked, InviteLinkCopyFinished, InviteLinkCreateSubmitted,
+  InviteLinkCreated, InviteLinkEmailChanged, InviteLinkRegenerateClicked,
+  InviteLinkRegenerated, InviteLinksFetched, Loaded, Loading, LocaleSelected,
+  Login, LoginDomValuesRead, LoginEmailChanged, LoginFinished,
+  LoginPasswordChanged, LoginSubmitted, LogoutClicked, LogoutFinished, MeFetched,
+  Member, MemberActiveTaskFetched, MemberActiveTaskHeartbeated,
+  MemberActiveTaskPaused, MemberActiveTaskStarted, MemberAddDialogClosed,
+  MemberAddDialogOpened, MemberAddRoleChanged, MemberAddSubmitted,
+  MemberAddUserSelected, MemberAdded, MemberCanvasRectFetched,
+  MemberCapabilitiesDialogClosed, MemberCapabilitiesDialogOpened,
+  MemberCapabilitiesFetched, MemberCapabilitiesSaveClicked,
+  MemberCapabilitiesSaved, MemberCapabilitiesToggled, MemberClaimClicked,
+  MemberClearFilters, MemberCompleteClicked, MemberCreateDescriptionChanged,
+  MemberCreateDialogClosed, MemberCreateDialogOpened,
+  MemberCreatePriorityChanged, MemberCreateSubmitted, MemberCreateTitleChanged,
+  MemberCreateTypeIdChanged, MemberDragEnded, MemberDragMoved, MemberDragStarted,
+  MemberListCardToggled, MemberListHideCompletedToggled, MemberMetricsFetched,
   MemberMyCapabilityIdsFetched, MemberMyCapabilityIdsSaved, MemberNoteAdded,
   MemberNoteContentChanged, MemberNoteSubmitted, MemberNotesFetched,
-  MemberNowWorkingPauseClicked, MemberNowWorkingStartClicked,
+  MemberNowWorkingPauseClicked, MemberNowWorkingStartClicked, MemberPanelToggled,
   MemberPoolCapabilityChanged, MemberPoolDragToClaimArmed,
-  MemberClearFilters, MemberPoolFiltersToggled, MemberPoolMyTasksRectFetched,
+  MemberPoolFiltersToggled, MemberPoolMyTasksRectFetched,
   MemberPoolSearchChanged, MemberPoolSearchDebounced, MemberPoolStatusChanged,
-  MemberPanelToggled, MobileLeftDrawerToggled, MobileRightDrawerToggled, MobileDrawersClosed,
-  SidebarConfigToggled, SidebarOrgToggled, PreferencesPopupToggled,
-  MemberPoolTypeChanged, MemberPoolViewModeSet, MemberListHideCompletedToggled, MemberListCardToggled,
-  MemberPositionEditClosed,
+  MemberPoolTypeChanged, MemberPoolViewModeSet, MemberPositionEditClosed,
   MemberPositionEditOpened, MemberPositionEditSubmitted,
   MemberPositionEditXChanged, MemberPositionEditYChanged, MemberPositionSaved,
   MemberPositionsFetched, MemberProjectTasksFetched, MemberReleaseClicked,
   MemberRemoveCancelled, MemberRemoveClicked, MemberRemoveConfirmed,
-  MemberRemoved, MemberRoleChanged, MemberRoleChangeRequested,
-  MemberCapabilitiesDialogOpened, MemberCapabilitiesDialogClosed,
-  MemberCapabilitiesToggled, MemberCapabilitiesSaveClicked,
-  MemberCapabilitiesFetched, MemberCapabilitiesSaved,
-  CapabilityMembersDialogOpened, CapabilityMembersDialogClosed,
-  CapabilityMembersToggled, CapabilityMembersSaveClicked,
-  CapabilityMembersFetched, CapabilityMembersSaved,
-  MemberSaveCapabilitiesClicked, MemberTaskClaimed,
-  MemberTaskCompleted, MemberTaskCreated, MemberTaskDetailsClosed,
-  MemberTaskDetailsOpened, MemberTaskReleased, MemberTaskTypesFetched,
-  MemberToggleCapability, MemberToggleMyCapabilitiesQuick,
-  MemberWorkSessionHeartbeated, MemberWorkSessionPaused,
-  MemberWorkSessionStarted, MemberWorkSessionsFetched, MembersFetched, Model,
-  NavigateTo, NotAsked, NowWorkingTicked, OpenCardDetail, OpenCardDialog, OrgSettingsRoleChanged,
-  OrgSettingsSaveClicked, OrgSettingsSaved, OrgSettingsSaveAllClicked, OrgSettingsUsersFetched,
-  OrgUsersCacheFetched, OrgUsersSearchChanged, OrgUsersSearchDebounced,
-  UserProjectsDialogOpened, UserProjectsDialogClosed, UserProjectsFetched,
-  UserProjectsAddProjectChanged, UserProjectsAddRoleChanged, UserProjectsAddSubmitted, UserProjectAdded,
-  UserProjectRemoveClicked, UserProjectRemoved, UserProjectRoleChangeRequested, UserProjectRoleChanged,
-  OrgUsersSearchResults, ProjectCreateDialogOpened, ProjectCreateDialogClosed,
-  ProjectCreateNameChanged, ProjectCreateSubmitted,
-  ProjectCreated, ProjectEditDialogOpened, ProjectEditDialogClosed,
-  ProjectEditNameChanged, ProjectEditSubmitted, ProjectUpdated,
-  ProjectDeleteConfirmOpened, ProjectDeleteConfirmClosed, ProjectDeleteSubmitted,
-  ProjectDeleted, ProjectSelected, ProjectsFetched, Push, Rect, Replace,
-  ResetPassword as ResetPasswordPage, ResetPasswordMsg,
-  RuleAttachTemplateSelected, RuleAttachTemplateSubmitted,
-  OpenRuleDialog, CloseRuleDialog, RuleCrudCreated, RuleCrudUpdated, RuleCrudDeleted,
-  RuleMetricsFetched, RuleTemplateAttached, RuleTemplateDetachClicked, RuleTemplateDetached,
-  RuleTemplatesClicked, RuleTemplatesFetched, RulesBackClicked,
-  RulesFetched,
-  // Story 4.10: Rule template attachment UI
-  RuleExpandToggled, AttachTemplateModalOpened, AttachTemplateModalClosed,
-  AttachTemplateSelected, AttachTemplateSubmitted, AttachTemplateSucceeded, AttachTemplateFailed,
-  TemplateDetachClicked, TemplateDetachSucceeded, TemplateDetachFailed,
-  TaskTemplatesProjectFetched,
-  OpenTaskTemplateDialog, CloseTaskTemplateDialog,
-  TaskTemplateCrudCreated, TaskTemplateCrudUpdated, TaskTemplateCrudDeleted,
-  TaskTypeCreateCapabilityChanged, TaskTypeCreateDialogClosed,
-  TaskTypeCreateDialogOpened, TaskTypeCreateIconChanged,
-  TaskTypeCreateIconSearchChanged, TaskTypeCreateIconCategoryChanged,
-  TaskTypeCreateNameChanged, TaskTypeCreateSubmitted, TaskTypeCreated,
-  TaskTypeIconErrored, TaskTypeIconLoaded, TaskTypesFetched,
-  OpenTaskTypeDialog, CloseTaskTypeDialog,
-  TaskTypeCrudCreated, TaskTypeCrudUpdated, TaskTypeCrudDeleted,
-  ThemeSelected,
-  NoOp, ToastDismissed, ToastShow, ToastDismiss, ToastTick, UrlChanged, ViewModeChanged,
-  CloseWorkflowDialog, OpenWorkflowDialog, WorkflowCrudCreated,
-  WorkflowCrudDeleted, WorkflowCrudUpdated, WorkflowRulesClicked,
-  WorkflowsProjectFetched,
+  MemberRemoved, MemberRoleChangeRequested, MemberRoleChanged,
+  MemberSaveCapabilitiesClicked, MemberTaskClaimed, MemberTaskCompleted,
+  MemberTaskCreated, MemberTaskDetailsClosed, MemberTaskDetailsOpened,
+  MemberTaskReleased, MemberTaskTypesFetched, MemberToggleCapability,
+  MemberToggleMyCapabilitiesQuick, MemberWorkSessionHeartbeated,
+  MemberWorkSessionPaused, MemberWorkSessionStarted, MemberWorkSessionsFetched,
+  MembersFetched, MobileDrawersClosed, MobileLeftDrawerToggled,
+  MobileRightDrawerToggled, Model, NavigateTo, NoOp, NotAsked, NowWorkingTicked,
+  OpenCardDetail, OpenCardDialog, OpenRuleDialog, OpenTaskTemplateDialog,
+  OpenTaskTypeDialog, OpenWorkflowDialog, OrgSettingsRoleChanged,
+  OrgSettingsSaveAllClicked, OrgSettingsSaveClicked, OrgSettingsSaved,
+  OrgSettingsUsersFetched, OrgUsersCacheFetched, OrgUsersSearchChanged,
+  OrgUsersSearchDebounced, OrgUsersSearchResults, PoolMsg,
+  PreferencesPopupToggled, ProjectCreateDialogClosed, ProjectCreateDialogOpened,
+  ProjectCreateNameChanged, ProjectCreateSubmitted, ProjectCreated,
+  ProjectDeleteConfirmClosed, ProjectDeleteConfirmOpened, ProjectDeleteSubmitted,
+  ProjectDeleted, ProjectEditDialogClosed, ProjectEditDialogOpened,
+  ProjectEditNameChanged, ProjectEditSubmitted, ProjectSelected, ProjectUpdated,
+  ProjectsFetched, Push, Rect, Replace, ResetPassword as ResetPasswordPage,
+  ResetPasswordMsg, RuleAttachTemplateSelected, RuleAttachTemplateSubmitted,
+  RuleCrudCreated, RuleCrudDeleted, RuleCrudUpdated, RuleExpandToggled,
+  RuleMetricsFetched, RuleTemplateAttached, RuleTemplateDetachClicked,
+  RuleTemplateDetached, RuleTemplatesClicked, RuleTemplatesFetched,
+  RulesBackClicked, RulesFetched, SidebarConfigToggled, SidebarOrgToggled,
+  TaskTemplateCrudCreated, TaskTemplateCrudDeleted, TaskTemplateCrudUpdated,
+  TaskTemplatesProjectFetched, TaskTypeCreateCapabilityChanged,
+  TaskTypeCreateDialogClosed, TaskTypeCreateDialogOpened,
+  TaskTypeCreateIconCategoryChanged, TaskTypeCreateIconChanged,
+  TaskTypeCreateIconSearchChanged, TaskTypeCreateNameChanged,
+  TaskTypeCreateSubmitted, TaskTypeCreated, TaskTypeCrudCreated,
+  TaskTypeCrudDeleted, TaskTypeCrudUpdated, TaskTypeIconErrored,
+  TaskTypeIconLoaded, TaskTypesFetched, TemplateDetachClicked,
+  TemplateDetachFailed, TemplateDetachSucceeded, ThemeSelected, ToastDismiss,
+  ToastDismissed, ToastShow, ToastTick, UrlChanged, UserProjectAdded,
+  UserProjectRemoveClicked, UserProjectRemoved, UserProjectRoleChangeRequested,
+  UserProjectRoleChanged, UserProjectsAddProjectChanged,
+  UserProjectsAddRoleChanged, UserProjectsAddSubmitted, UserProjectsDialogClosed,
+  UserProjectsDialogOpened, UserProjectsFetched, ViewModeChanged,
+  WorkflowCrudCreated, WorkflowCrudDeleted, WorkflowCrudUpdated,
+  WorkflowRulesClicked, WorkflowsProjectFetched, admin_msg, auth_msg, pool_msg,
 }
+
+// Story 4.10: Rule template attachment UI
 
 // Workflows
 // Rules
@@ -256,14 +252,16 @@ pub fn register_keydown_effect() -> Effect(Msg) {
     client_ffi.register_keydown(fn(payload) {
       let #(key, ctrl, meta, shift, is_editing, modal_open) = payload
       dispatch(
-        GlobalKeyDown(pool_prefs.KeyEvent(
-          key,
-          ctrl,
-          meta,
-          shift,
-          is_editing,
-          modal_open,
-        )),
+        pool_msg(
+          GlobalKeyDown(pool_prefs.KeyEvent(
+            key,
+            ctrl,
+            meta,
+            shift,
+            is_editing,
+            modal_open,
+          )),
+        ),
       )
     })
   })
@@ -505,7 +503,12 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
 
                 _ -> {
                   let m = Model(..m, projects: Loading)
-                  #(m, [api_projects.list_projects(ProjectsFetched), ..fx])
+                  #(m, [
+                    api_projects.list_projects(fn(result) {
+                      admin_msg(ProjectsFetched(result))
+                    }),
+                    ..fx
+                  ])
                 }
               }
             }
@@ -516,7 +519,12 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
 
                 _ -> {
                   let m = Model(..m, invite_links: Loading)
-                  #(m, [api_org.list_invite_links(InviteLinksFetched), ..fx])
+                  #(m, [
+                    api_org.list_invite_links(fn(result) {
+                      admin_msg(InviteLinksFetched(result))
+                    }),
+                    ..fx
+                  ])
                 }
               }
             }
@@ -550,7 +558,9 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                     api_tasks.get_member_capability_ids(
                       project_id,
                       user.id,
-                      MemberMyCapabilityIdsFetched,
+                      fn(result) {
+                        pool_msg(MemberMyCapabilityIdsFetched(result))
+                      },
                     ),
                     ..fx
                   ])
@@ -567,7 +577,9 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                 _ -> {
                   let m = Model(..m, member_work_sessions: Loading)
                   #(m, [
-                    api_tasks.get_work_sessions(MemberWorkSessionsFetched),
+                    api_tasks.get_work_sessions(fn(result) {
+                      pool_msg(MemberWorkSessionsFetched(result))
+                    }),
                     ..fx
                   ])
                 }
@@ -581,7 +593,9 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                 _ -> {
                   let m = Model(..m, member_metrics: Loading)
                   #(m, [
-                    api_metrics.get_me_metrics(30, MemberMetricsFetched),
+                    api_metrics.get_me_metrics(30, fn(result) {
+                      pool_msg(MemberMetricsFetched(result))
+                    }),
                     ..fx
                   ])
                 }
@@ -595,10 +609,9 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                 _ -> {
                   let m = Model(..m, admin_metrics_overview: Loading)
                   #(m, [
-                    api_metrics.get_org_metrics_overview(
-                      30,
-                      AdminMetricsOverviewFetched,
-                    ),
+                    api_metrics.get_org_metrics_overview(30, fn(result) {
+                      pool_msg(AdminMetricsOverviewFetched(result))
+                    }),
                     ..fx
                   ])
                 }
@@ -635,7 +648,9 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                         api_metrics.get_org_metrics_project_tasks(
                           project_id,
                           30,
-                          AdminMetricsProjectTasksFetched,
+                          fn(result) {
+                            pool_msg(AdminMetricsProjectTasksFetched(result))
+                          },
                         )
 
                       #(m, [fx_tasks, ..fx])
@@ -660,7 +675,9 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                     )
 
                   #(m, [
-                    api_org.list_org_users("", OrgSettingsUsersFetched),
+                    api_org.list_org_users("", fn(result) {
+                      admin_msg(OrgSettingsUsersFetched(result))
+                    }),
                     ..fx
                   ])
                 }
@@ -675,7 +692,9 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                 _ -> {
                   let m = Model(..m, org_users_cache: Loading)
                   #(m, [
-                    api_org.list_org_users("", OrgUsersCacheFetched),
+                    api_org.list_org_users("", fn(result) {
+                      admin_msg(OrgUsersCacheFetched(result))
+                    }),
                     ..fx
                   ])
                 }
@@ -708,10 +727,12 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                       let fx_members =
                         api_projects.list_project_members(
                           project_id,
-                          MembersFetched,
+                          fn(result) { admin_msg(MembersFetched(result)) },
                         )
                       let fx_users =
-                        api_org.list_org_users("", OrgUsersCacheFetched)
+                        api_org.list_org_users("", fn(result) {
+                          admin_msg(OrgUsersCacheFetched(result))
+                        })
 
                       #(m, [effect.batch([fx_members, fx_users]), ..fx])
                     }
@@ -742,7 +763,9 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                         )
 
                       #(m, [
-                        api_tasks.list_task_types(project_id, TaskTypesFetched),
+                        api_tasks.list_task_types(project_id, fn(result) {
+                          admin_msg(TaskTypesFetched(result))
+                        }),
                         ..fx
                       ])
                     }
@@ -860,21 +883,21 @@ fn bootstrap_admin(model: Model) -> #(Model, Effect(Msg)) {
   // Capabilities and member capability IDs are now project-scoped
   // They will be fetched when a project is selected
   let model =
-    Model(
-      ..model,
-      projects: Loading,
-      invite_links: case is_admin {
-        True -> Loading
-        False -> model.invite_links
-      },
-    )
+    Model(..model, projects: Loading, invite_links: case is_admin {
+      True -> Loading
+      False -> model.invite_links
+    })
 
-  let effects = [api_projects.list_projects(ProjectsFetched)]
+  let effects = [
+    api_projects.list_projects(fn(result) { admin_msg(ProjectsFetched(result)) }),
+  ]
 
   // Fetch capabilities if project is selected
   let effects = case model.selected_project_id {
     opt.Some(project_id) -> [
-      api_org.list_project_capabilities(project_id, CapabilitiesFetched),
+      api_org.list_project_capabilities(project_id, fn(result) {
+        admin_msg(CapabilitiesFetched(result))
+      }),
       ..effects
     ]
     opt.None -> effects
@@ -883,18 +906,21 @@ fn bootstrap_admin(model: Model) -> #(Model, Effect(Msg)) {
   // Fetch member capability IDs if project and user are available
   let effects = case model.selected_project_id, model.user {
     opt.Some(project_id), opt.Some(user) -> [
-      api_tasks.get_member_capability_ids(
-        project_id,
-        user.id,
-        MemberMyCapabilityIdsFetched,
-      ),
+      api_tasks.get_member_capability_ids(project_id, user.id, fn(result) {
+        pool_msg(MemberMyCapabilityIdsFetched(result))
+      }),
       ..effects
     ]
     _, _ -> effects
   }
 
   let effects = case is_admin {
-    True -> [api_org.list_invite_links(InviteLinksFetched), ..effects]
+    True -> [
+      api_org.list_invite_links(fn(result) {
+        admin_msg(InviteLinksFetched(result))
+      }),
+      ..effects
+    ]
     False -> effects
   }
 
@@ -905,7 +931,12 @@ pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
   case model.active_section {
     permissions.Invites -> {
       let model = Model(..model, invite_links: Loading)
-      #(model, api_org.list_invite_links(InviteLinksFetched))
+      #(
+        model,
+        api_org.list_invite_links(fn(result) {
+          admin_msg(InviteLinksFetched(result))
+        }),
+      )
     }
 
     permissions.OrgSettings -> {
@@ -919,19 +950,28 @@ pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
           org_settings_error_user_id: opt.None,
         )
 
-      #(model, api_org.list_org_users("", OrgSettingsUsersFetched))
+      #(
+        model,
+        api_org.list_org_users("", fn(result) {
+          admin_msg(OrgSettingsUsersFetched(result))
+        }),
+      )
     }
 
     permissions.Projects -> #(
       model,
-      api_projects.list_projects(ProjectsFetched),
+      api_projects.list_projects(fn(result) {
+        admin_msg(ProjectsFetched(result))
+      }),
     )
 
     permissions.Metrics -> {
       let model = Model(..model, admin_metrics_overview: Loading)
 
       let overview_fx =
-        api_metrics.get_org_metrics_overview(30, AdminMetricsOverviewFetched)
+        api_metrics.get_org_metrics_overview(30, fn(result) {
+          pool_msg(AdminMetricsOverviewFetched(result))
+        })
 
       case model.selected_project_id {
         opt.None -> #(model, overview_fx)
@@ -948,7 +988,7 @@ pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
             api_metrics.get_org_metrics_project_tasks(
               project_id,
               30,
-              AdminMetricsProjectTasksFetched,
+              fn(result) { pool_msg(AdminMetricsProjectTasksFetched(result)) },
             )
 
           let #(model, right_panel_fx) = fetch_right_panel_data(model)
@@ -971,7 +1011,9 @@ pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
           #(
             model,
             effect.batch([
-              api_org.list_project_capabilities(project_id, CapabilitiesFetched),
+              api_org.list_project_capabilities(project_id, fn(result) {
+                admin_msg(CapabilitiesFetched(result))
+              }),
               ..right_panel_fx
             ]),
           )
@@ -994,8 +1036,12 @@ pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
           #(
             model,
             effect.batch([
-              api_projects.list_project_members(project_id, MembersFetched),
-              api_org.list_org_users("", OrgUsersCacheFetched),
+              api_projects.list_project_members(project_id, fn(result) {
+                admin_msg(MembersFetched(result))
+              }),
+              api_org.list_org_users("", fn(result) {
+                admin_msg(OrgUsersCacheFetched(result))
+              }),
               ..right_panel_fx
             ]),
           )
@@ -1016,7 +1062,9 @@ pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
           #(
             model,
             effect.batch([
-              api_tasks.list_task_types(project_id, TaskTypesFetched),
+              api_tasks.list_task_types(project_id, fn(result) {
+                admin_msg(TaskTypesFetched(result))
+              }),
               ..right_panel_fx
             ]),
           )
@@ -1041,9 +1089,13 @@ pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
       // Also fetch task types for the template dialog type selector
       let task_types_fx = case model.selected_project_id, model.task_types {
         opt.Some(project_id), NotAsked ->
-          api_tasks.list_task_types(project_id, TaskTypesFetched)
+          api_tasks.list_task_types(project_id, fn(result) {
+            admin_msg(TaskTypesFetched(result))
+          })
         opt.Some(project_id), Failed(_) ->
-          api_tasks.list_task_types(project_id, TaskTypesFetched)
+          api_tasks.list_task_types(project_id, fn(result) {
+            admin_msg(TaskTypesFetched(result))
+          })
         _, _ -> effect.none()
       }
       #(model, effect.batch([fx, task_types_fx, ..right_panel_fx]))
@@ -1069,20 +1121,24 @@ fn fetch_right_panel_data(model: Model) -> #(Model, List(Effect(Msg))) {
             capability_id: opt.None,
             q: opt.None,
           ),
-          fn(result) { MemberProjectTasksFetched(project_id, result) },
+          fn(result) { pool_msg(MemberProjectTasksFetched(project_id, result)) },
         )
 
       // Fetch cards for "My Cards" section
-      let cards_effect = api_cards.list_cards(project_id, CardsFetched)
+      let cards_effect =
+        api_cards.list_cards(project_id, fn(result) {
+          pool_msg(CardsFetched(result))
+        })
 
       // Update model with pending counter and loading state
-      let model = Model(
-        ..model,
-        member_tasks_pending: 1,
-        member_tasks_by_project: dict.new(),
-        cards: Loading,
-        cards_project_id: opt.Some(project_id),
-      )
+      let model =
+        Model(
+          ..model,
+          member_tasks_pending: 1,
+          member_tasks_by_project: dict.new(),
+          cards: Loading,
+          cards_project_id: opt.Some(project_id),
+        )
 
       #(model, [tasks_effect, cards_effect])
     }
@@ -1166,20 +1222,20 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
           let positions_effect =
             api_tasks.list_me_task_positions(
               model.selected_project_id,
-              MemberPositionsFetched,
+              fn(result) { pool_msg(MemberPositionsFetched(result)) },
             )
 
           let task_effects =
             list.map(project_ids, fn(project_id) {
               api_tasks.list_project_tasks(project_id, filters, fn(result) {
-                MemberProjectTasksFetched(project_id, result)
+                pool_msg(MemberProjectTasksFetched(project_id, result))
               })
             })
 
           let task_type_effects =
             list.map(project_ids, fn(project_id) {
               api_tasks.list_task_types(project_id, fn(result) {
-                MemberTaskTypesFetched(project_id, result)
+                pool_msg(MemberTaskTypesFetched(project_id, result))
               })
             })
 
@@ -1188,9 +1244,17 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
             model.selected_project_id
           {
             opt.Some(project_id) -> #(
-              [api_cards.list_cards(project_id, CardsFetched)],
+              [
+                api_cards.list_cards(project_id, fn(result) {
+                  pool_msg(CardsFetched(result))
+                }),
+              ],
               fn(m: Model) {
-                Model(..m, cards: Loading, cards_project_id: opt.Some(project_id))
+                Model(
+                  ..m,
+                  cards: Loading,
+                  cards_project_id: opt.Some(project_id),
+                )
               },
             )
             opt.None -> #([], fn(m: Model) { m })
@@ -1440,45 +1504,14 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
     }
 
-    LoginEmailChanged(email) ->
-      auth_workflow.handle_login_email_changed(model, email)
-    LoginPasswordChanged(password) ->
-      auth_workflow.handle_login_password_changed(model, password)
-    LoginSubmitted -> auth_workflow.handle_login_submitted(model)
-    LoginDomValuesRead(raw_email, raw_password) ->
-      auth_workflow.handle_login_dom_values_read(model, raw_email, raw_password)
-    LoginFinished(Ok(user)) ->
-      auth_workflow.handle_login_finished_ok(
+    AuthMsg(inner) ->
+      auth_workflow.update(
         model,
-        user,
+        inner,
         bootstrap_admin,
         hydrate_model,
         replace_url,
       )
-    LoginFinished(Error(err)) ->
-      auth_workflow.handle_login_finished_error(model, err)
-
-    ForgotPasswordClicked -> auth_workflow.handle_forgot_password_clicked(model)
-    ForgotPasswordEmailChanged(email) ->
-      auth_workflow.handle_forgot_password_email_changed(model, email)
-    ForgotPasswordSubmitted ->
-      auth_workflow.handle_forgot_password_submitted(model)
-    ForgotPasswordFinished(Ok(reset)) ->
-      auth_workflow.handle_forgot_password_finished_ok(model, reset)
-    ForgotPasswordFinished(Error(err)) ->
-      auth_workflow.handle_forgot_password_finished_error(model, err)
-    ForgotPasswordCopyClicked ->
-      auth_workflow.handle_forgot_password_copy_clicked(model)
-    ForgotPasswordCopyFinished(ok) ->
-      auth_workflow.handle_forgot_password_copy_finished(model, ok)
-    ForgotPasswordDismissed ->
-      auth_workflow.handle_forgot_password_dismissed(model)
-
-    LogoutClicked -> auth_workflow.handle_logout_clicked(model)
-    LogoutFinished(Ok(_)) ->
-      auth_workflow.handle_logout_finished_ok(model, replace_url)
-    LogoutFinished(Error(err)) ->
-      auth_workflow.handle_logout_finished_error(model, err, replace_url)
 
     ToastDismissed -> #(Model(..model, toast: opt.None), effect.none())
 
@@ -1487,12 +1520,13 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       let now = client_ffi.now_ms()
       let next_state = toast.show(model.toast_state, message, variant, now)
       // Schedule tick for auto-dismiss
-      let tick_effect = effect.from(fn(dispatch) {
-        client_ffi.set_timeout(toast.auto_dismiss_ms, fn(_) {
-          dispatch(ToastTick(client_ffi.now_ms()))
+      let tick_effect =
+        effect.from(fn(dispatch) {
+          client_ffi.set_timeout(toast.auto_dismiss_ms, fn(_) {
+            dispatch(ToastTick(client_ffi.now_ms()))
+          })
+          Nil
         })
-        Nil
-      })
       #(Model(..model, toast_state: next_state), tick_effect)
     }
 
@@ -1561,7 +1595,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           let #(model, fx) = member_refresh(model)
 
           let pause_fx = case should_pause {
-            True -> api_tasks.pause_me_active_task(MemberActiveTaskPaused)
+            True ->
+              api_tasks.pause_me_active_task(fn(result) {
+                pool_msg(MemberActiveTaskPaused(result))
+              })
             False -> effect.none()
           }
 
@@ -1575,901 +1612,1031 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
     }
 
-    ProjectsFetched(Ok(projects)) -> {
-      let selected =
-        update_helpers.ensure_selected_project(
-          model.selected_project_id,
-          projects,
-        )
-      let model =
-        Model(
-          ..model,
-          projects: Loaded(projects),
-          selected_project_id: selected,
-        )
-
-      let model = update_helpers.ensure_default_section(model)
-
-      case model.page {
-        Member -> {
-          let #(model, fx) = member_refresh(model)
-          let #(model, hyd_fx) = hydrate_model(model)
-          #(model, effect.batch([fx, hyd_fx, replace_url(model)]))
-        }
-
-        Admin -> {
-          let #(model, fx) = refresh_section_for_test(model)
-          let #(model, hyd_fx) = hydrate_model(model)
-          #(model, effect.batch([fx, hyd_fx, replace_url(model)]))
-        }
-
-        _ -> {
-          let #(model, hyd_fx) = hydrate_model(model)
-          #(model, effect.batch([hyd_fx, replace_url(model)]))
-        }
-      }
-    }
-
-    ProjectsFetched(Error(err)) -> {
-      case err.status == 401 {
-        True -> {
+    AdminMsg(inner) -> {
+      case inner {
+        ProjectsFetched(Ok(projects)) -> {
+          let selected =
+            update_helpers.ensure_selected_project(
+              model.selected_project_id,
+              projects,
+            )
           let model =
             Model(
               ..model,
-              page: Login,
-              user: opt.None,
-              member_drag: opt.None,
-              member_pool_drag_to_claim_armed: False,
-              member_pool_drag_over_my_tasks: False,
+              projects: Loaded(projects),
+              selected_project_id: selected,
             )
-          #(model, replace_url(model))
+
+          let model = update_helpers.ensure_default_section(model)
+
+          case model.page {
+            Member -> {
+              let #(model, fx) = member_refresh(model)
+              let #(model, hyd_fx) = hydrate_model(model)
+              #(model, effect.batch([fx, hyd_fx, replace_url(model)]))
+            }
+
+            Admin -> {
+              let #(model, fx) = refresh_section_for_test(model)
+              let #(model, hyd_fx) = hydrate_model(model)
+              #(model, effect.batch([fx, hyd_fx, replace_url(model)]))
+            }
+
+            _ -> {
+              let #(model, hyd_fx) = hydrate_model(model)
+              #(model, effect.batch([hyd_fx, replace_url(model)]))
+            }
+          }
         }
 
-        False -> #(Model(..model, projects: Failed(err)), effect.none())
+        ProjectsFetched(Error(err)) -> {
+          case err.status == 401 {
+            True -> {
+              let model =
+                Model(
+                  ..model,
+                  page: Login,
+                  user: opt.None,
+                  member_drag: opt.None,
+                  member_pool_drag_to_claim_armed: False,
+                  member_pool_drag_over_my_tasks: False,
+                )
+              #(model, replace_url(model))
+            }
+
+            False -> #(Model(..model, projects: Failed(err)), effect.none())
+          }
+        }
+
+        ProjectCreateDialogOpened ->
+          projects_workflow.handle_project_create_dialog_opened(model)
+        ProjectCreateDialogClosed ->
+          projects_workflow.handle_project_create_dialog_closed(model)
+        ProjectCreateNameChanged(name) ->
+          projects_workflow.handle_project_create_name_changed(model, name)
+        ProjectCreateSubmitted ->
+          projects_workflow.handle_project_create_submitted(model)
+        ProjectCreated(Ok(project)) ->
+          projects_workflow.handle_project_created_ok(model, project)
+        ProjectCreated(Error(err)) ->
+          projects_workflow.handle_project_created_error(model, err)
+        // Project Edit (Story 4.8 AC39)
+        ProjectEditDialogOpened(project_id, project_name) ->
+          projects_workflow.handle_project_edit_dialog_opened(
+            model,
+            project_id,
+            project_name,
+          )
+        ProjectEditDialogClosed ->
+          projects_workflow.handle_project_edit_dialog_closed(model)
+        ProjectEditNameChanged(name) ->
+          projects_workflow.handle_project_edit_name_changed(model, name)
+        ProjectEditSubmitted ->
+          projects_workflow.handle_project_edit_submitted(model)
+        ProjectUpdated(Ok(project)) ->
+          projects_workflow.handle_project_updated_ok(model, project)
+        ProjectUpdated(Error(err)) ->
+          projects_workflow.handle_project_updated_error(model, err)
+        // Project Delete (Story 4.8 AC39)
+        ProjectDeleteConfirmOpened(project_id, project_name) ->
+          projects_workflow.handle_project_delete_confirm_opened(
+            model,
+            project_id,
+            project_name,
+          )
+        ProjectDeleteConfirmClosed ->
+          projects_workflow.handle_project_delete_confirm_closed(model)
+        ProjectDeleteSubmitted ->
+          projects_workflow.handle_project_delete_submitted(model)
+        ProjectDeleted(Ok(_)) ->
+          projects_workflow.handle_project_deleted_ok(model)
+        ProjectDeleted(Error(err)) ->
+          projects_workflow.handle_project_deleted_error(model, err)
+
+        InviteCreateDialogOpened ->
+          invite_links_workflow.handle_invite_create_dialog_opened(model)
+        InviteCreateDialogClosed ->
+          invite_links_workflow.handle_invite_create_dialog_closed(model)
+        InviteLinkEmailChanged(value) ->
+          invite_links_workflow.handle_invite_link_email_changed(model, value)
+        InviteLinksFetched(Ok(links)) ->
+          invite_links_workflow.handle_invite_links_fetched_ok(model, links)
+        InviteLinksFetched(Error(err)) ->
+          invite_links_workflow.handle_invite_links_fetched_error(model, err)
+        InviteLinkCreateSubmitted ->
+          invite_links_workflow.handle_invite_link_create_submitted(model)
+        InviteLinkRegenerateClicked(email) ->
+          invite_links_workflow.handle_invite_link_regenerate_clicked(
+            model,
+            email,
+          )
+        InviteLinkCreated(Ok(link)) ->
+          invite_links_workflow.handle_invite_link_created_ok(model, link)
+        InviteLinkCreated(Error(err)) ->
+          invite_links_workflow.handle_invite_link_created_error(model, err)
+        InviteLinkRegenerated(Ok(link)) ->
+          invite_links_workflow.handle_invite_link_regenerated_ok(model, link)
+        InviteLinkRegenerated(Error(err)) ->
+          invite_links_workflow.handle_invite_link_regenerated_error(model, err)
+        InviteLinkCopyClicked(text) ->
+          invite_links_workflow.handle_invite_link_copy_clicked(model, text)
+        InviteLinkCopyFinished(ok) ->
+          invite_links_workflow.handle_invite_link_copy_finished(model, ok)
+
+        CapabilitiesFetched(Ok(capabilities)) ->
+          capabilities_workflow.handle_capabilities_fetched_ok(
+            model,
+            capabilities,
+          )
+        CapabilitiesFetched(Error(err)) ->
+          capabilities_workflow.handle_capabilities_fetched_error(model, err)
+        CapabilityCreateDialogOpened ->
+          capabilities_workflow.handle_capability_dialog_opened(model)
+        CapabilityCreateDialogClosed ->
+          capabilities_workflow.handle_capability_dialog_closed(model)
+        CapabilityCreateNameChanged(name) ->
+          capabilities_workflow.handle_capability_create_name_changed(
+            model,
+            name,
+          )
+        CapabilityCreateSubmitted ->
+          capabilities_workflow.handle_capability_create_submitted(model)
+        CapabilityCreated(Ok(capability)) ->
+          capabilities_workflow.handle_capability_created_ok(model, capability)
+        CapabilityCreated(Error(err)) ->
+          capabilities_workflow.handle_capability_created_error(model, err)
+        // Capability delete (Story 4.9 AC9)
+        CapabilityDeleteDialogOpened(capability_id) ->
+          capabilities_workflow.handle_capability_delete_dialog_opened(
+            model,
+            capability_id,
+          )
+        CapabilityDeleteDialogClosed ->
+          capabilities_workflow.handle_capability_delete_dialog_closed(model)
+        CapabilityDeleteSubmitted ->
+          capabilities_workflow.handle_capability_delete_submitted(model)
+        CapabilityDeleted(Ok(deleted_id)) ->
+          capabilities_workflow.handle_capability_deleted_ok(model, deleted_id)
+        CapabilityDeleted(Error(err)) ->
+          capabilities_workflow.handle_capability_deleted_error(model, err)
+
+        MembersFetched(Ok(members)) ->
+          admin_workflow.handle_members_fetched_ok(model, members)
+        MembersFetched(Error(err)) ->
+          admin_workflow.handle_members_fetched_error(model, err)
+
+        OrgUsersCacheFetched(Ok(users)) ->
+          admin_workflow.handle_org_users_cache_fetched_ok(model, users)
+        OrgUsersCacheFetched(Error(err)) ->
+          admin_workflow.handle_org_users_cache_fetched_error(model, err)
+        OrgSettingsUsersFetched(Ok(users)) ->
+          admin_workflow.handle_org_settings_users_fetched_ok(model, users)
+
+        OrgSettingsUsersFetched(Error(err)) ->
+          admin_workflow.handle_org_settings_users_fetched_error(model, err)
+        OrgSettingsRoleChanged(user_id, org_role) ->
+          admin_workflow.handle_org_settings_role_changed(
+            model,
+            user_id,
+            org_role,
+          )
+        OrgSettingsSaveClicked(user_id) ->
+          admin_workflow.handle_org_settings_save_clicked(model, user_id)
+        OrgSettingsSaved(_user_id, Ok(updated)) ->
+          admin_workflow.handle_org_settings_saved_ok(model, updated)
+        OrgSettingsSaved(user_id, Error(err)) ->
+          admin_workflow.handle_org_settings_saved_error(model, user_id, err)
+        OrgSettingsSaveAllClicked ->
+          admin_workflow.handle_org_settings_save_all_clicked(model)
+
+        // User projects dialog handlers
+        UserProjectsDialogOpened(user) ->
+          admin_workflow.handle_user_projects_dialog_opened(model, user)
+        UserProjectsDialogClosed ->
+          admin_workflow.handle_user_projects_dialog_closed(model)
+        UserProjectsFetched(Ok(projects)) ->
+          admin_workflow.handle_user_projects_fetched_ok(model, projects)
+        UserProjectsFetched(Error(err)) ->
+          admin_workflow.handle_user_projects_fetched_error(model, err)
+        UserProjectsAddProjectChanged(project_id) ->
+          admin_workflow.handle_user_projects_add_project_changed(
+            model,
+            project_id,
+          )
+        UserProjectsAddRoleChanged(role) ->
+          admin_workflow.handle_user_projects_add_role_changed(model, role)
+        UserProjectsAddSubmitted ->
+          admin_workflow.handle_user_projects_add_submitted(model)
+        UserProjectAdded(Ok(project)) ->
+          admin_workflow.handle_user_project_added_ok(model, project)
+        UserProjectAdded(Error(err)) ->
+          admin_workflow.handle_user_project_added_error(model, err)
+        UserProjectRemoveClicked(project_id) ->
+          admin_workflow.handle_user_project_remove_clicked(model, project_id)
+        UserProjectRemoved(Ok(_)) ->
+          admin_workflow.handle_user_project_removed_ok(model)
+        UserProjectRemoved(Error(err)) ->
+          admin_workflow.handle_user_project_removed_error(model, err)
+        UserProjectRoleChangeRequested(project_id, new_role) ->
+          admin_workflow.handle_user_project_role_change_requested(
+            model,
+            project_id,
+            new_role,
+          )
+        UserProjectRoleChanged(project_id, Ok(updated)) ->
+          admin_workflow.handle_user_project_role_changed_ok(
+            model,
+            project_id,
+            updated,
+          )
+        UserProjectRoleChanged(_project_id, Error(err)) ->
+          admin_workflow.handle_user_project_role_changed_error(model, err)
+
+        MemberAddDialogOpened ->
+          admin_workflow.handle_member_add_dialog_opened(model)
+        MemberAddDialogClosed ->
+          admin_workflow.handle_member_add_dialog_closed(model)
+        MemberAddRoleChanged(role_string) -> {
+          let role = case project_role.parse(role_string) {
+            Ok(r) -> r
+            Error(_) -> MemberRole
+          }
+          admin_workflow.handle_member_add_role_changed(model, role)
+        }
+        MemberAddUserSelected(user_id) ->
+          admin_workflow.handle_member_add_user_selected(model, user_id)
+        MemberAddSubmitted -> admin_workflow.handle_member_add_submitted(model)
+        MemberAdded(Ok(_)) ->
+          admin_workflow.handle_member_added_ok(model, refresh_section_for_test)
+        MemberAdded(Error(err)) ->
+          admin_workflow.handle_member_added_error(model, err)
+
+        MemberRemoveClicked(user_id) ->
+          admin_workflow.handle_member_remove_clicked(model, user_id)
+        MemberRemoveCancelled ->
+          admin_workflow.handle_member_remove_cancelled(model)
+        MemberRemoveConfirmed ->
+          admin_workflow.handle_member_remove_confirmed(model)
+        MemberRemoved(Ok(_)) ->
+          admin_workflow.handle_member_removed_ok(
+            model,
+            refresh_section_for_test,
+          )
+        MemberRemoved(Error(err)) ->
+          admin_workflow.handle_member_removed_error(model, err)
+
+        MemberRoleChangeRequested(user_id, new_role) ->
+          admin_workflow.handle_member_role_change_requested(
+            model,
+            user_id,
+            new_role,
+          )
+        MemberRoleChanged(Ok(result)) ->
+          admin_workflow.handle_member_role_changed_ok(model, result)
+        MemberRoleChanged(Error(err)) ->
+          admin_workflow.handle_member_role_changed_error(model, err)
+
+        // Member capabilities dialog (Story 4.7 AC10-14)
+        MemberCapabilitiesDialogOpened(user_id) ->
+          admin_workflow.handle_member_capabilities_dialog_opened(
+            model,
+            user_id,
+          )
+        MemberCapabilitiesDialogClosed ->
+          admin_workflow.handle_member_capabilities_dialog_closed(model)
+        MemberCapabilitiesToggled(capability_id) ->
+          admin_workflow.handle_member_capabilities_toggled(
+            model,
+            capability_id,
+          )
+        MemberCapabilitiesSaveClicked ->
+          admin_workflow.handle_member_capabilities_save_clicked(model)
+        MemberCapabilitiesFetched(Ok(result)) ->
+          admin_workflow.handle_member_capabilities_fetched_ok(model, result)
+        MemberCapabilitiesFetched(Error(err)) ->
+          admin_workflow.handle_member_capabilities_fetched_error(model, err)
+        MemberCapabilitiesSaved(Ok(result)) ->
+          admin_workflow.handle_member_capabilities_saved_ok(model, result)
+        MemberCapabilitiesSaved(Error(err)) ->
+          admin_workflow.handle_member_capabilities_saved_error(model, err)
+
+        // Capability members dialog (Story 4.7 AC16-17)
+        CapabilityMembersDialogOpened(capability_id) ->
+          admin_workflow.handle_capability_members_dialog_opened(
+            model,
+            capability_id,
+          )
+        CapabilityMembersDialogClosed ->
+          admin_workflow.handle_capability_members_dialog_closed(model)
+        CapabilityMembersToggled(user_id) ->
+          admin_workflow.handle_capability_members_toggled(model, user_id)
+        CapabilityMembersSaveClicked ->
+          admin_workflow.handle_capability_members_save_clicked(model)
+        CapabilityMembersFetched(Ok(result)) ->
+          admin_workflow.handle_capability_members_fetched_ok(model, result)
+        CapabilityMembersFetched(Error(err)) ->
+          admin_workflow.handle_capability_members_fetched_error(model, err)
+        CapabilityMembersSaved(Ok(result)) ->
+          admin_workflow.handle_capability_members_saved_ok(model, result)
+        CapabilityMembersSaved(Error(err)) ->
+          admin_workflow.handle_capability_members_saved_error(model, err)
+
+        OrgUsersSearchChanged(query) ->
+          admin_workflow.handle_org_users_search_changed(model, query)
+
+        OrgUsersSearchDebounced(query) ->
+          admin_workflow.handle_org_users_search_debounced(model, query)
+        OrgUsersSearchResults(token, Ok(users)) ->
+          admin_workflow.handle_org_users_search_results_ok(model, token, users)
+        OrgUsersSearchResults(token, Error(err)) ->
+          admin_workflow.handle_org_users_search_results_error(
+            model,
+            token,
+            err,
+          )
+
+        TaskTypesFetched(Ok(task_types)) ->
+          task_types_workflow.handle_task_types_fetched_ok(model, task_types)
+        TaskTypesFetched(Error(err)) ->
+          task_types_workflow.handle_task_types_fetched_error(model, err)
+        TaskTypeCreateDialogOpened ->
+          task_types_workflow.handle_task_type_dialog_opened(model)
+        TaskTypeCreateDialogClosed ->
+          task_types_workflow.handle_task_type_dialog_closed(model)
+        TaskTypeCreateNameChanged(name) ->
+          task_types_workflow.handle_task_type_create_name_changed(model, name)
+        TaskTypeCreateIconChanged(icon) ->
+          task_types_workflow.handle_task_type_create_icon_changed(model, icon)
+        TaskTypeCreateIconSearchChanged(search) ->
+          task_types_workflow.handle_task_type_create_icon_search_changed(
+            model,
+            search,
+          )
+        TaskTypeCreateIconCategoryChanged(category) ->
+          task_types_workflow.handle_task_type_create_icon_category_changed(
+            model,
+            category,
+          )
+        TaskTypeIconLoaded ->
+          task_types_workflow.handle_task_type_icon_loaded(model)
+        TaskTypeIconErrored ->
+          task_types_workflow.handle_task_type_icon_errored(model)
+        TaskTypeCreateCapabilityChanged(value) ->
+          task_types_workflow.handle_task_type_create_capability_changed(
+            model,
+            value,
+          )
+        TaskTypeCreateSubmitted ->
+          task_types_workflow.handle_task_type_create_submitted(model)
+        TaskTypeCreated(Ok(_)) ->
+          task_types_workflow.handle_task_type_created_ok(
+            model,
+            refresh_section_for_test,
+          )
+        TaskTypeCreated(Error(err)) ->
+          task_types_workflow.handle_task_type_created_error(model, err)
+        // Task types - dialog mode control (component pattern)
+        OpenTaskTypeDialog(mode) ->
+          task_types_workflow.handle_open_task_type_dialog(model, mode)
+        CloseTaskTypeDialog ->
+          task_types_workflow.handle_close_task_type_dialog(model)
+        // Task types - component events
+        TaskTypeCrudCreated(task_type) ->
+          task_types_workflow.handle_task_type_crud_created(
+            model,
+            task_type,
+            refresh_section_for_test,
+          )
+        TaskTypeCrudUpdated(task_type) ->
+          task_types_workflow.handle_task_type_crud_updated(model, task_type)
+        TaskTypeCrudDeleted(type_id) ->
+          task_types_workflow.handle_task_type_crud_deleted(model, type_id)
       }
     }
 
-    ProjectCreateDialogOpened ->
-      projects_workflow.handle_project_create_dialog_opened(model)
-    ProjectCreateDialogClosed ->
-      projects_workflow.handle_project_create_dialog_closed(model)
-    ProjectCreateNameChanged(name) ->
-      projects_workflow.handle_project_create_name_changed(model, name)
-    ProjectCreateSubmitted ->
-      projects_workflow.handle_project_create_submitted(model)
-    ProjectCreated(Ok(project)) ->
-      projects_workflow.handle_project_created_ok(model, project)
-    ProjectCreated(Error(err)) ->
-      projects_workflow.handle_project_created_error(model, err)
-    // Project Edit (Story 4.8 AC39)
-    ProjectEditDialogOpened(project_id, project_name) ->
-      projects_workflow.handle_project_edit_dialog_opened(model, project_id, project_name)
-    ProjectEditDialogClosed ->
-      projects_workflow.handle_project_edit_dialog_closed(model)
-    ProjectEditNameChanged(name) ->
-      projects_workflow.handle_project_edit_name_changed(model, name)
-    ProjectEditSubmitted ->
-      projects_workflow.handle_project_edit_submitted(model)
-    ProjectUpdated(Ok(project)) ->
-      projects_workflow.handle_project_updated_ok(model, project)
-    ProjectUpdated(Error(err)) ->
-      projects_workflow.handle_project_updated_error(model, err)
-    // Project Delete (Story 4.8 AC39)
-    ProjectDeleteConfirmOpened(project_id, project_name) ->
-      projects_workflow.handle_project_delete_confirm_opened(model, project_id, project_name)
-    ProjectDeleteConfirmClosed ->
-      projects_workflow.handle_project_delete_confirm_closed(model)
-    ProjectDeleteSubmitted ->
-      projects_workflow.handle_project_delete_submitted(model)
-    ProjectDeleted(Ok(_)) ->
-      projects_workflow.handle_project_deleted_ok(model)
-    ProjectDeleted(Error(err)) ->
-      projects_workflow.handle_project_deleted_error(model, err)
+    PoolMsg(inner) -> {
+      case inner {
+        MemberPoolStatusChanged(v) ->
+          pool_workflow.handle_pool_status_changed(model, v, member_refresh)
+        MemberPoolTypeChanged(v) ->
+          pool_workflow.handle_pool_type_changed(model, v, member_refresh)
+        MemberPoolCapabilityChanged(v) ->
+          pool_workflow.handle_pool_capability_changed(model, v, member_refresh)
 
-    InviteCreateDialogOpened ->
-      invite_links_workflow.handle_invite_create_dialog_opened(model)
-    InviteCreateDialogClosed ->
-      invite_links_workflow.handle_invite_create_dialog_closed(model)
-    InviteLinkEmailChanged(value) ->
-      invite_links_workflow.handle_invite_link_email_changed(model, value)
-    InviteLinksFetched(Ok(links)) ->
-      invite_links_workflow.handle_invite_links_fetched_ok(model, links)
-    InviteLinksFetched(Error(err)) ->
-      invite_links_workflow.handle_invite_links_fetched_error(model, err)
-    InviteLinkCreateSubmitted ->
-      invite_links_workflow.handle_invite_link_create_submitted(model)
-    InviteLinkRegenerateClicked(email) ->
-      invite_links_workflow.handle_invite_link_regenerate_clicked(model, email)
-    InviteLinkCreated(Ok(link)) ->
-      invite_links_workflow.handle_invite_link_created_ok(model, link)
-    InviteLinkCreated(Error(err)) ->
-      invite_links_workflow.handle_invite_link_created_error(model, err)
-    InviteLinkRegenerated(Ok(link)) ->
-      invite_links_workflow.handle_invite_link_regenerated_ok(model, link)
-    InviteLinkRegenerated(Error(err)) ->
-      invite_links_workflow.handle_invite_link_regenerated_error(model, err)
-    InviteLinkCopyClicked(text) ->
-      invite_links_workflow.handle_invite_link_copy_clicked(model, text)
-    InviteLinkCopyFinished(ok) ->
-      invite_links_workflow.handle_invite_link_copy_finished(model, ok)
-
-    CapabilitiesFetched(Ok(capabilities)) ->
-      capabilities_workflow.handle_capabilities_fetched_ok(model, capabilities)
-    CapabilitiesFetched(Error(err)) ->
-      capabilities_workflow.handle_capabilities_fetched_error(model, err)
-    CapabilityCreateDialogOpened ->
-      capabilities_workflow.handle_capability_dialog_opened(model)
-    CapabilityCreateDialogClosed ->
-      capabilities_workflow.handle_capability_dialog_closed(model)
-    CapabilityCreateNameChanged(name) ->
-      capabilities_workflow.handle_capability_create_name_changed(model, name)
-    CapabilityCreateSubmitted ->
-      capabilities_workflow.handle_capability_create_submitted(model)
-    CapabilityCreated(Ok(capability)) ->
-      capabilities_workflow.handle_capability_created_ok(model, capability)
-    CapabilityCreated(Error(err)) ->
-      capabilities_workflow.handle_capability_created_error(model, err)
-    // Capability delete (Story 4.9 AC9)
-    CapabilityDeleteDialogOpened(capability_id) ->
-      capabilities_workflow.handle_capability_delete_dialog_opened(model, capability_id)
-    CapabilityDeleteDialogClosed ->
-      capabilities_workflow.handle_capability_delete_dialog_closed(model)
-    CapabilityDeleteSubmitted ->
-      capabilities_workflow.handle_capability_delete_submitted(model)
-    CapabilityDeleted(Ok(deleted_id)) ->
-      capabilities_workflow.handle_capability_deleted_ok(model, deleted_id)
-    CapabilityDeleted(Error(err)) ->
-      capabilities_workflow.handle_capability_deleted_error(model, err)
-
-    MembersFetched(Ok(members)) ->
-      admin_workflow.handle_members_fetched_ok(model, members)
-    MembersFetched(Error(err)) ->
-      admin_workflow.handle_members_fetched_error(model, err)
-
-    OrgUsersCacheFetched(Ok(users)) ->
-      admin_workflow.handle_org_users_cache_fetched_ok(model, users)
-    OrgUsersCacheFetched(Error(err)) ->
-      admin_workflow.handle_org_users_cache_fetched_error(model, err)
-    OrgSettingsUsersFetched(Ok(users)) ->
-      admin_workflow.handle_org_settings_users_fetched_ok(model, users)
-
-    OrgSettingsUsersFetched(Error(err)) ->
-      admin_workflow.handle_org_settings_users_fetched_error(model, err)
-    OrgSettingsRoleChanged(user_id, org_role) ->
-      admin_workflow.handle_org_settings_role_changed(model, user_id, org_role)
-    OrgSettingsSaveClicked(user_id) ->
-      admin_workflow.handle_org_settings_save_clicked(model, user_id)
-    OrgSettingsSaved(_user_id, Ok(updated)) ->
-      admin_workflow.handle_org_settings_saved_ok(model, updated)
-    OrgSettingsSaved(user_id, Error(err)) ->
-      admin_workflow.handle_org_settings_saved_error(model, user_id, err)
-    OrgSettingsSaveAllClicked ->
-      admin_workflow.handle_org_settings_save_all_clicked(model)
-
-    // User projects dialog handlers
-    UserProjectsDialogOpened(user) ->
-      admin_workflow.handle_user_projects_dialog_opened(model, user)
-    UserProjectsDialogClosed ->
-      admin_workflow.handle_user_projects_dialog_closed(model)
-    UserProjectsFetched(Ok(projects)) ->
-      admin_workflow.handle_user_projects_fetched_ok(model, projects)
-    UserProjectsFetched(Error(err)) ->
-      admin_workflow.handle_user_projects_fetched_error(model, err)
-    UserProjectsAddProjectChanged(project_id) ->
-      admin_workflow.handle_user_projects_add_project_changed(model, project_id)
-    UserProjectsAddRoleChanged(role) ->
-      admin_workflow.handle_user_projects_add_role_changed(model, role)
-    UserProjectsAddSubmitted ->
-      admin_workflow.handle_user_projects_add_submitted(model)
-    UserProjectAdded(Ok(project)) ->
-      admin_workflow.handle_user_project_added_ok(model, project)
-    UserProjectAdded(Error(err)) ->
-      admin_workflow.handle_user_project_added_error(model, err)
-    UserProjectRemoveClicked(project_id) ->
-      admin_workflow.handle_user_project_remove_clicked(model, project_id)
-    UserProjectRemoved(Ok(_)) ->
-      admin_workflow.handle_user_project_removed_ok(model)
-    UserProjectRemoved(Error(err)) ->
-      admin_workflow.handle_user_project_removed_error(model, err)
-    UserProjectRoleChangeRequested(project_id, new_role) ->
-      admin_workflow.handle_user_project_role_change_requested(model, project_id, new_role)
-    UserProjectRoleChanged(project_id, Ok(updated)) ->
-      admin_workflow.handle_user_project_role_changed_ok(model, project_id, updated)
-    UserProjectRoleChanged(_project_id, Error(err)) ->
-      admin_workflow.handle_user_project_role_changed_error(model, err)
-
-    MemberAddDialogOpened ->
-      admin_workflow.handle_member_add_dialog_opened(model)
-    MemberAddDialogClosed ->
-      admin_workflow.handle_member_add_dialog_closed(model)
-    MemberAddRoleChanged(role_string) -> {
-      let role = case project_role.parse(role_string) {
-        Ok(r) -> r
-        Error(_) -> MemberRole
-      }
-      admin_workflow.handle_member_add_role_changed(model, role)
-    }
-    MemberAddUserSelected(user_id) ->
-      admin_workflow.handle_member_add_user_selected(model, user_id)
-    MemberAddSubmitted -> admin_workflow.handle_member_add_submitted(model)
-    MemberAdded(Ok(_)) ->
-      admin_workflow.handle_member_added_ok(model, refresh_section_for_test)
-    MemberAdded(Error(err)) ->
-      admin_workflow.handle_member_added_error(model, err)
-
-    MemberRemoveClicked(user_id) ->
-      admin_workflow.handle_member_remove_clicked(model, user_id)
-    MemberRemoveCancelled ->
-      admin_workflow.handle_member_remove_cancelled(model)
-    MemberRemoveConfirmed ->
-      admin_workflow.handle_member_remove_confirmed(model)
-    MemberRemoved(Ok(_)) ->
-      admin_workflow.handle_member_removed_ok(model, refresh_section_for_test)
-    MemberRemoved(Error(err)) ->
-      admin_workflow.handle_member_removed_error(model, err)
-
-    MemberRoleChangeRequested(user_id, new_role) ->
-      admin_workflow.handle_member_role_change_requested(model, user_id, new_role)
-    MemberRoleChanged(Ok(result)) ->
-      admin_workflow.handle_member_role_changed_ok(model, result)
-    MemberRoleChanged(Error(err)) ->
-      admin_workflow.handle_member_role_changed_error(model, err)
-
-    // Member capabilities dialog (Story 4.7 AC10-14)
-    MemberCapabilitiesDialogOpened(user_id) ->
-      admin_workflow.handle_member_capabilities_dialog_opened(model, user_id)
-    MemberCapabilitiesDialogClosed ->
-      admin_workflow.handle_member_capabilities_dialog_closed(model)
-    MemberCapabilitiesToggled(capability_id) ->
-      admin_workflow.handle_member_capabilities_toggled(model, capability_id)
-    MemberCapabilitiesSaveClicked ->
-      admin_workflow.handle_member_capabilities_save_clicked(model)
-    MemberCapabilitiesFetched(Ok(result)) ->
-      admin_workflow.handle_member_capabilities_fetched_ok(model, result)
-    MemberCapabilitiesFetched(Error(err)) ->
-      admin_workflow.handle_member_capabilities_fetched_error(model, err)
-    MemberCapabilitiesSaved(Ok(result)) ->
-      admin_workflow.handle_member_capabilities_saved_ok(model, result)
-    MemberCapabilitiesSaved(Error(err)) ->
-      admin_workflow.handle_member_capabilities_saved_error(model, err)
-
-    // Capability members dialog (Story 4.7 AC16-17)
-    CapabilityMembersDialogOpened(capability_id) ->
-      admin_workflow.handle_capability_members_dialog_opened(model, capability_id)
-    CapabilityMembersDialogClosed ->
-      admin_workflow.handle_capability_members_dialog_closed(model)
-    CapabilityMembersToggled(user_id) ->
-      admin_workflow.handle_capability_members_toggled(model, user_id)
-    CapabilityMembersSaveClicked ->
-      admin_workflow.handle_capability_members_save_clicked(model)
-    CapabilityMembersFetched(Ok(result)) ->
-      admin_workflow.handle_capability_members_fetched_ok(model, result)
-    CapabilityMembersFetched(Error(err)) ->
-      admin_workflow.handle_capability_members_fetched_error(model, err)
-    CapabilityMembersSaved(Ok(result)) ->
-      admin_workflow.handle_capability_members_saved_ok(model, result)
-    CapabilityMembersSaved(Error(err)) ->
-      admin_workflow.handle_capability_members_saved_error(model, err)
-
-    OrgUsersSearchChanged(query) ->
-      admin_workflow.handle_org_users_search_changed(model, query)
-
-    OrgUsersSearchDebounced(query) ->
-      admin_workflow.handle_org_users_search_debounced(model, query)
-    OrgUsersSearchResults(token, Ok(users)) ->
-      admin_workflow.handle_org_users_search_results_ok(model, token, users)
-    OrgUsersSearchResults(token, Error(err)) ->
-      admin_workflow.handle_org_users_search_results_error(model, token, err)
-
-    TaskTypesFetched(Ok(task_types)) ->
-      task_types_workflow.handle_task_types_fetched_ok(model, task_types)
-    TaskTypesFetched(Error(err)) ->
-      task_types_workflow.handle_task_types_fetched_error(model, err)
-    TaskTypeCreateDialogOpened ->
-      task_types_workflow.handle_task_type_dialog_opened(model)
-    TaskTypeCreateDialogClosed ->
-      task_types_workflow.handle_task_type_dialog_closed(model)
-    TaskTypeCreateNameChanged(name) ->
-      task_types_workflow.handle_task_type_create_name_changed(model, name)
-    TaskTypeCreateIconChanged(icon) ->
-      task_types_workflow.handle_task_type_create_icon_changed(model, icon)
-    TaskTypeCreateIconSearchChanged(search) ->
-      task_types_workflow.handle_task_type_create_icon_search_changed(
-        model,
-        search,
-      )
-    TaskTypeCreateIconCategoryChanged(category) ->
-      task_types_workflow.handle_task_type_create_icon_category_changed(
-        model,
-        category,
-      )
-    TaskTypeIconLoaded ->
-      task_types_workflow.handle_task_type_icon_loaded(model)
-    TaskTypeIconErrored ->
-      task_types_workflow.handle_task_type_icon_errored(model)
-    TaskTypeCreateCapabilityChanged(value) ->
-      task_types_workflow.handle_task_type_create_capability_changed(
-        model,
-        value,
-      )
-    TaskTypeCreateSubmitted ->
-      task_types_workflow.handle_task_type_create_submitted(model)
-    TaskTypeCreated(Ok(_)) ->
-      task_types_workflow.handle_task_type_created_ok(
-        model,
-        refresh_section_for_test,
-      )
-    TaskTypeCreated(Error(err)) ->
-      task_types_workflow.handle_task_type_created_error(model, err)
-    // Task types - dialog mode control (component pattern)
-    OpenTaskTypeDialog(mode) ->
-      task_types_workflow.handle_open_task_type_dialog(model, mode)
-    CloseTaskTypeDialog ->
-      task_types_workflow.handle_close_task_type_dialog(model)
-    // Task types - component events
-    TaskTypeCrudCreated(task_type) ->
-      task_types_workflow.handle_task_type_crud_created(
-        model,
-        task_type,
-        refresh_section_for_test,
-      )
-    TaskTypeCrudUpdated(task_type) ->
-      task_types_workflow.handle_task_type_crud_updated(model, task_type)
-    TaskTypeCrudDeleted(type_id) ->
-      task_types_workflow.handle_task_type_crud_deleted(model, type_id)
-
-    MemberPoolStatusChanged(v) ->
-      pool_workflow.handle_pool_status_changed(model, v, member_refresh)
-    MemberPoolTypeChanged(v) ->
-      pool_workflow.handle_pool_type_changed(model, v, member_refresh)
-    MemberPoolCapabilityChanged(v) ->
-      pool_workflow.handle_pool_capability_changed(model, v, member_refresh)
-
-    MemberToggleMyCapabilitiesQuick ->
-      pool_workflow.handle_toggle_my_capabilities_quick(model)
-    MemberPoolFiltersToggled -> pool_workflow.handle_pool_filters_toggled(model)
-    MemberClearFilters ->
-      pool_workflow.handle_clear_filters(model, member_refresh)
-    MemberPoolViewModeSet(mode) ->
-      pool_workflow.handle_pool_view_mode_set(model, mode)
-    MemberListHideCompletedToggled ->
-      #(
-        Model(..model, member_list_hide_completed: !model.member_list_hide_completed),
-        effect.none(),
-      )
-    // Story 4.8 UX: Collapse/expand card groups in Lista view
-    MemberListCardToggled(card_id) -> {
-      let current =
-        dict.get(model.member_list_expanded_cards, card_id)
-        |> opt.from_result
-        |> opt.unwrap(True)
-      let new_cards =
-        dict.insert(model.member_list_expanded_cards, card_id, !current)
-      #(Model(..model, member_list_expanded_cards: new_cards), effect.none())
-    }
-    ViewModeChanged(mode) -> {
-      let new_model = Model(..model, view_mode: mode)
-      let route =
-        router.Member(
-          model.member_section,
-          model.selected_project_id,
-          opt.Some(mode),
-        )
-      #(new_model, router.replace(route))
-    }
-    MemberPanelToggled ->
-      #(Model(..model, member_panel_expanded: !model.member_panel_expanded), effect.none())
-    MobileLeftDrawerToggled ->
-      #(
-        Model(
-          ..model,
-          mobile_left_drawer_open: !model.mobile_left_drawer_open,
-          mobile_right_drawer_open: False,
-        ),
-        effect.none(),
-      )
-    MobileRightDrawerToggled ->
-      #(
-        Model(
-          ..model,
-          mobile_right_drawer_open: !model.mobile_right_drawer_open,
-          mobile_left_drawer_open: False,
-        ),
-        effect.none(),
-      )
-    MobileDrawersClosed ->
-      #(
-        Model(
-          ..model,
-          mobile_left_drawer_open: False,
-          mobile_right_drawer_open: False,
-        ),
-        effect.none(),
-      )
-    SidebarConfigToggled ->
-      #(
-        Model(..model, sidebar_config_collapsed: !model.sidebar_config_collapsed),
-        app_effects.save_sidebar_state(
-          !model.sidebar_config_collapsed,
-          model.sidebar_org_collapsed,
-        ),
-      )
-    SidebarOrgToggled ->
-      #(
-        Model(..model, sidebar_org_collapsed: !model.sidebar_org_collapsed),
-        app_effects.save_sidebar_state(
-          model.sidebar_config_collapsed,
-          !model.sidebar_org_collapsed,
-        ),
-      )
-    // Story 4.8 UX: Preferences popup toggle
-    PreferencesPopupToggled ->
-      #(
-        Model(
-          ..model,
-          preferences_popup_open: !model.preferences_popup_open,
-        ),
-        effect.none(),
-      )
-    GlobalKeyDown(event) -> pool_workflow.handle_global_keydown(model, event)
-
-    MemberPoolSearchChanged(v) ->
-      pool_workflow.handle_pool_search_changed(model, v)
-    MemberPoolSearchDebounced(v) ->
-      pool_workflow.handle_pool_search_debounced(model, v, member_refresh)
-
-    MemberProjectTasksFetched(project_id, Ok(tasks)) -> {
-      let tasks_by_project =
-        dict.insert(model.member_tasks_by_project, project_id, tasks)
-      let pending = model.member_tasks_pending - 1
-
-      let model =
-        Model(
-          ..model,
-          member_tasks_by_project: tasks_by_project,
-          member_tasks_pending: pending,
-        )
-
-      case pending <= 0 {
-        True -> #(
+        MemberToggleMyCapabilitiesQuick ->
+          pool_workflow.handle_toggle_my_capabilities_quick(model)
+        MemberPoolFiltersToggled ->
+          pool_workflow.handle_pool_filters_toggled(model)
+        MemberClearFilters ->
+          pool_workflow.handle_clear_filters(model, member_refresh)
+        MemberPoolViewModeSet(mode) ->
+          pool_workflow.handle_pool_view_mode_set(model, mode)
+        MemberListHideCompletedToggled -> #(
           Model(
             ..model,
-            member_tasks: Loaded(update_helpers.flatten_tasks(tasks_by_project)),
+            member_list_hide_completed: !model.member_list_hide_completed,
           ),
           effect.none(),
         )
-        False -> #(model, effect.none())
-      }
-    }
-
-    MemberProjectTasksFetched(_project_id, Error(err)) -> {
-      case err.status {
-        401 -> #(
+        // Story 4.8 UX: Collapse/expand card groups in Lista view
+        MemberListCardToggled(card_id) -> {
+          let current =
+            dict.get(model.member_list_expanded_cards, card_id)
+            |> opt.from_result
+            |> opt.unwrap(True)
+          let new_cards =
+            dict.insert(model.member_list_expanded_cards, card_id, !current)
+          #(
+            Model(..model, member_list_expanded_cards: new_cards),
+            effect.none(),
+          )
+        }
+        ViewModeChanged(mode) -> {
+          let new_model = Model(..model, view_mode: mode)
+          let route =
+            router.Member(
+              model.member_section,
+              model.selected_project_id,
+              opt.Some(mode),
+            )
+          #(new_model, router.replace(route))
+        }
+        MemberPanelToggled -> #(
+          Model(..model, member_panel_expanded: !model.member_panel_expanded),
+          effect.none(),
+        )
+        MobileLeftDrawerToggled -> #(
           Model(
             ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
+            mobile_left_drawer_open: !model.mobile_left_drawer_open,
+            mobile_right_drawer_open: False,
           ),
           effect.none(),
         )
-        _ -> #(
-          Model(..model, member_tasks: Failed(err), member_tasks_pending: 0),
-          effect.none(),
-        )
-      }
-    }
-
-    MemberTaskTypesFetched(project_id, Ok(task_types)) -> {
-      let task_types_by_project =
-        dict.insert(model.member_task_types_by_project, project_id, task_types)
-      let pending = model.member_task_types_pending - 1
-
-      let model =
-        Model(
-          ..model,
-          member_task_types_by_project: task_types_by_project,
-          member_task_types_pending: pending,
-        )
-
-      case pending <= 0 {
-        True -> #(
+        MobileRightDrawerToggled -> #(
           Model(
             ..model,
-            member_task_types: Loaded(update_helpers.flatten_task_types(
-              task_types_by_project,
-            )),
+            mobile_right_drawer_open: !model.mobile_right_drawer_open,
+            mobile_left_drawer_open: False,
           ),
           effect.none(),
         )
-        False -> #(model, effect.none())
-      }
-    }
-
-    MemberTaskTypesFetched(_project_id, Error(err)) -> {
-      case err.status {
-        401 -> #(
+        MobileDrawersClosed -> #(
           Model(
             ..model,
-            page: Login,
-            user: opt.None,
-            member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
+            mobile_left_drawer_open: False,
+            mobile_right_drawer_open: False,
           ),
           effect.none(),
         )
-        _ -> #(
+        SidebarConfigToggled -> #(
           Model(
             ..model,
-            member_task_types: Failed(err),
-            member_task_types_pending: 0,
+            sidebar_config_collapsed: !model.sidebar_config_collapsed,
           ),
+          app_effects.save_sidebar_state(
+            !model.sidebar_config_collapsed,
+            model.sidebar_org_collapsed,
+          ),
+        )
+        SidebarOrgToggled -> #(
+          Model(..model, sidebar_org_collapsed: !model.sidebar_org_collapsed),
+          app_effects.save_sidebar_state(
+            model.sidebar_config_collapsed,
+            !model.sidebar_org_collapsed,
+          ),
+        )
+        // Story 4.8 UX: Preferences popup toggle
+        PreferencesPopupToggled -> #(
+          Model(..model, preferences_popup_open: !model.preferences_popup_open),
           effect.none(),
         )
+        GlobalKeyDown(event) ->
+          pool_workflow.handle_global_keydown(model, event)
+
+        MemberPoolSearchChanged(v) ->
+          pool_workflow.handle_pool_search_changed(model, v)
+        MemberPoolSearchDebounced(v) ->
+          pool_workflow.handle_pool_search_debounced(model, v, member_refresh)
+
+        MemberProjectTasksFetched(project_id, Ok(tasks)) -> {
+          let tasks_by_project =
+            dict.insert(model.member_tasks_by_project, project_id, tasks)
+          let pending = model.member_tasks_pending - 1
+
+          let model =
+            Model(
+              ..model,
+              member_tasks_by_project: tasks_by_project,
+              member_tasks_pending: pending,
+            )
+
+          case pending <= 0 {
+            True -> #(
+              Model(
+                ..model,
+                member_tasks: Loaded(update_helpers.flatten_tasks(
+                  tasks_by_project,
+                )),
+              ),
+              effect.none(),
+            )
+            False -> #(model, effect.none())
+          }
+        }
+
+        MemberProjectTasksFetched(_project_id, Error(err)) -> {
+          case err.status {
+            401 -> #(
+              Model(
+                ..model,
+                page: Login,
+                user: opt.None,
+                member_drag: opt.None,
+                member_pool_drag_to_claim_armed: False,
+                member_pool_drag_over_my_tasks: False,
+              ),
+              effect.none(),
+            )
+            _ -> #(
+              Model(..model, member_tasks: Failed(err), member_tasks_pending: 0),
+              effect.none(),
+            )
+          }
+        }
+
+        MemberTaskTypesFetched(project_id, Ok(task_types)) -> {
+          let task_types_by_project =
+            dict.insert(
+              model.member_task_types_by_project,
+              project_id,
+              task_types,
+            )
+          let pending = model.member_task_types_pending - 1
+
+          let model =
+            Model(
+              ..model,
+              member_task_types_by_project: task_types_by_project,
+              member_task_types_pending: pending,
+            )
+
+          case pending <= 0 {
+            True -> #(
+              Model(
+                ..model,
+                member_task_types: Loaded(update_helpers.flatten_task_types(
+                  task_types_by_project,
+                )),
+              ),
+              effect.none(),
+            )
+            False -> #(model, effect.none())
+          }
+        }
+
+        MemberTaskTypesFetched(_project_id, Error(err)) -> {
+          case err.status {
+            401 -> #(
+              Model(
+                ..model,
+                page: Login,
+                user: opt.None,
+                member_drag: opt.None,
+                member_pool_drag_to_claim_armed: False,
+                member_pool_drag_over_my_tasks: False,
+              ),
+              effect.none(),
+            )
+            _ -> #(
+              Model(
+                ..model,
+                member_task_types: Failed(err),
+                member_task_types_pending: 0,
+              ),
+              effect.none(),
+            )
+          }
+        }
+
+        MemberCanvasRectFetched(left, top) ->
+          pool_workflow.handle_canvas_rect_fetched(model, left, top)
+        MemberDragStarted(task_id, offset_x, offset_y) ->
+          pool_workflow.handle_drag_started(model, task_id, offset_x, offset_y)
+        MemberDragMoved(client_x, client_y) ->
+          pool_workflow.handle_drag_moved(model, client_x, client_y)
+        MemberDragEnded -> pool_workflow.handle_drag_ended(model)
+
+        MemberCreateDialogOpened ->
+          tasks_workflow.handle_create_dialog_opened(model)
+        MemberCreateDialogClosed ->
+          tasks_workflow.handle_create_dialog_closed(model)
+        MemberCreateTitleChanged(v) ->
+          tasks_workflow.handle_create_title_changed(model, v)
+        MemberCreateDescriptionChanged(v) ->
+          tasks_workflow.handle_create_description_changed(model, v)
+        MemberCreatePriorityChanged(v) ->
+          tasks_workflow.handle_create_priority_changed(model, v)
+        MemberCreateTypeIdChanged(v) ->
+          tasks_workflow.handle_create_type_id_changed(model, v)
+
+        MemberCreateSubmitted ->
+          tasks_workflow.handle_create_submitted(model, member_refresh)
+
+        MemberTaskCreated(Ok(_)) ->
+          tasks_workflow.handle_task_created_ok(model, member_refresh)
+        MemberTaskCreated(Error(err)) ->
+          tasks_workflow.handle_task_created_error(model, err)
+
+        MemberClaimClicked(task_id, version) ->
+          tasks_workflow.handle_claim_clicked(model, task_id, version)
+        MemberReleaseClicked(task_id, version) ->
+          tasks_workflow.handle_release_clicked(model, task_id, version)
+        MemberCompleteClicked(task_id, version) ->
+          tasks_workflow.handle_complete_clicked(model, task_id, version)
+
+        MemberTaskClaimed(Ok(_)) ->
+          tasks_workflow.handle_task_claimed_ok(model, member_refresh)
+        MemberTaskReleased(Ok(_)) ->
+          tasks_workflow.handle_task_released_ok(model, member_refresh)
+        MemberTaskCompleted(Ok(_)) ->
+          tasks_workflow.handle_task_completed_ok(model, member_refresh)
+
+        MemberTaskClaimed(Error(err)) ->
+          tasks_workflow.handle_mutation_error(model, err, member_refresh)
+        MemberTaskReleased(Error(err)) ->
+          tasks_workflow.handle_mutation_error(model, err, member_refresh)
+        MemberTaskCompleted(Error(err)) ->
+          tasks_workflow.handle_mutation_error(model, err, member_refresh)
+
+        MemberNowWorkingStartClicked(task_id) ->
+          now_working_workflow.handle_start_clicked(model, task_id)
+        MemberNowWorkingPauseClicked ->
+          now_working_workflow.handle_pause_clicked(model)
+
+        MemberActiveTaskFetched(Ok(payload)) ->
+          now_working_workflow.handle_fetched_ok(model, payload)
+        MemberActiveTaskFetched(Error(err)) ->
+          now_working_workflow.handle_fetched_error(model, err)
+
+        MemberActiveTaskStarted(Ok(payload)) ->
+          now_working_workflow.handle_started_ok(model, payload)
+        MemberActiveTaskStarted(Error(err)) ->
+          now_working_workflow.handle_started_error(model, err)
+
+        MemberActiveTaskPaused(Ok(payload)) ->
+          now_working_workflow.handle_paused_ok(model, payload)
+        MemberActiveTaskPaused(Error(err)) ->
+          now_working_workflow.handle_paused_error(model, err)
+
+        MemberActiveTaskHeartbeated(Ok(payload)) ->
+          now_working_workflow.handle_heartbeated_ok(model, payload)
+        MemberActiveTaskHeartbeated(Error(err)) ->
+          now_working_workflow.handle_heartbeated_error(model, err)
+
+        // Work sessions (multi-session) - delegate to workflow
+        MemberWorkSessionsFetched(Ok(payload)) ->
+          now_working_workflow.handle_sessions_fetched_ok(model, payload)
+        MemberWorkSessionsFetched(Error(err)) ->
+          now_working_workflow.handle_sessions_fetched_error(model, err)
+
+        MemberWorkSessionStarted(Ok(payload)) ->
+          now_working_workflow.handle_session_started_ok(model, payload)
+        MemberWorkSessionStarted(Error(err)) ->
+          now_working_workflow.handle_session_started_error(model, err)
+
+        MemberWorkSessionPaused(Ok(payload)) ->
+          now_working_workflow.handle_session_paused_ok(model, payload)
+        MemberWorkSessionPaused(Error(err)) ->
+          now_working_workflow.handle_session_paused_error(model, err)
+
+        MemberWorkSessionHeartbeated(Ok(payload)) ->
+          now_working_workflow.handle_session_heartbeated_ok(model, payload)
+        MemberWorkSessionHeartbeated(Error(err)) ->
+          now_working_workflow.handle_session_heartbeated_error(model, err)
+
+        MemberMetricsFetched(Ok(metrics)) ->
+          metrics_workflow.handle_member_metrics_fetched_ok(model, metrics)
+        MemberMetricsFetched(Error(err)) ->
+          metrics_workflow.handle_member_metrics_fetched_error(model, err)
+
+        AdminMetricsOverviewFetched(Ok(overview)) ->
+          metrics_workflow.handle_admin_overview_fetched_ok(model, overview)
+        AdminMetricsOverviewFetched(Error(err)) ->
+          metrics_workflow.handle_admin_overview_fetched_error(model, err)
+
+        AdminMetricsProjectTasksFetched(Ok(payload)) ->
+          metrics_workflow.handle_admin_project_tasks_fetched_ok(model, payload)
+        AdminMetricsProjectTasksFetched(Error(err)) ->
+          metrics_workflow.handle_admin_project_tasks_fetched_error(model, err)
+
+        // Rule metrics tab
+        AdminRuleMetricsFetched(Ok(metrics)) ->
+          admin_workflow.handle_rule_metrics_tab_fetched_ok(model, metrics)
+        AdminRuleMetricsFetched(Error(err)) ->
+          admin_workflow.handle_rule_metrics_tab_fetched_error(model, err)
+        AdminRuleMetricsFromChanged(from) ->
+          admin_workflow.handle_rule_metrics_tab_from_changed(model, from)
+        AdminRuleMetricsToChanged(to) ->
+          admin_workflow.handle_rule_metrics_tab_to_changed(model, to)
+        AdminRuleMetricsFromChangedAndRefresh(from) ->
+          admin_workflow.handle_rule_metrics_tab_from_changed_and_refresh(
+            model,
+            from,
+          )
+        AdminRuleMetricsToChangedAndRefresh(to) ->
+          admin_workflow.handle_rule_metrics_tab_to_changed_and_refresh(
+            model,
+            to,
+          )
+        AdminRuleMetricsRefreshClicked ->
+          admin_workflow.handle_rule_metrics_tab_refresh_clicked(model)
+        AdminRuleMetricsQuickRangeClicked(from, to) ->
+          admin_workflow.handle_rule_metrics_tab_quick_range_clicked(
+            model,
+            from,
+            to,
+          )
+        // Rule metrics drill-down
+        AdminRuleMetricsWorkflowExpanded(workflow_id) ->
+          admin_workflow.handle_rule_metrics_workflow_expanded(
+            model,
+            workflow_id,
+          )
+        AdminRuleMetricsWorkflowDetailsFetched(Ok(details)) ->
+          admin_workflow.handle_rule_metrics_workflow_details_fetched_ok(
+            model,
+            details,
+          )
+        AdminRuleMetricsWorkflowDetailsFetched(Error(err)) ->
+          admin_workflow.handle_rule_metrics_workflow_details_fetched_error(
+            model,
+            err,
+          )
+        AdminRuleMetricsDrilldownClicked(rule_id) ->
+          admin_workflow.handle_rule_metrics_drilldown_clicked(model, rule_id)
+        AdminRuleMetricsDrilldownClosed ->
+          admin_workflow.handle_rule_metrics_drilldown_closed(model)
+        AdminRuleMetricsRuleDetailsFetched(Ok(details)) ->
+          admin_workflow.handle_rule_metrics_rule_details_fetched_ok(
+            model,
+            details,
+          )
+        AdminRuleMetricsRuleDetailsFetched(Error(err)) ->
+          admin_workflow.handle_rule_metrics_rule_details_fetched_error(
+            model,
+            err,
+          )
+        AdminRuleMetricsExecutionsFetched(Ok(response)) ->
+          admin_workflow.handle_rule_metrics_executions_fetched_ok(
+            model,
+            response,
+          )
+        AdminRuleMetricsExecutionsFetched(Error(err)) ->
+          admin_workflow.handle_rule_metrics_executions_fetched_error(
+            model,
+            err,
+          )
+        AdminRuleMetricsExecPageChanged(offset) ->
+          admin_workflow.handle_rule_metrics_exec_page_changed(model, offset)
+
+        NowWorkingTicked -> now_working_workflow.handle_ticked(model)
+
+        MemberMyCapabilityIdsFetched(Ok(ids)) ->
+          skills_workflow.handle_my_capability_ids_fetched_ok(model, ids)
+        MemberMyCapabilityIdsFetched(Error(err)) ->
+          skills_workflow.handle_my_capability_ids_fetched_error(model, err)
+
+        MemberToggleCapability(id) ->
+          skills_workflow.handle_toggle_capability(model, id)
+        MemberSaveCapabilitiesClicked ->
+          skills_workflow.handle_save_capabilities_clicked(model)
+
+        MemberMyCapabilityIdsSaved(Ok(ids)) ->
+          skills_workflow.handle_save_capabilities_ok(model, ids)
+        MemberMyCapabilityIdsSaved(Error(err)) ->
+          skills_workflow.handle_save_capabilities_error(model, err)
+
+        MemberPositionsFetched(Ok(positions)) ->
+          pool_workflow.handle_positions_fetched_ok(model, positions)
+        MemberPositionsFetched(Error(err)) ->
+          pool_workflow.handle_positions_fetched_error(model, err)
+
+        MemberPositionEditOpened(task_id) ->
+          pool_workflow.handle_position_edit_opened(model, task_id)
+        MemberPositionEditClosed ->
+          pool_workflow.handle_position_edit_closed(model)
+        MemberPositionEditXChanged(v) ->
+          pool_workflow.handle_position_edit_x_changed(model, v)
+        MemberPositionEditYChanged(v) ->
+          pool_workflow.handle_position_edit_y_changed(model, v)
+        MemberPositionEditSubmitted ->
+          pool_workflow.handle_position_edit_submitted(model)
+
+        MemberPositionSaved(Ok(pos)) ->
+          pool_workflow.handle_position_saved_ok(model, pos)
+        MemberPositionSaved(Error(err)) ->
+          pool_workflow.handle_position_saved_error(model, err)
+
+        MemberTaskDetailsOpened(task_id) ->
+          tasks_workflow.handle_task_details_opened(model, task_id)
+        MemberTaskDetailsClosed ->
+          tasks_workflow.handle_task_details_closed(model)
+
+        MemberNotesFetched(Ok(notes)) ->
+          tasks_workflow.handle_notes_fetched_ok(model, notes)
+        MemberNotesFetched(Error(err)) ->
+          tasks_workflow.handle_notes_fetched_error(model, err)
+
+        MemberNoteContentChanged(v) ->
+          tasks_workflow.handle_note_content_changed(model, v)
+        MemberNoteSubmitted -> tasks_workflow.handle_note_submitted(model)
+
+        MemberNoteAdded(Ok(note)) ->
+          tasks_workflow.handle_note_added_ok(model, note)
+        MemberNoteAdded(Error(err)) ->
+          tasks_workflow.handle_note_added_error(model, err)
+
+        // Cards (Fichas) handlers - list loading and dialog mode
+        CardsFetched(Ok(cards)) ->
+          admin_workflow.handle_cards_fetched_ok(model, cards)
+        CardsFetched(Error(err)) ->
+          admin_workflow.handle_cards_fetched_error(model, err)
+        OpenCardDialog(mode) ->
+          admin_workflow.handle_open_card_dialog(model, mode)
+        CloseCardDialog -> admin_workflow.handle_close_card_dialog(model)
+        // Cards (Fichas) - component events
+        CardCrudCreated(card) ->
+          admin_workflow.handle_card_crud_created(model, card)
+        CardCrudUpdated(card) ->
+          admin_workflow.handle_card_crud_updated(model, card)
+        CardCrudDeleted(card_id) ->
+          admin_workflow.handle_card_crud_deleted(model, card_id)
+        // Cards - filter changes (Story 4.9 AC7-8, UX improvements)
+        CardsShowEmptyToggled -> #(
+          Model(..model, cards_show_empty: !model.cards_show_empty),
+          effect.none(),
+        )
+        CardsShowCompletedToggled -> #(
+          Model(..model, cards_show_completed: !model.cards_show_completed),
+          effect.none(),
+        )
+        CardsStateFilterChanged(state_str) -> {
+          let filter = case state_str {
+            "" -> opt.None
+            "pendiente" -> opt.Some(card.Pendiente)
+            "en_curso" -> opt.Some(card.EnCurso)
+            "cerrada" -> opt.Some(card.Cerrada)
+            _ -> opt.None
+          }
+          #(Model(..model, cards_state_filter: filter), effect.none())
+        }
+        CardsSearchChanged(query) -> #(
+          Model(..model, cards_search: query),
+          effect.none(),
+        )
+
+        // Card detail (member view) handlers - component manages internal state
+        OpenCardDetail(card_id) -> #(
+          Model(..model, card_detail_open: opt.Some(card_id)),
+          effect.none(),
+        )
+        CloseCardDetail -> #(
+          Model(..model, card_detail_open: opt.None),
+          effect.none(),
+        )
+
+        // Workflows handlers
+        WorkflowsProjectFetched(Ok(workflows)) ->
+          admin_workflow.handle_workflows_project_fetched_ok(model, workflows)
+        WorkflowsProjectFetched(Error(err)) ->
+          admin_workflow.handle_workflows_project_fetched_error(model, err)
+        // Workflow dialog control (component pattern)
+        OpenWorkflowDialog(mode) ->
+          admin_workflow.handle_open_workflow_dialog(model, mode)
+        CloseWorkflowDialog ->
+          admin_workflow.handle_close_workflow_dialog(model)
+        // Workflow component events
+        WorkflowCrudCreated(workflow) ->
+          admin_workflow.handle_workflow_crud_created(model, workflow)
+        WorkflowCrudUpdated(workflow) ->
+          admin_workflow.handle_workflow_crud_updated(model, workflow)
+        WorkflowCrudDeleted(workflow_id) ->
+          admin_workflow.handle_workflow_crud_deleted(model, workflow_id)
+
+        WorkflowRulesClicked(workflow_id) ->
+          admin_workflow.handle_workflow_rules_clicked(model, workflow_id)
+
+        // Rules handlers
+        RulesFetched(Ok(rules)) ->
+          admin_workflow.handle_rules_fetched_ok(model, rules)
+        RulesFetched(Error(err)) ->
+          admin_workflow.handle_rules_fetched_error(model, err)
+        RulesBackClicked -> admin_workflow.handle_rules_back_clicked(model)
+        RuleMetricsFetched(Ok(metrics)) ->
+          admin_workflow.handle_rule_metrics_fetched_ok(model, metrics)
+        RuleMetricsFetched(Error(err)) ->
+          admin_workflow.handle_rule_metrics_fetched_error(model, err)
+
+        // Rules - dialog mode control (component pattern)
+        OpenRuleDialog(mode) ->
+          admin_workflow.handle_open_rule_dialog(model, mode)
+        CloseRuleDialog -> admin_workflow.handle_close_rule_dialog(model)
+
+        // Rules - component events (rule-crud-dialog emits these)
+        RuleCrudCreated(rule) ->
+          admin_workflow.handle_rule_crud_created(model, rule)
+        RuleCrudUpdated(rule) ->
+          admin_workflow.handle_rule_crud_updated(model, rule)
+        RuleCrudDeleted(rule_id) ->
+          admin_workflow.handle_rule_crud_deleted(model, rule_id)
+
+        // Rule templates handlers
+        RuleTemplatesClicked(_rule_id) -> #(model, effect.none())
+        RuleTemplatesFetched(Ok(templates)) ->
+          admin_workflow.handle_rule_templates_fetched_ok(model, templates)
+        RuleTemplatesFetched(Error(err)) ->
+          admin_workflow.handle_rule_templates_fetched_error(model, err)
+        RuleAttachTemplateSelected(template_id) ->
+          admin_workflow.handle_rule_attach_template_selected(
+            model,
+            template_id,
+          )
+        RuleAttachTemplateSubmitted -> #(model, effect.none())
+        RuleTemplateAttached(Ok(templates)) ->
+          admin_workflow.handle_rule_template_attached_ok(model, templates)
+        RuleTemplateAttached(Error(err)) ->
+          admin_workflow.handle_rule_template_attached_error(model, err)
+        RuleTemplateDetachClicked(_template_id) -> #(model, effect.none())
+        RuleTemplateDetached(Ok(_)) -> #(model, effect.none())
+        RuleTemplateDetached(Error(err)) ->
+          admin_workflow.handle_rule_template_detached_error(model, err)
+
+        // Story 4.10: Rule template attachment UI handlers
+        RuleExpandToggled(rule_id) ->
+          admin_workflow.handle_rule_expand_toggled(model, rule_id)
+        AttachTemplateModalOpened(rule_id) ->
+          admin_workflow.handle_attach_template_modal_opened(model, rule_id)
+        AttachTemplateModalClosed ->
+          admin_workflow.handle_attach_template_modal_closed(model)
+        AttachTemplateSelected(template_id) ->
+          admin_workflow.handle_attach_template_selected(model, template_id)
+        AttachTemplateSubmitted ->
+          admin_workflow.handle_attach_template_submitted(model)
+        AttachTemplateSucceeded(rule_id, templates) ->
+          admin_workflow.handle_attach_template_succeeded(
+            model,
+            rule_id,
+            templates,
+          )
+        AttachTemplateFailed(err) ->
+          admin_workflow.handle_attach_template_failed(model, err)
+        TemplateDetachClicked(rule_id, template_id) ->
+          admin_workflow.handle_template_detach_clicked(
+            model,
+            rule_id,
+            template_id,
+          )
+        TemplateDetachSucceeded(rule_id, template_id) ->
+          admin_workflow.handle_template_detach_succeeded(
+            model,
+            rule_id,
+            template_id,
+          )
+        TemplateDetachFailed(rule_id, template_id, err) ->
+          admin_workflow.handle_template_detach_failed(
+            model,
+            rule_id,
+            template_id,
+            err,
+          )
+
+        // Task templates handlers
+        TaskTemplatesProjectFetched(Ok(templates)) ->
+          admin_workflow.handle_task_templates_project_fetched_ok(
+            model,
+            templates,
+          )
+        TaskTemplatesProjectFetched(Error(err)) ->
+          admin_workflow.handle_task_templates_project_fetched_error(model, err)
+
+        // Task templates - dialog mode control (component pattern)
+        OpenTaskTemplateDialog(mode) ->
+          admin_workflow.handle_open_task_template_dialog(model, mode)
+        CloseTaskTemplateDialog ->
+          admin_workflow.handle_close_task_template_dialog(model)
+
+        // Task templates - component events
+        TaskTemplateCrudCreated(template) ->
+          admin_workflow.handle_task_template_crud_created(model, template)
+        TaskTemplateCrudUpdated(template) ->
+          admin_workflow.handle_task_template_crud_updated(model, template)
+        TaskTemplateCrudDeleted(template_id) ->
+          admin_workflow.handle_task_template_crud_deleted(model, template_id)
       }
     }
-
-    MemberCanvasRectFetched(left, top) ->
-      pool_workflow.handle_canvas_rect_fetched(model, left, top)
-    MemberDragStarted(task_id, offset_x, offset_y) ->
-      pool_workflow.handle_drag_started(model, task_id, offset_x, offset_y)
-    MemberDragMoved(client_x, client_y) ->
-      pool_workflow.handle_drag_moved(model, client_x, client_y)
-    MemberDragEnded -> pool_workflow.handle_drag_ended(model)
-
-    MemberCreateDialogOpened ->
-      tasks_workflow.handle_create_dialog_opened(model)
-    MemberCreateDialogClosed ->
-      tasks_workflow.handle_create_dialog_closed(model)
-    MemberCreateTitleChanged(v) ->
-      tasks_workflow.handle_create_title_changed(model, v)
-    MemberCreateDescriptionChanged(v) ->
-      tasks_workflow.handle_create_description_changed(model, v)
-    MemberCreatePriorityChanged(v) ->
-      tasks_workflow.handle_create_priority_changed(model, v)
-    MemberCreateTypeIdChanged(v) ->
-      tasks_workflow.handle_create_type_id_changed(model, v)
-
-    MemberCreateSubmitted ->
-      tasks_workflow.handle_create_submitted(model, member_refresh)
-
-    MemberTaskCreated(Ok(_)) ->
-      tasks_workflow.handle_task_created_ok(model, member_refresh)
-    MemberTaskCreated(Error(err)) ->
-      tasks_workflow.handle_task_created_error(model, err)
-
-    MemberClaimClicked(task_id, version) ->
-      tasks_workflow.handle_claim_clicked(model, task_id, version)
-    MemberReleaseClicked(task_id, version) ->
-      tasks_workflow.handle_release_clicked(model, task_id, version)
-    MemberCompleteClicked(task_id, version) ->
-      tasks_workflow.handle_complete_clicked(model, task_id, version)
-
-    MemberTaskClaimed(Ok(_)) ->
-      tasks_workflow.handle_task_claimed_ok(model, member_refresh)
-    MemberTaskReleased(Ok(_)) ->
-      tasks_workflow.handle_task_released_ok(model, member_refresh)
-    MemberTaskCompleted(Ok(_)) ->
-      tasks_workflow.handle_task_completed_ok(model, member_refresh)
-
-    MemberTaskClaimed(Error(err)) ->
-      tasks_workflow.handle_mutation_error(model, err, member_refresh)
-    MemberTaskReleased(Error(err)) ->
-      tasks_workflow.handle_mutation_error(model, err, member_refresh)
-    MemberTaskCompleted(Error(err)) ->
-      tasks_workflow.handle_mutation_error(model, err, member_refresh)
-
-    MemberNowWorkingStartClicked(task_id) ->
-      now_working_workflow.handle_start_clicked(model, task_id)
-    MemberNowWorkingPauseClicked ->
-      now_working_workflow.handle_pause_clicked(model)
-
-    MemberActiveTaskFetched(Ok(payload)) ->
-      now_working_workflow.handle_fetched_ok(model, payload)
-    MemberActiveTaskFetched(Error(err)) ->
-      now_working_workflow.handle_fetched_error(model, err)
-
-    MemberActiveTaskStarted(Ok(payload)) ->
-      now_working_workflow.handle_started_ok(model, payload)
-    MemberActiveTaskStarted(Error(err)) ->
-      now_working_workflow.handle_started_error(model, err)
-
-    MemberActiveTaskPaused(Ok(payload)) ->
-      now_working_workflow.handle_paused_ok(model, payload)
-    MemberActiveTaskPaused(Error(err)) ->
-      now_working_workflow.handle_paused_error(model, err)
-
-    MemberActiveTaskHeartbeated(Ok(payload)) ->
-      now_working_workflow.handle_heartbeated_ok(model, payload)
-    MemberActiveTaskHeartbeated(Error(err)) ->
-      now_working_workflow.handle_heartbeated_error(model, err)
-
-    // Work sessions (multi-session) - delegate to workflow
-    MemberWorkSessionsFetched(Ok(payload)) ->
-      now_working_workflow.handle_sessions_fetched_ok(model, payload)
-    MemberWorkSessionsFetched(Error(err)) ->
-      now_working_workflow.handle_sessions_fetched_error(model, err)
-
-    MemberWorkSessionStarted(Ok(payload)) ->
-      now_working_workflow.handle_session_started_ok(model, payload)
-    MemberWorkSessionStarted(Error(err)) ->
-      now_working_workflow.handle_session_started_error(model, err)
-
-    MemberWorkSessionPaused(Ok(payload)) ->
-      now_working_workflow.handle_session_paused_ok(model, payload)
-    MemberWorkSessionPaused(Error(err)) ->
-      now_working_workflow.handle_session_paused_error(model, err)
-
-    MemberWorkSessionHeartbeated(Ok(payload)) ->
-      now_working_workflow.handle_session_heartbeated_ok(model, payload)
-    MemberWorkSessionHeartbeated(Error(err)) ->
-      now_working_workflow.handle_session_heartbeated_error(model, err)
-
-    MemberMetricsFetched(Ok(metrics)) ->
-      metrics_workflow.handle_member_metrics_fetched_ok(model, metrics)
-    MemberMetricsFetched(Error(err)) ->
-      metrics_workflow.handle_member_metrics_fetched_error(model, err)
-
-    AdminMetricsOverviewFetched(Ok(overview)) ->
-      metrics_workflow.handle_admin_overview_fetched_ok(model, overview)
-    AdminMetricsOverviewFetched(Error(err)) ->
-      metrics_workflow.handle_admin_overview_fetched_error(model, err)
-
-    AdminMetricsProjectTasksFetched(Ok(payload)) ->
-      metrics_workflow.handle_admin_project_tasks_fetched_ok(model, payload)
-    AdminMetricsProjectTasksFetched(Error(err)) ->
-      metrics_workflow.handle_admin_project_tasks_fetched_error(model, err)
-
-    // Rule metrics tab
-    AdminRuleMetricsFetched(Ok(metrics)) ->
-      admin_workflow.handle_rule_metrics_tab_fetched_ok(model, metrics)
-    AdminRuleMetricsFetched(Error(err)) ->
-      admin_workflow.handle_rule_metrics_tab_fetched_error(model, err)
-    AdminRuleMetricsFromChanged(from) ->
-      admin_workflow.handle_rule_metrics_tab_from_changed(model, from)
-    AdminRuleMetricsToChanged(to) ->
-      admin_workflow.handle_rule_metrics_tab_to_changed(model, to)
-    AdminRuleMetricsFromChangedAndRefresh(from) ->
-      admin_workflow.handle_rule_metrics_tab_from_changed_and_refresh(model, from)
-    AdminRuleMetricsToChangedAndRefresh(to) ->
-      admin_workflow.handle_rule_metrics_tab_to_changed_and_refresh(model, to)
-    AdminRuleMetricsRefreshClicked ->
-      admin_workflow.handle_rule_metrics_tab_refresh_clicked(model)
-    AdminRuleMetricsQuickRangeClicked(from, to) ->
-      admin_workflow.handle_rule_metrics_tab_quick_range_clicked(model, from, to)
-    // Rule metrics drill-down
-    AdminRuleMetricsWorkflowExpanded(workflow_id) ->
-      admin_workflow.handle_rule_metrics_workflow_expanded(model, workflow_id)
-    AdminRuleMetricsWorkflowDetailsFetched(Ok(details)) ->
-      admin_workflow.handle_rule_metrics_workflow_details_fetched_ok(
-        model,
-        details,
-      )
-    AdminRuleMetricsWorkflowDetailsFetched(Error(err)) ->
-      admin_workflow.handle_rule_metrics_workflow_details_fetched_error(
-        model,
-        err,
-      )
-    AdminRuleMetricsDrilldownClicked(rule_id) ->
-      admin_workflow.handle_rule_metrics_drilldown_clicked(model, rule_id)
-    AdminRuleMetricsDrilldownClosed ->
-      admin_workflow.handle_rule_metrics_drilldown_closed(model)
-    AdminRuleMetricsRuleDetailsFetched(Ok(details)) ->
-      admin_workflow.handle_rule_metrics_rule_details_fetched_ok(model, details)
-    AdminRuleMetricsRuleDetailsFetched(Error(err)) ->
-      admin_workflow.handle_rule_metrics_rule_details_fetched_error(model, err)
-    AdminRuleMetricsExecutionsFetched(Ok(response)) ->
-      admin_workflow.handle_rule_metrics_executions_fetched_ok(model, response)
-    AdminRuleMetricsExecutionsFetched(Error(err)) ->
-      admin_workflow.handle_rule_metrics_executions_fetched_error(model, err)
-    AdminRuleMetricsExecPageChanged(offset) ->
-      admin_workflow.handle_rule_metrics_exec_page_changed(model, offset)
-
-    NowWorkingTicked -> now_working_workflow.handle_ticked(model)
-
-    MemberMyCapabilityIdsFetched(Ok(ids)) ->
-      skills_workflow.handle_my_capability_ids_fetched_ok(model, ids)
-    MemberMyCapabilityIdsFetched(Error(err)) ->
-      skills_workflow.handle_my_capability_ids_fetched_error(model, err)
-
-    MemberToggleCapability(id) ->
-      skills_workflow.handle_toggle_capability(model, id)
-    MemberSaveCapabilitiesClicked ->
-      skills_workflow.handle_save_capabilities_clicked(model)
-
-    MemberMyCapabilityIdsSaved(Ok(ids)) ->
-      skills_workflow.handle_save_capabilities_ok(model, ids)
-    MemberMyCapabilityIdsSaved(Error(err)) ->
-      skills_workflow.handle_save_capabilities_error(model, err)
-
-    MemberPositionsFetched(Ok(positions)) ->
-      pool_workflow.handle_positions_fetched_ok(model, positions)
-    MemberPositionsFetched(Error(err)) ->
-      pool_workflow.handle_positions_fetched_error(model, err)
-
-    MemberPositionEditOpened(task_id) ->
-      pool_workflow.handle_position_edit_opened(model, task_id)
-    MemberPositionEditClosed -> pool_workflow.handle_position_edit_closed(model)
-    MemberPositionEditXChanged(v) ->
-      pool_workflow.handle_position_edit_x_changed(model, v)
-    MemberPositionEditYChanged(v) ->
-      pool_workflow.handle_position_edit_y_changed(model, v)
-    MemberPositionEditSubmitted ->
-      pool_workflow.handle_position_edit_submitted(model)
-
-    MemberPositionSaved(Ok(pos)) ->
-      pool_workflow.handle_position_saved_ok(model, pos)
-    MemberPositionSaved(Error(err)) ->
-      pool_workflow.handle_position_saved_error(model, err)
-
-    MemberTaskDetailsOpened(task_id) ->
-      tasks_workflow.handle_task_details_opened(model, task_id)
-    MemberTaskDetailsClosed -> tasks_workflow.handle_task_details_closed(model)
-
-    MemberNotesFetched(Ok(notes)) ->
-      tasks_workflow.handle_notes_fetched_ok(model, notes)
-    MemberNotesFetched(Error(err)) ->
-      tasks_workflow.handle_notes_fetched_error(model, err)
-
-    MemberNoteContentChanged(v) ->
-      tasks_workflow.handle_note_content_changed(model, v)
-    MemberNoteSubmitted -> tasks_workflow.handle_note_submitted(model)
-
-    MemberNoteAdded(Ok(note)) ->
-      tasks_workflow.handle_note_added_ok(model, note)
-    MemberNoteAdded(Error(err)) ->
-      tasks_workflow.handle_note_added_error(model, err)
-
-    // Cards (Fichas) handlers - list loading and dialog mode
-    CardsFetched(Ok(cards)) ->
-      admin_workflow.handle_cards_fetched_ok(model, cards)
-    CardsFetched(Error(err)) ->
-      admin_workflow.handle_cards_fetched_error(model, err)
-    OpenCardDialog(mode) ->
-      admin_workflow.handle_open_card_dialog(model, mode)
-    CloseCardDialog ->
-      admin_workflow.handle_close_card_dialog(model)
-    // Cards (Fichas) - component events
-    CardCrudCreated(card) ->
-      admin_workflow.handle_card_crud_created(model, card)
-    CardCrudUpdated(card) ->
-      admin_workflow.handle_card_crud_updated(model, card)
-    CardCrudDeleted(card_id) ->
-      admin_workflow.handle_card_crud_deleted(model, card_id)
-    // Cards - filter changes (Story 4.9 AC7-8, UX improvements)
-    CardsShowEmptyToggled ->
-      #(Model(..model, cards_show_empty: !model.cards_show_empty), effect.none())
-    CardsShowCompletedToggled ->
-      #(Model(..model, cards_show_completed: !model.cards_show_completed), effect.none())
-    CardsStateFilterChanged(state_str) -> {
-      let filter = case state_str {
-        "" -> opt.None
-        "pendiente" -> opt.Some(card.Pendiente)
-        "en_curso" -> opt.Some(card.EnCurso)
-        "cerrada" -> opt.Some(card.Cerrada)
-        _ -> opt.None
-      }
-      #(Model(..model, cards_state_filter: filter), effect.none())
-    }
-    CardsSearchChanged(query) ->
-      #(Model(..model, cards_search: query), effect.none())
-
-    // Card detail (member view) handlers - component manages internal state
-    OpenCardDetail(card_id) ->
-      #(Model(..model, card_detail_open: opt.Some(card_id)), effect.none())
-    CloseCardDetail ->
-      #(Model(..model, card_detail_open: opt.None), effect.none())
-
-    // Workflows handlers
-    WorkflowsProjectFetched(Ok(workflows)) ->
-      admin_workflow.handle_workflows_project_fetched_ok(model, workflows)
-    WorkflowsProjectFetched(Error(err)) ->
-      admin_workflow.handle_workflows_project_fetched_error(model, err)
-    // Workflow dialog control (component pattern)
-    OpenWorkflowDialog(mode) ->
-      admin_workflow.handle_open_workflow_dialog(model, mode)
-    CloseWorkflowDialog -> admin_workflow.handle_close_workflow_dialog(model)
-    // Workflow component events
-    WorkflowCrudCreated(workflow) ->
-      admin_workflow.handle_workflow_crud_created(model, workflow)
-    WorkflowCrudUpdated(workflow) ->
-      admin_workflow.handle_workflow_crud_updated(model, workflow)
-    WorkflowCrudDeleted(workflow_id) ->
-      admin_workflow.handle_workflow_crud_deleted(model, workflow_id)
-
-    WorkflowRulesClicked(workflow_id) ->
-      admin_workflow.handle_workflow_rules_clicked(model, workflow_id)
-
-    // Rules handlers
-    RulesFetched(Ok(rules)) ->
-      admin_workflow.handle_rules_fetched_ok(model, rules)
-    RulesFetched(Error(err)) ->
-      admin_workflow.handle_rules_fetched_error(model, err)
-    RulesBackClicked -> admin_workflow.handle_rules_back_clicked(model)
-    RuleMetricsFetched(Ok(metrics)) ->
-      admin_workflow.handle_rule_metrics_fetched_ok(model, metrics)
-    RuleMetricsFetched(Error(err)) ->
-      admin_workflow.handle_rule_metrics_fetched_error(model, err)
-
-    // Rules - dialog mode control (component pattern)
-    OpenRuleDialog(mode) ->
-      admin_workflow.handle_open_rule_dialog(model, mode)
-    CloseRuleDialog ->
-      admin_workflow.handle_close_rule_dialog(model)
-
-    // Rules - component events (rule-crud-dialog emits these)
-    RuleCrudCreated(rule) ->
-      admin_workflow.handle_rule_crud_created(model, rule)
-    RuleCrudUpdated(rule) ->
-      admin_workflow.handle_rule_crud_updated(model, rule)
-    RuleCrudDeleted(rule_id) ->
-      admin_workflow.handle_rule_crud_deleted(model, rule_id)
-
-    // Rule templates handlers
-    RuleTemplatesClicked(_rule_id) -> #(model, effect.none())
-    RuleTemplatesFetched(Ok(templates)) ->
-      admin_workflow.handle_rule_templates_fetched_ok(model, templates)
-    RuleTemplatesFetched(Error(err)) ->
-      admin_workflow.handle_rule_templates_fetched_error(model, err)
-    RuleAttachTemplateSelected(template_id) ->
-      admin_workflow.handle_rule_attach_template_selected(model, template_id)
-    RuleAttachTemplateSubmitted -> #(model, effect.none())
-    RuleTemplateAttached(Ok(templates)) ->
-      admin_workflow.handle_rule_template_attached_ok(model, templates)
-    RuleTemplateAttached(Error(err)) ->
-      admin_workflow.handle_rule_template_attached_error(model, err)
-    RuleTemplateDetachClicked(_template_id) -> #(model, effect.none())
-    RuleTemplateDetached(Ok(_)) -> #(model, effect.none())
-    RuleTemplateDetached(Error(err)) ->
-      admin_workflow.handle_rule_template_detached_error(model, err)
-
-    // Story 4.10: Rule template attachment UI handlers
-    RuleExpandToggled(rule_id) ->
-      admin_workflow.handle_rule_expand_toggled(model, rule_id)
-    AttachTemplateModalOpened(rule_id) ->
-      admin_workflow.handle_attach_template_modal_opened(model, rule_id)
-    AttachTemplateModalClosed ->
-      admin_workflow.handle_attach_template_modal_closed(model)
-    AttachTemplateSelected(template_id) ->
-      admin_workflow.handle_attach_template_selected(model, template_id)
-    AttachTemplateSubmitted ->
-      admin_workflow.handle_attach_template_submitted(model)
-    AttachTemplateSucceeded(rule_id, templates) ->
-      admin_workflow.handle_attach_template_succeeded(model, rule_id, templates)
-    AttachTemplateFailed(err) ->
-      admin_workflow.handle_attach_template_failed(model, err)
-    TemplateDetachClicked(rule_id, template_id) ->
-      admin_workflow.handle_template_detach_clicked(model, rule_id, template_id)
-    TemplateDetachSucceeded(rule_id, template_id) ->
-      admin_workflow.handle_template_detach_succeeded(model, rule_id, template_id)
-    TemplateDetachFailed(rule_id, template_id, err) ->
-      admin_workflow.handle_template_detach_failed(model, rule_id, template_id, err)
-
-    // Task templates handlers
-    TaskTemplatesProjectFetched(Ok(templates)) ->
-      admin_workflow.handle_task_templates_project_fetched_ok(model, templates)
-    TaskTemplatesProjectFetched(Error(err)) ->
-      admin_workflow.handle_task_templates_project_fetched_error(model, err)
-
-    // Task templates - dialog mode control (component pattern)
-    OpenTaskTemplateDialog(mode) ->
-      admin_workflow.handle_open_task_template_dialog(model, mode)
-    CloseTaskTemplateDialog ->
-      admin_workflow.handle_close_task_template_dialog(model)
-
-    // Task templates - component events
-    TaskTemplateCrudCreated(template) ->
-      admin_workflow.handle_task_template_crud_created(model, template)
-    TaskTemplateCrudUpdated(template) ->
-      admin_workflow.handle_task_template_crud_updated(model, template)
-    TaskTemplateCrudDeleted(template_id) ->
-      admin_workflow.handle_task_template_crud_deleted(model, template_id)
   }
 }
-
 // =============================================================================
 // Card Add Task Handler
 // Card add task functionality moved to card_detail_modal component
