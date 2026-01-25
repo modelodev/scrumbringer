@@ -21,7 +21,6 @@
 //// - **update.gleam**: Main update module that delegates to handlers here
 //// - **member_add.gleam**: Uses search results for user selection
 
-import gleam/option as opt
 import gleam/string
 
 import lustre/effect.{type Effect}
@@ -29,9 +28,10 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiError}
 import domain/org.{type OrgUser}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, Loading, Login, Model, NotAsked,
-  OrgUsersSearchResults, admin_msg,
+  type Model, type Msg, AdminModel, Failed, Loaded, Loading, NotAsked,
+  OrgUsersSearchResults, admin_msg, update_admin,
 }
+import scrumbringer_client/update_helpers
 
 // API modules
 import scrumbringer_client/api/org as api_org
@@ -45,7 +45,12 @@ pub fn handle_org_users_search_changed(
   model: Model,
   query: String,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, org_users_search_query: query), effect.none())
+  #(
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, org_users_search_query: query)
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle org users search debounced.
@@ -55,16 +60,23 @@ pub fn handle_org_users_search_debounced(
   query: String,
 ) -> #(Model, Effect(Msg)) {
   case string.trim(query) == "" {
-    True -> #(Model(..model, org_users_search_results: NotAsked), effect.none())
+    True -> #(
+      update_admin(model, fn(admin) {
+        AdminModel(..admin, org_users_search_results: NotAsked)
+      }),
+      effect.none(),
+    )
     False -> {
       // Generate new token for this request
-      let token = model.org_users_search_token + 1
+      let token = model.admin.org_users_search_token + 1
       let model =
-        Model(
-          ..model,
-          org_users_search_results: Loading,
-          org_users_search_token: token,
-        )
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            org_users_search_results: Loading,
+            org_users_search_token: token,
+          )
+        })
       // Pass token to API call so it's included in the response message
       #(
         model,
@@ -88,9 +100,11 @@ pub fn handle_org_users_search_results_ok(
   users: List(OrgUser),
 ) -> #(Model, Effect(Msg)) {
   // Ignore stale results (token doesn't match current expected token)
-  case token == model.org_users_search_token {
+  case token == model.admin.org_users_search_token {
     True -> #(
-      Model(..model, org_users_search_results: Loaded(users)),
+      update_admin(model, fn(admin) {
+        AdminModel(..admin, org_users_search_results: Loaded(users))
+      }),
       effect.none(),
     )
     False -> #(model, effect.none())
@@ -105,12 +119,14 @@ pub fn handle_org_users_search_results_error(
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
   // Ignore stale results
-  case token == model.org_users_search_token {
+  case token == model.admin.org_users_search_token {
     True ->
       case err.status == 401 {
-        True -> #(Model(..model, page: Login, user: opt.None), effect.none())
+        True -> update_helpers.reset_to_login(model)
         False -> #(
-          Model(..model, org_users_search_results: Failed(err)),
+          update_admin(model, fn(admin) {
+            AdminModel(..admin, org_users_search_results: Failed(err))
+          }),
           effect.none(),
         )
       }

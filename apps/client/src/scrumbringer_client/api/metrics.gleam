@@ -24,12 +24,6 @@ import lustre/effect.{type Effect}
 import scrumbringer_client/api/core.{type ApiResult}
 
 // Import types from shared domain
-import domain/task_status.{
-  type OngoingBy, type TaskStatus, type WorkState, Available, OngoingBy,
-  WorkAvailable, WorkClaimed, WorkCompleted, WorkOngoing, parse_task_status,
-}
-import domain/task.{Task}
-import domain/task_type.{type TaskTypeInline, TaskTypeInline}
 import domain/metrics.{
   type MetricsProjectTask, type MyMetrics, type OrgMetricsBucket,
   type OrgMetricsOverview, type OrgMetricsProjectOverview,
@@ -37,6 +31,12 @@ import domain/metrics.{
   OrgMetricsBucket, OrgMetricsOverview, OrgMetricsProjectOverview,
   OrgMetricsProjectTasksPayload,
 }
+import domain/task.{Task}
+import domain/task_status.{
+  type OngoingBy, type TaskStatus, type WorkState, Available, OngoingBy,
+  WorkAvailable, WorkClaimed, WorkCompleted, WorkOngoing, parse_task_status,
+}
+import domain/task_type.{type TaskTypeInline, TaskTypeInline}
 
 // =============================================================================
 // Decoders

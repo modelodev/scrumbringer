@@ -28,9 +28,9 @@ import domain/org.{type OrgUser}
 import domain/project.{type Project}
 import scrumbringer_client/api/org as api_org
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, Loading, Model, NotAsked,
+  type Model, type Msg, AdminModel, Failed, Loaded, Loading, NotAsked, UiModel,
   UserProjectAdded, UserProjectRemoved, UserProjectRoleChanged,
-  UserProjectsFetched, admin_msg,
+  UserProjectsFetched, admin_msg, update_admin, update_ui,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -45,16 +45,18 @@ pub fn handle_user_projects_dialog_opened(
   user: OrgUser,
 ) -> #(Model, Effect(Msg)) {
   let model =
-    Model(
-      ..model,
-      user_projects_dialog_open: True,
-      user_projects_dialog_user: opt.Some(user),
-      user_projects_list: Loading,
-      user_projects_add_project_id: opt.None,
-      user_projects_add_role: "member",
-      user_projects_in_flight: False,
-      user_projects_error: opt.None,
-    )
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        user_projects_dialog_open: True,
+        user_projects_dialog_user: opt.Some(user),
+        user_projects_list: Loading,
+        user_projects_add_project_id: opt.None,
+        user_projects_add_role: "member",
+        user_projects_in_flight: False,
+        user_projects_error: opt.None,
+      )
+    })
 
   #(
     model,
@@ -67,16 +69,18 @@ pub fn handle_user_projects_dialog_opened(
 /// Handle closing the user projects dialog.
 pub fn handle_user_projects_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      user_projects_dialog_open: False,
-      user_projects_dialog_user: opt.None,
-      user_projects_list: NotAsked,
-      user_projects_add_project_id: opt.None,
-      user_projects_add_role: "member",
-      user_projects_in_flight: False,
-      user_projects_error: opt.None,
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        user_projects_dialog_open: False,
+        user_projects_dialog_user: opt.None,
+        user_projects_list: NotAsked,
+        user_projects_add_project_id: opt.None,
+        user_projects_add_role: "member",
+        user_projects_in_flight: False,
+        user_projects_error: opt.None,
+      )
+    }),
     effect.none(),
   )
 }
@@ -90,7 +94,12 @@ pub fn handle_user_projects_fetched_ok(
   model: Model,
   projects: List(Project),
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, user_projects_list: Loaded(projects)), effect.none())
+  #(
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, user_projects_list: Loaded(projects))
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle user projects fetch error.
@@ -99,11 +108,13 @@ pub fn handle_user_projects_fetched_error(
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      user_projects_list: Failed(err),
-      user_projects_error: opt.Some(err.message),
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        user_projects_list: Failed(err),
+        user_projects_error: opt.Some(err.message),
+      )
+    }),
     effect.none(),
   )
 }
@@ -122,7 +133,12 @@ pub fn handle_user_projects_add_project_changed(
     Error(_) -> opt.None
   }
 
-  #(Model(..model, user_projects_add_project_id: project_id), effect.none())
+  #(
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, user_projects_add_project_id: project_id)
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle role selection change for add.
@@ -130,26 +146,36 @@ pub fn handle_user_projects_add_role_changed(
   model: Model,
   role: String,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, user_projects_add_role: role), effect.none())
+  #(
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, user_projects_add_role: role)
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle submit add user to project.
 pub fn handle_user_projects_add_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.user_projects_dialog_user, model.user_projects_add_project_id {
+  case
+    model.admin.user_projects_dialog_user,
+    model.admin.user_projects_add_project_id
+  {
     opt.Some(user), opt.Some(project_id) -> {
       let model =
-        Model(
-          ..model,
-          user_projects_in_flight: True,
-          user_projects_error: opt.None,
-        )
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            user_projects_in_flight: True,
+            user_projects_error: opt.None,
+          )
+        })
 
       #(
         model,
         api_org.add_user_to_project(
           user.id,
           project_id,
-          model.user_projects_add_role,
+          model.admin.user_projects_add_role,
           fn(result) { admin_msg(UserProjectAdded(result)) },
         ),
       )
@@ -164,18 +190,20 @@ pub fn handle_user_project_added_ok(
   model: Model,
   project: Project,
 ) -> #(Model, Effect(Msg)) {
-  let updated_projects = case model.user_projects_list {
+  let updated_projects = case model.admin.user_projects_list {
     Loaded(projects) -> Loaded(list.append(projects, [project]))
     other -> other
   }
 
   #(
-    Model(
-      ..model,
-      user_projects_list: updated_projects,
-      user_projects_add_project_id: opt.None,
-      user_projects_in_flight: False,
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        user_projects_list: updated_projects,
+        user_projects_add_project_id: opt.None,
+        user_projects_in_flight: False,
+      )
+    }),
     effect.none(),
   )
 }
@@ -186,11 +214,13 @@ pub fn handle_user_project_added_error(
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      user_projects_in_flight: False,
-      user_projects_error: opt.Some(err.message),
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        user_projects_in_flight: False,
+        user_projects_error: opt.Some(err.message),
+      )
+    }),
     effect.none(),
   )
 }
@@ -204,14 +234,16 @@ pub fn handle_user_project_remove_clicked(
   model: Model,
   project_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  case model.user_projects_dialog_user {
+  case model.admin.user_projects_dialog_user {
     opt.Some(user) -> {
       let model =
-        Model(
-          ..model,
-          user_projects_in_flight: True,
-          user_projects_error: opt.None,
-        )
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            user_projects_in_flight: True,
+            user_projects_error: opt.None,
+          )
+        })
 
       #(
         model,
@@ -228,14 +260,16 @@ pub fn handle_user_project_remove_clicked(
 /// Handle successful remove user from project.
 pub fn handle_user_project_removed_ok(model: Model) -> #(Model, Effect(Msg)) {
   // Refetch the user's projects to get the updated list
-  case model.user_projects_dialog_user {
+  case model.admin.user_projects_dialog_user {
     opt.Some(user) -> {
       let model =
-        Model(
-          ..model,
-          user_projects_list: Loading,
-          user_projects_in_flight: False,
-        )
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            user_projects_list: Loading,
+            user_projects_in_flight: False,
+          )
+        })
 
       #(
         model,
@@ -245,7 +279,12 @@ pub fn handle_user_project_removed_ok(model: Model) -> #(Model, Effect(Msg)) {
       )
     }
 
-    opt.None -> #(Model(..model, user_projects_in_flight: False), effect.none())
+    opt.None -> #(
+      update_admin(model, fn(admin) {
+        AdminModel(..admin, user_projects_in_flight: False)
+      }),
+      effect.none(),
+    )
   }
 }
 
@@ -255,11 +294,13 @@ pub fn handle_user_project_removed_error(
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      user_projects_in_flight: False,
-      user_projects_error: opt.Some(err.message),
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        user_projects_in_flight: False,
+        user_projects_error: opt.Some(err.message),
+      )
+    }),
     effect.none(),
   )
 }
@@ -274,14 +315,16 @@ pub fn handle_user_project_role_change_requested(
   project_id: Int,
   new_role: String,
 ) -> #(Model, Effect(Msg)) {
-  case model.user_projects_dialog_user {
+  case model.admin.user_projects_dialog_user {
     opt.Some(user) -> {
       let model =
-        Model(
-          ..model,
-          user_projects_in_flight: True,
-          user_projects_error: opt.None,
-        )
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            user_projects_in_flight: True,
+            user_projects_error: opt.None,
+          )
+        })
 
       #(
         model,
@@ -305,7 +348,7 @@ pub fn handle_user_project_role_changed_ok(
   updated: Project,
 ) -> #(Model, Effect(Msg)) {
   // Update the project in the list with the new role
-  let updated_projects = case model.user_projects_list {
+  let updated_projects = case model.admin.user_projects_list {
     Loaded(projects) ->
       Loaded(
         list.map(projects, fn(p) {
@@ -319,11 +362,23 @@ pub fn handle_user_project_role_changed_ok(
   }
 
   #(
-    Model(
-      ..model,
-      user_projects_list: updated_projects,
-      user_projects_in_flight: False,
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.ProjectRoleUpdated)),
+    update_ui(
+      update_admin(model, fn(admin) {
+        AdminModel(
+          ..admin,
+          user_projects_list: updated_projects,
+          user_projects_in_flight: False,
+        )
+      }),
+      fn(ui) {
+        UiModel(
+          ..ui,
+          toast: opt.Some(update_helpers.i18n_t(
+            model,
+            i18n_text.ProjectRoleUpdated,
+          )),
+        )
+      },
     ),
     effect.none(),
   )
@@ -335,11 +390,15 @@ pub fn handle_user_project_role_changed_error(
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      user_projects_in_flight: False,
-      user_projects_error: opt.Some(err.message),
-      toast: opt.Some(err.message),
+    update_ui(
+      update_admin(model, fn(admin) {
+        AdminModel(
+          ..admin,
+          user_projects_in_flight: False,
+          user_projects_error: opt.Some(err.message),
+        )
+      }),
+      fn(ui) { UiModel(..ui, toast: opt.Some(err.message)) },
     ),
     effect.none(),
   )

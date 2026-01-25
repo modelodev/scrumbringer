@@ -162,7 +162,9 @@ pub fn translate(text: Text) -> String {
     text.SearchPlaceholder -> "q"
     text.ClearFilters -> "Clear"
     text.ActiveFilters(count) ->
-      int.to_string(count) <> " active filter" <> case count {
+      int.to_string(count)
+      <> " active filter"
+      <> case count {
         1 -> ""
         _ -> "s"
       }
@@ -368,7 +370,10 @@ pub fn translate(text: Text) -> String {
     text.DeleteTaskType -> "Delete Task Type"
     text.ConfirmDeleteTaskType(name) -> "Delete task type \"" <> name <> "\"?"
     text.TaskTypeHasTasks(count) ->
-      "Cannot delete: has " <> int.to_string(count) <> " task" <> case count {
+      "Cannot delete: has "
+      <> int.to_string(count)
+      <> " task"
+      <> case count {
         1 -> ""
         _ -> "s"
       }
@@ -433,7 +438,8 @@ pub fn translate(text: Text) -> String {
     text.CardUpdated -> "Card updated"
     text.CardDeleted -> "Card deleted"
     text.CardDeleteBlocked -> "Cannot delete: has tasks"
-    text.CardDeleteConfirm(card_title) -> "Delete card \"" <> card_title <> "\"?"
+    text.CardDeleteConfirm(card_title) ->
+      "Delete card \"" <> card_title <> "\"?"
     text.NoCardsYet -> "No cards yet"
     text.CardTaskCount(completed, total) ->
       int.to_string(completed) <> "/" <> int.to_string(total)
@@ -447,8 +453,7 @@ pub fn translate(text: Text) -> String {
     text.WorkflowsTitle -> "Workflows"
     text.WorkflowsOrgTitle -> "Organization Workflows"
     text.WorkflowsProjectTitle(project_name) -> "Workflows - " <> project_name
-    text.SelectProjectForWorkflows ->
-      "Select a project to manage workflows"
+    text.SelectProjectForWorkflows -> "Select a project to manage workflows"
     text.WorkflowName -> "Name"
     text.WorkflowDescription -> "Description"
     text.WorkflowScope -> "Scope"
@@ -539,7 +544,8 @@ pub fn translate(text: Text) -> String {
     text.DeleteTaskTemplate -> "Delete Template"
     text.NoTaskTemplatesYet -> "No task templates yet"
     text.TaskTemplateDeleted -> "Template deleted"
-    text.TaskTemplateDeleteConfirm(name) -> "Delete template \"" <> name <> "\"?"
+    text.TaskTemplateDeleteConfirm(name) ->
+      "Delete template \"" <> name <> "\"?"
     text.TaskTemplateVariablesHelp ->
       "Variables: {{father}} (origin task/card), {{from_state}} (previous state), {{to_state}} (new state), {{project}} (project name), {{user}} (user who triggered)"
     text.TaskTemplateDescriptionHint ->

@@ -19,10 +19,10 @@
 import gleam/list
 import gleam/option.{type Option, None, Some}
 
+import domain/org_role.{type OrgRole, Admin}
 import scrumbringer_client/member_section
 import scrumbringer_client/permissions.{type AdminSection}
 import scrumbringer_client/router
-import domain/org_role.{type OrgRole, Admin}
 
 /// Loading state for a resource (simplified from Remote for snapshot comparison).
 pub type ResourceState {
@@ -233,9 +233,10 @@ fn plan_admin_with_access(
       collect([#(needs_fetch(snap.org_settings_users), FetchOrgSettingsUsers)])
 
     permissions.Metrics, _, _ -> {
-      let overview = collect([
-        #(needs_fetch(snap.org_metrics_overview), FetchOrgMetricsOverview),
-      ])
+      let overview =
+        collect([
+          #(needs_fetch(snap.org_metrics_overview), FetchOrgMetricsOverview),
+        ])
       let project_tasks = case project_id {
         Some(id) ->
           collect([
@@ -287,7 +288,10 @@ fn plan_org(snap: Snapshot, section: AdminSection) -> List(Command) {
               ])
             permissions.Metrics ->
               collect([
-                #(needs_fetch(snap.org_metrics_overview), FetchOrgMetricsOverview),
+                #(
+                  needs_fetch(snap.org_metrics_overview),
+                  FetchOrgMetricsOverview,
+                ),
               ])
             _ -> []
           }

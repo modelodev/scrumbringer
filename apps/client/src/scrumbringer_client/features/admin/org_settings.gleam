@@ -26,8 +26,8 @@ import domain/org.{type OrgUser}
 import domain/org_role
 import domain/user.{User}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, Login, Model, OrgSettingsSaved,
-  admin_msg,
+  type Model, type Msg, AdminModel, CoreModel, Failed, Loaded, OrgSettingsSaved,
+  UiModel, admin_msg, update_admin, update_core, update_ui,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -44,7 +44,12 @@ pub fn handle_org_users_cache_fetched_ok(
   model: Model,
   users: List(OrgUser),
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, org_users_cache: Loaded(users)), effect.none())
+  #(
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, org_users_cache: Loaded(users))
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle org users cache fetch error.
@@ -53,8 +58,13 @@ pub fn handle_org_users_cache_fetched_error(
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
   case err.status == 401 {
-    True -> #(Model(..model, page: Login, user: opt.None), effect.none())
-    False -> #(Model(..model, org_users_cache: Failed(err)), effect.none())
+    True -> update_helpers.reset_to_login(model)
+    False -> #(
+      update_admin(model, fn(admin) {
+        AdminModel(..admin, org_users_cache: Failed(err))
+      }),
+      effect.none(),
+    )
   }
 }
 
@@ -68,14 +78,16 @@ pub fn handle_org_settings_users_fetched_ok(
   users: List(OrgUser),
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      org_settings_users: Loaded(users),
-      org_settings_role_drafts: dict.new(),
-      org_settings_save_in_flight: False,
-      org_settings_error: opt.None,
-      org_settings_error_user_id: opt.None,
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        org_settings_users: Loaded(users),
+        org_settings_role_drafts: dict.new(),
+        org_settings_save_in_flight: False,
+        org_settings_error: opt.None,
+        org_settings_error_user_id: opt.None,
+      )
+    }),
     effect.none(),
   )
 }
@@ -88,16 +100,23 @@ pub fn handle_org_settings_users_fetched_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
 
-    403 -> #(
-      Model(
-        ..model,
-        org_settings_users: Failed(err),
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-      ),
+    403 -> {
+      let toast = update_helpers.i18n_t(model, i18n_text.NotPermitted)
+      let model =
+        update_admin(model, fn(admin) {
+          AdminModel(..admin, org_settings_users: Failed(err))
+        })
+      let model =
+        update_ui(model, fn(ui) { UiModel(..ui, toast: opt.Some(toast)) })
+      #(model, effect.none())
+    }
+
+    _ -> #(
+      update_admin(model, fn(admin) {
+        AdminModel(..admin, org_settings_users: Failed(err))
+      }),
       effect.none(),
     )
-
-    _ -> #(Model(..model, org_settings_users: Failed(err)), effect.none())
   }
 }
 
@@ -112,16 +131,18 @@ pub fn handle_org_settings_role_changed(
   org_role: String,
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      org_settings_role_drafts: dict.insert(
-        model.org_settings_role_drafts,
-        user_id,
-        org_role,
-      ),
-      org_settings_error: opt.None,
-      org_settings_error_user_id: opt.None,
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        org_settings_role_drafts: dict.insert(
+          model.admin.org_settings_role_drafts,
+          user_id,
+          org_role,
+        ),
+        org_settings_error: opt.None,
+        org_settings_error_user_id: opt.None,
+      )
+    }),
     effect.none(),
   )
 }
@@ -131,7 +152,7 @@ pub fn handle_org_settings_save_clicked(
   model: Model,
   user_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  case model.org_settings_save_in_flight {
+  case model.admin.org_settings_save_in_flight {
     True -> #(model, effect.none())
 
     False -> {
@@ -140,12 +161,14 @@ pub fn handle_org_settings_save_clicked(
       case role {
         "admin" | "member" -> {
           let model =
-            Model(
-              ..model,
-              org_settings_save_in_flight: True,
-              org_settings_error: opt.None,
-              org_settings_error_user_id: opt.None,
-            )
+            update_admin(model, fn(admin) {
+              AdminModel(
+                ..admin,
+                org_settings_save_in_flight: True,
+                org_settings_error: opt.None,
+                org_settings_error_user_id: opt.None,
+              )
+            })
 
           #(
             model,
@@ -179,28 +202,28 @@ pub fn handle_org_settings_saved_ok(
     })
   }
 
-  let org_settings_users = case model.org_settings_users {
+  let org_settings_users = case model.admin.org_settings_users {
     Loaded(users) -> Loaded(update_list(users))
     other -> other
   }
 
   // Remove saved user from drafts
   let org_settings_role_drafts =
-    dict.delete(model.org_settings_role_drafts, updated.id)
+    dict.delete(model.admin.org_settings_role_drafts, updated.id)
 
-  let org_users_cache = case model.org_users_cache {
+  let org_users_cache = case model.admin.org_users_cache {
     Loaded(users) -> Loaded(update_list(users))
     other -> other
   }
 
-  // If the updated user is the current user, update model.user with new role
-  let user = case model.user {
+  // If the updated user is the current user, update model.core.user with new role
+  let user = case model.core.user {
     opt.Some(current_user) if current_user.id == updated.id ->
       case org_role.parse(updated.org_role) {
         Ok(new_role) -> opt.Some(User(..current_user, org_role: new_role))
-        Error(_) -> model.user
+        Error(_) -> model.core.user
       }
-    _ -> model.user
+    _ -> model.core.user
   }
 
   // Check if there are more pending changes to save
@@ -208,32 +231,41 @@ pub fn handle_org_settings_saved_ok(
 
   case remaining_changes {
     // No more pending changes, done
-    [] -> #(
-      Model(
-        ..model,
-        user: user,
-        org_settings_users: org_settings_users,
-        org_users_cache: org_users_cache,
-        org_settings_role_drafts: org_settings_role_drafts,
-        org_settings_save_in_flight: False,
-        org_settings_error: opt.None,
-        org_settings_error_user_id: opt.None,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.RoleUpdated)),
-      ),
-      effect.none(),
-    )
+    [] -> {
+      let toast = update_helpers.i18n_t(model, i18n_text.RoleUpdated)
+      let model =
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            org_settings_users: org_settings_users,
+            org_users_cache: org_users_cache,
+            org_settings_role_drafts: org_settings_role_drafts,
+            org_settings_save_in_flight: False,
+            org_settings_error: opt.None,
+            org_settings_error_user_id: opt.None,
+          )
+        })
+      let model = update_core(model, fn(core) { CoreModel(..core, user: user) })
+      let model =
+        update_ui(model, fn(ui) { UiModel(..ui, toast: opt.Some(toast)) })
+      #(model, effect.none())
+    }
 
     // More pending changes, save next
     [#(next_user_id, next_role), ..] -> #(
-      Model(
-        ..model,
-        user: user,
-        org_settings_users: org_settings_users,
-        org_users_cache: org_users_cache,
-        org_settings_role_drafts: org_settings_role_drafts,
-        org_settings_save_in_flight: True,
-        org_settings_error: opt.None,
-        org_settings_error_user_id: opt.None,
+      update_core(
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            org_settings_users: org_settings_users,
+            org_users_cache: org_users_cache,
+            org_settings_role_drafts: org_settings_role_drafts,
+            org_settings_save_in_flight: True,
+            org_settings_error: opt.None,
+            org_settings_error_user_id: opt.None,
+          )
+        }),
+        fn(core) { CoreModel(..core, user: user) },
       ),
       api_org.update_org_user_role(next_user_id, next_role, fn(result) {
         admin_msg(OrgSettingsSaved(next_user_id, result))
@@ -251,32 +283,38 @@ pub fn handle_org_settings_saved_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
 
-    403 -> #(
-      Model(
-        ..model,
-        org_settings_save_in_flight: False,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-      ),
-      effect.none(),
-    )
+    403 -> {
+      let toast = update_helpers.i18n_t(model, i18n_text.NotPermitted)
+      let model =
+        update_admin(model, fn(admin) {
+          AdminModel(..admin, org_settings_save_in_flight: False)
+        })
+      let model =
+        update_ui(model, fn(ui) { UiModel(..ui, toast: opt.Some(toast)) })
+      #(model, effect.none())
+    }
 
     409 -> #(
-      Model(
-        ..model,
-        org_settings_save_in_flight: False,
-        org_settings_error_user_id: opt.Some(user_id),
-        org_settings_error: opt.Some(err.message),
-      ),
+      update_admin(model, fn(admin) {
+        AdminModel(
+          ..admin,
+          org_settings_save_in_flight: False,
+          org_settings_error_user_id: opt.Some(user_id),
+          org_settings_error: opt.Some(err.message),
+        )
+      }),
       effect.none(),
     )
 
     _ -> #(
-      Model(
-        ..model,
-        org_settings_save_in_flight: False,
-        org_settings_error_user_id: opt.Some(user_id),
-        org_settings_error: opt.Some(err.message),
-      ),
+      update_admin(model, fn(admin) {
+        AdminModel(
+          ..admin,
+          org_settings_save_in_flight: False,
+          org_settings_error_user_id: opt.Some(user_id),
+          org_settings_error: opt.Some(err.message),
+        )
+      }),
       effect.none(),
     )
   }
@@ -287,12 +325,12 @@ pub fn handle_org_settings_saved_error(
 pub fn handle_org_settings_save_all_clicked(
   model: Model,
 ) -> #(Model, Effect(Msg)) {
-  case model.org_settings_save_in_flight {
+  case model.admin.org_settings_save_in_flight {
     True -> #(model, effect.none())
 
     False -> {
       // Get pending changes (user_id, role) pairs
-      let pending_changes = dict.to_list(model.org_settings_role_drafts)
+      let pending_changes = dict.to_list(model.admin.org_settings_role_drafts)
 
       case pending_changes {
         [] -> #(model, effect.none())
@@ -300,12 +338,14 @@ pub fn handle_org_settings_save_all_clicked(
         [#(user_id, role), ..] -> {
           // Save the first pending change, then continue with the rest
           let model =
-            Model(
-              ..model,
-              org_settings_save_in_flight: True,
-              org_settings_error: opt.None,
-              org_settings_error_user_id: opt.None,
-            )
+            update_admin(model, fn(admin) {
+              AdminModel(
+                ..admin,
+                org_settings_save_in_flight: True,
+                org_settings_error: opt.None,
+                org_settings_error_user_id: opt.None,
+              )
+            })
 
           #(
             model,
@@ -325,7 +365,7 @@ pub fn handle_org_settings_save_all_clicked(
 
 /// Get user role from drafts or fallback to current role from org_settings_users.
 fn get_user_role_draft(model: Model, user_id: Int) -> String {
-  case dict.get(model.org_settings_role_drafts, user_id) {
+  case dict.get(model.admin.org_settings_role_drafts, user_id) {
     Ok(r) -> r
     Error(_) -> get_current_user_role(model, user_id)
   }
@@ -333,7 +373,7 @@ fn get_user_role_draft(model: Model, user_id: Int) -> String {
 
 /// Look up user's current role from org_settings_users.
 fn get_current_user_role(model: Model, user_id: Int) -> String {
-  case model.org_settings_users {
+  case model.admin.org_settings_users {
     Loaded(users) ->
       case list.find(users, fn(u) { u.id == user_id }) {
         Ok(u) -> u.org_role

@@ -30,8 +30,9 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiError}
 import scrumbringer_client/api/tasks as api_tasks
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, MemberMyCapabilityIdsFetched,
-  MemberMyCapabilityIdsSaved, Model,
+  type Model, type Msg, Failed, Loaded, MemberModel,
+  MemberMyCapabilityIdsFetched, MemberMyCapabilityIdsSaved, PoolMsg, UiModel,
+  update_member, update_ui,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -46,11 +47,13 @@ pub fn handle_my_capability_ids_fetched_ok(
   ids: List(Int),
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      member_my_capability_ids: Loaded(ids),
-      member_my_capability_ids_edit: update_helpers.ids_to_bool_dict(ids),
-    ),
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_my_capability_ids: Loaded(ids),
+        member_my_capability_ids_edit: update_helpers.ids_to_bool_dict(ids),
+      )
+    }),
     effect.none(),
   )
 }
@@ -63,7 +66,9 @@ pub fn handle_my_capability_ids_fetched_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     _ -> #(
-      Model(..model, member_my_capability_ids: Failed(err)),
+      update_member(model, fn(member) {
+        MemberModel(..member, member_my_capability_ids: Failed(err))
+      }),
       effect.none(),
     )
   }
@@ -74,24 +79,23 @@ pub fn handle_my_capability_ids_fetched_error(
 // =============================================================================
 
 /// Toggle a capability checkbox in the edit state.
-pub fn handle_toggle_capability(
-  model: Model,
-  id: Int,
-) -> #(Model, Effect(Msg)) {
-  let next = case dict.get(model.member_my_capability_ids_edit, id) {
+pub fn handle_toggle_capability(model: Model, id: Int) -> #(Model, Effect(Msg)) {
+  let next = case dict.get(model.member.member_my_capability_ids_edit, id) {
     Ok(v) -> !v
     Error(_) -> True
   }
 
   #(
-    Model(
-      ..model,
-      member_my_capability_ids_edit: dict.insert(
-        model.member_my_capability_ids_edit,
-        id,
-        next,
-      ),
-    ),
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_my_capability_ids_edit: dict.insert(
+          model.member.member_my_capability_ids_edit,
+          id,
+          next,
+        ),
+      )
+    }),
     effect.none(),
   )
 }
@@ -102,26 +106,34 @@ pub fn handle_toggle_capability(
 
 /// Handle save capabilities button click.
 pub fn handle_save_capabilities_clicked(model: Model) -> #(Model, Effect(Msg)) {
-  case model.member_my_capabilities_in_flight, model.selected_project_id, model.user {
+  case
+    model.member.member_my_capabilities_in_flight,
+    model.core.selected_project_id,
+    model.core.user
+  {
     True, _, _ -> #(model, effect.none())
     _, opt.None, _ -> #(model, effect.none())
     _, _, opt.None -> #(model, effect.none())
     False, opt.Some(project_id), opt.Some(user) -> {
       let ids =
-        update_helpers.bool_dict_to_ids(model.member_my_capability_ids_edit)
-      let model =
-        Model(
-          ..model,
-          member_my_capabilities_in_flight: True,
-          member_my_capabilities_error: opt.None,
+        update_helpers.bool_dict_to_ids(
+          model.member.member_my_capability_ids_edit,
         )
+      let model =
+        update_member(model, fn(member) {
+          MemberModel(
+            ..member,
+            member_my_capabilities_in_flight: True,
+            member_my_capabilities_error: opt.None,
+          )
+        })
       #(
         model,
         api_tasks.put_member_capability_ids(
           project_id,
           user.id,
           ids,
-          MemberMyCapabilityIdsSaved,
+          fn(result) -> Msg { PoolMsg(MemberMyCapabilityIdsSaved(result)) },
         ),
       )
     }
@@ -133,16 +145,24 @@ pub fn handle_save_capabilities_ok(
   model: Model,
   ids: List(Int),
 ) -> #(Model, Effect(Msg)) {
-  #(
-    Model(
-      ..model,
-      member_my_capabilities_in_flight: False,
-      member_my_capability_ids: Loaded(ids),
-      member_my_capability_ids_edit: update_helpers.ids_to_bool_dict(ids),
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.SkillsSaved)),
-    ),
-    effect.none(),
-  )
+  let model =
+    update_ui(
+      update_member(model, fn(member) {
+        MemberModel(
+          ..member,
+          member_my_capabilities_in_flight: False,
+          member_my_capability_ids: Loaded(ids),
+          member_my_capability_ids_edit: update_helpers.ids_to_bool_dict(ids),
+        )
+      }),
+      fn(ui) {
+        UiModel(
+          ..ui,
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.SkillsSaved)),
+        )
+      },
+    )
+  #(model, effect.none())
 }
 
 /// Handle failed save capabilities response.
@@ -153,24 +173,30 @@ pub fn handle_save_capabilities_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     _ -> {
-      let refetch_effect = case model.selected_project_id, model.user {
+      let refetch_effect = case
+        model.core.selected_project_id,
+        model.core.user
+      {
         opt.Some(project_id), opt.Some(user) ->
           api_tasks.get_member_capability_ids(
             project_id,
             user.id,
-            MemberMyCapabilityIdsFetched,
+            fn(result) -> Msg { PoolMsg(MemberMyCapabilityIdsFetched(result)) },
           )
         _, _ -> effect.none()
       }
-      #(
-        Model(
-          ..model,
-          member_my_capabilities_in_flight: False,
-          member_my_capabilities_error: opt.Some(err.message),
-          toast: opt.Some(err.message),
-        ),
-        refetch_effect,
-      )
+      let model =
+        update_ui(
+          update_member(model, fn(member) {
+            MemberModel(
+              ..member,
+              member_my_capabilities_in_flight: False,
+              member_my_capabilities_error: opt.Some(err.message),
+            )
+          }),
+          fn(ui) { UiModel(..ui, toast: opt.Some(err.message)) },
+        )
+      #(model, refetch_effect)
     }
   }
 }

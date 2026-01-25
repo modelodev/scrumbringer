@@ -2,7 +2,7 @@
 
 ## Status
 
-**Ready**
+**Review**
 
 ---
 
@@ -25,21 +25,21 @@
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Identify fragment candidates** (AC: 1, 2)
-  - [ ] Audit `client_view.gleam` for repeated wrapper patterns
-  - [ ] Audit `features/admin/view.gleam` for large nested sections
+- [x] **Task 1: Identify fragment candidates** (AC: 1, 2)
+  - [x] Audit `client_view.gleam` for repeated wrapper patterns
+  - [x] Audit `features/admin/view.gleam` for large nested sections
 
-- [ ] **Task 2: Introduce fragments in client_view** (AC: 1, 3, 4)
-  - [ ] Replace repeated wrapper divs with `element.fragment`
-  - [ ] Extract repeated blocks into pure `view_*` helpers
+- [x] **Task 2: Introduce fragments in client_view** (AC: 1, 3, 4)
+  - [x] Replace repeated wrapper divs with `element.fragment`
+  - [x] Extract repeated blocks into pure `view_*` helpers
 
-- [ ] **Task 3: Introduce fragments in admin view** (AC: 2, 3, 4)
-  - [ ] Add fragments to large admin sections
-  - [ ] Extract repeated blocks into pure helpers
+- [x] **Task 3: Introduce fragments in admin view** (AC: 2, 3, 4)
+  - [x] Add fragments to large admin sections
+  - [x] Extract repeated blocks into pure helpers
 
-- [ ] **Task 4: Regression check** (AC: 4)
-  - [ ] Run `cd apps/client && gleam test`
-  - [ ] Smoke check admin + main navigation
+- [x] **Task 4: Regression check** (AC: 4)
+  - [x] Run `cd apps/client && gleam test`
+  - [x] Smoke check admin + main navigation
 
 ---
 
@@ -75,6 +75,7 @@ Reference: `docs/architecture/coding-standards.md` (Lustre patterns, view purity
 | Date | Version | Description | Author |
 |------|---------|-------------|--------|
 | 2026-01-25 | 1.0 | Ready story created | Sarah (PO) |
+| 2026-01-25 | 1.1 | Added fragments to client/admin views | James (Dev) |
 
 ---
 

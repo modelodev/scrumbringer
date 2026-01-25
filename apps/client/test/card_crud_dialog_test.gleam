@@ -4,6 +4,7 @@
 
 import gleeunit/should
 
+import gleam/option
 import scrumbringer_client/components/card_crud_dialog.{
   type CardColor, Blue, CreateColorChanged, CreateColorToggle,
   CreateDescriptionChanged, CreateSubmitted, CreateTitleChanged, DeleteCancelled,
@@ -12,7 +13,6 @@ import scrumbringer_client/components/card_crud_dialog.{
   ProjectIdReceived, Purple, Red, Yellow,
 }
 import scrumbringer_client/i18n/locale.{En, Es}
-import gleam/option
 
 // =============================================================================
 // Model Tests

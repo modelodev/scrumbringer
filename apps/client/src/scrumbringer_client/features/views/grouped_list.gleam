@@ -76,33 +76,24 @@ pub fn view(config: GroupedListConfig(msg)) -> Element(msg) {
         text(i18n.t(config.locale, i18n_text.NoAvailableTasksRightNow)),
       ])
     _ ->
-      div(
-        [attribute.class("grouped-list")],
-        [
-          // Task groups
-          div(
-            [attribute.class("grouped-list-content")],
-            list.map(groups, fn(group) { view_card_group(config, group) }),
-          ),
-          // Hide completed checkbox (AC35)
-          div(
-            [attribute.class("grouped-list-footer")],
-            [
-              label(
-                [attribute.class("checkbox-label")],
-                [
-                  input([
-                    attribute.type_("checkbox"),
-                    attribute.checked(config.hide_completed),
-                    event.on_click(config.on_toggle_hide_completed),
-                  ]),
-                  text(i18n.t(config.locale, i18n_text.HideCompletedTasks)),
-                ],
-              ),
-            ],
-          ),
-        ],
-      )
+      div([attribute.class("grouped-list")], [
+        // Task groups
+        div(
+          [attribute.class("grouped-list-content")],
+          list.map(groups, fn(group) { view_card_group(config, group) }),
+        ),
+        // Hide completed checkbox (AC35)
+        div([attribute.class("grouped-list-footer")], [
+          label([attribute.class("checkbox-label")], [
+            input([
+              attribute.type_("checkbox"),
+              attribute.checked(config.hide_completed),
+              event.on_click(config.on_toggle_hide_completed),
+            ]),
+            text(i18n.t(config.locale, i18n_text.HideCompletedTasks)),
+          ]),
+        ]),
+      ])
   }
 }
 
@@ -171,24 +162,21 @@ fn view_card_group(
             None -> element.none()
           },
           // Progress bar (AC34)
-          div(
-            [attribute.class("card-progress-bar-container")],
-            [
+          div([attribute.class("card-progress-bar-container")], [
+            div([attribute.class("progress-bar")], [
               div(
-                [attribute.class("progress-bar")],
                 [
-                  div(
-                    [
-                      attribute.class("progress-fill"),
-                      attribute.style("width", int.to_string(progress_percent) <> "%"),
-                    ],
-                    [],
+                  attribute.class("progress-fill"),
+                  attribute.style(
+                    "width",
+                    int.to_string(progress_percent) <> "%",
                   ),
                 ],
+                [],
               ),
-              span([attribute.class("card-progress")], [text(progress_text)]),
-            ],
-          ),
+            ]),
+            span([attribute.class("card-progress")], [text(progress_text)]),
+          ]),
         ],
       ),
       // Task list (collapsible)
@@ -267,8 +255,14 @@ fn view_task_item(config: GroupedListConfig(msg), task: Task) -> Element(msg) {
             [
               attribute.class("btn-xs btn-claim btn-icon"),
               attribute.attribute("data-testid", "task-claim-btn"),
-              attribute.attribute("title", i18n.t(config.locale, i18n_text.ClaimThisTask)),
-              attribute.attribute("aria-label", i18n.t(config.locale, i18n_text.Claim)),
+              attribute.attribute(
+                "title",
+                i18n.t(config.locale, i18n_text.ClaimThisTask),
+              ),
+              attribute.attribute(
+                "aria-label",
+                i18n.t(config.locale, i18n_text.Claim),
+              ),
               event.on_click(config.on_task_claim(task.id, task.version)),
             ],
             [icons.nav_icon(icons.HandRaised, icons.Small)],
@@ -286,7 +280,9 @@ fn view_task_item(config: GroupedListConfig(msg), task: Task) -> Element(msg) {
 fn group_tasks_by_card(tasks: List(Task), cards: List(Card)) -> List(CardGroup) {
   // Create a dict of card_id -> card
   let card_map =
-    list.fold(cards, dict.new(), fn(acc, card) { dict.insert(acc, card.id, card) })
+    list.fold(cards, dict.new(), fn(acc, card) {
+      dict.insert(acc, card.id, card)
+    })
 
   // Group tasks by card_id, consolidating tasks with invalid/missing cards to key 0
   // AC24: All tasks without a valid card should be in ONE "Sin ficha" section
@@ -302,7 +298,8 @@ fn group_tasks_by_card(tasks: List(Task), cards: List(Card)) -> List(CardGroup) 
           }
         None -> 0
       }
-      let existing = dict.get(acc, key) |> option.from_result |> option.unwrap([])
+      let existing =
+        dict.get(acc, key) |> option.from_result |> option.unwrap([])
       dict.insert(acc, key, [task, ..existing])
     })
 
@@ -311,10 +308,14 @@ fn group_tasks_by_card(tasks: List(Task), cards: List(Card)) -> List(CardGroup) 
   |> list.map(fn(pair) {
     let #(card_id, card_tasks) = pair
     let card = dict.get(card_map, card_id) |> option.from_result
-    let completed =
-      list.count(card_tasks, fn(t) { t.status == Completed })
+    let completed = list.count(card_tasks, fn(t) { t.status == Completed })
     let total = list.length(card_tasks)
-    CardGroup(card: card, tasks: list.reverse(card_tasks), completed: completed, total: total)
+    CardGroup(
+      card: card,
+      tasks: list.reverse(card_tasks),
+      completed: completed,
+      total: total,
+    )
   })
   |> list.sort(fn(a, b) {
     // Sort: cards with Some first, then by card id

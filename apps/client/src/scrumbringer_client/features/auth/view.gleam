@@ -57,13 +57,13 @@ import scrumbringer_client/update_helpers
 
 /// Renders the login page with email/password form.
 pub fn view_login(model: Model) -> Element(Msg) {
-  let submit_label = case model.login_in_flight {
+  let submit_label = case model.auth.login_in_flight {
     True -> update_helpers.i18n_t(model, i18n_text.LoggingIn)
     False -> update_helpers.i18n_t(model, i18n_text.LoginTitle)
   }
 
   // L01: Button class with loading state
-  let btn_class = case model.login_in_flight {
+  let btn_class = case model.auth.login_in_flight {
     True -> "btn-loading"
     False -> ""
   }
@@ -72,7 +72,7 @@ pub fn view_login(model: Model) -> Element(Msg) {
     h1([], [text(update_helpers.i18n_t(model, i18n_text.AppName))]),
     p([], [text(update_helpers.i18n_t(model, i18n_text.LoginSubtitle))]),
     // L03: Error banner with icon
-    case model.login_error {
+    case model.auth.login_error {
       opt.Some(err) ->
         div([attribute.class("error-banner")], [
           span([attribute.class("error-banner-icon")], [
@@ -88,7 +88,7 @@ pub fn view_login(model: Model) -> Element(Msg) {
         input([
           attribute.attribute("id", "login-email"),
           attribute.type_("email"),
-          attribute.value(model.login_email),
+          attribute.value(model.auth.login_email),
           event.on_input(fn(value) { auth_msg(LoginEmailChanged(value)) }),
           attribute.required(True),
           // L02: Autofocus on first field
@@ -101,7 +101,7 @@ pub fn view_login(model: Model) -> Element(Msg) {
         input([
           attribute.attribute("id", "login-password"),
           attribute.type_("password"),
-          attribute.value(model.login_password),
+          attribute.value(model.auth.login_password),
           event.on_input(fn(value) { auth_msg(LoginPasswordChanged(value)) }),
           attribute.required(True),
           attribute.attribute("aria-label", "Password"),
@@ -111,7 +111,7 @@ pub fn view_login(model: Model) -> Element(Msg) {
       button(
         [
           attribute.type_("submit"),
-          attribute.disabled(model.login_in_flight),
+          attribute.disabled(model.auth.login_in_flight),
           attribute.class(btn_class),
         ],
         [text(submit_label)],
@@ -120,7 +120,7 @@ pub fn view_login(model: Model) -> Element(Msg) {
     button([event.on_click(auth_msg(ForgotPasswordClicked))], [
       text(update_helpers.i18n_t(model, i18n_text.ForgotPassword)),
     ]),
-    case model.forgot_password_open {
+    case model.auth.forgot_password_open {
       True -> view_forgot_password(model)
       False -> element.none()
     },
@@ -129,21 +129,21 @@ pub fn view_login(model: Model) -> Element(Msg) {
 
 /// Renders the forgot password form with email input and reset link display.
 pub fn view_forgot_password(model: Model) -> Element(Msg) {
-  let submit_label = case model.forgot_password_in_flight {
+  let submit_label = case model.auth.forgot_password_in_flight {
     True -> update_helpers.i18n_t(model, i18n_text.Working)
     False -> update_helpers.i18n_t(model, i18n_text.GenerateResetLink)
   }
 
   let origin = client_ffi.location_origin()
 
-  let link = case model.forgot_password_result {
+  let link = case model.auth.forgot_password_result {
     opt.Some(reset) -> origin <> reset.url_path
     opt.None -> ""
   }
 
   div([attrs.section()], [
     p([], [text(update_helpers.i18n_t(model, i18n_text.NoEmailIntegrationNote))]),
-    case model.forgot_password_error {
+    case model.auth.forgot_password_error {
       opt.Some(err) ->
         div([attrs.error()], [
           span([], [text(err)]),
@@ -158,7 +158,7 @@ pub fn view_forgot_password(model: Model) -> Element(Msg) {
         label([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
         input([
           attribute.type_("email"),
-          attribute.value(model.forgot_password_email),
+          attribute.value(model.auth.forgot_password_email),
           event.on_input(fn(value) {
             auth_msg(ForgotPasswordEmailChanged(value))
           }),
@@ -168,7 +168,7 @@ pub fn view_forgot_password(model: Model) -> Element(Msg) {
       button(
         [
           attribute.type_("submit"),
-          attribute.disabled(model.forgot_password_in_flight),
+          attribute.disabled(model.auth.forgot_password_in_flight),
         ],
         [text(submit_label)],
       ),
@@ -189,7 +189,7 @@ pub fn view_forgot_password(model: Model) -> Element(Msg) {
               text(update_helpers.i18n_t(model, i18n_text.Copy)),
             ]),
           ]),
-          case model.forgot_password_copy_status {
+          case model.auth.forgot_password_copy_status {
             opt.Some(msg) -> div([attribute.class("hint")], [text(msg)])
             opt.None -> element.none()
           },
@@ -206,7 +206,7 @@ pub fn view_accept_invite(model: Model) -> Element(Msg) {
     password_error: password_error,
     submit_error: submit_error,
     ..,
-  ) = model.accept_invite
+  ) = model.auth.accept_invite
 
   let content = case state {
     accept_invite.NoToken ->
@@ -306,7 +306,7 @@ pub fn view_reset_password(model: Model) -> Element(Msg) {
     password_error: password_error,
     submit_error: submit_error,
     ..,
-  ) = model.reset_password
+  ) = model.auth.reset_password
 
   let content = case state {
     reset_password.NoToken ->

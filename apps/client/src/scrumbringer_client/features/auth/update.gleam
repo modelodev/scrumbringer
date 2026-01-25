@@ -36,12 +36,13 @@ import scrumbringer_client/api/auth as api_auth
 import domain/api_error.{type ApiError}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type AuthMsg, type Model, type Msg, Admin, ForgotPasswordClicked,
-  ForgotPasswordCopyClicked, ForgotPasswordCopyFinished, ForgotPasswordDismissed,
-  ForgotPasswordEmailChanged, ForgotPasswordFinished, ForgotPasswordSubmitted,
-  Login, LoginDomValuesRead, LoginEmailChanged, LoginFinished,
-  LoginPasswordChanged, LoginSubmitted, LogoutClicked, LogoutFinished, Member,
-  Model, ToastShow, auth_msg,
+  type AuthMsg, type Model, type Msg, Admin, AuthModel, CoreModel,
+  ForgotPasswordClicked, ForgotPasswordCopyClicked, ForgotPasswordCopyFinished,
+  ForgotPasswordDismissed, ForgotPasswordEmailChanged, ForgotPasswordFinished,
+  ForgotPasswordSubmitted, Login, LoginDomValuesRead, LoginEmailChanged,
+  LoginFinished, LoginPasswordChanged, LoginSubmitted, LogoutClicked,
+  LogoutFinished, Member, ToastShow, UiModel, auth_msg, update_auth, update_core,
+  update_ui,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/toast
@@ -56,7 +57,10 @@ pub fn handle_login_email_changed(
   model: Model,
   email: String,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, login_email: email), effect.none())
+  #(
+    update_auth(model, fn(auth) { AuthModel(..auth, login_email: email) }),
+    effect.none(),
+  )
 }
 
 /// Handle login password input change.
@@ -64,20 +68,23 @@ pub fn handle_login_password_changed(
   model: Model,
   password: String,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, login_password: password), effect.none())
+  #(
+    update_auth(model, fn(auth) { AuthModel(..auth, login_password: password) }),
+    effect.none(),
+  )
 }
 
 /// Handle login form submission.
 pub fn handle_login_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.login_in_flight {
+  case model.auth.login_in_flight {
     True -> #(model, effect.none())
     False -> {
       let model =
-        Model(
-          ..model,
-          login_in_flight: True,
-          login_error: opt.None,
-          toast: opt.None,
+        update_ui(
+          update_auth(model, fn(auth) {
+            AuthModel(..auth, login_in_flight: True, login_error: opt.None)
+          }),
+          fn(ui) { UiModel(..ui, toast: opt.None) },
         )
       #(model, read_login_values_effect())
     }
@@ -95,19 +102,24 @@ pub fn handle_login_dom_values_read(
 
   case email == "" || password == "" {
     True -> #(
-      Model(
-        ..model,
-        login_in_flight: False,
-        login_error: opt.Some(update_helpers.i18n_t(
-          model,
-          i18n_text.EmailAndPasswordRequired,
-        )),
-      ),
+      update_auth(model, fn(auth) {
+        AuthModel(
+          ..auth,
+          login_in_flight: False,
+          login_error: opt.Some(update_helpers.i18n_t(
+            model,
+            i18n_text.EmailAndPasswordRequired,
+          )),
+        )
+      }),
       effect.none(),
     )
 
     False -> {
-      let model = Model(..model, login_email: email, login_password: password)
+      let model =
+        update_auth(model, fn(auth) {
+          AuthModel(..auth, login_email: email, login_password: password)
+        })
       #(
         model,
         api_auth.login(email, password, fn(result) {
@@ -132,13 +144,11 @@ pub fn handle_login_finished_ok(
   }
 
   let model =
-    Model(
-      ..model,
-      page: page,
-      user: opt.Some(user),
-      auth_checked: True,
-      login_in_flight: False,
-      login_password: "",
+    update_auth(
+      update_core(model, fn(core) {
+        CoreModel(..core, page: page, user: opt.Some(user), auth_checked: True)
+      }),
+      fn(auth) { AuthModel(..auth, login_in_flight: False, login_password: "") },
     )
 
   let #(model, boot) = bootstrap_fn(model)
@@ -165,7 +175,9 @@ pub fn handle_login_finished_error(
   }
 
   #(
-    Model(..model, login_in_flight: False, login_error: opt.Some(message)),
+    update_auth(model, fn(auth) {
+      AuthModel(..auth, login_in_flight: False, login_error: opt.Some(message))
+    }),
     effect.none(),
   )
 }
@@ -176,17 +188,21 @@ pub fn handle_login_finished_error(
 
 /// Handle forgot password toggle.
 pub fn handle_forgot_password_clicked(model: Model) -> #(Model, Effect(Msg)) {
-  let open = !model.forgot_password_open
+  let open = !model.auth.forgot_password_open
 
   #(
-    Model(
-      ..model,
-      forgot_password_open: open,
-      forgot_password_in_flight: False,
-      forgot_password_result: opt.None,
-      forgot_password_error: opt.None,
-      forgot_password_copy_status: opt.None,
-      toast: opt.None,
+    update_ui(
+      update_auth(model, fn(auth) {
+        AuthModel(
+          ..auth,
+          forgot_password_open: open,
+          forgot_password_in_flight: False,
+          forgot_password_result: opt.None,
+          forgot_password_error: opt.None,
+          forgot_password_copy_status: opt.None,
+        )
+      }),
+      fn(ui) { UiModel(..ui, toast: opt.None) },
     ),
     effect.none(),
   )
@@ -198,45 +214,51 @@ pub fn handle_forgot_password_email_changed(
   email: String,
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      forgot_password_email: email,
-      forgot_password_error: opt.None,
-      forgot_password_copy_status: opt.None,
-    ),
+    update_auth(model, fn(auth) {
+      AuthModel(
+        ..auth,
+        forgot_password_email: email,
+        forgot_password_error: opt.None,
+        forgot_password_copy_status: opt.None,
+      )
+    }),
     effect.none(),
   )
 }
 
 /// Handle forgot password form submission.
 pub fn handle_forgot_password_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.forgot_password_in_flight {
+  case model.auth.forgot_password_in_flight {
     True -> #(model, effect.none())
 
     False -> {
-      let email = string.trim(model.forgot_password_email)
+      let email = string.trim(model.auth.forgot_password_email)
 
       case email == "" {
         True -> #(
-          Model(
-            ..model,
-            forgot_password_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.EmailRequired,
-            )),
-          ),
+          update_auth(model, fn(auth) {
+            AuthModel(
+              ..auth,
+              forgot_password_error: opt.Some(update_helpers.i18n_t(
+                model,
+                i18n_text.EmailRequired,
+              )),
+            )
+          }),
           effect.none(),
         )
 
         False -> {
           let model =
-            Model(
-              ..model,
-              forgot_password_in_flight: True,
-              forgot_password_error: opt.None,
-              forgot_password_result: opt.None,
-              forgot_password_copy_status: opt.None,
-            )
+            update_auth(model, fn(auth) {
+              AuthModel(
+                ..auth,
+                forgot_password_in_flight: True,
+                forgot_password_error: opt.None,
+                forgot_password_result: opt.None,
+                forgot_password_copy_status: opt.None,
+              )
+            })
 
           #(
             model,
@@ -256,13 +278,15 @@ pub fn handle_forgot_password_finished_ok(
   reset: api_auth.PasswordReset,
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      forgot_password_in_flight: False,
-      forgot_password_result: opt.Some(reset),
-      forgot_password_error: opt.None,
-      forgot_password_copy_status: opt.None,
-    ),
+    update_auth(model, fn(auth) {
+      AuthModel(
+        ..auth,
+        forgot_password_in_flight: False,
+        forgot_password_result: opt.Some(reset),
+        forgot_password_error: opt.None,
+        forgot_password_copy_status: opt.None,
+      )
+    }),
     effect.none(),
   )
 }
@@ -273,11 +297,13 @@ pub fn handle_forgot_password_finished_error(
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      forgot_password_in_flight: False,
-      forgot_password_error: opt.Some(err.message),
-    ),
+    update_auth(model, fn(auth) {
+      AuthModel(
+        ..auth,
+        forgot_password_in_flight: False,
+        forgot_password_error: opt.Some(err.message),
+      )
+    }),
     effect.none(),
   )
 }
@@ -286,7 +312,7 @@ pub fn handle_forgot_password_finished_error(
 pub fn handle_forgot_password_copy_clicked(
   model: Model,
 ) -> #(Model, Effect(Msg)) {
-  case model.forgot_password_result {
+  case model.auth.forgot_password_result {
     opt.None -> #(model, effect.none())
 
     opt.Some(reset) -> {
@@ -294,13 +320,15 @@ pub fn handle_forgot_password_copy_clicked(
       let text = origin <> reset.url_path
 
       #(
-        Model(
-          ..model,
-          forgot_password_copy_status: opt.Some(update_helpers.i18n_t(
-            model,
-            i18n_text.Copying,
-          )),
-        ),
+        update_auth(model, fn(auth) {
+          AuthModel(
+            ..auth,
+            forgot_password_copy_status: opt.Some(update_helpers.i18n_t(
+              model,
+              i18n_text.Copying,
+            )),
+          )
+        }),
         copy_to_clipboard(text, fn(ok) {
           auth_msg(ForgotPasswordCopyFinished(ok))
         }),
@@ -320,7 +348,9 @@ pub fn handle_forgot_password_copy_finished(
   }
 
   #(
-    Model(..model, forgot_password_copy_status: opt.Some(message)),
+    update_auth(model, fn(auth) {
+      AuthModel(..auth, forgot_password_copy_status: opt.Some(message))
+    }),
     effect.none(),
   )
 }
@@ -328,12 +358,14 @@ pub fn handle_forgot_password_copy_finished(
 /// Handle dismiss forgot password result.
 pub fn handle_forgot_password_dismissed(model: Model) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      forgot_password_error: opt.None,
-      forgot_password_copy_status: opt.None,
-      forgot_password_result: opt.None,
-    ),
+    update_auth(model, fn(auth) {
+      AuthModel(
+        ..auth,
+        forgot_password_error: opt.None,
+        forgot_password_copy_status: opt.None,
+        forgot_password_result: opt.None,
+      )
+    }),
     effect.none(),
   )
 }
@@ -345,7 +377,7 @@ pub fn handle_forgot_password_dismissed(model: Model) -> #(Model, Effect(Msg)) {
 /// Handle logout click.
 pub fn handle_logout_clicked(model: Model) -> #(Model, Effect(Msg)) {
   #(
-    Model(..model, toast: opt.None),
+    update_ui(model, fn(ui) { UiModel(..ui, toast: opt.None) }),
     api_auth.logout(fn(result) { auth_msg(LogoutFinished(result)) }),
   )
 }
@@ -356,12 +388,16 @@ pub fn handle_logout_finished_ok(
   replace_url_fn: fn(Model) -> Effect(Msg),
 ) -> #(Model, Effect(Msg)) {
   let model =
-    Model(
-      ..model,
-      page: Login,
-      user: opt.None,
-      auth_checked: False,
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.LoggedOut)),
+    update_ui(
+      update_core(model, fn(core) {
+        CoreModel(..core, page: Login, user: opt.None, auth_checked: False)
+      }),
+      fn(ui) {
+        UiModel(
+          ..ui,
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.LoggedOut)),
+        )
+      },
     )
 
   #(model, replace_url_fn(model))
@@ -376,15 +412,19 @@ pub fn handle_logout_finished_error(
   case err.status == 401 {
     True -> {
       let model =
-        Model(..model, page: Login, user: opt.None, auth_checked: False)
+        update_core(model, fn(core) {
+          CoreModel(..core, page: Login, user: opt.None, auth_checked: False)
+        })
       #(model, replace_url_fn(model))
     }
 
     False -> #(
-      Model(
-        ..model,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.LogoutFailed)),
-      ),
+      update_ui(model, fn(ui) {
+        UiModel(
+          ..ui,
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.LogoutFailed)),
+        )
+      }),
       effect.none(),
     )
   }

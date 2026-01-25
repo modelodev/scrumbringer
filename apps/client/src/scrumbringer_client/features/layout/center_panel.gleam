@@ -61,106 +61,86 @@ pub type CenterPanelConfig(msg) {
 
 /// Renders the center panel with toolbar and content
 pub fn view(config: CenterPanelConfig(msg)) -> Element(msg) {
-  div(
-    [attribute.class("center-panel-content")],
-    [
-      // Toolbar: view mode toggle + filters
-      view_toolbar(config),
-      // Content based on view mode
-      view_content(config),
-    ],
-  )
+  div([attribute.class("center-panel-content")], [
+    // Toolbar: view mode toggle + filters
+    view_toolbar(config),
+    // Content based on view mode
+    view_content(config),
+  ])
 }
 
 fn view_toolbar(config: CenterPanelConfig(msg)) -> Element(msg) {
-  div(
-    [attribute.class("center-toolbar")],
-    [
-      // Filters only - navigation moved to sidebar (Story 4.8 UX)
-      view_filters(config),
-    ],
-  )
+  div([attribute.class("center-toolbar")], [
+    // Filters only - navigation moved to sidebar (Story 4.8 UX)
+    view_filters(config),
+  ])
 }
 
 fn view_filters(config: CenterPanelConfig(msg)) -> Element(msg) {
-  div(
-    [attribute.class("center-filters")],
-    [
-      // Type filter
-      div(
-        [attribute.class("filter-field")],
+  div([attribute.class("center-filters")], [
+    // Type filter
+    div([attribute.class("filter-field")], [
+      label([], [text(i18n.t(config.locale, i18n_text.TypeLabel))]),
+      select(
         [
-          label([], [text(i18n.t(config.locale, i18n_text.TypeLabel))]),
-          select(
-            [
-              attribute.attribute("data-testid", "filter-type"),
-              attribute.value(option_int_to_string(config.type_filter)),
-              event.on_input(config.on_type_filter_change),
-            ],
-            [
-              option(
-                [attribute.value("")],
-                i18n.t(config.locale, i18n_text.AllOption),
-              ),
-              ..list_map(config.task_types, fn(tt) {
-                option(
-                  [
-                    attribute.value(int_to_string(tt.id)),
-                    attribute.selected(Some(tt.id) == config.type_filter),
-                  ],
-                  tt.name,
-                )
-              })
-            ],
+          attribute.attribute("data-testid", "filter-type"),
+          attribute.value(option_int_to_string(config.type_filter)),
+          event.on_input(config.on_type_filter_change),
+        ],
+        [
+          option(
+            [attribute.value("")],
+            i18n.t(config.locale, i18n_text.AllOption),
           ),
+          ..list_map(config.task_types, fn(tt) {
+            option(
+              [
+                attribute.value(int_to_string(tt.id)),
+                attribute.selected(Some(tt.id) == config.type_filter),
+              ],
+              tt.name,
+            )
+          })
         ],
       ),
-      // Capability filter
-      div(
-        [attribute.class("filter-field")],
+    ]),
+    // Capability filter
+    div([attribute.class("filter-field")], [
+      label([], [text(i18n.t(config.locale, i18n_text.CapabilityLabel))]),
+      select(
         [
-          label([], [text(i18n.t(config.locale, i18n_text.CapabilityLabel))]),
-          select(
-            [
-              attribute.attribute("data-testid", "filter-capability"),
-              attribute.value(option_int_to_string(config.capability_filter)),
-              event.on_input(config.on_capability_filter_change),
-            ],
-            [
-              option(
-                [attribute.value("")],
-                i18n.t(config.locale, i18n_text.AllOption),
-              ),
-              ..list_map(config.capabilities, fn(cap) {
-                option(
-                  [
-                    attribute.value(int_to_string(cap.id)),
-                    attribute.selected(Some(cap.id) == config.capability_filter),
-                  ],
-                  cap.name,
-                )
-              })
-            ],
+          attribute.attribute("data-testid", "filter-capability"),
+          attribute.value(option_int_to_string(config.capability_filter)),
+          event.on_input(config.on_capability_filter_change),
+        ],
+        [
+          option(
+            [attribute.value("")],
+            i18n.t(config.locale, i18n_text.AllOption),
           ),
+          ..list_map(config.capabilities, fn(cap) {
+            option(
+              [
+                attribute.value(int_to_string(cap.id)),
+                attribute.selected(Some(cap.id) == config.capability_filter),
+              ],
+              cap.name,
+            )
+          })
         ],
       ),
-      // Search
-      div(
-        [attribute.class("filter-field filter-search")],
-        [
-          label([], [text(i18n.t(config.locale, i18n_text.SearchLabel))]),
-          input([
-            attribute.type_("search"),
-            attribute.placeholder(
-              i18n.t(config.locale, i18n_text.SearchPlaceholder),
-            ),
-            attribute.value(config.search_query),
-            event.on_input(config.on_search_change),
-          ]),
-        ],
-      ),
-    ],
-  )
+    ]),
+    // Search
+    div([attribute.class("filter-field filter-search")], [
+      label([], [text(i18n.t(config.locale, i18n_text.SearchLabel))]),
+      input([
+        attribute.type_("search"),
+        attribute.placeholder(i18n.t(config.locale, i18n_text.SearchPlaceholder)),
+        attribute.value(config.search_query),
+        event.on_input(config.on_search_change),
+      ]),
+    ]),
+  ])
 }
 
 fn view_content(config: CenterPanelConfig(msg)) -> Element(msg) {

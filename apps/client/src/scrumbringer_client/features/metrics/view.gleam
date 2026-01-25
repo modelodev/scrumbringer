@@ -24,22 +24,20 @@ import lustre/element/keyed
 import lustre/event
 
 import domain/metrics.{
-  type MetricsProjectTask, type OrgMetricsBucket,
-  type OrgMetricsOverview, type OrgMetricsProjectOverview,
-  type OrgMetricsProjectTasksPayload, MetricsProjectTask,
-  OrgMetricsBucket, OrgMetricsOverview, OrgMetricsProjectOverview,
-  OrgMetricsProjectTasksPayload,
+  type MetricsProjectTask, type OrgMetricsBucket, type OrgMetricsOverview,
+  type OrgMetricsProjectOverview, type OrgMetricsProjectTasksPayload,
+  MetricsProjectTask, OrgMetricsBucket, OrgMetricsOverview,
+  OrgMetricsProjectOverview, OrgMetricsProjectTasksPayload,
 }
 import domain/project.{type Project, Project}
 import domain/task.{Task}
 import domain/task_status.{task_status_to_string}
 
-import scrumbringer_client/client_state.{
-  type Model, type Msg, NavigateTo, Push,
-}
+import scrumbringer_client/client_state.{type Model, type Msg, NavigateTo, Push}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/router
+import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/remote as ui_remote
 import scrumbringer_client/ui/section_header
@@ -47,7 +45,7 @@ import scrumbringer_client/update_helpers
 
 /// Renders the metrics section with overview and project panels.
 pub fn view_metrics(model: Model, selected: opt.Option(Project)) -> Element(Msg) {
-  div([attribute.class("section")], [
+  div([attrs.section()], [
     // Section header (Story 4.8: consistent icons)
     section_header.view(
       icons.OrgMetrics,
@@ -61,7 +59,7 @@ pub fn view_metrics(model: Model, selected: opt.Option(Project)) -> Element(Msg)
 /// Renders the org-wide metrics overview panel.
 fn view_overview_panel(model: Model) -> Element(Msg) {
   ui_remote.view_remote_panel(
-    remote: model.admin_metrics_overview,
+    remote: model.admin.admin_metrics_overview,
     title: update_helpers.i18n_t(model, i18n_text.MetricsOverview),
     loading_msg: update_helpers.i18n_t(model, i18n_text.LoadingOverview),
     loaded: fn(overview) { view_overview_loaded(model, overview) },
@@ -187,7 +185,10 @@ fn view_bucket_table(
       [],
       list.map(buckets, fn(b) {
         let OrgMetricsBucket(bucket: bucket, count: count) = b
-        #(bucket, tr([], [td([], [text(bucket)]), td([], [text(int.to_string(count))])]))
+        #(
+          bucket,
+          tr([], [td([], [text(bucket)]), td([], [text(int.to_string(count))])]),
+        )
       }),
     ),
   ])
@@ -222,10 +223,7 @@ fn view_by_project_table(
   ])
 }
 
-fn view_project_row(
-  model: Model,
-  p: OrgMetricsProjectOverview,
-) -> Element(Msg) {
+fn view_project_row(model: Model, p: OrgMetricsProjectOverview) -> Element(Msg) {
   // Story 4.5: project_id no longer needed since we navigate to org Metrics
   let OrgMetricsProjectOverview(
     project_id: _,
@@ -249,10 +247,7 @@ fn view_project_row(
       button(
         [
           attribute.class("btn-xs"),
-          event.on_click(NavigateTo(
-            router.Org(permissions.Metrics),
-            Push,
-          )),
+          event.on_click(NavigateTo(router.Org(permissions.Metrics), Push)),
         ],
         [text(update_helpers.i18n_t(model, i18n_text.View))],
       ),
@@ -281,15 +276,13 @@ fn view_project_panel(
   }
 }
 
-fn view_project_tasks_panel(
-  model: Model,
-  project_name: String,
-) -> Element(Msg) {
-  let body = ui_remote.view_remote_inline(
-    remote: model.admin_metrics_project_tasks,
-    loading_msg: update_helpers.i18n_t(model, i18n_text.LoadingTasks),
-    loaded: fn(payload) { view_project_tasks_table(model, payload) },
-  )
+fn view_project_tasks_panel(model: Model, project_name: String) -> Element(Msg) {
+  let body =
+    ui_remote.view_remote_inline(
+      remote: model.admin.admin_metrics_project_tasks,
+      loading_msg: update_helpers.i18n_t(model, i18n_text.LoadingTasks),
+      loaded: fn(payload) { view_project_tasks_table(model, payload) },
+    )
 
   div([attribute.class("panel")], [
     h3([], [

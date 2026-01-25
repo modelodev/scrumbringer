@@ -1,7 +1,7 @@
 import gleam/option
 import gleeunit/should
 import scrumbringer_client/workspace_state.{
-  type Workspace, LoadingWorkspace, NoProject, Ready, WorkspaceError, Workspace,
+  type Workspace, LoadingWorkspace, NoProject, Ready, Workspace, WorkspaceError,
 }
 
 // =============================================================================
@@ -124,7 +124,9 @@ pub fn workspace_failed_from_loading_test() {
     |> workspace_state.workspace_failed("Network error")
 
   state |> should.equal(WorkspaceError(8, "Network error"))
-  state |> workspace_state.error_message |> should.equal(option.Some("Network error"))
+  state
+  |> workspace_state.error_message
+  |> should.equal(option.Some("Network error"))
   state |> workspace_state.error_project_id |> should.equal(option.Some(8))
 }
 

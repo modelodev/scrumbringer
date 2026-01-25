@@ -158,11 +158,7 @@ fn ms_to_iso_date(ms: Int) -> String {
   let month = { remaining_days / 30 } + 1
   let day = { remaining_days % 30 } + 1
 
-  int.to_string(year)
-  <> "-"
-  <> pad_zero(month)
-  <> "-"
-  <> pad_zero(day)
+  int.to_string(year) <> "-" <> pad_zero(month) <> "-" <> pad_zero(day)
 }
 
 fn pad_zero(n: Int) -> String {

@@ -25,7 +25,8 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiError}
 import domain/project_role.{type ProjectRole}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Loaded, MemberAdded, Model, NotAsked, admin_msg,
+  type Model, type Msg, AdminModel, Loaded, MemberAdded, NotAsked, UiModel,
+  admin_msg, update_admin, update_ui,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -40,14 +41,16 @@ import scrumbringer_client/api/projects as api_projects
 /// Handle member add dialog open.
 pub fn handle_member_add_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      members_add_dialog_open: True,
-      members_add_selected_user: opt.None,
-      members_add_error: opt.None,
-      org_users_search_query: "",
-      org_users_search_results: NotAsked,
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        members_add_dialog_open: True,
+        members_add_selected_user: opt.None,
+        members_add_error: opt.None,
+        org_users_search_query: "",
+        org_users_search_results: NotAsked,
+      )
+    }),
     effect.none(),
   )
 }
@@ -55,14 +58,16 @@ pub fn handle_member_add_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
 /// Handle member add dialog close.
 pub fn handle_member_add_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      members_add_dialog_open: False,
-      members_add_selected_user: opt.None,
-      members_add_error: opt.None,
-      org_users_search_query: "",
-      org_users_search_results: NotAsked,
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        members_add_dialog_open: False,
+        members_add_selected_user: opt.None,
+        members_add_error: opt.None,
+        org_users_search_query: "",
+        org_users_search_results: NotAsked,
+      )
+    }),
     effect.none(),
   )
 }
@@ -76,7 +81,12 @@ pub fn handle_member_add_role_changed(
   model: Model,
   role: ProjectRole,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, members_add_role: role), effect.none())
+  #(
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, members_add_role: role)
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle member add user selection.
@@ -84,7 +94,7 @@ pub fn handle_member_add_user_selected(
   model: Model,
   user_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  let selected = case model.org_users_search_results {
+  let selected = case model.admin.org_users_search_results {
     Loaded(users) ->
       case list.find(users, fn(u) { u.id == user_id }) {
         Ok(user) -> opt.Some(user)
@@ -94,7 +104,12 @@ pub fn handle_member_add_user_selected(
     _ -> opt.None
   }
 
-  #(Model(..model, members_add_selected_user: selected), effect.none())
+  #(
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, members_add_selected_user: selected)
+    }),
+    effect.none(),
+  )
 }
 
 // =============================================================================
@@ -103,36 +118,43 @@ pub fn handle_member_add_user_selected(
 
 /// Handle member add form submission.
 pub fn handle_member_add_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.members_add_in_flight {
+  case model.admin.members_add_in_flight {
     True -> #(model, effect.none())
     False -> {
-      case model.selected_project_id, model.members_add_selected_user {
+      case
+        model.core.selected_project_id,
+        model.admin.members_add_selected_user
+      {
         opt.Some(project_id), opt.Some(user) -> {
           let model =
-            Model(
-              ..model,
-              members_add_in_flight: True,
-              members_add_error: opt.None,
-            )
+            update_admin(model, fn(admin) {
+              AdminModel(
+                ..admin,
+                members_add_in_flight: True,
+                members_add_error: opt.None,
+              )
+            })
           #(
             model,
             api_projects.add_project_member(
               project_id,
               user.id,
-              model.members_add_role,
+              model.admin.members_add_role,
               fn(result) { admin_msg(MemberAdded(result)) },
             ),
           )
         }
 
         _, _ -> #(
-          Model(
-            ..model,
-            members_add_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.SelectUserFirst,
-            )),
-          ),
+          update_admin(model, fn(admin) {
+            AdminModel(
+              ..admin,
+              members_add_error: opt.Some(update_helpers.i18n_t(
+                model,
+                i18n_text.SelectUserFirst,
+              )),
+            )
+          }),
           effect.none(),
         )
       }
@@ -150,12 +172,20 @@ pub fn handle_member_added_ok(
   refresh_fn: fn(Model) -> #(Model, Effect(Msg)),
 ) -> #(Model, Effect(Msg)) {
   let model =
-    Model(
-      ..model,
-      members_add_in_flight: False,
-      members_add_dialog_open: False,
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.MemberAdded)),
-    )
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        members_add_in_flight: False,
+        members_add_dialog_open: False,
+      )
+    })
+  let model =
+    update_ui(model, fn(ui) {
+      UiModel(
+        ..ui,
+        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.MemberAdded)),
+      )
+    })
   refresh_fn(model)
 }
 
@@ -167,23 +197,34 @@ pub fn handle_member_added_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     403 -> #(
-      Model(
-        ..model,
-        members_add_in_flight: False,
-        members_add_error: opt.Some(update_helpers.i18n_t(
-          model,
-          i18n_text.NotPermitted,
-        )),
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+      update_ui(
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            members_add_in_flight: False,
+            members_add_error: opt.Some(update_helpers.i18n_t(
+              model,
+              i18n_text.NotPermitted,
+            )),
+          )
+        }),
+        fn(ui) {
+          UiModel(
+            ..ui,
+            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+          )
+        },
       ),
       effect.none(),
     )
     _ -> #(
-      Model(
-        ..model,
-        members_add_in_flight: False,
-        members_add_error: opt.Some(err.message),
-      ),
+      update_admin(model, fn(admin) {
+        AdminModel(
+          ..admin,
+          members_add_in_flight: False,
+          members_add_error: opt.Some(err.message),
+        )
+      }),
       effect.none(),
     )
   }

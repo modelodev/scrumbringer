@@ -24,10 +24,10 @@ import domain/api_error.{type ApiError}
 import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, AdminRuleMetricsExecutionsFetched,
+  type Model, type Msg, AdminModel, AdminRuleMetricsExecutionsFetched,
   AdminRuleMetricsFetched, AdminRuleMetricsRuleDetailsFetched,
-  AdminRuleMetricsWorkflowDetailsFetched, Failed, Loaded, Loading, Model,
-  NotAsked, pool_msg,
+  AdminRuleMetricsWorkflowDetailsFetched, Failed, Loaded, Loading, NotAsked,
+  pool_msg, update_admin,
 }
 import scrumbringer_client/update_helpers
 
@@ -37,12 +37,22 @@ import scrumbringer_client/update_helpers
 
 /// Handle from date change.
 pub fn handle_from_changed(model: Model, from: String) -> #(Model, Effect(Msg)) {
-  #(Model(..model, admin_rule_metrics_from: from), effect.none())
+  #(
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, admin_rule_metrics_from: from)
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle to date change.
 pub fn handle_to_changed(model: Model, to: String) -> #(Model, Effect(Msg)) {
-  #(Model(..model, admin_rule_metrics_to: to), effect.none())
+  #(
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, admin_rule_metrics_to: to)
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle from date change with auto-refresh.
@@ -50,17 +60,24 @@ pub fn handle_from_changed_and_refresh(
   model: Model,
   from: String,
 ) -> #(Model, Effect(Msg)) {
-  let to = model.admin_rule_metrics_to
+  let to = model.admin.admin_rule_metrics_to
   // Only fetch if both dates are set
   case from == "" || to == "" {
-    True -> #(Model(..model, admin_rule_metrics_from: from), effect.none())
+    True -> #(
+      update_admin(model, fn(admin) {
+        AdminModel(..admin, admin_rule_metrics_from: from)
+      }),
+      effect.none(),
+    )
     False -> {
       let model =
-        Model(
-          ..model,
-          admin_rule_metrics_from: from,
-          admin_rule_metrics: Loading,
-        )
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            admin_rule_metrics_from: from,
+            admin_rule_metrics: Loading,
+          )
+        })
       #(
         model,
         api_workflows.get_org_rule_metrics(from, to, fn(result) {
@@ -76,13 +93,24 @@ pub fn handle_to_changed_and_refresh(
   model: Model,
   to: String,
 ) -> #(Model, Effect(Msg)) {
-  let from = model.admin_rule_metrics_from
+  let from = model.admin.admin_rule_metrics_from
   // Only fetch if both dates are set
   case from == "" || to == "" {
-    True -> #(Model(..model, admin_rule_metrics_to: to), effect.none())
+    True -> #(
+      update_admin(model, fn(admin) {
+        AdminModel(..admin, admin_rule_metrics_to: to)
+      }),
+      effect.none(),
+    )
     False -> {
       let model =
-        Model(..model, admin_rule_metrics_to: to, admin_rule_metrics: Loading)
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            admin_rule_metrics_to: to,
+            admin_rule_metrics: Loading,
+          )
+        })
       #(
         model,
         api_workflows.get_org_rule_metrics(from, to, fn(result) {
@@ -95,14 +123,17 @@ pub fn handle_to_changed_and_refresh(
 
 /// Handle refresh clicked.
 pub fn handle_refresh_clicked(model: Model) -> #(Model, Effect(Msg)) {
-  let from = model.admin_rule_metrics_from
-  let to = model.admin_rule_metrics_to
+  let from = model.admin.admin_rule_metrics_from
+  let to = model.admin.admin_rule_metrics_to
 
   // Only fetch if both dates are set
   case from == "" || to == "" {
     True -> #(model, effect.none())
     False -> {
-      let model = Model(..model, admin_rule_metrics: Loading)
+      let model =
+        update_admin(model, fn(admin) {
+          AdminModel(..admin, admin_rule_metrics: Loading)
+        })
       // Use org-wide metrics (project filtering can be added later)
       #(
         model,
@@ -121,12 +152,14 @@ pub fn handle_quick_range_clicked(
   to: String,
 ) -> #(Model, Effect(Msg)) {
   let model =
-    Model(
-      ..model,
-      admin_rule_metrics_from: from,
-      admin_rule_metrics_to: to,
-      admin_rule_metrics: Loading,
-    )
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        admin_rule_metrics_from: from,
+        admin_rule_metrics_to: to,
+        admin_rule_metrics: Loading,
+      )
+    })
   #(
     model,
     api_workflows.get_org_rule_metrics(from, to, fn(result) {
@@ -144,7 +177,12 @@ pub fn handle_fetched_ok(
   model: Model,
   metrics: List(api_workflows.OrgWorkflowMetricsSummary),
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, admin_rule_metrics: Loaded(metrics)), effect.none())
+  #(
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, admin_rule_metrics: Loaded(metrics))
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle rule metrics fetch error.
@@ -154,7 +192,12 @@ pub fn handle_fetched_error(
 ) -> #(Model, Effect(Msg)) {
   case err.status {
     401 -> update_helpers.reset_to_login(model)
-    _ -> #(Model(..model, admin_rule_metrics: Failed(err)), effect.none())
+    _ -> #(
+      update_admin(model, fn(admin) {
+        AdminModel(..admin, admin_rule_metrics: Failed(err))
+      }),
+      effect.none(),
+    )
   }
 }
 
@@ -162,13 +205,20 @@ pub fn handle_fetched_error(
 pub fn init_tab(model: Model) -> #(Model, Effect(Msg)) {
   // Set default dates if not already set: from 30 days ago to today
   case
-    model.admin_rule_metrics_from == "" || model.admin_rule_metrics_to == ""
+    model.admin.admin_rule_metrics_from == ""
+    || model.admin.admin_rule_metrics_to == ""
   {
     True -> {
       let to = client_ffi.date_today()
       let from = client_ffi.date_days_ago(30)
       #(
-        Model(..model, admin_rule_metrics_from: from, admin_rule_metrics_to: to),
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            admin_rule_metrics_from: from,
+            admin_rule_metrics_to: to,
+          )
+        }),
         effect.none(),
       )
     }
@@ -185,24 +235,28 @@ pub fn handle_workflow_expanded(
   model: Model,
   workflow_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  case model.admin_rule_metrics_expanded_workflow == Some(workflow_id) {
+  case model.admin.admin_rule_metrics_expanded_workflow == Some(workflow_id) {
     // Collapse if already expanded
     True -> #(
-      Model(
-        ..model,
-        admin_rule_metrics_expanded_workflow: None,
-        admin_rule_metrics_workflow_details: NotAsked,
-      ),
+      update_admin(model, fn(admin) {
+        AdminModel(
+          ..admin,
+          admin_rule_metrics_expanded_workflow: None,
+          admin_rule_metrics_workflow_details: NotAsked,
+        )
+      }),
       effect.none(),
     )
     // Expand this workflow and fetch its details
     False -> {
       let model =
-        Model(
-          ..model,
-          admin_rule_metrics_expanded_workflow: Some(workflow_id),
-          admin_rule_metrics_workflow_details: Loading,
-        )
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            admin_rule_metrics_expanded_workflow: Some(workflow_id),
+            admin_rule_metrics_workflow_details: Loading,
+          )
+        })
       #(
         model,
         api_workflows.get_workflow_metrics(workflow_id, fn(result) {
@@ -219,7 +273,9 @@ pub fn handle_workflow_details_fetched_ok(
   details: api_workflows.WorkflowMetrics,
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(..model, admin_rule_metrics_workflow_details: Loaded(details)),
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, admin_rule_metrics_workflow_details: Loaded(details))
+    }),
     effect.none(),
   )
 }
@@ -232,7 +288,9 @@ pub fn handle_workflow_details_fetched_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     _ -> #(
-      Model(..model, admin_rule_metrics_workflow_details: Failed(err)),
+      update_admin(model, fn(admin) {
+        AdminModel(..admin, admin_rule_metrics_workflow_details: Failed(err))
+      }),
       effect.none(),
     )
   }
@@ -243,18 +301,20 @@ pub fn handle_drilldown_clicked(
   model: Model,
   rule_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  let from = model.admin_rule_metrics_from
-  let to = model.admin_rule_metrics_to
+  let from = model.admin.admin_rule_metrics_from
+  let to = model.admin.admin_rule_metrics_to
 
   // Fetch detailed metrics and executions for this rule
   let model =
-    Model(
-      ..model,
-      admin_rule_metrics_drilldown_rule_id: Some(rule_id),
-      admin_rule_metrics_rule_details: Loading,
-      admin_rule_metrics_executions: Loading,
-      admin_rule_metrics_exec_offset: 0,
-    )
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        admin_rule_metrics_drilldown_rule_id: Some(rule_id),
+        admin_rule_metrics_rule_details: Loading,
+        admin_rule_metrics_executions: Loading,
+        admin_rule_metrics_exec_offset: 0,
+      )
+    })
 
   let details_effect =
     api_workflows.get_rule_metrics_detailed(rule_id, from, to, fn(result) {
@@ -272,13 +332,15 @@ pub fn handle_drilldown_clicked(
 /// Handle drill-down modal close.
 pub fn handle_drilldown_closed(model: Model) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      admin_rule_metrics_drilldown_rule_id: None,
-      admin_rule_metrics_rule_details: NotAsked,
-      admin_rule_metrics_executions: NotAsked,
-      admin_rule_metrics_exec_offset: 0,
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        admin_rule_metrics_drilldown_rule_id: None,
+        admin_rule_metrics_rule_details: NotAsked,
+        admin_rule_metrics_executions: NotAsked,
+        admin_rule_metrics_exec_offset: 0,
+      )
+    }),
     effect.none(),
   )
 }
@@ -289,7 +351,9 @@ pub fn handle_rule_details_fetched_ok(
   details: api_workflows.RuleMetricsDetailed,
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(..model, admin_rule_metrics_rule_details: Loaded(details)),
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, admin_rule_metrics_rule_details: Loaded(details))
+    }),
     effect.none(),
   )
 }
@@ -302,7 +366,9 @@ pub fn handle_rule_details_fetched_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     _ -> #(
-      Model(..model, admin_rule_metrics_rule_details: Failed(err)),
+      update_admin(model, fn(admin) {
+        AdminModel(..admin, admin_rule_metrics_rule_details: Failed(err))
+      }),
       effect.none(),
     )
   }
@@ -314,7 +380,9 @@ pub fn handle_executions_fetched_ok(
   response: api_workflows.RuleExecutionsResponse,
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(..model, admin_rule_metrics_executions: Loaded(response)),
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, admin_rule_metrics_executions: Loaded(response))
+    }),
     effect.none(),
   )
 }
@@ -327,7 +395,9 @@ pub fn handle_executions_fetched_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     _ -> #(
-      Model(..model, admin_rule_metrics_executions: Failed(err)),
+      update_admin(model, fn(admin) {
+        AdminModel(..admin, admin_rule_metrics_executions: Failed(err))
+      }),
       effect.none(),
     )
   }
@@ -338,17 +408,19 @@ pub fn handle_exec_page_changed(
   model: Model,
   offset: Int,
 ) -> #(Model, Effect(Msg)) {
-  case model.admin_rule_metrics_drilldown_rule_id {
+  case model.admin.admin_rule_metrics_drilldown_rule_id {
     None -> #(model, effect.none())
     Some(rule_id) -> {
-      let from = model.admin_rule_metrics_from
-      let to = model.admin_rule_metrics_to
+      let from = model.admin.admin_rule_metrics_from
+      let to = model.admin.admin_rule_metrics_to
       let model =
-        Model(
-          ..model,
-          admin_rule_metrics_executions: Loading,
-          admin_rule_metrics_exec_offset: offset,
-        )
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            admin_rule_metrics_executions: Loading,
+            admin_rule_metrics_exec_offset: offset,
+          )
+        })
       #(
         model,
         api_workflows.get_rule_executions(

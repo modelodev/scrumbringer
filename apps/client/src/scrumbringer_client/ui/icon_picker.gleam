@@ -57,57 +57,52 @@ pub fn view(
     }
   }
 
-  html.div(
-    [attribute.class("icon-picker")],
-    [
-      // Search input
-      html.div([attribute.class("icon-picker-search")], [
-        html.input([
-          attribute.type_("text"),
-          attribute.placeholder("Buscar iconos..."),
-          attribute.value(search_query),
-          attribute.class("form-control form-control-sm"),
-          event.on_input(fn(v) { on_msg(SearchChanged(v)) }),
-        ]),
+  html.div([attribute.class("icon-picker")], [
+    // Search input
+    html.div([attribute.class("icon-picker-search")], [
+      html.input([
+        attribute.type_("text"),
+        attribute.placeholder("Buscar iconos..."),
+        attribute.value(search_query),
+        attribute.class("form-control form-control-sm"),
+        event.on_input(fn(v) { on_msg(SearchChanged(v)) }),
       ]),
-      // Category tabs
-      html.div(
-        [attribute.class("icon-picker-tabs")],
-        list.map(icon_catalog.categories(), fn(cat) {
-          let cat_id = category_to_string(cat)
-          let is_active = cat_id == active_category
-          html.button(
-            [
-              attribute.class(
-                "icon-picker-tab" <> case is_active {
-                  True -> " active"
-                  False -> ""
-                },
-              ),
-              attribute.type_("button"),
-              event.on_click(on_msg(CategoryChanged(cat_id))),
-            ],
-            [html.text(icon_catalog.category_label(cat))],
-          )
-        }),
-      ),
-      // Icon grid
-      html.div(
-        [attribute.class("icon-picker-grid")],
-        case list.length(icons) {
-          0 -> [
-            html.div([attribute.class("icon-picker-empty")], [
-              html.text("No se encontraron iconos"),
-            ]),
-          ]
-          _ ->
-            list.map(icons, fn(icon) {
-              render_icon_button(icon, icon.id == selected_icon, on_msg)
-            })
-        },
-      ),
-    ],
-  )
+    ]),
+    // Category tabs
+    html.div(
+      [attribute.class("icon-picker-tabs")],
+      list.map(icon_catalog.categories(), fn(cat) {
+        let cat_id = category_to_string(cat)
+        let is_active = cat_id == active_category
+        html.button(
+          [
+            attribute.class(
+              "icon-picker-tab"
+              <> case is_active {
+                True -> " active"
+                False -> ""
+              },
+            ),
+            attribute.type_("button"),
+            event.on_click(on_msg(CategoryChanged(cat_id))),
+          ],
+          [html.text(icon_catalog.category_label(cat))],
+        )
+      }),
+    ),
+    // Icon grid
+    html.div([attribute.class("icon-picker-grid")], case list.length(icons) {
+      0 -> [
+        html.div([attribute.class("icon-picker-empty")], [
+          html.text("No se encontraron iconos"),
+        ]),
+      ]
+      _ ->
+        list.map(icons, fn(icon) {
+          render_icon_button(icon, icon.id == selected_icon, on_msg)
+        })
+    }),
+  ])
 }
 
 /// Render a single icon button in the grid.
@@ -119,7 +114,8 @@ fn render_icon_button(
   html.button(
     [
       attribute.class(
-        "icon-picker-item" <> case is_selected {
+        "icon-picker-item"
+        <> case is_selected {
           True -> " selected"
           False -> ""
         },

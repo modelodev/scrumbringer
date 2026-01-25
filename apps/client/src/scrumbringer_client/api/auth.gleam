@@ -28,10 +28,10 @@ import gleam/string
 
 import lustre/effect.{type Effect}
 
-import scrumbringer_client/api/core.{type ApiResult}
-import scrumbringer_client/client_ffi
 import domain/org_role
 import domain/user.{type User, User}
+import scrumbringer_client/api/core.{type ApiResult}
+import scrumbringer_client/client_ffi
 
 // =============================================================================
 // Decoders

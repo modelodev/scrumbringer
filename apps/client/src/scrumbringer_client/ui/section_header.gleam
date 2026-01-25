@@ -111,8 +111,7 @@ fn view_internal(
     ]),
     // Optional subtitle
     case subtitle {
-      Some(sub) ->
-        p([attribute.class("admin-section-subtitle")], [text(sub)])
+      Some(sub) -> p([attribute.class("admin-section-subtitle")], [text(sub)])
       None -> element.none()
     },
   ])

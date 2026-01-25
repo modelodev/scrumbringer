@@ -242,10 +242,13 @@ pub fn update_workflow(
     json.object([
       #("name", json.string(name)),
       #("description", json.string(description)),
-      #("active", json.int(case active {
-        True -> 1
-        False -> 0
-      })),
+      #(
+        "active",
+        json.int(case active {
+          True -> 1
+          False -> 0
+        }),
+      ),
     ])
   let decoder = decode.field("workflow", workflow_decoder(), decode.success)
   core.request(
@@ -262,7 +265,8 @@ pub fn delete_workflow(
   workflow_id: Int,
   to_msg: fn(ApiResult(Nil)) -> msg,
 ) -> Effect(msg) {
-  core.request_nil("DELETE",
+  core.request_nil(
+    "DELETE",
     "/api/v1/workflows/" <> int.to_string(workflow_id),
     None,
     to_msg,
@@ -343,10 +347,13 @@ pub fn update_rule(
         Some(id) -> json.int(id)
       }),
       #("to_state", json.string(to_state)),
-      #("active", json.int(case active {
-        True -> 1
-        False -> 0
-      })),
+      #(
+        "active",
+        json.int(case active {
+          True -> 1
+          False -> 0
+        }),
+      ),
     ])
   let decoder = decode.field("rule", rule_decoder(), decode.success)
   core.request(
@@ -363,7 +370,12 @@ pub fn delete_rule(
   rule_id: Int,
   to_msg: fn(ApiResult(Nil)) -> msg,
 ) -> Effect(msg) {
-  core.request_nil("DELETE", "/api/v1/rules/" <> int.to_string(rule_id), None, to_msg)
+  core.request_nil(
+    "DELETE",
+    "/api/v1/rules/" <> int.to_string(rule_id),
+    None,
+    to_msg,
+  )
 }
 
 /// Attach template to rule.
@@ -517,7 +529,11 @@ pub type RuleMetricsSummary {
 
 /// Workflow metrics containing rule summaries.
 pub type WorkflowMetrics {
-  WorkflowMetrics(workflow_id: Int, workflow_name: String, rules: List(RuleMetricsSummary))
+  WorkflowMetrics(
+    workflow_id: Int,
+    workflow_name: String,
+    rules: List(RuleMetricsSummary),
+  )
 }
 
 fn rule_metrics_summary_decoder() -> decode.Decoder(RuleMetricsSummary) {
@@ -538,7 +554,10 @@ fn rule_metrics_summary_decoder() -> decode.Decoder(RuleMetricsSummary) {
 pub fn workflow_metrics_decoder() -> decode.Decoder(WorkflowMetrics) {
   use workflow_id <- decode.field("workflow_id", decode.int)
   use workflow_name <- decode.field("workflow_name", decode.string)
-  use rules <- decode.field("rules", decode.list(rule_metrics_summary_decoder()))
+  use rules <- decode.field(
+    "rules",
+    decode.list(rule_metrics_summary_decoder()),
+  )
   decode.success(WorkflowMetrics(
     workflow_id: workflow_id,
     workflow_name: workflow_name,
@@ -574,7 +593,9 @@ pub type OrgWorkflowMetricsSummary {
   )
 }
 
-pub fn org_workflow_metrics_summary_decoder() -> decode.Decoder(OrgWorkflowMetricsSummary) {
+pub fn org_workflow_metrics_summary_decoder() -> decode.Decoder(
+  OrgWorkflowMetricsSummary,
+) {
   use workflow_id <- decode.field("workflow_id", decode.int)
   use workflow_name <- decode.field("workflow_name", decode.string)
   use project_id <- decode.field("project_id", decode.int)
@@ -599,11 +620,12 @@ pub fn get_org_rule_metrics(
   to: String,
   to_msg: fn(ApiResult(List(OrgWorkflowMetricsSummary))) -> msg,
 ) -> Effect(msg) {
-  let decoder = decode.field(
-    "workflows",
-    decode.list(org_workflow_metrics_summary_decoder()),
-    decode.success,
-  )
+  let decoder =
+    decode.field(
+      "workflows",
+      decode.list(org_workflow_metrics_summary_decoder()),
+      decode.success,
+    )
   core.request(
     "GET",
     "/api/v1/org/rule-metrics?from=" <> from <> "&to=" <> to,
@@ -620,11 +642,12 @@ pub fn get_project_rule_metrics(
   to: String,
   to_msg: fn(ApiResult(List(OrgWorkflowMetricsSummary))) -> msg,
 ) -> Effect(msg) {
-  let decoder = decode.field(
-    "workflows",
-    decode.list(org_workflow_metrics_summary_decoder()),
-    decode.success,
-  )
+  let decoder =
+    decode.field(
+      "workflows",
+      decode.list(org_workflow_metrics_summary_decoder()),
+      decode.success,
+    )
   core.request(
     "GET",
     "/api/v1/projects/"
@@ -783,9 +806,14 @@ fn pagination_decoder() -> decode.Decoder(Pagination) {
   decode.success(Pagination(limit: limit, offset: offset, total: total))
 }
 
-pub fn rule_executions_response_decoder() -> decode.Decoder(RuleExecutionsResponse) {
+pub fn rule_executions_response_decoder() -> decode.Decoder(
+  RuleExecutionsResponse,
+) {
   use rule_id <- decode.field("rule_id", decode.int)
-  use executions <- decode.field("executions", decode.list(rule_execution_decoder()))
+  use executions <- decode.field(
+    "executions",
+    decode.list(rule_execution_decoder()),
+  )
   use pagination <- decode.field("pagination", pagination_decoder())
   decode.success(RuleExecutionsResponse(
     rule_id: rule_id,

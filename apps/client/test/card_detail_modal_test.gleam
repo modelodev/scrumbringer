@@ -9,8 +9,8 @@ import gleeunit/should
 import domain/card.{type Card, Card, EnCurso, Pendiente}
 import domain/task_type.{type TaskType, TaskType}
 import scrumbringer_client/components/card_detail_modal.{
-  type Model, type Msg, CancelAddTask, CardIdReceived, CardReceived,
-  Loaded, LocaleReceived, Model, NotAsked, PrioritySelect, TaskTypesReceived,
+  type Model, type Msg, CancelAddTask, CardIdReceived, CardReceived, Loaded,
+  LocaleReceived, Model, NotAsked, PrioritySelect, TaskTypesReceived,
   TasksReceived, TitleInput, ToggleAddTaskForm,
 }
 import scrumbringer_client/i18n/locale.{En, Es}

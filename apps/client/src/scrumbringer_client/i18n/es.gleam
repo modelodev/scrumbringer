@@ -48,7 +48,8 @@ pub fn translate(text: Text) -> String {
     text.InviteLinkCreated -> "Link de invitación creado"
     text.InviteLinkRegenerated -> "Link de invitación regenerado"
     text.RoleUpdated -> "Rol actualizado"
-    text.CannotDemoteLastManager -> "No se puede degradar al último manager del proyecto"
+    text.CannotDemoteLastManager ->
+      "No se puede degradar al último manager del proyecto"
     text.MemberAdded -> "Miembro añadido"
     text.MemberRemoved -> "Miembro quitado"
     text.TaskTypeCreated -> "Tipo de tarea creado"
@@ -158,12 +159,15 @@ pub fn translate(text: Text) -> String {
     text.TypeLabel -> "Tipo"
     text.CapabilityLabel -> "Capacidad"
     text.MyCapabilitiesLabel -> "Mis capacidades"
-    text.MyCapabilitiesHint -> "Filtrar tareas que coinciden con mis capacidades"
+    text.MyCapabilitiesHint ->
+      "Filtrar tareas que coinciden con mis capacidades"
     text.SearchLabel -> "Buscar"
     text.SearchPlaceholder -> "q"
     text.ClearFilters -> "Limpiar"
     text.ActiveFilters(count) ->
-      int.to_string(count) <> " filtro" <> case count {
+      int.to_string(count)
+      <> " filtro"
+      <> case count {
         1 -> " activo"
         _ -> "s activos"
       }
@@ -307,7 +311,8 @@ pub fn translate(text: Text) -> String {
     text.EditProject -> "Editar proyecto"
     text.DeleteProject -> "Eliminar proyecto"
     text.DeleteProjectTitle -> "Eliminar proyecto"
-    text.DeleteProjectConfirm(name) -> "¿Eliminar \"" <> name <> "\" permanentemente?"
+    text.DeleteProjectConfirm(name) ->
+      "¿Eliminar \"" <> name <> "\" permanentemente?"
     text.DeleteProjectWarning ->
       "Esta acción no se puede deshacer. Se eliminarán todas las tareas, tarjetas y miembros asociados."
     text.MembersCount -> "Miembros"
@@ -317,7 +322,9 @@ pub fn translate(text: Text) -> String {
     text.CreateCapability -> "Crear capacidad"
     text.DeleteCapability -> "Eliminar capacidad"
     text.ConfirmDeleteCapability(name) ->
-      "¿Eliminar la capacidad \"" <> name <> "\"? Esta acción no se puede deshacer."
+      "¿Eliminar la capacidad \""
+      <> name
+      <> "\"? Esta acción no se puede deshacer."
     text.CapabilityNamePlaceholder -> "ej., Frontend, Backend, UX..."
     text.NoCapabilitiesYet -> "Aún no hay capacidades"
 
@@ -336,7 +343,8 @@ pub fn translate(text: Text) -> String {
     // Member capabilities (Story 4.7 AC10-14, Story 4.8 AC23)
     text.CapabilitiesForUser(user_email, project_name) ->
       "Capacidades de " <> user_email <> " en " <> project_name
-    text.NoCapabilitiesDefined -> "No hay capacidades definidas para este proyecto"
+    text.NoCapabilitiesDefined ->
+      "No hay capacidades definidas para este proyecto"
     text.ManageCapabilities -> "Gestionar capacidades"
     // Capability members (Story 4.7 AC16-17, Story 4.8 AC24)
     text.MembersForCapability(capability_name, project_name) ->
@@ -374,7 +382,10 @@ pub fn translate(text: Text) -> String {
     text.ConfirmDeleteTaskType(name) ->
       "¿Eliminar el tipo de tarea \"" <> name <> "\"?"
     text.TaskTypeHasTasks(count) ->
-      "No se puede eliminar: tiene " <> int.to_string(count) <> " tarea" <> case count {
+      "No se puede eliminar: tiene "
+      <> int.to_string(count)
+      <> " tarea"
+      <> case count {
         1 -> ""
         _ -> "s"
       }
@@ -513,7 +524,8 @@ pub fn translate(text: Text) -> String {
     text.NoTemplatesAttached -> "Sin plantillas asociadas"
     text.NoTemplatesWontCreateTasks -> "Sin plantillas (no creará tareas)"
     text.SelectTemplateToAttach -> "Selecciona plantilla a asociar"
-    text.AvailableTemplatesInProject -> "Plantillas disponibles en este proyecto"
+    text.AvailableTemplatesInProject ->
+      "Plantillas disponibles en este proyecto"
     text.AttachTemplateHint ->
       "Asocia una plantilla para que esta regla cree tareas automáticamente cuando se active."
     text.NoTemplatesInProject -> "No hay plantillas en este proyecto"
@@ -522,7 +534,8 @@ pub fn translate(text: Text) -> String {
     text.Attaching -> "Asociando…"
     text.TemplateAttached -> "Plantilla asociada"
     text.TemplateDetached -> "Plantilla desasociada"
-    text.DetachTemplateConfirm(name) -> "¿Quitar la plantilla \"" <> name <> "\"?"
+    text.DetachTemplateConfirm(name) ->
+      "¿Quitar la plantilla \"" <> name <> "\"?"
     text.Detaching -> "Quitando…"
     text.RemoveTemplate -> "Quitar plantilla"
 
@@ -549,7 +562,8 @@ pub fn translate(text: Text) -> String {
     text.DeleteTaskTemplate -> "Eliminar plantilla"
     text.NoTaskTemplatesYet -> "Aún no hay plantillas de tarea"
     text.TaskTemplateDeleted -> "Plantilla eliminada"
-    text.TaskTemplateDeleteConfirm(name) -> "¿Eliminar la plantilla \"" <> name <> "\"?"
+    text.TaskTemplateDeleteConfirm(name) ->
+      "¿Eliminar la plantilla \"" <> name <> "\"?"
     text.TaskTemplateVariablesHelp ->
       "Variables: {{father}} (tarea/tarjeta origen), {{from_state}} (estado anterior), {{to_state}} (estado nuevo), {{project}} (nombre del proyecto), {{user}} (usuario que disparó)"
     text.TaskTemplateDescriptionHint ->

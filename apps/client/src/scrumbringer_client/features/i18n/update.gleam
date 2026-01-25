@@ -25,7 +25,9 @@
 
 import lustre/effect.{type Effect}
 
-import scrumbringer_client/client_state.{type Model, type Msg, Model}
+import scrumbringer_client/client_state.{
+  type Model, type Msg, UiModel, update_ui,
+}
 import scrumbringer_client/i18n/locale as i18n_locale
 
 // =============================================================================
@@ -42,11 +44,11 @@ pub fn handle_locale_selected(
 ) -> #(Model, Effect(Msg)) {
   let next_locale = i18n_locale.deserialize(value)
 
-  case next_locale == model.locale {
+  case next_locale == model.ui.locale {
     True -> #(model, effect.none())
 
     False -> #(
-      Model(..model, locale: next_locale),
+      update_ui(model, fn(ui) { UiModel(..ui, locale: next_locale) }),
       effect.from(fn(_dispatch) { i18n_locale.save(next_locale) }),
     )
   }

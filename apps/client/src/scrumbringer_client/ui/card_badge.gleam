@@ -109,7 +109,10 @@ pub fn view_color_dot(color: Option(CardColor)) -> Element(Msg) {
       span(
         [
           attribute.class("color-picker-swatch"),
-          attribute.attribute("style", "background: " <> color_picker.css_var(c)),
+          attribute.attribute(
+            "style",
+            "background: " <> color_picker.css_var(c),
+          ),
         ],
         [],
       )

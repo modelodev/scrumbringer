@@ -2,7 +2,7 @@
 
 ## Status
 
-**Ready**
+**Review**
 
 ---
 
@@ -25,17 +25,17 @@
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Create attrs helpers module** (AC: 1, 4)
-  - [ ] Add `apps/client/src/scrumbringer_client/ui/attrs.gleam`
-  - [ ] Define helpers for common class lists and attributes
+- [x] **Task 1: Create attrs helpers module** (AC: 1, 4)
+  - [x] Add `apps/client/src/scrumbringer_client/ui/attrs.gleam`
+  - [x] Define helpers for common class lists and attributes
 
-- [ ] **Task 2: Migrate existing views** (AC: 2, 3)
-  - [ ] Replace local class/attr duplication in 3+ views
-  - [ ] Keep view output identical
+- [x] **Task 2: Migrate existing views** (AC: 2, 3)
+  - [x] Replace local class/attr duplication in 3+ views
+  - [x] Keep view output identical
 
-- [ ] **Task 3: Regression check** (AC: 3)
-  - [ ] Run `cd apps/client && gleam test`
-  - [ ] Smoke check key screens (pool/admin)
+- [x] **Task 3: Regression check** (AC: 3)
+  - [x] Run `cd apps/client && gleam test`
+  - [x] Smoke check key screens (pool/admin)
 
 ---
 
@@ -70,6 +70,7 @@ Reference: `docs/architecture/coding-standards.md` (UI components and DRY rules)
 | Date | Version | Description | Author |
 |------|---------|-------------|--------|
 | 2026-01-25 | 1.0 | Ready story created | Sarah (PO) |
+| 2026-01-25 | 1.1 | Migrated section wrappers to attrs helpers | James (Dev) |
 
 ---
 

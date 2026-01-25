@@ -112,7 +112,7 @@ pub fn view(model: Model) -> Element(Msg) {
   div(
     [
       attribute.class("app"),
-      attribute.attribute("style", theme.css_vars(model.theme)),
+      attribute.attribute("style", theme.css_vars(model.ui.theme)),
     ],
     [
       style([], styles.base_css()),
@@ -138,20 +138,20 @@ fn view_global_overlays(model: Model) -> Element(Msg) {
   element.fragment([
     // Legacy toast (backward compatibility)
     ui_toast.view(
-      model.toast,
+      model.ui.toast,
       update_helpers.i18n_t(model, i18n_text.Dismiss),
       ToastDismissed,
     ),
     // New toast system with auto-dismiss (Story 4.8)
-    ui_toast.view_container(model.toast_state, fn(id) { ToastDismiss(id) }),
+    ui_toast.view_container(model.ui.toast_state, fn(id) { ToastDismiss(id) }),
     // Global card dialog (Story 4.8 UX: renders on any page when open)
-    case model.selected_project_id, model.cards_dialog_mode {
+    case model.core.selected_project_id, model.admin.cards_dialog_mode {
       opt.Some(project_id), opt.Some(_) ->
         admin_view.view_card_crud_dialog(model, project_id)
       _, _ -> element.none()
     },
     // Global task creation dialog (Story 4.8 UX: renders on any page when open)
-    case model.member_create_dialog_open {
+    case model.member.member_create_dialog_open {
       True -> pool_dialogs.view_create_dialog(model)
       False -> element.none()
     },
@@ -159,7 +159,7 @@ fn view_global_overlays(model: Model) -> Element(Msg) {
 }
 
 fn view_page(model: Model) -> Element(Msg) {
-  case model.page {
+  case model.core.page {
     Login -> auth_view.view_login(model)
     AcceptInvitePage -> auth_view.view_accept_invite(model)
     ResetPasswordPage -> auth_view.view_reset_password(model)
@@ -186,29 +186,18 @@ pub fn now_working_elapsed_from_ms_for_test(
 // =============================================================================
 
 fn view_admin(model: Model) -> Element(Msg) {
-  case model.user {
+  case model.core.user {
     opt.None -> auth_view.view_login(model)
 
     opt.Some(user) ->
-      case model.is_mobile {
+      case model.ui.is_mobile {
         // Mobile: mini-bar + drawer layout (same as member)
         True ->
-          div([attribute.class("member member-mobile")], [
-            view_mobile_topbar(model, user),
-            div(
-              [
-                attribute.class("content member-content-mobile"),
-                attribute.attribute("id", "main-content"),
-                attribute.attribute("tabindex", "-1"),
-              ],
-              [view_admin_section_content(model, user)],
-            ),
-            now_working_mobile.view_mini_bar(model),
-            now_working_mobile.view_overlay(model),
-            now_working_mobile.view_panel_sheet(model, user.id),
-            view_mobile_left_drawer(model, user),
-            view_mobile_right_drawer(model, user),
-          ])
+          view_mobile_shell(
+            model,
+            user,
+            view_admin_section_content(model, user),
+          )
 
         // Desktop: 3-panel layout (Story 4.5 unification)
         False ->
@@ -272,7 +261,7 @@ fn view_section(
 ) -> Element(Msg) {
   let allowed =
     permissions.can_access_section(
-      model.active_section,
+      model.core.active_section,
       user.org_role,
       projects,
       selected,
@@ -286,7 +275,7 @@ fn view_section(
       ])
 
     True ->
-      case model.active_section {
+      case model.core.active_section {
         permissions.Invites -> invites_view.view_invites(model)
         permissions.OrgSettings -> admin_view.view_org_settings(model)
         permissions.Projects -> projects_view.view_projects(model)
@@ -308,35 +297,13 @@ fn view_section(
 // =============================================================================
 
 fn view_member(model: Model) -> Element(Msg) {
-  case model.user {
+  case model.core.user {
     opt.None -> auth_view.view_login(model)
 
     opt.Some(user) ->
-      case model.is_mobile {
+      case model.ui.is_mobile {
         // Mobile: mini-bar + drawer layout
-        True ->
-          div([attribute.class("member member-mobile")], [
-            view_mobile_topbar(model, user),
-            // A02: Skip link target - with padding for mini-bar
-            div(
-              [
-                attribute.class("content member-content-mobile"),
-                attribute.attribute("id", "main-content"),
-                attribute.attribute("tabindex", "-1"),
-              ],
-              [view_member_section(model, user)],
-            ),
-            // Mobile mini-bar (sticky bottom)
-            now_working_mobile.view_mini_bar(model),
-            // Overlay when sheet is open
-            now_working_mobile.view_overlay(model),
-            // Bottom sheet
-            now_working_mobile.view_panel_sheet(model, user.id),
-            // Left drawer (navigation)
-            view_mobile_left_drawer(model, user),
-            // Right drawer (my activity)
-            view_mobile_right_drawer(model, user),
-          ])
+        True -> view_mobile_shell(model, user, view_member_section(model, user))
 
         // Desktop: new 3-panel layout (Story 4.4)
         False ->
@@ -357,11 +324,11 @@ fn view_mobile_topbar(model: Model, _user: User) -> Element(Msg) {
         attribute.attribute("aria-label", "Open navigation menu"),
         event.on_click(pool_msg(MobileLeftDrawerToggled)),
       ],
-      [icons.view_heroicon_inline("bars-3", 24, model.theme)],
+      [icons.view_heroicon_inline("bars-3", 24, model.ui.theme)],
     ),
     div([attribute.class("topbar-title-mobile")], [
       text(
-        update_helpers.i18n_t(model, case model.member_section {
+        update_helpers.i18n_t(model, case model.member.member_section {
           member_section.Pool -> i18n_text.Pool
           member_section.MyBar -> i18n_text.MyBar
           member_section.MySkills -> i18n_text.MySkills
@@ -376,8 +343,37 @@ fn view_mobile_topbar(model: Model, _user: User) -> Element(Msg) {
         attribute.attribute("aria-label", "Open activity panel"),
         event.on_click(pool_msg(MobileRightDrawerToggled)),
       ],
-      [icons.view_heroicon_inline("user-circle", 24, model.theme)],
+      [icons.view_heroicon_inline("user-circle", 24, model.ui.theme)],
     ),
+  ])
+}
+
+fn view_mobile_shell(
+  model: Model,
+  user: User,
+  main_content: Element(Msg),
+) -> Element(Msg) {
+  div([attribute.class("member member-mobile")], [
+    view_mobile_topbar(model, user),
+    // A02: Skip link target - with padding for mini-bar
+    div(
+      [
+        attribute.class("content member-content-mobile"),
+        attribute.attribute("id", "main-content"),
+        attribute.attribute("tabindex", "-1"),
+      ],
+      [main_content],
+    ),
+    // Mobile mini-bar (sticky bottom)
+    now_working_mobile.view_mini_bar(model),
+    // Overlay when sheet is open
+    now_working_mobile.view_overlay(model),
+    // Bottom sheet
+    now_working_mobile.view_panel_sheet(model, user.id),
+    // Left drawer (navigation)
+    view_mobile_left_drawer(model, user),
+    // Right drawer (my activity)
+    view_mobile_right_drawer(model, user),
   ])
 }
 
@@ -394,7 +390,7 @@ fn view_mobile_left_drawer(model: Model, user: User) -> Element(Msg) {
     build_left_panel(model, user, projects, is_pm, is_org_admin)
 
   responsive_drawer.view(
-    model.mobile_left_drawer_open,
+    model.ui.mobile_left_drawer_open,
     responsive_drawer.Left,
     pool_msg(MobileDrawersClosed),
     left_content,
@@ -406,7 +402,7 @@ fn view_mobile_right_drawer(model: Model, user: User) -> Element(Msg) {
   let right_content = build_right_panel(model, user)
 
   responsive_drawer.view(
-    model.mobile_right_drawer_open,
+    model.ui.mobile_right_drawer_open,
     responsive_drawer.Right,
     pool_msg(MobileDrawersClosed),
     right_content,
@@ -414,7 +410,7 @@ fn view_mobile_right_drawer(model: Model, user: User) -> Element(Msg) {
 }
 
 fn view_member_section(model: Model, user: User) -> Element(Msg) {
-  case model.member_section {
+  case model.member.member_section {
     member_section.Pool -> pool_view.view_pool_main(model, user)
     member_section.MyBar -> my_bar_view.view_bar(model, user)
     member_section.MySkills -> skills_view.view_skills(model)
@@ -459,7 +455,7 @@ fn build_left_panel(
   is_org_admin: Bool,
 ) -> Element(Msg) {
   // Story 4.5: Get badge counts for sidebar
-  let pending_invites_count = case model.invite_links {
+  let pending_invites_count = case model.admin.invite_links {
     Loaded(links) -> list.count(links, fn(link) { link.used_at == opt.None })
     _ -> 0
   }
@@ -467,23 +463,23 @@ fn build_left_panel(
   // Story 4.5: Use Config and Org routes instead of Admin
   // Story 4.7: TRABAJO section visible for all roles (AC1, AC7-9)
   // Only show active view indicator when on Member page (AC3)
-  let current_view = case model.page {
-    Member -> opt.Some(model.view_mode)
+  let current_view = case model.core.page {
+    Member -> opt.Some(model.member.view_mode)
     _ -> opt.None
   }
 
   left_panel.view(left_panel.LeftPanelConfig(
-    locale: model.locale,
+    locale: model.ui.locale,
     user: opt.Some(user),
     projects: projects,
-    selected_project_id: model.selected_project_id,
+    selected_project_id: model.core.selected_project_id,
     is_pm: is_pm,
     is_org_admin: is_org_admin,
     // Current view mode for active indicator (AC3) - only when on Member page
     current_view_mode: current_view,
     // Collapse state
-    config_collapsed: model.sidebar_config_collapsed,
-    org_collapsed: model.sidebar_org_collapsed,
+    config_collapsed: model.ui.sidebar_config_collapsed,
+    org_collapsed: model.ui.sidebar_org_collapsed,
     // Badge counts
     pending_invites_count: pending_invites_count,
     projects_count: list.length(projects),
@@ -495,7 +491,7 @@ fn build_left_panel(
     on_navigate_pool: NavigateTo(
       router.Member(
         member_section.Pool,
-        model.selected_project_id,
+        model.core.selected_project_id,
         opt.Some(view_mode.Pool),
       ),
       Push,
@@ -503,7 +499,7 @@ fn build_left_panel(
     on_navigate_list: NavigateTo(
       router.Member(
         member_section.Pool,
-        model.selected_project_id,
+        model.core.selected_project_id,
         opt.Some(view_mode.List),
       ),
       Push,
@@ -511,40 +507,40 @@ fn build_left_panel(
     on_navigate_cards: NavigateTo(
       router.Member(
         member_section.Pool,
-        model.selected_project_id,
+        model.core.selected_project_id,
         opt.Some(view_mode.Cards),
       ),
       Push,
     ),
     // Config navigation
     on_navigate_config_team: NavigateTo(
-      router.Config(permissions.Members, model.selected_project_id),
+      router.Config(permissions.Members, model.core.selected_project_id),
       Push,
     ),
     on_navigate_config_capabilities: NavigateTo(
-      router.Config(permissions.Capabilities, model.selected_project_id),
+      router.Config(permissions.Capabilities, model.core.selected_project_id),
       Push,
     ),
     // Story 4.9: New config section navigation
     on_navigate_config_cards: NavigateTo(
-      router.Config(permissions.Cards, model.selected_project_id),
+      router.Config(permissions.Cards, model.core.selected_project_id),
       Push,
     ),
     on_navigate_config_task_types: NavigateTo(
-      router.Config(permissions.TaskTypes, model.selected_project_id),
+      router.Config(permissions.TaskTypes, model.core.selected_project_id),
       Push,
     ),
     on_navigate_config_templates: NavigateTo(
-      router.Config(permissions.TaskTemplates, model.selected_project_id),
+      router.Config(permissions.TaskTemplates, model.core.selected_project_id),
       Push,
     ),
     on_navigate_config_rules: NavigateTo(
-      router.Config(permissions.Workflows, model.selected_project_id),
+      router.Config(permissions.Workflows, model.core.selected_project_id),
       Push,
     ),
     // AC31: Metrics link for PM/Admin
     on_navigate_config_metrics: NavigateTo(
-      router.Config(permissions.RuleMetrics, model.selected_project_id),
+      router.Config(permissions.RuleMetrics, model.core.selected_project_id),
       Push,
     ),
     on_navigate_org_invites: NavigateTo(router.Org(permissions.Invites), Push),
@@ -560,19 +556,19 @@ fn build_left_panel(
 /// Builds the center panel with view mode toggle and content
 fn build_center_panel(model: Model, user: User) -> Element(Msg) {
   // Get filtered tasks and available filters
-  let tasks = case model.member_tasks {
+  let tasks = case model.member.member_tasks {
     Loaded(t) -> t
     _ -> []
   }
-  let task_types = case model.member_task_types {
+  let task_types = case model.member.member_task_types {
     Loaded(tt) -> tt
     _ -> []
   }
-  let capabilities = case model.capabilities {
+  let capabilities = case model.admin.capabilities {
     Loaded(caps) -> caps
     _ -> []
   }
-  let cards = case model.cards {
+  let cards = case model.admin.cards {
     Loaded(c) -> c
     _ -> []
   }
@@ -580,19 +576,19 @@ fn build_center_panel(model: Model, user: User) -> Element(Msg) {
   // Build view-specific content
   let pool_content = pool_view.view_pool_main(model, user)
   // AC7: Extract org users for displaying claimed-by info
-  let org_users = case model.org_users_cache {
+  let org_users = case model.admin.org_users_cache {
     Loaded(users) -> users
     _ -> []
   }
   let list_content =
     grouped_list.view(grouped_list.GroupedListConfig(
-      locale: model.locale,
+      locale: model.ui.locale,
       tasks: tasks,
       cards: cards,
       org_users: org_users,
       // Story 4.8 UX: Use model state for collapse/expand
-      expanded_cards: model.member_list_expanded_cards,
-      hide_completed: model.member_list_hide_completed,
+      expanded_cards: model.member.member_list_expanded_cards,
+      hide_completed: model.member.member_list_hide_completed,
       on_toggle_card: fn(card_id) { pool_msg(MemberListCardToggled(card_id)) },
       on_toggle_hide_completed: pool_msg(MemberListHideCompletedToggled),
       on_task_click: fn(task_id) { pool_msg(MemberTaskDetailsOpened(task_id)) },
@@ -602,7 +598,7 @@ fn build_center_panel(model: Model, user: User) -> Element(Msg) {
     ))
   let cards_content =
     kanban_board.view(kanban_board.KanbanConfig(
-      locale: model.locale,
+      locale: model.ui.locale,
       cards: cards,
       tasks: tasks,
       // Story 4.8 UX: Added org_users for claimed_by display in task items
@@ -630,14 +626,14 @@ fn build_center_panel(model: Model, user: User) -> Element(Msg) {
     ))
 
   center_panel.view(center_panel.CenterPanelConfig(
-    locale: model.locale,
-    view_mode: model.view_mode,
+    locale: model.ui.locale,
+    view_mode: model.member.view_mode,
     on_view_mode_change: fn(mode) { pool_msg(ViewModeChanged(mode)) },
     task_types: task_types,
     capabilities: capabilities,
-    type_filter: parse_filter_id(model.member_filters_type_id),
-    capability_filter: parse_filter_id(model.member_filters_capability_id),
-    search_query: model.member_filters_q,
+    type_filter: parse_filter_id(model.member.member_filters_type_id),
+    capability_filter: parse_filter_id(model.member.member_filters_capability_id),
+    search_query: model.member.member_filters_q,
     on_type_filter_change: fn(value) { pool_msg(MemberPoolTypeChanged(value)) },
     on_capability_filter_change: fn(value) {
       pool_msg(MemberPoolCapabilityChanged(value))
@@ -655,7 +651,7 @@ fn build_center_panel(model: Model, user: User) -> Element(Msg) {
 /// Builds the right panel with activity and profile
 fn build_right_panel(model: Model, user: User) -> Element(Msg) {
   // Get claimed tasks for "my tasks" section
-  let my_tasks = case model.member_tasks {
+  let my_tasks = case model.member.member_tasks {
     Loaded(tasks) ->
       list.filter(tasks, fn(t) {
         t.status == Claimed(Taken) && t.claimed_by == opt.Some(user.id)
@@ -664,10 +660,10 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
   }
 
   // Build my cards with progress (cards user is assigned to via tasks)
-  let my_cards = case model.cards {
+  let my_cards = case model.admin.cards {
     Loaded(cards) -> {
       // Get all tasks to compute progress
-      let all_tasks = case model.member_tasks {
+      let all_tasks = case model.member.member_tasks {
         Loaded(tasks) -> tasks
         _ -> []
       }
@@ -707,7 +703,7 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
         accumulated_s: accumulated_s,
       ) = session
       // Find task title and type icon
-      let #(title, type_icon) = case model.member_tasks {
+      let #(title, type_icon) = case model.member.member_tasks {
         Loaded(tasks) ->
           case list.find(tasks, fn(t) { t.id == id }) {
             Ok(t) -> #(t.title, t.task_type.icon)
@@ -718,7 +714,7 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
       // Calculate elapsed time
       let started_ms = client_ffi.parse_iso_ms(started_at)
       let local_now_ms = client_ffi.now_ms()
-      let server_now_ms = local_now_ms - model.now_working_server_offset_ms
+      let server_now_ms = local_now_ms - model.member.now_working_server_offset_ms
       let elapsed =
         update_helpers.now_working_elapsed_from_ms(
           accumulated_s,
@@ -735,7 +731,7 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
     })
 
   right_panel.view(right_panel.RightPanelConfig(
-    locale: model.locale,
+    locale: model.ui.locale,
     user: opt.Some(user),
     my_tasks: my_tasks,
     my_cards: my_cards,
@@ -746,7 +742,7 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
     on_task_pause: fn(_task_id) { pool_msg(MemberNowWorkingPauseClicked) },
     on_task_complete: fn(task_id) {
       // Find task version for complete action
-      case model.member_tasks {
+      case model.member.member_tasks {
         Loaded(tasks) ->
           case list.find(tasks, fn(t) { t.id == task_id }) {
             Ok(t) -> pool_msg(MemberCompleteClicked(task_id, t.version))
@@ -758,7 +754,7 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
     on_logout: auth_msg(LogoutClicked),
     on_task_release: fn(task_id) {
       // Find task version for release action
-      case model.member_tasks {
+      case model.member.member_tasks {
         Loaded(tasks) ->
           case list.find(tasks, fn(t) { t.id == task_id }) {
             Ok(t) -> pool_msg(MemberReleaseClicked(task_id, t.version))
@@ -769,16 +765,16 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
     },
     on_card_click: fn(card_id) { pool_msg(OpenCardDetail(card_id)) },
     // Drag-to-claim state for Pool view (Story 4.7)
-    drag_armed: model.member_pool_drag_to_claim_armed,
-    drag_over_my_tasks: model.member_pool_drag_over_my_tasks,
+    drag_armed: model.member.member_pool_drag_to_claim_armed,
+    drag_over_my_tasks: model.member.member_pool_drag_over_my_tasks,
     // Preferences popup (Story 4.8 UX: moved from inline to popup)
-    preferences_popup_open: model.preferences_popup_open,
+    preferences_popup_open: model.ui.preferences_popup_open,
     on_preferences_toggle: pool_msg(PreferencesPopupToggled),
-    current_theme: model.theme,
+    current_theme: model.ui.theme,
     on_theme_change: ThemeSelected,
     on_locale_change: LocaleSelected,
-    disable_actions: model.member_task_mutation_in_flight
-      || model.member_now_working_in_flight,
+    disable_actions: model.member.member_task_mutation_in_flight
+      || model.member.member_now_working_in_flight,
   ))
 }
 
@@ -817,7 +813,7 @@ fn view_claimed_tasks_section(model: Model, user: User) -> Element(Msg) {
     opt.None -> opt.None
   }
 
-  let claimed_tasks = case model.member_tasks {
+  let claimed_tasks = case model.member.member_tasks {
     Loaded(tasks) ->
       tasks
       |> list.filter(fn(t) {
@@ -830,8 +826,8 @@ fn view_claimed_tasks_section(model: Model, user: User) -> Element(Msg) {
 
   // Dropzone class for drag-to-claim visual feedback
   let dropzone_class = case
-    model.member_pool_drag_to_claim_armed,
-    model.member_pool_drag_over_my_tasks
+    model.member.member_pool_drag_to_claim_armed,
+    model.member.member_pool_drag_over_my_tasks
   {
     True, True -> "pool-my-tasks-dropzone drop-over"
     True, False -> "pool-my-tasks-dropzone drag-active"
@@ -845,7 +841,7 @@ fn view_claimed_tasks_section(model: Model, user: User) -> Element(Msg) {
     ],
     [
       // Dropzone hint when dragging
-      case model.member_pool_drag_to_claim_armed {
+      case model.member.member_pool_drag_to_claim_armed {
         True ->
           div([attribute.class("dropzone-hint")], [
             text(
@@ -886,7 +882,7 @@ fn view_claimed_task_row(
     task
   let is_active = active_task_id == opt.Some(id)
   let disable_actions =
-    model.member_task_mutation_in_flight || model.member_now_working_in_flight
+    model.member.member_task_mutation_in_flight || model.member.member_now_working_in_flight
 
   let start_or_pause = case is_active {
     True ->
@@ -923,10 +919,10 @@ fn view_claimed_task_row(
   }
 
   div([attribute.class(row_class)], [
-    div([], [
+    element.fragment([
       div([attribute.class("task-row-title")], [
         span([attribute.attribute("style", "margin-right: 6px;")], [
-          admin_view.view_task_type_icon_inline(task_type.icon, 16, model.theme),
+          admin_view.view_task_type_icon_inline(task_type.icon, 16, model.ui.theme),
         ]),
         text(title),
       ]),

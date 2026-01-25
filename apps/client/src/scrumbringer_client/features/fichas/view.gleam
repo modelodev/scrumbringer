@@ -40,6 +40,7 @@ import scrumbringer_client/client_state.{
 }
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/icons
 import scrumbringer_client/update_helpers
@@ -51,7 +52,7 @@ import scrumbringer_client/update_helpers
 /// Main entry point for the fichas view.
 pub fn view_fichas(model: Model) -> Element(Msg) {
   div([attribute.class("content")], [
-    div([attribute.class("section")], [
+    div([attrs.section()], [
       view_fichas_header(model),
       view_fichas_content(model),
     ]),
@@ -80,9 +81,9 @@ fn view_fichas_header(model: Model) -> Element(Msg) {
 }
 
 fn view_fichas_content(model: Model) -> Element(Msg) {
-  // Use the existing model.cards (admin cards data)
+  // Use the existing model.admin.cards (admin cards data)
   // In future, we may have member-specific card filtering
-  case model.cards {
+  case model.admin.cards {
     Loading ->
       div([attribute.class("loading")], [
         text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
@@ -185,7 +186,7 @@ fn color_from_string(
 
 /// Render the card-detail-modal custom element when a card is open.
 fn view_card_detail_modal(model: Model) -> Element(Msg) {
-  case model.card_detail_open {
+  case model.member.card_detail_open {
     option.None -> element.none()
     option.Some(card_id) -> {
       // Find the card data
@@ -196,7 +197,7 @@ fn view_card_detail_modal(model: Model) -> Element(Msg) {
         option.Some(card) -> {
           // Get task types for this project
           let task_types =
-            dict.get(model.member_task_types_by_project, card.project_id)
+            dict.get(model.member.member_task_types_by_project, card.project_id)
             |> option.from_result
             |> option.unwrap([])
 
@@ -208,7 +209,7 @@ fn view_card_detail_modal(model: Model) -> Element(Msg) {
             [
               // Attributes (strings)
               attribute.attribute("card-id", int.to_string(card_id)),
-              attribute.attribute("locale", locale.serialize(model.locale)),
+              attribute.attribute("locale", locale.serialize(model.ui.locale)),
               attribute.attribute("project-id", int.to_string(card.project_id)),
               // Properties (JSON)
               attribute.property("card", card_to_json(card)),
@@ -233,7 +234,7 @@ fn decode_close_detail_event() -> decode.Decoder(Msg) {
 }
 
 fn find_card(model: Model, card_id: Int) -> option.Option(Card) {
-  case model.cards {
+  case model.admin.cards {
     Loaded(cards) ->
       list.find(cards, fn(c) { c.id == card_id })
       |> option.from_result
@@ -243,7 +244,7 @@ fn find_card(model: Model, card_id: Int) -> option.Option(Card) {
 
 fn get_card_tasks(model: Model, card_id: Int) -> List(domain_task.Task) {
   // Filter tasks from member_tasks that belong to this card
-  case model.member_tasks {
+  case model.member.member_tasks {
     Loaded(tasks) ->
       list.filter(tasks, fn(t) {
         case t.card_id {

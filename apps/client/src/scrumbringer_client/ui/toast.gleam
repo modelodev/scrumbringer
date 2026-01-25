@@ -57,12 +57,7 @@ pub type ToastVariant {
 
 /// A toast notification with type-safe ID.
 pub type Toast {
-  Toast(
-    id: ToastId,
-    message: String,
-    variant: ToastVariant,
-    created_at: Int,
-  )
+  Toast(id: ToastId, message: String, variant: ToastVariant, created_at: Int)
 }
 
 /// State for managing multiple toasts.
@@ -215,7 +210,10 @@ fn view_toast(toast: Toast, on_dismiss: msg) -> Element(msg) {
       attribute.class("toast " <> variant_class),
       attribute.attribute("role", "status"),
       attribute.attribute("aria-live", "polite"),
-      attribute.attribute("data-toast-id", toast_id_to_int(toast.id) |> int_to_string),
+      attribute.attribute(
+        "data-toast-id",
+        toast_id_to_int(toast.id) |> int_to_string,
+      ),
     ],
     [
       span([attribute.class("toast-icon")], [text(variant_icon(toast.variant))]),

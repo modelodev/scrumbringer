@@ -1,11 +1,11 @@
 import gleam/option.{None, Some}
 import gleeunit/should
 
+import domain/org_role
 import scrumbringer_client/hydration
 import scrumbringer_client/member_section
 import scrumbringer_client/permissions
 import scrumbringer_client/router
-import domain/org_role
 
 pub fn admin_members_unknown_auth_requires_fetch_me_test() {
   let snap =

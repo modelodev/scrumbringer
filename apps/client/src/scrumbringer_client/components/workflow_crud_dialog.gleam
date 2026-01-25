@@ -212,120 +212,119 @@ fn default_model() -> Model {
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    LocaleReceived(loc) ->
-      #(Model(..model, locale: loc), effect.none())
+    LocaleReceived(loc) -> #(Model(..model, locale: loc), effect.none())
 
-    ProjectIdReceived(id) ->
-      #(Model(..model, project_id: id), effect.none())
+    ProjectIdReceived(id) -> #(Model(..model, project_id: id), effect.none())
 
-    ModeReceived(mode) ->
-      handle_mode_received(model, mode)
+    ModeReceived(mode) -> handle_mode_received(model, mode)
 
     // Create form handlers
-    CreateNameChanged(name) ->
-      #(Model(..model, create_name: name), effect.none())
+    CreateNameChanged(name) -> #(
+      Model(..model, create_name: name),
+      effect.none(),
+    )
 
-    CreateDescriptionChanged(desc) ->
-      #(Model(..model, create_description: desc), effect.none())
+    CreateDescriptionChanged(desc) -> #(
+      Model(..model, create_description: desc),
+      effect.none(),
+    )
 
-    CreateActiveToggled ->
-      #(Model(..model, create_active: !model.create_active), effect.none())
+    CreateActiveToggled -> #(
+      Model(..model, create_active: !model.create_active),
+      effect.none(),
+    )
 
-    CreateSubmitted ->
-      handle_create_submitted(model)
+    CreateSubmitted -> handle_create_submitted(model)
 
-    CreateResult(Ok(workflow)) ->
-      handle_create_success(model, workflow)
+    CreateResult(Ok(workflow)) -> handle_create_success(model, workflow)
 
-    CreateResult(Error(err)) ->
-      #(
-        Model(..model, create_in_flight: False, create_error: option.Some(err.message)),
-        effect.none(),
-      )
+    CreateResult(Error(err)) -> #(
+      Model(
+        ..model,
+        create_in_flight: False,
+        create_error: option.Some(err.message),
+      ),
+      effect.none(),
+    )
 
     // Edit form handlers
-    EditNameChanged(name) ->
-      #(Model(..model, edit_name: name), effect.none())
+    EditNameChanged(name) -> #(Model(..model, edit_name: name), effect.none())
 
-    EditDescriptionChanged(desc) ->
-      #(Model(..model, edit_description: desc), effect.none())
+    EditDescriptionChanged(desc) -> #(
+      Model(..model, edit_description: desc),
+      effect.none(),
+    )
 
-    EditActiveToggled ->
-      #(Model(..model, edit_active: !model.edit_active), effect.none())
+    EditActiveToggled -> #(
+      Model(..model, edit_active: !model.edit_active),
+      effect.none(),
+    )
 
-    EditSubmitted ->
-      handle_edit_submitted(model)
+    EditSubmitted -> handle_edit_submitted(model)
 
-    EditResult(Ok(workflow)) ->
-      handle_edit_success(model, workflow)
+    EditResult(Ok(workflow)) -> handle_edit_success(model, workflow)
 
-    EditResult(Error(err)) ->
-      #(
-        Model(..model, edit_in_flight: False, edit_error: option.Some(err.message)),
-        effect.none(),
-      )
+    EditResult(Error(err)) -> #(
+      Model(
+        ..model,
+        edit_in_flight: False,
+        edit_error: option.Some(err.message),
+      ),
+      effect.none(),
+    )
 
-    EditCancelled ->
-      #(reset_edit_fields(model), emit_close_requested())
+    EditCancelled -> #(reset_edit_fields(model), emit_close_requested())
 
     // Delete handlers
-    DeleteConfirmed ->
-      handle_delete_confirmed(model)
+    DeleteConfirmed -> handle_delete_confirmed(model)
 
-    DeleteResult(Ok(_)) ->
-      handle_delete_success(model)
+    DeleteResult(Ok(_)) -> handle_delete_success(model)
 
-    DeleteResult(Error(err)) ->
-      handle_delete_error(model, err)
+    DeleteResult(Error(err)) -> handle_delete_error(model, err)
 
-    DeleteCancelled ->
-      #(reset_delete_fields(model), emit_close_requested())
+    DeleteCancelled -> #(reset_delete_fields(model), emit_close_requested())
 
-    CloseRequested ->
-      #(model, emit_close_requested())
+    CloseRequested -> #(model, emit_close_requested())
   }
 }
 
 fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg)) {
   case mode {
-    ModeCreate ->
-      #(
-        Model(
-          ..model,
-          mode: option.Some(ModeCreate),
-          create_name: "",
-          create_description: "",
-          create_active: True,
-          create_in_flight: False,
-          create_error: option.None,
-        ),
-        effect.none(),
-      )
+    ModeCreate -> #(
+      Model(
+        ..model,
+        mode: option.Some(ModeCreate),
+        create_name: "",
+        create_description: "",
+        create_active: True,
+        create_in_flight: False,
+        create_error: option.None,
+      ),
+      effect.none(),
+    )
 
-    ModeEdit(workflow) ->
-      #(
-        Model(
-          ..model,
-          mode: option.Some(ModeEdit(workflow)),
-          edit_name: workflow.name,
-          edit_description: option.unwrap(workflow.description, ""),
-          edit_active: workflow.active,
-          edit_in_flight: False,
-          edit_error: option.None,
-        ),
-        effect.none(),
-      )
+    ModeEdit(workflow) -> #(
+      Model(
+        ..model,
+        mode: option.Some(ModeEdit(workflow)),
+        edit_name: workflow.name,
+        edit_description: option.unwrap(workflow.description, ""),
+        edit_active: workflow.active,
+        edit_in_flight: False,
+        edit_error: option.None,
+      ),
+      effect.none(),
+    )
 
-    ModeDelete(workflow) ->
-      #(
-        Model(
-          ..model,
-          mode: option.Some(ModeDelete(workflow)),
-          delete_in_flight: False,
-          delete_error: option.None,
-        ),
-        effect.none(),
-      )
+    ModeDelete(workflow) -> #(
+      Model(
+        ..model,
+        mode: option.Some(ModeDelete(workflow)),
+        delete_in_flight: False,
+        delete_error: option.None,
+      ),
+      effect.none(),
+    )
   }
 }
 
@@ -334,36 +333,45 @@ fn handle_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
     True -> #(model, effect.none())
     False ->
       case model.create_name {
-        "" ->
-          #(
-            Model(..model, create_error: option.Some(t(model.locale, i18n_text.NameRequired))),
-            effect.none(),
-          )
+        "" -> #(
+          Model(
+            ..model,
+            create_error: option.Some(t(model.locale, i18n_text.NameRequired)),
+          ),
+          effect.none(),
+        )
         name ->
           // Workflows are now project-scoped only
           case model.project_id {
-            option.Some(project_id) ->
-              #(
-                Model(..model, create_in_flight: True, create_error: option.None),
-                api_workflows.create_project_workflow(
-                  project_id,
-                  name,
-                  model.create_description,
-                  model.create_active,
-                  CreateResult,
-                ),
-              )
-            option.None ->
-              #(
-                Model(..model, create_error: option.Some(t(model.locale, i18n_text.SelectProjectFirst))),
-                effect.none(),
-              )
+            option.Some(project_id) -> #(
+              Model(..model, create_in_flight: True, create_error: option.None),
+              api_workflows.create_project_workflow(
+                project_id,
+                name,
+                model.create_description,
+                model.create_active,
+                CreateResult,
+              ),
+            )
+            option.None -> #(
+              Model(
+                ..model,
+                create_error: option.Some(t(
+                  model.locale,
+                  i18n_text.SelectProjectFirst,
+                )),
+              ),
+              effect.none(),
+            )
           }
       }
   }
 }
 
-fn handle_create_success(model: Model, workflow: Workflow) -> #(Model, Effect(Msg)) {
+fn handle_create_success(
+  model: Model,
+  workflow: Workflow,
+) -> #(Model, Effect(Msg)) {
   #(
     Model(
       ..model,
@@ -383,36 +391,36 @@ fn handle_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
     True -> #(model, effect.none())
     False ->
       case model.edit_name {
-        "" ->
-          #(
-            Model(..model, edit_error: option.Some(t(model.locale, i18n_text.NameRequired))),
-            effect.none(),
-          )
+        "" -> #(
+          Model(
+            ..model,
+            edit_error: option.Some(t(model.locale, i18n_text.NameRequired)),
+          ),
+          effect.none(),
+        )
         name ->
           case model.mode {
-            option.Some(ModeEdit(workflow)) ->
-              #(
-                Model(..model, edit_in_flight: True, edit_error: option.None),
-                api_workflows.update_workflow(
-                  workflow.id,
-                  name,
-                  model.edit_description,
-                  model.edit_active,
-                  EditResult,
-                ),
-              )
-            _ ->
-              #(model, effect.none())
+            option.Some(ModeEdit(workflow)) -> #(
+              Model(..model, edit_in_flight: True, edit_error: option.None),
+              api_workflows.update_workflow(
+                workflow.id,
+                name,
+                model.edit_description,
+                model.edit_active,
+                EditResult,
+              ),
+            )
+            _ -> #(model, effect.none())
           }
       }
   }
 }
 
-fn handle_edit_success(model: Model, workflow: Workflow) -> #(Model, Effect(Msg)) {
-  #(
-    reset_edit_fields(model),
-    emit_workflow_updated(workflow),
-  )
+fn handle_edit_success(
+  model: Model,
+  workflow: Workflow,
+) -> #(Model, Effect(Msg)) {
+  #(reset_edit_fields(model), emit_workflow_updated(workflow))
 }
 
 fn handle_delete_confirmed(model: Model) -> #(Model, Effect(Msg)) {
@@ -420,13 +428,11 @@ fn handle_delete_confirmed(model: Model) -> #(Model, Effect(Msg)) {
     True -> #(model, effect.none())
     False ->
       case model.mode {
-        option.Some(ModeDelete(workflow)) ->
-          #(
-            Model(..model, delete_in_flight: True, delete_error: option.None),
-            api_workflows.delete_workflow(workflow.id, DeleteResult),
-          )
-        _ ->
-          #(model, effect.none())
+        option.Some(ModeDelete(workflow)) -> #(
+          Model(..model, delete_in_flight: True, delete_error: option.None),
+          api_workflows.delete_workflow(workflow.id, DeleteResult),
+        )
+        _ -> #(model, effect.none())
       }
   }
 }
@@ -436,15 +442,16 @@ fn handle_delete_success(model: Model) -> #(Model, Effect(Msg)) {
     option.Some(ModeDelete(workflow)) -> workflow.id
     _ -> 0
   }
-  #(
-    reset_delete_fields(model),
-    emit_workflow_deleted(workflow_id),
-  )
+  #(reset_delete_fields(model), emit_workflow_deleted(workflow_id))
 }
 
 fn handle_delete_error(model: Model, err: ApiError) -> #(Model, Effect(Msg)) {
   #(
-    Model(..model, delete_in_flight: False, delete_error: option.Some(err.message)),
+    Model(
+      ..model,
+      delete_in_flight: False,
+      delete_error: option.Some(err.message),
+    ),
     effect.none(),
   )
 }
@@ -488,7 +495,10 @@ fn emit_workflow_updated(workflow: Workflow) -> Effect(Msg) {
 
 fn emit_workflow_deleted(workflow_id: Int) -> Effect(Msg) {
   effect.from(fn(_dispatch) {
-    emit_custom_event("workflow-deleted", json.object([#("id", json.int(workflow_id))]))
+    emit_custom_event(
+      "workflow-deleted",
+      json.object([#("id", json.int(workflow_id))]),
+    )
   })
 }
 
@@ -523,11 +533,14 @@ fn workflow_to_json(workflow: Workflow) -> json.Json {
       #("created_at", json.string(workflow.created_at)),
     ]
     |> append_fields(project_id_field)
-    |> append_fields(description_field)
+    |> append_fields(description_field),
   )
 }
 
-fn append_fields(base: List(#(String, json.Json)), fields: List(#(String, json.Json))) -> List(#(String, json.Json)) {
+fn append_fields(
+  base: List(#(String, json.Json)),
+  fields: List(#(String, json.Json)),
+) -> List(#(String, json.Json)) {
   case fields {
     [] -> base
     [field, ..rest] -> append_fields([field, ..base], rest)
@@ -750,7 +763,11 @@ fn view_delete_dialog(model: Model, workflow: Workflow) -> Element(Msg) {
   ])
 }
 
-fn view_header(model: Model, title_key: i18n_text.Text, icon: String) -> Element(Msg) {
+fn view_header(
+  model: Model,
+  title_key: i18n_text.Text,
+  icon: String,
+) -> Element(Msg) {
   div([attribute.class("dialog-header")], [
     div([attribute.class("dialog-title")], [
       span([attribute.class("dialog-icon")], [text(icon)]),
@@ -780,10 +797,9 @@ fn view_error(error: Option(String)) -> Element(Msg) {
 }
 
 fn view_cancel_button(locale: Locale, on_click_msg: Msg) -> Element(Msg) {
-  button(
-    [attribute.type_("button"), event.on_click(on_click_msg)],
-    [text(t(locale, i18n_text.Cancel))],
-  )
+  button([attribute.type_("button"), event.on_click(on_click_msg)], [
+    text(t(locale, i18n_text.Cancel)),
+  ])
 }
 
 // =============================================================================

@@ -141,7 +141,7 @@ pub fn view_org_settings(model: Model) -> Element(Msg) {
 fn view_org_settings_table(model: Model) -> Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
 
-  case model.org_settings_users {
+  case model.admin.org_settings_users {
     NotAsked -> status_block.empty_text(t(i18n_text.OpenThisSectionToLoadUsers))
 
     Loading -> status_block.empty_text(t(i18n_text.LoadingUsers))
@@ -149,7 +149,7 @@ fn view_org_settings_table(model: Model) -> Element(Msg) {
     Failed(err) -> status_block.error_text(err.message)
 
     Loaded(users) -> {
-      let pending_count = dict.size(model.org_settings_role_drafts)
+      let pending_count = dict.size(model.admin.org_settings_role_drafts)
       let has_pending = pending_count > 0
 
       element.fragment([
@@ -204,7 +204,7 @@ fn view_org_settings_table(model: Model) -> Element(Msg) {
           button(
             [
               attribute.disabled(
-                !has_pending || model.org_settings_save_in_flight,
+                !has_pending || model.admin.org_settings_save_in_flight,
               ),
               event.on_click(admin_msg(OrgSettingsSaveAllClicked)),
             ],
@@ -219,16 +219,16 @@ fn view_org_settings_table(model: Model) -> Element(Msg) {
 fn view_org_role_cell(model: Model, u: OrgUser) -> Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
 
-  let draft = case dict.get(model.org_settings_role_drafts, u.id) {
+  let draft = case dict.get(model.admin.org_settings_role_drafts, u.id) {
     Ok(role) -> role
     Error(_) -> u.org_role
   }
 
-  let has_change = dict.has_key(model.org_settings_role_drafts, u.id)
+  let has_change = dict.has_key(model.admin.org_settings_role_drafts, u.id)
 
   let inline_error = case
-    model.org_settings_error_user_id,
-    model.org_settings_error
+    model.admin.org_settings_error_user_id,
+    model.admin.org_settings_error
   {
     opt.Some(id), opt.Some(message) if id == u.id -> message
     _, _ -> ""
@@ -238,7 +238,7 @@ fn view_org_role_cell(model: Model, u: OrgUser) -> Element(Msg) {
     select(
       [
         attribute.value(draft),
-        attribute.disabled(model.org_settings_save_in_flight),
+        attribute.disabled(model.admin.org_settings_save_in_flight),
         event.on_input(fn(value) {
           admin_msg(OrgSettingsRoleChanged(u.id, value))
         }),
@@ -263,7 +263,7 @@ fn view_org_role_cell(model: Model, u: OrgUser) -> Element(Msg) {
 
 /// Dialog for viewing/managing user's project memberships.
 fn view_user_projects_dialog(model: Model) -> Element(Msg) {
-  case model.user_projects_dialog_open, model.user_projects_dialog_user {
+  case model.admin.user_projects_dialog_open, model.admin.user_projects_dialog_user {
     True, opt.Some(user) -> {
       dialog.view(
         dialog.DialogConfig(
@@ -276,11 +276,11 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
           on_close: admin_msg(UserProjectsDialogClosed),
         ),
         True,
-        model.user_projects_error,
+        model.admin.user_projects_error,
         // Content: project list and add form
         [
           // Current projects list
-          case model.user_projects_list {
+          case model.admin.user_projects_list {
             NotAsked | Loading ->
               p([attribute.class("loading")], [
                 text(update_helpers.i18n_t(model, i18n_text.Loading)),
@@ -332,7 +332,7 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
                                       p.my_role,
                                     )),
                                     attribute.disabled(
-                                      model.user_projects_in_flight,
+                                      model.admin.user_projects_in_flight,
                                     ),
                                     event.on_input(fn(value) {
                                       admin_msg(UserProjectRoleChangeRequested(
@@ -364,7 +364,7 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
                                   [
                                     attribute.class("btn-danger btn-sm"),
                                     attribute.disabled(
-                                      model.user_projects_in_flight,
+                                      model.admin.user_projects_in_flight,
                                     ),
                                     event.on_click(
                                       admin_msg(UserProjectRemoveClicked(p.id)),
@@ -396,11 +396,11 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
               // Project selector
               select(
                 [
-                  attribute.value(case model.user_projects_add_project_id {
+                  attribute.value(case model.admin.user_projects_add_project_id {
                     opt.Some(id) -> int.to_string(id)
                     opt.None -> ""
                   }),
-                  attribute.disabled(model.user_projects_in_flight),
+                  attribute.disabled(model.admin.user_projects_in_flight),
                   event.on_input(fn(value) {
                     admin_msg(UserProjectsAddProjectChanged(value))
                   }),
@@ -416,8 +416,8 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
               // Role selector
               select(
                 [
-                  attribute.value(model.user_projects_add_role),
-                  attribute.disabled(model.user_projects_in_flight),
+                  attribute.value(model.admin.user_projects_add_role),
+                  attribute.disabled(model.admin.user_projects_in_flight),
                   event.on_input(fn(value) {
                     admin_msg(UserProjectsAddRoleChanged(value))
                   }),
@@ -436,8 +436,8 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
               button(
                 [
                   attribute.disabled(
-                    model.user_projects_in_flight
-                    || opt.is_none(model.user_projects_add_project_id),
+                    model.admin.user_projects_in_flight
+                    || opt.is_none(model.admin.user_projects_add_project_id),
                   ),
                   event.on_click(admin_msg(UserProjectsAddSubmitted)),
                 ],
@@ -462,13 +462,13 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
 /// Get available projects to add user to (exclude projects user is already in).
 fn view_available_projects_options(model: Model) -> List(Element(Msg)) {
   // Get all org projects
-  let all_projects = case model.projects {
+  let all_projects = case model.core.projects {
     Loaded(projects) -> projects
     _ -> []
   }
 
   // Get user's current projects
-  let user_project_ids = case model.user_projects_list {
+  let user_project_ids = case model.admin.user_projects_list {
     Loaded(user_projects) -> list.map(user_projects, fn(p) { p.id })
     _ -> []
   }
@@ -483,7 +483,7 @@ fn view_available_projects_options(model: Model) -> List(Element(Msg)) {
 /// Shows "..." if not yet loaded, otherwise "count: name1, name2 (mgr), ..."
 fn format_projects_summary(model: Model, user_id: Int) -> String {
   // Check if this is the user whose dialog is open and projects are loaded
-  case model.user_projects_dialog_user, model.user_projects_list {
+  case model.admin.user_projects_dialog_user, model.admin.user_projects_list {
     opt.Some(dialog_user), Loaded(projects) if dialog_user.id == user_id -> {
       let count = list.length(projects)
       case count {
@@ -536,11 +536,11 @@ pub fn view_capabilities(model: Model) -> Element(Msg) {
       ),
     ),
     // Capabilities list
-    view_capabilities_list(model, model.capabilities),
+    view_capabilities_list(model, model.admin.capabilities),
     // Create capability dialog
     view_capabilities_create_dialog(model),
     // Capability members dialog (AC17, Story 4.8 AC24)
-    case model.capability_members_dialog_capability_id {
+    case model.admin.capability_members_dialog_capability_id {
       opt.Some(capability_id) ->
         view_capability_members_dialog(model, capability_id, project_name)
       opt.None -> element.none()
@@ -559,8 +559,8 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
       size: dialog.DialogSm,
       on_close: admin_msg(CapabilityCreateDialogClosed),
     ),
-    model.capabilities_create_dialog_open,
-    model.capabilities_create_error,
+    model.admin.capabilities_create_dialog_open,
+    model.admin.capabilities_create_error,
     // Form content
     [
       form(
@@ -573,7 +573,7 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
             label([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
             input([
               attribute.type_("text"),
-              attribute.value(model.capabilities_create_name),
+              attribute.value(model.admin.capabilities_create_name),
               event.on_input(fn(value) {
                 admin_msg(CapabilityCreateNameChanged(value))
               }),
@@ -595,14 +595,14 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
         [
           attribute.type_("submit"),
           attribute.form("capability-create-form"),
-          attribute.disabled(model.capabilities_create_in_flight),
-          attribute.class(case model.capabilities_create_in_flight {
+          attribute.disabled(model.admin.capabilities_create_in_flight),
+          attribute.class(case model.admin.capabilities_create_in_flight {
             True -> "btn-loading"
             False -> ""
           }),
         ],
         [
-          text(case model.capabilities_create_in_flight {
+          text(case model.admin.capabilities_create_in_flight {
             True -> update_helpers.i18n_t(model, i18n_text.Creating)
             False -> update_helpers.i18n_t(model, i18n_text.Create)
           }),
@@ -615,9 +615,9 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
 /// Dialog for deleting a capability (Story 4.9 AC9).
 fn view_capability_delete_dialog(model: Model) -> Element(Msg) {
   // Get capability name for the confirmation message
-  let capability_name = case model.capability_delete_dialog_id {
+  let capability_name = case model.admin.capability_delete_dialog_id {
     opt.Some(id) ->
-      case model.capabilities {
+      case model.admin.capabilities {
         Loaded(caps) ->
           caps
           |> list.find(fn(c) { c.id == id })
@@ -635,8 +635,8 @@ fn view_capability_delete_dialog(model: Model) -> Element(Msg) {
       size: dialog.DialogSm,
       on_close: admin_msg(CapabilityDeleteDialogClosed),
     ),
-    opt.is_some(model.capability_delete_dialog_id),
-    model.capability_delete_error,
+    opt.is_some(model.admin.capability_delete_dialog_id),
+    model.admin.capability_delete_error,
     // Confirmation content
     [
       p([], [
@@ -653,11 +653,11 @@ fn view_capability_delete_dialog(model: Model) -> Element(Msg) {
         [
           attribute.type_("button"),
           attribute.class("btn btn-danger"),
-          attribute.disabled(model.capability_delete_in_flight),
+          attribute.disabled(model.admin.capability_delete_in_flight),
           event.on_click(admin_msg(CapabilityDeleteSubmitted)),
         ],
         [
-          text(case model.capability_delete_in_flight {
+          text(case model.admin.capability_delete_in_flight {
             True -> update_helpers.i18n_t(model, i18n_text.Deleting)
             False -> update_helpers.i18n_t(model, i18n_text.Delete)
           }),
@@ -695,23 +695,23 @@ pub fn view_members(
           ),
         ),
         // Members list
-        case model.members_remove_error {
+        case model.admin.members_remove_error {
           opt.Some(err) -> div([attribute.class("error")], [text(err)])
           opt.None -> element.none()
         },
-        view_members_table(model, model.members, model.org_users_cache),
+        view_members_table(model, model.admin.members, model.admin.org_users_cache),
         // Add member dialog
-        case model.members_add_dialog_open {
+        case model.admin.members_add_dialog_open {
           True -> view_add_member_dialog(model)
           False -> element.none()
         },
         // Remove member confirmation dialog
-        case model.members_remove_confirm {
+        case model.admin.members_remove_confirm {
           opt.Some(user) -> view_remove_member_dialog(model, project.name, user)
           opt.None -> element.none()
         },
         // Member capabilities dialog (AC11-14, Story 4.8 AC23)
-        case model.member_capabilities_dialog_user_id {
+        case model.admin.member_capabilities_dialog_user_id {
           opt.Some(user_id) ->
             view_member_capabilities_dialog(model, user_id, project.name)
           opt.None -> element.none()
@@ -747,7 +747,7 @@ pub fn view_task_types(
           ),
         ),
         // Task types list
-        view_task_types_list(model, model.task_types, model.theme),
+        view_task_types_list(model, model.admin.task_types, model.ui.theme),
         // Task type CRUD dialog component (handles create, edit, delete)
         view_task_type_crud_dialog(model, project.id),
       ])
@@ -756,7 +756,7 @@ pub fn view_task_types(
 
 /// Render the task-type-crud-dialog Lustre component.
 fn view_task_type_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
-  case model.task_types_dialog_mode {
+  case model.admin.task_types_dialog_mode {
     opt.None -> element.none()
     opt.Some(mode) -> {
       let #(mode_str, type_json) = case mode {
@@ -781,7 +781,7 @@ fn view_task_type_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
         "task-type-crud-dialog",
         [
           // Attributes (strings)
-          attribute.attribute("locale", locale.serialize(model.locale)),
+          attribute.attribute("locale", locale.serialize(model.ui.locale)),
           attribute.attribute("project-id", int.to_string(project_id)),
           attribute.attribute("mode", mode_str),
           // Property for task type data (edit/delete modes)
@@ -871,7 +871,7 @@ fn view_capabilities_list(
 
   // Helper to get member count from cache
   let get_member_count = fn(cap_id: Int) -> Int {
-    case dict.get(model.capability_members_cache, cap_id) {
+    case dict.get(model.admin.capability_members_cache, cap_id) {
       Ok(ids) -> list.length(ids)
       Error(_) -> 0
     }
@@ -940,7 +940,7 @@ fn view_members_table(
   let t = fn(key) { update_helpers.i18n_t(model, key) }
 
   // Check if current user is org admin (can change roles)
-  let is_org_admin = case model.user {
+  let is_org_admin = case model.core.user {
     opt.Some(user) -> user.org_role == org_role.Admin
     opt.None -> False
   }
@@ -955,7 +955,7 @@ fn view_members_table(
 
   // Helper to get capability count from cache
   let get_cap_count = fn(user_id: Int) -> Int {
-    case dict.get(model.member_capabilities_cache, user_id) {
+    case dict.get(model.admin.member_capabilities_cache, user_id) {
       Ok(ids) -> list.length(ids)
       Error(_) -> 0
     }
@@ -1084,7 +1084,7 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
   div([attribute.class("modal")], [
     div([attribute.class("modal-content")], [
       h3([], [text(update_helpers.i18n_t(model, i18n_text.AddMember))]),
-      case model.members_add_error {
+      case model.admin.members_add_error {
         opt.Some(err) -> div([attribute.class("error")], [text(err)])
         opt.None -> element.none()
       },
@@ -1092,7 +1092,7 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
         label([], [text(update_helpers.i18n_t(model, i18n_text.SearchByEmail))]),
         input([
           attribute.type_("text"),
-          attribute.value(model.org_users_search_query),
+          attribute.value(model.admin.org_users_search_query),
           event.on_input(fn(value) { admin_msg(OrgUsersSearchChanged(value)) }),
           event.debounce(
             event.on_input(fn(value) {
@@ -1106,12 +1106,12 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
           )),
         ]),
       ]),
-      view_org_users_search_results(model, model.org_users_search_results),
+      view_org_users_search_results(model, model.admin.org_users_search_results),
       div([attribute.class("field")], [
         label([], [text(update_helpers.i18n_t(model, i18n_text.Role))]),
         select(
           [
-            attribute.value(project_role.to_string(model.members_add_role)),
+            attribute.value(project_role.to_string(model.admin.members_add_role)),
             event.on_input(fn(value) { admin_msg(MemberAddRoleChanged(value)) }),
           ],
           [
@@ -1134,12 +1134,12 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
           [
             event.on_click(admin_msg(MemberAddSubmitted)),
             attribute.disabled(
-              model.members_add_in_flight
-              || model.members_add_selected_user == opt.None,
+              model.admin.members_add_in_flight
+              || model.admin.members_add_selected_user == opt.None,
             ),
           ],
           [
-            text(case model.members_add_in_flight {
+            text(case model.admin.members_add_in_flight {
               True -> update_helpers.i18n_t(model, i18n_text.Working)
               False -> update_helpers.i18n_t(model, i18n_text.AddMember)
             }),
@@ -1238,7 +1238,7 @@ fn view_remove_member_dialog(
           i18n_text.RemoveMemberConfirm(user.email, project_name),
         )),
       ]),
-      case model.members_remove_error {
+      case model.admin.members_remove_error {
         opt.Some(err) -> div([attribute.class("error")], [text(err)])
         opt.None -> element.none()
       },
@@ -1249,10 +1249,10 @@ fn view_remove_member_dialog(
         button(
           [
             event.on_click(admin_msg(MemberRemoveConfirmed)),
-            attribute.disabled(model.members_remove_in_flight),
+            attribute.disabled(model.admin.members_remove_in_flight),
           ],
           [
-            text(case model.members_remove_in_flight {
+            text(case model.admin.members_remove_in_flight {
               True -> update_helpers.i18n_t(model, i18n_text.Removing)
               False -> update_helpers.i18n_t(model, i18n_text.Remove)
             }),
@@ -1272,14 +1272,14 @@ fn view_member_capabilities_dialog(
 ) -> Element(Msg) {
   // Get user email for display
   let user_email = case
-    update_helpers.resolve_org_user(model.org_users_cache, user_id)
+    update_helpers.resolve_org_user(model.admin.org_users_cache, user_id)
   {
     opt.Some(user) -> user.email
     opt.None -> update_helpers.i18n_t(model, i18n_text.UserNumber(user_id))
   }
 
   // Get all capabilities for the project
-  let capabilities = case model.capabilities {
+  let capabilities = case model.admin.capabilities {
     Loaded(caps) -> caps
     _ -> []
   }
@@ -1293,12 +1293,12 @@ fn view_member_capabilities_dialog(
         )),
       ]),
       // Error display
-      case model.member_capabilities_error {
+      case model.admin.member_capabilities_error {
         opt.Some(err) -> div([attribute.class("error")], [text(err)])
         opt.None -> element.none()
       },
       // Loading state
-      case model.member_capabilities_loading {
+      case model.admin.member_capabilities_loading {
         True ->
           div([attribute.class("loading")], [
             text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
@@ -1321,7 +1321,7 @@ fn view_member_capabilities_dialog(
                 ],
                 list.map(capabilities, fn(cap) {
                   let is_selected =
-                    list.contains(model.member_capabilities_selected, cap.id)
+                    list.contains(model.admin.member_capabilities_selected, cap.id)
                   label(
                     [
                       attribute.class("checkbox-label"),
@@ -1357,12 +1357,12 @@ fn view_member_capabilities_dialog(
             attribute.class("btn-primary"),
             event.on_click(admin_msg(MemberCapabilitiesSaveClicked)),
             attribute.disabled(
-              model.member_capabilities_saving
-              || model.member_capabilities_loading,
+              model.admin.member_capabilities_saving
+              || model.admin.member_capabilities_loading,
             ),
           ],
           [
-            text(case model.member_capabilities_saving {
+            text(case model.admin.member_capabilities_saving {
               True -> update_helpers.i18n_t(model, i18n_text.Saving)
               False -> update_helpers.i18n_t(model, i18n_text.Save)
             }),
@@ -1383,7 +1383,7 @@ fn view_capability_members_dialog(
   project_name: String,
 ) -> Element(Msg) {
   // Get capability name for display
-  let capability_name = case model.capabilities {
+  let capability_name = case model.admin.capabilities {
     Loaded(caps) ->
       case list.find(caps, fn(c) { c.id == capability_id }) {
         Ok(cap) -> cap.name
@@ -1393,7 +1393,7 @@ fn view_capability_members_dialog(
   }
 
   // Get project members for the checkbox list
-  let members = case model.members {
+  let members = case model.admin.members {
     Loaded(ms) -> ms
     _ -> []
   }
@@ -1407,12 +1407,12 @@ fn view_capability_members_dialog(
         )),
       ]),
       // Error display
-      case model.capability_members_error {
+      case model.admin.capability_members_error {
         opt.Some(err) -> div([attribute.class("error")], [text(err)])
         opt.None -> element.none()
       },
       // Loading state
-      case model.capability_members_loading {
+      case model.admin.capability_members_loading {
         True ->
           div([attribute.class("loading")], [
             text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
@@ -1434,7 +1434,7 @@ fn view_capability_members_dialog(
                   // Get member email from cache
                   let email = case
                     update_helpers.resolve_org_user(
-                      model.org_users_cache,
+                      model.admin.org_users_cache,
                       member.user_id,
                     )
                   {
@@ -1447,7 +1447,7 @@ fn view_capability_members_dialog(
                   }
                   let is_selected =
                     list.contains(
-                      model.capability_members_selected,
+                      model.admin.capability_members_selected,
                       member.user_id,
                     )
                   label(
@@ -1483,12 +1483,12 @@ fn view_capability_members_dialog(
             attribute.class("btn-primary"),
             event.on_click(admin_msg(CapabilityMembersSaveClicked)),
             attribute.disabled(
-              model.capability_members_saving
-              || model.capability_members_loading,
+              model.admin.capability_members_saving
+              || model.admin.capability_members_loading,
             ),
           ],
           [
-            text(case model.capability_members_saving {
+            text(case model.admin.capability_members_saving {
               True -> update_helpers.i18n_t(model, i18n_text.Saving)
               False -> update_helpers.i18n_t(model, i18n_text.Save)
             }),
@@ -1614,17 +1614,19 @@ fn view_task_types_list(
         data_table.column_with_class(
           update_helpers.i18n_t(model, i18n_text.Actions),
           fn(tt: TaskType) {
+            let edit_click: Msg =
+              admin_msg(OpenTaskTypeDialog(TaskTypeDialogEdit(tt)))
+            let delete_click: Msg =
+              admin_msg(OpenTaskTypeDialog(TaskTypeDialogDelete(tt)))
             action_buttons.edit_delete_row_with_testid(
               edit_title: update_helpers.i18n_t(model, i18n_text.EditTaskType),
-              edit_click: admin_msg(OpenTaskTypeDialog(TaskTypeDialogEdit(tt))),
+              edit_click: edit_click,
               edit_testid: "task-type-edit-btn",
               delete_title: update_helpers.i18n_t(
                 model,
                 i18n_text.DeleteTaskType,
               ),
-              delete_click: admin_msg(
-                admin_msg(OpenTaskTypeDialog(TaskTypeDialogDelete(tt))),
-              ),
+              delete_click: delete_click,
               delete_testid: "task-type-delete-btn",
             )
           },
@@ -1676,7 +1678,7 @@ pub fn view_cards(
 /// Render the card-crud-dialog Lustre component.
 /// Made public for use in client_view.gleam (Story 4.8 UX: global dialog rendering)
 pub fn view_card_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
-  case model.cards_dialog_mode {
+  case model.admin.cards_dialog_mode {
     opt.None -> element.none()
     opt.Some(mode) -> {
       let #(mode_str, card_json) = case mode {
@@ -1703,7 +1705,7 @@ pub fn view_card_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
         "card-crud-dialog",
         [
           // Attributes (strings)
-          attribute.attribute("locale", locale.serialize(model.locale)),
+          attribute.attribute("locale", locale.serialize(model.ui.locale)),
           attribute.attribute("project-id", int.to_string(project_id)),
           attribute.attribute("mode", mode_str),
           // Property for card data (edit/delete modes)
@@ -1823,7 +1825,7 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
             model,
             i18n_text.SearchPlaceholder,
           )),
-          attribute.value(model.cards_search),
+          attribute.value(model.admin.cards_search),
           event.on_input(fn(value) { pool_msg(CardsSearchChanged(value)) }),
         ]),
       ]),
@@ -1842,7 +1844,7 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
             option(
               [
                 attribute.value(""),
-                attribute.selected(model.cards_state_filter == opt.None),
+                attribute.selected(model.admin.cards_state_filter == opt.None),
               ],
               update_helpers.i18n_t(model, i18n_text.AllOption),
             ),
@@ -1850,7 +1852,7 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
               [
                 attribute.value("pendiente"),
                 attribute.selected(
-                  model.cards_state_filter == opt.Some(card.Pendiente),
+                  model.admin.cards_state_filter == opt.Some(card.Pendiente),
                 ),
               ],
               update_helpers.i18n_t(model, i18n_text.CardStatePendiente),
@@ -1859,7 +1861,7 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
               [
                 attribute.value("en_curso"),
                 attribute.selected(
-                  model.cards_state_filter == opt.Some(card.EnCurso),
+                  model.admin.cards_state_filter == opt.Some(card.EnCurso),
                 ),
               ],
               update_helpers.i18n_t(model, i18n_text.CardStateEnCurso),
@@ -1868,7 +1870,7 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
               [
                 attribute.value("cerrada"),
                 attribute.selected(
-                  model.cards_state_filter == opt.Some(card.Cerrada),
+                  model.admin.cards_state_filter == opt.Some(card.Cerrada),
                 ),
               ],
               update_helpers.i18n_t(model, i18n_text.CardStateCerrada),
@@ -1881,7 +1883,7 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
         label([attribute.class("checkbox-label")], [
           input([
             attribute.type_("checkbox"),
-            attribute.checked(model.cards_show_empty),
+            attribute.checked(model.admin.cards_show_empty),
             attribute.attribute("data-testid", "show-empty-cards"),
             event.on_check(fn(_) { pool_msg(CardsShowEmptyToggled) }),
           ]),
@@ -1893,7 +1895,7 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
         label([attribute.class("checkbox-label")], [
           input([
             attribute.type_("checkbox"),
-            attribute.checked(model.cards_show_completed),
+            attribute.checked(model.admin.cards_show_completed),
             attribute.attribute("data-testid", "show-completed-cards"),
             event.on_check(fn(_) { pool_msg(CardsShowCompletedToggled) }),
           ]),
@@ -1906,33 +1908,33 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
 
 /// Story 4.9: Filter cards based on model filters (UX improved)
 fn filter_cards(model: Model) -> Remote(List(Card)) {
-  case model.cards {
+  case model.admin.cards {
     Loaded(cards) -> {
       let filtered =
         cards
         |> list.filter(fn(c) {
           // Filter by state dropdown
-          let state_match = case model.cards_state_filter {
+          let state_match = case model.admin.cards_state_filter {
             opt.None -> True
             opt.Some(state) -> c.state == state
           }
           // Filter by empty (show_empty = False by default = hide cards with 0 tasks)
-          let empty_match = case model.cards_show_empty {
+          let empty_match = case model.admin.cards_show_empty {
             True -> True
             False -> c.task_count > 0
           }
           // Filter by completed (show_completed = False by default = hide Cerrada cards)
-          let completed_match = case model.cards_show_completed {
+          let completed_match = case model.admin.cards_show_completed {
             True -> True
             False -> c.state != card.Cerrada
           }
           // Filter by search
-          let search_match = case string.is_empty(model.cards_search) {
+          let search_match = case string.is_empty(model.admin.cards_search) {
             True -> True
             False ->
               string.contains(
                 string.lowercase(c.title),
-                string.lowercase(model.cards_search),
+                string.lowercase(model.admin.cards_search),
               )
           }
           state_match && empty_match && completed_match && search_match
@@ -2073,7 +2075,7 @@ pub fn view_workflows(
   selected_project: opt.Option(Project),
 ) -> Element(Msg) {
   // If we're viewing rules for a specific workflow, show rules view
-  case model.rules_workflow_id {
+  case model.admin.rules_workflow_id {
     opt.Some(workflow_id) -> view_workflow_rules(model, workflow_id)
     opt.None -> view_workflows_list(model, selected_project)
   }
@@ -2109,7 +2111,7 @@ fn view_workflows_list(
         // Story 4.9 AC21: Contextual hint with link to Templates
         view_rules_hint(model),
         // Project workflows table (AC23)
-        view_workflows_table(model, model.workflows_project, opt.Some(project)),
+        view_workflows_table(model, model.admin.workflows_project, opt.Some(project)),
         // Workflow CRUD dialog component (handles create, edit, delete)
         view_workflow_crud_dialog(model),
       ])
@@ -2140,14 +2142,14 @@ fn view_rules_hint(model: Model) -> Element(Msg) {
 
 /// Render the workflow-crud-dialog Lustre component.
 fn view_workflow_crud_dialog(model: Model) -> Element(Msg) {
-  case model.workflows_dialog_mode {
+  case model.admin.workflows_dialog_mode {
     opt.None -> element.none()
     opt.Some(mode) -> {
       let #(mode_str, workflow_json, project_id_attr) = case mode {
         WorkflowDialogCreate -> #(
           "create",
           attribute.none(),
-          case model.selected_project_id {
+          case model.core.selected_project_id {
             opt.Some(id) -> attribute.attribute("project-id", int.to_string(id))
             opt.None -> attribute.none()
           },
@@ -2180,7 +2182,7 @@ fn view_workflow_crud_dialog(model: Model) -> Element(Msg) {
         "workflow-crud-dialog",
         [
           // Attributes (strings)
-          attribute.attribute("locale", locale.serialize(model.locale)),
+          attribute.attribute("locale", locale.serialize(model.ui.locale)),
           project_id_attr,
           attribute.attribute("mode", mode_str),
           // Property for workflow data (edit/delete modes)
@@ -2343,9 +2345,9 @@ fn view_workflow_actions(model: Model, w: Workflow) -> Element(Msg) {
 fn view_workflow_rules(model: Model, workflow_id: Int) -> Element(Msg) {
   // Find the workflow name
   let workflow_name =
-    find_workflow_name(model.workflows_org, workflow_id)
+    find_workflow_name(model.admin.workflows_org, workflow_id)
     |> opt.lazy_or(fn() {
-      find_workflow_name(model.workflows_project, workflow_id)
+      find_workflow_name(model.admin.workflows_project, workflow_id)
     })
     |> opt.unwrap("Workflow #" <> int.to_string(workflow_id))
 
@@ -2363,7 +2365,7 @@ fn view_workflow_rules(model: Model, workflow_id: Int) -> Element(Msg) {
         pool_msg(OpenRuleDialog(RuleDialogCreate)),
       ),
     ),
-    view_rules_table(model, model.rules, model.rules_metrics),
+    view_rules_table(model, model.admin.rules, model.admin.rules_metrics),
     // Rule CRUD dialog component (handles create/edit/delete internally)
     view_rule_crud_dialog(model, workflow_id),
   ])
@@ -2444,7 +2446,7 @@ fn view_rule_row_expandable(
   rule_metrics: #(Int, Int),
 ) -> List(#(String, Element(Msg))) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
-  let is_expanded = set.contains(model.rules_expanded, rule.id)
+  let is_expanded = set.contains(model.admin.rules_expanded, rule.id)
   let expand_title = case is_expanded {
     True -> t(i18n_text.CollapseRule)
     False -> t(i18n_text.ExpandRule)
@@ -2494,7 +2496,7 @@ fn view_rule_row_expandable(
           case rule.resource_type, rule.task_type_id {
             "task", opt.Some(type_id) -> {
               // Find task type info for icon and name
-              let task_type_info = case model.task_types {
+              let task_type_info = case model.admin.task_types {
                 Loaded(types) -> list.find(types, fn(tt) { tt.id == type_id })
                 _ -> Error(Nil)
               }
@@ -2506,7 +2508,7 @@ fn view_rule_row_expandable(
                       text(" · "),
                     ]),
                     span([attribute.class("task-type-inline")], [
-                      icons.view_task_type_icon_inline(tt.icon, 14, model.theme),
+                      icons.view_task_type_icon_inline(tt.icon, 14, model.ui.theme),
                     ]),
                     text(" " <> tt.name),
                   ])
@@ -2656,10 +2658,10 @@ fn view_attached_template_item(
 ) -> Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
   let is_detaching =
-    set.contains(model.detaching_templates, #(rule_id, tmpl.id))
+    set.contains(model.admin.detaching_templates, #(rule_id, tmpl.id))
 
   // Find task type info for icon (if available)
-  let task_type_info = case model.task_types {
+  let task_type_info = case model.admin.task_types {
     Loaded(types) -> list.find(types, fn(tt) { tt.id == tmpl.type_id })
     _ -> Error(Nil)
   }
@@ -2671,7 +2673,7 @@ fn view_attached_template_item(
       case task_type_info {
         Ok(tt) ->
           span([attribute.class("template-type-icon")], [
-            icons.view_task_type_icon_inline(tt.icon, 16, model.theme),
+            icons.view_task_type_icon_inline(tt.icon, 16, model.ui.theme),
           ])
         Error(_) -> element.none()
       },
@@ -2706,11 +2708,11 @@ fn view_attached_template_item(
 fn view_attach_template_modal(model: Model) -> Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
 
-  case model.attach_template_modal {
+  case model.admin.attach_template_modal {
     opt.None -> element.none()
     opt.Some(rule_id) -> {
       // Get available templates (exclude already attached ones)
-      let attached_ids = case model.rules {
+      let attached_ids = case model.admin.rules {
         Loaded(rules) -> {
           case list.find(rules, fn(r) { r.id == rule_id }) {
             Ok(rule) -> list.map(rule.templates, fn(tmpl) { tmpl.id })
@@ -2722,8 +2724,8 @@ fn view_attach_template_modal(model: Model) -> Element(Msg) {
 
       // AC10, AC11: Filter to project templates, exclude already attached
       let available_templates = case
-        model.task_templates_org,
-        model.task_templates_project
+        model.admin.task_templates_org,
+        model.admin.task_templates_project
       {
         Loaded(org), Loaded(proj) -> {
           list.filter(list.append(org, proj), fn(tmpl) {
@@ -2798,7 +2800,7 @@ fn view_attach_template_modal(model: Model) -> Element(Msg) {
               [text(t(i18n_text.Cancel))],
             ),
             // AC20: Loading state on submit button
-            case model.attach_template_loading {
+            case model.admin.attach_template_loading {
               True ->
                 button(
                   [
@@ -2812,7 +2814,7 @@ fn view_attach_template_modal(model: Model) -> Element(Msg) {
                   [
                     attribute.class("btn btn-primary"),
                     attribute.disabled(opt.is_none(
-                      model.attach_template_selected,
+                      model.admin.attach_template_selected,
                     )),
                     event.on_click(pool_msg(AttachTemplateSubmitted)),
                   ],
@@ -2830,11 +2832,11 @@ fn view_attach_template_modal(model: Model) -> Element(Msg) {
 /// AC12: Radio buttons with template name, type icon, and priority.
 fn view_template_radio_option(model: Model, tmpl: TaskTemplate) -> Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
-  let is_selected = model.attach_template_selected == opt.Some(tmpl.id)
+  let is_selected = model.admin.attach_template_selected == opt.Some(tmpl.id)
   let radio_id = "template-radio-" <> int.to_string(tmpl.id)
 
   // Find task type info for icon
-  let task_type_info = case model.task_types {
+  let task_type_info = case model.admin.task_types {
     Loaded(types) -> list.find(types, fn(tt) { tt.id == tmpl.type_id })
     _ -> Error(Nil)
   }
@@ -2864,7 +2866,7 @@ fn view_template_radio_option(model: Model, tmpl: TaskTemplate) -> Element(Msg) 
         case task_type_info {
           Ok(tt) ->
             span([attribute.class("template-type-icon")], [
-              icons.view_task_type_icon_inline(tt.icon, 16, model.theme),
+              icons.view_task_type_icon_inline(tt.icon, 16, model.ui.theme),
             ])
           Error(_) -> element.none()
         },
@@ -2899,7 +2901,7 @@ fn get_rule_metrics(
 /// The component handles create/edit/delete internally and emits events.
 fn view_rule_crud_dialog(model: Model, workflow_id: Int) -> Element(Msg) {
   // Build mode attribute based on dialog mode
-  let mode_attr = case model.rules_dialog_mode {
+  let mode_attr = case model.admin.rules_dialog_mode {
     opt.None -> "closed"
     opt.Some(RuleDialogCreate) -> "create"
     opt.Some(RuleDialogEdit(_)) -> "edit"
@@ -2907,7 +2909,7 @@ fn view_rule_crud_dialog(model: Model, workflow_id: Int) -> Element(Msg) {
   }
 
   // Build rule property for edit/delete modes (includes _mode field for component)
-  let rule_prop = case model.rules_dialog_mode {
+  let rule_prop = case model.admin.rules_dialog_mode {
     opt.Some(RuleDialogEdit(rule)) ->
       attribute.property("rule", rule_to_json(rule, "edit"))
     opt.Some(RuleDialogDelete(rule)) ->
@@ -2916,7 +2918,7 @@ fn view_rule_crud_dialog(model: Model, workflow_id: Int) -> Element(Msg) {
   }
 
   // Build task types property (include icon for decoder)
-  let task_types_json = case model.task_types {
+  let task_types_json = case model.admin.task_types {
     Loaded(types) ->
       json.array(types, fn(tt) {
         json.object([
@@ -2931,7 +2933,7 @@ fn view_rule_crud_dialog(model: Model, workflow_id: Int) -> Element(Msg) {
   element.element(
     "rule-crud-dialog",
     [
-      attribute.attribute("locale", locale.serialize(model.locale)),
+      attribute.attribute("locale", locale.serialize(model.ui.locale)),
       attribute.attribute("workflow-id", int.to_string(workflow_id)),
       attribute.attribute("mode", mode_attr),
       rule_prop,
@@ -3051,7 +3053,7 @@ pub fn view_task_templates(
     // Story 4.9: Unified hint with rules link and variables info
     view_templates_hint(model),
     // Templates table (project-scoped)
-    view_task_templates_table(model, model.task_templates_project),
+    view_task_templates_table(model, model.admin.task_templates_project),
     // Task template CRUD dialog component
     view_task_template_crud_dialog(model),
   ])
@@ -3086,14 +3088,14 @@ fn view_templates_hint(model: Model) -> Element(Msg) {
 
 /// Render the task-template-crud-dialog Lustre component.
 fn view_task_template_crud_dialog(model: Model) -> Element(Msg) {
-  case model.task_templates_dialog_mode {
+  case model.admin.task_templates_dialog_mode {
     opt.None -> element.none()
     opt.Some(mode) -> {
       let #(mode_str, template_json, project_id_attr) = case mode {
         TaskTemplateDialogCreate -> #(
           "create",
           attribute.none(),
-          case model.selected_project_id {
+          case model.core.selected_project_id {
             opt.Some(id) -> attribute.attribute("project-id", int.to_string(id))
             opt.None -> attribute.none()
           },
@@ -3126,7 +3128,7 @@ fn view_task_template_crud_dialog(model: Model) -> Element(Msg) {
         "task-template-crud-dialog",
         [
           // Attributes (strings)
-          attribute.attribute("locale", locale.serialize(model.locale)),
+          attribute.attribute("locale", locale.serialize(model.ui.locale)),
           project_id_attr,
           attribute.attribute("mode", mode_str),
           // Property for template data (edit/delete modes)
@@ -3134,7 +3136,7 @@ fn view_task_template_crud_dialog(model: Model) -> Element(Msg) {
           // Property for task types list
           attribute.property(
             "task-types",
-            task_types_to_property_json(model.task_types),
+            task_types_to_property_json(model.admin.task_types),
           ),
           // Event listeners for component events
           event.on(
@@ -3320,7 +3322,7 @@ fn view_task_templates_table(
 /// Rule metrics tab view.
 pub fn view_rule_metrics(model: Model) -> Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
-  let is_loading = case model.admin_rule_metrics {
+  let is_loading = case model.admin.admin_rule_metrics {
     Loading -> True
     _ -> False
   }
@@ -3352,7 +3354,7 @@ pub fn view_rule_metrics(model: Model) -> Element(Msg) {
           ]),
           input([
             attribute.type_("date"),
-            attribute.value(model.admin_rule_metrics_from),
+            attribute.value(model.admin.admin_rule_metrics_from),
             // Auto-refresh on date change
             event.on_input(fn(value) {
               pool_msg(AdminRuleMetricsFromChangedAndRefresh(value))
@@ -3366,7 +3368,7 @@ pub fn view_rule_metrics(model: Model) -> Element(Msg) {
           ]),
           input([
             attribute.type_("date"),
-            attribute.value(model.admin_rule_metrics_to),
+            attribute.value(model.admin.admin_rule_metrics_to),
             // Auto-refresh on date change
             event.on_input(fn(value) {
               pool_msg(AdminRuleMetricsToChangedAndRefresh(value))
@@ -3401,8 +3403,8 @@ fn view_quick_range_button(
 
   // Check if this range is currently active
   let is_active =
-    model.admin_rule_metrics_from == from
-    && model.admin_rule_metrics_to == today
+    model.admin.admin_rule_metrics_from == from
+    && model.admin.admin_rule_metrics_to == today
 
   let class = case is_active {
     True -> "btn-chip btn-chip-active"
@@ -3424,7 +3426,7 @@ fn view_quick_range_button(
 
 /// Results section with improved empty state (T5).
 fn view_rule_metrics_results(model: Model) -> Element(Msg) {
-  case model.admin_rule_metrics {
+  case model.admin.admin_rule_metrics {
     NotAsked ->
       // Empty state with icon and action hint (T5)
       div([attribute.class("empty-state")], [
@@ -3477,7 +3479,7 @@ fn view_rule_metrics_results(model: Model) -> Element(Msg) {
               span([], [icons.nav_icon(icons.ClipboardDoc, icons.Small)]),
               text(" Resultados"),
             ]),
-            view_rule_metrics_table(model, model.admin_rule_metrics),
+            view_rule_metrics_table(model, model.admin.admin_rule_metrics),
           ])
       }
   }
@@ -3507,7 +3509,7 @@ fn view_rule_metrics_table(
             text(update_helpers.i18n_t(model, i18n_text.RuleMetricsNoData)),
           ])
         _ ->
-          div([], [
+          element.fragment([
             table([attribute.class("table")], [
               thead([], [
                 tr([], [
@@ -3559,7 +3561,7 @@ fn view_workflow_row(
   w: api_workflows.OrgWorkflowMetricsSummary,
 ) -> List(#(String, Element(Msg))) {
   let is_expanded =
-    model.admin_rule_metrics_expanded_workflow == opt.Some(w.workflow_id)
+    model.admin.admin_rule_metrics_expanded_workflow == opt.Some(w.workflow_id)
   let expand_icon = case is_expanded {
     True -> "[-]"
     False -> "[+]"
@@ -3604,7 +3606,7 @@ fn view_workflow_rules_expansion(
   model: Model,
   _workflow_id: Int,
 ) -> #(String, Element(Msg)) {
-  let content = case model.admin_rule_metrics_workflow_details {
+  let content = case model.admin.admin_rule_metrics_workflow_details {
     NotAsked | Loading ->
       div([attribute.class("loading")], [
         text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
@@ -3698,7 +3700,7 @@ fn view_workflow_rules_expansion(
 
 /// Render the drill-down modal for rule details and executions.
 fn view_rule_drilldown_modal(model: Model) -> Element(Msg) {
-  case model.admin_rule_metrics_drilldown_rule_id {
+  case model.admin.admin_rule_metrics_drilldown_rule_id {
     opt.None -> element.none()
     opt.Some(_rule_id) ->
       div([attribute.class("modal drilldown-modal")], [
@@ -3727,7 +3729,7 @@ fn view_rule_drilldown_modal(model: Model) -> Element(Msg) {
 
 /// Render the suppression breakdown in the drill-down modal.
 fn view_drilldown_details(model: Model) -> Element(Msg) {
-  case model.admin_rule_metrics_rule_details {
+  case model.admin.admin_rule_metrics_rule_details {
     NotAsked | Loading ->
       div([attribute.class("loading")], [
         text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
@@ -3816,7 +3818,7 @@ fn view_drilldown_details(model: Model) -> Element(Msg) {
 
 /// Render the executions list in the drill-down modal.
 fn view_drilldown_executions(model: Model) -> Element(Msg) {
-  case model.admin_rule_metrics_executions {
+  case model.admin.admin_rule_metrics_executions {
     NotAsked | Loading ->
       div([attribute.class("loading")], [
         text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
@@ -3835,7 +3837,7 @@ fn view_drilldown_executions(model: Model) -> Element(Msg) {
               text(update_helpers.i18n_t(model, i18n_text.NoExecutions)),
             ])
           executions ->
-            div([], [
+            element.fragment([
               table([attribute.class("table executions-table")], [
                 thead([], [
                   tr([], [

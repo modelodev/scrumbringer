@@ -2,9 +2,9 @@ import gleam/option
 import gleeunit/should
 
 import domain/api_error.{ApiError}
-import scrumbringer_client/accept_invite
 import domain/org_role
 import domain/user
+import scrumbringer_client/accept_invite
 
 pub fn init_with_missing_token_stays_in_no_token_state_test() {
   let #(model, action) = accept_invite.init("")

@@ -10,7 +10,6 @@
 //// - GET    /api/projects/:id/members/:user_id/capabilities - Get member capabilities
 //// - PUT    /api/projects/:id/members/:user_id/capabilities - Set member capabilities
 
-import domain/org_role
 import gleam/dynamic/decode
 import gleam/http
 import gleam/json
@@ -18,9 +17,9 @@ import gleam/list
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
+import scrumbringer_server/services/authorization
 import scrumbringer_server/services/capabilities_db
 import scrumbringer_server/services/projects_db
-import scrumbringer_server/services/store_state.{type StoredUser}
 import wisp
 
 /// Routes /api/projects/:id/capabilities requests.
@@ -83,7 +82,10 @@ fn handle_list(
             Ok(capabilities) ->
               api.ok(
                 json.object([
-                  #("capabilities", json.array(capabilities, of: capability_json)),
+                  #(
+                    "capabilities",
+                    json.array(capabilities, of: capability_json),
+                  ),
                 ]),
               )
 
@@ -109,27 +111,15 @@ fn handle_create(
       let auth.Ctx(db: db, ..) = ctx
 
       // Must be a manager of the project (or org admin)
-      case require_project_manager(db, user, project_id) {
+      case
+        authorization.require_project_manager_with_org_bypass(
+          db,
+          user,
+          project_id,
+        )
+      {
         Error(resp) -> resp
         Ok(Nil) -> create_capability(req, ctx, project_id)
-      }
-    }
-  }
-}
-
-fn require_project_manager(
-  db,
-  user: StoredUser,
-  project_id: Int,
-) -> Result(Nil, wisp.Response) {
-  // Org admin has implicit manager access
-  case user.org_role {
-    org_role.Admin -> Ok(Nil)
-    _ -> {
-      case projects_db.is_project_manager(db, project_id, user.id) {
-        Ok(True) -> Ok(Nil)
-        Ok(False) -> Error(api.error(403, "FORBIDDEN", "Not a project manager"))
-        Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
       }
     }
   }
@@ -148,7 +138,13 @@ fn handle_delete(
     Ok(user) -> {
       let auth.Ctx(db: db, ..) = ctx
 
-      case require_project_manager(db, user, project_id) {
+      case
+        authorization.require_project_manager_with_org_bypass(
+          db,
+          user,
+          project_id,
+        )
+      {
         Error(resp) -> resp
         Ok(Nil) -> delete_capability(req, ctx, project_id, capability_id)
       }
@@ -169,11 +165,9 @@ fn delete_capability(
       let auth.Ctx(db: db, ..) = ctx
 
       case capabilities_db.delete_capability(db, project_id, capability_id) {
-        Ok(True) ->
-          api.ok(json.object([#("id", json.int(capability_id))]))
+        Ok(True) -> api.ok(json.object([#("id", json.int(capability_id))]))
 
-        Ok(False) ->
-          api.error(404, "NOT_FOUND", "Capability not found")
+        Ok(False) -> api.error(404, "NOT_FOUND", "Capability not found")
 
         Error(_) -> api.error(500, "INTERNAL", "Database error")
       }
@@ -241,7 +235,9 @@ fn handle_get_member_capabilities(
       // Must be a member of the project
       case projects_db.is_project_member(db, project_id, user.id) {
         Ok(True) -> {
-          case capabilities_db.list_member_capabilities(db, project_id, user_id) {
+          case
+            capabilities_db.list_member_capabilities(db, project_id, user_id)
+          {
             Ok(capabilities) -> {
               let ids = list.map(capabilities, fn(c) { c.capability_id })
               api.ok(json.object([#("capability_ids", ids_json(ids))]))
@@ -276,7 +272,8 @@ fn handle_put_member_capabilities(
       }
 
       case can_update {
-        Ok(True) -> update_member_capabilities(req, ctx, project_id, target_user_id)
+        Ok(True) ->
+          update_member_capabilities(req, ctx, project_id, target_user_id)
         Ok(False) -> api.error(403, "FORBIDDEN", "Not authorized")
         Error(_) -> api.error(500, "INTERNAL", "Database error")
       }
@@ -308,29 +305,46 @@ fn update_member_capabilities(
           let auth.Ctx(db: db, ..) = ctx
 
           // First, verify all capability IDs belong to this project
-          let validation_result = list.try_map(new_ids, fn(cap_id) {
-            case capabilities_db.capability_is_in_project(db, cap_id, project_id) {
-              Ok(True) -> Ok(cap_id)
-              Ok(False) -> Error("invalid")
-              Error(_) -> Error("db_error")
-            }
-          })
+          let validation_result =
+            list.try_map(new_ids, fn(cap_id) {
+              case
+                capabilities_db.capability_is_in_project(db, cap_id, project_id)
+              {
+                Ok(True) -> Ok(cap_id)
+                Ok(False) -> Error("invalid")
+                Error(_) -> Error("db_error")
+              }
+            })
 
           case validation_result {
             Error("invalid") ->
               api.error(422, "VALIDATION_ERROR", "Invalid capability_id")
-            Error(_) ->
-              api.error(500, "INTERNAL", "Database error")
+            Error(_) -> api.error(500, "INTERNAL", "Database error")
             Ok(_) -> {
               // Remove all existing and add new ones
-              case capabilities_db.remove_all_member_capabilities(db, project_id, user_id) {
+              case
+                capabilities_db.remove_all_member_capabilities(
+                  db,
+                  project_id,
+                  user_id,
+                )
+              {
                 Error(_) -> api.error(500, "INTERNAL", "Database error")
                 Ok(Nil) -> {
-                  let add_result = list.try_map(new_ids, fn(cap_id) {
-                    capabilities_db.add_member_capability(db, project_id, user_id, cap_id)
-                  })
+                  let add_result =
+                    list.try_map(new_ids, fn(cap_id) {
+                      capabilities_db.add_member_capability(
+                        db,
+                        project_id,
+                        user_id,
+                        cap_id,
+                      )
+                    })
                   case add_result {
-                    Ok(_) -> api.ok(json.object([#("capability_ids", ids_json(new_ids))]))
+                    Ok(_) ->
+                      api.ok(
+                        json.object([#("capability_ids", ids_json(new_ids))]),
+                      )
                     Error(_) -> api.error(500, "INTERNAL", "Database error")
                   }
                 }
@@ -375,8 +389,10 @@ pub fn handle_capability_members(
   capability_id: Int,
 ) -> wisp.Response {
   case req.method {
-    http.Get -> handle_get_capability_members(req, ctx, project_id, capability_id)
-    http.Put -> handle_put_capability_members(req, ctx, project_id, capability_id)
+    http.Get ->
+      handle_get_capability_members(req, ctx, project_id, capability_id)
+    http.Put ->
+      handle_put_capability_members(req, ctx, project_id, capability_id)
     _ -> wisp.method_not_allowed([http.Get, http.Put])
   }
 }
@@ -398,7 +414,13 @@ fn handle_get_capability_members(
       // Must be a member of the project
       case projects_db.is_project_member(db, project_id, user.id) {
         Ok(True) -> {
-          case capabilities_db.list_capability_members(db, project_id, capability_id) {
+          case
+            capabilities_db.list_capability_members(
+              db,
+              project_id,
+              capability_id,
+            )
+          {
             Ok(members) -> {
               let ids = list.map(members, fn(m) { m.user_id })
               api.ok(json.object([#("user_ids", ids_json(ids))]))
@@ -428,9 +450,16 @@ fn handle_put_capability_members(
       // Only managers can set capability members
       let auth.Ctx(db: db, ..) = ctx
 
-      case require_project_manager(db, user, project_id) {
+      case
+        authorization.require_project_manager_with_org_bypass(
+          db,
+          user,
+          project_id,
+        )
+      {
         Error(resp) -> resp
-        Ok(Nil) -> update_capability_members(req, ctx, project_id, capability_id)
+        Ok(Nil) ->
+          update_capability_members(req, ctx, project_id, capability_id)
       }
     }
   }
@@ -460,29 +489,46 @@ fn update_capability_members(
           let auth.Ctx(db: db, ..) = ctx
 
           // First, verify all user IDs are project members
-          let validation_result = list.try_map(new_ids, fn(user_id) {
-            case projects_db.is_project_member(db, project_id, user_id) {
-              Ok(True) -> Ok(user_id)
-              Ok(False) -> Error("invalid")
-              Error(_) -> Error("db_error")
-            }
-          })
+          let validation_result =
+            list.try_map(new_ids, fn(user_id) {
+              case projects_db.is_project_member(db, project_id, user_id) {
+                Ok(True) -> Ok(user_id)
+                Ok(False) -> Error("invalid")
+                Error(_) -> Error("db_error")
+              }
+            })
 
           case validation_result {
             Error("invalid") ->
-              api.error(422, "VALIDATION_ERROR", "Invalid user_id (not a project member)")
-            Error(_) ->
-              api.error(500, "INTERNAL", "Database error")
+              api.error(
+                422,
+                "VALIDATION_ERROR",
+                "Invalid user_id (not a project member)",
+              )
+            Error(_) -> api.error(500, "INTERNAL", "Database error")
             Ok(_) -> {
               // Remove all existing and add new ones
-              case capabilities_db.remove_all_capability_members(db, project_id, capability_id) {
+              case
+                capabilities_db.remove_all_capability_members(
+                  db,
+                  project_id,
+                  capability_id,
+                )
+              {
                 Error(_) -> api.error(500, "INTERNAL", "Database error")
                 Ok(Nil) -> {
-                  let add_result = list.try_map(new_ids, fn(user_id) {
-                    capabilities_db.add_member_capability(db, project_id, user_id, capability_id)
-                  })
+                  let add_result =
+                    list.try_map(new_ids, fn(user_id) {
+                      capabilities_db.add_member_capability(
+                        db,
+                        project_id,
+                        user_id,
+                        capability_id,
+                      )
+                    })
                   case add_result {
-                    Ok(_) -> api.ok(json.object([#("user_ids", ids_json(new_ids))]))
+                    Ok(_) ->
+                      api.ok(json.object([#("user_ids", ids_json(new_ids))]))
                     Error(_) -> api.error(500, "INTERNAL", "Database error")
                   }
                 }

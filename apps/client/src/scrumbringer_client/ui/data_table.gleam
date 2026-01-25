@@ -31,7 +31,7 @@
 ////
 //// // With Remote data
 //// data_table.view_remote(
-////   model.projects,
+////   model.core.projects,
 ////   loading_msg: "Loading...",
 ////   empty_msg: "No projects yet",
 ////   config: data_table.new()
@@ -50,7 +50,9 @@ import lustre/element/keyed
 import lustre/event
 
 import domain/api_error.{type ApiError}
-import scrumbringer_client/client_state.{type Remote, Failed, Loaded, Loading, NotAsked}
+import scrumbringer_client/client_state.{
+  type Remote, Failed, Loaded, Loading, NotAsked,
+}
 
 // =============================================================================
 // Types
@@ -254,13 +256,7 @@ pub fn column(
   header: String,
   render: fn(row) -> Element(msg),
 ) -> Column(row, msg) {
-  Column(
-    header:,
-    render:,
-    on_sort: None,
-    header_class: None,
-    cell_class: None,
-  )
+  Column(header:, render:, on_sort: None, header_class: None, cell_class: None)
 }
 
 /// Create a column with CSS classes for header and cells.
@@ -324,7 +320,7 @@ pub fn sortable_column_with_class(
 ///
 /// ```gleam
 /// data_table.view_remote(
-///   model.projects,
+///   model.core.projects,
 ///   loading_msg: "Loading projects...",
 ///   empty_msg: "No projects yet",
 ///   config: data_table.new()
@@ -341,11 +337,9 @@ pub fn view_remote(
   config config: DataTableConfig(row, msg),
 ) -> Element(msg) {
   case remote {
-    NotAsked | Loading ->
-      div([class("empty")], [text(loading_msg)])
+    NotAsked | Loading -> div([class("empty")], [text(loading_msg)])
 
-    Failed(err) ->
-      view_error(config.error_prefix, err)
+    Failed(err) -> view_error(config.error_prefix, err)
 
     Loaded(rows) ->
       case rows {
@@ -368,8 +362,7 @@ pub fn view_remote_with_forbidden(
   config config: DataTableConfig(row, msg),
 ) -> Element(msg) {
   case remote {
-    NotAsked | Loading ->
-      div([class("empty")], [text(loading_msg)])
+    NotAsked | Loading -> div([class("empty")], [text(loading_msg)])
 
     Failed(err) ->
       case err.status == 403 {
@@ -386,7 +379,10 @@ pub fn view_remote_with_forbidden(
 }
 
 /// Helper to render empty state - uses custom element if provided, otherwise text
-fn view_empty(empty_state: Option(Element(msg)), empty_msg: String) -> Element(msg) {
+fn view_empty(
+  empty_state: Option(Element(msg)),
+  empty_msg: String,
+) -> Element(msg) {
   case empty_state {
     Some(custom) -> custom
     None -> div([class("empty")], [text(empty_msg)])

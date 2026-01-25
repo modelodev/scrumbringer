@@ -62,10 +62,10 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/toast
 
 import scrumbringer_client/client_state.{
-  type AdminMsg, type AuthMsg, type Model, type Msg, type NavMode, type PoolMsg,
-  type Remote, AcceptInvite as AcceptInvitePage, AcceptInviteMsg, Admin,
-  AdminMetricsOverviewFetched, AdminMetricsProjectTasksFetched, AdminMsg,
-  AdminRuleMetricsDrilldownClicked, AdminRuleMetricsDrilldownClosed,
+  type Model, type Msg, type NavMode, type Remote,
+  AcceptInvite as AcceptInvitePage, AcceptInviteMsg, Admin,
+  AdminMetricsOverviewFetched, AdminMetricsProjectTasksFetched, AdminModel,
+  AdminMsg, AdminRuleMetricsDrilldownClicked, AdminRuleMetricsDrilldownClosed,
   AdminRuleMetricsExecPageChanged, AdminRuleMetricsExecutionsFetched,
   AdminRuleMetricsFetched, AdminRuleMetricsFromChanged,
   AdminRuleMetricsFromChangedAndRefresh, AdminRuleMetricsQuickRangeClicked,
@@ -74,7 +74,7 @@ import scrumbringer_client/client_state.{
   AdminRuleMetricsWorkflowDetailsFetched, AdminRuleMetricsWorkflowExpanded,
   AttachTemplateFailed, AttachTemplateModalClosed, AttachTemplateModalOpened,
   AttachTemplateSelected, AttachTemplateSubmitted, AttachTemplateSucceeded,
-  AuthMsg, CapabilitiesFetched, CapabilityCreateDialogClosed,
+  AuthModel, AuthMsg, CapabilitiesFetched, CapabilityCreateDialogClosed,
   CapabilityCreateDialogOpened, CapabilityCreateNameChanged,
   CapabilityCreateSubmitted, CapabilityCreated, CapabilityDeleteDialogClosed,
   CapabilityDeleteDialogOpened, CapabilityDeleteSubmitted, CapabilityDeleted,
@@ -84,31 +84,27 @@ import scrumbringer_client/client_state.{
   CardsFetched, CardsSearchChanged, CardsShowCompletedToggled,
   CardsShowEmptyToggled, CardsStateFilterChanged, CloseCardDetail,
   CloseCardDialog, CloseRuleDialog, CloseTaskTemplateDialog, CloseTaskTypeDialog,
-  CloseWorkflowDialog, Failed, ForgotPasswordClicked, ForgotPasswordCopyClicked,
-  ForgotPasswordCopyFinished, ForgotPasswordDismissed,
-  ForgotPasswordEmailChanged, ForgotPasswordFinished, ForgotPasswordSubmitted,
-  GlobalKeyDown, InviteCreateDialogClosed, InviteCreateDialogOpened,
-  InviteLinkCopyClicked, InviteLinkCopyFinished, InviteLinkCreateSubmitted,
-  InviteLinkCreated, InviteLinkEmailChanged, InviteLinkRegenerateClicked,
-  InviteLinkRegenerated, InviteLinksFetched, Loaded, Loading, LocaleSelected,
-  Login, LoginDomValuesRead, LoginEmailChanged, LoginFinished,
-  LoginPasswordChanged, LoginSubmitted, LogoutClicked, LogoutFinished, MeFetched,
-  Member, MemberActiveTaskFetched, MemberActiveTaskHeartbeated,
-  MemberActiveTaskPaused, MemberActiveTaskStarted, MemberAddDialogClosed,
-  MemberAddDialogOpened, MemberAddRoleChanged, MemberAddSubmitted,
-  MemberAddUserSelected, MemberAdded, MemberCanvasRectFetched,
-  MemberCapabilitiesDialogClosed, MemberCapabilitiesDialogOpened,
-  MemberCapabilitiesFetched, MemberCapabilitiesSaveClicked,
-  MemberCapabilitiesSaved, MemberCapabilitiesToggled, MemberClaimClicked,
-  MemberClearFilters, MemberCompleteClicked, MemberCreateDescriptionChanged,
+  CloseWorkflowDialog, CoreModel, Failed, GlobalKeyDown,
+  InviteCreateDialogClosed, InviteCreateDialogOpened, InviteLinkCopyClicked,
+  InviteLinkCopyFinished, InviteLinkCreateSubmitted, InviteLinkCreated,
+  InviteLinkEmailChanged, InviteLinkRegenerateClicked, InviteLinkRegenerated,
+  InviteLinksFetched, Loaded, Loading, LocaleSelected, Login, MeFetched, Member,
+  MemberActiveTaskFetched, MemberActiveTaskHeartbeated, MemberActiveTaskPaused,
+  MemberActiveTaskStarted, MemberAddDialogClosed, MemberAddDialogOpened,
+  MemberAddRoleChanged, MemberAddSubmitted, MemberAddUserSelected, MemberAdded,
+  MemberCanvasRectFetched, MemberCapabilitiesDialogClosed,
+  MemberCapabilitiesDialogOpened, MemberCapabilitiesFetched,
+  MemberCapabilitiesSaveClicked, MemberCapabilitiesSaved,
+  MemberCapabilitiesToggled, MemberClaimClicked, MemberClearFilters,
+  MemberCompleteClicked, MemberCreateDescriptionChanged,
   MemberCreateDialogClosed, MemberCreateDialogOpened,
   MemberCreatePriorityChanged, MemberCreateSubmitted, MemberCreateTitleChanged,
   MemberCreateTypeIdChanged, MemberDragEnded, MemberDragMoved, MemberDragStarted,
   MemberListCardToggled, MemberListHideCompletedToggled, MemberMetricsFetched,
-  MemberMyCapabilityIdsFetched, MemberMyCapabilityIdsSaved, MemberNoteAdded,
-  MemberNoteContentChanged, MemberNoteSubmitted, MemberNotesFetched,
-  MemberNowWorkingPauseClicked, MemberNowWorkingStartClicked, MemberPanelToggled,
-  MemberPoolCapabilityChanged, MemberPoolDragToClaimArmed,
+  MemberModel, MemberMyCapabilityIdsFetched, MemberMyCapabilityIdsSaved,
+  MemberNoteAdded, MemberNoteContentChanged, MemberNoteSubmitted,
+  MemberNotesFetched, MemberNowWorkingPauseClicked, MemberNowWorkingStartClicked,
+  MemberPanelToggled, MemberPoolCapabilityChanged, MemberPoolDragToClaimArmed,
   MemberPoolFiltersToggled, MemberPoolMyTasksRectFetched,
   MemberPoolSearchChanged, MemberPoolSearchDebounced, MemberPoolStatusChanged,
   MemberPoolTypeChanged, MemberPoolViewModeSet, MemberPositionEditClosed,
@@ -123,7 +119,7 @@ import scrumbringer_client/client_state.{
   MemberToggleMyCapabilitiesQuick, MemberWorkSessionHeartbeated,
   MemberWorkSessionPaused, MemberWorkSessionStarted, MemberWorkSessionsFetched,
   MembersFetched, MobileDrawersClosed, MobileLeftDrawerToggled,
-  MobileRightDrawerToggled, Model, NavigateTo, NoOp, NotAsked, NowWorkingTicked,
+  MobileRightDrawerToggled, NavigateTo, NoOp, NotAsked, NowWorkingTicked,
   OpenCardDetail, OpenCardDialog, OpenRuleDialog, OpenTaskTemplateDialog,
   OpenTaskTypeDialog, OpenWorkflowDialog, OrgSettingsRoleChanged,
   OrgSettingsSaveAllClicked, OrgSettingsSaveClicked, OrgSettingsSaved,
@@ -149,13 +145,14 @@ import scrumbringer_client/client_state.{
   TaskTypeCrudDeleted, TaskTypeCrudUpdated, TaskTypeIconErrored,
   TaskTypeIconLoaded, TaskTypesFetched, TemplateDetachClicked,
   TemplateDetachFailed, TemplateDetachSucceeded, ThemeSelected, ToastDismiss,
-  ToastDismissed, ToastShow, ToastTick, UrlChanged, UserProjectAdded,
+  ToastDismissed, ToastShow, ToastTick, UiModel, UrlChanged, UserProjectAdded,
   UserProjectRemoveClicked, UserProjectRemoved, UserProjectRoleChangeRequested,
   UserProjectRoleChanged, UserProjectsAddProjectChanged,
   UserProjectsAddRoleChanged, UserProjectsAddSubmitted, UserProjectsDialogClosed,
   UserProjectsDialogOpened, UserProjectsFetched, ViewModeChanged,
   WorkflowCrudCreated, WorkflowCrudDeleted, WorkflowCrudUpdated,
-  WorkflowRulesClicked, WorkflowsProjectFetched, admin_msg, auth_msg, pool_msg,
+  WorkflowRulesClicked, WorkflowsProjectFetched, admin_msg, pool_msg,
+  update_admin, update_auth, update_core, update_member, update_ui,
 }
 
 // Story 4.10: Rule template attachment UI
@@ -183,34 +180,38 @@ import scrumbringer_client/features/tasks/update as tasks_workflow
 // ---------------------------------------------------------------------------
 
 fn current_route(model: Model) -> router.Route {
-  case model.page {
+  case model.core.page {
     Login -> router.Login
 
     AcceptInvitePage -> {
-      let accept_invite.Model(token: token, ..) = model.accept_invite
+      let accept_invite.Model(token: token, ..) = model.auth.accept_invite
       router.AcceptInvite(token)
     }
 
     ResetPasswordPage -> {
-      let reset_password.Model(token: token, ..) = model.reset_password
+      let reset_password.Model(token: token, ..) = model.auth.reset_password
       router.ResetPassword(token)
     }
 
     // Story 4.5: Use Config or Org routes based on section type
     Admin ->
-      case model.active_section {
+      case model.core.active_section {
         permissions.Invites
         | permissions.OrgSettings
         | permissions.Projects
-        | permissions.Metrics -> router.Org(model.active_section)
-        _ -> router.Config(model.active_section, model.selected_project_id)
+        | permissions.Metrics -> router.Org(model.core.active_section)
+        _ ->
+          router.Config(
+            model.core.active_section,
+            model.core.selected_project_id,
+          )
       }
 
     Member ->
       router.Member(
-        model.member_section,
-        model.selected_project_id,
-        opt.Some(model.view_mode),
+        model.member.member_section,
+        model.core.selected_project_id,
+        opt.Some(model.member.view_mode),
       )
   }
 }
@@ -281,34 +282,49 @@ fn apply_route_fields(
   model: Model,
   route: router.Route,
 ) -> #(Model, Effect(Msg)) {
-  let model = Model(..model, toast: opt.None)
+  let model = update_ui(model, fn(ui) { UiModel(..ui, toast: opt.None) })
 
   case route {
     router.Login -> {
-      #(
-        Model(
-          ..model,
-          page: Login,
-          selected_project_id: opt.None,
-          member_drag: opt.None,
-          member_pool_drag_to_claim_armed: False,
-          member_pool_drag_over_my_tasks: False,
-        ),
-        effect.none(),
-      )
+      let model =
+        update_member(
+          update_core(model, fn(core) {
+            CoreModel(..core, page: Login, selected_project_id: opt.None)
+          }),
+          fn(member) {
+            MemberModel(
+              ..member,
+              member_drag: opt.None,
+              member_pool_drag_to_claim_armed: False,
+              member_pool_drag_over_my_tasks: False,
+            )
+          },
+        )
+      #(model, effect.none())
     }
 
     router.AcceptInvite(token) -> {
       let #(new_accept_model, action) = accept_invite.init(token)
       let model =
-        Model(
-          ..model,
-          page: AcceptInvitePage,
-          accept_invite: new_accept_model,
-          selected_project_id: opt.None,
-          member_drag: opt.None,
-          member_pool_drag_to_claim_armed: False,
-          member_pool_drag_over_my_tasks: False,
+        update_member(
+          update_auth(
+            update_core(model, fn(core) {
+              CoreModel(
+                ..core,
+                page: AcceptInvitePage,
+                selected_project_id: opt.None,
+              )
+            }),
+            fn(auth) { AuthModel(..auth, accept_invite: new_accept_model) },
+          ),
+          fn(member) {
+            MemberModel(
+              ..member,
+              member_drag: opt.None,
+              member_pool_drag_to_claim_armed: False,
+              member_pool_drag_over_my_tasks: False,
+            )
+          },
         )
 
       #(model, accept_invite_effect(action))
@@ -317,14 +333,25 @@ fn apply_route_fields(
     router.ResetPassword(token) -> {
       let #(new_reset_model, action) = reset_password.init(token)
       let model =
-        Model(
-          ..model,
-          page: ResetPasswordPage,
-          reset_password: new_reset_model,
-          selected_project_id: opt.None,
-          member_drag: opt.None,
-          member_pool_drag_to_claim_armed: False,
-          member_pool_drag_over_my_tasks: False,
+        update_member(
+          update_auth(
+            update_core(model, fn(core) {
+              CoreModel(
+                ..core,
+                page: ResetPasswordPage,
+                selected_project_id: opt.None,
+              )
+            }),
+            fn(auth) { AuthModel(..auth, reset_password: new_reset_model) },
+          ),
+          fn(member) {
+            MemberModel(
+              ..member,
+              member_drag: opt.None,
+              member_pool_drag_to_claim_armed: False,
+              member_pool_drag_over_my_tasks: False,
+            )
+          },
         )
 
       #(model, reset_password_effect(action))
@@ -333,14 +360,23 @@ fn apply_route_fields(
     // Story 4.5: Config routes - project-scoped configuration
     router.Config(section, project_id) -> {
       let model =
-        Model(
-          ..model,
-          page: Admin,
-          active_section: section,
-          selected_project_id: project_id,
-          member_drag: opt.None,
-          member_pool_drag_to_claim_armed: False,
-          member_pool_drag_over_my_tasks: False,
+        update_member(
+          update_core(model, fn(core) {
+            CoreModel(
+              ..core,
+              page: Admin,
+              active_section: section,
+              selected_project_id: project_id,
+            )
+          }),
+          fn(member) {
+            MemberModel(
+              ..member,
+              member_drag: opt.None,
+              member_pool_drag_to_claim_armed: False,
+              member_pool_drag_over_my_tasks: False,
+            )
+          },
         )
       let #(model, fx) = refresh_section_for_test(model)
       #(model, fx)
@@ -349,14 +385,23 @@ fn apply_route_fields(
     // Story 4.5: Org routes - org-scoped administration
     router.Org(section) -> {
       let model =
-        Model(
-          ..model,
-          page: Admin,
-          active_section: section,
-          selected_project_id: opt.None,
-          member_drag: opt.None,
-          member_pool_drag_to_claim_armed: False,
-          member_pool_drag_over_my_tasks: False,
+        update_member(
+          update_core(model, fn(core) {
+            CoreModel(
+              ..core,
+              page: Admin,
+              active_section: section,
+              selected_project_id: opt.None,
+            )
+          }),
+          fn(member) {
+            MemberModel(
+              ..member,
+              member_drag: opt.None,
+              member_pool_drag_to_claim_armed: False,
+              member_pool_drag_over_my_tasks: False,
+            )
+          },
         )
       let #(model, fx) = refresh_section_for_test(model)
       #(model, fx)
@@ -365,39 +410,55 @@ fn apply_route_fields(
     // Legacy Admin routes - still supported but will redirect via router.parse()
     router.Admin(section, project_id) -> {
       let model =
-        Model(
-          ..model,
-          page: Admin,
-          active_section: section,
-          selected_project_id: project_id,
-          member_drag: opt.None,
-          member_pool_drag_to_claim_armed: False,
-          member_pool_drag_over_my_tasks: False,
+        update_member(
+          update_core(model, fn(core) {
+            CoreModel(
+              ..core,
+              page: Admin,
+              active_section: section,
+              selected_project_id: project_id,
+            )
+          }),
+          fn(member) {
+            MemberModel(
+              ..member,
+              member_drag: opt.None,
+              member_pool_drag_to_claim_armed: False,
+              member_pool_drag_over_my_tasks: False,
+            )
+          },
         )
       let #(model, fx) = refresh_section_for_test(model)
       #(model, fx)
     }
 
     router.Member(section, project_id, view) -> {
-      let capabilities_fx = case model.page, project_id {
+      let capabilities_fx = case model.core.page, project_id {
         Admin, opt.Some(pid) ->
-          api_org.list_project_capabilities(pid, CapabilitiesFetched)
+          api_org.list_project_capabilities(pid, fn(result) {
+            admin_msg(CapabilitiesFetched(result))
+          })
         _, _ -> effect.none()
       }
 
       // Update view mode if provided in URL
-      let new_view = opt.unwrap(view, model.view_mode)
+      let new_view = opt.unwrap(view, model.member.view_mode)
 
       #(
-        Model(
-          ..model,
-          page: Member,
-          member_section: section,
-          selected_project_id: project_id,
-          view_mode: new_view,
-          member_drag: opt.None,
-          member_pool_drag_to_claim_armed: False,
-          member_pool_drag_over_my_tasks: False,
+        update_member(
+          update_core(model, fn(core) {
+            CoreModel(..core, page: Member, selected_project_id: project_id)
+          }),
+          fn(member) {
+            MemberModel(
+              ..member,
+              member_section: section,
+              view_mode: new_view,
+              member_drag: opt.None,
+              member_pool_drag_to_claim_armed: False,
+              member_pool_drag_over_my_tasks: False,
+            )
+          },
         ),
         capabilities_fx,
       )
@@ -415,11 +476,11 @@ fn remote_state(remote: Remote(a)) -> hydration.ResourceState {
 }
 
 fn auth_state(model: Model) -> hydration.AuthState {
-  case model.user {
+  case model.core.user {
     opt.Some(user) -> hydration.Authed(user.org_role)
 
     opt.None ->
-      case model.auth_checked {
+      case model.core.auth_checked {
         True -> hydration.Unauthed
         False -> hydration.Unknown
       }
@@ -430,23 +491,25 @@ fn build_snapshot(model: Model) -> hydration.Snapshot {
   let projects = update_helpers.active_projects(model)
   hydration.Snapshot(
     auth: auth_state(model),
-    projects: remote_state(model.projects),
+    projects: remote_state(model.core.projects),
     is_any_project_manager: permissions.any_project_manager(projects),
-    invite_links: remote_state(model.invite_links),
-    capabilities: remote_state(model.capabilities),
-    my_capability_ids: remote_state(model.member_my_capability_ids),
-    org_settings_users: remote_state(model.org_settings_users),
-    org_users_cache: remote_state(model.org_users_cache),
-    members: remote_state(model.members),
-    members_project_id: model.members_project_id,
-    task_types: remote_state(model.task_types),
-    task_types_project_id: model.task_types_project_id,
-    member_tasks: remote_state(model.member_tasks),
-    active_task: remote_state(model.member_active_task),
-    me_metrics: remote_state(model.member_metrics),
-    org_metrics_overview: remote_state(model.admin_metrics_overview),
-    org_metrics_project_tasks: remote_state(model.admin_metrics_project_tasks),
-    org_metrics_project_id: model.admin_metrics_project_id,
+    invite_links: remote_state(model.admin.invite_links),
+    capabilities: remote_state(model.admin.capabilities),
+    my_capability_ids: remote_state(model.member.member_my_capability_ids),
+    org_settings_users: remote_state(model.admin.org_settings_users),
+    org_users_cache: remote_state(model.admin.org_users_cache),
+    members: remote_state(model.admin.members),
+    members_project_id: model.admin.members_project_id,
+    task_types: remote_state(model.admin.task_types),
+    task_types_project_id: model.admin.task_types_project_id,
+    member_tasks: remote_state(model.member.member_tasks),
+    active_task: remote_state(model.member.member_active_task),
+    me_metrics: remote_state(model.member.member_metrics),
+    org_metrics_overview: remote_state(model.admin.admin_metrics_overview),
+    org_metrics_project_tasks: remote_state(
+      model.admin.admin_metrics_project_tasks,
+    ),
+    org_metrics_project_id: model.admin.admin_metrics_project_id,
   )
 }
 
@@ -498,11 +561,14 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
             }
 
             hydration.FetchProjects -> {
-              case m.projects {
+              case m.core.projects {
                 Loading | Loaded(_) -> #(m, fx)
 
                 _ -> {
-                  let m = Model(..m, projects: Loading)
+                  let m =
+                    update_core(m, fn(core) {
+                      CoreModel(..core, projects: Loading)
+                    })
                   #(m, [
                     api_projects.list_projects(fn(result) {
                       admin_msg(ProjectsFetched(result))
@@ -514,11 +580,14 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
             }
 
             hydration.FetchInviteLinks -> {
-              case m.invite_links {
+              case m.admin.invite_links {
                 Loading | Loaded(_) -> #(m, fx)
 
                 _ -> {
-                  let m = Model(..m, invite_links: Loading)
+                  let m =
+                    update_admin(m, fn(admin) {
+                      AdminModel(..admin, invite_links: Loading)
+                    })
                   #(m, [
                     api_org.list_invite_links(fn(result) {
                       admin_msg(InviteLinksFetched(result))
@@ -530,16 +599,18 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
             }
 
             hydration.FetchCapabilities -> {
-              case m.capabilities, m.selected_project_id {
+              case m.admin.capabilities, m.core.selected_project_id {
                 Loading, _ | Loaded(_), _ -> #(m, fx)
 
                 _, opt.Some(project_id) -> {
-                  let m = Model(..m, capabilities: Loading)
+                  let m =
+                    update_admin(m, fn(admin) {
+                      AdminModel(..admin, capabilities: Loading)
+                    })
                   #(m, [
-                    api_org.list_project_capabilities(
-                      project_id,
-                      CapabilitiesFetched,
-                    ),
+                    api_org.list_project_capabilities(project_id, fn(result) {
+                      admin_msg(CapabilitiesFetched(result))
+                    }),
                     ..fx
                   ])
                 }
@@ -549,11 +620,18 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
             }
 
             hydration.FetchMeCapabilityIds -> {
-              case m.member_my_capability_ids, m.selected_project_id, m.user {
+              case
+                m.member.member_my_capability_ids,
+                m.core.selected_project_id,
+                m.core.user
+              {
                 Loading, _, _ | Loaded(_), _, _ -> #(m, fx)
 
                 _, opt.Some(project_id), opt.Some(user) -> {
-                  let m = Model(..m, member_my_capability_ids: Loading)
+                  let m =
+                    update_member(m, fn(member) {
+                      MemberModel(..member, member_my_capability_ids: Loading)
+                    })
                   #(m, [
                     api_tasks.get_member_capability_ids(
                       project_id,
@@ -571,11 +649,14 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
             }
 
             hydration.FetchActiveTask -> {
-              case m.member_work_sessions {
+              case m.member.member_work_sessions {
                 Loading | Loaded(_) -> #(m, fx)
 
                 _ -> {
-                  let m = Model(..m, member_work_sessions: Loading)
+                  let m =
+                    update_member(m, fn(member) {
+                      MemberModel(..member, member_work_sessions: Loading)
+                    })
                   #(m, [
                     api_tasks.get_work_sessions(fn(result) {
                       pool_msg(MemberWorkSessionsFetched(result))
@@ -587,11 +668,14 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
             }
 
             hydration.FetchMeMetrics -> {
-              case m.member_metrics {
+              case m.member.member_metrics {
                 Loading | Loaded(_) -> #(m, fx)
 
                 _ -> {
-                  let m = Model(..m, member_metrics: Loading)
+                  let m =
+                    update_member(m, fn(member) {
+                      MemberModel(..member, member_metrics: Loading)
+                    })
                   #(m, [
                     api_metrics.get_me_metrics(30, fn(result) {
                       pool_msg(MemberMetricsFetched(result))
@@ -603,11 +687,14 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
             }
 
             hydration.FetchOrgMetricsOverview -> {
-              case m.admin_metrics_overview {
+              case m.admin.admin_metrics_overview {
                 Loading | Loaded(_) -> #(m, fx)
 
                 _ -> {
-                  let m = Model(..m, admin_metrics_overview: Loading)
+                  let m =
+                    update_admin(m, fn(admin) {
+                      AdminModel(..admin, admin_metrics_overview: Loading)
+                    })
                   #(m, [
                     api_metrics.get_org_metrics_overview(30, fn(result) {
                       pool_msg(AdminMetricsOverviewFetched(result))
@@ -619,7 +706,7 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
             }
 
             hydration.FetchOrgMetricsProjectTasks(project_id: project_id) -> {
-              let can_fetch = case m.projects {
+              let can_fetch = case m.core.projects {
                 Loaded(projects) ->
                   list.any(projects, fn(p) { p.id == project_id })
                 _ -> False
@@ -630,19 +717,21 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
 
                 True ->
                   case
-                    m.admin_metrics_project_tasks,
-                    m.admin_metrics_project_id
+                    m.admin.admin_metrics_project_tasks,
+                    m.admin.admin_metrics_project_id
                   {
                     Loading, _ -> #(m, fx)
                     Loaded(_), opt.Some(pid) if pid == project_id -> #(m, fx)
 
                     _, _ -> {
                       let m =
-                        Model(
-                          ..m,
-                          admin_metrics_project_tasks: Loading,
-                          admin_metrics_project_id: opt.Some(project_id),
-                        )
+                        update_admin(m, fn(admin) {
+                          AdminModel(
+                            ..admin,
+                            admin_metrics_project_tasks: Loading,
+                            admin_metrics_project_id: opt.Some(project_id),
+                          )
+                        })
 
                       let fx_tasks =
                         api_metrics.get_org_metrics_project_tasks(
@@ -660,19 +749,21 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
             }
 
             hydration.FetchOrgSettingsUsers -> {
-              case m.org_settings_users {
+              case m.admin.org_settings_users {
                 Loading | Loaded(_) -> #(m, fx)
 
                 _ -> {
                   let m =
-                    Model(
-                      ..m,
-                      org_settings_users: Loading,
-                      org_settings_role_drafts: dict.new(),
-                      org_settings_save_in_flight: False,
-                      org_settings_error: opt.None,
-                      org_settings_error_user_id: opt.None,
-                    )
+                    update_admin(m, fn(admin) {
+                      AdminModel(
+                        ..admin,
+                        org_settings_users: Loading,
+                        org_settings_role_drafts: dict.new(),
+                        org_settings_save_in_flight: False,
+                        org_settings_error: opt.None,
+                        org_settings_error_user_id: opt.None,
+                      )
+                    })
 
                   #(m, [
                     api_org.list_org_users("", fn(result) {
@@ -686,11 +777,14 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
 
             // AC7: Fetch org users cache for member views (Lista)
             hydration.FetchOrgUsersCache -> {
-              case m.org_users_cache {
+              case m.admin.org_users_cache {
                 Loading | Loaded(_) -> #(m, fx)
 
                 _ -> {
-                  let m = Model(..m, org_users_cache: Loading)
+                  let m =
+                    update_admin(m, fn(admin) {
+                      AdminModel(..admin, org_users_cache: Loading)
+                    })
                   #(m, [
                     api_org.list_org_users("", fn(result) {
                       admin_msg(OrgUsersCacheFetched(result))
@@ -702,7 +796,7 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
             }
 
             hydration.FetchMembers(project_id: project_id) -> {
-              let can_fetch = case m.projects {
+              let can_fetch = case m.core.projects {
                 Loaded(projects) ->
                   list.any(projects, fn(p) { p.id == project_id })
                 _ -> False
@@ -712,17 +806,19 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                 False -> #(m, fx)
 
                 True ->
-                  case m.members {
+                  case m.admin.members {
                     Loading -> #(m, fx)
 
                     _ -> {
                       let m =
-                        Model(
-                          ..m,
-                          members: Loading,
-                          members_project_id: opt.Some(project_id),
-                          org_users_cache: Loading,
-                        )
+                        update_admin(m, fn(admin) {
+                          AdminModel(
+                            ..admin,
+                            members: Loading,
+                            members_project_id: opt.Some(project_id),
+                            org_users_cache: Loading,
+                          )
+                        })
 
                       let fx_members =
                         api_projects.list_project_members(
@@ -741,7 +837,7 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
             }
 
             hydration.FetchTaskTypes(project_id: project_id) -> {
-              let can_fetch = case m.projects {
+              let can_fetch = case m.core.projects {
                 Loaded(projects) ->
                   list.any(projects, fn(p) { p.id == project_id })
                 _ -> False
@@ -751,16 +847,18 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
                 False -> #(m, fx)
 
                 True ->
-                  case m.task_types {
+                  case m.admin.task_types {
                     Loading -> #(m, fx)
 
                     _ -> {
                       let m =
-                        Model(
-                          ..m,
-                          task_types: Loading,
-                          task_types_project_id: opt.Some(project_id),
-                        )
+                        update_admin(m, fn(admin) {
+                          AdminModel(
+                            ..admin,
+                            task_types: Loading,
+                            task_types_project_id: opt.Some(project_id),
+                          )
+                        })
 
                       #(m, [
                         api_tasks.list_task_types(project_id, fn(result) {
@@ -774,7 +872,7 @@ fn hydrate_model(model: Model) -> #(Model, Effect(Msg)) {
             }
 
             hydration.RefreshMember -> {
-              case m.projects {
+              case m.core.projects {
                 Loaded(_) -> {
                   let #(m, member_fx) = member_refresh(m)
                   #(m, [member_fx, ..fx])
@@ -799,7 +897,7 @@ fn handle_url_changed(model: Model) -> #(Model, Effect(Msg)) {
   let hash = client_ffi.location_hash()
   let is_mobile = client_ffi.is_mobile()
 
-  let model = Model(..model, is_mobile: is_mobile)
+  let model = update_ui(model, fn(ui) { UiModel(..ui, is_mobile: is_mobile) })
 
   let parsed =
     router.parse(pathname, search, hash)
@@ -811,7 +909,7 @@ fn handle_url_changed(model: Model) -> #(Model, Effect(Msg)) {
   }
 
   let current = current_route(model)
-  let title_fx = router.update_page_title(route, model.locale)
+  let title_fx = router.update_page_title(route, model.ui.locale)
 
   case parsed {
     router.Parsed(_) ->
@@ -841,7 +939,7 @@ fn handle_navigate_to(
   route: router.Route,
   mode: NavMode,
 ) -> #(Model, Effect(Msg)) {
-  let #(next_route, next_mode) = case model.is_mobile, route {
+  let #(next_route, next_mode) = case model.ui.is_mobile, route {
     True, router.Member(member_section.Pool, project_id, view) -> #(
       router.Member(member_section.MyBar, project_id, view),
       Replace,
@@ -855,7 +953,7 @@ fn handle_navigate_to(
     False -> {
       let #(model, route_fx) = apply_route_fields(model, next_route)
       let #(model, hyd_fx) = hydrate_model(model)
-      let title_fx = router.update_page_title(next_route, model.locale)
+      let title_fx = router.update_page_title(next_route, model.ui.locale)
 
       #(
         model,
@@ -875,7 +973,7 @@ fn handle_navigate_to(
 // ---------------------------------------------------------------------------
 
 fn bootstrap_admin(model: Model) -> #(Model, Effect(Msg)) {
-  let is_admin = case model.user {
+  let is_admin = case model.core.user {
     opt.Some(user) -> user.org_role == org_role.Admin
     opt.None -> False
   }
@@ -883,17 +981,22 @@ fn bootstrap_admin(model: Model) -> #(Model, Effect(Msg)) {
   // Capabilities and member capability IDs are now project-scoped
   // They will be fetched when a project is selected
   let model =
-    Model(..model, projects: Loading, invite_links: case is_admin {
-      True -> Loading
-      False -> model.invite_links
-    })
+    update_admin(
+      update_core(model, fn(core) { CoreModel(..core, projects: Loading) }),
+      fn(admin) {
+        AdminModel(..admin, invite_links: case is_admin {
+          True -> Loading
+          False -> admin.invite_links
+        })
+      },
+    )
 
   let effects = [
     api_projects.list_projects(fn(result) { admin_msg(ProjectsFetched(result)) }),
   ]
 
   // Fetch capabilities if project is selected
-  let effects = case model.selected_project_id {
+  let effects = case model.core.selected_project_id {
     opt.Some(project_id) -> [
       api_org.list_project_capabilities(project_id, fn(result) {
         admin_msg(CapabilitiesFetched(result))
@@ -904,7 +1007,7 @@ fn bootstrap_admin(model: Model) -> #(Model, Effect(Msg)) {
   }
 
   // Fetch member capability IDs if project and user are available
-  let effects = case model.selected_project_id, model.user {
+  let effects = case model.core.selected_project_id, model.core.user {
     opt.Some(project_id), opt.Some(user) -> [
       api_tasks.get_member_capability_ids(project_id, user.id, fn(result) {
         pool_msg(MemberMyCapabilityIdsFetched(result))
@@ -928,9 +1031,12 @@ fn bootstrap_admin(model: Model) -> #(Model, Effect(Msg)) {
 }
 
 pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
-  case model.active_section {
+  case model.core.active_section {
     permissions.Invites -> {
-      let model = Model(..model, invite_links: Loading)
+      let model =
+        update_admin(model, fn(admin) {
+          AdminModel(..admin, invite_links: Loading)
+        })
       #(
         model,
         api_org.list_invite_links(fn(result) {
@@ -941,14 +1047,16 @@ pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
 
     permissions.OrgSettings -> {
       let model =
-        Model(
-          ..model,
-          org_settings_users: Loading,
-          org_settings_role_drafts: dict.new(),
-          org_settings_save_in_flight: False,
-          org_settings_error: opt.None,
-          org_settings_error_user_id: opt.None,
-        )
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            org_settings_users: Loading,
+            org_settings_role_drafts: dict.new(),
+            org_settings_save_in_flight: False,
+            org_settings_error: opt.None,
+            org_settings_error_user_id: opt.None,
+          )
+        })
 
       #(
         model,
@@ -966,23 +1074,28 @@ pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
     )
 
     permissions.Metrics -> {
-      let model = Model(..model, admin_metrics_overview: Loading)
+      let model =
+        update_admin(model, fn(admin) {
+          AdminModel(..admin, admin_metrics_overview: Loading)
+        })
 
       let overview_fx =
         api_metrics.get_org_metrics_overview(30, fn(result) {
           pool_msg(AdminMetricsOverviewFetched(result))
         })
 
-      case model.selected_project_id {
+      case model.core.selected_project_id {
         opt.None -> #(model, overview_fx)
 
         opt.Some(project_id) -> {
           let model =
-            Model(
-              ..model,
-              admin_metrics_project_tasks: Loading,
-              admin_metrics_project_id: opt.Some(project_id),
-            )
+            update_admin(model, fn(admin) {
+              AdminModel(
+                ..admin,
+                admin_metrics_project_tasks: Loading,
+                admin_metrics_project_id: opt.Some(project_id),
+              )
+            })
 
           let tasks_fx =
             api_metrics.get_org_metrics_project_tasks(
@@ -1005,7 +1118,7 @@ pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
     }
 
     permissions.Capabilities ->
-      case model.selected_project_id {
+      case model.core.selected_project_id {
         opt.Some(project_id) -> {
           let #(model, right_panel_fx) = fetch_right_panel_data(model)
           #(
@@ -1022,16 +1135,18 @@ pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
       }
 
     permissions.Members ->
-      case model.selected_project_id {
+      case model.core.selected_project_id {
         opt.None -> #(model, effect.none())
         opt.Some(project_id) -> {
           let model =
-            Model(
-              ..model,
-              members: Loading,
-              members_project_id: opt.Some(project_id),
-              org_users_cache: Loading,
-            )
+            update_admin(model, fn(admin) {
+              AdminModel(
+                ..admin,
+                members: Loading,
+                members_project_id: opt.Some(project_id),
+                org_users_cache: Loading,
+              )
+            })
           let #(model, right_panel_fx) = fetch_right_panel_data(model)
           #(
             model,
@@ -1049,15 +1164,17 @@ pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
       }
 
     permissions.TaskTypes ->
-      case model.selected_project_id {
+      case model.core.selected_project_id {
         opt.None -> #(model, effect.none())
         opt.Some(project_id) -> {
           let model =
-            Model(
-              ..model,
-              task_types: Loading,
-              task_types_project_id: opt.Some(project_id),
-            )
+            update_admin(model, fn(admin) {
+              AdminModel(
+                ..admin,
+                task_types: Loading,
+                task_types_project_id: opt.Some(project_id),
+              )
+            })
           let #(model, right_panel_fx) = fetch_right_panel_data(model)
           #(
             model,
@@ -1087,7 +1204,10 @@ pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
       let #(model, fx) = admin_workflow.fetch_task_templates(model)
       let #(model, right_panel_fx) = fetch_right_panel_data(model)
       // Also fetch task types for the template dialog type selector
-      let task_types_fx = case model.selected_project_id, model.task_types {
+      let task_types_fx = case
+        model.core.selected_project_id,
+        model.admin.task_types
+      {
         opt.Some(project_id), NotAsked ->
           api_tasks.list_task_types(project_id, fn(result) {
             admin_msg(TaskTypesFetched(result))
@@ -1108,7 +1228,7 @@ pub fn refresh_section_for_test(model: Model) -> #(Model, Effect(Msg)) {
 /// even when navigating directly to config routes.
 /// Returns updated model (with pending counters) and list of effects.
 fn fetch_right_panel_data(model: Model) -> #(Model, List(Effect(Msg))) {
-  case model.selected_project_id {
+  case model.core.selected_project_id {
     opt.None -> #(model, [])
     opt.Some(project_id) -> {
       // Fetch tasks with no filter to get all tasks
@@ -1132,12 +1252,21 @@ fn fetch_right_panel_data(model: Model) -> #(Model, List(Effect(Msg))) {
 
       // Update model with pending counter and loading state
       let model =
-        Model(
-          ..model,
-          member_tasks_pending: 1,
-          member_tasks_by_project: dict.new(),
-          cards: Loading,
-          cards_project_id: opt.Some(project_id),
+        update_admin(
+          update_member(model, fn(member) {
+            MemberModel(
+              ..member,
+              member_tasks_pending: 1,
+              member_tasks_by_project: dict.new(),
+            )
+          }),
+          fn(admin) {
+            AdminModel(
+              ..admin,
+              cards: Loading,
+              cards_project_id: opt.Some(project_id),
+            )
+          },
         )
 
       #(model, [tasks_effect, cards_effect])
@@ -1159,33 +1288,35 @@ fn fetch_right_panel_data(model: Model) -> #(Model, List(Effect(Msg))) {
 /// The batched fetching logic and state updates are tightly coupled
 /// and splitting would complicate the refresh coordination.
 fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
-  case model.member_section {
+  case model.member.member_section {
     member_section.MySkills -> #(model, effect.none())
 
     _ -> {
       let projects = update_helpers.active_projects(model)
 
-      let project_ids = case model.selected_project_id {
+      let project_ids = case model.core.selected_project_id {
         opt.Some(project_id) -> [project_id]
         opt.None -> projects |> list.map(fn(p) { p.id })
       }
 
       case project_ids {
         [] -> #(
-          Model(
-            ..model,
-            member_tasks: NotAsked,
-            member_tasks_pending: 0,
-            member_tasks_by_project: dict.new(),
-            member_task_types: NotAsked,
-            member_task_types_pending: 0,
-            member_task_types_by_project: dict.new(),
-          ),
+          update_member(model, fn(member) {
+            MemberModel(
+              ..member,
+              member_tasks: NotAsked,
+              member_tasks_pending: 0,
+              member_tasks_by_project: dict.new(),
+              member_task_types: NotAsked,
+              member_task_types_pending: 0,
+              member_task_types_by_project: dict.new(),
+            )
+          }),
           effect.none(),
         )
 
         _ -> {
-          let filters = case model.member_section {
+          let filters = case model.member.member_section {
             member_section.MyBar ->
               TaskFilters(
                 status: opt.Some("claimed"),
@@ -1198,30 +1329,32 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
               TaskFilters(
                 status: opt.None,
                 type_id: update_helpers.empty_to_int_opt(
-                  model.member_filters_type_id,
+                  model.member.member_filters_type_id,
                 ),
                 capability_id: update_helpers.empty_to_int_opt(
-                  model.member_filters_capability_id,
+                  model.member.member_filters_capability_id,
                 ),
-                q: update_helpers.empty_to_opt(model.member_filters_q),
+                q: update_helpers.empty_to_opt(model.member.member_filters_q),
               )
 
             _ ->
               TaskFilters(
-                status: update_helpers.empty_to_opt(model.member_filters_status),
+                status: update_helpers.empty_to_opt(
+                  model.member.member_filters_status,
+                ),
                 type_id: update_helpers.empty_to_int_opt(
-                  model.member_filters_type_id,
+                  model.member.member_filters_type_id,
                 ),
                 capability_id: update_helpers.empty_to_int_opt(
-                  model.member_filters_capability_id,
+                  model.member.member_filters_capability_id,
                 ),
-                q: update_helpers.empty_to_opt(model.member_filters_q),
+                q: update_helpers.empty_to_opt(model.member.member_filters_q),
               )
           }
 
           let positions_effect =
             api_tasks.list_me_task_positions(
-              model.selected_project_id,
+              model.core.selected_project_id,
               fn(result) { pool_msg(MemberPositionsFetched(result)) },
             )
 
@@ -1241,7 +1374,7 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
 
           // Story 4.8 UX: Fetch cards for ALL views (Lista, Kanban need them too)
           let #(cards_effects, cards_model_update) = case
-            model.selected_project_id
+            model.core.selected_project_id
           {
             opt.Some(project_id) -> #(
               [
@@ -1250,11 +1383,13 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
                 }),
               ],
               fn(m: Model) {
-                Model(
-                  ..m,
-                  cards: Loading,
-                  cards_project_id: opt.Some(project_id),
-                )
+                update_admin(m, fn(admin) {
+                  AdminModel(
+                    ..admin,
+                    cards: Loading,
+                    cards_project_id: opt.Some(project_id),
+                  )
+                })
               },
             )
             opt.None -> #([], fn(m: Model) { m })
@@ -1270,15 +1405,17 @@ fn member_refresh(model: Model) -> #(Model, Effect(Msg)) {
             )
 
           let model =
-            Model(
-              ..model,
-              member_tasks: Loading,
-              member_tasks_pending: list.length(project_ids),
-              member_tasks_by_project: dict.new(),
-              member_task_types: Loading,
-              member_task_types_pending: list.length(project_ids),
-              member_task_types_by_project: dict.new(),
-            )
+            update_member(model, fn(member) {
+              MemberModel(
+                ..member,
+                member_tasks: Loading,
+                member_tasks_pending: list.length(project_ids),
+                member_tasks_by_project: dict.new(),
+                member_task_types: Loading,
+                member_task_types_pending: list.length(project_ids),
+                member_task_types_by_project: dict.new(),
+              )
+            })
             |> cards_model_update
 
           #(model, effect.batch(effects))
@@ -1340,28 +1477,6 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     NavigateTo(route, mode) -> handle_navigate_to(model, route, mode)
 
-    MemberPoolMyTasksRectFetched(left, top, width, height) -> #(
-      Model(
-        ..model,
-        member_pool_my_tasks_rect: opt.Some(Rect(
-          left: left,
-          top: top,
-          width: width,
-          height: height,
-        )),
-      ),
-      effect.none(),
-    )
-
-    MemberPoolDragToClaimArmed(armed) -> #(
-      Model(
-        ..model,
-        member_pool_drag_to_claim_armed: armed,
-        member_pool_drag_over_my_tasks: False,
-      ),
-      effect.none(),
-    )
-
     MeFetched(Ok(user)) -> {
       let default_page = case user.org_role {
         org_role.Admin -> Admin
@@ -1370,19 +1485,21 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
       // Keep Admin page if user requested it - hydration will check access
       // after projects load (to determine if user is a project manager)
-      let resolved_page = case model.page {
+      let resolved_page = case model.core.page {
         Member -> Member
         Admin -> Admin
         _ -> default_page
       }
 
       let model =
-        Model(
-          ..model,
-          page: resolved_page,
-          user: opt.Some(user),
-          auth_checked: True,
-        )
+        update_core(model, fn(core) {
+          CoreModel(
+            ..core,
+            page: resolved_page,
+            user: opt.Some(user),
+            auth_checked: True,
+          )
+        })
       let #(model, boot) = bootstrap_admin(model)
       let #(model, hyd_fx) = hydrate_model(model)
 
@@ -1400,18 +1517,24 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       case err.status == 401 {
         True -> {
           let model =
-            Model(..model, page: Login, user: opt.None, auth_checked: True)
+            update_core(model, fn(core) {
+              CoreModel(..core, page: Login, user: opt.None, auth_checked: True)
+            })
           #(model, replace_url(model))
         }
 
         False -> {
           let model =
-            Model(
-              ..model,
-              page: Login,
-              user: opt.None,
-              auth_checked: True,
-              login_error: opt.Some(err.message),
+            update_auth(
+              update_core(model, fn(core) {
+                CoreModel(
+                  ..core,
+                  page: Login,
+                  user: opt.None,
+                  auth_checked: True,
+                )
+              }),
+              fn(auth) { AuthModel(..auth, login_error: opt.Some(err.message)) },
             )
 
           #(model, replace_url(model))
@@ -1421,8 +1544,14 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     AcceptInviteMsg(inner) -> {
       let #(next_accept, action) =
-        accept_invite.update(model.accept_invite, inner)
-      let model = Model(..model, accept_invite: next_accept, toast: opt.None)
+        accept_invite.update(model.auth.accept_invite, inner)
+      let model =
+        update_ui(
+          update_auth(model, fn(auth) {
+            AuthModel(..auth, accept_invite: next_accept)
+          }),
+          fn(ui) { UiModel(..ui, toast: opt.None) },
+        )
 
       case action {
         accept_invite.NoOp -> #(model, effect.none())
@@ -1443,12 +1572,24 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           }
 
           let model =
-            Model(
-              ..model,
-              page: page,
-              user: opt.Some(user),
-              auth_checked: True,
-              toast: opt.Some(update_helpers.i18n_t(model, i18n_text.Welcome)),
+            update_ui(
+              update_core(model, fn(core) {
+                CoreModel(
+                  ..core,
+                  page: page,
+                  user: opt.Some(user),
+                  auth_checked: True,
+                )
+              }),
+              fn(ui) {
+                UiModel(
+                  ..ui,
+                  toast: opt.Some(update_helpers.i18n_t(
+                    model,
+                    i18n_text.Welcome,
+                  )),
+                )
+              },
             )
 
           let #(model, boot) = bootstrap_admin(model)
@@ -1467,9 +1608,15 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     ResetPasswordMsg(inner) -> {
       let #(next_reset, action) =
-        reset_password.update(model.reset_password, inner)
+        reset_password.update(model.auth.reset_password, inner)
 
-      let model = Model(..model, reset_password: next_reset, toast: opt.None)
+      let model =
+        update_ui(
+          update_auth(model, fn(auth) {
+            AuthModel(..auth, reset_password: next_reset)
+          }),
+          fn(ui) { UiModel(..ui, toast: opt.None) },
+        )
 
       case action {
         reset_password.NoOp -> #(model, effect.none())
@@ -1488,15 +1635,22 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
         reset_password.GoToLogin -> {
           let model =
-            Model(
-              ..model,
-              page: Login,
-              toast: opt.Some(update_helpers.i18n_t(
-                model,
-                i18n_text.PasswordUpdated,
-              )),
-              login_password: "",
-              login_error: opt.None,
+            update_ui(
+              update_auth(
+                update_core(model, fn(core) { CoreModel(..core, page: Login) }),
+                fn(auth) {
+                  AuthModel(..auth, login_password: "", login_error: opt.None)
+                },
+              ),
+              fn(ui) {
+                UiModel(
+                  ..ui,
+                  toast: opt.Some(update_helpers.i18n_t(
+                    model,
+                    i18n_text.PasswordUpdated,
+                  )),
+                )
+              },
             )
 
           #(model, replace_url(model))
@@ -1513,12 +1667,15 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         replace_url,
       )
 
-    ToastDismissed -> #(Model(..model, toast: opt.None), effect.none())
+    ToastDismissed -> #(
+      update_ui(model, fn(ui) { UiModel(..ui, toast: opt.None) }),
+      effect.none(),
+    )
 
     // New toast system (Story 4.8)
     ToastShow(message, variant) -> {
       let now = client_ffi.now_ms()
-      let next_state = toast.show(model.toast_state, message, variant, now)
+      let next_state = toast.show(model.ui.toast_state, message, variant, now)
       // Schedule tick for auto-dismiss
       let tick_effect =
         effect.from(fn(dispatch) {
@@ -1527,16 +1684,22 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           })
           Nil
         })
-      #(Model(..model, toast_state: next_state), tick_effect)
+      #(
+        update_ui(model, fn(ui) { UiModel(..ui, toast_state: next_state) }),
+        tick_effect,
+      )
     }
 
     ToastDismiss(id) -> {
-      let next_state = toast.dismiss(model.toast_state, id)
-      #(Model(..model, toast_state: next_state), effect.none())
+      let next_state = toast.dismiss(model.ui.toast_state, id)
+      #(
+        update_ui(model, fn(ui) { UiModel(..ui, toast_state: next_state) }),
+        effect.none(),
+      )
     }
 
     ToastTick(now) -> {
-      let #(next_state, should_schedule) = toast.tick(model.toast_state, now)
+      let #(next_state, should_schedule) = toast.tick(model.ui.toast_state, now)
       let tick_effect = case should_schedule {
         True ->
           effect.from(fn(dispatch) {
@@ -1547,17 +1710,20 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           })
         False -> effect.none()
       }
-      #(Model(..model, toast_state: next_state), tick_effect)
+      #(
+        update_ui(model, fn(ui) { UiModel(..ui, toast_state: next_state) }),
+        tick_effect,
+      )
     }
 
     ThemeSelected(value) -> {
       let next_theme = theme.deserialize(value)
 
-      case next_theme == model.theme {
+      case next_theme == model.ui.theme {
         True -> #(model, effect.none())
 
         False -> #(
-          Model(..model, theme: next_theme),
+          update_ui(model, fn(ui) { UiModel(..ui, theme: next_theme) }),
           effect.from(fn(_dispatch) { theme.save_to_storage(next_theme) }),
         )
       }
@@ -1573,24 +1739,36 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
       let should_pause =
         should_pause_active_task_on_project_change(
-          model.page == Member,
-          model.selected_project_id,
+          model.core.page == Member,
+          model.core.selected_project_id,
           selected,
         )
 
       let model = case selected {
         opt.None ->
-          Model(
-            ..model,
-            selected_project_id: selected,
-            toast: opt.None,
-            member_filters_type_id: "",
-            member_task_types: NotAsked,
+          update_member(
+            update_core(model, fn(core) {
+              CoreModel(..core, selected_project_id: selected)
+            }),
+            fn(member) {
+              MemberModel(
+                ..member,
+                member_filters_type_id: "",
+                member_task_types: NotAsked,
+              )
+            },
           )
-        _ -> Model(..model, selected_project_id: selected, toast: opt.None)
+          |> update_ui(fn(ui) { UiModel(..ui, toast: opt.None) })
+        _ ->
+          update_ui(
+            update_core(model, fn(core) {
+              CoreModel(..core, selected_project_id: selected)
+            }),
+            fn(ui) { UiModel(..ui, toast: opt.None) },
+          )
       }
 
-      case model.page {
+      case model.core.page {
         Member -> {
           let #(model, fx) = member_refresh(model)
 
@@ -1617,19 +1795,21 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         ProjectsFetched(Ok(projects)) -> {
           let selected =
             update_helpers.ensure_selected_project(
-              model.selected_project_id,
+              model.core.selected_project_id,
               projects,
             )
           let model =
-            Model(
-              ..model,
-              projects: Loaded(projects),
-              selected_project_id: selected,
-            )
+            update_core(model, fn(core) {
+              CoreModel(
+                ..core,
+                projects: Loaded(projects),
+                selected_project_id: selected,
+              )
+            })
 
           let model = update_helpers.ensure_default_section(model)
 
-          case model.page {
+          case model.core.page {
             Member -> {
               let #(model, fx) = member_refresh(model)
               let #(model, hyd_fx) = hydrate_model(model)
@@ -1653,18 +1833,28 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           case err.status == 401 {
             True -> {
               let model =
-                Model(
-                  ..model,
-                  page: Login,
-                  user: opt.None,
-                  member_drag: opt.None,
-                  member_pool_drag_to_claim_armed: False,
-                  member_pool_drag_over_my_tasks: False,
+                update_member(
+                  update_core(model, fn(core) {
+                    CoreModel(..core, page: Login, user: opt.None)
+                  }),
+                  fn(member) {
+                    MemberModel(
+                      ..member,
+                      member_drag: opt.None,
+                      member_pool_drag_to_claim_armed: False,
+                      member_pool_drag_over_my_tasks: False,
+                    )
+                  },
                 )
               #(model, replace_url(model))
             }
 
-            False -> #(Model(..model, projects: Failed(err)), effect.none())
+            False -> #(
+              update_core(model, fn(core) {
+                CoreModel(..core, projects: Failed(err))
+              }),
+              effect.none(),
+            )
           }
         }
 
@@ -2016,6 +2206,30 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     PoolMsg(inner) -> {
       case inner {
+        MemberPoolMyTasksRectFetched(left, top, width, height) -> #(
+          update_member(model, fn(member) {
+            MemberModel(
+              ..member,
+              member_pool_my_tasks_rect: opt.Some(Rect(
+                left: left,
+                top: top,
+                width: width,
+                height: height,
+              )),
+            )
+          }),
+          effect.none(),
+        )
+        MemberPoolDragToClaimArmed(armed) -> #(
+          update_member(model, fn(member) {
+            MemberModel(
+              ..member,
+              member_pool_drag_to_claim_armed: armed,
+              member_pool_drag_over_my_tasks: False,
+            )
+          }),
+          effect.none(),
+        )
         MemberPoolStatusChanged(v) ->
           pool_workflow.handle_pool_status_changed(model, v, member_refresh)
         MemberPoolTypeChanged(v) ->
@@ -2032,83 +2246,117 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         MemberPoolViewModeSet(mode) ->
           pool_workflow.handle_pool_view_mode_set(model, mode)
         MemberListHideCompletedToggled -> #(
-          Model(
-            ..model,
-            member_list_hide_completed: !model.member_list_hide_completed,
-          ),
+          update_member(model, fn(member) {
+            MemberModel(
+              ..member,
+              member_list_hide_completed: !model.member.member_list_hide_completed,
+            )
+          }),
           effect.none(),
         )
         // Story 4.8 UX: Collapse/expand card groups in Lista view
         MemberListCardToggled(card_id) -> {
           let current =
-            dict.get(model.member_list_expanded_cards, card_id)
+            dict.get(model.member.member_list_expanded_cards, card_id)
             |> opt.from_result
             |> opt.unwrap(True)
           let new_cards =
-            dict.insert(model.member_list_expanded_cards, card_id, !current)
+            dict.insert(
+              model.member.member_list_expanded_cards,
+              card_id,
+              !current,
+            )
           #(
-            Model(..model, member_list_expanded_cards: new_cards),
+            update_member(model, fn(member) {
+              MemberModel(..member, member_list_expanded_cards: new_cards)
+            }),
             effect.none(),
           )
         }
         ViewModeChanged(mode) -> {
-          let new_model = Model(..model, view_mode: mode)
+          let new_model =
+            update_member(model, fn(member) {
+              MemberModel(..member, view_mode: mode)
+            })
           let route =
             router.Member(
-              model.member_section,
-              model.selected_project_id,
+              model.member.member_section,
+              model.core.selected_project_id,
               opt.Some(mode),
             )
           #(new_model, router.replace(route))
         }
         MemberPanelToggled -> #(
-          Model(..model, member_panel_expanded: !model.member_panel_expanded),
+          update_member(model, fn(member) {
+            MemberModel(
+              ..member,
+              member_panel_expanded: !model.member.member_panel_expanded,
+            )
+          }),
           effect.none(),
         )
         MobileLeftDrawerToggled -> #(
-          Model(
-            ..model,
-            mobile_left_drawer_open: !model.mobile_left_drawer_open,
-            mobile_right_drawer_open: False,
-          ),
+          update_ui(model, fn(ui) {
+            UiModel(
+              ..ui,
+              mobile_left_drawer_open: !model.ui.mobile_left_drawer_open,
+              mobile_right_drawer_open: False,
+            )
+          }),
           effect.none(),
         )
         MobileRightDrawerToggled -> #(
-          Model(
-            ..model,
-            mobile_right_drawer_open: !model.mobile_right_drawer_open,
-            mobile_left_drawer_open: False,
-          ),
+          update_ui(model, fn(ui) {
+            UiModel(
+              ..ui,
+              mobile_right_drawer_open: !model.ui.mobile_right_drawer_open,
+              mobile_left_drawer_open: False,
+            )
+          }),
           effect.none(),
         )
         MobileDrawersClosed -> #(
-          Model(
-            ..model,
-            mobile_left_drawer_open: False,
-            mobile_right_drawer_open: False,
-          ),
+          update_ui(model, fn(ui) {
+            UiModel(
+              ..ui,
+              mobile_left_drawer_open: False,
+              mobile_right_drawer_open: False,
+            )
+          }),
           effect.none(),
         )
         SidebarConfigToggled -> #(
-          Model(
-            ..model,
-            sidebar_config_collapsed: !model.sidebar_config_collapsed,
-          ),
+          update_ui(model, fn(ui) {
+            UiModel(
+              ..ui,
+              sidebar_config_collapsed: !model.ui.sidebar_config_collapsed,
+            )
+          }),
           app_effects.save_sidebar_state(
-            !model.sidebar_config_collapsed,
-            model.sidebar_org_collapsed,
+            !model.ui.sidebar_config_collapsed,
+            model.ui.sidebar_org_collapsed,
           ),
         )
         SidebarOrgToggled -> #(
-          Model(..model, sidebar_org_collapsed: !model.sidebar_org_collapsed),
+          update_ui(model, fn(ui) {
+            UiModel(
+              ..ui,
+              sidebar_org_collapsed: !model.ui.sidebar_org_collapsed,
+            )
+          }),
           app_effects.save_sidebar_state(
-            model.sidebar_config_collapsed,
-            !model.sidebar_org_collapsed,
+            model.ui.sidebar_config_collapsed,
+            !model.ui.sidebar_org_collapsed,
           ),
         )
         // Story 4.8 UX: Preferences popup toggle
         PreferencesPopupToggled -> #(
-          Model(..model, preferences_popup_open: !model.preferences_popup_open),
+          update_ui(model, fn(ui) {
+            UiModel(
+              ..ui,
+              preferences_popup_open: !model.ui.preferences_popup_open,
+            )
+          }),
           effect.none(),
         )
         GlobalKeyDown(event) ->
@@ -2121,24 +2369,28 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
         MemberProjectTasksFetched(project_id, Ok(tasks)) -> {
           let tasks_by_project =
-            dict.insert(model.member_tasks_by_project, project_id, tasks)
-          let pending = model.member_tasks_pending - 1
+            dict.insert(model.member.member_tasks_by_project, project_id, tasks)
+          let pending = model.member.member_tasks_pending - 1
 
           let model =
-            Model(
-              ..model,
-              member_tasks_by_project: tasks_by_project,
-              member_tasks_pending: pending,
-            )
+            update_member(model, fn(member) {
+              MemberModel(
+                ..member,
+                member_tasks_by_project: tasks_by_project,
+                member_tasks_pending: pending,
+              )
+            })
 
           case pending <= 0 {
             True -> #(
-              Model(
-                ..model,
-                member_tasks: Loaded(update_helpers.flatten_tasks(
-                  tasks_by_project,
-                )),
-              ),
+              update_member(model, fn(member) {
+                MemberModel(
+                  ..member,
+                  member_tasks: Loaded(update_helpers.flatten_tasks(
+                    tasks_by_project,
+                  )),
+                )
+              }),
               effect.none(),
             )
             False -> #(model, effect.none())
@@ -2148,18 +2400,29 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         MemberProjectTasksFetched(_project_id, Error(err)) -> {
           case err.status {
             401 -> #(
-              Model(
-                ..model,
-                page: Login,
-                user: opt.None,
-                member_drag: opt.None,
-                member_pool_drag_to_claim_armed: False,
-                member_pool_drag_over_my_tasks: False,
+              update_member(
+                update_core(model, fn(core) {
+                  CoreModel(..core, page: Login, user: opt.None)
+                }),
+                fn(member) {
+                  MemberModel(
+                    ..member,
+                    member_drag: opt.None,
+                    member_pool_drag_to_claim_armed: False,
+                    member_pool_drag_over_my_tasks: False,
+                  )
+                },
               ),
               effect.none(),
             )
             _ -> #(
-              Model(..model, member_tasks: Failed(err), member_tasks_pending: 0),
+              update_member(model, fn(member) {
+                MemberModel(
+                  ..member,
+                  member_tasks: Failed(err),
+                  member_tasks_pending: 0,
+                )
+              }),
               effect.none(),
             )
           }
@@ -2168,27 +2431,31 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         MemberTaskTypesFetched(project_id, Ok(task_types)) -> {
           let task_types_by_project =
             dict.insert(
-              model.member_task_types_by_project,
+              model.member.member_task_types_by_project,
               project_id,
               task_types,
             )
-          let pending = model.member_task_types_pending - 1
+          let pending = model.member.member_task_types_pending - 1
 
           let model =
-            Model(
-              ..model,
-              member_task_types_by_project: task_types_by_project,
-              member_task_types_pending: pending,
-            )
+            update_member(model, fn(member) {
+              MemberModel(
+                ..member,
+                member_task_types_by_project: task_types_by_project,
+                member_task_types_pending: pending,
+              )
+            })
 
           case pending <= 0 {
             True -> #(
-              Model(
-                ..model,
-                member_task_types: Loaded(update_helpers.flatten_task_types(
-                  task_types_by_project,
-                )),
-              ),
+              update_member(model, fn(member) {
+                MemberModel(
+                  ..member,
+                  member_task_types: Loaded(update_helpers.flatten_task_types(
+                    task_types_by_project,
+                  )),
+                )
+              }),
               effect.none(),
             )
             False -> #(model, effect.none())
@@ -2198,22 +2465,29 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         MemberTaskTypesFetched(_project_id, Error(err)) -> {
           case err.status {
             401 -> #(
-              Model(
-                ..model,
-                page: Login,
-                user: opt.None,
-                member_drag: opt.None,
-                member_pool_drag_to_claim_armed: False,
-                member_pool_drag_over_my_tasks: False,
+              update_member(
+                update_core(model, fn(core) {
+                  CoreModel(..core, page: Login, user: opt.None)
+                }),
+                fn(member) {
+                  MemberModel(
+                    ..member,
+                    member_drag: opt.None,
+                    member_pool_drag_to_claim_armed: False,
+                    member_pool_drag_over_my_tasks: False,
+                  )
+                },
               ),
               effect.none(),
             )
             _ -> #(
-              Model(
-                ..model,
-                member_task_types: Failed(err),
-                member_task_types_pending: 0,
-              ),
+              update_member(model, fn(member) {
+                MemberModel(
+                  ..member,
+                  member_task_types: Failed(err),
+                  member_task_types_pending: 0,
+                )
+              }),
               effect.none(),
             )
           }
@@ -2474,11 +2748,18 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           admin_workflow.handle_card_crud_deleted(model, card_id)
         // Cards - filter changes (Story 4.9 AC7-8, UX improvements)
         CardsShowEmptyToggled -> #(
-          Model(..model, cards_show_empty: !model.cards_show_empty),
+          update_admin(model, fn(admin) {
+            AdminModel(..admin, cards_show_empty: !model.admin.cards_show_empty)
+          }),
           effect.none(),
         )
         CardsShowCompletedToggled -> #(
-          Model(..model, cards_show_completed: !model.cards_show_completed),
+          update_admin(model, fn(admin) {
+            AdminModel(
+              ..admin,
+              cards_show_completed: !model.admin.cards_show_completed,
+            )
+          }),
           effect.none(),
         )
         CardsStateFilterChanged(state_str) -> {
@@ -2489,20 +2770,31 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             "cerrada" -> opt.Some(card.Cerrada)
             _ -> opt.None
           }
-          #(Model(..model, cards_state_filter: filter), effect.none())
+          #(
+            update_admin(model, fn(admin) {
+              AdminModel(..admin, cards_state_filter: filter)
+            }),
+            effect.none(),
+          )
         }
         CardsSearchChanged(query) -> #(
-          Model(..model, cards_search: query),
+          update_admin(model, fn(admin) {
+            AdminModel(..admin, cards_search: query)
+          }),
           effect.none(),
         )
 
         // Card detail (member view) handlers - component manages internal state
         OpenCardDetail(card_id) -> #(
-          Model(..model, card_detail_open: opt.Some(card_id)),
+          update_member(model, fn(member) {
+            MemberModel(..member, card_detail_open: opt.Some(card_id))
+          }),
           effect.none(),
         )
         CloseCardDetail -> #(
-          Model(..model, card_detail_open: opt.None),
+          update_member(model, fn(member) {
+            MemberModel(..member, card_detail_open: opt.None)
+          }),
           effect.none(),
         )
 

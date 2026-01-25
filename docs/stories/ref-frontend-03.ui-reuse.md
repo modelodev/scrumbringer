@@ -2,7 +2,7 @@
 
 ## Status
 
-**Ready**
+**Review**
 
 ---
 
@@ -25,17 +25,17 @@
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Identify duplicate view-only blocks** (AC: 1, 2)
-  - [ ] Scan `features/*/view.gleam` for repeated UI patterns
-  - [ ] Confirm existing `ui/*` coverage before creating new helpers
+- [x] **Task 1: Identify duplicate view-only blocks** (AC: 1, 2)
+  - [x] Scan `features/*/view.gleam` for repeated UI patterns
+  - [x] Confirm existing `ui/*` coverage before creating new helpers
 
-- [ ] **Task 2: Extract or consolidate UI blocks** (AC: 1, 2, 3, 4)
-  - [ ] Create or extend modules in `ui/*`
-  - [ ] Replace duplicates in features with shared UI functions
+- [x] **Task 2: Extract or consolidate UI blocks** (AC: 1, 2, 3, 4)
+  - [x] Create or extend modules in `ui/*`
+  - [x] Replace duplicates in features with shared UI functions
 
-- [ ] **Task 3: Regression check** (AC: 4)
-  - [ ] Run `cd apps/client && gleam test`
-  - [ ] Spot check views that were refactored
+- [x] **Task 3: Regression check** (AC: 4)
+  - [x] Run `cd apps/client && gleam test`
+  - [x] Spot check views that were refactored
 
 ---
 
@@ -70,6 +70,7 @@ Reference: `docs/architecture/coding-standards.md` (UI components and reuse rule
 | Date | Version | Description | Author |
 |------|---------|-------------|--------|
 | 2026-01-25 | 1.0 | Ready story created | Sarah (PO) |
+| 2026-01-25 | 1.1 | Added shared error banner helper | James (Dev) |
 
 ---
 

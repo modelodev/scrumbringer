@@ -31,6 +31,7 @@ import scrumbringer_client/client_state.{
   InviteLinkRegenerateClicked, admin_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/icons
@@ -46,7 +47,7 @@ import scrumbringer_client/utils/format_date
 pub fn view_invites(model: Model) -> Element(Msg) {
   let origin = client_ffi.location_origin()
 
-  div([attribute.class("section")], [
+  div([attrs.section()], [
     // Section header with add button (Story 4.8: consistent icons)
     section_header.view_with_action(
       icons.Invites,
@@ -71,7 +72,7 @@ pub fn view_invites(model: Model) -> Element(Msg) {
 // =============================================================================
 
 fn view_latest_invite(model: Model, origin: String) -> Element(Msg) {
-  case model.invite_link_last {
+  case model.admin.invite_link_last {
     opt.None -> element.none()
 
     opt.Some(link) -> {
@@ -100,7 +101,7 @@ fn view_latest_invite(model: Model, origin: String) -> Element(Msg) {
         button([event.on_click(admin_msg(InviteLinkCopyClicked(full)))], [
           text(update_helpers.i18n_t(model, i18n_text.Copy)),
         ]),
-        case model.invite_link_copy_status {
+        case model.admin.invite_link_copy_status {
           opt.Some(status) -> div([attribute.class("hint")], [text(status)])
           opt.None -> element.none()
         },
@@ -113,7 +114,7 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
 
   data_table.view_remote(
-    model.invite_links,
+    model.admin.invite_links,
     loading_msg: t(i18n_text.LoadingEllipsis),
     empty_msg: t(i18n_text.NoInviteLinksYet),
     config: data_table.new()
@@ -142,7 +143,7 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
                 attribute.class("btn-xs btn-icon"),
                 attribute.attribute("title", t(i18n_text.CopyLink)),
                 attribute.attribute("aria-label", t(i18n_text.CopyLink)),
-                attribute.disabled(model.invite_link_in_flight),
+                attribute.disabled(model.admin.invite_link_in_flight),
                 event.on_click(admin_msg(InviteLinkCopyClicked(full))),
               ],
               [icons.nav_icon(icons.Copy, icons.Small)],
@@ -159,7 +160,7 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
                 attribute.class("btn-xs btn-icon"),
                 attribute.attribute("title", t(i18n_text.Regenerate)),
                 attribute.attribute("aria-label", t(i18n_text.Regenerate)),
-                attribute.disabled(model.invite_link_in_flight),
+                attribute.disabled(model.admin.invite_link_in_flight),
                 event.on_click(
                   admin_msg(InviteLinkRegenerateClicked(link.email)),
                 ),
@@ -183,15 +184,15 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
       size: dialog.DialogMd,
       on_close: admin_msg(InviteCreateDialogClosed),
     ),
-    model.invite_create_dialog_open,
-    model.invite_link_error,
+    model.admin.invite_create_dialog_open,
+    model.admin.invite_link_error,
     [
       form([event.on_submit(fn(_) { admin_msg(InviteLinkCreateSubmitted) })], [
         div([attribute.class("field")], [
           label([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
           input([
             attribute.type_("email"),
-            attribute.value(model.invite_link_email),
+            attribute.value(model.admin.invite_link_email),
             event.on_input(fn(value) {
               admin_msg(InviteLinkEmailChanged(value))
             }),
@@ -206,7 +207,7 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
           dialog.cancel_button(model, admin_msg(InviteCreateDialogClosed)),
           dialog.submit_button(
             model,
-            model.invite_link_in_flight,
+            model.admin.invite_link_in_flight,
             False,
             i18n_text.Create,
             i18n_text.Creating,

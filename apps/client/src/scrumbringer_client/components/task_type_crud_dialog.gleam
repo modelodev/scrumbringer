@@ -205,120 +205,114 @@ fn default_model() -> Model {
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    LocaleReceived(loc) ->
-      #(Model(..model, locale: loc), effect.none())
+    LocaleReceived(loc) -> #(Model(..model, locale: loc), effect.none())
 
-    ProjectIdReceived(id) ->
-      #(Model(..model, project_id: Some(id)), effect.none())
+    ProjectIdReceived(id) -> #(
+      Model(..model, project_id: Some(id)),
+      effect.none(),
+    )
 
-    ModeReceived(mode) ->
-      handle_mode_received(model, mode)
+    ModeReceived(mode) -> handle_mode_received(model, mode)
 
     // Create form handlers
-    CreateNameChanged(name) ->
-      #(Model(..model, create_name: name), effect.none())
+    CreateNameChanged(name) -> #(
+      Model(..model, create_name: name),
+      effect.none(),
+    )
 
-    CreateIconToggle ->
-      #(Model(..model, create_icon_open: !model.create_icon_open), effect.none())
+    CreateIconToggle -> #(
+      Model(..model, create_icon_open: !model.create_icon_open),
+      effect.none(),
+    )
 
-    CreateIconChanged(icon) ->
-      #(Model(..model, create_icon: icon, create_icon_open: False), effect.none())
+    CreateIconChanged(icon) -> #(
+      Model(..model, create_icon: icon, create_icon_open: False),
+      effect.none(),
+    )
 
-    CreateSubmitted ->
-      handle_create_submitted(model)
+    CreateSubmitted -> handle_create_submitted(model)
 
-    CreateResult(Ok(task_type)) ->
-      handle_create_success(model, task_type)
+    CreateResult(Ok(task_type)) -> handle_create_success(model, task_type)
 
-    CreateResult(Error(err)) ->
-      #(
-        Model(..model, create_in_flight: False, create_error: Some(err.message)),
-        effect.none(),
-      )
+    CreateResult(Error(err)) -> #(
+      Model(..model, create_in_flight: False, create_error: Some(err.message)),
+      effect.none(),
+    )
 
     // Edit form handlers
-    EditNameChanged(name) ->
-      #(Model(..model, edit_name: name), effect.none())
+    EditNameChanged(name) -> #(Model(..model, edit_name: name), effect.none())
 
-    EditIconToggle ->
-      #(Model(..model, edit_icon_open: !model.edit_icon_open), effect.none())
+    EditIconToggle -> #(
+      Model(..model, edit_icon_open: !model.edit_icon_open),
+      effect.none(),
+    )
 
-    EditIconChanged(icon) ->
-      #(Model(..model, edit_icon: icon, edit_icon_open: False), effect.none())
+    EditIconChanged(icon) -> #(
+      Model(..model, edit_icon: icon, edit_icon_open: False),
+      effect.none(),
+    )
 
-    EditSubmitted ->
-      handle_edit_submitted(model)
+    EditSubmitted -> handle_edit_submitted(model)
 
-    EditResult(Ok(task_type)) ->
-      handle_edit_success(model, task_type)
+    EditResult(Ok(task_type)) -> handle_edit_success(model, task_type)
 
-    EditResult(Error(err)) ->
-      #(
-        Model(..model, edit_in_flight: False, edit_error: Some(err.message)),
-        effect.none(),
-      )
+    EditResult(Error(err)) -> #(
+      Model(..model, edit_in_flight: False, edit_error: Some(err.message)),
+      effect.none(),
+    )
 
-    EditCancelled ->
-      #(reset_edit_fields(model), emit_close_requested())
+    EditCancelled -> #(reset_edit_fields(model), emit_close_requested())
 
     // Delete handlers
-    DeleteConfirmed ->
-      handle_delete_confirmed(model)
+    DeleteConfirmed -> handle_delete_confirmed(model)
 
-    DeleteResult(Ok(_)) ->
-      handle_delete_success(model)
+    DeleteResult(Ok(_)) -> handle_delete_success(model)
 
-    DeleteResult(Error(err)) ->
-      handle_delete_error(model, err)
+    DeleteResult(Error(err)) -> handle_delete_error(model, err)
 
-    DeleteCancelled ->
-      #(reset_delete_fields(model), emit_close_requested())
+    DeleteCancelled -> #(reset_delete_fields(model), emit_close_requested())
 
-    CloseRequested ->
-      #(model, emit_close_requested())
+    CloseRequested -> #(model, emit_close_requested())
   }
 }
 
 fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg)) {
   case mode {
-    ModeCreate ->
-      #(
-        Model(
-          ..model,
-          mode: Some(ModeCreate),
-          create_name: "",
-          create_icon: "clipboard-document-list",
-          create_icon_open: False,
-          create_in_flight: False,
-          create_error: None,
-        ),
-        effect.none(),
-      )
+    ModeCreate -> #(
+      Model(
+        ..model,
+        mode: Some(ModeCreate),
+        create_name: "",
+        create_icon: "clipboard-document-list",
+        create_icon_open: False,
+        create_in_flight: False,
+        create_error: None,
+      ),
+      effect.none(),
+    )
 
-    ModeEdit(task_type) ->
-      #(
-        Model(
-          ..model,
-          mode: Some(ModeEdit(task_type)),
-          edit_name: task_type.name,
-          edit_icon: task_type.icon,
-          edit_icon_open: False,
-          edit_in_flight: False,
-          edit_error: None,
-        ),
-        effect.none(),
-      )
+    ModeEdit(task_type) -> #(
+      Model(
+        ..model,
+        mode: Some(ModeEdit(task_type)),
+        edit_name: task_type.name,
+        edit_icon: task_type.icon,
+        edit_icon_open: False,
+        edit_in_flight: False,
+        edit_error: None,
+      ),
+      effect.none(),
+    )
 
-    ModeDelete(task_type) ->
-      #(
-        Model(
-          ..model,
-          mode: Some(ModeDelete(task_type)),
-          delete_in_flight: False,
-          delete_error: None,
-        ),
-        effect.none(),
-      )
+    ModeDelete(task_type) -> #(
+      Model(
+        ..model,
+        mode: Some(ModeDelete(task_type)),
+        delete_in_flight: False,
+        delete_error: None,
+      ),
+      effect.none(),
+    )
   }
 }
 
@@ -328,24 +322,29 @@ fn handle_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
     Some(project_id) -> {
       let name = string.trim(model.create_name)
       case name {
-        "" -> #(Model(..model, create_error: Some("Name is required")), effect.none())
-        _ ->
-          #(
-            Model(..model, create_in_flight: True, create_error: None),
-            api_task_types.create_task_type(
-              project_id,
-              name,
-              model.create_icon,
-              None,
-              CreateResult,
-            ),
-          )
+        "" -> #(
+          Model(..model, create_error: Some("Name is required")),
+          effect.none(),
+        )
+        _ -> #(
+          Model(..model, create_in_flight: True, create_error: None),
+          api_task_types.create_task_type(
+            project_id,
+            name,
+            model.create_icon,
+            None,
+            CreateResult,
+          ),
+        )
       }
     }
   }
 }
 
-fn handle_create_success(model: Model, task_type: TaskType) -> #(Model, Effect(Msg)) {
+fn handle_create_success(
+  model: Model,
+  task_type: TaskType,
+) -> #(Model, Effect(Msg)) {
   #(
     Model(
       ..model,
@@ -363,43 +362,49 @@ fn handle_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
     Some(ModeEdit(task_type)) -> {
       let name = string.trim(model.edit_name)
       case name {
-        "" -> #(Model(..model, edit_error: Some("Name is required")), effect.none())
-        _ ->
-          #(
-            Model(..model, edit_in_flight: True, edit_error: None),
-            api_task_types.update_task_type(
-              task_type.id,
-              name,
-              model.edit_icon,
-              task_type.capability_id,
-              EditResult,
-            ),
-          )
+        "" -> #(
+          Model(..model, edit_error: Some("Name is required")),
+          effect.none(),
+        )
+        _ -> #(
+          Model(..model, edit_in_flight: True, edit_error: None),
+          api_task_types.update_task_type(
+            task_type.id,
+            name,
+            model.edit_icon,
+            task_type.capability_id,
+            EditResult,
+          ),
+        )
       }
     }
     _ -> #(model, effect.none())
   }
 }
 
-fn handle_edit_success(model: Model, task_type: TaskType) -> #(Model, Effect(Msg)) {
+fn handle_edit_success(
+  model: Model,
+  task_type: TaskType,
+) -> #(Model, Effect(Msg)) {
   #(reset_edit_fields(model), emit_type_updated(task_type))
 }
 
 fn handle_delete_confirmed(model: Model) -> #(Model, Effect(Msg)) {
   case model.mode {
-    Some(ModeDelete(task_type)) ->
-      #(
-        Model(..model, delete_in_flight: True, delete_error: None),
-        api_task_types.delete_task_type(task_type.id, DeleteResult),
-      )
+    Some(ModeDelete(task_type)) -> #(
+      Model(..model, delete_in_flight: True, delete_error: None),
+      api_task_types.delete_task_type(task_type.id, DeleteResult),
+    )
     _ -> #(model, effect.none())
   }
 }
 
 fn handle_delete_success(model: Model) -> #(Model, Effect(Msg)) {
   case model.mode {
-    Some(ModeDelete(task_type)) ->
-      #(reset_delete_fields(model), emit_type_deleted(task_type.id))
+    Some(ModeDelete(task_type)) -> #(
+      reset_delete_fields(model),
+      emit_type_deleted(task_type.id),
+    )
     _ -> #(model, effect.none())
   }
 }
@@ -428,12 +433,7 @@ fn reset_edit_fields(model: Model) -> Model {
 }
 
 fn reset_delete_fields(model: Model) -> Model {
-  Model(
-    ..model,
-    mode: None,
-    delete_in_flight: False,
-    delete_error: None,
-  )
+  Model(..model, mode: None, delete_in_flight: False, delete_error: None)
 }
 
 // =============================================================================
@@ -461,13 +461,10 @@ fn task_type_to_json(task_type: TaskType) -> json.Json {
     #("id", json.int(task_type.id)),
     #("name", json.string(task_type.name)),
     #("icon", json.string(task_type.icon)),
-    #(
-      "capability_id",
-      case task_type.capability_id {
-        Some(id) -> json.int(id)
-        None -> json.null()
-      },
-    ),
+    #("capability_id", case task_type.capability_id {
+      Some(id) -> json.int(id)
+      None -> json.null()
+    }),
     #("tasks_count", json.int(task_type.tasks_count)),
   ])
 }
@@ -532,8 +529,7 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
           ]),
           // Error
           case model.create_error {
-            Some(err) ->
-              div([attribute.class("form-error")], [text(err)])
+            Some(err) -> div([attribute.class("form-error")], [text(err)])
             None -> element.none()
           },
         ],
@@ -612,8 +608,7 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
           ]),
           // Error
           case model.edit_error {
-            Some(err) ->
-              div([attribute.class("form-error")], [text(err)])
+            Some(err) -> div([attribute.class("form-error")], [text(err)])
             None -> element.none()
           },
         ],
@@ -662,7 +657,10 @@ fn view_delete_dialog(model: Model, task_type: TaskType) -> Element(Msg) {
       ]),
       div([attribute.class("dialog-body")], [
         p([], [
-          text(i18n_t(model.locale, i18n_text.ConfirmDeleteTaskType(task_type.name))),
+          text(i18n_t(
+            model.locale,
+            i18n_text.ConfirmDeleteTaskType(task_type.name),
+          )),
         ]),
         // Warning if type has tasks
         case task_type.tasks_count > 0 {
@@ -670,14 +668,16 @@ fn view_delete_dialog(model: Model, task_type: TaskType) -> Element(Msg) {
             div([attribute.class("form-warning")], [
               text("\u{26A0}"),
               text(" "),
-              text(i18n_t(model.locale, i18n_text.TaskTypeHasTasks(task_type.tasks_count))),
+              text(i18n_t(
+                model.locale,
+                i18n_text.TaskTypeHasTasks(task_type.tasks_count),
+              )),
             ])
           False -> element.none()
         },
         // Error
         case model.delete_error {
-          Some(err) ->
-            div([attribute.class("form-error")], [text(err)])
+          Some(err) -> div([attribute.class("form-error")], [text(err)])
           None -> element.none()
         },
       ]),
@@ -694,7 +694,9 @@ fn view_delete_dialog(model: Model, task_type: TaskType) -> Element(Msg) {
           [
             attribute.class("btn btn-danger"),
             attribute.type_("button"),
-            attribute.disabled(model.delete_in_flight || task_type.tasks_count > 0),
+            attribute.disabled(
+              model.delete_in_flight || task_type.tasks_count > 0,
+            ),
             event.on_click(DeleteConfirmed),
           ],
           [
@@ -717,8 +719,8 @@ fn view_delete_dialog(model: Model, task_type: TaskType) -> Element(Msg) {
 const task_type_icons = [
   "clipboard-document-list", "bug-ant", "sparkles", "rocket-launch",
   "check-circle", "wrench-screwdriver", "document-text", "code-bracket",
-  "beaker", "shield-check", "bolt", "cog-6-tooth", "cube", "flag",
-  "light-bulb", "puzzle-piece",
+  "beaker", "shield-check", "bolt", "cog-6-tooth", "cube", "flag", "light-bulb",
+  "puzzle-piece",
 ]
 
 fn view_icon_picker(

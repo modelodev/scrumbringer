@@ -25,9 +25,13 @@ import gleam/option as opt
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError}
-import domain/metrics.{type MyMetrics, type OrgMetricsOverview, type OrgMetricsProjectTasksPayload, OrgMetricsProjectTasksPayload}
+import domain/metrics.{
+  type MyMetrics, type OrgMetricsOverview, type OrgMetricsProjectTasksPayload,
+  OrgMetricsProjectTasksPayload,
+}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, Model,
+  type Model, type Msg, AdminModel, Failed, Loaded, MemberModel, update_admin,
+  update_member,
 }
 import scrumbringer_client/update_helpers
 
@@ -40,7 +44,12 @@ pub fn handle_member_metrics_fetched_ok(
   model: Model,
   metrics: MyMetrics,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, member_metrics: Loaded(metrics)), effect.none())
+  #(
+    update_member(model, fn(member) {
+      MemberModel(..member, member_metrics: Loaded(metrics))
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle failed member metrics fetch.
@@ -50,7 +59,12 @@ pub fn handle_member_metrics_fetched_error(
 ) -> #(Model, Effect(Msg)) {
   case err.status {
     401 -> update_helpers.reset_to_login(model)
-    _ -> #(Model(..model, member_metrics: Failed(err)), effect.none())
+    _ -> #(
+      update_member(model, fn(member) {
+        MemberModel(..member, member_metrics: Failed(err))
+      }),
+      effect.none(),
+    )
   }
 }
 
@@ -63,7 +77,12 @@ pub fn handle_admin_overview_fetched_ok(
   model: Model,
   overview: OrgMetricsOverview,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, admin_metrics_overview: Loaded(overview)), effect.none())
+  #(
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, admin_metrics_overview: Loaded(overview))
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle failed admin metrics overview fetch.
@@ -74,7 +93,9 @@ pub fn handle_admin_overview_fetched_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     _ -> #(
-      Model(..model, admin_metrics_overview: Failed(err)),
+      update_admin(model, fn(admin) {
+        AdminModel(..admin, admin_metrics_overview: Failed(err))
+      }),
       effect.none(),
     )
   }
@@ -92,11 +113,13 @@ pub fn handle_admin_project_tasks_fetched_ok(
   let OrgMetricsProjectTasksPayload(project_id: project_id, ..) = payload
 
   #(
-    Model(
-      ..model,
-      admin_metrics_project_tasks: Loaded(payload),
-      admin_metrics_project_id: opt.Some(project_id),
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        admin_metrics_project_tasks: Loaded(payload),
+        admin_metrics_project_id: opt.Some(project_id),
+      )
+    }),
     effect.none(),
   )
 }
@@ -109,7 +132,9 @@ pub fn handle_admin_project_tasks_fetched_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     _ -> #(
-      Model(..model, admin_metrics_project_tasks: Failed(err)),
+      update_admin(model, fn(admin) {
+        AdminModel(..admin, admin_metrics_project_tasks: Failed(err))
+      }),
       effect.none(),
     )
   }

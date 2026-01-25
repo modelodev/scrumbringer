@@ -35,5 +35,5 @@ import scrumbringer_client/i18n/text as i18n_text
 /// // "Welcome" or "Bienvenido" depending on locale
 /// ```
 pub fn i18n_t(model: Model, text: i18n_text.Text) -> String {
-  i18n.t(model.locale, text)
+  i18n.t(model.ui.locale, text)
 }

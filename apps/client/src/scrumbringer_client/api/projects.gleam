@@ -24,10 +24,8 @@ import lustre/effect.{type Effect}
 import scrumbringer_client/api/core.{type ApiResult}
 
 // Import types from shared domain
-import domain/project.{
-  type Project, type ProjectMember, Project, ProjectMember,
-}
-import domain/project_role.{type ProjectRole, Manager, Member} as project_role
+import domain/project.{type Project, type ProjectMember, Project, ProjectMember}
+import domain/project_role.{type ProjectRole, Manager, Member}
 
 // =============================================================================
 // Decoders
@@ -300,8 +298,7 @@ pub fn set_capability_members(
   user_ids: List(Int),
   to_msg: fn(ApiResult(CapabilityMembers)) -> msg,
 ) -> Effect(msg) {
-  let body =
-    json.object([#("user_ids", json.array(user_ids, of: json.int))])
+  let body = json.object([#("user_ids", json.array(user_ids, of: json.int))])
   let decoder = {
     use ids <- decode.field("user_ids", decode.list(decode.int))
     decode.success(CapabilityMembers(

@@ -61,6 +61,7 @@ import scrumbringer_client/theme
 import scrumbringer_client/ui/card_badge
 import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/empty_state
+import scrumbringer_client/ui/error_banner
 import scrumbringer_client/ui/icon_catalog
 import scrumbringer_client/ui/icons
 import scrumbringer_client/update_helpers
@@ -78,20 +79,14 @@ pub fn view_bar(model: Model, user: User) -> Element(Msg) {
       ])
 
     _ ->
-      case model.member_tasks {
+      case model.member.member_tasks {
         NotAsked | Loading ->
           div([attribute.class("empty")], [
             text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
           ])
 
         // MB01: Error display with banner
-        Failed(err) ->
-          div([attribute.class("error-banner")], [
-            span([attribute.class("error-banner-icon")], [
-              icons.nav_icon(icons.Warning, icons.Small),
-            ]),
-            span([], [text(err.message)]),
-          ])
+        Failed(err) -> error_banner.view(err.message)
 
         Loaded(tasks) -> {
           let mine =
@@ -269,7 +264,7 @@ fn view_card_group(model: Model, user: User, group: CardGroup) -> Element(Msg) {
 
 /// Renders the personal metrics panel.
 pub fn view_member_metrics_panel(model: Model) -> Element(Msg) {
-  case model.member_metrics {
+  case model.member.member_metrics {
     NotAsked | Loading ->
       div([attribute.class("panel")], [
         h3([], [text(update_helpers.i18n_t(model, i18n_text.MyMetrics))]),
@@ -344,7 +339,7 @@ pub fn view_member_bar_task_row(
   let type_icon = opt.Some(task_type.icon)
 
   let disable_actions =
-    model.member_task_mutation_in_flight || model.member_now_working_in_flight
+    model.member.member_task_mutation_in_flight || model.member.member_now_working_in_flight
 
   let claim_action =
     button(
@@ -467,7 +462,7 @@ pub fn view_member_bar_task_row(
         case type_icon {
           opt.Some(icon) ->
             span([attribute.attribute("style", "margin-right:4px;")], [
-              view_task_type_icon_inline(icon, 16, model.theme),
+              view_task_type_icon_inline(icon, 16, model.ui.theme),
             ])
         },
         text(type_label),

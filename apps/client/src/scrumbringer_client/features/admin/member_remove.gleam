@@ -23,7 +23,8 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiError}
 import domain/org.{type OrgUser, OrgUser}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, MemberRemoved, Model, admin_msg,
+  type Model, type Msg, AdminModel, MemberRemoved, UiModel, admin_msg,
+  update_admin, update_ui,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -41,7 +42,7 @@ pub fn handle_member_remove_clicked(
   user_id: Int,
 ) -> #(Model, Effect(Msg)) {
   let maybe_user =
-    update_helpers.resolve_org_user(model.org_users_cache, user_id)
+    update_helpers.resolve_org_user(model.admin.org_users_cache, user_id)
 
   let user = case maybe_user {
     opt.Some(user) -> user
@@ -49,11 +50,13 @@ pub fn handle_member_remove_clicked(
   }
 
   #(
-    Model(
-      ..model,
-      members_remove_confirm: opt.Some(user),
-      members_remove_error: opt.None,
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        members_remove_confirm: opt.Some(user),
+        members_remove_error: opt.None,
+      )
+    }),
     effect.none(),
   )
 }
@@ -61,28 +64,32 @@ pub fn handle_member_remove_clicked(
 /// Handle member remove cancel.
 pub fn handle_member_remove_cancelled(model: Model) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      members_remove_confirm: opt.None,
-      members_remove_error: opt.None,
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        members_remove_confirm: opt.None,
+        members_remove_error: opt.None,
+      )
+    }),
     effect.none(),
   )
 }
 
 /// Handle member remove confirmation.
 pub fn handle_member_remove_confirmed(model: Model) -> #(Model, Effect(Msg)) {
-  case model.members_remove_in_flight {
+  case model.admin.members_remove_in_flight {
     True -> #(model, effect.none())
     False -> {
-      case model.selected_project_id, model.members_remove_confirm {
+      case model.core.selected_project_id, model.admin.members_remove_confirm {
         opt.Some(project_id), opt.Some(user) -> {
           let model =
-            Model(
-              ..model,
-              members_remove_in_flight: True,
-              members_remove_error: opt.None,
-            )
+            update_admin(model, fn(admin) {
+              AdminModel(
+                ..admin,
+                members_remove_in_flight: True,
+                members_remove_error: opt.None,
+              )
+            })
           #(
             model,
             api_projects.remove_project_member(project_id, user.id, fn(result) {
@@ -106,12 +113,20 @@ pub fn handle_member_removed_ok(
   refresh_fn: fn(Model) -> #(Model, Effect(Msg)),
 ) -> #(Model, Effect(Msg)) {
   let model =
-    Model(
-      ..model,
-      members_remove_in_flight: False,
-      members_remove_confirm: opt.None,
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.MemberRemoved)),
-    )
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        members_remove_in_flight: False,
+        members_remove_confirm: opt.None,
+      )
+    })
+  let model =
+    update_ui(model, fn(ui) {
+      UiModel(
+        ..ui,
+        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.MemberRemoved)),
+      )
+    })
   refresh_fn(model)
 }
 
@@ -123,23 +138,34 @@ pub fn handle_member_removed_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     403 -> #(
-      Model(
-        ..model,
-        members_remove_in_flight: False,
-        members_remove_error: opt.Some(update_helpers.i18n_t(
-          model,
-          i18n_text.NotPermitted,
-        )),
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+      update_ui(
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            members_remove_in_flight: False,
+            members_remove_error: opt.Some(update_helpers.i18n_t(
+              model,
+              i18n_text.NotPermitted,
+            )),
+          )
+        }),
+        fn(ui) {
+          UiModel(
+            ..ui,
+            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+          )
+        },
       ),
       effect.none(),
     )
     _ -> #(
-      Model(
-        ..model,
-        members_remove_in_flight: False,
-        members_remove_error: opt.Some(err.message),
-      ),
+      update_admin(model, fn(admin) {
+        AdminModel(
+          ..admin,
+          members_remove_in_flight: False,
+          members_remove_error: opt.Some(err.message),
+        )
+      }),
       effect.none(),
     )
   }

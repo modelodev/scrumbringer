@@ -15,8 +15,8 @@
 ////     size: DialogMd,
 ////     on_close: CapabilityCreateDialogClosed,
 ////   ),
-////   model.capabilities_create_dialog_open,
-////   model.capabilities_create_error,
+////   model.admin.capabilities_create_dialog_open,
+////   model.admin.capabilities_create_error,
 ////   [
 ////     // form fields...
 ////   ],
@@ -162,10 +162,9 @@ fn size_to_class(size: DialogSize) -> String {
 
 /// Create a cancel button for dialog footer.
 pub fn cancel_button(model: Model, on_click: Msg) -> Element(Msg) {
-  button(
-    [attribute.type_("button"), event.on_click(on_click)],
-    [text(update_helpers.i18n_t(model, i18n_text.Cancel))],
-  )
+  button([attribute.type_("button"), event.on_click(on_click)], [
+    text(update_helpers.i18n_t(model, i18n_text.Cancel)),
+  ])
 }
 
 /// Create a submit button for dialog footer.
@@ -195,9 +194,12 @@ pub fn submit_button(
 }
 
 /// Create an add button that opens a dialog.
-pub fn add_button(model: Model, label: i18n_text.Text, on_click: Msg) -> Element(Msg) {
-  button(
-    [attribute.class("btn-add"), event.on_click(on_click)],
-    [text(update_helpers.i18n_t(model, label))],
-  )
+pub fn add_button(
+  model: Model,
+  label: i18n_text.Text,
+  on_click: Msg,
+) -> Element(Msg) {
+  button([attribute.class("btn-add"), event.on_click(on_click)], [
+    text(update_helpers.i18n_t(model, label)),
+  ])
 }

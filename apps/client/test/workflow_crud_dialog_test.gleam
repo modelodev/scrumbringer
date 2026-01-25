@@ -4,15 +4,15 @@
 
 import gleeunit/should
 
+import gleam/option
 import scrumbringer_client/components/workflow_crud_dialog.{
   CloseRequested, CreateActiveToggled, CreateDescriptionChanged,
   CreateNameChanged, CreateSubmitted, DeleteCancelled, DeleteConfirmed,
   EditActiveToggled, EditCancelled, EditDescriptionChanged, EditNameChanged,
-  EditSubmitted, LocaleReceived, ModeCreate, ModeDelete, ModeEdit, Model,
-  ModeReceived, ProjectIdReceived,
+  EditSubmitted, LocaleReceived, ModeCreate, ModeDelete, ModeEdit, ModeReceived,
+  Model, ProjectIdReceived,
 }
 import scrumbringer_client/i18n/locale.{En, Es}
-import gleam/option
 
 // =============================================================================
 // Model Tests

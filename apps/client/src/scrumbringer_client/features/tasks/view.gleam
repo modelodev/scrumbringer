@@ -110,7 +110,11 @@ pub fn priority_to_px(priority: Int) -> Int {
 pub fn decay_style(created_at: String) -> String {
   let days = age_in_days(created_at)
   let #(opacity, saturation) = decay_to_visuals(days)
-  "opacity:" <> float_to_string(opacity) <> ";filter:saturate(" <> float_to_string(saturation) <> ");"
+  "opacity:"
+  <> float_to_string(opacity)
+  <> ";filter:saturate("
+  <> float_to_string(saturation)
+  <> ");"
 }
 
 // =============================================================================

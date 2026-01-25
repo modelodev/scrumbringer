@@ -52,11 +52,11 @@ import gleam/string
 
 import lustre/effect.{type Effect}
 
+import domain/view_mode.{type ViewMode}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/i18n/text as i18n_text
-import domain/view_mode.{type ViewMode}
 import scrumbringer_client/member_section.{type MemberSection}
 import scrumbringer_client/permissions
 
@@ -556,7 +556,10 @@ pub fn replace(route: Route) -> Effect(msg) {
 /// router.update_page_title(router.Admin(permissions.Projects, None), locale)
 /// // Sets document title to "Projects - Scrumbringer"
 /// ```
-pub fn update_page_title(route: Route, locale: i18n_locale.Locale) -> Effect(msg) {
+pub fn update_page_title(
+  route: Route,
+  locale: i18n_locale.Locale,
+) -> Effect(msg) {
   let title = page_title_for_route(route, locale)
   effect.from(fn(_dispatch) { client_ffi.set_document_title(title) })
 }

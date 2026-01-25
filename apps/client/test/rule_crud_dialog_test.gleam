@@ -4,17 +4,17 @@
 
 import gleeunit/should
 
+import domain/workflow.{type Rule, Rule}
+import gleam/option
 import scrumbringer_client/components/rule_crud_dialog.{
   CloseRequested, CreateActiveChanged, CreateGoalChanged, CreateNameChanged,
   CreateResourceTypeChanged, CreateSubmitted, CreateTaskTypeIdChanged,
   CreateToStateChanged, DeleteCancelled, DeleteConfirmed, EditActiveChanged,
   EditCancelled, EditGoalChanged, EditNameChanged, EditResourceTypeChanged,
   EditSubmitted, EditTaskTypeIdChanged, EditToStateChanged, LocaleReceived,
-  ModeCreate, ModeDelete, ModeEdit, Model, ModeReceived, WorkflowIdReceived,
+  ModeCreate, ModeDelete, ModeEdit, ModeReceived, Model, WorkflowIdReceived,
 }
 import scrumbringer_client/i18n/locale.{En, Es}
-import domain/workflow.{type Rule, Rule}
-import gleam/option
 
 // =============================================================================
 // Model Tests

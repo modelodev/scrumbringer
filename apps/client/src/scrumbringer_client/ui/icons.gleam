@@ -193,7 +193,8 @@ pub fn view_task_type_icon_inline(
     True -> element.none()
     False ->
       case icon_catalog.exists(icon_name) {
-        True -> icon_catalog.render_with_class(icon_name, size, theme_class(theme))
+        True ->
+          icon_catalog.render_with_class(icon_name, size, theme_class(theme))
         False -> view_heroicon_inline(icon_name, size, theme)
       }
   }

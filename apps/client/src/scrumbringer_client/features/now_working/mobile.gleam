@@ -51,7 +51,7 @@ pub fn view_mini_bar(model: Model) -> Element(Msg) {
   let count = list.length(active_sessions)
   let total_time = aggregate_session_time(model, active_sessions)
 
-  let expand_icon = case model.member_panel_expanded {
+  let expand_icon = case model.member.member_panel_expanded {
     True -> "▼"
     False -> "▲"
   }
@@ -94,7 +94,7 @@ pub fn view_panel_sheet(model: Model, user_id: Int) -> Element(Msg) {
   let active_sessions = get_active_sessions(model)
   let claimed_tasks = get_claimed_not_working(model, user_id, active_sessions)
 
-  let sheet_class = case model.member_panel_expanded {
+  let sheet_class = case model.member.member_panel_expanded {
     True -> "member-panel-sheet open"
     False -> "member-panel-sheet"
   }
@@ -155,7 +155,7 @@ pub fn view_panel_sheet(model: Model, user_id: Int) -> Element(Msg) {
 
 /// Overlay that appears behind the sheet when expanded.
 pub fn view_overlay(model: Model) -> Element(Msg) {
-  case model.member_panel_expanded {
+  case model.member.member_panel_expanded {
     True ->
       div(
         [
@@ -183,11 +183,11 @@ fn view_session_row(model: Model, session: SessionInfo) -> Element(Msg) {
     version: version,
   ) = session
   let disable_actions =
-    model.member_task_mutation_in_flight || model.member_now_working_in_flight
+    model.member.member_task_mutation_in_flight || model.member.member_now_working_in_flight
 
   div([attribute.class("session-row")], [
     span([attribute.class("session-icon")], [
-      admin_view.view_task_type_icon_inline(icon, 18, model.theme),
+      admin_view.view_task_type_icon_inline(icon, 18, model.ui.theme),
     ]),
     span([attribute.class("session-title")], [text(title)]),
     span([attribute.class("session-timer")], [text(elapsed)]),
@@ -226,11 +226,11 @@ fn view_claimed_row(model: Model, task: Task) -> Element(Msg) {
   let Task(id: id, title: title, task_type: task_type, version: version, ..) =
     task
   let disable_actions =
-    model.member_task_mutation_in_flight || model.member_now_working_in_flight
+    model.member.member_task_mutation_in_flight || model.member.member_now_working_in_flight
 
   div([attribute.class("claimed-row")], [
     span([attribute.class("claimed-icon")], [
-      admin_view.view_task_type_icon_inline(task_type.icon, 18, model.theme),
+      admin_view.view_task_type_icon_inline(task_type.icon, 18, model.ui.theme),
     ]),
     span([attribute.class("claimed-title")], [text(title)]),
     div([attribute.class("claimed-actions")], [
@@ -288,7 +288,7 @@ fn get_active_sessions(model: Model) -> List(SessionInfo) {
       ..,
     )) -> {
       let task_info =
-        update_helpers.find_task_by_id(model.member_tasks, task_id)
+        update_helpers.find_task_by_id(model.member.member_tasks, task_id)
       let #(title, icon, version) = case task_info {
         opt.Some(Task(title: t, task_type: tt, version: v, ..)) -> #(
           t,
@@ -319,7 +319,7 @@ fn get_claimed_not_working(
       id
     })
 
-  case model.member_tasks {
+  case model.member.member_tasks {
     Loaded(tasks) ->
       tasks
       |> list.filter(fn(t) {
@@ -359,7 +359,7 @@ fn calculate_elapsed(
 ) -> String {
   let started_ms = client_ffi.parse_iso_ms(started_at)
   let local_now_ms = client_ffi.now_ms()
-  let server_now_ms = local_now_ms - model.now_working_server_offset_ms
+  let server_now_ms = local_now_ms - model.member.now_working_server_offset_ms
   update_helpers.now_working_elapsed_from_ms(
     accumulated_s,
     started_ms,

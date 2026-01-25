@@ -77,7 +77,7 @@ type AvailableTasksState {
 
 /// Determines the current state of available tasks.
 fn get_available_tasks_state(model: Model) -> AvailableTasksState {
-  case model.member_tasks {
+  case model.member.member_tasks {
     NotAsked | Loading -> TasksLoading
     Failed(err) -> TasksError(err.message)
     Loaded(tasks) -> {
@@ -96,9 +96,9 @@ fn get_available_tasks_state(model: Model) -> AvailableTasksState {
 
 /// Checks if any filters are active.
 fn has_active_filters(model: Model) -> Bool {
-  string.trim(model.member_filters_type_id) != ""
-  || string.trim(model.member_filters_capability_id) != ""
-  || string.trim(model.member_filters_q) != ""
+  string.trim(model.member.member_filters_type_id) != ""
+  || string.trim(model.member.member_filters_capability_id) != ""
+  || string.trim(model.member.member_filters_q) != ""
 }
 
 /// Renders the main pool section with filters, canvas/list toggle, and tasks.
@@ -115,15 +115,15 @@ pub fn view_pool_main(model: Model, _user: User) -> Element(Msg) {
         // Unified toolbar: view mode, filters toggle, and new task - all in one row
         pool_filters.view_unified_toolbar(model),
         view_tasks(model),
-        case model.member_create_dialog_open {
+        case model.member.member_create_dialog_open {
           True -> pool_dialogs.view_create_dialog(model)
           False -> element.none()
         },
-        case model.member_notes_task_id {
+        case model.member.member_notes_task_id {
           opt.Some(task_id) -> pool_dialogs.view_task_details(model, task_id)
           opt.None -> element.none()
         },
-        case model.member_position_edit_task {
+        case model.member.member_position_edit_task {
           opt.Some(task_id) -> pool_dialogs.view_position_edit(model, task_id)
           opt.None -> element.none()
         },
@@ -135,15 +135,15 @@ pub fn view_pool_main(model: Model, _user: User) -> Element(Msg) {
 /// Renders the right panel with claimed tasks dropzone.
 pub fn view_right_panel(model: Model, user: User) -> Element(Msg) {
   let dropzone_class = case
-    model.member_pool_drag_to_claim_armed,
-    model.member_pool_drag_over_my_tasks
+    model.member.member_pool_drag_to_claim_armed,
+    model.member.member_pool_drag_over_my_tasks
   {
     True, True -> "pool-my-tasks-dropzone drop-over"
     True, False -> "pool-my-tasks-dropzone drag-active"
     False, _ -> "pool-my-tasks-dropzone"
   }
 
-  let claimed_tasks = case model.member_tasks {
+  let claimed_tasks = case model.member.member_tasks {
     Loaded(tasks) ->
       tasks
       |> list.filter(fn(t) {
@@ -166,7 +166,7 @@ pub fn view_right_panel(model: Model, user: User) -> Element(Msg) {
         attribute.class(dropzone_class),
       ],
       [
-        case model.member_pool_drag_to_claim_armed {
+        case model.member.member_pool_drag_to_claim_armed {
           True ->
             div([attribute.class("dropzone-hint")], [
               text(
@@ -272,7 +272,7 @@ fn view_tasks_onboarding(model: Model) -> Element(Msg) {
 
 /// Renders task collection in the selected view mode.
 fn view_tasks_collection(model: Model, tasks: List(Task)) -> Element(Msg) {
-  case model.member_pool_view_mode {
+  case model.member.member_pool_view_mode {
     pool_prefs.Canvas -> view_tasks_canvas(model, tasks)
     pool_prefs.List -> view_tasks_list(model, tasks)
   }
@@ -321,7 +321,7 @@ pub fn view_pool_task_row(model: Model, task: Task) -> Element(Msg) {
 
   let type_icon = opt.Some(task_type.icon)
 
-  let disable_actions = model.member_task_mutation_in_flight
+  let disable_actions = model.member.member_task_mutation_in_flight
 
   let claim_action =
     button(
@@ -349,7 +349,7 @@ pub fn view_pool_task_row(model: Model, task: Task) -> Element(Msg) {
         case type_icon {
           opt.Some(icon) ->
             span([attribute.attribute("style", "margin-right:4px;")], [
-              admin_view.view_task_type_icon_inline(icon, 16, model.theme),
+              admin_view.view_task_type_icon_inline(icon, 16, model.ui.theme),
             ])
         },
         text(type_label),
@@ -382,7 +382,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     ..,
   ) = task
 
-  let current_user_id = case model.user {
+  let current_user_id = case model.core.user {
     opt.Some(u) -> u.id
     opt.None -> 0
   }
@@ -401,7 +401,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
   let card_border_class = color_picker.border_class(card_color_opt)
 
   // Get saved position or generate deterministic initial position based on task ID
-  let #(x, y) = case dict.get(model.member_positions_by_task, id) {
+  let #(x, y) = case dict.get(model.member.member_positions_by_task, id) {
     Ok(xy) -> xy
     Error(_) -> {
       // Generate spread-out initial positions using task ID as seed
@@ -451,7 +451,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     <> float.to_string(saturation)
     <> ");"
 
-  let disable_actions = model.member_task_mutation_in_flight
+  let disable_actions = model.member.member_task_mutation_in_flight
 
   let primary_action = case status, is_mine {
     Available, _ ->
@@ -582,7 +582,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
           case type_icon {
             opt.Some(icon) ->
               div([attribute.class("task-card-center-icon")], [
-                admin_view.view_task_type_icon_inline(icon, 22, model.theme),
+                admin_view.view_task_type_icon_inline(icon, 22, model.ui.theme),
               ])
           },
           div(

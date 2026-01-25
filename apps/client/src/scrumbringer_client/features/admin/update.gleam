@@ -34,9 +34,10 @@ import domain/project.{type ProjectMember, ProjectMember}
 import domain/project_role.{type ProjectRole}
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/client_state.{
-  type Model, type Msg, CapabilityMembersFetched, CapabilityMembersSaved, Failed,
-  Loaded, Login, MemberCapabilitiesFetched, MemberCapabilitiesSaved,
-  MemberRoleChanged, Model, admin_msg,
+  type Model, type Msg, AdminModel, CapabilityMembersFetched,
+  CapabilityMembersSaved, Failed, Loaded, MemberCapabilitiesFetched,
+  MemberCapabilitiesSaved, MemberRoleChanged, UiModel, admin_msg, update_admin,
+  update_ui,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -115,7 +116,7 @@ pub fn handle_member_role_change_requested(
   user_id: Int,
   new_role: ProjectRole,
 ) -> #(Model, Effect(Msg)) {
-  case model.selected_project_id {
+  case model.core.selected_project_id {
     opt.Some(project_id) -> #(
       model,
       api_projects.update_member_role(project_id, user_id, new_role, fn(result) {
@@ -131,7 +132,7 @@ pub fn handle_member_role_changed_ok(
   model: Model,
   result: api_projects.RoleChangeResult,
 ) -> #(Model, Effect(Msg)) {
-  let updated_members = case model.members {
+  let updated_members = case model.admin.members {
     Loaded(members) ->
       Loaded(
         list.map(members, fn(m) {
@@ -143,14 +144,18 @@ pub fn handle_member_role_changed_ok(
       )
     other -> other
   }
-  #(
-    Model(
-      ..model,
-      members: updated_members,
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.RoleUpdated)),
-    ),
-    effect.none(),
-  )
+  let model =
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, members: updated_members)
+    })
+  let model =
+    update_ui(model, fn(ui) {
+      UiModel(
+        ..ui,
+        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.RoleUpdated)),
+      )
+    })
+  #(model, effect.none())
 }
 
 /// Handle role change error.
@@ -161,16 +166,21 @@ pub fn handle_member_role_changed_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     422 -> #(
-      Model(
-        ..model,
-        toast: opt.Some(update_helpers.i18n_t(
-          model,
-          i18n_text.CannotDemoteLastManager,
-        )),
-      ),
+      update_ui(model, fn(ui) {
+        UiModel(
+          ..ui,
+          toast: opt.Some(update_helpers.i18n_t(
+            model,
+            i18n_text.CannotDemoteLastManager,
+          )),
+        )
+      }),
       effect.none(),
     )
-    _ -> #(Model(..model, toast: opt.Some(err.message)), effect.none())
+    _ -> #(
+      update_ui(model, fn(ui) { UiModel(..ui, toast: opt.Some(err.message)) }),
+      effect.none(),
+    )
   }
 }
 
@@ -183,21 +193,25 @@ pub fn handle_member_capabilities_dialog_opened(
   model: Model,
   user_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  case model.selected_project_id {
+  case model.core.selected_project_id {
     opt.Some(project_id) -> {
       // Check if we have cached capabilities for this user
-      let selected = case dict.get(model.member_capabilities_cache, user_id) {
+      let selected = case
+        dict.get(model.admin.member_capabilities_cache, user_id)
+      {
         Ok(ids) -> ids
         Error(_) -> []
       }
       #(
-        Model(
-          ..model,
-          member_capabilities_dialog_user_id: opt.Some(user_id),
-          member_capabilities_loading: True,
-          member_capabilities_selected: selected,
-          member_capabilities_error: opt.None,
-        ),
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            member_capabilities_dialog_user_id: opt.Some(user_id),
+            member_capabilities_loading: True,
+            member_capabilities_selected: selected,
+            member_capabilities_error: opt.None,
+          )
+        }),
         api_projects.get_member_capabilities(project_id, user_id, fn(result) {
           admin_msg(MemberCapabilitiesFetched(result))
         }),
@@ -212,12 +226,14 @@ pub fn handle_member_capabilities_dialog_closed(
   model: Model,
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      member_capabilities_dialog_user_id: opt.None,
-      member_capabilities_selected: [],
-      member_capabilities_error: opt.None,
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        member_capabilities_dialog_user_id: opt.None,
+        member_capabilities_selected: [],
+        member_capabilities_error: opt.None,
+      )
+    }),
     effect.none(),
   )
 }
@@ -228,28 +244,38 @@ pub fn handle_member_capabilities_toggled(
   capability_id: Int,
 ) -> #(Model, Effect(Msg)) {
   let selected = case
-    list.contains(model.member_capabilities_selected, capability_id)
+    list.contains(model.admin.member_capabilities_selected, capability_id)
   {
     True ->
-      list.filter(model.member_capabilities_selected, fn(id) {
+      list.filter(model.admin.member_capabilities_selected, fn(id) {
         id != capability_id
       })
-    False -> [capability_id, ..model.member_capabilities_selected]
+    False -> [capability_id, ..model.admin.member_capabilities_selected]
   }
-  #(Model(..model, member_capabilities_selected: selected), effect.none())
+  #(
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, member_capabilities_selected: selected)
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle save button click.
 pub fn handle_member_capabilities_save_clicked(
   model: Model,
 ) -> #(Model, Effect(Msg)) {
-  case model.selected_project_id, model.member_capabilities_dialog_user_id {
+  case
+    model.core.selected_project_id,
+    model.admin.member_capabilities_dialog_user_id
+  {
     opt.Some(project_id), opt.Some(user_id) -> #(
-      Model(..model, member_capabilities_saving: True),
+      update_admin(model, fn(admin) {
+        AdminModel(..admin, member_capabilities_saving: True)
+      }),
       api_projects.set_member_capabilities(
         project_id,
         user_id,
-        model.member_capabilities_selected,
+        model.admin.member_capabilities_selected,
         fn(result) { admin_msg(MemberCapabilitiesSaved(result)) },
       ),
     )
@@ -265,17 +291,19 @@ pub fn handle_member_capabilities_fetched_ok(
   // Update cache and selected list
   let cache =
     dict.insert(
-      model.member_capabilities_cache,
+      model.admin.member_capabilities_cache,
       result.user_id,
       result.capability_ids,
     )
   #(
-    Model(
-      ..model,
-      member_capabilities_loading: False,
-      member_capabilities_cache: cache,
-      member_capabilities_selected: result.capability_ids,
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        member_capabilities_loading: False,
+        member_capabilities_cache: cache,
+        member_capabilities_selected: result.capability_ids,
+      )
+    }),
     effect.none(),
   )
 }
@@ -288,11 +316,13 @@ pub fn handle_member_capabilities_fetched_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     _ -> #(
-      Model(
-        ..model,
-        member_capabilities_loading: False,
-        member_capabilities_error: opt.Some(err.message),
-      ),
+      update_admin(model, fn(admin) {
+        AdminModel(
+          ..admin,
+          member_capabilities_loading: False,
+          member_capabilities_error: opt.Some(err.message),
+        )
+      }),
       effect.none(),
     )
   }
@@ -306,21 +336,28 @@ pub fn handle_member_capabilities_saved_ok(
   // Update cache and close dialog
   let cache =
     dict.insert(
-      model.member_capabilities_cache,
+      model.admin.member_capabilities_cache,
       result.user_id,
       result.capability_ids,
     )
-  #(
-    Model(
-      ..model,
-      member_capabilities_saving: False,
-      member_capabilities_cache: cache,
-      member_capabilities_dialog_user_id: opt.None,
-      member_capabilities_selected: [],
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.SkillsSaved)),
-    ),
-    effect.none(),
-  )
+  let model =
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        member_capabilities_saving: False,
+        member_capabilities_cache: cache,
+        member_capabilities_dialog_user_id: opt.None,
+        member_capabilities_selected: [],
+      )
+    })
+  let model =
+    update_ui(model, fn(ui) {
+      UiModel(
+        ..ui,
+        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.SkillsSaved)),
+      )
+    })
+  #(model, effect.none())
 }
 
 /// Handle capabilities save error.
@@ -331,11 +368,13 @@ pub fn handle_member_capabilities_saved_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     _ -> #(
-      Model(
-        ..model,
-        member_capabilities_saving: False,
-        member_capabilities_error: opt.Some(err.message),
-      ),
+      update_admin(model, fn(admin) {
+        AdminModel(
+          ..admin,
+          member_capabilities_saving: False,
+          member_capabilities_error: opt.Some(err.message),
+        )
+      }),
       effect.none(),
     )
   }
@@ -350,23 +389,25 @@ pub fn handle_capability_members_dialog_opened(
   model: Model,
   capability_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  case model.selected_project_id {
+  case model.core.selected_project_id {
     opt.Some(project_id) -> {
       // Check if we have cached members for this capability
       let selected = case
-        dict.get(model.capability_members_cache, capability_id)
+        dict.get(model.admin.capability_members_cache, capability_id)
       {
         Ok(ids) -> ids
         Error(_) -> []
       }
       #(
-        Model(
-          ..model,
-          capability_members_dialog_capability_id: opt.Some(capability_id),
-          capability_members_loading: True,
-          capability_members_selected: selected,
-          capability_members_error: opt.None,
-        ),
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            capability_members_dialog_capability_id: opt.Some(capability_id),
+            capability_members_loading: True,
+            capability_members_selected: selected,
+            capability_members_error: opt.None,
+          )
+        }),
         api_projects.get_capability_members(
           project_id,
           capability_id,
@@ -383,12 +424,14 @@ pub fn handle_capability_members_dialog_closed(
   model: Model,
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      capability_members_dialog_capability_id: opt.None,
-      capability_members_selected: [],
-      capability_members_error: opt.None,
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        capability_members_dialog_capability_id: opt.None,
+        capability_members_selected: [],
+        capability_members_error: opt.None,
+      )
+    }),
     effect.none(),
   )
 }
@@ -399,13 +442,20 @@ pub fn handle_capability_members_toggled(
   user_id: Int,
 ) -> #(Model, Effect(Msg)) {
   let selected = case
-    list.contains(model.capability_members_selected, user_id)
+    list.contains(model.admin.capability_members_selected, user_id)
   {
     True ->
-      list.filter(model.capability_members_selected, fn(id) { id != user_id })
-    False -> [user_id, ..model.capability_members_selected]
+      list.filter(model.admin.capability_members_selected, fn(id) {
+        id != user_id
+      })
+    False -> [user_id, ..model.admin.capability_members_selected]
   }
-  #(Model(..model, capability_members_selected: selected), effect.none())
+  #(
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, capability_members_selected: selected)
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle save button click.
@@ -413,15 +463,17 @@ pub fn handle_capability_members_save_clicked(
   model: Model,
 ) -> #(Model, Effect(Msg)) {
   case
-    model.selected_project_id,
-    model.capability_members_dialog_capability_id
+    model.core.selected_project_id,
+    model.admin.capability_members_dialog_capability_id
   {
     opt.Some(project_id), opt.Some(capability_id) -> #(
-      Model(..model, capability_members_saving: True),
+      update_admin(model, fn(admin) {
+        AdminModel(..admin, capability_members_saving: True)
+      }),
       api_projects.set_capability_members(
         project_id,
         capability_id,
-        model.capability_members_selected,
+        model.admin.capability_members_selected,
         fn(result) { admin_msg(CapabilityMembersSaved(result)) },
       ),
     )
@@ -436,17 +488,19 @@ pub fn handle_capability_members_fetched_ok(
 ) -> #(Model, Effect(Msg)) {
   let cache =
     dict.insert(
-      model.capability_members_cache,
+      model.admin.capability_members_cache,
       result.capability_id,
       result.user_ids,
     )
   #(
-    Model(
-      ..model,
-      capability_members_loading: False,
-      capability_members_cache: cache,
-      capability_members_selected: result.user_ids,
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        capability_members_loading: False,
+        capability_members_cache: cache,
+        capability_members_selected: result.user_ids,
+      )
+    }),
     effect.none(),
   )
 }
@@ -459,11 +513,13 @@ pub fn handle_capability_members_fetched_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     _ -> #(
-      Model(
-        ..model,
-        capability_members_loading: False,
-        capability_members_error: opt.Some(err.message),
-      ),
+      update_admin(model, fn(admin) {
+        AdminModel(
+          ..admin,
+          capability_members_loading: False,
+          capability_members_error: opt.Some(err.message),
+        )
+      }),
       effect.none(),
     )
   }
@@ -476,21 +532,28 @@ pub fn handle_capability_members_saved_ok(
 ) -> #(Model, Effect(Msg)) {
   let cache =
     dict.insert(
-      model.capability_members_cache,
+      model.admin.capability_members_cache,
       result.capability_id,
       result.user_ids,
     )
-  #(
-    Model(
-      ..model,
-      capability_members_saving: False,
-      capability_members_cache: cache,
-      capability_members_dialog_capability_id: opt.None,
-      capability_members_selected: [],
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.MembersSaved)),
-    ),
-    effect.none(),
-  )
+  let model =
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        capability_members_saving: False,
+        capability_members_cache: cache,
+        capability_members_dialog_capability_id: opt.None,
+        capability_members_selected: [],
+      )
+    })
+  let model =
+    update_ui(model, fn(ui) {
+      UiModel(
+        ..ui,
+        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.MembersSaved)),
+      )
+    })
+  #(model, effect.none())
 }
 
 /// Handle capability members save error.
@@ -501,11 +564,13 @@ pub fn handle_capability_members_saved_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     _ -> #(
-      Model(
-        ..model,
-        capability_members_saving: False,
-        capability_members_error: opt.Some(err.message),
-      ),
+      update_admin(model, fn(admin) {
+        AdminModel(
+          ..admin,
+          capability_members_saving: False,
+          capability_members_error: opt.Some(err.message),
+        )
+      }),
       effect.none(),
     )
   }
@@ -534,7 +599,7 @@ pub fn handle_members_fetched_ok(
   members: List(ProjectMember),
 ) -> #(Model, Effect(Msg)) {
   // Preload capabilities for all members (AC15 optimization)
-  let preload_fx = case model.selected_project_id {
+  let preload_fx = case model.core.selected_project_id {
     opt.Some(project_id) ->
       members
       |> list.map(fn(m) {
@@ -546,7 +611,12 @@ pub fn handle_members_fetched_ok(
     opt.None -> effect.none()
   }
 
-  #(Model(..model, members: Loaded(members)), preload_fx)
+  #(
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, members: Loaded(members))
+    }),
+    preload_fx,
+  )
 }
 
 /// Handle members fetch error.
@@ -555,8 +625,13 @@ pub fn handle_members_fetched_error(
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
   case err.status == 401 {
-    True -> #(Model(..model, page: Login, user: opt.None), effect.none())
-    False -> #(Model(..model, members: Failed(err)), effect.none())
+    True -> update_helpers.reset_to_login(model)
+    False -> #(
+      update_admin(model, fn(admin) {
+        AdminModel(..admin, members: Failed(err))
+      }),
+      effect.none(),
+    )
   }
 }
 

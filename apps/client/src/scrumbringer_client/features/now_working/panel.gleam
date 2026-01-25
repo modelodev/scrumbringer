@@ -38,6 +38,7 @@ import scrumbringer_client/client_state.{
   pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/error_banner
 import scrumbringer_client/ui/icons
 import scrumbringer_client/update_helpers
 
@@ -48,14 +49,8 @@ import scrumbringer_client/update_helpers
 /// Now Working section within the right panel.
 /// Shows all active tasks with their timers, or empty state.
 pub fn view(model: Model) -> Element(Msg) {
-  let error_el = case model.member_now_working_error {
-    opt.Some(err) ->
-      div([attribute.class("error-banner")], [
-        span([attribute.class("error-banner-icon")], [
-          icons.nav_icon(icons.Warning, icons.Small),
-        ]),
-        span([], [text(err)]),
-      ])
+  let error_el = case model.member.member_now_working_error {
+    opt.Some(err) -> error_banner.view(err)
     opt.None -> element.none()
   }
 
@@ -113,7 +108,7 @@ pub fn view(model: Model) -> Element(Msg) {
 fn view_session(model: Model, session: WorkSession) -> Element(Msg) {
   let WorkSession(task_id: task_id, ..) = session
 
-  let task_info = update_helpers.find_task_by_id(model.member_tasks, task_id)
+  let task_info = update_helpers.find_task_by_id(model.member.member_tasks, task_id)
   let title = case task_info {
     opt.Some(Task(title: t, ..)) -> t
     opt.None -> update_helpers.i18n_t(model, i18n_text.TaskNumber(task_id))
@@ -121,7 +116,7 @@ fn view_session(model: Model, session: WorkSession) -> Element(Msg) {
 
   let elapsed = session_elapsed(model, session)
   let disable_actions =
-    model.member_task_mutation_in_flight || model.member_now_working_in_flight
+    model.member.member_task_mutation_in_flight || model.member.member_now_working_in_flight
 
   div([attribute.class("now-working-session-item")], [
     div([attribute.class("now-working-task-title")], [text(title)]),
@@ -170,7 +165,7 @@ fn session_elapsed(model: Model, session: WorkSession) -> String {
     session
   let started_ms = client_ffi.parse_iso_ms(started_at)
   let local_now_ms = client_ffi.now_ms()
-  let server_now_ms = local_now_ms - model.now_working_server_offset_ms
+  let server_now_ms = local_now_ms - model.member.now_working_server_offset_ms
   update_helpers.now_working_elapsed_from_ms(
     accumulated_s,
     started_ms,

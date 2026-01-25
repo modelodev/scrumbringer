@@ -22,24 +22,19 @@ import scrumbringer_client/client_state.{
   MemberToggleCapability, pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/attrs
+import scrumbringer_client/ui/error_banner
 import scrumbringer_client/ui/info_callout
 import scrumbringer_client/update_helpers
 
 /// Renders the My Skills section.
 pub fn view_skills(model: Model) -> Element(Msg) {
-  div([attribute.class("section")], [
+  div([attrs.section()], [
     h2([], [text(update_helpers.i18n_t(model, i18n_text.MySkills))]),
     // MS01: Helper text explaining the section
     info_callout.simple(update_helpers.i18n_t(model, i18n_text.MySkillsHelp)),
-    case model.member_my_capabilities_error {
-      opt.Some(err) ->
-        div([attribute.class("error-banner")], [
-          span([attribute.class("error-banner-icon")], [
-            icons.nav_icon(icons.Warning, icons.Small),
-          ]),
-          span([], [text(err)]),
-        ])
+    case model.member.member_my_capabilities_error {
+      opt.Some(err) -> error_banner.view(err)
       opt.None -> element.none()
     },
     view_skills_list(model),
@@ -47,14 +42,14 @@ pub fn view_skills(model: Model) -> Element(Msg) {
       [
         attribute.type_("submit"),
         event.on_click(pool_msg(MemberSaveCapabilitiesClicked)),
-        attribute.disabled(model.member_my_capabilities_in_flight),
-        attribute.class(case model.member_my_capabilities_in_flight {
+        attribute.disabled(model.member.member_my_capabilities_in_flight),
+        attribute.class(case model.member.member_my_capabilities_in_flight {
           True -> "btn-loading"
           False -> ""
         }),
       ],
       [
-        text(case model.member_my_capabilities_in_flight {
+        text(case model.member.member_my_capabilities_in_flight {
           True -> update_helpers.i18n_t(model, i18n_text.Saving)
           False -> update_helpers.i18n_t(model, i18n_text.Save)
         }),
@@ -65,13 +60,13 @@ pub fn view_skills(model: Model) -> Element(Msg) {
 
 /// Renders the list of capabilities with checkboxes.
 fn view_skills_list(model: Model) -> Element(Msg) {
-  case model.capabilities {
+  case model.admin.capabilities {
     Loaded(capabilities) ->
       div(
         [attribute.class("skills-list")],
         list.map(capabilities, fn(c) {
           let selected = case
-            dict.get(model.member_my_capability_ids_edit, c.id)
+            dict.get(model.member.member_my_capability_ids_edit, c.id)
           {
             Ok(v) -> v
             Error(_) -> False

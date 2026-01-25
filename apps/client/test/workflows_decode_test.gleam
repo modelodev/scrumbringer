@@ -10,7 +10,11 @@ pub fn workflow_payload_decoder_decodes_enveloped_workflow_test() {
     "{\"data\":{\"workflow\":{\"id\":1,\"org_id\":1,\"project_id\":null,\"name\":\"Auto QA\",\"description\":\"Automated QA workflow\",\"active\":true,\"rule_count\":2,\"created_by\":1,\"created_at\":\"2026-01-15T10:00:00Z\"}}}"
 
   let decoder =
-    decode.field("data", api_workflows.workflow_payload_decoder(), decode.success)
+    decode.field(
+      "data",
+      api_workflows.workflow_payload_decoder(),
+      decode.success,
+    )
 
   let result = json.parse(from: body, using: decoder)
 
@@ -22,7 +26,11 @@ pub fn workflow_payload_decoder_decodes_with_project_id_test() {
     "{\"data\":{\"workflow\":{\"id\":2,\"org_id\":1,\"project_id\":5,\"name\":\"Project Workflow\",\"description\":null,\"active\":false,\"rule_count\":0,\"created_by\":2,\"created_at\":\"2026-01-16T12:00:00Z\"}}}"
 
   let decoder =
-    decode.field("data", api_workflows.workflow_payload_decoder(), decode.success)
+    decode.field(
+      "data",
+      api_workflows.workflow_payload_decoder(),
+      decode.success,
+    )
 
   let result = json.parse(from: body, using: decoder)
 
@@ -34,7 +42,11 @@ pub fn workflows_payload_decoder_decodes_list_test() {
     "{\"data\":{\"workflows\":[{\"id\":1,\"org_id\":1,\"project_id\":null,\"name\":\"Workflow A\",\"description\":\"First\",\"active\":true,\"rule_count\":1,\"created_by\":1,\"created_at\":\"2026-01-15T10:00:00Z\"},{\"id\":2,\"org_id\":1,\"project_id\":3,\"name\":\"Workflow B\",\"description\":null,\"active\":false,\"rule_count\":0,\"created_by\":1,\"created_at\":\"2026-01-15T11:00:00Z\"}]}}"
 
   let decoder =
-    decode.field("data", api_workflows.workflows_payload_decoder(), decode.success)
+    decode.field(
+      "data",
+      api_workflows.workflows_payload_decoder(),
+      decode.success,
+    )
 
   let result = json.parse(from: body, using: decoder)
 
@@ -157,7 +169,11 @@ pub fn workflows_payload_decoder_decodes_empty_list_test() {
   let body = "{\"data\":{\"workflows\":[]}}"
 
   let decoder =
-    decode.field("data", api_workflows.workflows_payload_decoder(), decode.success)
+    decode.field(
+      "data",
+      api_workflows.workflows_payload_decoder(),
+      decode.success,
+    )
 
   let result = json.parse(from: body, using: decoder)
 
@@ -198,7 +214,8 @@ pub fn workflow_metrics_decoder_decodes_with_rules_test() {
   let body =
     "{\"workflow_id\":1,\"workflow_name\":\"Auto QA\",\"rules\":[{\"rule_id\":1,\"rule_name\":\"Task Completed\",\"evaluated_count\":100,\"applied_count\":80,\"suppressed_count\":20},{\"rule_id\":2,\"rule_name\":\"Card Closed\",\"evaluated_count\":50,\"applied_count\":45,\"suppressed_count\":5}]}"
 
-  let result = json.parse(from: body, using: api_workflows.workflow_metrics_decoder())
+  let result =
+    json.parse(from: body, using: api_workflows.workflow_metrics_decoder())
 
   result |> should.be_ok
 }
@@ -207,7 +224,8 @@ pub fn workflow_metrics_decoder_decodes_empty_rules_test() {
   let body =
     "{\"workflow_id\":1,\"workflow_name\":\"Empty Workflow\",\"rules\":[]}"
 
-  let result = json.parse(from: body, using: api_workflows.workflow_metrics_decoder())
+  let result =
+    json.parse(from: body, using: api_workflows.workflow_metrics_decoder())
 
   result |> should.be_ok
 }
@@ -217,7 +235,10 @@ pub fn org_workflow_metrics_summary_decoder_decodes_test() {
     "{\"workflow_id\":1,\"workflow_name\":\"Auto QA\",\"project_id\":5,\"rule_count\":3,\"evaluated_count\":150,\"applied_count\":120,\"suppressed_count\":30}"
 
   let result =
-    json.parse(from: body, using: api_workflows.org_workflow_metrics_summary_decoder())
+    json.parse(
+      from: body,
+      using: api_workflows.org_workflow_metrics_summary_decoder(),
+    )
 
   result |> should.be_ok
 }
@@ -247,7 +268,10 @@ pub fn rule_executions_response_decoder_decodes_with_executions_test() {
     "{\"rule_id\":1,\"executions\":[{\"id\":1,\"origin_type\":\"task\",\"origin_id\":100,\"outcome\":\"applied\",\"user_id\":5,\"user_email\":\"user@example.com\",\"created_at\":\"2026-01-19T10:00:00Z\"},{\"id\":2,\"origin_type\":\"task\",\"origin_id\":101,\"outcome\":\"suppressed\",\"suppression_reason\":\"idempotent\",\"user_id\":6,\"user_email\":\"other@example.com\",\"created_at\":\"2026-01-19T11:00:00Z\"}],\"pagination\":{\"limit\":20,\"offset\":0,\"total\":2}}"
 
   let result =
-    json.parse(from: body, using: api_workflows.rule_executions_response_decoder())
+    json.parse(
+      from: body,
+      using: api_workflows.rule_executions_response_decoder(),
+    )
 
   result |> should.be_ok
 }
@@ -257,7 +281,10 @@ pub fn rule_executions_response_decoder_decodes_empty_executions_test() {
     "{\"rule_id\":1,\"executions\":[],\"pagination\":{\"limit\":20,\"offset\":0,\"total\":0}}"
 
   let result =
-    json.parse(from: body, using: api_workflows.rule_executions_response_decoder())
+    json.parse(
+      from: body,
+      using: api_workflows.rule_executions_response_decoder(),
+    )
 
   result |> should.be_ok
 }
@@ -268,7 +295,10 @@ pub fn rule_executions_response_decoder_decodes_optional_fields_test() {
     "{\"rule_id\":1,\"executions\":[{\"id\":1,\"origin_type\":\"card\",\"origin_id\":50,\"outcome\":\"applied\",\"created_at\":\"2026-01-19T12:00:00Z\"}],\"pagination\":{\"limit\":20,\"offset\":0,\"total\":1}}"
 
   let result =
-    json.parse(from: body, using: api_workflows.rule_executions_response_decoder())
+    json.parse(
+      from: body,
+      using: api_workflows.rule_executions_response_decoder(),
+    )
 
   result |> should.be_ok
 }

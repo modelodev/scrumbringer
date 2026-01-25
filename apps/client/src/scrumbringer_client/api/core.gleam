@@ -39,7 +39,9 @@ import lustre/effect.{type Effect}
 import scrumbringer_client/client_ffi
 
 // Import types from shared domain
-import domain/api_error.{type ApiError, type ApiResult as SharedApiResult, ApiError}
+import domain/api_error.{
+  type ApiError, type ApiResult as SharedApiResult, ApiError,
+}
 
 // Re-export ApiResult for backwards compatibility
 pub type ApiResult(a) =

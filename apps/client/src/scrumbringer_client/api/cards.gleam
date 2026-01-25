@@ -180,7 +180,11 @@ pub fn list_card_tasks(
   to_msg: fn(ApiResult(List(Task))) -> msg,
 ) -> Effect(msg) {
   let decoder =
-    decode.field("tasks", decode.list(task_decoders.task_decoder()), decode.success)
+    decode.field(
+      "tasks",
+      decode.list(task_decoders.task_decoder()),
+      decode.success,
+    )
   core.request(
     "GET",
     "/api/v1/cards/" <> int.to_string(card_id) <> "/tasks",

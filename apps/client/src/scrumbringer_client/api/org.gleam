@@ -27,10 +27,10 @@ import scrumbringer_client/api/core.{type ApiResult}
 import scrumbringer_client/client_ffi
 
 // Import types from shared domain
+import domain/capability.{type Capability, Capability}
 import domain/org.{
   type InviteLink, type OrgInvite, type OrgUser, InviteLink, OrgInvite, OrgUser,
 }
-import domain/capability.{type Capability, Capability}
 
 // =============================================================================
 // Decoders
@@ -207,10 +207,11 @@ pub fn add_user_to_project(
   role: String,
   to_msg: fn(ApiResult(Project)) -> msg,
 ) -> Effect(msg) {
-  let body = json.object([
-    #("project_id", json.int(project_id)),
-    #("role", json.string(role)),
-  ])
+  let body =
+    json.object([
+      #("project_id", json.int(project_id)),
+      #("role", json.string(role)),
+    ])
   let decoder = decode.field("project", user_project_decoder(), decode.success)
   core.request(
     "POST",

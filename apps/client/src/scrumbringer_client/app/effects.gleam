@@ -55,7 +55,10 @@ pub fn navigate_replace(route: router.Route) -> Effect(msg) {
 /// Update the browser document title for the current route.
 ///
 /// Sets title in format "Section - Scrumbringer" for authenticated pages.
-pub fn update_title(route: router.Route, locale: i18n_locale.Locale) -> Effect(msg) {
+pub fn update_title(
+  route: router.Route,
+  locale: i18n_locale.Locale,
+) -> Effect(msg) {
   router.update_page_title(route, locale)
 }
 
@@ -115,7 +118,10 @@ const sidebar_storage_key = "scrumbringer:sidebar-collapsed"
 /// Save sidebar collapse state to localStorage.
 ///
 /// Persists both config and org section collapsed states as "config,org" format.
-pub fn save_sidebar_state(config_collapsed: Bool, org_collapsed: Bool) -> Effect(msg) {
+pub fn save_sidebar_state(
+  config_collapsed: Bool,
+  org_collapsed: Bool,
+) -> Effect(msg) {
   effect.from(fn(_dispatch) {
     let config_str = case config_collapsed {
       True -> "1"

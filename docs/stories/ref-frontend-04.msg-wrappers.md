@@ -2,7 +2,7 @@
 
 ## Status
 
-**Ready**
+**Review**
 
 ---
 
@@ -25,21 +25,21 @@
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Define wrapper Msg types** (AC: 1)
-  - [ ] Update `client_state.gleam` Msg with feature wrappers
-  - [ ] Define mapping helpers for wrapper Msgs
+- [x] **Task 1: Define wrapper Msg types** (AC: 1)
+  - [x] Update `client_state.gleam` Msg with feature wrappers
+  - [x] Define mapping helpers for wrapper Msgs
 
-- [ ] **Task 2: Refactor update delegation** (AC: 2)
-  - [ ] Split per-feature update functions
-  - [ ] Route wrapper Msgs to feature updates
+- [x] **Task 2: Refactor update delegation** (AC: 2)
+  - [x] Split per-feature update functions
+  - [x] Route wrapper Msgs to feature updates
 
-- [ ] **Task 3: Update view dispatch** (AC: 3)
-  - [ ] Wrap feature messages in views and event handlers
-  - [ ] Ensure no mixed Msg types remain
+- [x] **Task 3: Update view dispatch** (AC: 3)
+  - [x] Wrap feature messages in views and event handlers
+  - [x] Ensure no mixed Msg types remain
 
-- [ ] **Task 4: Regression check** (AC: 4)
-  - [ ] Run `cd apps/client && gleam test`
-  - [ ] Smoke check login, pool, admin routes
+- [x] **Task 4: Regression check** (AC: 4)
+  - [x] Run `cd apps/client && gleam test`
+  - [x] Smoke check login, pool, admin routes
 
 ---
 
@@ -76,6 +76,7 @@ Reference: `docs/architecture/coding-standards.md` (Lustre patterns and small ha
 | Date | Version | Description | Author |
 |------|---------|-------------|--------|
 | 2026-01-25 | 1.0 | Ready story created | Sarah (PO) |
+| 2026-01-25 | 1.1 | Wrapped client view and update flows by feature | James (Dev) |
 
 ---
 

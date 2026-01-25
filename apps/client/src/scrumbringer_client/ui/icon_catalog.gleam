@@ -231,18 +231,20 @@ pub fn render(icon_id: String, size: Int) -> Element(a) {
   html.span(
     [
       attribute.class("icon-wrapper"),
-      attribute.attribute("style",
+      attribute.attribute(
+        "style",
         "display:inline-flex;align-items:center;justify-content:center;width:"
-        <> int.to_string(size)
-        <> "px;height:"
-        <> int.to_string(size)
-        <> "px;",
+          <> int.to_string(size)
+          <> "px;height:"
+          <> int.to_string(size)
+          <> "px;",
       ),
     ],
     [
       html.span(
         [
-          attribute.attribute("style",
+          attribute.attribute(
+            "style",
             "width:100%;height:100%;display:flex;align-items:center;justify-content:center;",
           ),
           attribute.attribute("aria-hidden", "true"),
@@ -254,7 +256,11 @@ pub fn render(icon_id: String, size: Int) -> Element(a) {
 }
 
 /// Render icon with additional CSS class.
-pub fn render_with_class(icon_id: String, size: Int, class: String) -> Element(a) {
+pub fn render_with_class(
+  icon_id: String,
+  size: Int,
+  class: String,
+) -> Element(a) {
   let icon_el =
     icon_registry()
     |> dict.get(icon_id)
@@ -264,18 +270,20 @@ pub fn render_with_class(icon_id: String, size: Int, class: String) -> Element(a
   html.span(
     [
       attribute.class("icon-wrapper " <> class),
-      attribute.attribute("style",
+      attribute.attribute(
+        "style",
         "display:inline-flex;align-items:center;justify-content:center;width:"
-        <> int.to_string(size)
-        <> "px;height:"
-        <> int.to_string(size)
-        <> "px;",
+          <> int.to_string(size)
+          <> "px;height:"
+          <> int.to_string(size)
+          <> "px;",
       ),
     ],
     [
       html.span(
         [
-          attribute.attribute("style",
+          attribute.attribute(
+            "style",
             "width:100%;height:100%;display:flex;align-items:center;justify-content:center;",
           ),
           attribute.attribute("aria-hidden", "true"),

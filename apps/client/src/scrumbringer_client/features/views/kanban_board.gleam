@@ -15,7 +15,7 @@
 
 import gleam/int
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{None, Some}
 import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
@@ -75,40 +75,35 @@ pub fn view(config: KanbanConfig(msg)) -> Element(msg) {
 
   // Group by state
   let pendiente =
-    list.filter(non_empty_cards, fn(cwp) {
-      cwp.card.state == Pendiente
-    })
+    list.filter(non_empty_cards, fn(cwp) { cwp.card.state == Pendiente })
   let en_curso =
     list.filter(non_empty_cards, fn(cwp) { cwp.card.state == EnCurso })
   let cerrada =
     list.filter(non_empty_cards, fn(cwp) { cwp.card.state == Cerrada })
 
-  div(
-    [attribute.class("kanban-board")],
-    [
-      view_column(
-        config,
-        i18n.t(config.locale, i18n_text.CardStatePendiente),
-        "pendiente",
-        Pendiente,
-        pendiente,
-      ),
-      view_column(
-        config,
-        i18n.t(config.locale, i18n_text.CardStateEnCurso),
-        "en-curso",
-        EnCurso,
-        en_curso,
-      ),
-      view_column(
-        config,
-        i18n.t(config.locale, i18n_text.CardStateCerrada),
-        "cerrada",
-        Cerrada,
-        cerrada,
-      ),
-    ],
-  )
+  div([attribute.class("kanban-board")], [
+    view_column(
+      config,
+      i18n.t(config.locale, i18n_text.CardStatePendiente),
+      "pendiente",
+      Pendiente,
+      pendiente,
+    ),
+    view_column(
+      config,
+      i18n.t(config.locale, i18n_text.CardStateEnCurso),
+      "en-curso",
+      EnCurso,
+      en_curso,
+    ),
+    view_column(
+      config,
+      i18n.t(config.locale, i18n_text.CardStateCerrada),
+      "cerrada",
+      Cerrada,
+      cerrada,
+    ),
+  ])
 }
 
 fn view_column(
@@ -118,31 +113,25 @@ fn view_column(
   column_state: CardState,
   cards: List(CardWithProgress),
 ) -> Element(msg) {
-  div(
-    [attribute.class("kanban-column " <> column_class)],
-    [
-      div(
-        [attribute.class("kanban-column-header")],
-        [
-          h4([], [text(title)]),
-          span([attribute.class("column-count")], [
-            text(int.to_string(list.length(cards))),
-          ]),
-        ],
-      ),
-      div(
-        [attribute.class("kanban-column-content")],
-        case cards {
-          [] -> [view_empty_column(config, column_state)]
-          _ -> list.map(cards, fn(cwp) { view_card(config, cwp) })
-        },
-      ),
-    ],
-  )
+  div([attribute.class("kanban-column " <> column_class)], [
+    div([attribute.class("kanban-column-header")], [
+      h4([], [text(title)]),
+      span([attribute.class("column-count")], [
+        text(int.to_string(list.length(cards))),
+      ]),
+    ]),
+    div([attribute.class("kanban-column-content")], case cards {
+      [] -> [view_empty_column(config, column_state)]
+      _ -> list.map(cards, fn(cwp) { view_card(config, cwp) })
+    }),
+  ])
 }
 
 /// Renders an empty state for kanban columns (AC12: different per column)
-fn view_empty_column(config: KanbanConfig(msg), column_state: CardState) -> Element(msg) {
+fn view_empty_column(
+  config: KanbanConfig(msg),
+  column_state: CardState,
+) -> Element(msg) {
   // AC12: Different empty state text per column
   let empty_text = case column_state {
     Pendiente -> i18n.t(config.locale, i18n_text.KanbanEmptyPendiente)
@@ -163,7 +152,9 @@ fn view_empty_column(config: KanbanConfig(msg), column_state: CardState) -> Elem
       attribute.attribute("data-testid", "kanban-empty-column"),
     ],
     [
-      span([attribute.class("empty-icon")], [icons.nav_icon(empty_icon, icons.Medium)]),
+      span([attribute.class("empty-icon")], [
+        icons.nav_icon(empty_icon, icons.Medium),
+      ]),
       span([attribute.class("empty-text")], [text(empty_text)]),
     ],
   )
@@ -186,38 +177,35 @@ fn view_card(config: KanbanConfig(msg), cwp: CardWithProgress) -> Element(msg) {
     ],
     [
       // Card header with title and context menu
-      div(
-        [attribute.class("kanban-card-header")],
-        [
-          button(
-            [
-              attribute.class("kanban-card-title"),
-              attribute.attribute("data-testid", "card-title"),
-              event.on_click(config.on_card_click(cwp.card.id)),
-            ],
-            [
-              // Color dot
-              case cwp.card.color {
-                Some(color) ->
-                  span(
-                    [
-                      attribute.class("card-color-dot"),
-                      attribute.style("background-color", color),
-                    ],
-                    [],
-                  )
-                None -> element.none()
-              },
-              text(cwp.card.title),
-            ],
-          ),
-          // Context menu for PM/Admin
-          case config.is_pm_or_admin {
-            True -> view_context_menu(config, cwp.card.id)
-            False -> element.none()
-          },
-        ],
-      ),
+      div([attribute.class("kanban-card-header")], [
+        button(
+          [
+            attribute.class("kanban-card-title"),
+            attribute.attribute("data-testid", "card-title"),
+            event.on_click(config.on_card_click(cwp.card.id)),
+          ],
+          [
+            // Color dot
+            case cwp.card.color {
+              Some(color) ->
+                span(
+                  [
+                    attribute.class("card-color-dot"),
+                    attribute.style("background-color", color),
+                  ],
+                  [],
+                )
+              None -> element.none()
+            },
+            text(cwp.card.title),
+          ],
+        ),
+        // Context menu for PM/Admin
+        case config.is_pm_or_admin {
+          True -> view_context_menu(config, cwp.card.id)
+          False -> element.none()
+        },
+      ]),
       // Description (truncated)
       case cwp.card.description {
         "" -> element.none()
@@ -227,24 +215,18 @@ fn view_card(config: KanbanConfig(msg), cwp: CardWithProgress) -> Element(msg) {
           ])
       },
       // Progress bar
-      div(
-        [attribute.class("kanban-card-progress")],
-        [
+      div([attribute.class("kanban-card-progress")], [
+        div([attribute.class("progress-bar")], [
           div(
-            [attribute.class("progress-bar")],
             [
-              div(
-                [
-                  attribute.class("progress-fill"),
-                  attribute.style("width", int.to_string(progress_percent) <> "%"),
-                ],
-                [],
-              ),
+              attribute.class("progress-fill"),
+              attribute.style("width", int.to_string(progress_percent) <> "%"),
             ],
+            [],
           ),
-          span([attribute.class("progress-text")], [text(progress_text)]),
-        ],
-      ),
+        ]),
+        span([attribute.class("progress-text")], [text(progress_text)]),
+      ]),
       // Task list (Story 4.5 AC29, Story 4.8 UX: improved styling)
       view_task_list(config, cwp.tasks),
     ],
@@ -262,9 +244,7 @@ fn view_task_list(config: KanbanConfig(msg), tasks: List(Task)) -> Element(msg) 
           attribute.class("kanban-card-tasks"),
           attribute.attribute("data-testid", "card-tasks"),
         ],
-        list.map(list.take(tasks, 5), fn(t) {
-          view_task_item(config, t)
-        }),
+        list.map(list.take(tasks, 5), fn(t) { view_task_item(config, t) }),
       )
   }
 }
@@ -333,7 +313,10 @@ fn view_task_item(config: KanbanConfig(msg), task: Task) -> Element(msg) {
           button(
             [
               attribute.class("btn-claim-mini"),
-              attribute.attribute("title", i18n.t(config.locale, i18n_text.Claim)),
+              attribute.attribute(
+                "title",
+                i18n.t(config.locale, i18n_text.Claim),
+              ),
               event.on_click(config.on_task_claim(task.id, task.version)),
             ],
             [icons.nav_icon(icons.HandRaised, icons.XSmall)],
@@ -382,8 +365,7 @@ fn compute_progress(
   tasks: List(Task),
 ) -> List(CardWithProgress) {
   list.map(cards, fn(card) {
-    let card_tasks =
-      list.filter(tasks, fn(t) { t.card_id == Some(card.id) })
+    let card_tasks = list.filter(tasks, fn(t) { t.card_id == Some(card.id) })
     let completed =
       list.count(card_tasks, fn(t) { t.status == task_status.Completed })
     let total = list.length(card_tasks)

@@ -44,19 +44,19 @@ import scrumbringer_client/update_helpers
 
 /// Counts how many filters are currently active.
 fn count_active_filters(model: Model) -> Int {
-  let type_active = case string.is_empty(model.member_filters_type_id) {
+  let type_active = case string.is_empty(model.member.member_filters_type_id) {
     True -> 0
     False -> 1
   }
-  let cap_active = case string.is_empty(model.member_filters_capability_id) {
+  let cap_active = case string.is_empty(model.member.member_filters_capability_id) {
     True -> 0
     False -> 1
   }
-  let search_active = case string.is_empty(model.member_filters_q) {
+  let search_active = case string.is_empty(model.member.member_filters_q) {
     True -> 0
     False -> 1
   }
-  let my_caps_active = case model.member_quick_my_caps {
+  let my_caps_active = case model.member.member_quick_my_caps {
     True -> 1
     False -> 0
   }
@@ -65,7 +65,7 @@ fn count_active_filters(model: Model) -> Int {
 
 /// Renders the filter panel with type, capability, and search filters.
 pub fn view(model: Model) -> Element(Msg) {
-  let type_options = case model.member_task_types {
+  let type_options = case model.member.member_task_types {
     Loaded(task_types) -> [
       option(
         [attribute.value("")],
@@ -84,7 +84,7 @@ pub fn view(model: Model) -> Element(Msg) {
     ]
   }
 
-  let capability_options = case model.capabilities {
+  let capability_options = case model.admin.capabilities {
     Loaded(caps) -> [
       option(
         [attribute.value("")],
@@ -103,7 +103,7 @@ pub fn view(model: Model) -> Element(Msg) {
     ]
   }
 
-  let my_caps_active = model.member_quick_my_caps
+  let my_caps_active = model.member.member_quick_my_caps
 
   let my_caps_class = case my_caps_active {
     True -> "btn-xs btn-icon"
@@ -186,9 +186,9 @@ fn view_type_filter(
           "aria-label",
           update_helpers.i18n_t(model, i18n_text.TypeLabel),
         ),
-        attribute.value(model.member_filters_type_id),
+        attribute.value(model.member.member_filters_type_id),
         event.on_input(fn(value) { pool_msg(MemberPoolTypeChanged(value)) }),
-        attribute.disabled(case model.member_task_types {
+        attribute.disabled(case model.member.member_task_types {
           Loaded(_) -> False
           _ -> True
         }),
@@ -231,7 +231,7 @@ fn view_capability_filter(
           "aria-label",
           update_helpers.i18n_t(model, i18n_text.CapabilityLabel),
         ),
-        attribute.value(model.member_filters_capability_id),
+        attribute.value(model.member.member_filters_capability_id),
         event.on_input(fn(value) {
           pool_msg(MemberPoolCapabilityChanged(value))
         }),
@@ -322,7 +322,7 @@ fn view_search_filter(model: Model) -> Element(Msg) {
         update_helpers.i18n_t(model, i18n_text.SearchLabel),
       ),
       attribute.type_("text"),
-      attribute.value(model.member_filters_q),
+      attribute.value(model.member.member_filters_q),
       event.on_input(fn(value) { pool_msg(MemberPoolSearchChanged(value)) }),
       event.debounce(
         event.on_input(fn(value) { pool_msg(MemberPoolSearchDebounced(value)) }),

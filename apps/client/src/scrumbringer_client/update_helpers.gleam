@@ -48,14 +48,16 @@ import lustre/effect.{type Effect}
 
 // Domain types from shared
 import domain/api_error.{type ApiError}
-import domain/project.{type Project}
 import domain/org.{type OrgUser}
+import domain/project.{type Project}
 import domain/task.{
   type ActiveTask, type Task, type TaskPosition, type WorkSession, ActiveTask,
   ActiveTaskPayload, Task, TaskPosition, WorkSessionsPayload,
 }
 import domain/task_type.{type TaskType}
-import scrumbringer_client/client_state.{type Model, type Msg, type Remote, Loaded, Model}
+import scrumbringer_client/client_state.{
+  type Model, type Msg, type Remote, CoreModel, Loaded, update_core,
+}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/shared/i18n_helpers
@@ -164,10 +166,7 @@ pub fn empty_to_int_opt(value: String) -> Option(Int) {
 /// find_task_by_id(Loaded([task1, task2]), 1)
 /// // Some(task1)
 /// ```
-pub fn find_task_by_id(
-  tasks: Remote(List(Task)),
-  task_id: Int,
-) -> Option(Task) {
+pub fn find_task_by_id(tasks: Remote(List(Task)), task_id: Int) -> Option(Task) {
   case tasks {
     Loaded(tasks) ->
       case
@@ -220,7 +219,7 @@ pub fn resolve_org_user(
 /// // [project1, project2] or []
 /// ```
 pub fn active_projects(model: Model) -> List(Project) {
-  case model.projects {
+  case model.core.projects {
     Loaded(projects) -> projects
     _ -> []
   }
@@ -235,7 +234,7 @@ pub fn active_projects(model: Model) -> List(Project) {
 /// // Some(project) or None
 /// ```
 pub fn selected_project(model: Model) -> Option(Project) {
-  case model.selected_project_id, model.projects {
+  case model.core.selected_project_id, model.core.projects {
     Some(id), Loaded(projects) ->
       case list.find(projects, fn(p) { p.id == id }) {
         Ok(project) -> Some(project)
@@ -257,12 +256,12 @@ pub fn selected_project(model: Model) -> Option(Project) {
 /// ```
 pub fn now_working_active_task(model: Model) -> Option(ActiveTask) {
   // First check work sessions (new API)
-  case model.member_work_sessions {
+  case model.member.member_work_sessions {
     Loaded(WorkSessionsPayload(active_sessions: [first, ..], ..)) ->
       Some(work_session_to_active_task(first))
     _ ->
       // Fallback to legacy active_task
-      case model.member_active_task {
+      case model.member.member_active_task {
         Loaded(ActiveTaskPayload(active_task: active_task, ..)) -> active_task
         _ -> None
       }
@@ -304,7 +303,7 @@ pub fn now_working_active_task_id(model: Model) -> Option(Int) {
 /// // [WorkSession(task_id: 1, ..), WorkSession(task_id: 2, ..)]
 /// ```
 pub fn now_working_all_sessions(model: Model) -> List(WorkSession) {
-  case model.member_work_sessions {
+  case model.member.member_work_sessions {
     Loaded(WorkSessionsPayload(active_sessions: sessions, ..)) -> sessions
     _ -> []
   }
@@ -371,9 +370,7 @@ pub fn now_working_elapsed_from_ms(
 /// flatten_tasks(dict.from_list([#(1, [t1, t2]), #(2, [t3])]))
 /// // [t1, t2, t3]
 /// ```
-pub fn flatten_tasks(
-  tasks_by_project: Dict(Int, List(Task)),
-) -> List(Task) {
+pub fn flatten_tasks(tasks_by_project: Dict(Int, List(Task))) -> List(Task) {
   tasks_by_project
   |> dict.to_list
   |> list.fold([], fn(acc, pair) {
@@ -461,15 +458,18 @@ pub fn ensure_selected_project(
 /// // Model with valid active_section
 /// ```
 pub fn ensure_default_section(model: Model) -> Model {
-  case model.user, model.projects {
+  case model.core.user, model.core.projects {
     Some(user), Loaded(projects) -> {
       let visible = permissions.visible_sections(user.org_role, projects)
 
-      case list.any(visible, fn(s) { s == model.active_section }) {
+      case list.any(visible, fn(s) { s == model.core.active_section }) {
         True -> model
         False ->
           case visible {
-            [first, ..] -> Model(..model, active_section: first)
+            [first, ..] ->
+              update_core(model, fn(core) {
+                CoreModel(..core, active_section: first)
+              })
             [] -> model
           }
       }

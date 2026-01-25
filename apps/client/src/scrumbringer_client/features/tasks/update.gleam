@@ -52,9 +52,10 @@ import domain/api_error.{type ApiError}
 import domain/task.{type Task, type TaskNote, Task}
 import domain/task_status.{Available, Claimed, Completed, Taken}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, Loading, MemberNoteAdded,
+  type Model, type Msg, Failed, Loaded, Loading, MemberModel, MemberNoteAdded,
   MemberNotesFetched, MemberTaskClaimed, MemberTaskCompleted, MemberTaskCreated,
-  MemberTaskReleased, MemberWorkSessionsFetched, Model, NotAsked, pool_msg,
+  MemberTaskReleased, MemberWorkSessionsFetched, NotAsked, UiModel, pool_msg,
+  update_member, update_ui,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -66,11 +67,13 @@ import scrumbringer_client/update_helpers
 /// Open the create task dialog.
 pub fn handle_create_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      member_create_dialog_open: True,
-      member_create_error: opt.None,
-    ),
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_create_dialog_open: True,
+        member_create_error: opt.None,
+      )
+    }),
     effect.none(),
   )
 }
@@ -78,11 +81,13 @@ pub fn handle_create_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
 /// Close the create task dialog.
 pub fn handle_create_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      member_create_dialog_open: False,
-      member_create_error: opt.None,
-    ),
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_create_dialog_open: False,
+        member_create_error: opt.None,
+      )
+    }),
     effect.none(),
   )
 }
@@ -92,7 +97,12 @@ pub fn handle_create_title_changed(
   model: Model,
   value: String,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, member_create_title: value), effect.none())
+  #(
+    update_member(model, fn(member) {
+      MemberModel(..member, member_create_title: value)
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle description field change.
@@ -100,7 +110,12 @@ pub fn handle_create_description_changed(
   model: Model,
   value: String,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, member_create_description: value), effect.none())
+  #(
+    update_member(model, fn(member) {
+      MemberModel(..member, member_create_description: value)
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle priority field change.
@@ -108,7 +123,12 @@ pub fn handle_create_priority_changed(
   model: Model,
   value: String,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, member_create_priority: value), effect.none())
+  #(
+    update_member(model, fn(member) {
+      MemberModel(..member, member_create_priority: value)
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle type_id field change.
@@ -116,7 +136,12 @@ pub fn handle_create_type_id_changed(
   model: Model,
   value: String,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, member_create_type_id: value), effect.none())
+  #(
+    update_member(model, fn(member) {
+      MemberModel(..member, member_create_type_id: value)
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle create task form submission with validation.
@@ -131,7 +156,7 @@ pub fn handle_create_submitted(
   model: Model,
   member_refresh: fn(Model) -> #(Model, Effect(Msg)),
 ) -> #(Model, Effect(Msg)) {
-  case model.member_create_in_flight {
+  case model.member.member_create_in_flight {
     True -> #(model, effect.none())
     False -> validate_and_create(model, member_refresh)
   }
@@ -141,15 +166,17 @@ fn validate_and_create(
   model: Model,
   _member_refresh: fn(Model) -> #(Model, Effect(Msg)),
 ) -> #(Model, Effect(Msg)) {
-  case model.selected_project_id {
+  case model.core.selected_project_id {
     opt.None -> #(
-      Model(
-        ..model,
-        member_create_error: opt.Some(update_helpers.i18n_t(
-          model,
-          i18n_text.SelectProjectFirst,
-        )),
-      ),
+      update_member(model, fn(member) {
+        MemberModel(
+          ..member,
+          member_create_error: opt.Some(update_helpers.i18n_t(
+            model,
+            i18n_text.SelectProjectFirst,
+          )),
+        )
+      }),
       effect.none(),
     )
 
@@ -158,17 +185,19 @@ fn validate_and_create(
 }
 
 fn validate_title(model: Model, project_id: Int) -> #(Model, Effect(Msg)) {
-  let title = string.trim(model.member_create_title)
+  let title = string.trim(model.member.member_create_title)
 
   case title == "" {
     True -> #(
-      Model(
-        ..model,
-        member_create_error: opt.Some(update_helpers.i18n_t(
-          model,
-          i18n_text.TitleRequired,
-        )),
-      ),
+      update_member(model, fn(member) {
+        MemberModel(
+          ..member,
+          member_create_error: opt.Some(update_helpers.i18n_t(
+            model,
+            i18n_text.TitleRequired,
+          )),
+        )
+      }),
       effect.none(),
     )
 
@@ -183,13 +212,15 @@ fn validate_title_length(
 ) -> #(Model, Effect(Msg)) {
   case string.length(title) > 56 {
     True -> #(
-      Model(
-        ..model,
-        member_create_error: opt.Some(update_helpers.i18n_t(
-          model,
-          i18n_text.TitleTooLongMax56,
-        )),
-      ),
+      update_member(model, fn(member) {
+        MemberModel(
+          ..member,
+          member_create_error: opt.Some(update_helpers.i18n_t(
+            model,
+            i18n_text.TitleTooLongMax56,
+          )),
+        )
+      }),
       effect.none(),
     )
 
@@ -202,15 +233,17 @@ fn validate_type_id(
   project_id: Int,
   title: String,
 ) -> #(Model, Effect(Msg)) {
-  case int.parse(model.member_create_type_id) {
+  case int.parse(model.member.member_create_type_id) {
     Error(_) -> #(
-      Model(
-        ..model,
-        member_create_error: opt.Some(update_helpers.i18n_t(
-          model,
-          i18n_text.TypeRequired,
-        )),
-      ),
+      update_member(model, fn(member) {
+        MemberModel(
+          ..member,
+          member_create_error: opt.Some(update_helpers.i18n_t(
+            model,
+            i18n_text.TypeRequired,
+          )),
+        )
+      }),
       effect.none(),
     )
 
@@ -224,18 +257,20 @@ fn validate_priority(
   title: String,
   type_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  case int.parse(model.member_create_priority) {
+  case int.parse(model.member.member_create_priority) {
     Ok(priority) if priority >= 1 && priority <= 5 ->
       submit_create(model, project_id, title, type_id, priority)
 
     _ -> #(
-      Model(
-        ..model,
-        member_create_error: opt.Some(update_helpers.i18n_t(
-          model,
-          i18n_text.PriorityMustBe1To5,
-        )),
-      ),
+      update_member(model, fn(member) {
+        MemberModel(
+          ..member,
+          member_create_error: opt.Some(update_helpers.i18n_t(
+            model,
+            i18n_text.PriorityMustBe1To5,
+          )),
+        )
+      }),
       effect.none(),
     )
   }
@@ -248,14 +283,20 @@ fn submit_create(
   type_id: Int,
   priority: Int,
 ) -> #(Model, Effect(Msg)) {
-  let desc = string.trim(model.member_create_description)
+  let desc = string.trim(model.member.member_create_description)
   let description = case desc == "" {
     True -> opt.None
     False -> opt.Some(desc)
   }
 
   let model =
-    Model(..model, member_create_in_flight: True, member_create_error: opt.None)
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_create_in_flight: True,
+        member_create_error: opt.None,
+      )
+    })
 
   #(
     model,
@@ -280,15 +321,24 @@ pub fn handle_task_created_ok(
   member_refresh: fn(Model) -> #(Model, Effect(Msg)),
 ) -> #(Model, Effect(Msg)) {
   let model =
-    Model(
-      ..model,
-      member_create_in_flight: False,
-      member_create_dialog_open: False,
-      member_create_title: "",
-      member_create_description: "",
-      member_create_priority: "3",
-      member_create_type_id: "",
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskCreated)),
+    update_ui(
+      update_member(model, fn(member) {
+        MemberModel(
+          ..member,
+          member_create_in_flight: False,
+          member_create_dialog_open: False,
+          member_create_title: "",
+          member_create_description: "",
+          member_create_priority: "3",
+          member_create_type_id: "",
+        )
+      }),
+      fn(ui) {
+        UiModel(
+          ..ui,
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskCreated)),
+        )
+      },
     )
   member_refresh(model)
 }
@@ -301,11 +351,13 @@ pub fn handle_task_created_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     _ -> #(
-      Model(
-        ..model,
-        member_create_in_flight: False,
-        member_create_error: opt.Some(err.message),
-      ),
+      update_member(model, fn(member) {
+        MemberModel(
+          ..member,
+          member_create_in_flight: False,
+          member_create_error: opt.Some(err.message),
+        )
+      }),
       effect.none(),
     )
   }
@@ -322,7 +374,7 @@ pub fn handle_claim_clicked(
   task_id: Int,
   version: Int,
 ) -> #(Model, Effect(Msg)) {
-  case model.member_task_mutation_in_flight {
+  case model.member.member_task_mutation_in_flight {
     True -> #(model, effect.none())
     False -> {
       // 1. Snapshot current tasks
@@ -331,12 +383,14 @@ pub fn handle_claim_clicked(
       let model = apply_optimistic_claim(model, task_id)
       // 3. Set in-flight state with snapshot
       let model =
-        Model(
-          ..model,
-          member_task_mutation_in_flight: True,
-          member_task_mutation_task_id: opt.Some(task_id),
-          member_tasks_snapshot: snapshot,
-        )
+        update_member(model, fn(member) {
+          MemberModel(
+            ..member,
+            member_task_mutation_in_flight: True,
+            member_task_mutation_task_id: opt.Some(task_id),
+            member_tasks_snapshot: snapshot,
+          )
+        })
       #(
         model,
         api_tasks.claim_task(task_id, version, fn(result) {
@@ -354,7 +408,7 @@ pub fn handle_release_clicked(
   task_id: Int,
   version: Int,
 ) -> #(Model, Effect(Msg)) {
-  case model.member_task_mutation_in_flight {
+  case model.member.member_task_mutation_in_flight {
     True -> #(model, effect.none())
     False -> {
       // 1. Snapshot current tasks
@@ -363,12 +417,14 @@ pub fn handle_release_clicked(
       let model = apply_optimistic_release(model, task_id)
       // 3. Set in-flight state with snapshot
       let model =
-        Model(
-          ..model,
-          member_task_mutation_in_flight: True,
-          member_task_mutation_task_id: opt.Some(task_id),
-          member_tasks_snapshot: snapshot,
-        )
+        update_member(model, fn(member) {
+          MemberModel(
+            ..member,
+            member_task_mutation_in_flight: True,
+            member_task_mutation_task_id: opt.Some(task_id),
+            member_tasks_snapshot: snapshot,
+          )
+        })
       #(
         model,
         api_tasks.release_task(task_id, version, fn(result) {
@@ -386,7 +442,7 @@ pub fn handle_complete_clicked(
   task_id: Int,
   version: Int,
 ) -> #(Model, Effect(Msg)) {
-  case model.member_task_mutation_in_flight {
+  case model.member.member_task_mutation_in_flight {
     True -> #(model, effect.none())
     False -> {
       // 1. Snapshot current tasks
@@ -395,12 +451,14 @@ pub fn handle_complete_clicked(
       let model = apply_optimistic_complete(model, task_id)
       // 3. Set in-flight state with snapshot
       let model =
-        Model(
-          ..model,
-          member_task_mutation_in_flight: True,
-          member_task_mutation_task_id: opt.Some(task_id),
-          member_tasks_snapshot: snapshot,
-        )
+        update_member(model, fn(member) {
+          MemberModel(
+            ..member,
+            member_task_mutation_in_flight: True,
+            member_task_mutation_task_id: opt.Some(task_id),
+            member_tasks_snapshot: snapshot,
+          )
+        })
       #(
         model,
         api_tasks.complete_task(task_id, version, fn(result) {
@@ -417,7 +475,7 @@ pub fn handle_complete_clicked(
 
 /// Extract current tasks list for snapshot.
 fn get_tasks_snapshot(model: Model) -> opt.Option(List(Task)) {
-  case model.member_tasks {
+  case model.member.member_tasks {
     Loaded(tasks) -> opt.Some(tasks)
     _ -> opt.None
   }
@@ -425,7 +483,7 @@ fn get_tasks_snapshot(model: Model) -> opt.Option(List(Task)) {
 
 /// Apply optimistic claim: mark task as Claimed(Taken).
 fn apply_optimistic_claim(model: Model, task_id: Int) -> Model {
-  case model.member_tasks {
+  case model.member.member_tasks {
     Loaded(tasks) -> {
       let updated =
         list.map(tasks, fn(t) {
@@ -434,13 +492,15 @@ fn apply_optimistic_claim(model: Model, task_id: Int) -> Model {
               Task(
                 ..t,
                 status: Claimed(Taken),
-                claimed_by: model.user
+                claimed_by: model.core.user
                   |> opt.map(fn(u) { u.id }),
               )
             False -> t
           }
         })
-      Model(..model, member_tasks: Loaded(updated))
+      update_member(model, fn(member) {
+        MemberModel(..member, member_tasks: Loaded(updated))
+      })
     }
     _ -> model
   }
@@ -448,7 +508,7 @@ fn apply_optimistic_claim(model: Model, task_id: Int) -> Model {
 
 /// Apply optimistic release: mark task as Available.
 fn apply_optimistic_release(model: Model, task_id: Int) -> Model {
-  case model.member_tasks {
+  case model.member.member_tasks {
     Loaded(tasks) -> {
       let updated =
         list.map(tasks, fn(t) {
@@ -457,7 +517,9 @@ fn apply_optimistic_release(model: Model, task_id: Int) -> Model {
             False -> t
           }
         })
-      Model(..model, member_tasks: Loaded(updated))
+      update_member(model, fn(member) {
+        MemberModel(..member, member_tasks: Loaded(updated))
+      })
     }
     _ -> model
   }
@@ -465,7 +527,7 @@ fn apply_optimistic_release(model: Model, task_id: Int) -> Model {
 
 /// Apply optimistic complete: mark task as Completed.
 fn apply_optimistic_complete(model: Model, task_id: Int) -> Model {
-  case model.member_tasks {
+  case model.member.member_tasks {
     Loaded(tasks) -> {
       let updated =
         list.map(tasks, fn(t) {
@@ -474,7 +536,9 @@ fn apply_optimistic_complete(model: Model, task_id: Int) -> Model {
             False -> t
           }
         })
-      Model(..model, member_tasks: Loaded(updated))
+      update_member(model, fn(member) {
+        MemberModel(..member, member_tasks: Loaded(updated))
+      })
     }
     _ -> model
   }
@@ -482,8 +546,11 @@ fn apply_optimistic_complete(model: Model, task_id: Int) -> Model {
 
 /// Restore tasks from snapshot (rollback on error).
 fn restore_from_snapshot(model: Model) -> Model {
-  case model.member_tasks_snapshot {
-    opt.Some(tasks) -> Model(..model, member_tasks: Loaded(tasks))
+  case model.member.member_tasks_snapshot {
+    opt.Some(tasks) ->
+      update_member(model, fn(member) {
+        MemberModel(..member, member_tasks: Loaded(tasks))
+      })
     opt.None -> model
   }
 }
@@ -494,12 +561,14 @@ fn restore_from_snapshot(model: Model) -> Model {
 
 /// Clear optimistic state after successful mutation.
 fn clear_optimistic_state(model: Model) -> Model {
-  Model(
-    ..model,
-    member_task_mutation_in_flight: False,
-    member_task_mutation_task_id: opt.None,
-    member_tasks_snapshot: opt.None,
-  )
+  update_member(model, fn(member) {
+    MemberModel(
+      ..member,
+      member_task_mutation_in_flight: False,
+      member_task_mutation_task_id: opt.None,
+      member_tasks_snapshot: opt.None,
+    )
+  })
 }
 
 /// Handle successful task claim.
@@ -510,10 +579,12 @@ pub fn handle_task_claimed_ok(
 ) -> #(Model, Effect(Msg)) {
   let model = clear_optimistic_state(model)
   let model =
-    Model(
-      ..model,
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskClaimed)),
-    )
+    update_ui(model, fn(ui) {
+      UiModel(
+        ..ui,
+        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskClaimed)),
+      )
+    })
   member_refresh(model)
 }
 
@@ -525,10 +596,12 @@ pub fn handle_task_released_ok(
 ) -> #(Model, Effect(Msg)) {
   let model = clear_optimistic_state(model)
   let model =
-    Model(
-      ..model,
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskReleased)),
-    )
+    update_ui(model, fn(ui) {
+      UiModel(
+        ..ui,
+        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskReleased)),
+      )
+    })
 
   let #(model, fx) = member_refresh(model)
   #(
@@ -550,10 +623,12 @@ pub fn handle_task_completed_ok(
 ) -> #(Model, Effect(Msg)) {
   let model = clear_optimistic_state(model)
   let model =
-    Model(
-      ..model,
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskCompleted)),
-    )
+    update_ui(model, fn(ui) {
+      UiModel(
+        ..ui,
+        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskCompleted)),
+      )
+    })
 
   let #(model, fx) = member_refresh(model)
   #(
@@ -583,10 +658,12 @@ pub fn handle_mutation_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     404 -> #(
-      Model(
-        ..model,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskNotFound)),
-      ),
+      update_ui(model, fn(ui) {
+        UiModel(
+          ..ui,
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskNotFound)),
+        )
+      }),
       effect.none(),
     )
     409 -> {
@@ -595,7 +672,10 @@ pub fn handle_mutation_error(
         True -> update_helpers.i18n_t(model, i18n_text.TaskAlreadyClaimed)
         False -> update_helpers.i18n_t(model, i18n_text.TaskVersionConflict)
       }
-      #(Model(..model, toast: opt.Some(msg)), effect.none())
+      #(
+        update_ui(model, fn(ui) { UiModel(..ui, toast: opt.Some(msg)) }),
+        effect.none(),
+      )
     }
     422 -> {
       // Version conflict or validation error
@@ -603,7 +683,10 @@ pub fn handle_mutation_error(
         True -> update_helpers.i18n_t(model, i18n_text.TaskVersionConflict)
         False -> err.message
       }
-      #(Model(..model, toast: opt.Some(msg)), effect.none())
+      #(
+        update_ui(model, fn(ui) { UiModel(..ui, toast: opt.Some(msg)) }),
+        effect.none(),
+      )
     }
     _ -> {
       // Show rollback notice + original error
@@ -611,7 +694,10 @@ pub fn handle_mutation_error(
         update_helpers.i18n_t(model, i18n_text.TaskMutationRolledBack)
         <> ": "
         <> err.message
-      #(Model(..model, toast: opt.Some(msg)), effect.none())
+      #(
+        update_ui(model, fn(ui) { UiModel(..ui, toast: opt.Some(msg)) }),
+        effect.none(),
+      )
     }
   }
 }
@@ -626,12 +712,14 @@ pub fn handle_task_details_opened(
   task_id: Int,
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      member_notes_task_id: opt.Some(task_id),
-      member_notes: Loading,
-      member_note_error: opt.None,
-    ),
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_notes_task_id: opt.Some(task_id),
+        member_notes: Loading,
+        member_note_error: opt.None,
+      )
+    }),
     api_tasks.list_task_notes(task_id, fn(result) {
       pool_msg(MemberNotesFetched(result))
     }),
@@ -641,13 +729,15 @@ pub fn handle_task_details_opened(
 /// Close task details dialog.
 pub fn handle_task_details_closed(model: Model) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      member_notes_task_id: opt.None,
-      member_notes: NotAsked,
-      member_note_content: "",
-      member_note_error: opt.None,
-    ),
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_notes_task_id: opt.None,
+        member_notes: NotAsked,
+        member_note_content: "",
+        member_note_error: opt.None,
+      )
+    }),
     effect.none(),
   )
 }
@@ -657,7 +747,12 @@ pub fn handle_notes_fetched_ok(
   model: Model,
   notes: List(TaskNote),
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, member_notes: Loaded(notes)), effect.none())
+  #(
+    update_member(model, fn(member) {
+      MemberModel(..member, member_notes: Loaded(notes))
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle notes fetched response (error).
@@ -667,7 +762,12 @@ pub fn handle_notes_fetched_error(
 ) -> #(Model, Effect(Msg)) {
   case err.status {
     401 -> update_helpers.reset_to_login(model)
-    _ -> #(Model(..model, member_notes: Failed(err)), effect.none())
+    _ -> #(
+      update_member(model, fn(member) {
+        MemberModel(..member, member_notes: Failed(err))
+      }),
+      effect.none(),
+    )
   }
 }
 
@@ -676,36 +776,45 @@ pub fn handle_note_content_changed(
   model: Model,
   value: String,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, member_note_content: value), effect.none())
+  #(
+    update_member(model, fn(member) {
+      MemberModel(..member, member_note_content: value)
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle note form submission.
 pub fn handle_note_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.member_note_in_flight {
+  case model.member.member_note_in_flight {
     True -> #(model, effect.none())
     False ->
-      case model.member_notes_task_id {
+      case model.member.member_notes_task_id {
         opt.None -> #(model, effect.none())
         opt.Some(task_id) -> {
-          let content = string.trim(model.member_note_content)
+          let content = string.trim(model.member.member_note_content)
           case content == "" {
             True -> #(
-              Model(
-                ..model,
-                member_note_error: opt.Some(update_helpers.i18n_t(
-                  model,
-                  i18n_text.ContentRequired,
-                )),
-              ),
+              update_member(model, fn(member) {
+                MemberModel(
+                  ..member,
+                  member_note_error: opt.Some(update_helpers.i18n_t(
+                    model,
+                    i18n_text.ContentRequired,
+                  )),
+                )
+              }),
               effect.none(),
             )
             False -> {
               let model =
-                Model(
-                  ..model,
-                  member_note_in_flight: True,
-                  member_note_error: opt.None,
-                )
+                update_member(model, fn(member) {
+                  MemberModel(
+                    ..member,
+                    member_note_in_flight: True,
+                    member_note_error: opt.None,
+                  )
+                })
               #(
                 model,
                 api_tasks.add_task_note(task_id, content, fn(result) {
@@ -724,18 +833,27 @@ pub fn handle_note_added_ok(
   model: Model,
   note: TaskNote,
 ) -> #(Model, Effect(Msg)) {
-  let updated = case model.member_notes {
+  let updated = case model.member.member_notes {
     Loaded(notes) -> [note, ..notes]
     _ -> [note]
   }
 
   #(
-    Model(
-      ..model,
-      member_note_in_flight: False,
-      member_note_content: "",
-      member_notes: Loaded(updated),
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NoteAdded)),
+    update_ui(
+      update_member(model, fn(member) {
+        MemberModel(
+          ..member,
+          member_note_in_flight: False,
+          member_note_content: "",
+          member_notes: Loaded(updated),
+        )
+      }),
+      fn(ui) {
+        UiModel(
+          ..ui,
+          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NoteAdded)),
+        )
+      },
     ),
     effect.none(),
   )
@@ -750,13 +868,15 @@ pub fn handle_note_added_error(
     401 -> update_helpers.reset_to_login(model)
     _ -> {
       let model =
-        Model(
-          ..model,
-          member_note_in_flight: False,
-          member_note_error: opt.Some(err.message),
-        )
+        update_member(model, fn(member) {
+          MemberModel(
+            ..member,
+            member_note_in_flight: False,
+            member_note_error: opt.Some(err.message),
+          )
+        })
 
-      case model.member_notes_task_id {
+      case model.member.member_notes_task_id {
         opt.Some(task_id) -> #(
           model,
           api_tasks.list_task_notes(task_id, fn(result) {

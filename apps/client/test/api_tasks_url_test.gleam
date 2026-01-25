@@ -1,6 +1,6 @@
+import domain/task.{TaskFilters}
 import gleam/option
 import gleeunit/should
-import domain/task.{TaskFilters}
 import scrumbringer_client/api/tasks as api_tasks
 
 pub fn project_tasks_url_builds_query_params_test() {

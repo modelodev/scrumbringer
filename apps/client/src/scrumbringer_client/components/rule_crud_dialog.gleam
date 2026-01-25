@@ -260,104 +260,107 @@ fn default_model() -> Model {
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    LocaleReceived(loc) ->
-      #(Model(..model, locale: loc), effect.none())
+    LocaleReceived(loc) -> #(Model(..model, locale: loc), effect.none())
 
-    WorkflowIdReceived(id) ->
-      #(Model(..model, workflow_id: id), effect.none())
+    WorkflowIdReceived(id) -> #(Model(..model, workflow_id: id), effect.none())
 
-    ModeReceived(mode) ->
-      handle_mode_received(model, mode)
+    ModeReceived(mode) -> handle_mode_received(model, mode)
 
-    TaskTypesReceived(types) ->
-      #(Model(..model, task_types: types), effect.none())
+    TaskTypesReceived(types) -> #(
+      Model(..model, task_types: types),
+      effect.none(),
+    )
 
     // Create form handlers
-    CreateNameChanged(name) ->
-      #(Model(..model, create_name: name), effect.none())
+    CreateNameChanged(name) -> #(
+      Model(..model, create_name: name),
+      effect.none(),
+    )
 
-    CreateGoalChanged(goal) ->
-      #(Model(..model, create_goal: goal), effect.none())
+    CreateGoalChanged(goal) -> #(
+      Model(..model, create_goal: goal),
+      effect.none(),
+    )
 
     CreateResourceTypeChanged(resource_type) ->
       handle_create_resource_type_changed(model, resource_type)
 
-    CreateTaskTypeIdChanged(type_id_str) ->
-      #(
-        Model(..model, create_task_type_id: parse_optional_int(type_id_str)),
-        effect.none(),
-      )
+    CreateTaskTypeIdChanged(type_id_str) -> #(
+      Model(..model, create_task_type_id: parse_optional_int(type_id_str)),
+      effect.none(),
+    )
 
-    CreateToStateChanged(to_state) ->
-      #(Model(..model, create_to_state: to_state), effect.none())
+    CreateToStateChanged(to_state) -> #(
+      Model(..model, create_to_state: to_state),
+      effect.none(),
+    )
 
-    CreateActiveChanged(active) ->
-      #(Model(..model, create_active: active), effect.none())
+    CreateActiveChanged(active) -> #(
+      Model(..model, create_active: active),
+      effect.none(),
+    )
 
-    CreateSubmitted ->
-      handle_create_submitted(model)
+    CreateSubmitted -> handle_create_submitted(model)
 
-    CreateResult(Ok(rule)) ->
-      handle_create_success(model, rule)
+    CreateResult(Ok(rule)) -> handle_create_success(model, rule)
 
-    CreateResult(Error(err)) ->
-      #(
-        Model(..model, create_in_flight: False, create_error: option.Some(err.message)),
-        effect.none(),
-      )
+    CreateResult(Error(err)) -> #(
+      Model(
+        ..model,
+        create_in_flight: False,
+        create_error: option.Some(err.message),
+      ),
+      effect.none(),
+    )
 
     // Edit form handlers
-    EditNameChanged(name) ->
-      #(Model(..model, edit_name: name), effect.none())
+    EditNameChanged(name) -> #(Model(..model, edit_name: name), effect.none())
 
-    EditGoalChanged(goal) ->
-      #(Model(..model, edit_goal: goal), effect.none())
+    EditGoalChanged(goal) -> #(Model(..model, edit_goal: goal), effect.none())
 
     EditResourceTypeChanged(resource_type) ->
       handle_edit_resource_type_changed(model, resource_type)
 
-    EditTaskTypeIdChanged(type_id_str) ->
-      #(
-        Model(..model, edit_task_type_id: parse_optional_int(type_id_str)),
-        effect.none(),
-      )
+    EditTaskTypeIdChanged(type_id_str) -> #(
+      Model(..model, edit_task_type_id: parse_optional_int(type_id_str)),
+      effect.none(),
+    )
 
-    EditToStateChanged(to_state) ->
-      #(Model(..model, edit_to_state: to_state), effect.none())
+    EditToStateChanged(to_state) -> #(
+      Model(..model, edit_to_state: to_state),
+      effect.none(),
+    )
 
-    EditActiveChanged(active) ->
-      #(Model(..model, edit_active: active), effect.none())
+    EditActiveChanged(active) -> #(
+      Model(..model, edit_active: active),
+      effect.none(),
+    )
 
-    EditSubmitted ->
-      handle_edit_submitted(model)
+    EditSubmitted -> handle_edit_submitted(model)
 
-    EditResult(Ok(rule)) ->
-      handle_edit_success(model, rule)
+    EditResult(Ok(rule)) -> handle_edit_success(model, rule)
 
-    EditResult(Error(err)) ->
-      #(
-        Model(..model, edit_in_flight: False, edit_error: option.Some(err.message)),
-        effect.none(),
-      )
+    EditResult(Error(err)) -> #(
+      Model(
+        ..model,
+        edit_in_flight: False,
+        edit_error: option.Some(err.message),
+      ),
+      effect.none(),
+    )
 
-    EditCancelled ->
-      #(reset_edit_fields(model), emit_close_requested())
+    EditCancelled -> #(reset_edit_fields(model), emit_close_requested())
 
     // Delete handlers
-    DeleteConfirmed ->
-      handle_delete_confirmed(model)
+    DeleteConfirmed -> handle_delete_confirmed(model)
 
-    DeleteResult(Ok(_)) ->
-      handle_delete_success(model)
+    DeleteResult(Ok(_)) -> handle_delete_success(model)
 
-    DeleteResult(Error(err)) ->
-      handle_delete_error(model, err)
+    DeleteResult(Error(err)) -> handle_delete_error(model, err)
 
-    DeleteCancelled ->
-      #(reset_delete_fields(model), emit_close_requested())
+    DeleteCancelled -> #(reset_delete_fields(model), emit_close_requested())
 
-    CloseRequested ->
-      #(model, emit_close_requested())
+    CloseRequested -> #(model, emit_close_requested())
   }
 }
 
@@ -373,56 +376,56 @@ fn parse_optional_int(value: String) -> Option(Int) {
 
 fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg)) {
   case mode {
-    ModeCreate ->
-      #(
-        Model(
-          ..model,
-          mode: option.Some(ModeCreate),
-          create_name: "",
-          create_goal: "",
-          create_resource_type: "task",
-          create_task_type_id: option.None,
-          create_to_state: "completed",
-          create_active: True,
-          create_in_flight: False,
-          create_error: option.None,
-        ),
-        effect.none(),
-      )
+    ModeCreate -> #(
+      Model(
+        ..model,
+        mode: option.Some(ModeCreate),
+        create_name: "",
+        create_goal: "",
+        create_resource_type: "task",
+        create_task_type_id: option.None,
+        create_to_state: "completed",
+        create_active: True,
+        create_in_flight: False,
+        create_error: option.None,
+      ),
+      effect.none(),
+    )
 
-    ModeEdit(rule) ->
-      #(
-        Model(
-          ..model,
-          mode: option.Some(ModeEdit(rule)),
-          edit_name: rule.name,
-          edit_goal: option.unwrap(rule.goal, ""),
-          edit_resource_type: rule.resource_type,
-          edit_task_type_id: rule.task_type_id,
-          edit_to_state: rule.to_state,
-          edit_active: rule.active,
-          edit_in_flight: False,
-          edit_error: option.None,
-        ),
-        effect.none(),
-      )
+    ModeEdit(rule) -> #(
+      Model(
+        ..model,
+        mode: option.Some(ModeEdit(rule)),
+        edit_name: rule.name,
+        edit_goal: option.unwrap(rule.goal, ""),
+        edit_resource_type: rule.resource_type,
+        edit_task_type_id: rule.task_type_id,
+        edit_to_state: rule.to_state,
+        edit_active: rule.active,
+        edit_in_flight: False,
+        edit_error: option.None,
+      ),
+      effect.none(),
+    )
 
-    ModeDelete(rule) ->
-      #(
-        Model(
-          ..model,
-          mode: option.Some(ModeDelete(rule)),
-          delete_in_flight: False,
-          delete_error: option.None,
-        ),
-        effect.none(),
-      )
+    ModeDelete(rule) -> #(
+      Model(
+        ..model,
+        mode: option.Some(ModeDelete(rule)),
+        delete_in_flight: False,
+        delete_error: option.None,
+      ),
+      effect.none(),
+    )
   }
 }
 
 /// Handle resource type change in create form.
 /// Resets task_type_id and to_state to valid defaults for the new resource type.
-fn handle_create_resource_type_changed(model: Model, resource_type: String) -> #(Model, Effect(Msg)) {
+fn handle_create_resource_type_changed(
+  model: Model,
+  resource_type: String,
+) -> #(Model, Effect(Msg)) {
   let task_type_id = case resource_type {
     "task" -> model.create_task_type_id
     _ -> option.None
@@ -441,7 +444,10 @@ fn handle_create_resource_type_changed(model: Model, resource_type: String) -> #
 
 /// Handle resource type change in edit form.
 /// Resets task_type_id and to_state to valid defaults for the new resource type.
-fn handle_edit_resource_type_changed(model: Model, resource_type: String) -> #(Model, Effect(Msg)) {
+fn handle_edit_resource_type_changed(
+  model: Model,
+  resource_type: String,
+) -> #(Model, Effect(Msg)) {
   let task_type_id = case resource_type {
     "task" -> model.edit_task_type_id
     _ -> option.None
@@ -472,25 +478,26 @@ fn handle_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
     False ->
       case model.workflow_id, model.create_name {
         option.None, _ -> #(model, effect.none())
-        _, "" ->
-          #(
-            Model(..model, create_error: option.Some(t(model.locale, i18n_text.NameRequired))),
-            effect.none(),
-          )
-        option.Some(workflow_id), name ->
-          #(
-            Model(..model, create_in_flight: True, create_error: option.None),
-            api_workflows.create_rule(
-              workflow_id,
-              name,
-              model.create_goal,
-              model.create_resource_type,
-              model.create_task_type_id,
-              model.create_to_state,
-              model.create_active,
-              CreateResult,
-            ),
-          )
+        _, "" -> #(
+          Model(
+            ..model,
+            create_error: option.Some(t(model.locale, i18n_text.NameRequired)),
+          ),
+          effect.none(),
+        )
+        option.Some(workflow_id), name -> #(
+          Model(..model, create_in_flight: True, create_error: option.None),
+          api_workflows.create_rule(
+            workflow_id,
+            name,
+            model.create_goal,
+            model.create_resource_type,
+            model.create_task_type_id,
+            model.create_to_state,
+            model.create_active,
+            CreateResult,
+          ),
+        )
       }
   }
 }
@@ -518,39 +525,36 @@ fn handle_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
     True -> #(model, effect.none())
     False ->
       case model.edit_name {
-        "" ->
-          #(
-            Model(..model, edit_error: option.Some(t(model.locale, i18n_text.NameRequired))),
-            effect.none(),
-          )
+        "" -> #(
+          Model(
+            ..model,
+            edit_error: option.Some(t(model.locale, i18n_text.NameRequired)),
+          ),
+          effect.none(),
+        )
         name ->
           case model.mode {
-            option.Some(ModeEdit(rule)) ->
-              #(
-                Model(..model, edit_in_flight: True, edit_error: option.None),
-                api_workflows.update_rule(
-                  rule.id,
-                  name,
-                  model.edit_goal,
-                  model.edit_resource_type,
-                  model.edit_task_type_id,
-                  model.edit_to_state,
-                  model.edit_active,
-                  EditResult,
-                ),
-              )
-            _ ->
-              #(model, effect.none())
+            option.Some(ModeEdit(rule)) -> #(
+              Model(..model, edit_in_flight: True, edit_error: option.None),
+              api_workflows.update_rule(
+                rule.id,
+                name,
+                model.edit_goal,
+                model.edit_resource_type,
+                model.edit_task_type_id,
+                model.edit_to_state,
+                model.edit_active,
+                EditResult,
+              ),
+            )
+            _ -> #(model, effect.none())
           }
       }
   }
 }
 
 fn handle_edit_success(model: Model, rule: Rule) -> #(Model, Effect(Msg)) {
-  #(
-    reset_edit_fields(model),
-    emit_rule_updated(rule),
-  )
+  #(reset_edit_fields(model), emit_rule_updated(rule))
 }
 
 fn handle_delete_confirmed(model: Model) -> #(Model, Effect(Msg)) {
@@ -558,13 +562,11 @@ fn handle_delete_confirmed(model: Model) -> #(Model, Effect(Msg)) {
     True -> #(model, effect.none())
     False ->
       case model.mode {
-        option.Some(ModeDelete(rule)) ->
-          #(
-            Model(..model, delete_in_flight: True, delete_error: option.None),
-            api_workflows.delete_rule(rule.id, DeleteResult),
-          )
-        _ ->
-          #(model, effect.none())
+        option.Some(ModeDelete(rule)) -> #(
+          Model(..model, delete_in_flight: True, delete_error: option.None),
+          api_workflows.delete_rule(rule.id, DeleteResult),
+        )
+        _ -> #(model, effect.none())
       }
   }
 }
@@ -574,15 +576,16 @@ fn handle_delete_success(model: Model) -> #(Model, Effect(Msg)) {
     option.Some(ModeDelete(rule)) -> rule.id
     _ -> 0
   }
-  #(
-    reset_delete_fields(model),
-    emit_rule_deleted(rule_id),
-  )
+  #(reset_delete_fields(model), emit_rule_deleted(rule_id))
 }
 
 fn handle_delete_error(model: Model, err: ApiError) -> #(Model, Effect(Msg)) {
   #(
-    Model(..model, delete_in_flight: False, delete_error: option.Some(err.message)),
+    Model(
+      ..model,
+      delete_in_flight: False,
+      delete_error: option.Some(err.message),
+    ),
     effect.none(),
   )
 }
@@ -664,11 +667,14 @@ fn rule_to_json(rule: Rule) -> json.Json {
       #("created_at", json.string(rule.created_at)),
     ]
     |> append_fields(goal_field)
-    |> append_fields(task_type_field)
+    |> append_fields(task_type_field),
   )
 }
 
-fn append_fields(base: List(#(String, json.Json)), fields: List(#(String, json.Json))) -> List(#(String, json.Json)) {
+fn append_fields(
+  base: List(#(String, json.Json)),
+  fields: List(#(String, json.Json)),
+) -> List(#(String, json.Json)) {
   case fields {
     [] -> base
     [field, ..rest] -> append_fields([field, ..base], rest)
@@ -733,14 +739,28 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
               // Resource type selector
               div([attribute.class("field")], [
                 label([], [text(t(model.locale, i18n_text.RuleResourceType))]),
-                view_resource_type_selector(model.locale, model.create_resource_type, CreateResourceTypeChanged),
+                view_resource_type_selector(
+                  model.locale,
+                  model.create_resource_type,
+                  CreateResourceTypeChanged,
+                ),
               ]),
               // Task type selector (conditional - only when resource_type == "task")
-              view_conditional_task_type_field(model, model.create_resource_type, model.create_task_type_id, CreateTaskTypeIdChanged),
+              view_conditional_task_type_field(
+                model,
+                model.create_resource_type,
+                model.create_task_type_id,
+                CreateTaskTypeIdChanged,
+              ),
               // To state selector (dynamic options based on resource_type)
               div([attribute.class("field")], [
                 label([], [text(t(model.locale, i18n_text.RuleToState))]),
-                view_state_selector(model.locale, model.create_resource_type, model.create_to_state, CreateToStateChanged),
+                view_state_selector(
+                  model.locale,
+                  model.create_resource_type,
+                  model.create_to_state,
+                  CreateToStateChanged,
+                ),
               ]),
               // Active checkbox
               div([attribute.class("field")], [
@@ -825,14 +845,28 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
               // Resource type selector
               div([attribute.class("field")], [
                 label([], [text(t(model.locale, i18n_text.RuleResourceType))]),
-                view_resource_type_selector(model.locale, model.edit_resource_type, EditResourceTypeChanged),
+                view_resource_type_selector(
+                  model.locale,
+                  model.edit_resource_type,
+                  EditResourceTypeChanged,
+                ),
               ]),
               // Task type selector (conditional)
-              view_conditional_task_type_field(model, model.edit_resource_type, model.edit_task_type_id, EditTaskTypeIdChanged),
+              view_conditional_task_type_field(
+                model,
+                model.edit_resource_type,
+                model.edit_task_type_id,
+                EditTaskTypeIdChanged,
+              ),
               // To state selector (dynamic options)
               div([attribute.class("field")], [
                 label([], [text(t(model.locale, i18n_text.RuleToState))]),
-                view_state_selector(model.locale, model.edit_resource_type, model.edit_to_state, EditToStateChanged),
+                view_state_selector(
+                  model.locale,
+                  model.edit_resource_type,
+                  model.edit_to_state,
+                  EditToStateChanged,
+                ),
               ]),
               // Active checkbox
               div([attribute.class("field")], [
@@ -915,7 +949,11 @@ fn view_delete_dialog(model: Model, rule: Rule) -> Element(Msg) {
   ])
 }
 
-fn view_header(model: Model, title_key: i18n_text.Text, icon: String) -> Element(Msg) {
+fn view_header(
+  model: Model,
+  title_key: i18n_text.Text,
+  icon: String,
+) -> Element(Msg) {
   div([attribute.class("dialog-header")], [
     div([attribute.class("dialog-title")], [
       span([attribute.class("dialog-icon")], [text(icon)]),
@@ -945,10 +983,9 @@ fn view_error(error: Option(String)) -> Element(Msg) {
 }
 
 fn view_cancel_button(locale: Locale, on_click_msg: Msg) -> Element(Msg) {
-  button(
-    [attribute.type_("button"), event.on_click(on_click_msg)],
-    [text(t(locale, i18n_text.Cancel))],
-  )
+  button([attribute.type_("button"), event.on_click(on_click_msg)], [
+    text(t(locale, i18n_text.Cancel)),
+  ])
 }
 
 /// Resource type selector (task or card).
@@ -963,8 +1000,14 @@ fn view_resource_type_selector(
       event.on_input(on_change),
     ],
     [
-      html_option([attribute.value("task")], t(locale, i18n_text.RuleResourceTypeTask)),
-      html_option([attribute.value("card")], t(locale, i18n_text.RuleResourceTypeCard)),
+      html_option(
+        [attribute.value("task")],
+        t(locale, i18n_text.RuleResourceTypeTask),
+      ),
+      html_option(
+        [attribute.value("card")],
+        t(locale, i18n_text.RuleResourceTypeCard),
+      ),
     ],
   )
 }
@@ -1046,7 +1089,10 @@ fn view_state_selector(
 /// Get state options based on resource type.
 /// Task: available, claimed, completed
 /// Card: pendiente, en_curso, cerrada
-pub fn state_options_for_resource_type(locale: Locale, resource_type: String) -> List(#(String, String)) {
+pub fn state_options_for_resource_type(
+  locale: Locale,
+  resource_type: String,
+) -> List(#(String, String)) {
   case resource_type {
     "task" -> [
       #("available", t(locale, i18n_text.TaskStateAvailable)),

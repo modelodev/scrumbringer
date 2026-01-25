@@ -16,10 +16,10 @@ Este epic consolida reutilizacion de vistas, eventos y efectos en el frontend Lu
 
 | Story | Title | Phase | Status |
 |------|-------|-------|--------|
-| ref-frontend-01 | [Fragments y composicion de vistas](./ref-frontend-01.fragments-view.md) | 1 | **Ready** |
-| ref-frontend-02 | [Helpers de attrs y clases](./ref-frontend-02.attrs-helpers.md) | 1 | **Ready** |
-| ref-frontend-03 | [Consolidar UI reusable](./ref-frontend-03.ui-reuse.md) | 1 | **Ready** |
-| ref-frontend-04 | [Msg wrappers por feature](./ref-frontend-04.msg-wrappers.md) | 2 | **Ready** |
+| ref-frontend-01 | [Fragments y composicion de vistas](./ref-frontend-01.fragments-view.md) | 1 | **Review** |
+| ref-frontend-02 | [Helpers de attrs y clases](./ref-frontend-02.attrs-helpers.md) | 1 | **Review** |
+| ref-frontend-03 | [Consolidar UI reusable](./ref-frontend-03.ui-reuse.md) | 1 | **Review** |
+| ref-frontend-04 | [Msg wrappers por feature](./ref-frontend-04.msg-wrappers.md) | 2 | **Review** |
 | ref-frontend-05 | [Sub-modelos por pagina](./ref-frontend-05.submodels.md) | 2 | **Ready** |
 | ref-frontend-06 | [Decoders centralizados de eventos](./ref-frontend-06.event-decoders.md) | 3 | **Ready** |
 | ref-frontend-07 | [Helpers de efectos comunes](./ref-frontend-07.effects-helpers.md) | 3 | **Ready** |

@@ -34,8 +34,8 @@ import lustre/event
 import domain/api_error.{type ApiError}
 import domain/card.{type Card, type CardState, Card, Cerrada, EnCurso, Pendiente}
 
-import scrumbringer_client/api/core.{type ApiResult}
 import scrumbringer_client/api/cards as api_cards
+import scrumbringer_client/api/core.{type ApiResult}
 import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
@@ -247,128 +247,137 @@ fn default_model() -> Model {
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    LocaleReceived(loc) ->
-      #(Model(..model, locale: loc), effect.none())
+    LocaleReceived(loc) -> #(Model(..model, locale: loc), effect.none())
 
-    ProjectIdReceived(id) ->
-      #(Model(..model, project_id: option.Some(id)), effect.none())
+    ProjectIdReceived(id) -> #(
+      Model(..model, project_id: option.Some(id)),
+      effect.none(),
+    )
 
-    ModeReceived(mode) ->
-      handle_mode_received(model, mode)
+    ModeReceived(mode) -> handle_mode_received(model, mode)
 
     // Create form handlers
-    CreateTitleChanged(title) ->
-      #(Model(..model, create_title: title), effect.none())
+    CreateTitleChanged(title) -> #(
+      Model(..model, create_title: title),
+      effect.none(),
+    )
 
-    CreateDescriptionChanged(desc) ->
-      #(Model(..model, create_description: desc), effect.none())
+    CreateDescriptionChanged(desc) -> #(
+      Model(..model, create_description: desc),
+      effect.none(),
+    )
 
-    CreateColorToggle ->
-      #(Model(..model, create_color_open: !model.create_color_open), effect.none())
+    CreateColorToggle -> #(
+      Model(..model, create_color_open: !model.create_color_open),
+      effect.none(),
+    )
 
-    CreateColorChanged(color) ->
-      #(Model(..model, create_color: color, create_color_open: False), effect.none())
+    CreateColorChanged(color) -> #(
+      Model(..model, create_color: color, create_color_open: False),
+      effect.none(),
+    )
 
-    CreateSubmitted ->
-      handle_create_submitted(model)
+    CreateSubmitted -> handle_create_submitted(model)
 
-    CreateResult(Ok(card)) ->
-      handle_create_success(model, card)
+    CreateResult(Ok(card)) -> handle_create_success(model, card)
 
-    CreateResult(Error(err)) ->
-      #(
-        Model(..model, create_in_flight: False, create_error: option.Some(err.message)),
-        effect.none(),
-      )
+    CreateResult(Error(err)) -> #(
+      Model(
+        ..model,
+        create_in_flight: False,
+        create_error: option.Some(err.message),
+      ),
+      effect.none(),
+    )
 
     // Edit form handlers
-    EditTitleChanged(title) ->
-      #(Model(..model, edit_title: title), effect.none())
+    EditTitleChanged(title) -> #(
+      Model(..model, edit_title: title),
+      effect.none(),
+    )
 
-    EditDescriptionChanged(desc) ->
-      #(Model(..model, edit_description: desc), effect.none())
+    EditDescriptionChanged(desc) -> #(
+      Model(..model, edit_description: desc),
+      effect.none(),
+    )
 
-    EditColorToggle ->
-      #(Model(..model, edit_color_open: !model.edit_color_open), effect.none())
+    EditColorToggle -> #(
+      Model(..model, edit_color_open: !model.edit_color_open),
+      effect.none(),
+    )
 
-    EditColorChanged(color) ->
-      #(Model(..model, edit_color: color, edit_color_open: False), effect.none())
+    EditColorChanged(color) -> #(
+      Model(..model, edit_color: color, edit_color_open: False),
+      effect.none(),
+    )
 
-    EditSubmitted ->
-      handle_edit_submitted(model)
+    EditSubmitted -> handle_edit_submitted(model)
 
-    EditResult(Ok(card)) ->
-      handle_edit_success(model, card)
+    EditResult(Ok(card)) -> handle_edit_success(model, card)
 
-    EditResult(Error(err)) ->
-      #(
-        Model(..model, edit_in_flight: False, edit_error: option.Some(err.message)),
-        effect.none(),
-      )
+    EditResult(Error(err)) -> #(
+      Model(
+        ..model,
+        edit_in_flight: False,
+        edit_error: option.Some(err.message),
+      ),
+      effect.none(),
+    )
 
-    EditCancelled ->
-      #(reset_edit_fields(model), emit_close_requested())
+    EditCancelled -> #(reset_edit_fields(model), emit_close_requested())
 
     // Delete handlers
-    DeleteConfirmed ->
-      handle_delete_confirmed(model)
+    DeleteConfirmed -> handle_delete_confirmed(model)
 
-    DeleteResult(Ok(_)) ->
-      handle_delete_success(model)
+    DeleteResult(Ok(_)) -> handle_delete_success(model)
 
-    DeleteResult(Error(err)) ->
-      handle_delete_error(model, err)
+    DeleteResult(Error(err)) -> handle_delete_error(model, err)
 
-    DeleteCancelled ->
-      #(reset_delete_fields(model), emit_close_requested())
+    DeleteCancelled -> #(reset_delete_fields(model), emit_close_requested())
 
-    CloseRequested ->
-      #(model, emit_close_requested())
+    CloseRequested -> #(model, emit_close_requested())
   }
 }
 
 fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg)) {
   case mode {
-    ModeCreate ->
-      #(
-        Model(
-          ..model,
-          mode: option.Some(ModeCreate),
-          create_title: "",
-          create_description: "",
-          create_color: option.None,
-          create_color_open: False,
-          create_in_flight: False,
-          create_error: option.None,
-        ),
-        effect.none(),
-      )
+    ModeCreate -> #(
+      Model(
+        ..model,
+        mode: option.Some(ModeCreate),
+        create_title: "",
+        create_description: "",
+        create_color: option.None,
+        create_color_open: False,
+        create_in_flight: False,
+        create_error: option.None,
+      ),
+      effect.none(),
+    )
 
-    ModeEdit(card) ->
-      #(
-        Model(
-          ..model,
-          mode: option.Some(ModeEdit(card)),
-          edit_title: card.title,
-          edit_description: card.description,
-          edit_color: card.color,
-          edit_color_open: False,
-          edit_in_flight: False,
-          edit_error: option.None,
-        ),
-        effect.none(),
-      )
+    ModeEdit(card) -> #(
+      Model(
+        ..model,
+        mode: option.Some(ModeEdit(card)),
+        edit_title: card.title,
+        edit_description: card.description,
+        edit_color: card.color,
+        edit_color_open: False,
+        edit_in_flight: False,
+        edit_error: option.None,
+      ),
+      effect.none(),
+    )
 
-    ModeDelete(card) ->
-      #(
-        Model(
-          ..model,
-          mode: option.Some(ModeDelete(card)),
-          delete_in_flight: False,
-          delete_error: option.None,
-        ),
-        effect.none(),
-      )
+    ModeDelete(card) -> #(
+      Model(
+        ..model,
+        mode: option.Some(ModeDelete(card)),
+        delete_in_flight: False,
+        delete_error: option.None,
+      ),
+      effect.none(),
+    )
   }
 }
 
@@ -377,29 +386,35 @@ fn handle_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
     True -> #(model, effect.none())
     False ->
       case model.create_title {
-        "" ->
-          #(
-            Model(..model, create_error: option.Some(t(model.locale, i18n_text.TitleRequired))),
-            effect.none(),
-          )
+        "" -> #(
+          Model(
+            ..model,
+            create_error: option.Some(t(model.locale, i18n_text.TitleRequired)),
+          ),
+          effect.none(),
+        )
         title ->
           case model.project_id {
-            option.Some(project_id) ->
-              #(
-                Model(..model, create_in_flight: True, create_error: option.None),
-                api_cards.create_card(
-                  project_id,
-                  title,
-                  model.create_description,
-                  model.create_color,
-                  CreateResult,
-                ),
-              )
-            option.None ->
-              #(
-                Model(..model, create_error: option.Some(t(model.locale, i18n_text.SelectProjectFirst))),
-                effect.none(),
-              )
+            option.Some(project_id) -> #(
+              Model(..model, create_in_flight: True, create_error: option.None),
+              api_cards.create_card(
+                project_id,
+                title,
+                model.create_description,
+                model.create_color,
+                CreateResult,
+              ),
+            )
+            option.None -> #(
+              Model(
+                ..model,
+                create_error: option.Some(t(
+                  model.locale,
+                  i18n_text.SelectProjectFirst,
+                )),
+              ),
+              effect.none(),
+            )
           }
       }
   }
@@ -426,36 +441,33 @@ fn handle_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
     True -> #(model, effect.none())
     False ->
       case model.edit_title {
-        "" ->
-          #(
-            Model(..model, edit_error: option.Some(t(model.locale, i18n_text.TitleRequired))),
-            effect.none(),
-          )
+        "" -> #(
+          Model(
+            ..model,
+            edit_error: option.Some(t(model.locale, i18n_text.TitleRequired)),
+          ),
+          effect.none(),
+        )
         title ->
           case model.mode {
-            option.Some(ModeEdit(card)) ->
-              #(
-                Model(..model, edit_in_flight: True, edit_error: option.None),
-                api_cards.update_card(
-                  card.id,
-                  title,
-                  model.edit_description,
-                  model.edit_color,
-                  EditResult,
-                ),
-              )
-            _ ->
-              #(model, effect.none())
+            option.Some(ModeEdit(card)) -> #(
+              Model(..model, edit_in_flight: True, edit_error: option.None),
+              api_cards.update_card(
+                card.id,
+                title,
+                model.edit_description,
+                model.edit_color,
+                EditResult,
+              ),
+            )
+            _ -> #(model, effect.none())
           }
       }
   }
 }
 
 fn handle_edit_success(model: Model, card: Card) -> #(Model, Effect(Msg)) {
-  #(
-    reset_edit_fields(model),
-    emit_card_updated(card),
-  )
+  #(reset_edit_fields(model), emit_card_updated(card))
 }
 
 fn handle_delete_confirmed(model: Model) -> #(Model, Effect(Msg)) {
@@ -463,13 +475,11 @@ fn handle_delete_confirmed(model: Model) -> #(Model, Effect(Msg)) {
     True -> #(model, effect.none())
     False ->
       case model.mode {
-        option.Some(ModeDelete(card)) ->
-          #(
-            Model(..model, delete_in_flight: True, delete_error: option.None),
-            api_cards.delete_card(card.id, DeleteResult),
-          )
-        _ ->
-          #(model, effect.none())
+        option.Some(ModeDelete(card)) -> #(
+          Model(..model, delete_in_flight: True, delete_error: option.None),
+          api_cards.delete_card(card.id, DeleteResult),
+        )
+        _ -> #(model, effect.none())
       }
   }
 }
@@ -479,10 +489,7 @@ fn handle_delete_success(model: Model) -> #(Model, Effect(Msg)) {
     option.Some(ModeDelete(card)) -> card.id
     _ -> 0
   }
-  #(
-    reset_delete_fields(model),
-    emit_card_deleted(card_id),
-  )
+  #(reset_delete_fields(model), emit_card_deleted(card_id))
 }
 
 fn handle_delete_error(model: Model, err: ApiError) -> #(Model, Effect(Msg)) {
@@ -491,7 +498,11 @@ fn handle_delete_error(model: Model, err: ApiError) -> #(Model, Effect(Msg)) {
     _ -> err.message
   }
   #(
-    Model(..model, delete_in_flight: False, delete_error: option.Some(error_msg)),
+    Model(
+      ..model,
+      delete_in_flight: False,
+      delete_error: option.Some(error_msg),
+    ),
     effect.none(),
   )
 }
@@ -795,7 +806,11 @@ fn view_delete_dialog(model: Model, card: Card) -> Element(Msg) {
   ])
 }
 
-fn view_header(model: Model, title_key: i18n_text.Text, icon: icons.NavIcon) -> Element(Msg) {
+fn view_header(
+  model: Model,
+  title_key: i18n_text.Text,
+  icon: icons.NavIcon,
+) -> Element(Msg) {
   div([attribute.class("dialog-header")], [
     div([attribute.class("dialog-title")], [
       span([attribute.class("dialog-icon")], [
@@ -827,10 +842,9 @@ fn view_error(error: Option(String)) -> Element(Msg) {
 }
 
 fn view_cancel_button(locale: Locale, on_click_msg: Msg) -> Element(Msg) {
-  button(
-    [attribute.type_("button"), event.on_click(on_click_msg)],
-    [text(t(locale, i18n_text.Cancel))],
-  )
+  button([attribute.type_("button"), event.on_click(on_click_msg)], [
+    text(t(locale, i18n_text.Cancel)),
+  ])
 }
 
 // =============================================================================
@@ -859,44 +873,41 @@ fn view_color_picker(
     option.Some(c) -> t(locale, color_i18n_key(c))
   }
 
-  div(
-    [attribute.class("color-picker" <> open_class)],
-    [
-      // Trigger button
-      div(
-        [
-          attribute.class("color-picker-trigger"),
-          attribute.attribute("role", "combobox"),
-          attribute.attribute("aria-expanded", case is_open {
-            True -> "true"
-            False -> "false"
-          }),
-          attribute.attribute("aria-label", t(locale, i18n_text.ColorLabel)),
-          event.on_click(on_toggle),
-        ],
-        [
-          view_swatch(selected_color),
-          span([attribute.class("color-picker-label")], [text(selected_label)]),
-          span([attribute.class("color-picker-arrow")], [text("\u{25BC}")]),
-        ],
-      ),
-      // Dropdown menu
-      div(
-        [
-          attribute.class("color-picker-dropdown"),
-          attribute.attribute("role", "listbox"),
-        ],
-        [
-          // "None" option
-          view_color_option(locale, option.None, selected_color, on_select),
-          // Color options
-          ..list.map(all_colors, fn(c) {
-            view_color_option(locale, option.Some(c), selected_color, on_select)
-          })
-        ],
-      ),
-    ],
-  )
+  div([attribute.class("color-picker" <> open_class)], [
+    // Trigger button
+    div(
+      [
+        attribute.class("color-picker-trigger"),
+        attribute.attribute("role", "combobox"),
+        attribute.attribute("aria-expanded", case is_open {
+          True -> "true"
+          False -> "false"
+        }),
+        attribute.attribute("aria-label", t(locale, i18n_text.ColorLabel)),
+        event.on_click(on_toggle),
+      ],
+      [
+        view_swatch(selected_color),
+        span([attribute.class("color-picker-label")], [text(selected_label)]),
+        span([attribute.class("color-picker-arrow")], [text("\u{25BC}")]),
+      ],
+    ),
+    // Dropdown menu
+    div(
+      [
+        attribute.class("color-picker-dropdown"),
+        attribute.attribute("role", "listbox"),
+      ],
+      [
+        // "None" option
+        view_color_option(locale, option.None, selected_color, on_select),
+        // Color options
+        ..list.map(all_colors, fn(c) {
+          view_color_option(locale, option.Some(c), selected_color, on_select)
+        })
+      ],
+    ),
+  ])
 }
 
 fn view_color_option(
@@ -939,7 +950,10 @@ fn view_color_option(
 fn view_swatch(color: Option(CardColor)) -> Element(Msg) {
   case color {
     option.None ->
-      span([attribute.class("color-picker-swatch color-picker-swatch-none")], [])
+      span(
+        [attribute.class("color-picker-swatch color-picker-swatch-none")],
+        [],
+      )
     option.Some(c) ->
       span(
         [

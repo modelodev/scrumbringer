@@ -63,10 +63,9 @@ pub fn view(state: EmptyStateConfig(msg)) -> Element(msg) {
     ]),
     case action {
       opt.Some(EmptyStateAction(label:, on_click:)) ->
-        button(
-          [attribute.type_("submit"), event.on_click(on_click)],
-          [text(label)],
-        )
+        button([attribute.type_("submit"), event.on_click(on_click)], [
+          text(label),
+        ])
       opt.None -> element.none()
     },
   ])

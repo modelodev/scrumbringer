@@ -72,7 +72,7 @@ pub fn view_create_dialog(model: Model) -> Element(Msg) {
         ),
       ]),
       // Error message (if any)
-      case model.member_create_error {
+      case model.member.member_create_error {
         opt.Some(err) ->
           div([attribute.class("dialog-error")], [
             icons.nav_icon(icons.Warning, icons.Small),
@@ -87,7 +87,7 @@ pub fn view_create_dialog(model: Model) -> Element(Msg) {
           input([
             attribute.type_("text"),
             attribute.attribute("maxlength", "56"),
-            attribute.value(model.member_create_title),
+            attribute.value(model.member.member_create_title),
             event.on_input(fn(value) {
               pool_msg(MemberCreateTitleChanged(value))
             }),
@@ -97,7 +97,7 @@ pub fn view_create_dialog(model: Model) -> Element(Msg) {
           label([], [text(update_helpers.i18n_t(model, i18n_text.Description))]),
           input([
             attribute.type_("text"),
-            attribute.value(model.member_create_description),
+            attribute.value(model.member.member_create_description),
             event.on_input(fn(value) {
               pool_msg(MemberCreateDescriptionChanged(value))
             }),
@@ -107,7 +107,7 @@ pub fn view_create_dialog(model: Model) -> Element(Msg) {
           label([], [text(update_helpers.i18n_t(model, i18n_text.Priority))]),
           input([
             attribute.type_("number"),
-            attribute.value(model.member_create_priority),
+            attribute.value(model.member.member_create_priority),
             event.on_input(fn(value) {
               pool_msg(MemberCreatePriorityChanged(value))
             }),
@@ -117,12 +117,12 @@ pub fn view_create_dialog(model: Model) -> Element(Msg) {
           label([], [text(update_helpers.i18n_t(model, i18n_text.TypeLabel))]),
           select(
             [
-              attribute.value(model.member_create_type_id),
+              attribute.value(model.member.member_create_type_id),
               event.on_input(fn(value) {
                 pool_msg(MemberCreateTypeIdChanged(value))
               }),
             ],
-            case model.member_task_types {
+            case model.member.member_task_types {
               Loaded(task_types) -> [
                 option(
                   [attribute.value("")],
@@ -155,10 +155,10 @@ pub fn view_create_dialog(model: Model) -> Element(Msg) {
           [
             attribute.class("btn-primary"),
             event.on_click(pool_msg(MemberCreateSubmitted)),
-            attribute.disabled(model.member_create_in_flight),
+            attribute.disabled(model.member.member_create_in_flight),
           ],
           [
-            text(case model.member_create_in_flight {
+            text(case model.member.member_create_in_flight {
               True -> update_helpers.i18n_t(model, i18n_text.Creating)
               False -> update_helpers.i18n_t(model, i18n_text.Create)
             }),
@@ -188,13 +188,13 @@ pub fn view_task_details(model: Model, task_id: Int) -> Element(Msg) {
 
 /// Renders the notes section for a task.
 fn view_notes(model: Model, _task_id: Int) -> Element(Msg) {
-  let current_user_id = case model.user {
+  let current_user_id = case model.core.user {
     opt.Some(u) -> u.id
     opt.None -> 0
   }
 
   div([], [
-    case model.member_notes {
+    case model.member.member_notes {
       NotAsked | Loading ->
         div([attribute.class("empty")], [
           text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
@@ -223,7 +223,7 @@ fn view_notes(model: Model, _task_id: Int) -> Element(Msg) {
           }),
         )
     },
-    case model.member_note_error {
+    case model.member.member_note_error {
       opt.Some(err) -> div([attribute.class("error")], [text(err)])
       opt.None -> element.none()
     },
@@ -231,17 +231,17 @@ fn view_notes(model: Model, _task_id: Int) -> Element(Msg) {
       label([], [text(update_helpers.i18n_t(model, i18n_text.AddNote))]),
       input([
         attribute.type_("text"),
-        attribute.value(model.member_note_content),
+        attribute.value(model.member.member_note_content),
         event.on_input(fn(value) { pool_msg(MemberNoteContentChanged(value)) }),
       ]),
     ]),
     button(
       [
         event.on_click(pool_msg(MemberNoteSubmitted)),
-        attribute.disabled(model.member_note_in_flight),
+        attribute.disabled(model.member.member_note_in_flight),
       ],
       [
-        text(case model.member_note_in_flight {
+        text(case model.member.member_note_in_flight {
           True -> update_helpers.i18n_t(model, i18n_text.Adding)
           False -> update_helpers.i18n_t(model, i18n_text.Add)
         }),
@@ -259,7 +259,7 @@ pub fn view_position_edit(model: Model, _task_id: Int) -> Element(Msg) {
   div([attribute.class("modal")], [
     div([attribute.class("modal-content")], [
       h3([], [text(update_helpers.i18n_t(model, i18n_text.EditPosition))]),
-      case model.member_position_edit_error {
+      case model.member.member_position_edit_error {
         opt.Some(err) -> div([attribute.class("error")], [text(err)])
         opt.None -> element.none()
       },
@@ -267,7 +267,7 @@ pub fn view_position_edit(model: Model, _task_id: Int) -> Element(Msg) {
         label([], [text(update_helpers.i18n_t(model, i18n_text.XLabel))]),
         input([
           attribute.type_("number"),
-          attribute.value(model.member_position_edit_x),
+          attribute.value(model.member.member_position_edit_x),
           event.on_input(fn(value) {
             pool_msg(MemberPositionEditXChanged(value))
           }),
@@ -277,7 +277,7 @@ pub fn view_position_edit(model: Model, _task_id: Int) -> Element(Msg) {
         label([], [text(update_helpers.i18n_t(model, i18n_text.YLabel))]),
         input([
           attribute.type_("number"),
-          attribute.value(model.member_position_edit_y),
+          attribute.value(model.member.member_position_edit_y),
           event.on_input(fn(value) {
             pool_msg(MemberPositionEditYChanged(value))
           }),
@@ -290,10 +290,10 @@ pub fn view_position_edit(model: Model, _task_id: Int) -> Element(Msg) {
         button(
           [
             event.on_click(pool_msg(MemberPositionEditSubmitted)),
-            attribute.disabled(model.member_position_edit_in_flight),
+            attribute.disabled(model.member.member_position_edit_in_flight),
           ],
           [
-            text(case model.member_position_edit_in_flight {
+            text(case model.member.member_position_edit_in_flight {
               True -> update_helpers.i18n_t(model, i18n_text.Saving)
               False -> update_helpers.i18n_t(model, i18n_text.Save)
             }),

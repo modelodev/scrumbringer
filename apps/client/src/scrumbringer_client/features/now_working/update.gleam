@@ -40,8 +40,10 @@ import domain/task.{
 }
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, MemberWorkSessionHeartbeated,
-  MemberWorkSessionPaused, MemberWorkSessionStarted, Model, NowWorkingTicked,
+  type Model, type Msg, Failed, Loaded, MemberModel,
+  MemberWorkSessionHeartbeated, MemberWorkSessionPaused,
+  MemberWorkSessionStarted, NowWorkingTicked, UiModel, pool_msg, update_member,
+  update_ui,
 }
 import scrumbringer_client/update_helpers
 
@@ -51,23 +53,30 @@ import scrumbringer_client/update_helpers
 
 /// Handle start button click - begins tracking time on a task.
 pub fn handle_start_clicked(model: Model, task_id: Int) -> #(Model, Effect(Msg)) {
-  case model.member_now_working_in_flight {
+  case model.member.member_now_working_in_flight {
     True -> #(model, effect.none())
     False -> {
       let model =
-        Model(
-          ..model,
-          member_now_working_in_flight: True,
-          member_now_working_error: opt.None,
-        )
-      #(model, api_tasks.start_work_session(task_id, MemberWorkSessionStarted))
+        update_member(model, fn(member) {
+          MemberModel(
+            ..member,
+            member_now_working_in_flight: True,
+            member_now_working_error: opt.None,
+          )
+        })
+      #(
+        model,
+        api_tasks.start_work_session(task_id, fn(result) -> Msg {
+          pool_msg(MemberWorkSessionStarted(result))
+        }),
+      )
     }
   }
 }
 
 /// Handle pause button click - stops tracking time.
 pub fn handle_pause_clicked(model: Model) -> #(Model, Effect(Msg)) {
-  case model.member_now_working_in_flight {
+  case model.member.member_now_working_in_flight {
     True -> #(model, effect.none())
     False -> {
       // Get active task_id from work sessions
@@ -75,12 +84,19 @@ pub fn handle_pause_clicked(model: Model) -> #(Model, Effect(Msg)) {
         opt.None -> #(model, effect.none())
         opt.Some(task_id) -> {
           let model =
-            Model(
-              ..model,
-              member_now_working_in_flight: True,
-              member_now_working_error: opt.None,
-            )
-          #(model, api_tasks.pause_work_session(task_id, MemberWorkSessionPaused))
+            update_member(model, fn(member) {
+              MemberModel(
+                ..member,
+                member_now_working_in_flight: True,
+                member_now_working_error: opt.None,
+              )
+            })
+          #(
+            model,
+            api_tasks.pause_work_session(task_id, fn(result) -> Msg {
+              pool_msg(MemberWorkSessionPaused(result))
+            }),
+          )
         }
       }
     }
@@ -89,7 +105,7 @@ pub fn handle_pause_clicked(model: Model) -> #(Model, Effect(Msg)) {
 
 /// Get task_id of first active work session.
 fn get_first_active_session_task_id(model: Model) -> opt.Option(Int) {
-  case model.member_work_sessions {
+  case model.member.member_work_sessions {
     Loaded(WorkSessionsPayload(active_sessions: [first, ..], ..)) ->
       opt.Some(first.task_id)
     _ -> opt.None
@@ -105,11 +121,13 @@ pub fn handle_fetched_ok(
   let server_ms = client_ffi.parse_iso_ms(as_of)
   let offset = client_ffi.now_ms() - server_ms
 
-  Model(
-    ..model,
-    member_active_task: Loaded(payload),
-    now_working_server_offset_ms: offset,
-  )
+  update_member(model, fn(member) {
+    MemberModel(
+      ..member,
+      member_active_task: Loaded(payload),
+      now_working_server_offset_ms: offset,
+    )
+  })
   |> start_tick_if_needed
 }
 
@@ -120,7 +138,12 @@ pub fn handle_fetched_error(
 ) -> #(Model, Effect(Msg)) {
   case err.status {
     401 -> update_helpers.reset_to_login(model)
-    _ -> #(Model(..model, member_active_task: Failed(err)), effect.none())
+    _ -> #(
+      update_member(model, fn(member) {
+        MemberModel(..member, member_active_task: Failed(err))
+      }),
+      effect.none(),
+    )
   }
 }
 
@@ -133,12 +156,14 @@ pub fn handle_started_ok(
   let server_ms = client_ffi.parse_iso_ms(as_of)
   let offset = client_ffi.now_ms() - server_ms
 
-  Model(
-    ..model,
-    member_now_working_in_flight: False,
-    member_active_task: Loaded(payload),
-    now_working_server_offset_ms: offset,
-  )
+  update_member(model, fn(member) {
+    MemberModel(
+      ..member,
+      member_now_working_in_flight: False,
+      member_active_task: Loaded(payload),
+      now_working_server_offset_ms: offset,
+    )
+  })
   |> start_tick_if_needed
 }
 
@@ -147,15 +172,19 @@ pub fn handle_started_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  let model = Model(..model, member_now_working_in_flight: False)
+  let model =
+    update_member(model, fn(member) {
+      MemberModel(..member, member_now_working_in_flight: False)
+    })
 
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     _ -> #(
-      Model(
-        ..model,
-        member_now_working_error: opt.Some(err.message),
-        toast: opt.Some(err.message),
+      update_ui(
+        update_member(model, fn(member) {
+          MemberModel(..member, member_now_working_error: opt.Some(err.message))
+        }),
+        fn(ui) { UiModel(..ui, toast: opt.Some(err.message)) },
       ),
       effect.none(),
     )
@@ -172,15 +201,20 @@ pub fn handle_paused_ok(
   let offset = client_ffi.now_ms() - server_ms
 
   let model =
-    Model(
-      ..model,
-      member_now_working_in_flight: False,
-      member_active_task: Loaded(payload),
-      now_working_server_offset_ms: offset,
-    )
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_now_working_in_flight: False,
+        member_active_task: Loaded(payload),
+        now_working_server_offset_ms: offset,
+      )
+    })
 
   let model = case update_helpers.now_working_active_task(model) {
-    opt.None -> Model(..model, now_working_tick_running: False)
+    opt.None ->
+      update_member(model, fn(member) {
+        MemberModel(..member, now_working_tick_running: False)
+      })
     opt.Some(_) -> model
   }
 
@@ -189,15 +223,19 @@ pub fn handle_paused_ok(
 
 /// Handle failed pause response.
 pub fn handle_paused_error(model: Model, err: ApiError) -> #(Model, Effect(Msg)) {
-  let model = Model(..model, member_now_working_in_flight: False)
+  let model =
+    update_member(model, fn(member) {
+      MemberModel(..member, member_now_working_in_flight: False)
+    })
 
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     _ -> #(
-      Model(
-        ..model,
-        member_now_working_error: opt.Some(err.message),
-        toast: opt.Some(err.message),
+      update_ui(
+        update_member(model, fn(member) {
+          MemberModel(..member, member_now_working_error: opt.Some(err.message))
+        }),
+        fn(ui) { UiModel(..ui, toast: opt.Some(err.message)) },
       ),
       effect.none(),
     )
@@ -213,11 +251,13 @@ pub fn handle_heartbeated_ok(
   let server_ms = client_ffi.parse_iso_ms(as_of)
   let offset = client_ffi.now_ms() - server_ms
 
-  Model(
-    ..model,
-    member_active_task: Loaded(payload),
-    now_working_server_offset_ms: offset,
-  )
+  update_member(model, fn(member) {
+    MemberModel(
+      ..member,
+      member_active_task: Loaded(payload),
+      now_working_server_offset_ms: offset,
+    )
+  })
   |> start_tick_if_needed
 }
 
@@ -234,21 +274,26 @@ pub fn handle_heartbeated_error(
 
 /// Handle timer tick - updates tick counter and sends heartbeat every 60 ticks.
 pub fn handle_ticked(model: Model) -> #(Model, Effect(Msg)) {
-  let next_tick = model.now_working_tick + 1
-  let model = Model(..model, now_working_tick: next_tick)
+  let next_tick = model.member.now_working_tick + 1
+  let model =
+    update_member(model, fn(member) {
+      MemberModel(..member, now_working_tick: next_tick)
+    })
 
   // Check if there's an active work session
   let active_task_id = get_first_active_session_task_id(model)
 
   let heartbeat_fx = case
     next_tick % 60 == 0
-    && model.member_now_working_in_flight == False
+    && model.member.member_now_working_in_flight == False
     && active_task_id != opt.None
   {
     True ->
       case active_task_id {
         opt.Some(task_id) ->
-          api_tasks.heartbeat_work_session(task_id, MemberWorkSessionHeartbeated)
+          api_tasks.heartbeat_work_session(task_id, fn(result) -> Msg {
+            pool_msg(MemberWorkSessionHeartbeated(result))
+          })
         opt.None -> effect.none()
       }
     False -> effect.none()
@@ -257,7 +302,9 @@ pub fn handle_ticked(model: Model) -> #(Model, Effect(Msg)) {
   case active_task_id {
     opt.Some(_) -> #(model, effect.batch([tick_effect(), heartbeat_fx]))
     opt.None -> #(
-      Model(..model, now_working_tick_running: False),
+      update_member(model, fn(member) {
+        MemberModel(..member, now_working_tick_running: False)
+      }),
       effect.none(),
     )
   }
@@ -270,20 +317,22 @@ pub fn handle_ticked(model: Model) -> #(Model, Effect(Msg)) {
 /// Create effect that schedules the next tick in 1 second.
 pub fn tick_effect() -> Effect(Msg) {
   effect.from(fn(dispatch) {
-    client_ffi.set_timeout(1000, fn(_) { dispatch(NowWorkingTicked) })
+    client_ffi.set_timeout(1000, fn(_) { dispatch(pool_msg(NowWorkingTicked)) })
     Nil
   })
 }
 
 /// Start tick timer if not already running and there's an active task.
 pub fn start_tick_if_needed(model: Model) -> #(Model, Effect(Msg)) {
-  case model.now_working_tick_running {
+  case model.member.now_working_tick_running {
     True -> #(model, effect.none())
 
     False ->
       case update_helpers.now_working_active_task(model) {
         opt.Some(_) -> #(
-          Model(..model, now_working_tick_running: True),
+          update_member(model, fn(member) {
+            MemberModel(..member, now_working_tick_running: True)
+          }),
           tick_effect(),
         )
         opt.None -> #(model, effect.none())
@@ -317,10 +366,9 @@ pub fn handle_session_started_ok(
   model: Model,
   payload: WorkSessionsPayload,
 ) -> #(Model, Effect(Msg)) {
-  Model(
-    ..apply_sessions_payload(model, payload),
-    member_now_working_in_flight: False,
-  )
+  update_member(apply_sessions_payload(model, payload), fn(member) {
+    MemberModel(..member, member_now_working_in_flight: False)
+  })
   |> start_tick_if_sessions_needed
 }
 
@@ -340,14 +388,18 @@ pub fn handle_session_paused_ok(
   let WorkSessionsPayload(active_sessions: sessions, ..) = payload
 
   let model =
-    Model(
-      ..apply_sessions_payload(model, payload),
-      member_now_working_in_flight: False,
-    )
+    update_member(apply_sessions_payload(model, payload), fn(member) {
+      MemberModel(..member, member_now_working_in_flight: False)
+    })
 
   // Stop tick if no more active sessions
   case sessions {
-    [] -> #(Model(..model, now_working_tick_running: False), effect.none())
+    [] -> #(
+      update_member(model, fn(member) {
+        MemberModel(..member, now_working_tick_running: False)
+      }),
+      effect.none(),
+    )
     _ -> #(model, effect.none())
   }
 }
@@ -382,17 +434,24 @@ fn apply_sessions_payload(model: Model, payload: WorkSessionsPayload) -> Model {
   let server_ms = client_ffi.parse_iso_ms(as_of)
   let offset = client_ffi.now_ms() - server_ms
 
-  Model(
-    ..model,
-    member_work_sessions: Loaded(payload),
-    now_working_server_offset_ms: offset,
-  )
+  update_member(model, fn(member) {
+    MemberModel(
+      ..member,
+      member_work_sessions: Loaded(payload),
+      now_working_server_offset_ms: offset,
+    )
+  })
 }
 
 fn handle_sessions_error(model: Model, err: ApiError) -> #(Model, Effect(Msg)) {
   case err.status {
     401 -> update_helpers.reset_to_login(model)
-    _ -> #(Model(..model, member_work_sessions: Failed(err)), effect.none())
+    _ -> #(
+      update_member(model, fn(member) {
+        MemberModel(..member, member_work_sessions: Failed(err))
+      }),
+      effect.none(),
+    )
   }
 }
 
@@ -400,15 +459,19 @@ fn handle_sessions_toast_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  let model = Model(..model, member_now_working_in_flight: False)
+  let model =
+    update_member(model, fn(member) {
+      MemberModel(..member, member_now_working_in_flight: False)
+    })
 
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     _ -> #(
-      Model(
-        ..model,
-        member_now_working_error: opt.Some(err.message),
-        toast: opt.Some(err.message),
+      update_ui(
+        update_member(model, fn(member) {
+          MemberModel(..member, member_now_working_error: opt.Some(err.message))
+        }),
+        fn(ui) { UiModel(..ui, toast: opt.Some(err.message)) },
       ),
       effect.none(),
     )
@@ -427,13 +490,15 @@ fn handle_sessions_noop_error(
 
 /// Start tick timer if not already running and there are active sessions.
 fn start_tick_if_sessions_needed(model: Model) -> #(Model, Effect(Msg)) {
-  case model.now_working_tick_running {
+  case model.member.now_working_tick_running {
     True -> #(model, effect.none())
 
     False ->
-      case model.member_work_sessions {
+      case model.member.member_work_sessions {
         Loaded(WorkSessionsPayload(active_sessions: [_, ..], ..)) -> #(
-          Model(..model, now_working_tick_running: True),
+          update_member(model, fn(member) {
+            MemberModel(..member, now_working_tick_running: True)
+          }),
           tick_effect(),
         )
         _ -> #(model, effect.none())

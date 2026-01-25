@@ -88,33 +88,24 @@ pub type RightPanelConfig(msg) {
 
 /// Renders the right panel with all sections
 pub fn view(config: RightPanelConfig(msg)) -> Element(msg) {
-  div(
-    [attribute.class("right-panel-content")],
-    [
-      // Activity sections (top)
-      div(
-        [attribute.class("right-panel-activity")],
-        [
-          // Active tasks section (supports multiple)
-          view_active_tasks_section(config),
-          // My Tasks section
-          view_my_tasks(config),
-          // My Cards section
-          view_my_cards(config),
-        ],
-      ),
-      // Footer sections (bottom - pushed down with flex spacer)
-      div(
-        [attribute.class("right-panel-footer")],
-        [
-          // Profile with preferences gear (Story 4.8 UX)
-          view_profile(config),
-        ],
-      ),
-      // Preferences popup (Story 4.8 UX: moved from inline)
-      view_preferences_popup(config),
-    ],
-  )
+  div([attribute.class("right-panel-content")], [
+    // Activity sections (top)
+    div([attribute.class("right-panel-activity")], [
+      // Active tasks section (supports multiple)
+      view_active_tasks_section(config),
+      // My Tasks section
+      view_my_tasks(config),
+      // My Cards section
+      view_my_cards(config),
+    ]),
+    // Footer sections (bottom - pushed down with flex spacer)
+    div([attribute.class("right-panel-footer")], [
+      // Profile with preferences gear (Story 4.8 UX)
+      view_profile(config),
+    ]),
+    // Preferences popup (Story 4.8 UX: moved from inline)
+    view_preferences_popup(config),
+  ])
 }
 
 // =============================================================================
@@ -159,80 +150,67 @@ fn view_active_task_card(
   config: RightPanelConfig(msg),
   active: ActiveTaskInfo,
 ) -> Element(msg) {
-  div(
-    [attribute.class("active-task-card")],
-    [
-      div(
-        [attribute.class("task-title-row")],
-        [
-          // Task type icon
-          span([attribute.class("task-type-icon")], [
-            view_task_type_icon(
-              active.task_type_icon,
-              14,
-              config.current_theme,
-            ),
-          ]),
-          span([attribute.class("task-title")], [text(active.task_title)]),
-        ],
-      ),
-      div(
-        [
-          attribute.class("task-timer"),
-          attribute.attribute("data-testid", "task-timer"),
-        ],
-        [text(active.elapsed_display)],
-      ),
-      div(
-        [attribute.class("task-actions")],
-        [
-          case active.is_paused {
-            True ->
-              button(
-                [
-                  attribute.class("btn-xs btn-icon"),
-                  attribute.attribute("data-testid", "my-task-start-btn"),
-                  attribute.attribute(
-                    "title",
-                    i18n.t(config.locale, i18n_text.Resume),
-                  ),
-                  attribute.disabled(config.disable_actions),
-                  event.on_click(config.on_task_start(active.task_id)),
-                ],
-                [icons.nav_icon(icons.Play, icons.Small)],
-              )
-            False ->
-              button(
-                [
-                  attribute.class("btn-xs btn-icon"),
-                  attribute.attribute("data-testid", "task-pause-btn"),
-                  attribute.attribute(
-                    "title",
-                    i18n.t(config.locale, i18n_text.Pause),
-                  ),
-                  attribute.disabled(config.disable_actions),
-                  event.on_click(config.on_task_pause(active.task_id)),
-                ],
-                [icons.nav_icon(icons.Pause, icons.Small)],
-              )
-          },
+  div([attribute.class("active-task-card")], [
+    div([attribute.class("task-title-row")], [
+      // Task type icon
+      span([attribute.class("task-type-icon")], [
+        view_task_type_icon(active.task_type_icon, 14, config.current_theme),
+      ]),
+      span([attribute.class("task-title")], [text(active.task_title)]),
+    ]),
+    div(
+      [
+        attribute.class("task-timer"),
+        attribute.attribute("data-testid", "task-timer"),
+      ],
+      [text(active.elapsed_display)],
+    ),
+    div([attribute.class("task-actions")], [
+      case active.is_paused {
+        True ->
           button(
             [
               attribute.class("btn-xs btn-icon"),
-              attribute.attribute("data-testid", "task-complete-btn"),
+              attribute.attribute("data-testid", "my-task-start-btn"),
               attribute.attribute(
                 "title",
-                i18n.t(config.locale, i18n_text.Complete),
+                i18n.t(config.locale, i18n_text.Resume),
               ),
               attribute.disabled(config.disable_actions),
-              event.on_click(config.on_task_complete(active.task_id)),
+              event.on_click(config.on_task_start(active.task_id)),
             ],
-            [icons.nav_icon(icons.Check, icons.Small)],
+            [icons.nav_icon(icons.Play, icons.Small)],
+          )
+        False ->
+          button(
+            [
+              attribute.class("btn-xs btn-icon"),
+              attribute.attribute("data-testid", "task-pause-btn"),
+              attribute.attribute(
+                "title",
+                i18n.t(config.locale, i18n_text.Pause),
+              ),
+              attribute.disabled(config.disable_actions),
+              event.on_click(config.on_task_pause(active.task_id)),
+            ],
+            [icons.nav_icon(icons.Pause, icons.Small)],
+          )
+      },
+      button(
+        [
+          attribute.class("btn-xs btn-icon"),
+          attribute.attribute("data-testid", "task-complete-btn"),
+          attribute.attribute(
+            "title",
+            i18n.t(config.locale, i18n_text.Complete),
           ),
+          attribute.disabled(config.disable_actions),
+          event.on_click(config.on_task_complete(active.task_id)),
         ],
+        [icons.nav_icon(icons.Check, icons.Small)],
       ),
-    ],
-  )
+    ]),
+  ])
 }
 
 // =============================================================================
@@ -241,11 +219,11 @@ fn view_active_task_card(
 
 fn view_my_tasks(config: RightPanelConfig(msg)) -> Element(msg) {
   // Story 4.8 UX: Filter out ALL active tasks from list (avoid duplication)
-  let active_task_ids =
-    list.map(config.active_tasks, fn(a) { a.task_id })
-  let filtered_tasks = list.filter(config.my_tasks, fn(task) {
-    !list.contains(active_task_ids, task.id)
-  })
+  let active_task_ids = list.map(config.active_tasks, fn(a) { a.task_id })
+  let filtered_tasks =
+    list.filter(config.my_tasks, fn(task) {
+      !list.contains(active_task_ids, task.id)
+    })
 
   // Dropzone class for drag-to-claim visual feedback (Story 4.7)
   let dropzone_class = case config.drag_armed, config.drag_over_my_tasks {
@@ -308,58 +286,39 @@ fn view_my_tasks(config: RightPanelConfig(msg)) -> Element(msg) {
 }
 
 fn view_my_task_item(config: RightPanelConfig(msg), task: Task) -> Element(msg) {
-  div(
-    [attribute.class("task-item")],
-    [
-      div(
-        [attribute.class("task-title-row")],
+  div([attribute.class("task-item")], [
+    div([attribute.class("task-title-row")], [
+      // Task type icon
+      span([attribute.class("task-type-icon")], [
+        view_task_type_icon(task.task_type.icon, 14, config.current_theme),
+      ]),
+      span([attribute.class("task-title")], [text(task.title)]),
+    ]),
+    div([attribute.class("task-actions")], [
+      // Start button (icon)
+      button(
         [
-          // Task type icon
-          span([attribute.class("task-type-icon")], [
-            view_task_type_icon(
-              task.task_type.icon,
-              14,
-              config.current_theme,
-            ),
-          ]),
-          span([attribute.class("task-title")], [text(task.title)]),
+          attribute.class("btn-xs btn-icon"),
+          attribute.attribute("data-testid", "my-task-start-btn"),
+          attribute.attribute("title", i18n.t(config.locale, i18n_text.Start)),
+          attribute.disabled(config.disable_actions),
+          event.on_click(config.on_task_start(task.id)),
         ],
+        [icons.nav_icon(icons.Play, icons.Small)],
       ),
-      div(
-        [attribute.class("task-actions")],
+      // Release button (icon)
+      button(
         [
-          // Start button (icon)
-          button(
-            [
-              attribute.class("btn-xs btn-icon"),
-              attribute.attribute("data-testid", "my-task-start-btn"),
-              attribute.attribute(
-                "title",
-                i18n.t(config.locale, i18n_text.Start),
-              ),
-              attribute.disabled(config.disable_actions),
-              event.on_click(config.on_task_start(task.id)),
-            ],
-            [icons.nav_icon(icons.Play, icons.Small)],
-          ),
-          // Release button (icon)
-          button(
-            [
-              attribute.class("btn-xs btn-icon"),
-              attribute.attribute("data-testid", "my-task-release-btn"),
-              attribute.attribute(
-                "title",
-                i18n.t(config.locale, i18n_text.Release),
-              ),
-              attribute.disabled(config.disable_actions),
-              event.on_click(config.on_task_release(task.id)),
-            ],
-            [icons.nav_icon(icons.Return, icons.Small)],
-          ),
+          attribute.class("btn-xs btn-icon"),
+          attribute.attribute("data-testid", "my-task-release-btn"),
+          attribute.attribute("title", i18n.t(config.locale, i18n_text.Release)),
+          attribute.disabled(config.disable_actions),
+          event.on_click(config.on_task_release(task.id)),
         ],
+        [icons.nav_icon(icons.Return, icons.Small)],
       ),
-    ],
-  )
+    ]),
+  ])
 }
 
 // =============================================================================
@@ -427,24 +386,18 @@ fn view_my_card_item(
     ],
     [
       span([attribute.class("card-title")], [text(card.card_title)]),
-      div(
-        [attribute.class("card-progress-row")],
-        [
+      div([attribute.class("card-progress-row")], [
+        div([attribute.class("progress-bar-mini")], [
           div(
-            [attribute.class("progress-bar-mini")],
             [
-              div(
-                [
-                  attribute.class("progress-bar-fill"),
-                  attribute.style("width", int.to_string(progress_percent) <> "%"),
-                ],
-                [],
-              ),
+              attribute.class("progress-bar-fill"),
+              attribute.style("width", int.to_string(progress_percent) <> "%"),
             ],
+            [],
           ),
-          span([attribute.class("card-progress")], [text(progress_text)]),
-        ],
-      ),
+        ]),
+        span([attribute.class("card-progress")], [text(progress_text)]),
+      ]),
     ],
   )
 }
@@ -476,63 +429,53 @@ fn view_preferences_popup(config: RightPanelConfig(msg)) -> Element(msg) {
                 icons.nav_icon(icons.Cog, icons.Small),
                 text(i18n.t(config.locale, i18n_text.Preferences)),
               ]),
-              div(
-                [attribute.class("preferences-popup-content")],
-                [
-                  // Theme selector
-                  label(
-                    [attribute.class("preference-item")],
+              div([attribute.class("preferences-popup-content")], [
+                // Theme selector
+                label([attribute.class("preference-item")], [
+                  span([attribute.class("preference-icon")], [
+                    case config.current_theme {
+                      theme.Dark -> icons.nav_icon(icons.Moon, icons.Small)
+                      theme.Default -> icons.nav_icon(icons.Sun, icons.Small)
+                    },
+                  ]),
+                  select(
                     [
-                      span([attribute.class("preference-icon")], [
-                        case config.current_theme {
-                          theme.Dark -> icons.nav_icon(icons.Moon, icons.Small)
-                          theme.Default ->
-                            icons.nav_icon(icons.Sun, icons.Small)
-                        },
-                      ]),
-                      select(
-                        [
-                          attribute.class("preference-select"),
-                          attribute.value(current_theme),
-                          attribute.attribute("data-testid", "theme-selector"),
-                          event.on_input(config.on_theme_change),
-                        ],
-                        [
-                          option(
-                            [attribute.value("default")],
-                            i18n.t(config.locale, i18n_text.ThemeDefault),
-                          ),
-                          option(
-                            [attribute.value("dark")],
-                            i18n.t(config.locale, i18n_text.ThemeDark),
-                          ),
-                        ],
+                      attribute.class("preference-select"),
+                      attribute.value(current_theme),
+                      attribute.attribute("data-testid", "theme-selector"),
+                      event.on_input(config.on_theme_change),
+                    ],
+                    [
+                      option(
+                        [attribute.value("default")],
+                        i18n.t(config.locale, i18n_text.ThemeDefault),
+                      ),
+                      option(
+                        [attribute.value("dark")],
+                        i18n.t(config.locale, i18n_text.ThemeDark),
                       ),
                     ],
                   ),
-                  // Language selector
-                  label(
-                    [attribute.class("preference-item")],
+                ]),
+                // Language selector
+                label([attribute.class("preference-item")], [
+                  span([attribute.class("preference-icon")], [
+                    icons.nav_icon(icons.Globe, icons.Small),
+                  ]),
+                  select(
                     [
-                      span([attribute.class("preference-icon")], [
-                        icons.nav_icon(icons.Globe, icons.Small),
-                      ]),
-                      select(
-                        [
-                          attribute.class("preference-select"),
-                          attribute.value(current_locale),
-                          attribute.attribute("data-testid", "locale-selector"),
-                          event.on_input(config.on_locale_change),
-                        ],
-                        [
-                          option([attribute.value("es")], "Español"),
-                          option([attribute.value("en")], "English"),
-                        ],
-                      ),
+                      attribute.class("preference-select"),
+                      attribute.value(current_locale),
+                      attribute.attribute("data-testid", "locale-selector"),
+                      event.on_input(config.on_locale_change),
+                    ],
+                    [
+                      option([attribute.value("es")], "Español"),
+                      option([attribute.value("en")], "English"),
                     ],
                   ),
-                ],
-              ),
+                ]),
+              ]),
             ],
           ),
         ],
@@ -546,53 +489,41 @@ fn view_preferences_popup(config: RightPanelConfig(msg)) -> Element(msg) {
 // =============================================================================
 
 fn view_profile(config: RightPanelConfig(msg)) -> Element(msg) {
-  div(
-    [attribute.class("profile-section")],
-    [
-      case config.user {
-        Some(user) ->
-          div(
-            [attribute.class("user-info")],
-            [
-              icons.nav_icon(icons.UserCircle, icons.Small),
-              span([attribute.class("user-email")], [text(user.email)]),
-            ],
-          )
-        None -> element.none()
-      },
-      div(
-        [attribute.class("profile-actions")],
+  div([attribute.class("profile-section")], [
+    case config.user {
+      Some(user) ->
+        div([attribute.class("user-info")], [
+          icons.nav_icon(icons.UserCircle, icons.Small),
+          span([attribute.class("user-email")], [text(user.email)]),
+        ])
+      None -> element.none()
+    },
+    div([attribute.class("profile-actions")], [
+      // Preferences gear icon (Story 4.8 UX: opens popup)
+      button(
         [
-          // Preferences gear icon (Story 4.8 UX: opens popup)
-          button(
-            [
-              attribute.class("btn-icon-only"),
-              attribute.attribute("data-testid", "preferences-btn"),
-              attribute.attribute(
-                "title",
-                i18n.t(config.locale, i18n_text.Preferences),
-              ),
-              event.on_click(config.on_preferences_toggle),
-            ],
-            [icons.nav_icon(icons.Cog, icons.Small)],
+          attribute.class("btn-icon-only"),
+          attribute.attribute("data-testid", "preferences-btn"),
+          attribute.attribute(
+            "title",
+            i18n.t(config.locale, i18n_text.Preferences),
           ),
-          // Logout button (icon only)
-          button(
-            [
-              attribute.class("btn-icon-only btn-logout"),
-              attribute.attribute("data-testid", "logout-btn"),
-              attribute.attribute(
-                "title",
-                i18n.t(config.locale, i18n_text.Logout),
-              ),
-              event.on_click(config.on_logout),
-            ],
-            [icons.nav_icon(icons.Logout, icons.Small)],
-          ),
+          event.on_click(config.on_preferences_toggle),
         ],
+        [icons.nav_icon(icons.Cog, icons.Small)],
       ),
-    ],
-  )
+      // Logout button (icon only)
+      button(
+        [
+          attribute.class("btn-icon-only btn-logout"),
+          attribute.attribute("data-testid", "logout-btn"),
+          attribute.attribute("title", i18n.t(config.locale, i18n_text.Logout)),
+          event.on_click(config.on_logout),
+        ],
+        [icons.nav_icon(icons.Logout, icons.Small)],
+      ),
+    ]),
+  ])
 }
 
 // =============================================================================

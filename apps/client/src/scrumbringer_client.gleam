@@ -55,34 +55,32 @@
 //// - **client_ffi.gleam**: Provides browser FFI (history, DOM, timers)
 //// - **router.gleam**: Provides URL parsing and route types
 
-import gleam/dict
 import gleam/option as opt
-import gleam/set
 
 import lustre
 import lustre/effect.{type Effect}
 
+import domain/view_mode
 import scrumbringer_client/accept_invite
 import scrumbringer_client/api/auth as api_auth
 import scrumbringer_client/client_ffi
 import scrumbringer_client/member_section
 import scrumbringer_client/permissions
-import domain/view_mode
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/reset_password
 import scrumbringer_client/router
 import scrumbringer_client/theme
 import scrumbringer_client/ui/toast
 
-import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/app/effects as app_effects
+import scrumbringer_client/i18n/locale as i18n_locale
 
 import scrumbringer_client/client_state.{
-  type Model, type Msg, AcceptInvite as AcceptInvitePage, Admin, IconIdle, Login,
-  MeFetched, Member, Model, NotAsked, Replace,
-  ResetPassword as ResetPasswordPage,
+  type Model, type Msg, AcceptInvite as AcceptInvitePage, Admin, AuthModel,
+  CoreModel, Login, MeFetched, Member, MemberModel, Replace,
+  ResetPassword as ResetPasswordPage, UiModel, update_auth, update_core,
+  update_member, update_ui,
 }
-import domain/project_role.{Member as MemberRole}
 
 import scrumbringer_client/client_update
 import scrumbringer_client/client_view
@@ -251,229 +249,42 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
     app_effects.load_sidebar_state()
 
   let model =
-    Model(
-      page: page,
-      user: opt.None,
-      auth_checked: False,
-      is_mobile: is_mobile,
-      active_section: active_section,
-      toast: opt.None,
-      toast_state: toast.init(),
-      theme: active_theme,
-      locale: active_locale,
-      login_email: "",
-      login_password: "",
-      login_error: opt.None,
-      login_in_flight: False,
-      forgot_password_open: False,
-      forgot_password_email: "",
-      forgot_password_in_flight: False,
-      forgot_password_result: opt.None,
-      forgot_password_error: opt.None,
-      forgot_password_copy_status: opt.None,
-      accept_invite: accept_model,
-      reset_password: reset_model,
-      projects: NotAsked,
-      selected_project_id: selected_project_id,
-      invite_links: NotAsked,
-      invite_create_dialog_open: False,
-      invite_link_email: "",
-      invite_link_in_flight: False,
-      invite_link_error: opt.None,
-      invite_link_last: opt.None,
-      invite_link_copy_status: opt.None,
-      projects_create_dialog_open: False,
-      projects_create_name: "",
-      projects_create_in_flight: False,
-      projects_create_error: opt.None,
-      capabilities: NotAsked,
-      capabilities_create_dialog_open: False,
-      capabilities_create_name: "",
-      capabilities_create_in_flight: False,
-      capabilities_create_error: opt.None,
-      // Capability delete (Story 4.9 AC9)
-      capability_delete_dialog_id: opt.None,
-      capability_delete_in_flight: False,
-      capability_delete_error: opt.None,
-      members: NotAsked,
-      members_project_id: opt.None,
-      org_users_cache: NotAsked,
-      org_settings_users: NotAsked,
-      admin_metrics_overview: NotAsked,
-      admin_metrics_project_tasks: NotAsked,
-      admin_metrics_project_id: opt.None,
-      // Rule metrics tab
-      admin_rule_metrics: NotAsked,
-      admin_rule_metrics_from: "",
-      admin_rule_metrics_to: "",
-      // Rule metrics drill-down
-      admin_rule_metrics_expanded_workflow: opt.None,
-      admin_rule_metrics_workflow_details: NotAsked,
-      admin_rule_metrics_drilldown_rule_id: opt.None,
-      admin_rule_metrics_rule_details: NotAsked,
-      admin_rule_metrics_executions: NotAsked,
-      admin_rule_metrics_exec_offset: 0,
-      org_settings_role_drafts: dict.new(),
-      org_settings_save_in_flight: False,
-      org_settings_error: opt.None,
-      org_settings_error_user_id: opt.None,
-      user_projects_dialog_open: False,
-      user_projects_dialog_user: opt.None,
-      user_projects_list: NotAsked,
-      user_projects_add_project_id: opt.None,
-      user_projects_add_role: "member",
-      user_projects_in_flight: False,
-      user_projects_error: opt.None,
-      members_add_dialog_open: False,
-      members_add_selected_user: opt.None,
-      members_add_role: MemberRole,
-      members_add_in_flight: False,
-      members_add_error: opt.None,
-      members_remove_confirm: opt.None,
-      members_remove_in_flight: False,
-      members_remove_error: opt.None,
-      org_users_search_query: "",
-      org_users_search_token: 0,
-      org_users_search_results: NotAsked,
-      task_types: NotAsked,
-      task_types_project_id: opt.None,
-      task_types_dialog_mode: opt.None,
-      task_types_create_dialog_open: False,
-      task_types_create_name: "",
-      task_types_create_icon: "",
-      task_types_create_icon_search: "",
-      task_types_create_icon_category: "all",
-      task_types_create_capability_id: opt.None,
-      task_types_create_in_flight: False,
-      task_types_create_error: opt.None,
-      task_types_icon_preview: IconIdle,
-      member_section: member_section,
-      view_mode: initial_view_mode,
-      member_active_task: NotAsked,
-      member_work_sessions: NotAsked,
-      member_metrics: NotAsked,
-      member_now_working_in_flight: False,
-      member_now_working_error: opt.None,
-      now_working_tick: 0,
-      now_working_tick_running: False,
-      now_working_server_offset_ms: 0,
-      member_tasks: NotAsked,
-      member_tasks_pending: 0,
-      member_tasks_by_project: dict.new(),
-      member_task_types: NotAsked,
-      member_task_types_pending: 0,
-      member_task_types_by_project: dict.new(),
-      member_task_mutation_in_flight: False,
-      member_task_mutation_task_id: opt.None,
-      member_tasks_snapshot: opt.None,
-      member_filters_status: "",
-      member_filters_type_id: "",
-      member_filters_capability_id: "",
-      member_filters_q: "",
-      member_quick_my_caps: True,
-      member_pool_filters_visible: pool_filters_visible,
-      member_pool_view_mode: pool_view_mode,
-      // List view hide completed tasks filter (AC6: ON by default)
-      member_list_hide_completed: True,
-      // Story 4.8 UX: Collapse/expand card groups (all expanded by default)
-      member_list_expanded_cards: dict.new(),
-      member_panel_expanded: False,
-      mobile_left_drawer_open: False,
-      mobile_right_drawer_open: False,
-      // Sidebar collapse state (persisted in localStorage)
-      sidebar_config_collapsed: sidebar_config_collapsed,
-      sidebar_org_collapsed: sidebar_org_collapsed,
-      // Preferences popup (Story 4.8 UX)
-      preferences_popup_open: False,
-      member_create_dialog_open: False,
-      member_create_title: "",
-      member_create_description: "",
-      member_create_priority: "3",
-      member_create_type_id: "",
-      member_create_in_flight: False,
-      member_create_error: opt.None,
-      member_my_capability_ids: NotAsked,
-      member_my_capability_ids_edit: dict.new(),
-      member_my_capabilities_in_flight: False,
-      member_my_capabilities_error: opt.None,
-      member_positions_by_task: dict.new(),
-      member_drag: opt.None,
-      member_canvas_left: 0,
-      member_canvas_top: 0,
-      member_pool_my_tasks_rect: opt.None,
-      member_pool_drag_to_claim_armed: False,
-      member_pool_drag_over_my_tasks: False,
-      member_position_edit_task: opt.None,
-      member_position_edit_x: "",
-      member_position_edit_y: "",
-      member_position_edit_in_flight: False,
-      member_position_edit_error: opt.None,
-      member_notes_task_id: opt.None,
-      member_notes: NotAsked,
-      member_note_content: "",
-      member_note_in_flight: False,
-      member_note_error: opt.None,
-      // Cards (Fichas) - list and dialog mode (component handles CRUD state internally)
-      cards: NotAsked,
-      cards_project_id: opt.None,
-      cards_dialog_mode: opt.None,
-      // Cards - filters (Story 4.9 AC7-8, UX improvements)
-      cards_show_empty: False,
-      cards_show_completed: False,
-      cards_state_filter: opt.None,
-      cards_search: "",
-      // Card detail (member view) - only open state, component manages internal state
-      card_detail_open: opt.None,
-      // Workflows - list and dialog mode (component handles CRUD state internally)
-      workflows_org: NotAsked,
-      workflows_project: NotAsked,
-      workflows_dialog_mode: opt.None,
-      // Rules (list and dialog mode - component handles CRUD state internally)
-      rules_workflow_id: opt.None,
-      rules: NotAsked,
-      rules_dialog_mode: opt.None,
-      // Rule templates
-      rules_templates: NotAsked,
-      rules_attach_template_id: opt.None,
-      rules_attach_in_flight: False,
-      rules_attach_error: opt.None,
-      // Story 4.10: Rule template attachment UI
-      rules_expanded: set.new(),
-      attach_template_modal: opt.None,
-      attach_template_selected: opt.None,
-      attach_template_loading: False,
-      detaching_templates: set.new(),
-      // Rule metrics (inline display)
-      rules_metrics: NotAsked,
-      // Task templates (org/project lists, dialog mode managed by component)
-      task_templates_org: NotAsked,
-      task_templates_project: NotAsked,
-      task_templates_dialog_mode: opt.None,
-      // Member capabilities (Story 4.7 AC10-14)
-      member_capabilities_dialog_user_id: opt.None,
-      member_capabilities_loading: False,
-      member_capabilities_saving: False,
-      member_capabilities_cache: dict.new(),
-      member_capabilities_selected: [],
-      member_capabilities_error: opt.None,
-      // Capability members (Story 4.7 AC16-17)
-      capability_members_dialog_capability_id: opt.None,
-      capability_members_loading: False,
-      capability_members_saving: False,
-      capability_members_cache: dict.new(),
-      capability_members_selected: [],
-      capability_members_error: opt.None,
-      // Project edit/delete (Story 4.8 AC39)
-      projects_edit_dialog_open: False,
-      projects_edit_id: opt.None,
-      projects_edit_name: "",
-      projects_edit_in_flight: False,
-      projects_edit_error: opt.None,
-      projects_delete_confirm_open: False,
-      projects_delete_id: opt.None,
-      projects_delete_name: "",
-      projects_delete_in_flight: False,
-    )
+    client_state.default_model()
+    |> update_core(fn(core) {
+      CoreModel(
+        ..core,
+        page: page,
+        active_section: active_section,
+        selected_project_id: selected_project_id,
+      )
+    })
+    |> update_auth(fn(auth) {
+      AuthModel(
+        ..auth,
+        accept_invite: accept_model,
+        reset_password: reset_model,
+      )
+    })
+    |> update_member(fn(member) {
+      MemberModel(
+        ..member,
+        member_section: member_section,
+        view_mode: initial_view_mode,
+        member_pool_filters_visible: pool_filters_visible,
+        member_pool_view_mode: pool_view_mode,
+      )
+    })
+    |> update_ui(fn(ui) {
+      UiModel(
+        ..ui,
+        is_mobile: is_mobile,
+        toast_state: toast.init(),
+        theme: active_theme,
+        locale: active_locale,
+        sidebar_config_collapsed: sidebar_config_collapsed,
+        sidebar_org_collapsed: sidebar_org_collapsed,
+      )
+    })
 
   let base_effect = case page {
     AcceptInvitePage -> client_update.accept_invite_effect(accept_action)

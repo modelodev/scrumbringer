@@ -25,7 +25,8 @@ import scrumbringer_client/utils/text as text_utils
 /// If the text is shorter than max_len, renders without tooltip.
 /// If truncated, adds a data-tooltip attribute with the full text.
 pub fn view(content: String, max_len: Int) -> Element(msg) {
-  let #(truncated, was_truncated) = text_utils.truncate_with_info(content, max_len)
+  let #(truncated, was_truncated) =
+    text_utils.truncate_with_info(content, max_len)
 
   case was_truncated {
     True ->
@@ -45,7 +46,8 @@ pub fn view(content: String, max_len: Int) -> Element(msg) {
 ///
 /// Same as view but uses URL-specific styling.
 pub fn url(content: String, max_len: Int) -> Element(msg) {
-  let #(truncated, was_truncated) = text_utils.truncate_with_info(content, max_len)
+  let #(truncated, was_truncated) =
+    text_utils.truncate_with_info(content, max_len)
 
   case was_truncated {
     True ->
@@ -67,7 +69,8 @@ pub fn with_class(
   max_len: Int,
   extra_class: String,
 ) -> Element(msg) {
-  let #(truncated, was_truncated) = text_utils.truncate_with_info(content, max_len)
+  let #(truncated, was_truncated) =
+    text_utils.truncate_with_info(content, max_len)
 
   case was_truncated {
     True ->

@@ -35,8 +35,9 @@ import scrumbringer_client/api/tasks as api_tasks
 import domain/api_error.{type ApiError}
 import domain/project.{type Project}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Admin, Failed, Loaded, Login, Member, Model,
-  ProjectCreated, ProjectDeleted, ProjectUpdated, admin_msg, pool_msg,
+  type Model, type Msg, Admin, AdminModel, CoreModel, Failed, Loaded, Login,
+  Member, MemberModel, ProjectCreated, ProjectDeleted, ProjectUpdated, UiModel,
+  admin_msg, pool_msg, update_admin, update_core, update_member, update_ui,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -55,13 +56,22 @@ pub fn handle_projects_fetched_ok(
   replace_url_fn: fn(Model) -> Effect(Msg),
 ) -> #(Model, Effect(Msg)) {
   let selected =
-    update_helpers.ensure_selected_project(model.selected_project_id, projects)
+    update_helpers.ensure_selected_project(
+      model.core.selected_project_id,
+      projects,
+    )
   let model =
-    Model(..model, projects: Loaded(projects), selected_project_id: selected)
+    update_core(model, fn(core) {
+      CoreModel(
+        ..core,
+        projects: Loaded(projects),
+        selected_project_id: selected,
+      )
+    })
 
   let model = update_helpers.ensure_default_section(model)
 
-  case model.page {
+  case model.core.page {
     Member -> {
       let #(model, fx) = member_refresh_fn(model)
       let #(model, hyd_fx) = hydrate_fn(model)
@@ -91,12 +101,17 @@ pub fn handle_projects_fetched_error(
     True -> {
       let model =
         update_helpers.clear_drag_state(
-          Model(..model, page: Login, user: opt.None),
+          update_core(model, fn(core) {
+            CoreModel(..core, page: Login, user: opt.None)
+          }),
         )
       #(model, replace_url_fn(model))
     }
 
-    False -> #(Model(..model, projects: Failed(err)), effect.none())
+    False -> #(
+      update_core(model, fn(core) { CoreModel(..core, projects: Failed(err)) }),
+      effect.none(),
+    )
   }
 }
 
@@ -119,21 +134,39 @@ pub fn handle_project_selected(
   }
 
   let should_pause =
-    should_pause_fn(model.page == Member, model.selected_project_id, selected)
+    should_pause_fn(
+      model.core.page == Member,
+      model.core.selected_project_id,
+      selected,
+    )
 
   let model = case selected {
     opt.None ->
-      Model(
-        ..model,
-        selected_project_id: selected,
-        toast: opt.None,
-        member_filters_type_id: "",
-        member_task_types: client_state.NotAsked,
+      update_ui(
+        update_member(
+          update_core(model, fn(core) {
+            CoreModel(..core, selected_project_id: selected)
+          }),
+          fn(member) {
+            MemberModel(
+              ..member,
+              member_filters_type_id: "",
+              member_task_types: client_state.NotAsked,
+            )
+          },
+        ),
+        fn(ui) { UiModel(..ui, toast: opt.None) },
       )
-    _ -> Model(..model, selected_project_id: selected, toast: opt.None)
+    _ ->
+      update_ui(
+        update_core(model, fn(core) {
+          CoreModel(..core, selected_project_id: selected)
+        }),
+        fn(ui) { UiModel(..ui, toast: opt.None) },
+      )
   }
 
-  case model.page {
+  case model.core.page {
     Member -> {
       let #(model, fx) = member_refresh_fn(model)
 
@@ -163,7 +196,12 @@ pub fn handle_project_selected(
 pub fn handle_project_create_dialog_opened(
   model: Model,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, projects_create_dialog_open: True), effect.none())
+  #(
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, projects_create_dialog_open: True)
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle project create dialog closed.
@@ -171,12 +209,14 @@ pub fn handle_project_create_dialog_closed(
   model: Model,
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      projects_create_dialog_open: False,
-      projects_create_name: "",
-      projects_create_error: opt.None,
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        projects_create_dialog_open: False,
+        projects_create_name: "",
+        projects_create_error: opt.None,
+      )
+    }),
     effect.none(),
   )
 }
@@ -186,34 +226,43 @@ pub fn handle_project_create_name_changed(
   model: Model,
   name: String,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, projects_create_name: name), effect.none())
+  #(
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, projects_create_name: name)
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle project create form submission.
 pub fn handle_project_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.projects_create_in_flight {
+  case model.admin.projects_create_in_flight {
     True -> #(model, effect.none())
     False -> {
-      let name = string.trim(model.projects_create_name)
+      let name = string.trim(model.admin.projects_create_name)
 
       case name == "" {
         True -> #(
-          Model(
-            ..model,
-            projects_create_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NameRequired,
-            )),
-          ),
+          update_admin(model, fn(admin) {
+            AdminModel(
+              ..admin,
+              projects_create_error: opt.Some(update_helpers.i18n_t(
+                model,
+                i18n_text.NameRequired,
+              )),
+            )
+          }),
           effect.none(),
         )
         False -> {
           let model =
-            Model(
-              ..model,
-              projects_create_in_flight: True,
-              projects_create_error: opt.None,
-            )
+            update_admin(model, fn(admin) {
+              AdminModel(
+                ..admin,
+                projects_create_in_flight: True,
+                projects_create_error: opt.None,
+              )
+            })
           #(
             model,
             api_projects.create_project(name, fn(result) {
@@ -231,23 +280,37 @@ pub fn handle_project_created_ok(
   model: Model,
   project: Project,
 ) -> #(Model, Effect(Msg)) {
-  let updated_projects = case model.projects {
+  let updated_projects = case model.core.projects {
     Loaded(projects) -> [project, ..projects]
     _ -> [project]
   }
 
-  #(
-    Model(
-      ..model,
-      projects: Loaded(updated_projects),
-      selected_project_id: opt.Some(project.id),
-      projects_create_dialog_open: False,
-      projects_create_in_flight: False,
-      projects_create_name: "",
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.ProjectCreated)),
-    ),
-    effect.none(),
-  )
+  let model =
+    update_admin(
+      update_core(model, fn(core) {
+        CoreModel(
+          ..core,
+          projects: Loaded(updated_projects),
+          selected_project_id: opt.Some(project.id),
+        )
+      }),
+      fn(admin) {
+        AdminModel(
+          ..admin,
+          projects_create_dialog_open: False,
+          projects_create_in_flight: False,
+          projects_create_name: "",
+        )
+      },
+    )
+  let model =
+    update_ui(model, fn(ui) {
+      UiModel(
+        ..ui,
+        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.ProjectCreated)),
+      )
+    })
+  #(model, effect.none())
 }
 
 /// Handle project created error.
@@ -258,23 +321,34 @@ pub fn handle_project_created_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     403 -> #(
-      Model(
-        ..model,
-        projects_create_in_flight: False,
-        projects_create_error: opt.Some(update_helpers.i18n_t(
-          model,
-          i18n_text.NotPermitted,
-        )),
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+      update_ui(
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            projects_create_in_flight: False,
+            projects_create_error: opt.Some(update_helpers.i18n_t(
+              model,
+              i18n_text.NotPermitted,
+            )),
+          )
+        }),
+        fn(ui) {
+          UiModel(
+            ..ui,
+            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+          )
+        },
       ),
       effect.none(),
     )
     _ -> #(
-      Model(
-        ..model,
-        projects_create_in_flight: False,
-        projects_create_error: opt.Some(err.message),
-      ),
+      update_admin(model, fn(admin) {
+        AdminModel(
+          ..admin,
+          projects_create_in_flight: False,
+          projects_create_error: opt.Some(err.message),
+        )
+      }),
       effect.none(),
     )
   }
@@ -291,13 +365,15 @@ pub fn handle_project_edit_dialog_opened(
   project_name: String,
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      projects_edit_dialog_open: True,
-      projects_edit_id: opt.Some(project_id),
-      projects_edit_name: project_name,
-      projects_edit_error: opt.None,
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        projects_edit_dialog_open: True,
+        projects_edit_id: opt.Some(project_id),
+        projects_edit_name: project_name,
+        projects_edit_error: opt.None,
+      )
+    }),
     effect.none(),
   )
 }
@@ -305,13 +381,15 @@ pub fn handle_project_edit_dialog_opened(
 /// Handle project edit dialog closed.
 pub fn handle_project_edit_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      projects_edit_dialog_open: False,
-      projects_edit_id: opt.None,
-      projects_edit_name: "",
-      projects_edit_error: opt.None,
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        projects_edit_dialog_open: False,
+        projects_edit_id: opt.None,
+        projects_edit_name: "",
+        projects_edit_error: opt.None,
+      )
+    }),
     effect.none(),
   )
 }
@@ -321,35 +399,44 @@ pub fn handle_project_edit_name_changed(
   model: Model,
   name: String,
 ) -> #(Model, Effect(Msg)) {
-  #(Model(..model, projects_edit_name: name), effect.none())
+  #(
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, projects_edit_name: name)
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle project edit form submission.
 pub fn handle_project_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.projects_edit_in_flight, model.projects_edit_id {
+  case model.admin.projects_edit_in_flight, model.admin.projects_edit_id {
     True, _ -> #(model, effect.none())
     _, opt.None -> #(model, effect.none())
     False, opt.Some(project_id) -> {
-      let name = string.trim(model.projects_edit_name)
+      let name = string.trim(model.admin.projects_edit_name)
 
       case name == "" {
         True -> #(
-          Model(
-            ..model,
-            projects_edit_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NameRequired,
-            )),
-          ),
+          update_admin(model, fn(admin) {
+            AdminModel(
+              ..admin,
+              projects_edit_error: opt.Some(update_helpers.i18n_t(
+                model,
+                i18n_text.NameRequired,
+              )),
+            )
+          }),
           effect.none(),
         )
         False -> {
           let model =
-            Model(
-              ..model,
-              projects_edit_in_flight: True,
-              projects_edit_error: opt.None,
-            )
+            update_admin(model, fn(admin) {
+              AdminModel(
+                ..admin,
+                projects_edit_in_flight: True,
+                projects_edit_error: opt.None,
+              )
+            })
           #(
             model,
             api_projects.update_project(project_id, name, fn(result) {
@@ -368,7 +455,7 @@ pub fn handle_project_updated_ok(
   project: Project,
 ) -> #(Model, Effect(Msg)) {
   // Update the project in the list
-  let updated_projects = case model.projects {
+  let updated_projects = case model.core.projects {
     Loaded(projects) ->
       projects
       |> list.map(fn(p) {
@@ -380,18 +467,29 @@ pub fn handle_project_updated_ok(
     _ -> []
   }
 
-  #(
-    Model(
-      ..model,
-      projects: Loaded(updated_projects),
-      projects_edit_dialog_open: False,
-      projects_edit_in_flight: False,
-      projects_edit_id: opt.None,
-      projects_edit_name: "",
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.Saved)),
-    ),
-    effect.none(),
-  )
+  let model =
+    update_admin(
+      update_core(model, fn(core) {
+        CoreModel(..core, projects: Loaded(updated_projects))
+      }),
+      fn(admin) {
+        AdminModel(
+          ..admin,
+          projects_edit_dialog_open: False,
+          projects_edit_in_flight: False,
+          projects_edit_id: opt.None,
+          projects_edit_name: "",
+        )
+      },
+    )
+  let model =
+    update_ui(model, fn(ui) {
+      UiModel(
+        ..ui,
+        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.Saved)),
+      )
+    })
+  #(model, effect.none())
 }
 
 /// Handle project updated error.
@@ -402,22 +500,26 @@ pub fn handle_project_updated_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     403 -> #(
-      Model(
-        ..model,
-        projects_edit_in_flight: False,
-        projects_edit_error: opt.Some(update_helpers.i18n_t(
-          model,
-          i18n_text.NotPermitted,
-        )),
-      ),
+      update_admin(model, fn(admin) {
+        AdminModel(
+          ..admin,
+          projects_edit_in_flight: False,
+          projects_edit_error: opt.Some(update_helpers.i18n_t(
+            model,
+            i18n_text.NotPermitted,
+          )),
+        )
+      }),
       effect.none(),
     )
     _ -> #(
-      Model(
-        ..model,
-        projects_edit_in_flight: False,
-        projects_edit_error: opt.Some(err.message),
-      ),
+      update_admin(model, fn(admin) {
+        AdminModel(
+          ..admin,
+          projects_edit_in_flight: False,
+          projects_edit_error: opt.Some(err.message),
+        )
+      }),
       effect.none(),
     )
   }
@@ -434,12 +536,14 @@ pub fn handle_project_delete_confirm_opened(
   project_name: String,
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      projects_delete_confirm_open: True,
-      projects_delete_id: opt.Some(project_id),
-      projects_delete_name: project_name,
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        projects_delete_confirm_open: True,
+        projects_delete_id: opt.Some(project_id),
+        projects_delete_name: project_name,
+      )
+    }),
     effect.none(),
   )
 }
@@ -449,23 +553,28 @@ pub fn handle_project_delete_confirm_closed(
   model: Model,
 ) -> #(Model, Effect(Msg)) {
   #(
-    Model(
-      ..model,
-      projects_delete_confirm_open: False,
-      projects_delete_id: opt.None,
-      projects_delete_name: "",
-    ),
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        projects_delete_confirm_open: False,
+        projects_delete_id: opt.None,
+        projects_delete_name: "",
+      )
+    }),
     effect.none(),
   )
 }
 
 /// Handle project delete submission.
 pub fn handle_project_delete_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.projects_delete_in_flight, model.projects_delete_id {
+  case model.admin.projects_delete_in_flight, model.admin.projects_delete_id {
     True, _ -> #(model, effect.none())
     _, opt.None -> #(model, effect.none())
     False, opt.Some(project_id) -> {
-      let model = Model(..model, projects_delete_in_flight: True)
+      let model =
+        update_admin(model, fn(admin) {
+          AdminModel(..admin, projects_delete_in_flight: True)
+        })
       #(
         model,
         api_projects.delete_project(project_id, fn(result) {
@@ -478,10 +587,10 @@ pub fn handle_project_delete_submitted(model: Model) -> #(Model, Effect(Msg)) {
 
 /// Handle project deleted success.
 pub fn handle_project_deleted_ok(model: Model) -> #(Model, Effect(Msg)) {
-  let deleted_id = model.projects_delete_id
+  let deleted_id = model.admin.projects_delete_id
 
   // Remove the project from the list
-  let updated_projects = case model.projects {
+  let updated_projects = case model.core.projects {
     Loaded(projects) ->
       projects
       |> list.filter(fn(p) {
@@ -494,24 +603,38 @@ pub fn handle_project_deleted_ok(model: Model) -> #(Model, Effect(Msg)) {
   }
 
   // Clear selection if the deleted project was selected
-  let selected = case model.selected_project_id, deleted_id {
+  let selected = case model.core.selected_project_id, deleted_id {
     opt.Some(sel), opt.Some(del) if sel == del -> opt.None
-    _, _ -> model.selected_project_id
+    _, _ -> model.core.selected_project_id
   }
 
-  #(
-    Model(
-      ..model,
-      projects: Loaded(updated_projects),
-      selected_project_id: selected,
-      projects_delete_confirm_open: False,
-      projects_delete_in_flight: False,
-      projects_delete_id: opt.None,
-      projects_delete_name: "",
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.Deleted)),
-    ),
-    effect.none(),
-  )
+  let model =
+    update_admin(
+      update_core(model, fn(core) {
+        CoreModel(
+          ..core,
+          projects: Loaded(updated_projects),
+          selected_project_id: selected,
+        )
+      }),
+      fn(admin) {
+        AdminModel(
+          ..admin,
+          projects_delete_confirm_open: False,
+          projects_delete_in_flight: False,
+          projects_delete_id: opt.None,
+          projects_delete_name: "",
+        )
+      },
+    )
+  let model =
+    update_ui(model, fn(ui) {
+      UiModel(
+        ..ui,
+        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.Deleted)),
+      )
+    })
+  #(model, effect.none())
 }
 
 /// Handle project deleted error.
@@ -522,18 +645,25 @@ pub fn handle_project_deleted_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     403 -> #(
-      Model(
-        ..model,
-        projects_delete_in_flight: False,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+      update_ui(
+        update_admin(model, fn(admin) {
+          AdminModel(..admin, projects_delete_in_flight: False)
+        }),
+        fn(ui) {
+          UiModel(
+            ..ui,
+            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
+          )
+        },
       ),
       effect.none(),
     )
     _ -> #(
-      Model(
-        ..model,
-        projects_delete_in_flight: False,
-        toast: opt.Some(err.message),
+      update_ui(
+        update_admin(model, fn(admin) {
+          AdminModel(..admin, projects_delete_in_flight: False)
+        }),
+        fn(ui) { UiModel(..ui, toast: opt.Some(err.message)) },
       ),
       effect.none(),
     )

@@ -20,8 +20,8 @@ import gleam/option
 
 import domain/task.{
   type ActiveTask, type ActiveTaskPayload, type Task, type TaskNote,
-  type TaskPosition, type WorkSession, type WorkSessionsPayload,
-  ActiveTask, ActiveTaskPayload, Task, TaskNote, TaskPosition, WorkSession,
+  type TaskPosition, type WorkSession, type WorkSessionsPayload, ActiveTask,
+  ActiveTaskPayload, Task, TaskNote, TaskPosition, WorkSession,
   WorkSessionsPayload,
 }
 import domain/task_status.{
@@ -307,5 +307,8 @@ pub fn work_sessions_payload_decoder() -> decode.Decoder(WorkSessionsPayload) {
     decode.list(work_session_decoder()),
   )
   use as_of <- decode.field("as_of", decode.string)
-  decode.success(WorkSessionsPayload(active_sessions: active_sessions, as_of: as_of))
+  decode.success(WorkSessionsPayload(
+    active_sessions: active_sessions,
+    as_of: as_of,
+  ))
 }

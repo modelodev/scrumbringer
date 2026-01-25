@@ -270,38 +270,51 @@ pub type NavMode {
 /// - Child component states (accept_invite, reset_password)
 /// - Drag-and-drop state
 /// - Filter and search state
-pub type Model {
-  Model(
-    // Core navigation and auth
+pub type CoreModel {
+  CoreModel(
     page: Page,
     user: Option(User),
     auth_checked: Bool,
-    is_mobile: Bool,
     active_section: permissions.AdminSection,
-    toast: Option(String),
-    // New toast system with auto-dismiss (Story 4.8)
-    toast_state: toast.ToastState,
-    theme: theme.Theme,
-    locale: i18n_locale.Locale,
-    // Login form
+    projects: Remote(List(Project)),
+    selected_project_id: Option(Int),
+  )
+}
+
+pub type AuthModel {
+  AuthModel(
     login_email: String,
     login_password: String,
     login_error: Option(String),
     login_in_flight: Bool,
-    // Forgot password dialog
     forgot_password_open: Bool,
     forgot_password_email: String,
     forgot_password_in_flight: Bool,
     forgot_password_result: Option(PasswordReset),
     forgot_password_error: Option(String),
     forgot_password_copy_status: Option(String),
-    // Child components
     accept_invite: accept_invite.Model,
     reset_password: reset_password.Model,
-    // Projects
-    projects: Remote(List(Project)),
-    selected_project_id: Option(Int),
-    // Invite links
+  )
+}
+
+pub type UiModel {
+  UiModel(
+    is_mobile: Bool,
+    toast: Option(String),
+    toast_state: toast.ToastState,
+    theme: theme.Theme,
+    locale: i18n_locale.Locale,
+    mobile_left_drawer_open: Bool,
+    mobile_right_drawer_open: Bool,
+    sidebar_config_collapsed: Bool,
+    sidebar_org_collapsed: Bool,
+    preferences_popup_open: Bool,
+  )
+}
+
+pub type AdminModel {
+  AdminModel(
     invite_links: Remote(List(InviteLink)),
     invite_create_dialog_open: Bool,
     invite_link_email: String,
@@ -309,59 +322,47 @@ pub type Model {
     invite_link_error: Option(String),
     invite_link_last: Option(InviteLink),
     invite_link_copy_status: Option(String),
-    // Project creation
     projects_create_dialog_open: Bool,
     projects_create_name: String,
     projects_create_in_flight: Bool,
     projects_create_error: Option(String),
-    // Project edit (Story 4.8 AC39)
     projects_edit_dialog_open: Bool,
     projects_edit_id: Option(Int),
     projects_edit_name: String,
     projects_edit_in_flight: Bool,
     projects_edit_error: Option(String),
-    // Project delete (Story 4.8 AC39)
     projects_delete_confirm_open: Bool,
     projects_delete_id: Option(Int),
     projects_delete_name: String,
     projects_delete_in_flight: Bool,
-    // Capabilities
     capabilities: Remote(List(Capability)),
     capabilities_create_dialog_open: Bool,
     capabilities_create_name: String,
     capabilities_create_in_flight: Bool,
     capabilities_create_error: Option(String),
-    // Capability delete (Story 4.9 AC9)
     capability_delete_dialog_id: Option(Int),
     capability_delete_in_flight: Bool,
     capability_delete_error: Option(String),
-    // Members
     members: Remote(List(ProjectMember)),
     members_project_id: Option(Int),
-    // Org users
     org_users_cache: Remote(List(OrgUser)),
     org_settings_users: Remote(List(OrgUser)),
-    // Admin metrics
     admin_metrics_overview: Remote(OrgMetricsOverview),
     admin_metrics_project_tasks: Remote(OrgMetricsProjectTasksPayload),
     admin_metrics_project_id: Option(Int),
-    // Rule metrics tab
     admin_rule_metrics: Remote(List(api_workflows.OrgWorkflowMetricsSummary)),
     admin_rule_metrics_from: String,
     admin_rule_metrics_to: String,
-    // Rule metrics drill-down
     admin_rule_metrics_expanded_workflow: Option(Int),
     admin_rule_metrics_workflow_details: Remote(api_workflows.WorkflowMetrics),
     admin_rule_metrics_drilldown_rule_id: Option(Int),
     admin_rule_metrics_rule_details: Remote(api_workflows.RuleMetricsDetailed),
     admin_rule_metrics_executions: Remote(api_workflows.RuleExecutionsResponse),
     admin_rule_metrics_exec_offset: Int,
-    // Org settings
     org_settings_role_drafts: Dict(Int, String),
     org_settings_save_in_flight: Bool,
     org_settings_error: Option(String),
     org_settings_error_user_id: Option(Int),
-    // User projects dialog
     user_projects_dialog_open: Bool,
     user_projects_dialog_user: Option(OrgUser),
     user_projects_list: Remote(List(Project)),
@@ -369,39 +370,32 @@ pub type Model {
     user_projects_add_role: String,
     user_projects_in_flight: Bool,
     user_projects_error: Option(String),
-    // Member add dialog
     members_add_dialog_open: Bool,
     members_add_selected_user: Option(OrgUser),
     members_add_role: ProjectRole,
     members_add_in_flight: Bool,
     members_add_error: Option(String),
-    // Member remove dialog
     members_remove_confirm: Option(OrgUser),
     members_remove_in_flight: Bool,
     members_remove_error: Option(String),
-    // Member capabilities dialog (Story 4.7 AC10-14)
     member_capabilities_dialog_user_id: Option(Int),
     member_capabilities_loading: Bool,
     member_capabilities_saving: Bool,
     member_capabilities_cache: Dict(Int, List(Int)),
     member_capabilities_selected: List(Int),
     member_capabilities_error: Option(String),
-    // Capability members dialog (Story 4.7 AC16-17)
     capability_members_dialog_capability_id: Option(Int),
     capability_members_loading: Bool,
     capability_members_saving: Bool,
     capability_members_cache: Dict(Int, List(Int)),
     capability_members_selected: List(Int),
     capability_members_error: Option(String),
-    // Org user search
     org_users_search_query: String,
     org_users_search_token: Int,
     org_users_search_results: Remote(List(OrgUser)),
-    // Task types - list data and dialog mode (component handles CRUD state internally)
     task_types: Remote(List(TaskType)),
     task_types_project_id: Option(Int),
     task_types_dialog_mode: Option(TaskTypeDialogMode),
-    // Legacy create dialog fields (used when component is not available)
     task_types_create_dialog_open: Bool,
     task_types_create_name: String,
     task_types_create_icon: String,
@@ -411,58 +405,47 @@ pub type Model {
     task_types_create_in_flight: Bool,
     task_types_create_error: Option(String),
     task_types_icon_preview: IconPreview,
-    // Cards - list data and dialog mode (component handles CRUD state internally)
     cards: Remote(List(Card)),
     cards_project_id: Option(Int),
     cards_dialog_mode: Option(CardDialogMode),
-    // Cards - filters (Story 4.9 AC7-8, UX improvements)
     cards_show_empty: Bool,
     cards_show_completed: Bool,
     cards_state_filter: Option(CardState),
     cards_search: String,
-    // Card detail (member view) - only open state, component manages internal state
-    card_detail_open: Option(Int),
-    // Workflows
     workflows_org: Remote(List(Workflow)),
     workflows_project: Remote(List(Workflow)),
-    // Workflows - dialog mode (component handles CRUD state internally)
     workflows_dialog_mode: Option(WorkflowDialogMode),
-    // Rules (for selected workflow) - list and dialog mode (component handles CRUD state internally)
     rules_workflow_id: Option(Int),
     rules: Remote(List(Rule)),
     rules_dialog_mode: Option(RuleDialogMode),
-    // Rule templates (attached templates)
     rules_templates: Remote(List(RuleTemplate)),
     rules_attach_template_id: Option(Int),
     rules_attach_in_flight: Bool,
     rules_attach_error: Option(String),
-    // Story 4.10: Rule template attachment UI
     rules_expanded: set.Set(Int),
     attach_template_modal: Option(Int),
     attach_template_selected: Option(Int),
     attach_template_loading: Bool,
     detaching_templates: set.Set(#(Int, Int)),
-    // Rule metrics (inline display)
     rules_metrics: Remote(api_workflows.WorkflowMetrics),
-    // Task templates - list data and dialog mode (component handles CRUD state internally)
     task_templates_org: Remote(List(TaskTemplate)),
     task_templates_project: Remote(List(TaskTemplate)),
     task_templates_dialog_mode: Option(TaskTemplateDialogMode),
-    // Member section
+  )
+}
+
+pub type MemberModel {
+  MemberModel(
     member_section: member_section.MemberSection,
-    // View mode for 3-panel layout (Pool | List | Cards)
     view_mode: view_mode.ViewMode,
     member_active_task: Remote(ActiveTaskPayload),
-    // Work sessions (multi-session model)
     member_work_sessions: Remote(WorkSessionsPayload),
     member_metrics: Remote(MyMetrics),
     member_now_working_in_flight: Bool,
     member_now_working_error: Option(String),
-    // Now working timer
     now_working_tick: Int,
     now_working_tick_running: Bool,
     now_working_server_offset_ms: Int,
-    // Member tasks
     member_tasks: Remote(List(Task)),
     member_tasks_pending: Int,
     member_tasks_by_project: Dict(Int, List(Task)),
@@ -472,7 +455,6 @@ pub type Model {
     member_task_mutation_in_flight: Bool,
     member_task_mutation_task_id: Option(Int),
     member_tasks_snapshot: Option(List(Task)),
-    // Member filters
     member_filters_status: String,
     member_filters_type_id: String,
     member_filters_capability_id: String,
@@ -480,21 +462,9 @@ pub type Model {
     member_quick_my_caps: Bool,
     member_pool_filters_visible: Bool,
     member_pool_view_mode: pool_prefs.ViewMode,
-    // List view hide completed tasks filter
     member_list_hide_completed: Bool,
-    // List view expanded card groups (Story 4.8 UX: collapsible groups)
     member_list_expanded_cards: dict.Dict(Int, Bool),
-    // Mobile panel toggle
     member_panel_expanded: Bool,
-    // Mobile drawer state
-    mobile_left_drawer_open: Bool,
-    mobile_right_drawer_open: Bool,
-    // Sidebar section collapse state (persisted in localStorage)
-    sidebar_config_collapsed: Bool,
-    sidebar_org_collapsed: Bool,
-    // Preferences popup (Story 4.8 UX: moved from inline to popup)
-    preferences_popup_open: Bool,
-    // Member task creation
     member_create_dialog_open: Bool,
     member_create_title: String,
     member_create_description: String,
@@ -502,12 +472,10 @@ pub type Model {
     member_create_type_id: String,
     member_create_in_flight: Bool,
     member_create_error: Option(String),
-    // Member capabilities
     member_my_capability_ids: Remote(List(Int)),
     member_my_capability_ids_edit: Dict(Int, Bool),
     member_my_capabilities_in_flight: Bool,
     member_my_capabilities_error: Option(String),
-    // Member drag-and-drop
     member_positions_by_task: Dict(Int, #(Int, Int)),
     member_drag: Option(MemberDrag),
     member_canvas_left: Int,
@@ -515,22 +483,30 @@ pub type Model {
     member_pool_my_tasks_rect: Option(Rect),
     member_pool_drag_to_claim_armed: Bool,
     member_pool_drag_over_my_tasks: Bool,
-    // Member position editing
     member_position_edit_task: Option(Int),
     member_position_edit_x: String,
     member_position_edit_y: String,
     member_position_edit_in_flight: Bool,
     member_position_edit_error: Option(String),
-    // Member notes
     member_notes_task_id: Option(Int),
     member_notes: Remote(List(TaskNote)),
     member_note_content: String,
     member_note_in_flight: Bool,
     member_note_error: Option(String),
+    card_detail_open: Option(Int),
   )
 }
 
-// ----------------------------------------------------------------------------
+pub type Model {
+  Model(
+    core: CoreModel,
+    auth: AuthModel,
+    admin: AdminModel,
+    member: MemberModel,
+    ui: UiModel,
+  )
+}
+
 // Messages
 // ----------------------------------------------------------------------------
 
@@ -837,6 +813,26 @@ pub fn pool_msg(msg: PoolMsg) -> Msg {
   PoolMsg(msg)
 }
 
+pub fn update_core(model: Model, f: fn(CoreModel) -> CoreModel) -> Model {
+  Model(..model, core: f(model.core))
+}
+
+pub fn update_auth(model: Model, f: fn(AuthModel) -> AuthModel) -> Model {
+  Model(..model, auth: f(model.auth))
+}
+
+pub fn update_admin(model: Model, f: fn(AdminModel) -> AdminModel) -> Model {
+  Model(..model, admin: f(model.admin))
+}
+
+pub fn update_member(model: Model, f: fn(MemberModel) -> MemberModel) -> Model {
+  Model(..model, member: f(model.member))
+}
+
+pub fn update_ui(model: Model, f: fn(UiModel) -> UiModel) -> Model {
+  Model(..model, ui: f(model.ui))
+}
+
 // ----------------------------------------------------------------------------
 // Helper functions
 // ----------------------------------------------------------------------------
@@ -900,270 +896,229 @@ pub fn remote_to_resource_state(remote: Remote(a)) -> hydration.ResourceState {
 /// - `members_add_role` defaults to `Member`
 pub fn default_model() -> Model {
   Model(
-    // Core navigation and auth
-    page: Login,
-    user: option.None,
-    auth_checked: False,
-    is_mobile: False,
-    active_section: permissions.Invites,
-    toast: option.None,
-    toast_state: toast.init(),
-    theme: theme.Default,
-    locale: i18n_locale.En,
-    // Login form
-    login_email: "",
-    login_password: "",
-    login_error: option.None,
-    login_in_flight: False,
-    // Forgot password dialog
-    forgot_password_open: False,
-    forgot_password_email: "",
-    forgot_password_in_flight: False,
-    forgot_password_result: option.None,
-    forgot_password_error: option.None,
-    forgot_password_copy_status: option.None,
-    // Child components (initialized with empty token state)
-    accept_invite: accept_invite.Model(
-      token: "",
-      state: accept_invite.NoToken,
-      password: "",
-      password_error: option.None,
-      submit_error: option.None,
+    core: CoreModel(
+      page: Login,
+      user: option.None,
+      auth_checked: False,
+      active_section: permissions.Invites,
+      projects: NotAsked,
+      selected_project_id: option.None,
     ),
-    reset_password: reset_password.Model(
-      token: "",
-      state: reset_password.NoToken,
-      password: "",
-      password_error: option.None,
-      submit_error: option.None,
+    auth: AuthModel(
+      login_email: "",
+      login_password: "",
+      login_error: option.None,
+      login_in_flight: False,
+      forgot_password_open: False,
+      forgot_password_email: "",
+      forgot_password_in_flight: False,
+      forgot_password_result: option.None,
+      forgot_password_error: option.None,
+      forgot_password_copy_status: option.None,
+      accept_invite: accept_invite.Model(
+        token: "",
+        state: accept_invite.NoToken,
+        password: "",
+        password_error: option.None,
+        submit_error: option.None,
+      ),
+      reset_password: reset_password.Model(
+        token: "",
+        state: reset_password.NoToken,
+        password: "",
+        password_error: option.None,
+        submit_error: option.None,
+      ),
     ),
-    // Projects
-    projects: NotAsked,
-    selected_project_id: option.None,
-    // Invite links
-    invite_links: NotAsked,
-    invite_create_dialog_open: False,
-    invite_link_email: "",
-    invite_link_in_flight: False,
-    invite_link_error: option.None,
-    invite_link_last: option.None,
-    invite_link_copy_status: option.None,
-    // Project creation
-    projects_create_dialog_open: False,
-    projects_create_name: "",
-    projects_create_in_flight: False,
-    projects_create_error: option.None,
-    // Project edit (Story 4.8 AC39)
-    projects_edit_dialog_open: False,
-    projects_edit_id: option.None,
-    projects_edit_name: "",
-    projects_edit_in_flight: False,
-    projects_edit_error: option.None,
-    // Project delete (Story 4.8 AC39)
-    projects_delete_confirm_open: False,
-    projects_delete_id: option.None,
-    projects_delete_name: "",
-    projects_delete_in_flight: False,
-    // Capabilities
-    capabilities: NotAsked,
-    capabilities_create_dialog_open: False,
-    capabilities_create_name: "",
-    capabilities_create_in_flight: False,
-    capabilities_create_error: option.None,
-    // Capability delete (Story 4.9 AC9)
-    capability_delete_dialog_id: option.None,
-    capability_delete_in_flight: False,
-    capability_delete_error: option.None,
-    // Members
-    members: NotAsked,
-    members_project_id: option.None,
-    // Org users
-    org_users_cache: NotAsked,
-    org_settings_users: NotAsked,
-    // Admin metrics
-    admin_metrics_overview: NotAsked,
-    admin_metrics_project_tasks: NotAsked,
-    admin_metrics_project_id: option.None,
-    // Rule metrics tab (default: last 30 days)
-    admin_rule_metrics: NotAsked,
-    admin_rule_metrics_from: "",
-    admin_rule_metrics_to: "",
-    // Rule metrics drill-down
-    admin_rule_metrics_expanded_workflow: option.None,
-    admin_rule_metrics_workflow_details: NotAsked,
-    admin_rule_metrics_drilldown_rule_id: option.None,
-    admin_rule_metrics_rule_details: NotAsked,
-    admin_rule_metrics_executions: NotAsked,
-    admin_rule_metrics_exec_offset: 0,
-    // Org settings
-    org_settings_role_drafts: dict.new(),
-    org_settings_save_in_flight: False,
-    org_settings_error: option.None,
-    org_settings_error_user_id: option.None,
-    // User projects dialog
-    user_projects_dialog_open: False,
-    user_projects_dialog_user: option.None,
-    user_projects_list: NotAsked,
-    user_projects_add_project_id: option.None,
-    user_projects_add_role: "member",
-    user_projects_in_flight: False,
-    user_projects_error: option.None,
-    // Member add dialog
-    members_add_dialog_open: False,
-    members_add_selected_user: option.None,
-    members_add_role: MemberRole,
-    members_add_in_flight: False,
-    members_add_error: option.None,
-    // Member remove dialog
-    members_remove_confirm: option.None,
-    members_remove_in_flight: False,
-    members_remove_error: option.None,
-    // Member capabilities dialog (Story 4.7 AC10-14)
-    member_capabilities_dialog_user_id: option.None,
-    member_capabilities_loading: False,
-    member_capabilities_saving: False,
-    member_capabilities_cache: dict.new(),
-    member_capabilities_selected: [],
-    member_capabilities_error: option.None,
-    // Org user search
-    org_users_search_query: "",
-    org_users_search_token: 0,
-    org_users_search_results: NotAsked,
-    // Task types - list data and dialog mode
-    task_types: NotAsked,
-    task_types_project_id: option.None,
-    task_types_dialog_mode: option.None,
-    task_types_create_dialog_open: False,
-    task_types_create_name: "",
-    task_types_create_icon: "",
-    task_types_create_icon_search: "",
-    task_types_create_icon_category: "all",
-    task_types_create_capability_id: option.None,
-    task_types_create_in_flight: False,
-    task_types_create_error: option.None,
-    task_types_icon_preview: IconIdle,
-    // Cards - list and dialog mode (component handles CRUD state internally)
-    cards: NotAsked,
-    cards_project_id: option.None,
-    cards_dialog_mode: option.None,
-    // Cards - filters (Story 4.9 AC7-8, UX improvements)
-    cards_show_empty: False,
-    cards_show_completed: False,
-    cards_state_filter: option.None,
-    cards_search: "",
-    // Card detail (member view) - only open state, component manages internal state
-    card_detail_open: option.None,
-    // Workflows
-    workflows_org: NotAsked,
-    workflows_project: NotAsked,
-    // Workflows - dialog mode (component handles CRUD state internally)
-    workflows_dialog_mode: option.None,
-    // Rules (for selected workflow) - list and dialog mode
-    rules_workflow_id: option.None,
-    rules: NotAsked,
-    rules_dialog_mode: option.None,
-    // Rule templates
-    rules_templates: NotAsked,
-    rules_attach_template_id: option.None,
-    rules_attach_in_flight: False,
-    rules_attach_error: option.None,
-    // Story 4.10: Rule template attachment UI
-    rules_expanded: set.new(),
-    attach_template_modal: option.None,
-    attach_template_selected: option.None,
-    attach_template_loading: False,
-    detaching_templates: set.new(),
-    // Rule metrics (inline display)
-    rules_metrics: NotAsked,
-    // Task templates - list and dialog mode (component handles CRUD state internally)
-    task_templates_org: NotAsked,
-    task_templates_project: NotAsked,
-    task_templates_dialog_mode: option.None,
-    // Member section
-    member_section: member_section.Pool,
-    // View mode for 3-panel layout
-    view_mode: view_mode.Pool,
-    member_active_task: NotAsked,
-    member_work_sessions: NotAsked,
-    member_metrics: NotAsked,
-    member_now_working_in_flight: False,
-    member_now_working_error: option.None,
-    // Now working timer
-    now_working_tick: 0,
-    now_working_tick_running: False,
-    now_working_server_offset_ms: 0,
-    // Member tasks
-    member_tasks: NotAsked,
-    member_tasks_pending: 0,
-    member_tasks_by_project: dict.new(),
-    member_task_types: NotAsked,
-    member_task_types_pending: 0,
-    member_task_types_by_project: dict.new(),
-    member_task_mutation_in_flight: False,
-    member_task_mutation_task_id: option.None,
-    member_tasks_snapshot: option.None,
-    // Member filters
-    member_filters_status: "",
-    member_filters_type_id: "",
-    member_filters_capability_id: "",
-    member_filters_q: "",
-    // UX: default to My Capabilities enabled
-    member_quick_my_caps: True,
-    member_pool_filters_visible: False,
-    member_pool_view_mode: pool_prefs.Canvas,
-    // List view hide completed tasks filter (AC6: ON by default)
-    member_list_hide_completed: True,
-    // List view expanded card groups (Story 4.8 UX: all expanded by default)
-    member_list_expanded_cards: dict.new(),
-    // Mobile panel toggle
-    member_panel_expanded: False,
-    // Mobile drawer state
-    mobile_left_drawer_open: False,
-    mobile_right_drawer_open: False,
-    // Sidebar section collapse state (persisted in localStorage)
-    sidebar_config_collapsed: False,
-    sidebar_org_collapsed: False,
-    // Preferences popup (Story 4.8 UX)
-    preferences_popup_open: False,
-    // Member task creation
-    member_create_dialog_open: False,
-    member_create_title: "",
-    member_create_description: "",
-    member_create_priority: "3",
-    member_create_type_id: "",
-    member_create_in_flight: False,
-    member_create_error: option.None,
-    // Member capabilities
-    member_my_capability_ids: NotAsked,
-    member_my_capability_ids_edit: dict.new(),
-    member_my_capabilities_in_flight: False,
-    member_my_capabilities_error: option.None,
-    // Member drag-and-drop
-    member_positions_by_task: dict.new(),
-    member_drag: option.None,
-    member_canvas_left: 0,
-    member_canvas_top: 0,
-    member_pool_my_tasks_rect: option.None,
-    member_pool_drag_to_claim_armed: False,
-    member_pool_drag_over_my_tasks: False,
-    // Member position editing
-    member_position_edit_task: option.None,
-    member_position_edit_x: "",
-    member_position_edit_y: "",
-    member_position_edit_in_flight: False,
-    member_position_edit_error: option.None,
-    // Member notes
-    member_notes_task_id: option.None,
-    member_notes: NotAsked,
-    member_note_content: "",
-    member_note_in_flight: False,
-    member_note_error: option.None,
-    // Capability members (Story 4.7 AC16-17)
-    capability_members_dialog_capability_id: option.None,
-    capability_members_loading: False,
-    capability_members_saving: False,
-    capability_members_cache: dict.new(),
-    capability_members_selected: [],
-    capability_members_error: option.None,
+    admin: AdminModel(
+      invite_links: NotAsked,
+      invite_create_dialog_open: False,
+      invite_link_email: "",
+      invite_link_in_flight: False,
+      invite_link_error: option.None,
+      invite_link_last: option.None,
+      invite_link_copy_status: option.None,
+      projects_create_dialog_open: False,
+      projects_create_name: "",
+      projects_create_in_flight: False,
+      projects_create_error: option.None,
+      projects_edit_dialog_open: False,
+      projects_edit_id: option.None,
+      projects_edit_name: "",
+      projects_edit_in_flight: False,
+      projects_edit_error: option.None,
+      projects_delete_confirm_open: False,
+      projects_delete_id: option.None,
+      projects_delete_name: "",
+      projects_delete_in_flight: False,
+      capabilities: NotAsked,
+      capabilities_create_dialog_open: False,
+      capabilities_create_name: "",
+      capabilities_create_in_flight: False,
+      capabilities_create_error: option.None,
+      capability_delete_dialog_id: option.None,
+      capability_delete_in_flight: False,
+      capability_delete_error: option.None,
+      members: NotAsked,
+      members_project_id: option.None,
+      org_users_cache: NotAsked,
+      org_settings_users: NotAsked,
+      admin_metrics_overview: NotAsked,
+      admin_metrics_project_tasks: NotAsked,
+      admin_metrics_project_id: option.None,
+      admin_rule_metrics: NotAsked,
+      admin_rule_metrics_from: "",
+      admin_rule_metrics_to: "",
+      admin_rule_metrics_expanded_workflow: option.None,
+      admin_rule_metrics_workflow_details: NotAsked,
+      admin_rule_metrics_drilldown_rule_id: option.None,
+      admin_rule_metrics_rule_details: NotAsked,
+      admin_rule_metrics_executions: NotAsked,
+      admin_rule_metrics_exec_offset: 0,
+      org_settings_role_drafts: dict.new(),
+      org_settings_save_in_flight: False,
+      org_settings_error: option.None,
+      org_settings_error_user_id: option.None,
+      user_projects_dialog_open: False,
+      user_projects_dialog_user: option.None,
+      user_projects_list: NotAsked,
+      user_projects_add_project_id: option.None,
+      user_projects_add_role: "member",
+      user_projects_in_flight: False,
+      user_projects_error: option.None,
+      members_add_dialog_open: False,
+      members_add_selected_user: option.None,
+      members_add_role: MemberRole,
+      members_add_in_flight: False,
+      members_add_error: option.None,
+      members_remove_confirm: option.None,
+      members_remove_in_flight: False,
+      members_remove_error: option.None,
+      member_capabilities_dialog_user_id: option.None,
+      member_capabilities_loading: False,
+      member_capabilities_saving: False,
+      member_capabilities_cache: dict.new(),
+      member_capabilities_selected: [],
+      member_capabilities_error: option.None,
+      capability_members_dialog_capability_id: option.None,
+      capability_members_loading: False,
+      capability_members_saving: False,
+      capability_members_cache: dict.new(),
+      capability_members_selected: [],
+      capability_members_error: option.None,
+      org_users_search_query: "",
+      org_users_search_token: 0,
+      org_users_search_results: NotAsked,
+      task_types: NotAsked,
+      task_types_project_id: option.None,
+      task_types_dialog_mode: option.None,
+      task_types_create_dialog_open: False,
+      task_types_create_name: "",
+      task_types_create_icon: "",
+      task_types_create_icon_search: "",
+      task_types_create_icon_category: "all",
+      task_types_create_capability_id: option.None,
+      task_types_create_in_flight: False,
+      task_types_create_error: option.None,
+      task_types_icon_preview: IconIdle,
+      cards: NotAsked,
+      cards_project_id: option.None,
+      cards_dialog_mode: option.None,
+      cards_show_empty: False,
+      cards_show_completed: False,
+      cards_state_filter: option.None,
+      cards_search: "",
+      workflows_org: NotAsked,
+      workflows_project: NotAsked,
+      workflows_dialog_mode: option.None,
+      rules_workflow_id: option.None,
+      rules: NotAsked,
+      rules_dialog_mode: option.None,
+      rules_templates: NotAsked,
+      rules_attach_template_id: option.None,
+      rules_attach_in_flight: False,
+      rules_attach_error: option.None,
+      rules_expanded: set.new(),
+      attach_template_modal: option.None,
+      attach_template_selected: option.None,
+      attach_template_loading: False,
+      detaching_templates: set.new(),
+      rules_metrics: NotAsked,
+      task_templates_org: NotAsked,
+      task_templates_project: NotAsked,
+      task_templates_dialog_mode: option.None,
+    ),
+    member: MemberModel(
+      member_section: member_section.Pool,
+      view_mode: view_mode.Pool,
+      member_active_task: NotAsked,
+      member_work_sessions: NotAsked,
+      member_metrics: NotAsked,
+      member_now_working_in_flight: False,
+      member_now_working_error: option.None,
+      now_working_tick: 0,
+      now_working_tick_running: False,
+      now_working_server_offset_ms: 0,
+      member_tasks: NotAsked,
+      member_tasks_pending: 0,
+      member_tasks_by_project: dict.new(),
+      member_task_types: NotAsked,
+      member_task_types_pending: 0,
+      member_task_types_by_project: dict.new(),
+      member_task_mutation_in_flight: False,
+      member_task_mutation_task_id: option.None,
+      member_tasks_snapshot: option.None,
+      member_filters_status: "",
+      member_filters_type_id: "",
+      member_filters_capability_id: "",
+      member_filters_q: "",
+      member_quick_my_caps: True,
+      member_pool_filters_visible: False,
+      member_pool_view_mode: pool_prefs.Canvas,
+      member_list_hide_completed: True,
+      member_list_expanded_cards: dict.new(),
+      member_panel_expanded: False,
+      member_create_dialog_open: False,
+      member_create_title: "",
+      member_create_description: "",
+      member_create_priority: "3",
+      member_create_type_id: "",
+      member_create_in_flight: False,
+      member_create_error: option.None,
+      member_my_capability_ids: NotAsked,
+      member_my_capability_ids_edit: dict.new(),
+      member_my_capabilities_in_flight: False,
+      member_my_capabilities_error: option.None,
+      member_positions_by_task: dict.new(),
+      member_drag: option.None,
+      member_canvas_left: 0,
+      member_canvas_top: 0,
+      member_pool_my_tasks_rect: option.None,
+      member_pool_drag_to_claim_armed: False,
+      member_pool_drag_over_my_tasks: False,
+      member_position_edit_task: option.None,
+      member_position_edit_x: "",
+      member_position_edit_y: "",
+      member_position_edit_in_flight: False,
+      member_position_edit_error: option.None,
+      member_notes_task_id: option.None,
+      member_notes: NotAsked,
+      member_note_content: "",
+      member_note_in_flight: False,
+      member_note_error: option.None,
+      card_detail_open: option.None,
+    ),
+    ui: UiModel(
+      is_mobile: False,
+      toast: option.None,
+      toast_state: toast.init(),
+      theme: theme.Default,
+      locale: i18n_locale.En,
+      mobile_left_drawer_open: False,
+      mobile_right_drawer_open: False,
+      sidebar_config_collapsed: False,
+      sidebar_org_collapsed: False,
+      preferences_popup_open: False,
+    ),
   )
 }

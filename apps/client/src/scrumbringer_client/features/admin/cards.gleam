@@ -24,10 +24,7 @@ import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError}
 import domain/card.{type Card}
-import scrumbringer_client/client_state.{
-  type CardDialogMode, type Model, type Msg, CardsFetched, Failed, Loaded,
-  Loading, Model, pool_msg,
-}
+import scrumbringer_client/client_state
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
 
@@ -39,20 +36,30 @@ import scrumbringer_client/api/cards as api_cards
 
 /// Handle cards fetch success.
 pub fn handle_cards_fetched_ok(
-  model: Model,
+  model: client_state.Model,
   cards: List(Card),
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, cards: Loaded(cards)), effect.none())
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  #(
+    client_state.update_admin(model, fn(admin) {
+      client_state.AdminModel(..admin, cards: client_state.Loaded(cards))
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle cards fetch error.
 pub fn handle_cards_fetched_error(
-  model: Model,
+  model: client_state.Model,
   err: ApiError,
-) -> #(Model, Effect(Msg)) {
+) -> #(client_state.Model, Effect(client_state.Msg)) {
   case err.status {
     401 -> update_helpers.reset_to_login(model)
-    _ -> #(Model(..model, cards: Failed(err)), effect.none())
+    _ -> #(
+      client_state.update_admin(model, fn(admin) {
+        client_state.AdminModel(..admin, cards: client_state.Failed(err))
+      }),
+      effect.none(),
+    )
   }
 }
 
@@ -62,15 +69,27 @@ pub fn handle_cards_fetched_error(
 
 /// Handle opening a card dialog (create, edit, or delete).
 pub fn handle_open_card_dialog(
-  model: Model,
-  mode: CardDialogMode,
-) -> #(Model, Effect(Msg)) {
-  #(Model(..model, cards_dialog_mode: opt.Some(mode)), effect.none())
+  model: client_state.Model,
+  mode: client_state.CardDialogMode,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  #(
+    client_state.update_admin(model, fn(admin) {
+      client_state.AdminModel(..admin, cards_dialog_mode: opt.Some(mode))
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle closing any open card dialog.
-pub fn handle_close_card_dialog(model: Model) -> #(Model, Effect(Msg)) {
-  #(Model(..model, cards_dialog_mode: opt.None), effect.none())
+pub fn handle_close_card_dialog(
+  model: client_state.Model,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  #(
+    client_state.update_admin(model, fn(admin) {
+      client_state.AdminModel(..admin, cards_dialog_mode: opt.None)
+    }),
+    effect.none(),
+  )
 }
 
 // =============================================================================
@@ -80,33 +99,40 @@ pub fn handle_close_card_dialog(model: Model) -> #(Model, Effect(Msg)) {
 /// Handle card created event from component.
 /// Adds the new card to the list and shows a toast.
 pub fn handle_card_crud_created(
-  model: Model,
+  model: client_state.Model,
   card: Card,
-) -> #(Model, Effect(Msg)) {
-  let cards = case model.cards {
-    Loaded(existing) -> Loaded([card, ..existing])
-    _ -> Loaded([card])
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  let cards = case model.admin.cards {
+    client_state.Loaded(existing) -> client_state.Loaded([card, ..existing])
+    _ -> client_state.Loaded([card])
   }
-  #(
-    Model(
-      ..model,
-      cards: cards,
-      cards_dialog_mode: opt.None,
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.CardCreated)),
-    ),
-    effect.none(),
-  )
+  let model =
+    client_state.update_admin(model, fn(admin) {
+      client_state.AdminModel(
+        ..admin,
+        cards: cards,
+        cards_dialog_mode: opt.None,
+      )
+    })
+  let model =
+    client_state.update_ui(model, fn(ui) {
+      client_state.UiModel(
+        ..ui,
+        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.CardCreated)),
+      )
+    })
+  #(model, effect.none())
 }
 
 /// Handle card updated event from component.
 /// Updates the card in the list and shows a toast.
 pub fn handle_card_crud_updated(
-  model: Model,
+  model: client_state.Model,
   updated_card: Card,
-) -> #(Model, Effect(Msg)) {
-  let cards = case model.cards {
-    Loaded(existing) ->
-      Loaded(
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  let cards = case model.admin.cards {
+    client_state.Loaded(existing) ->
+      client_state.Loaded(
         list.map(existing, fn(c) {
           case c.id == updated_card.id {
             True -> updated_card
@@ -116,36 +142,51 @@ pub fn handle_card_crud_updated(
       )
     other -> other
   }
-  #(
-    Model(
-      ..model,
-      cards: cards,
-      cards_dialog_mode: opt.None,
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.CardUpdated)),
-    ),
-    effect.none(),
-  )
+  let model =
+    client_state.update_admin(model, fn(admin) {
+      client_state.AdminModel(
+        ..admin,
+        cards: cards,
+        cards_dialog_mode: opt.None,
+      )
+    })
+  let model =
+    client_state.update_ui(model, fn(ui) {
+      client_state.UiModel(
+        ..ui,
+        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.CardUpdated)),
+      )
+    })
+  #(model, effect.none())
 }
 
 /// Handle card deleted event from component.
 /// Removes the card from the list and shows a toast.
 pub fn handle_card_crud_deleted(
-  model: Model,
+  model: client_state.Model,
   card_id: Int,
-) -> #(Model, Effect(Msg)) {
-  let cards = case model.cards {
-    Loaded(existing) -> Loaded(list.filter(existing, fn(c) { c.id != card_id }))
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  let cards = case model.admin.cards {
+    client_state.Loaded(existing) ->
+      client_state.Loaded(list.filter(existing, fn(c) { c.id != card_id }))
     other -> other
   }
-  #(
-    Model(
-      ..model,
-      cards: cards,
-      cards_dialog_mode: opt.None,
-      toast: opt.Some(update_helpers.i18n_t(model, i18n_text.CardDeleted)),
-    ),
-    effect.none(),
-  )
+  let model =
+    client_state.update_admin(model, fn(admin) {
+      client_state.AdminModel(
+        ..admin,
+        cards: cards,
+        cards_dialog_mode: opt.None,
+      )
+    })
+  let model =
+    client_state.update_ui(model, fn(ui) {
+      client_state.UiModel(
+        ..ui,
+        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.CardDeleted)),
+      )
+    })
+  #(model, effect.none())
 }
 
 // =============================================================================
@@ -153,15 +194,23 @@ pub fn handle_card_crud_deleted(
 // =============================================================================
 
 /// Fetch cards for the selected project.
-pub fn fetch_cards_for_project(model: Model) -> #(Model, Effect(Msg)) {
-  case model.selected_project_id {
+pub fn fetch_cards_for_project(
+  model: client_state.Model,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  case model.core.selected_project_id {
     opt.Some(project_id) -> {
       let model =
-        Model(..model, cards: Loading, cards_project_id: opt.Some(project_id))
+        client_state.update_admin(model, fn(admin) {
+          client_state.AdminModel(
+            ..admin,
+            cards: client_state.Loading,
+            cards_project_id: opt.Some(project_id),
+          )
+        })
       #(
         model,
-        api_cards.list_cards(project_id, fn(result) -> Msg {
-          pool_msg(CardsFetched(result))
+        api_cards.list_cards(project_id, fn(result) -> client_state.Msg {
+          client_state.pool_msg(client_state.CardsFetched(result))
         }),
       )
     }
@@ -174,9 +223,9 @@ pub fn fetch_cards_for_project(model: Model) -> #(Model, Effect(Msg)) {
 // =============================================================================
 
 /// Find a card by ID in the loaded cards list.
-pub fn find_card(model: Model, card_id: Int) -> opt.Option(Card) {
-  case model.cards {
-    Loaded(cards) ->
+pub fn find_card(model: client_state.Model, card_id: Int) -> opt.Option(Card) {
+  case model.admin.cards {
+    client_state.Loaded(cards) ->
       list.find(cards, fn(c) { c.id == card_id })
       |> opt.from_result
     _ -> opt.None
