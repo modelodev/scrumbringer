@@ -53,6 +53,7 @@ import scrumbringer_client/features/pool/filters as pool_filters
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/member_visuals
 import scrumbringer_client/pool_prefs
+import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/card_badge
 import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/empty_state
@@ -103,13 +104,13 @@ fn has_active_filters(model: Model) -> Bool {
 pub fn view_pool_main(model: Model, _user: User) -> Element(Msg) {
   case update_helpers.active_projects(model) {
     [] ->
-      div([attribute.class("empty")], [
+      div([attrs.empty()], [
         h2([], [text(update_helpers.i18n_t(model, i18n_text.NoProjectsYet))]),
         p([], [text(update_helpers.i18n_t(model, i18n_text.NoProjectsBody))]),
       ])
 
     _ -> {
-      div([attribute.class("section")], [
+      div([attrs.section()], [
         // Unified toolbar: view mode, filters toggle, and new task - all in one row
         pool_filters.view_unified_toolbar(model),
         view_tasks(model),
@@ -408,8 +409,10 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
       let canvas_height = 500
       let padding = 50
       // Use prime multipliers for better distribution
-      let initial_x = { { id * 137 } % { canvas_width - padding } } + { padding / 2 }
-      let initial_y = { { id * 89 } % { canvas_height - padding } } + { padding / 2 }
+      let initial_x =
+        { { id * 137 } % { canvas_width - padding } } + { padding / 2 }
+      let initial_y =
+        { { id * 89 } % { canvas_height - padding } } + { padding / 2 }
       #(initial_x, initial_y)
     }
   }
@@ -557,7 +560,10 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
                 attribute.class("decay-badge"),
                 attribute.attribute(
                   "title",
-                  update_helpers.i18n_t(model, i18n_text.CreatedAgoDays(age_days)),
+                  update_helpers.i18n_t(
+                    model,
+                    i18n_text.CreatedAgoDays(age_days),
+                  ),
                 ),
               ],
               [text(int.to_string(age_days) <> "d")],
@@ -643,4 +649,3 @@ fn decay_to_visuals(age_days: Int) -> #(Float, Float) {
     _ -> #(0.8, 0.55)
   }
 }
-

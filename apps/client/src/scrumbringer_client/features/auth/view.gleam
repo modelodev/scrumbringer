@@ -35,7 +35,9 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, form, h1, h2, input, label, p, span, text}
+import lustre/element/html.{
+  button, div, form, h1, h2, input, label, p, span, text,
+}
 import lustre/event
 
 import scrumbringer_client/accept_invite
@@ -43,11 +45,12 @@ import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
   type Model, type Msg, AcceptInviteMsg, ForgotPasswordClicked,
   ForgotPasswordCopyClicked, ForgotPasswordDismissed, ForgotPasswordEmailChanged,
-  ForgotPasswordSubmitted, LoginEmailChanged, LoginPasswordChanged, LoginSubmitted,
-  ResetPasswordMsg,
+  ForgotPasswordSubmitted, LoginEmailChanged, LoginPasswordChanged,
+  LoginSubmitted, ResetPasswordMsg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/reset_password
+import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/icons
 import scrumbringer_client/update_helpers
 
@@ -71,7 +74,9 @@ pub fn view_login(model: Model) -> Element(Msg) {
     case model.login_error {
       opt.Some(err) ->
         div([attribute.class("error-banner")], [
-          span([attribute.class("error-banner-icon")], [icons.nav_icon(icons.Warning, icons.Small)]),
+          span([attribute.class("error-banner-icon")], [
+            icons.nav_icon(icons.Warning, icons.Small),
+          ]),
           span([], [text(err)]),
         ])
       opt.None -> element.none()
@@ -135,11 +140,11 @@ pub fn view_forgot_password(model: Model) -> Element(Msg) {
     opt.None -> ""
   }
 
-  div([attribute.class("section")], [
+  div([attrs.section()], [
     p([], [text(update_helpers.i18n_t(model, i18n_text.NoEmailIntegrationNote))]),
     case model.forgot_password_error {
       opt.Some(err) ->
-        div([attribute.class("error")], [
+        div([attrs.error()], [
           span([], [text(err)]),
           button([event.on_click(ForgotPasswordDismissed)], [
             text(update_helpers.i18n_t(model, i18n_text.Dismiss)),
@@ -202,7 +207,7 @@ pub fn view_accept_invite(model: Model) -> Element(Msg) {
 
   let content = case state {
     accept_invite.NoToken ->
-      div([attribute.class("error")], [
+      div([attrs.error()], [
         text(update_helpers.i18n_t(model, i18n_text.MissingInviteToken)),
       ])
 
@@ -212,7 +217,7 @@ pub fn view_accept_invite(model: Model) -> Element(Msg) {
       ])
 
     accept_invite.Invalid(code: _, message: message) ->
-      div([attribute.class("error")], [text(message)])
+      div([attrs.error()], [text(message)])
 
     accept_invite.Ready(email) ->
       view_accept_invite_form(model, email, password, False, password_error)
@@ -231,7 +236,7 @@ pub fn view_accept_invite(model: Model) -> Element(Msg) {
     h2([], [text(update_helpers.i18n_t(model, i18n_text.AcceptInviteTitle))]),
     case submit_error {
       opt.Some(err) ->
-        div([attribute.class("error")], [
+        div([attrs.error()], [
           span([], [text(err)]),
           button(
             [event.on_click(AcceptInviteMsg(accept_invite.ErrorDismissed))],

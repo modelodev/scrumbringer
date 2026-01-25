@@ -105,6 +105,7 @@ import scrumbringer_client/i18n/locale
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme
 import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/icon_catalog
@@ -122,7 +123,7 @@ import scrumbringer_client/utils/format_date
 pub fn view_org_settings(model: Model) -> Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
 
-  div([attribute.class("section")], [
+  div([attrs.section()], [
     // Section header with subtitle (Story 4.8: consistent icons + help text)
     section_header.view_with_subtitle(
       icons.OrgUsers,
@@ -141,14 +142,13 @@ fn view_org_settings_table(model: Model) -> Element(Msg) {
 
   case model.org_settings_users {
     NotAsked ->
-      div([attribute.class("empty")], [
+      div([attrs.empty()], [
         text(t(i18n_text.OpenThisSectionToLoadUsers)),
       ])
 
-    Loading ->
-      div([attribute.class("empty")], [text(t(i18n_text.LoadingUsers))])
+    Loading -> div([attrs.empty()], [text(t(i18n_text.LoadingUsers))])
 
-    Failed(err) -> div([attribute.class("error")], [text(err.message)])
+    Failed(err) -> div([attrs.error()], [text(err.message)])
 
     Loaded(users) -> {
       let pending_count = dict.size(model.org_settings_role_drafts)
@@ -668,7 +668,7 @@ pub fn view_members(
 ) -> Element(Msg) {
   case selected_project {
     opt.None ->
-      div([attribute.class("empty")], [
+      div([attrs.empty()], [
         text(update_helpers.i18n_t(
           model,
           i18n_text.SelectProjectToManageMembers,
@@ -676,7 +676,7 @@ pub fn view_members(
       ])
 
     opt.Some(project) ->
-      div([attribute.class("section")], [
+      div([attrs.section()], [
         // Section header with subtitle and action (Story 4.8: consistent icons + help text)
         section_header.view_full(
           icons.Team,
