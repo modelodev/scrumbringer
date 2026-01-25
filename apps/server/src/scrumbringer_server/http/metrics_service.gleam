@@ -17,6 +17,7 @@
 //// - JSON serialization (see `metrics_presenters.gleam`)
 //// - HTTP handling (see `org_metrics.gleam`)
 
+import domain/task_status
 import gleam/int
 import gleam/option.{type Option, None, Some}
 import pog
@@ -88,6 +89,10 @@ pub type ProjectTask {
     first_claim_at: Option(String),
   )
 }
+
+/// Work state ADT for derived task status.
+pub type WorkState =
+  task_status.WorkState
 
 /// Error type for metrics operations.
 pub type MetricsError {
@@ -363,14 +368,29 @@ fn empty_string_to_option(value: String) -> Option(String) {
 }
 
 fn derive_work_state(status: String, is_ongoing: Bool) -> String {
+  work_state_from(status, is_ongoing)
+  |> work_state_to_string
+}
+
+/// Derive work state from status and ongoing flag.
+pub fn work_state_from(status: String, is_ongoing: Bool) -> WorkState {
   case status {
-    "available" -> "available"
-    "completed" -> "completed"
+    "available" -> task_status.WorkAvailable
+    "completed" -> task_status.WorkCompleted
     "claimed" ->
       case is_ongoing {
-        True -> "ongoing"
-        False -> "claimed"
+        True -> task_status.WorkOngoing
+        False -> task_status.WorkClaimed
       }
-    _ -> status
+    _ -> task_status.WorkClaimed
+  }
+}
+
+fn work_state_to_string(state: WorkState) -> String {
+  case state {
+    task_status.WorkAvailable -> "available"
+    task_status.WorkClaimed -> "claimed"
+    task_status.WorkOngoing -> "ongoing"
+    task_status.WorkCompleted -> "completed"
   }
 }
