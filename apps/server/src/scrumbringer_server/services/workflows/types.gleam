@@ -16,6 +16,7 @@
 //// - **handlers.gleam**: Uses these types for message handling
 //// - **http/tasks.gleam**: Constructs messages and interprets responses
 
+import domain/task_status
 import gleam/option.{type Option}
 import pog
 import scrumbringer_server/persistence/tasks/mappers as tasks_mappers
@@ -88,6 +89,20 @@ pub type Message {
 /// Task list filters.
 pub type TaskFilters {
   TaskFilters(status: String, type_id: Int, capability_id: Int, q: String)
+}
+
+/// Task status ADT for typed status handling.
+pub type TaskStatus =
+  task_status.TaskStatus
+
+/// Parse filter status into TaskStatus for compatibility.
+pub fn parse_task_status(value: String) -> Result(TaskStatus, Nil) {
+  task_status.parse_filter(value)
+}
+
+/// Convert TaskStatus to database status string.
+pub fn task_status_to_db(status: TaskStatus) -> String {
+  task_status.to_db_status(status)
 }
 
 /// Task update fields (sentinel values indicate no change).
