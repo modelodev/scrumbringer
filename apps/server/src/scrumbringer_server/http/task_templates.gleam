@@ -6,6 +6,7 @@ import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
+import gleam/option.{None}
 import helpers/json as json_helpers
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
@@ -291,14 +292,26 @@ fn update_template(
       use data <- wisp.require_json(req)
 
       let decoder = {
-        use name <- decode.optional_field("name", "__unset__", decode.string)
+        use name <- decode.optional_field(
+          "name",
+          None,
+          decode.optional(decode.string),
+        )
         use description <- decode.optional_field(
           "description",
-          "__unset__",
-          decode.string,
+          None,
+          decode.optional(decode.string),
         )
-        use type_id <- decode.optional_field("type_id", -1, decode.int)
-        use priority <- decode.optional_field("priority", -1, decode.int)
+        use type_id <- decode.optional_field(
+          "type_id",
+          None,
+          decode.optional(decode.int),
+        )
+        use priority <- decode.optional_field(
+          "priority",
+          None,
+          decode.optional(decode.int),
+        )
         decode.success(#(name, description, type_id, priority))
       }
 

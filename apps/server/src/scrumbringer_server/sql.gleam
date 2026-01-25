@@ -5,6 +5,7 @@
 ////
 
 import gleam/dynamic/decode
+import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
 import pog
 
@@ -3655,16 +3656,12 @@ pub fn rules_update(
   "-- name: update_rule
 UPDATE rules
 SET
-  name = case when $2 = '__unset__' then name else $2 end,
-  goal = case when $3 = '__unset__' then goal else nullif($3, '') end,
-  resource_type = case when $4 = '__unset__' then resource_type else $4 end,
-  task_type_id = case
-    when $5 = -1 then task_type_id
-    when $5 <= 0 then null
-    else $5
-  end,
-  to_state = case when $6 = '__unset__' then to_state else $6 end,
-  active = case when $7 = -1 then active else ($7 = 1) end
+  name = $2,
+  goal = nullif($3, ''),
+  resource_type = $4,
+  task_type_id = case when $5 <= 0 then null else $5 end,
+  to_state = $6,
+  active = ($7 = 1)
 WHERE id = $1
 RETURNING
   id,
@@ -4427,10 +4424,10 @@ pub fn task_templates_update(
   arg_1: Int,
   arg_2: Int,
   arg_3: Int,
-  arg_4: String,
-  arg_5: String,
-  arg_6: Int,
-  arg_7: Int,
+  arg_4: Option(String),
+  arg_5: Option(String),
+  arg_6: Option(Int),
+  arg_7: Option(Int),
 ) -> Result(pog.Returned(TaskTemplatesUpdateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -4466,7 +4463,7 @@ WITH current AS (
 ), type_ok AS (
   SELECT
     CASE
-      WHEN $6 = -1 THEN current.type_id
+      WHEN $6 is null THEN current.type_id
       ELSE (
         SELECT tt.id
         FROM task_types tt
@@ -4484,10 +4481,10 @@ WITH current AS (
 ), updated AS (
   UPDATE task_templates
   SET
-    name = case when $4 = '__unset__' then name else $4 end,
-    description = case when $5 = '__unset__' then description else nullif($5, '') end,
+    name = case when $4 is null then name else $4 end,
+    description = case when $5 is null then description else nullif($5, '') end,
     type_id = type_ok.type_id,
-    priority = case when $7 = -1 then priority else $7 end
+    priority = case when $7 is null then priority else $7 end
   FROM type_ok
   WHERE task_templates.id = $1
     AND task_templates.org_id = $3
@@ -4513,10 +4510,10 @@ JOIN task_types tt on tt.id = updated.type_id;
   |> pog.parameter(pog.int(arg_1))
   |> pog.parameter(pog.int(arg_2))
   |> pog.parameter(pog.int(arg_3))
-  |> pog.parameter(pog.text(arg_4))
-  |> pog.parameter(pog.text(arg_5))
-  |> pog.parameter(pog.int(arg_6))
-  |> pog.parameter(pog.int(arg_7))
+  |> pog.parameter(pog.nullable(pog.text, arg_4))
+  |> pog.parameter(pog.nullable(pog.text, arg_5))
+  |> pog.parameter(pog.nullable(pog.int, arg_6))
+  |> pog.parameter(pog.nullable(pog.int, arg_7))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -5409,10 +5406,10 @@ pub type TasksListRow {
 pub fn tasks_list(
   db: pog.Connection,
   arg_1: Int,
-  arg_2: String,
-  arg_3: Int,
-  arg_4: Int,
-  arg_5: String,
+  arg_2: Option(String),
+  arg_3: Option(Int),
+  arg_4: Option(Int),
+  arg_5: Option(String),
 ) -> Result(pog.Returned(TasksListRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -5498,11 +5495,11 @@ from tasks t
 join task_types tt on tt.id = t.type_id
 left join cards c on c.id = t.card_id
 where t.project_id = $1
-  and ($2 = '' or t.status = $2)
-  and ($3 = 0 or t.type_id = $3)
-  and ($4 = 0 or tt.capability_id = $4)
+  and ($2 is null or t.status = $2)
+  and ($3 is null or t.type_id = $3)
+  and ($4 is null or tt.capability_id = $4)
   and (
-    $5 = ''
+    $5 is null
     or t.title ilike ('%' || $5 || '%')
     or t.description ilike ('%' || $5 || '%')
   )
@@ -5510,10 +5507,10 @@ order by t.created_at desc;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
-  |> pog.parameter(pog.text(arg_2))
-  |> pog.parameter(pog.int(arg_3))
-  |> pog.parameter(pog.int(arg_4))
-  |> pog.parameter(pog.text(arg_5))
+  |> pog.parameter(pog.nullable(pog.text, arg_2))
+  |> pog.parameter(pog.nullable(pog.int, arg_3))
+  |> pog.parameter(pog.nullable(pog.int, arg_4))
+  |> pog.parameter(pog.nullable(pog.text, arg_5))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -5816,10 +5813,10 @@ pub fn tasks_update(
   db: pog.Connection,
   arg_1: Int,
   arg_2: Int,
-  arg_3: String,
-  arg_4: String,
-  arg_5: Int,
-  arg_6: Int,
+  arg_3: Option(String),
+  arg_4: Option(String),
+  arg_5: Option(Int),
+  arg_6: Option(Int),
   arg_7: Int,
 ) -> Result(pog.Returned(TasksUpdateRow), pog.QueryError) {
   let decoder = {
@@ -5871,10 +5868,10 @@ pub fn tasks_update(
 with updated as (
   update tasks
   set
-    title = case when $3 = '__unset__' then title else $3 end,
-    description = case when $4 = '__unset__' then description else nullif($4, '') end,
-    priority = case when $5 = -1 then priority else $5 end,
-    type_id = case when $6 = -1 then type_id else $6 end,
+    title = case when $3 is null then title else $3 end,
+    description = case when $4 is null then description else nullif($4, '') end,
+    priority = case when $5 is null then priority else $5 end,
+    type_id = case when $6 is null then type_id else $6 end,
     version = version + 1
   where id = $1
     and claimed_by = $2
@@ -5911,10 +5908,10 @@ left join cards c on c.id = updated.card_id;
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
   |> pog.parameter(pog.int(arg_2))
-  |> pog.parameter(pog.text(arg_3))
-  |> pog.parameter(pog.text(arg_4))
-  |> pog.parameter(pog.int(arg_5))
-  |> pog.parameter(pog.int(arg_6))
+  |> pog.parameter(pog.nullable(pog.text, arg_3))
+  |> pog.parameter(pog.nullable(pog.text, arg_4))
+  |> pog.parameter(pog.nullable(pog.int, arg_5))
+  |> pog.parameter(pog.nullable(pog.int, arg_6))
   |> pog.parameter(pog.int(arg_7))
   |> pog.returning(decoder)
   |> pog.execute(db)
@@ -6319,9 +6316,8 @@ pub fn workflows_update(
   arg_1: Int,
   arg_2: Int,
   arg_3: Int,
-  arg_4: String,
-  arg_5: String,
-  arg_6: Int,
+  arg_4: Option(String),
+  arg_5: Option(String),
 ) -> Result(pog.Returned(WorkflowsUpdateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -6347,9 +6343,8 @@ pub fn workflows_update(
   "-- name: update_workflow
 UPDATE workflows
 SET
-  name = case when $4 = '__unset__' then name else $4 end,
-  description = case when $5 = '__unset__' then description else nullif($5, '') end,
-  active = case when $6 = -1 then active else ($6 = 1) end
+  name = case when $4 is null then name else $4 end,
+  description = case when $5 is null then description else nullif($5, '') end
 WHERE id = $1
   AND org_id = $2
   AND (
@@ -6372,9 +6367,8 @@ RETURNING
   |> pog.parameter(pog.int(arg_1))
   |> pog.parameter(pog.int(arg_2))
   |> pog.parameter(pog.int(arg_3))
-  |> pog.parameter(pog.text(arg_4))
-  |> pog.parameter(pog.text(arg_5))
-  |> pog.parameter(pog.int(arg_6))
+  |> pog.parameter(pog.nullable(pog.text, arg_4))
+  |> pog.parameter(pog.nullable(pog.text, arg_5))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

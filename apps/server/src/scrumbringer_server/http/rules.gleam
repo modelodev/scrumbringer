@@ -465,46 +465,55 @@ fn update_rule(req: wisp.Request, ctx: auth.Ctx, rule_id: Int) -> wisp.Response 
           let auth.Ctx(db: db, ..) = ctx
 
           let active_value = case active {
-            None -> None
-            Some(-1) -> None
-            Some(0) -> Some(False)
-            Some(_) -> Some(True)
+            None -> Ok(None)
+            Some(0) -> Ok(Some(False))
+            Some(1) -> Ok(Some(True))
+            Some(_) ->
+              Error(api.error(422, "VALIDATION_ERROR", "Invalid active"))
           }
 
-          let resource_type_value = case resource_type {
-            Some("__unset__") -> None
-            _ -> resource_type
-          }
-          let to_state_value = case to_state {
-            Some("__unset__") -> None
-            _ -> to_state
-          }
           let task_type_value = case task_type_id {
-            Some(-1) -> None
-            _ -> task_type_id
+            Some(value) if value <= 0 ->
+              Error(api.error(422, "VALIDATION_ERROR", "Invalid task_type_id"))
+            _ -> Ok(task_type_id)
           }
 
-          case
-            rules_db.update_rule(
-              db,
-              rule_id,
-              name,
-              goal,
-              resource_type_value,
-              task_type_value,
-              to_state_value,
-              active_value,
-            )
-          {
-            Ok(rule) -> api.ok(json.object([#("rule", rule_json(rule))]))
-            Error(rules_db.UpdateNotFound) ->
-              api.error(404, "NOT_FOUND", "Not found")
-            Error(rules_db.UpdateInvalidResourceType) ->
-              api.error(422, "VALIDATION_ERROR", "Invalid resource_type")
-            Error(rules_db.UpdateInvalidTaskType) ->
-              api.error(422, "VALIDATION_ERROR", "Invalid task_type_id")
-            Error(rules_db.UpdateDbError(_)) ->
-              api.error(500, "INTERNAL", "Database error")
+          case active_value {
+            Error(response) -> response
+
+            Ok(active_value) ->
+              case task_type_value {
+                Error(response) -> response
+
+                Ok(task_type_value) ->
+                  case
+                    rules_db.update_rule(
+                      db,
+                      rule_id,
+                      name,
+                      goal,
+                      resource_type,
+                      task_type_value,
+                      to_state,
+                      active_value,
+                    )
+                  {
+                    Ok(rule) ->
+                      api.ok(json.object([#("rule", rule_json(rule))]))
+                    Error(rules_db.UpdateNotFound) ->
+                      api.error(404, "NOT_FOUND", "Not found")
+                    Error(rules_db.UpdateInvalidResourceType) ->
+                      api.error(
+                        422,
+                        "VALIDATION_ERROR",
+                        "Invalid resource_type",
+                      )
+                    Error(rules_db.UpdateInvalidTaskType) ->
+                      api.error(422, "VALIDATION_ERROR", "Invalid task_type_id")
+                    Error(rules_db.UpdateDbError(_)) ->
+                      api.error(500, "INTERNAL", "Database error")
+                  }
+              }
           }
         }
       }

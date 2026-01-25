@@ -5,7 +5,9 @@ import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
+import gleam/option.{None, Some}
 import helpers/json as json_helpers
+import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/authorization
@@ -287,13 +289,21 @@ fn update_workflow(
       use data <- wisp.require_json(req)
 
       let decoder = {
-        use name <- decode.optional_field("name", "__unset__", decode.string)
+        use name <- decode.optional_field(
+          "name",
+          None,
+          decode.optional(decode.string),
+        )
         use description <- decode.optional_field(
           "description",
-          "__unset__",
-          decode.string,
+          None,
+          decode.optional(decode.string),
         )
-        use active <- decode.optional_field("active", -1, decode.int)
+        use active <- decode.optional_field(
+          "active",
+          None,
+          decode.optional(decode.int),
+        )
         decode.success(#(name, description, active))
       }
 
@@ -303,105 +313,42 @@ fn update_workflow(
         Ok(#(name, description, active)) -> {
           let auth.Ctx(db: db, ..) = ctx
 
-          let active_flag = case active {
-            -1 -> -1
-            0 -> 0
-            _ -> 1
+          let active_value = case active {
+            None -> Ok(None)
+            Some(0) -> Ok(Some(False))
+            Some(1) -> Ok(Some(True))
+            Some(_) ->
+              Error(api.error(422, "VALIDATION_ERROR", "Invalid active"))
           }
 
-          case active_flag {
-            -1 ->
-              case
-                workflows_db.update_workflow(
-                  db,
-                  workflow_id,
-                  org_id,
-                  project_id,
-                  name,
-                  description,
-                  active_flag,
-                )
-              {
-                Ok(workflow) ->
-                  api.ok(json.object([#("workflow", workflow_json(workflow))]))
-                Error(workflows_db.UpdateWorkflowNotFound) ->
-                  api.error(404, "NOT_FOUND", "Not found")
-                Error(workflows_db.UpdateWorkflowAlreadyExists) ->
-                  api.error(
-                    422,
-                    "VALIDATION_ERROR",
-                    "Workflow name already exists",
-                  )
-                Error(workflows_db.UpdateWorkflowDbError(_)) ->
-                  api.error(500, "INTERNAL", "Database error")
+          case active_value {
+            Error(response) -> response
+
+            Ok(active_value) -> {
+              let has_updates = case name, description {
+                None, None -> False
+                _, _ -> True
               }
 
-            0 ->
-              case
-                workflows_db.set_active_cascade(
-                  db,
-                  workflow_id,
-                  org_id,
-                  project_id,
-                  False,
-                )
-              {
-                Ok(Nil) ->
-                  case workflows_db.get_workflow(db, workflow_id) {
-                    Ok(workflow) ->
-                      api.ok(
-                        json.object([#("workflow", workflow_json(workflow))]),
-                      )
-                    Error(workflows_db.UpdateWorkflowNotFound) ->
-                      api.error(404, "NOT_FOUND", "Not found")
-                    Error(workflows_db.UpdateWorkflowAlreadyExists) ->
-                      api.error(
-                        422,
-                        "VALIDATION_ERROR",
-                        "Workflow name already exists",
-                      )
-                    Error(workflows_db.UpdateWorkflowDbError(_)) ->
-                      api.error(500, "INTERNAL", "Database error")
+              let update_result = case has_updates {
+                True ->
+                  case
+                    workflows_db.update_workflow(
+                      db,
+                      workflow_id,
+                      org_id,
+                      project_id,
+                      name,
+                      description,
+                    )
+                  {
+                    Ok(_) -> Ok(Nil)
+                    Error(error) -> Error(error)
                   }
-                Error(workflows_db.UpdateWorkflowNotFound) ->
-                  api.error(404, "NOT_FOUND", "Not found")
-                Error(workflows_db.UpdateWorkflowAlreadyExists) ->
-                  api.error(
-                    422,
-                    "VALIDATION_ERROR",
-                    "Workflow name already exists",
-                  )
-                Error(workflows_db.UpdateWorkflowDbError(_)) ->
-                  api.error(500, "INTERNAL", "Database error")
+                False -> Ok(Nil)
               }
 
-            _ ->
-              case
-                workflows_db.set_active_cascade(
-                  db,
-                  workflow_id,
-                  org_id,
-                  project_id,
-                  True,
-                )
-              {
-                Ok(Nil) ->
-                  case workflows_db.get_workflow(db, workflow_id) {
-                    Ok(workflow) ->
-                      api.ok(
-                        json.object([#("workflow", workflow_json(workflow))]),
-                      )
-                    Error(workflows_db.UpdateWorkflowNotFound) ->
-                      api.error(404, "NOT_FOUND", "Not found")
-                    Error(workflows_db.UpdateWorkflowAlreadyExists) ->
-                      api.error(
-                        422,
-                        "VALIDATION_ERROR",
-                        "Workflow name already exists",
-                      )
-                    Error(workflows_db.UpdateWorkflowDbError(_)) ->
-                      api.error(500, "INTERNAL", "Database error")
-                  }
+              case update_result {
                 Error(workflows_db.UpdateWorkflowNotFound) ->
                   api.error(404, "NOT_FOUND", "Not found")
                 Error(workflows_db.UpdateWorkflowAlreadyExists) ->
@@ -412,11 +359,52 @@ fn update_workflow(
                   )
                 Error(workflows_db.UpdateWorkflowDbError(_)) ->
                   api.error(500, "INTERNAL", "Database error")
+                Ok(Nil) ->
+                  case active_value {
+                    Some(active) ->
+                      case
+                        workflows_db.set_active_cascade(
+                          db,
+                          workflow_id,
+                          org_id,
+                          project_id,
+                          active,
+                        )
+                      {
+                        Ok(Nil) -> get_workflow_response(db, workflow_id)
+                        Error(workflows_db.UpdateWorkflowNotFound) ->
+                          api.error(404, "NOT_FOUND", "Not found")
+                        Error(workflows_db.UpdateWorkflowAlreadyExists) ->
+                          api.error(
+                            422,
+                            "VALIDATION_ERROR",
+                            "Workflow name already exists",
+                          )
+                        Error(workflows_db.UpdateWorkflowDbError(_)) ->
+                          api.error(500, "INTERNAL", "Database error")
+                      }
+
+                    None -> get_workflow_response(db, workflow_id)
+                  }
               }
+            }
           }
         }
       }
     }
+  }
+}
+
+fn get_workflow_response(db: pog.Connection, workflow_id: Int) -> wisp.Response {
+  case workflows_db.get_workflow(db, workflow_id) {
+    Ok(workflow) ->
+      api.ok(json.object([#("workflow", workflow_json(workflow))]))
+    Error(workflows_db.UpdateWorkflowNotFound) ->
+      api.error(404, "NOT_FOUND", "Not found")
+    Error(workflows_db.UpdateWorkflowAlreadyExists) ->
+      api.error(422, "VALIDATION_ERROR", "Workflow name already exists")
+    Error(workflows_db.UpdateWorkflowDbError(_)) ->
+      api.error(500, "INTERNAL", "Database error")
   }
 }
 

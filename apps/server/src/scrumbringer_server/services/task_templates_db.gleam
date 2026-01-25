@@ -173,10 +173,10 @@ pub fn update_template(
   template_id: Int,
   org_id: Int,
   project_id: Int,
-  name: String,
-  description: String,
-  type_id: Int,
-  priority: Int,
+  name: Option(String),
+  description: Option(String),
+  type_id: Option(Int),
+  priority: Option(Int),
 ) -> Result(TaskTemplate, UpdateTemplateError) {
   case
     sql.task_templates_update(

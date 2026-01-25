@@ -152,20 +152,11 @@ pub fn update_workflow(
   workflow_id: Int,
   org_id: Int,
   project_id: Int,
-  name: String,
-  description: String,
-  active_flag: Int,
+  name: Option(String),
+  description: Option(String),
 ) -> Result(Workflow, UpdateWorkflowError) {
   case
-    sql.workflows_update(
-      db,
-      workflow_id,
-      org_id,
-      project_id,
-      name,
-      description,
-      active_flag,
-    )
+    sql.workflows_update(db, workflow_id, org_id, project_id, name, description)
   {
     Ok(pog.Returned(rows: [row, ..], ..)) ->
       Ok(Workflow(

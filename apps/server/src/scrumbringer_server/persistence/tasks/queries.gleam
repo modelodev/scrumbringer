@@ -60,9 +60,9 @@ pub fn list_tasks_for_project(
     db,
     project_id,
     status_filter_to_db_string(status),
-    option_to_int(type_id),
-    option_to_int(capability_id),
-    option_to_string(q),
+    type_id,
+    capability_id,
+    q,
   ))
 
   returned.rows
@@ -70,42 +70,12 @@ pub fn list_tasks_for_project(
   |> Ok
 }
 
-fn status_filter_to_db_string(status: Option(task_status.TaskStatus)) -> String {
+fn status_filter_to_db_string(
+  status: Option(task_status.TaskStatus),
+) -> Option(String) {
   case status {
-    None -> ""
-    Some(value) -> task_status.to_db_status(value)
-  }
-}
-
-fn option_to_int(value: Option(Int)) -> Int {
-  case value {
-    None -> 0
-    Some(id) -> id
-  }
-}
-
-fn option_to_string(value: Option(String)) -> String {
-  case value {
-    None -> ""
-    Some(text) -> text
-  }
-}
-
-const unset_update_string = "__unset__"
-
-const unset_update_int = -1
-
-fn option_to_update_string(value: Option(String)) -> String {
-  case value {
-    None -> unset_update_string
-    Some(text) -> text
-  }
-}
-
-fn option_to_update_int(value: Option(Int)) -> Int {
-  case value {
-    None -> unset_update_int
-    Some(id) -> id
+    None -> None
+    Some(value) -> Some(task_status.to_db_status(value))
   }
 }
 
@@ -188,10 +158,10 @@ pub fn update_task_claimed_by_user(
       db,
       task_id,
       user_id,
-      option_to_update_string(title),
-      option_to_update_string(description),
-      option_to_update_int(priority),
-      option_to_update_int(type_id),
+      title,
+      description,
+      priority,
+      type_id,
       version,
     )
   {
