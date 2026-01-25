@@ -10,6 +10,7 @@
 //// - Manage project members and roles
 //// - Handle project creation and updates
 
+import domain/project_role.{type ProjectRole}
 import gleam/list
 import gleam/result
 import pog
@@ -21,13 +22,18 @@ pub type Project {
     org_id: Int,
     name: String,
     created_at: String,
-    my_role: String,
+    my_role: ProjectRole,
     members_count: Int,
   )
 }
 
 pub type ProjectMember {
-  ProjectMember(project_id: Int, user_id: Int, role: String, created_at: String)
+  ProjectMember(
+    project_id: Int,
+    user_id: Int,
+    role: ProjectRole,
+    created_at: String,
+  )
 }
 
 pub type RemoveMemberError {
@@ -45,6 +51,18 @@ pub type AddMemberError {
   DbError(pog.QueryError)
 }
 
+fn parse_project_role(value: String) -> Result(ProjectRole, pog.QueryError) {
+  case project_role.parse(value) {
+    Ok(role) -> Ok(role)
+    Error(_) ->
+      Error(pog.PostgresqlError(
+        code: "INVALID_ROLE",
+        name: "invalid_role",
+        message: "Invalid project role: " <> value,
+      ))
+  }
+}
+
 pub fn create_project(
   db: pog.Connection,
   org_id: Int,
@@ -54,15 +72,18 @@ pub fn create_project(
   use returned <- result.try(sql.projects_create(db, org_id, name, created_by))
 
   case returned.rows {
-    [row, ..] ->
+    [row, ..] -> {
+      use my_role <- result.try(parse_project_role(row.my_role))
       Ok(Project(
         id: row.id,
         org_id: row.org_id,
         name: row.name,
         created_at: row.created_at,
-        my_role: row.my_role,
-        members_count: 1,  // Creator is the first member
+        my_role: my_role,
+        members_count: 1,
+        // Creator is the first member
       ))
+    }
 
     [] ->
       Error(pog.PostgresqlError(
@@ -80,17 +101,17 @@ pub fn list_projects_for_user(
   use returned <- result.try(sql.projects_for_user(db, user_id))
 
   returned.rows
-  |> list.map(fn(row) {
-    Project(
+  |> list.try_map(fn(row) {
+    use my_role <- result.try(parse_project_role(row.my_role))
+    Ok(Project(
       id: row.id,
       org_id: row.org_id,
       name: row.name,
       created_at: row.created_at,
-      my_role: row.my_role,
+      my_role: my_role,
       members_count: row.members_count,
-    )
+    ))
   })
-  |> Ok
 }
 
 pub fn is_project_manager(
@@ -151,25 +172,23 @@ pub fn list_members(
   use returned <- result.try(sql.project_members_list(db, project_id))
 
   returned.rows
-  |> list.map(fn(row) {
-    ProjectMember(
+  |> list.try_map(fn(row) {
+    use role <- result.try(parse_project_role(row.role))
+    Ok(ProjectMember(
       project_id: row.project_id,
       user_id: row.user_id,
-      role: row.role,
+      role: role,
       created_at: row.created_at,
-    )
+    ))
   })
-  |> Ok
 }
 
 pub fn add_member(
   db: pog.Connection,
   project_id: Int,
   target_user_id: Int,
-  role: String,
+  role: ProjectRole,
 ) -> Result(ProjectMember, AddMemberError) {
-  use _ <- result.try(validate_role(role))
-
   use project_org_id <- result.try(
     fetch_project_org_id(db, project_id)
     |> result.map_error(fn(e) { e }),
@@ -183,13 +202,6 @@ pub fn add_member(
   case project_org_id == target_org_id {
     False -> Error(TargetUserWrongOrg)
     True -> insert_member(db, project_id, target_user_id, role)
-  }
-}
-
-fn validate_role(role: String) -> Result(Nil, AddMemberError) {
-  case role {
-    "manager" | "member" -> Ok(Nil)
-    _ -> Error(InvalidRole)
   }
 }
 
@@ -219,16 +231,21 @@ fn insert_member(
   db: pog.Connection,
   project_id: Int,
   user_id: Int,
-  role: String,
+  role: ProjectRole,
 ) -> Result(ProjectMember, AddMemberError) {
-  case sql.project_members_insert(db, project_id, user_id, role) {
+  let role_value = project_role.to_string(role)
+  case sql.project_members_insert(db, project_id, user_id, role_value) {
     Ok(pog.Returned(rows: [row, ..], ..)) ->
-      Ok(ProjectMember(
-        project_id: row.project_id,
-        user_id: row.user_id,
-        role: row.role,
-        created_at: row.created_at,
-      ))
+      case parse_project_role(row.role) {
+        Ok(parsed_role) ->
+          Ok(ProjectMember(
+            project_id: row.project_id,
+            user_id: row.user_id,
+            role: parsed_role,
+            created_at: row.created_at,
+          ))
+        Error(e) -> Error(DbError(e))
+      }
 
     Ok(pog.Returned(rows: [], ..)) ->
       Error(
@@ -254,10 +271,14 @@ pub fn remove_member(
 ) -> Result(Nil, RemoveMemberError) {
   case sql.project_members_remove(db, project_id, user_id) {
     Ok(pog.Returned(rows: [row, ..], ..)) -> {
+      let manager_role = project_role.to_string(project_role.Manager)
       case row.target_role {
         "" -> Error(MembershipNotFound)
-        "manager" if row.manager_count == 1 && row.removed == False ->
-          Error(CannotRemoveLastManager)
+        role
+          if role == manager_role
+          && row.manager_count == 1
+          && row.removed == False
+        -> Error(CannotRemoveLastManager)
         _ ->
           case row.removed {
             True -> Ok(Nil)
@@ -276,7 +297,12 @@ pub fn remove_member(
 // =============================================================================
 
 pub type UpdateMemberRoleResult {
-  RoleUpdated(user_id: Int, email: String, role: String, previous_role: String)
+  RoleUpdated(
+    user_id: Int,
+    email: String,
+    role: ProjectRole,
+    previous_role: ProjectRole,
+  )
 }
 
 pub type UpdateMemberRoleError {
@@ -290,39 +316,47 @@ pub fn update_member_role(
   db: pog.Connection,
   project_id: Int,
   user_id: Int,
-  new_role: String,
+  new_role: ProjectRole,
 ) -> Result(UpdateMemberRoleResult, UpdateMemberRoleError) {
-  // Validate role value first
-  case new_role {
-    "manager" | "member" ->
-      do_update_member_role(db, project_id, user_id, new_role)
-    _ -> Error(UpdateInvalidRole)
-  }
+  do_update_member_role(db, project_id, user_id, new_role)
 }
 
 fn do_update_member_role(
   db: pog.Connection,
   project_id: Int,
   user_id: Int,
-  new_role: String,
+  new_role: ProjectRole,
 ) -> Result(UpdateMemberRoleResult, UpdateMemberRoleError) {
-  case sql.project_members_update_role(db, project_id, user_id, new_role) {
+  let new_role_value = project_role.to_string(new_role)
+  case
+    sql.project_members_update_role(db, project_id, user_id, new_role_value)
+  {
     Ok(pog.Returned(rows: [row, ..], ..)) -> {
       case row.status {
         "last_manager" -> Error(UpdateLastManager)
         "allowed" | "no_change" ->
-          Ok(RoleUpdated(
-            user_id: row.user_id,
-            email: row.email,
-            role: row.role,
-            previous_role: row.previous_role,
-          ))
+          case
+            parse_project_role(row.role),
+            parse_project_role(row.previous_role)
+          {
+            Ok(role), Ok(previous_role) ->
+              Ok(RoleUpdated(
+                user_id: row.user_id,
+                email: row.email,
+                role: role,
+                previous_role: previous_role,
+              ))
+            Error(e), _ -> Error(UpdateDbError(e))
+            _, Error(e) -> Error(UpdateDbError(e))
+          }
         _ ->
-          Error(UpdateDbError(pog.PostgresqlError(
-            code: "UNEXPECTED_STATUS",
-            name: "unexpected_status",
-            message: "Unexpected status: " <> row.status,
-          )))
+          Error(
+            UpdateDbError(pog.PostgresqlError(
+              code: "UNEXPECTED_STATUS",
+              name: "unexpected_status",
+              message: "Unexpected status: " <> row.status,
+            )),
+          )
       }
     }
 
@@ -358,8 +392,10 @@ pub fn update_project(
         org_id: row.org_id,
         name: row.name,
         created_at: row.created_at,
-        my_role: "manager",  // Only managers can update
-        members_count: 0,  // Not returned by update query
+        my_role: project_role.Manager,
+        // Only managers can update
+        members_count: 0,
+        // Not returned by update query
       ))
 
     Ok(pog.Returned(rows: [], ..)) -> Error(UpdateProjectNotFound)

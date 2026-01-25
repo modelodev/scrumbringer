@@ -16,13 +16,14 @@
 //// }
 //// ```
 
-import gleam/option.{type Option, None, Some}
-import gleam/string
+import gleam/option.{type Option}
 import pog
 import scrumbringer_server/http/api
-import scrumbringer_server/services/capabilities_db
 import scrumbringer_server/services/projects_db
-import scrumbringer_server/services/task_types_db
+import scrumbringer_server/services/workflows/types.{
+  type FieldUpdate, Set, Unset,
+}
+import scrumbringer_server/services/workflows/validation_core
 import wisp
 
 // =============================================================================
@@ -31,9 +32,6 @@ import wisp
 
 /// Maximum allowed characters for task title.
 pub const max_task_title_chars = 56
-
-/// Sentinel value indicating an optional field was not provided.
-pub const unset_string = "__unset__"
 
 // =============================================================================
 // Title Validation
@@ -50,20 +48,12 @@ pub const unset_string = "__unset__"
 /// }
 /// ```
 pub fn validate_task_title(title: String) -> Result(String, wisp.Response) {
-  let title = string.trim(title)
-
-  case title == "" {
-    True -> Error(api.error(422, "VALIDATION_ERROR", "Title is required"))
-    False ->
-      case string.length(title) <= max_task_title_chars {
-        True -> Ok(title)
-        False ->
-          Error(api.error(
-            422,
-            "VALIDATION_ERROR",
-            "Title too long (max 56 characters)",
-          ))
-      }
+  case validation_core.validate_task_title_value(title) {
+    Ok(value) -> Ok(value)
+    Error(validation_core.ValidationError(msg)) ->
+      Error(api.error(422, "VALIDATION_ERROR", msg))
+    Error(validation_core.DbError(_)) ->
+      Error(api.error(500, "INTERNAL", "Database error"))
   }
 }
 
@@ -82,13 +72,16 @@ pub fn validate_task_title(title: String) -> Result(String, wisp.Response) {
 /// }
 /// ```
 pub fn validate_priority(priority: Int) -> Result(Nil, wisp.Response) {
-  case priority >= 1 && priority <= 5 {
-    True -> Ok(Nil)
-    False -> Error(api.error(422, "VALIDATION_ERROR", "Invalid priority"))
+  case validation_core.validate_priority_value(priority) {
+    Ok(Nil) -> Ok(Nil)
+    Error(validation_core.ValidationError(msg)) ->
+      Error(api.error(422, "VALIDATION_ERROR", msg))
+    Error(validation_core.DbError(_)) ->
+      Error(api.error(500, "INTERNAL", "Database error"))
   }
 }
 
-/// Validate optional priority: -1 means not provided, otherwise 1-5.
+/// Validate optional priority: Unset means not provided, otherwise 1-5.
 ///
 /// ## Example
 ///
@@ -97,10 +90,19 @@ pub fn validate_priority(priority: Int) -> Result(Nil, wisp.Response) {
 /// validate_optional_priority(3)   // Ok(Nil) - valid
 /// validate_optional_priority(10)  // Error - invalid
 /// ```
-pub fn validate_optional_priority(priority: Int) -> Result(Nil, wisp.Response) {
+pub fn validate_optional_priority(
+  priority: FieldUpdate(Int),
+) -> Result(Nil, wisp.Response) {
   case priority {
-    -1 -> Ok(Nil)
-    _ -> validate_priority(priority)
+    Unset -> Ok(Nil)
+    Set(value) ->
+      case validation_core.validate_priority_value(value) {
+        Ok(Nil) -> Ok(Nil)
+        Error(validation_core.ValidationError(msg)) ->
+          Error(api.error(422, "VALIDATION_ERROR", msg))
+        Error(validation_core.DbError(_)) ->
+          Error(api.error(500, "INTERNAL", "Database error"))
+      }
   }
 }
 
@@ -108,7 +110,7 @@ pub fn validate_optional_priority(priority: Int) -> Result(Nil, wisp.Response) {
 // Type Validation
 // =============================================================================
 
-/// Validate task type update: -1 means no update, otherwise check project.
+/// Validate task type update: Unset means no update, otherwise check project.
 ///
 /// ## Example
 ///
@@ -120,17 +122,20 @@ pub fn validate_optional_priority(priority: Int) -> Result(Nil, wisp.Response) {
 /// ```
 pub fn validate_type_update(
   db: pog.Connection,
-  type_id: Int,
+  type_id: FieldUpdate(Int),
   project_id: Int,
 ) -> Result(Nil, wisp.Response) {
   case type_id {
-    -1 -> Ok(Nil)
-    id ->
-      case task_types_db.is_task_type_in_project(db, id, project_id) {
-        Ok(True) -> Ok(Nil)
-        Ok(False) ->
-          Error(api.error(422, "VALIDATION_ERROR", "Invalid type_id"))
-        Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+    Unset -> Ok(Nil)
+    Set(value) ->
+      case
+        validation_core.validate_task_type_in_project(db, value, project_id)
+      {
+        Ok(Nil) -> Ok(Nil)
+        Error(validation_core.ValidationError(msg)) ->
+          Error(api.error(422, "VALIDATION_ERROR", msg))
+        Error(validation_core.DbError(_)) ->
+          Error(api.error(500, "INTERNAL", "Database error"))
       }
   }
 }
@@ -154,16 +159,18 @@ pub fn validate_capability_in_project(
   capability_id: Option(Int),
   project_id: Int,
 ) -> Result(Nil, wisp.Response) {
-  case capability_id {
-    None -> Ok(Nil)
-
-    Some(id) ->
-      case capabilities_db.capability_is_in_project(db, id, project_id) {
-        Ok(True) -> Ok(Nil)
-        Ok(False) ->
-          Error(api.error(422, "VALIDATION_ERROR", "Invalid capability_id"))
-        Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
-      }
+  case
+    validation_core.validate_capability_in_project(
+      db,
+      capability_id,
+      project_id,
+    )
+  {
+    Ok(Nil) -> Ok(Nil)
+    Error(validation_core.ValidationError(msg)) ->
+      Error(api.error(422, "VALIDATION_ERROR", msg))
+    Error(validation_core.DbError(_)) ->
+      Error(api.error(500, "INTERNAL", "Database error"))
   }
 }
 

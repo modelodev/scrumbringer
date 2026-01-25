@@ -213,9 +213,7 @@ pub fn set_active_cascade(
   project_id: Int,
   active: Bool,
 ) -> Result(Nil, UpdateWorkflowError) {
-  case
-    sql.workflows_set_active(db, workflow_id, org_id, project_id, active)
-  {
+  case sql.workflows_set_active(db, workflow_id, org_id, project_id, active) {
     Ok(pog.Returned(rows: [_, ..], ..)) -> {
       let _ = sql.rules_set_active_for_workflow(db, workflow_id, active)
       Ok(Nil)

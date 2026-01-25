@@ -11,9 +11,9 @@
 //// let filters = TaskFilters(status: Some("available"), type_id: None, capability_id: None, q: None)
 //// ```
 
-import gleam/option.{type Option}
 import domain/task_status.{type OngoingBy, type TaskStatus, type WorkState}
 import domain/task_type.{type TaskTypeInline}
+import gleam/option.{type Option}
 
 // =============================================================================
 // Types
@@ -137,11 +137,7 @@ pub type ActiveTaskPayload {
 /// WorkSession(task_id: 1, started_at: "2024-01-17T12:00:00Z", accumulated_s: 3600)
 /// ```
 pub type WorkSession {
-  WorkSession(
-    task_id: Int,
-    started_at: String,
-    accumulated_s: Int,
-  )
+  WorkSession(task_id: Int, started_at: String, accumulated_s: Int)
 }
 
 /// Payload containing multiple active work sessions and server timestamp.

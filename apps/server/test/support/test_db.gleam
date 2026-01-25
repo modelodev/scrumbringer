@@ -54,15 +54,15 @@ pub fn with_test_transaction(
 ) -> a {
   // pog.transaction commits on Ok, rolls back on Error
   // We always want rollback for test isolation, so we wrap the result in Error
-  let result = pog.transaction(db, fn(tx) {
-    let test_result = test_fn(tx)
-    // Force rollback by returning Error containing the actual result
-    Error(test_result)
-  })
+  let result =
+    pog.transaction(db, fn(tx) {
+      let test_result = test_fn(tx)
+      // Force rollback by returning Error containing the actual result
+      Error(test_result)
+    })
 
   case result {
     Error(pog.TransactionRolledBack(value)) -> value
     _ -> panic as "Unexpected transaction result - expected rollback"
   }
 }
-

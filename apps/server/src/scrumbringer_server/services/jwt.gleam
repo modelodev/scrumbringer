@@ -3,13 +3,13 @@
 //// Implements HS256 JWT tokens for session authentication.
 //// Tokens contain user ID, org ID, role, and expiration.
 
+import domain/org_role
 import gleam/bit_array
 import gleam/crypto
 import gleam/dynamic/decode
 import gleam/json
 import gleam/result
 import gleam/string
-import domain/org_role
 import scrumbringer_server/services/time
 
 /// JWT payload claims.

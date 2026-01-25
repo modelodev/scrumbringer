@@ -5,6 +5,7 @@
 ////
 //// Story 4.9: Added update, delete, and tasks_count support.
 
+import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -75,6 +76,29 @@ pub fn list_task_types_for_project(
     )
   })
   |> Ok
+}
+
+/// Returns the project_id for a task type if it exists.
+pub fn get_task_type_project_id(
+  db: pog.Connection,
+  type_id: Int,
+) -> Result(Option(Int), pog.QueryError) {
+  let decoder = {
+    use project_id <- decode.field(0, decode.int)
+    decode.success(project_id)
+  }
+
+  use returned <- result.try(
+    pog.query("select project_id from task_types where id = $1")
+    |> pog.parameter(pog.int(type_id))
+    |> pog.returning(decoder)
+    |> pog.execute(db),
+  )
+
+  case returned.rows {
+    [row, ..] -> Ok(Some(row))
+    [] -> Ok(None)
+  }
 }
 
 /// Creates a new task type in a project.

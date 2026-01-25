@@ -15,12 +15,13 @@
 //// - Database operations (see `services/projects_db.gleam`)
 //// - Authentication (see `http/auth.gleam`)
 
+import domain/org_role
+import domain/project_role
 import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
 import pog
-import domain/org_role
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
@@ -96,15 +97,19 @@ fn handle_project_update(
               case user.org_role {
                 org_role.Admin -> {
                   use body <- wisp.require_json(req)
-                  let decoder = decode.field("name", decode.string, decode.success)
+                  let decoder =
+                    decode.field("name", decode.string, decode.success)
 
                   case decode.run(body, decoder) {
-                    Error(_) -> api.error(400, "INVALID_BODY", "Invalid request body")
+                    Error(_) ->
+                      api.error(400, "INVALID_BODY", "Invalid request body")
 
                     Ok(name) -> {
                       case projects_db.update_project(db, project_id, name) {
                         Ok(project) ->
-                          api.ok(json.object([#("project", project_json(project))]))
+                          api.ok(
+                            json.object([#("project", project_json(project))]),
+                          )
 
                         Error(projects_db.UpdateProjectNotFound) ->
                           api.error(404, "NOT_FOUND", "Project not found")
@@ -116,7 +121,12 @@ fn handle_project_update(
                   }
                 }
 
-                _ -> api.error(403, "FORBIDDEN", "Only org admins can update projects")
+                _ ->
+                  api.error(
+                    403,
+                    "FORBIDDEN",
+                    "Only org admins can update projects",
+                  )
               }
             }
           }
@@ -159,7 +169,12 @@ fn handle_project_delete(
                   }
                 }
 
-                _ -> api.error(403, "FORBIDDEN", "Only org admins can delete projects")
+                _ ->
+                  api.error(
+                    403,
+                    "FORBIDDEN",
+                    "Only org admins can delete projects",
+                  )
               }
             }
           }
@@ -268,42 +283,62 @@ fn handle_member_role_update(
                         Error(_) ->
                           api.error(400, "VALIDATION_ERROR", "Invalid JSON")
 
-                        Ok(new_role) -> {
-                          case
-                            projects_db.update_member_role(
-                              db,
-                              project_id,
-                              target_user_id,
-                              new_role,
-                            )
-                          {
-                            Ok(result) ->
-                              api.ok(
-                                json.object([
-                                  #("member", role_update_result_json(result)),
-                                ]),
-                              )
+                        Ok(role_value) ->
+                          case project_role.parse(role_value) {
+                            Ok(new_role) ->
+                              case
+                                projects_db.update_member_role(
+                                  db,
+                                  project_id,
+                                  target_user_id,
+                                  new_role,
+                                )
+                              {
+                                Ok(result) ->
+                                  api.ok(
+                                    json.object([
+                                      #(
+                                        "member",
+                                        role_update_result_json(result),
+                                      ),
+                                    ]),
+                                  )
 
-                            Error(projects_db.UpdateMemberNotFound) ->
-                              api.error(404, "NOT_FOUND", "Membership not found")
+                                Error(projects_db.UpdateMemberNotFound) ->
+                                  api.error(
+                                    404,
+                                    "NOT_FOUND",
+                                    "Membership not found",
+                                  )
 
-                            Error(projects_db.UpdateLastManager) ->
-                              api.error(
-                                422,
-                                "VALIDATION_ERROR",
-                                "Cannot demote last project manager",
-                              )
+                                Error(projects_db.UpdateLastManager) ->
+                                  api.error(
+                                    422,
+                                    "VALIDATION_ERROR",
+                                    "Cannot demote last project manager",
+                                  )
 
-                            Error(projects_db.UpdateInvalidRole) ->
+                                Error(projects_db.UpdateInvalidRole) ->
+                                  api.error(
+                                    400,
+                                    "VALIDATION_ERROR",
+                                    "Invalid role",
+                                  )
+
+                                Error(projects_db.UpdateDbError(_)) ->
+                                  api.error(500, "INTERNAL", "Database error")
+                              }
+                            Error(_) ->
                               api.error(400, "VALIDATION_ERROR", "Invalid role")
-
-                            Error(projects_db.UpdateDbError(_)) ->
-                              api.error(500, "INTERNAL", "Database error")
                           }
-                        }
                       }
                     }
-                    _ -> api.error(403, "FORBIDDEN", "Only org admins can change project member roles")
+                    _ ->
+                      api.error(
+                        403,
+                        "FORBIDDEN",
+                        "Only org admins can change project member roles",
+                      )
                   }
                 }
               }
@@ -459,47 +494,51 @@ fn handle_members_add(
                     Error(_) ->
                       api.error(400, "VALIDATION_ERROR", "Invalid JSON")
 
-                    Ok(#(target_user_id, role)) -> {
-                      case
-                        projects_db.add_member(
-                          db,
-                          project_id,
-                          target_user_id,
-                          role,
-                        )
-                      {
-                        Ok(member) ->
-                          api.ok(
-                            json.object([#("member", member_json(member))]),
-                          )
+                    Ok(#(target_user_id, role_value)) ->
+                      case project_role.parse(role_value) {
+                        Ok(role) ->
+                          case
+                            projects_db.add_member(
+                              db,
+                              project_id,
+                              target_user_id,
+                              role,
+                            )
+                          {
+                            Ok(member) ->
+                              api.ok(
+                                json.object([#("member", member_json(member))]),
+                              )
 
-                        Error(projects_db.ProjectNotFound) ->
-                          api.error(404, "NOT_FOUND", "Project not found")
+                            Error(projects_db.ProjectNotFound) ->
+                              api.error(404, "NOT_FOUND", "Project not found")
 
-                        Error(projects_db.TargetUserNotFound) ->
-                          api.error(404, "NOT_FOUND", "User not found")
+                            Error(projects_db.TargetUserNotFound) ->
+                              api.error(404, "NOT_FOUND", "User not found")
 
-                        Error(projects_db.TargetUserWrongOrg) ->
-                          api.error(
-                            422,
-                            "VALIDATION_ERROR",
-                            "User must be in same organization",
-                          )
+                            Error(projects_db.TargetUserWrongOrg) ->
+                              api.error(
+                                422,
+                                "VALIDATION_ERROR",
+                                "User must be in same organization",
+                              )
 
-                        Error(projects_db.AlreadyMember) ->
-                          api.error(
-                            422,
-                            "VALIDATION_ERROR",
-                            "User is already a member",
-                          )
+                            Error(projects_db.AlreadyMember) ->
+                              api.error(
+                                422,
+                                "VALIDATION_ERROR",
+                                "User is already a member",
+                              )
 
-                        Error(projects_db.InvalidRole) ->
+                            Error(projects_db.InvalidRole) ->
+                              api.error(422, "VALIDATION_ERROR", "Invalid role")
+
+                            Error(projects_db.DbError(_)) ->
+                              api.error(500, "INTERNAL", "Database error")
+                          }
+                        Error(_) ->
                           api.error(422, "VALIDATION_ERROR", "Invalid role")
-
-                        Error(projects_db.DbError(_)) ->
-                          api.error(500, "INTERNAL", "Database error")
                       }
-                    }
                   }
                 }
               }
@@ -542,7 +581,7 @@ fn project_json(project: projects_db.Project) -> json.Json {
     #("org_id", json.int(org_id)),
     #("name", json.string(name)),
     #("created_at", json.string(created_at)),
-    #("my_role", json.string(my_role)),
+    #("my_role", json.string(project_role.to_string(my_role))),
     #("members_count", json.int(members_count)),
   ])
 }
@@ -558,7 +597,7 @@ fn member_json(member: projects_db.ProjectMember) -> json.Json {
   json.object([
     #("project_id", json.int(project_id)),
     #("user_id", json.int(user_id)),
-    #("role", json.string(role)),
+    #("role", json.string(project_role.to_string(role))),
     #("created_at", json.string(created_at)),
   ])
 }
@@ -576,7 +615,7 @@ fn role_update_result_json(
   json.object([
     #("user_id", json.int(user_id)),
     #("email", json.string(email)),
-    #("role", json.string(role)),
-    #("previous_role", json.string(previous_role)),
+    #("role", json.string(project_role.to_string(role))),
+    #("previous_role", json.string(project_role.to_string(previous_role))),
   ])
 }

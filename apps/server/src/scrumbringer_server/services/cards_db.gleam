@@ -12,8 +12,7 @@
 //// - Derive card state from task counts
 
 import domain/card.{
-  type CardState, Pendiente,
-  derive_state as shared_derive_state,
+  type CardState, Pendiente, derive_state as shared_derive_state,
   state_to_string as shared_state_to_string,
 }
 import gleam/list

@@ -48,7 +48,9 @@ fn count_active_filters(model: Model) -> Int {
     True -> 0
     False -> 1
   }
-  let cap_active = case string.is_empty(model.member.member_filters_capability_id) {
+  let cap_active = case
+    string.is_empty(model.member.member_filters_capability_id)
+  {
     True -> 0
     False -> 1
   }

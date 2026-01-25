@@ -15,7 +15,7 @@
 import gleam/dynamic/decode
 import gleam/int
 import gleam/list
-import gleam/option.{type Option, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
 
@@ -25,19 +25,12 @@ import pog
 
 /// An active work session.
 pub type ActiveSession {
-  ActiveSession(
-    task_id: Int,
-    started_at: String,
-    accumulated_s: Int,
-  )
+  ActiveSession(task_id: Int, started_at: String, accumulated_s: Int)
 }
 
 /// Response containing active sessions and server time.
 pub type WorkSessionsState {
-  WorkSessionsState(
-    active_sessions: List(ActiveSession),
-    as_of: String,
-  )
+  WorkSessionsState(active_sessions: List(ActiveSession), as_of: String)
 }
 
 /// Errors for work session operations.
@@ -85,9 +78,7 @@ pub fn start_session(
   task_id: Int,
 ) -> Result(WorkSessionsState, WorkSessionError) {
   // First validate the task is claimed by this user and not completed
-  use task_status <- result.try(
-    validate_task_for_session(db, user_id, task_id)
-  )
+  use task_status <- result.try(validate_task_for_session(db, user_id, task_id))
 
   case task_status {
     TaskNotClaimed -> Error(NotClaimed)
@@ -121,7 +112,7 @@ pub fn pause_session(
 ) -> Result(WorkSessionsState, WorkSessionError) {
   use _ <- result.try(
     close_session(db, user_id, task_id, "user_pause")
-    |> result.map_error(DbError)
+    |> result.map_error(DbError),
   )
 
   get_active_sessions(db, user_id)
@@ -138,7 +129,7 @@ pub fn heartbeat_session(
 ) -> Result(WorkSessionsState, WorkSessionError) {
   use updated <- result.try(
     update_heartbeat(db, user_id, task_id)
-    |> result.map_error(DbError)
+    |> result.map_error(DbError),
   )
 
   case updated {
@@ -162,16 +153,16 @@ pub fn close_session_for_task(
 }
 
 /// Close all stale sessions (background job or lazy cleanup).
-pub fn close_stale_sessions(
-  db: pog.Connection,
-) -> Result(Int, pog.QueryError) {
+pub fn close_stale_sessions(db: pog.Connection) -> Result(Int, pog.QueryError) {
   let query = "
     WITH closed AS (
       UPDATE user_task_work_session
       SET ended_at = NOW(),
           ended_reason = 'stale_timeout'
       WHERE ended_at IS NULL
-        AND last_heartbeat_at < NOW() - INTERVAL '" <> int.to_string(stale_cutoff_seconds) <> " seconds'
+        AND last_heartbeat_at < NOW() - INTERVAL '" <> int.to_string(
+      stale_cutoff_seconds,
+    ) <> " seconds'
       RETURNING user_id, task_id, started_at, last_heartbeat_at
     ),
     flush AS (
@@ -208,7 +199,8 @@ pub fn get_task_time_tracking(
   db: pog.Connection,
   task_id: Int,
 ) -> Result(TaskTimeTracking, pog.QueryError) {
-  let query = "
+  let query =
+    "
     SELECT
       uwt.user_id,
       u.email,
@@ -244,19 +236,17 @@ pub fn get_task_time_tracking(
     pog.query(query)
     |> pog.parameter(pog.int(task_id))
     |> pog.returning(decoder)
-    |> pog.execute(db)
+    |> pog.execute(db),
   )
 
   let contributors = returned.rows
 
-  let total_accumulated = list.fold(contributors, 0, fn(acc, c) {
-    acc + c.accumulated_s
-  })
+  let total_accumulated =
+    list.fold(contributors, 0, fn(acc, c) { acc + c.accumulated_s })
 
-  let ongoing_session = list.find(contributors, fn(c) {
-    option.is_some(c.ongoing_started_at)
-  })
-  |> option.from_result
+  let ongoing_session =
+    list.find(contributors, fn(c) { option.is_some(c.ongoing_started_at) })
+    |> option.from_result
 
   Ok(TaskTimeTracking(
     total_s: total_accumulated,
@@ -297,12 +287,31 @@ type TaskValidation {
   TaskIsCompleted
 }
 
+type TaskClaimState {
+  Available
+  ClaimedBy(user_id: Int)
+  Completed
+}
+
+fn task_claim_state(status: String, claimed_by: Option(Int)) -> TaskClaimState {
+  case status {
+    "completed" -> Completed
+    "claimed" ->
+      case claimed_by {
+        Some(user_id) -> ClaimedBy(user_id)
+        None -> Available
+      }
+    _ -> Available
+  }
+}
+
 fn validate_task_for_session(
   db: pog.Connection,
   user_id: Int,
   task_id: Int,
 ) -> Result(TaskValidation, WorkSessionError) {
-  let query = "
+  let query =
+    "
     SELECT status, claimed_by
     FROM tasks
     WHERE id = $1
@@ -311,25 +320,21 @@ fn validate_task_for_session(
   let decoder = {
     use status <- decode.field(0, decode.string)
     use claimed_by <- decode.field(1, decode.optional(decode.int))
-    decode.success(#(status, claimed_by))
+    decode.success(task_claim_state(status, claimed_by))
   }
 
-  case pog.query(query)
+  case
+    pog.query(query)
     |> pog.parameter(pog.int(task_id))
     |> pog.returning(decoder)
     |> pog.execute(db)
   {
     Error(e) -> Error(DbError(e))
     Ok(pog.Returned(rows: [], ..)) -> Error(NotClaimed)
-    Ok(pog.Returned(rows: [#(status, claimed_by), ..], ..)) -> {
-      case status {
-        "completed" -> Ok(TaskIsCompleted)
-        "claimed" -> {
-          case claimed_by {
-            Some(id) if id == user_id -> Ok(TaskValidForSession)
-            _ -> Ok(TaskNotClaimed)
-          }
-        }
+    Ok(pog.Returned(rows: [state, ..], ..)) -> {
+      case state {
+        Completed -> Ok(TaskIsCompleted)
+        ClaimedBy(id) if id == user_id -> Ok(TaskValidForSession)
         _ -> Ok(TaskNotClaimed)
       }
     }
@@ -346,7 +351,8 @@ fn insert_session(
   user_id: Int,
   task_id: Int,
 ) -> Result(Nil, InsertError) {
-  let query = "
+  let query =
+    "
     INSERT INTO user_task_work_session (user_id, task_id)
     VALUES ($1, $2)
     ON CONFLICT DO NOTHING
@@ -358,7 +364,8 @@ fn insert_session(
     decode.success(id)
   }
 
-  case pog.query(query)
+  case
+    pog.query(query)
     |> pog.parameter(pog.int(user_id))
     |> pog.parameter(pog.int(task_id))
     |> pog.returning(decoder)
@@ -377,7 +384,8 @@ fn close_session(
   reason: String,
 ) -> Result(Nil, pog.QueryError) {
   // Close session and flush accumulated time in a single transaction
-  let query = "
+  let query =
+    "
     WITH closed AS (
       UPDATE user_task_work_session
       SET ended_at = NOW(),
@@ -410,7 +418,8 @@ fn update_heartbeat(
   user_id: Int,
   task_id: Int,
 ) -> Result(Int, pog.QueryError) {
-  let query = "
+  let query =
+    "
     UPDATE user_task_work_session
     SET last_heartbeat_at = NOW()
     WHERE user_id = $1
@@ -429,7 +438,8 @@ fn query_active_sessions(
   db: pog.Connection,
   user_id: Int,
 ) -> Result(List(ActiveSession), pog.QueryError) {
-  let query = "
+  let query =
+    "
     SELECT
       ws.task_id,
       TO_CHAR(ws.started_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as started_at,
@@ -466,7 +476,9 @@ fn get_server_time(db: pog.Connection) -> Result(String, pog.QueryError) {
     decode.success(value)
   }
 
-  pog.query("SELECT TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')")
+  pog.query(
+    "SELECT TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')",
+  )
   |> pog.returning(decoder)
   |> pog.execute(db)
   |> result.map(fn(returned) {

@@ -22,10 +22,11 @@ pub fn require_current_user_returns_user_for_valid_session_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
 
   // When: Call /me endpoint with valid session
-  let res = handler(
-    simulate.request(http.Get, "/api/v1/auth/me")
-    |> fixtures.with_auth(session),
-  )
+  let res =
+    handler(
+      simulate.request(http.Get, "/api/v1/auth/me")
+      |> fixtures.with_auth(session),
+    )
 
   // Then: Returns 200 with user data
   res.status |> should.equal(200)
@@ -58,10 +59,11 @@ pub fn require_current_user_returns_error_for_expired_token_test() {
   let fake_session = fixtures.Session(token: "invalid_jwt_token", csrf: "csrf")
 
   // When: Call /me endpoint with invalid token
-  let res = handler(
-    simulate.request(http.Get, "/api/v1/auth/me")
-    |> fixtures.with_auth(fake_session),
-  )
+  let res =
+    handler(
+      simulate.request(http.Get, "/api/v1/auth/me")
+      |> fixtures.with_auth(fake_session),
+    )
 
   // Then: Returns 401 AUTH_REQUIRED
   res.status |> should.equal(401)

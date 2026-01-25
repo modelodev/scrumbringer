@@ -10,8 +10,8 @@
 //// let metrics = MyMetrics(window_days: 30, claimed_count: 10, released_count: 2, completed_count: 8)
 //// ```
 
-import gleam/option.{type Option}
 import domain/task.{type Task}
+import gleam/option.{type Option}
 
 // =============================================================================
 // Types

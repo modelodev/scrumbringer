@@ -1,5 +1,5 @@
-import gleeunit/should
 import domain/card
+import gleeunit/should
 
 // =============================================================================
 // State Derivation Tests

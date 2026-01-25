@@ -17,7 +17,7 @@
 //// - **http/tasks.gleam**: Constructs messages and interprets responses
 
 import domain/task_status
-import gleam/option.{type Option}
+import gleam/option.{type Option, None, Some}
 import pog
 import scrumbringer_server/persistence/tasks/mappers as tasks_mappers
 import scrumbringer_server/services/task_types_db
@@ -90,9 +90,9 @@ pub type Message {
 pub type TaskFilters {
   TaskFilters(
     status: Option(TaskStatus),
-    type_id: Int,
-    capability_id: Int,
-    q: String,
+    type_id: Option(Int),
+    capability_id: Option(Int),
+    q: Option(String),
   )
 }
 
@@ -110,9 +110,36 @@ pub fn task_status_to_db(status: TaskStatus) -> String {
   task_status.to_db_status(status)
 }
 
-/// Task update fields (sentinel values indicate no change).
+/// Task update fields (ADT-based, no sentinels).
 pub type TaskUpdates {
-  TaskUpdates(title: String, description: String, priority: Int, type_id: Int)
+  TaskUpdates(
+    title: FieldUpdate(String),
+    description: FieldUpdate(String),
+    priority: FieldUpdate(Int),
+    type_id: FieldUpdate(Int),
+  )
+}
+
+/// Field update ADT for partial updates.
+pub type FieldUpdate(a) {
+  Unset
+  Set(a)
+}
+
+/// Convert optional value to FieldUpdate.
+pub fn field_update_from_option(value: Option(a)) -> FieldUpdate(a) {
+  case value {
+    None -> Unset
+    Some(data) -> Set(data)
+  }
+}
+
+/// Convert FieldUpdate to optional value.
+pub fn field_update_to_option(value: FieldUpdate(a)) -> Option(a) {
+  case value {
+    Unset -> None
+    Set(data) -> Some(data)
+  }
 }
 
 // =============================================================================
@@ -173,6 +200,3 @@ pub type Error {
 
 /// Maximum allowed characters for task title.
 pub const max_task_title_chars = 56
-
-/// Sentinel value indicating an optional string field was not provided.
-pub const unset_string = "__unset__"

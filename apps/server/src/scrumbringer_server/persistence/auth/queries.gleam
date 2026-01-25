@@ -17,13 +17,13 @@
 //// - **registration.gleam**: Uses these queries for registration flows
 //// - **login.gleam**: Uses these queries for login flow
 
+import domain/org_role
 import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import pog
-import domain/org_role
 import scrumbringer_server/services/auth_logic
 import scrumbringer_server/services/store_state.{type StoredUser, StoredUser}
 

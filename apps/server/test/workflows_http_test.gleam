@@ -183,9 +183,7 @@ pub fn workflows_project_list_filters_scope_test() {
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/projects/"
-          <> int.to_string(default_project_id)
-          <> "/workflows",
+        "/api/v1/projects/" <> int.to_string(default_project_id) <> "/workflows",
       )
       |> request.set_cookie("sb_session", session)
       |> request.set_cookie("sb_csrf", csrf)

@@ -3,9 +3,9 @@
 //// Defines the data structures used by the in-memory store during
 //// development and testing. Production uses the PostgreSQL database.
 
+import domain/org_role.{type OrgRole}
 import gleam/dict
 import gleam/option.{type Option, None}
-import domain/org_role.{type OrgRole}
 
 /// An organization in the system.
 pub type Organization {

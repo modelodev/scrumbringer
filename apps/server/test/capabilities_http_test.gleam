@@ -502,11 +502,7 @@ fn get_default_project_id(db: pog.Connection) -> Int {
 }
 
 fn get_member_user_id(db: pog.Connection) -> Int {
-  single_int(
-    db,
-    "select id from users where email = 'member@example.com'",
-    [],
-  )
+  single_int(db, "select id from users where email = 'member@example.com'", [])
 }
 
 fn add_member_to_project(

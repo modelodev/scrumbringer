@@ -339,7 +339,8 @@ pub fn view_member_bar_task_row(
   let type_icon = opt.Some(task_type.icon)
 
   let disable_actions =
-    model.member.member_task_mutation_in_flight || model.member.member_now_working_in_flight
+    model.member.member_task_mutation_in_flight
+    || model.member.member_now_working_in_flight
 
   let claim_action =
     button(

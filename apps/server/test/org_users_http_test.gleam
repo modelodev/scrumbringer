@@ -229,11 +229,16 @@ pub fn add_user_to_project_with_role_test() {
   // Create a member user
   create_user_via_invite(handler, db, "member@example.com", "il_member", 1)
   let member_id =
-    single_int(db, "select id from users where email = 'member@example.com'", [])
+    single_int(
+      db,
+      "select id from users where email = 'member@example.com'",
+      [],
+    )
 
   // Create a project
   let project_id = insert_project(db, 1, "Test Project")
-  insert_project_member(db, project_id, 1, "manager")  // admin is manager
+  insert_project_member(db, project_id, 1, "manager")
+  // admin is manager
 
   // Add user to project as manager
   let req =
@@ -244,10 +249,12 @@ pub fn add_user_to_project_with_role_test() {
     |> request.set_cookie("sb_session", session)
     |> request.set_cookie("sb_csrf", csrf)
     |> request.set_header("X-CSRF", csrf)
-    |> simulate.json_body(json.object([
-      #("project_id", json.int(project_id)),
-      #("role", json.string("manager")),
-    ]))
+    |> simulate.json_body(
+      json.object([
+        #("project_id", json.int(project_id)),
+        #("role", json.string("manager")),
+      ]),
+    )
 
   let res = handler(req)
   res.status |> should.equal(200)
@@ -271,11 +278,16 @@ pub fn add_user_to_project_defaults_to_member_test() {
   // Create a member user
   create_user_via_invite(handler, db, "member2@example.com", "il_member2", 1)
   let member_id =
-    single_int(db, "select id from users where email = 'member2@example.com'", [])
+    single_int(
+      db,
+      "select id from users where email = 'member2@example.com'",
+      [],
+    )
 
   // Create a project
   let project_id = insert_project(db, 1, "Test Project 2")
-  insert_project_member(db, project_id, 1, "manager")  // admin is manager
+  insert_project_member(db, project_id, 1, "manager")
+  // admin is manager
 
   // Add user to project without specifying role
   let req =
@@ -286,9 +298,11 @@ pub fn add_user_to_project_defaults_to_member_test() {
     |> request.set_cookie("sb_session", session)
     |> request.set_cookie("sb_csrf", csrf)
     |> request.set_header("X-CSRF", csrf)
-    |> simulate.json_body(json.object([
-      #("project_id", json.int(project_id)),
-    ]))
+    |> simulate.json_body(
+      json.object([
+        #("project_id", json.int(project_id)),
+      ]),
+    )
 
   let res = handler(req)
   res.status |> should.equal(200)
@@ -312,11 +326,16 @@ pub fn update_user_project_role_test() {
   // Create a member user
   create_user_via_invite(handler, db, "pmember@example.com", "il_pmember", 1)
   let member_id =
-    single_int(db, "select id from users where email = 'pmember@example.com'", [])
+    single_int(
+      db,
+      "select id from users where email = 'pmember@example.com'",
+      [],
+    )
 
   // Create a project with admin as manager and member user as member
   let project_id = insert_project(db, 1, "Test Project 3")
-  insert_project_member(db, project_id, 1, "manager")  // admin is manager
+  insert_project_member(db, project_id, 1, "manager")
+  // admin is manager
   insert_project_member(db, project_id, member_id, "member")
 
   // Change member to manager
@@ -355,7 +374,8 @@ pub fn update_user_project_role_last_manager_test() {
 
   // Create a project with admin as the only manager
   let project_id = insert_project(db, 1, "Test Project 4")
-  insert_project_member(db, project_id, 1, "manager")  // admin is only manager
+  insert_project_member(db, project_id, 1, "manager")
+  // admin is only manager
 
   // Try to demote admin (last manager)
   let req =
@@ -388,13 +408,24 @@ pub fn update_user_project_role_not_member_test() {
   let csrf = find_cookie_value(login_res.headers, "sb_csrf")
 
   // Create a member user (NOT in the project)
-  create_user_via_invite(handler, db, "notmember@example.com", "il_notmember", 1)
+  create_user_via_invite(
+    handler,
+    db,
+    "notmember@example.com",
+    "il_notmember",
+    1,
+  )
   let member_id =
-    single_int(db, "select id from users where email = 'notmember@example.com'", [])
+    single_int(
+      db,
+      "select id from users where email = 'notmember@example.com'",
+      [],
+    )
 
   // Create a project
   let project_id = insert_project(db, 1, "Test Project 5")
-  insert_project_member(db, project_id, 1, "manager")  // admin is manager
+  insert_project_member(db, project_id, 1, "manager")
+  // admin is manager
 
   // Try to change role for non-member
   let req =

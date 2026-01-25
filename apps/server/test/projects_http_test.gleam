@@ -304,7 +304,14 @@ pub fn org_admin_can_change_member_to_manager_test() {
       [],
     )
 
-  add_member(handler, admin_session, admin_csrf, project_id, member_id, "member")
+  add_member(
+    handler,
+    admin_session,
+    admin_csrf,
+    project_id,
+    member_id,
+    "member",
+  )
 
   // Promote member to manager
   let req =

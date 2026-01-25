@@ -14,9 +14,9 @@
 //// conflict_handlers.handle_version_or_claim_conflict(db, task_id, user_id)
 //// ```
 
+import domain/task_status.{Available, Claimed, Completed}
 import gleam/option.{Some}
 import pog
-import domain/task_status.{Available, Claimed, Completed}
 import scrumbringer_server/http/api
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
 import wisp

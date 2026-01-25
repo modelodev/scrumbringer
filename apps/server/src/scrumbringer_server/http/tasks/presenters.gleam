@@ -14,11 +14,11 @@
 //// let json = presenters.task_type_json(task_type)
 //// ```
 
-import gleam/json
-import gleam/option.{type Option, None, Some}
 import domain/task_status.{
   type TaskStatus, Available, Claimed, Completed, Ongoing, Taken,
 }
+import gleam/json
+import gleam/option.{type Option, None, Some}
 import helpers/json as json_helpers
 import scrumbringer_server/persistence/tasks/mappers.{type Task, Task}
 import scrumbringer_server/services/task_types_db

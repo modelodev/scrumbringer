@@ -108,7 +108,8 @@ pub fn view(model: Model) -> Element(Msg) {
 fn view_session(model: Model, session: WorkSession) -> Element(Msg) {
   let WorkSession(task_id: task_id, ..) = session
 
-  let task_info = update_helpers.find_task_by_id(model.member.member_tasks, task_id)
+  let task_info =
+    update_helpers.find_task_by_id(model.member.member_tasks, task_id)
   let title = case task_info {
     opt.Some(Task(title: t, ..)) -> t
     opt.None -> update_helpers.i18n_t(model, i18n_text.TaskNumber(task_id))
@@ -116,7 +117,8 @@ fn view_session(model: Model, session: WorkSession) -> Element(Msg) {
 
   let elapsed = session_elapsed(model, session)
   let disable_actions =
-    model.member.member_task_mutation_in_flight || model.member.member_now_working_in_flight
+    model.member.member_task_mutation_in_flight
+    || model.member.member_now_working_in_flight
 
   div([attribute.class("now-working-session-item")], [
     div([attribute.class("now-working-task-title")], [text(title)]),

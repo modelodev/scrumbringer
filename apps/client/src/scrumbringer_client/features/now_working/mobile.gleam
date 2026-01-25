@@ -183,7 +183,8 @@ fn view_session_row(model: Model, session: SessionInfo) -> Element(Msg) {
     version: version,
   ) = session
   let disable_actions =
-    model.member.member_task_mutation_in_flight || model.member.member_now_working_in_flight
+    model.member.member_task_mutation_in_flight
+    || model.member.member_now_working_in_flight
 
   div([attribute.class("session-row")], [
     span([attribute.class("session-icon")], [
@@ -226,7 +227,8 @@ fn view_claimed_row(model: Model, task: Task) -> Element(Msg) {
   let Task(id: id, title: title, task_type: task_type, version: version, ..) =
     task
   let disable_actions =
-    model.member.member_task_mutation_in_flight || model.member.member_now_working_in_flight
+    model.member.member_task_mutation_in_flight
+    || model.member.member_now_working_in_flight
 
   div([attribute.class("claimed-row")], [
     span([attribute.class("claimed-icon")], [

@@ -17,21 +17,17 @@
 //// - **types.gleam**: Uses Error and Response types
 //// - **handlers.gleam**: Calls these validators before operations
 
-import gleam/option.{type Option, None, Some}
-import gleam/string
+import gleam/option.{type Option}
 import pog
-import scrumbringer_server/services/capabilities_db
-import scrumbringer_server/services/task_types_db
 import scrumbringer_server/services/workflows/types.{
-  type Error, type Response, DbError, ValidationError,
+  type Error, type FieldUpdate, type Response, DbError, Set, Unset,
+  ValidationError,
 }
+import scrumbringer_server/services/workflows/validation_core
 
 // =============================================================================
 // Constants
 // =============================================================================
-
-/// Maximum allowed characters for task title.
-const max_task_title_chars = 56
 
 // =============================================================================
 // Validation Helpers
@@ -42,15 +38,10 @@ pub fn validate_task_title(
   title: String,
   next: fn(String) -> Result(Response, Error),
 ) -> Result(Response, Error) {
-  let title = string.trim(title)
-
-  case title == "" {
-    True -> Error(ValidationError("Title is required"))
-    False ->
-      case string.length(title) <= max_task_title_chars {
-        True -> next(title)
-        False -> Error(ValidationError("Title too long (max 56 characters)"))
-      }
+  case validation_core.validate_task_title_value(title) {
+    Ok(value) -> next(value)
+    Error(validation_core.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(validation_core.DbError(e)) -> Error(DbError(e))
   }
 }
 
@@ -59,20 +50,27 @@ pub fn validate_priority(
   priority: Int,
   next: fn(Nil) -> Result(Response, Error),
 ) -> Result(Response, Error) {
-  case priority >= 1 && priority <= 5 {
-    True -> next(Nil)
-    False -> Error(ValidationError("Invalid priority"))
+  case validation_core.validate_priority_value(priority) {
+    Ok(Nil) -> next(Nil)
+    Error(validation_core.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(validation_core.DbError(e)) -> Error(DbError(e))
   }
 }
 
-/// Validate optional priority (-1 means unset, otherwise 1-5).
+/// Validate optional priority (Unset means no update).
 pub fn validate_optional_priority(
-  priority: Int,
+  priority: FieldUpdate(Int),
   next: fn(Nil) -> Result(Response, Error),
 ) -> Result(Response, Error) {
   case priority {
-    -1 -> next(Nil)
-    _ -> validate_priority(priority, next)
+    Unset -> next(Nil)
+    Set(value) ->
+      case validation_core.validate_priority_value(value) {
+        Ok(Nil) -> next(Nil)
+        Error(validation_core.ValidationError(msg)) ->
+          Error(ValidationError(msg))
+        Error(validation_core.DbError(e)) -> Error(DbError(e))
+      }
   }
 }
 
@@ -83,23 +81,31 @@ pub fn validate_task_type_in_project(
   project_id: Int,
   next: fn(Nil) -> Result(Response, Error),
 ) -> Result(Response, Error) {
-  case task_types_db.is_task_type_in_project(db, type_id, project_id) {
-    Ok(True) -> next(Nil)
-    Ok(False) -> Error(ValidationError("Invalid type_id"))
-    Error(e) -> Error(DbError(e))
+  case validation_core.validate_task_type_in_project(db, type_id, project_id) {
+    Ok(Nil) -> next(Nil)
+    Error(validation_core.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(validation_core.DbError(e)) -> Error(DbError(e))
   }
 }
 
-/// Validate type update (-1 means unset, otherwise validate).
+/// Validate type update (Unset means no update).
 pub fn validate_type_update(
   db: pog.Connection,
-  type_id: Int,
+  type_id: FieldUpdate(Int),
   project_id: Int,
   next: fn(Nil) -> Result(Response, Error),
 ) -> Result(Response, Error) {
   case type_id {
-    -1 -> next(Nil)
-    id -> validate_task_type_in_project(db, id, project_id, next)
+    Unset -> next(Nil)
+    Set(value) ->
+      case
+        validation_core.validate_task_type_in_project(db, value, project_id)
+      {
+        Ok(Nil) -> next(Nil)
+        Error(validation_core.ValidationError(msg)) ->
+          Error(ValidationError(msg))
+        Error(validation_core.DbError(e)) -> Error(DbError(e))
+      }
   }
 }
 
@@ -110,14 +116,16 @@ pub fn validate_capability_in_project(
   project_id: Int,
   next: fn(Nil) -> Result(Response, Error),
 ) -> Result(Response, Error) {
-  case capability_id {
-    None -> next(Nil)
-
-    Some(id) ->
-      case capabilities_db.capability_is_in_project(db, id, project_id) {
-        Ok(True) -> next(Nil)
-        Ok(False) -> Error(ValidationError("Invalid capability_id"))
-        Error(_) -> Error(ValidationError("Invalid capability_id"))
-      }
+  case
+    validation_core.validate_capability_in_project(
+      db,
+      capability_id,
+      project_id,
+    )
+  {
+    Ok(Nil) -> next(Nil)
+    Error(validation_core.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(validation_core.DbError(_)) ->
+      Error(ValidationError("Invalid capability_id"))
   }
 }

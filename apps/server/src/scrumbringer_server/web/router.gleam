@@ -168,24 +168,36 @@ pub fn route(req: wisp.Request, ctx: RouterCtx) -> wisp.Response {
     // Capabilities routes (project-scoped)
     ["api", "v1", "projects", project_id, "capabilities"] ->
       case int.parse(project_id) {
-        Ok(pid) -> capabilities.handle_project_capabilities(req, auth_ctx(ctx), pid)
+        Ok(pid) ->
+          capabilities.handle_project_capabilities(req, auth_ctx(ctx), pid)
         Error(_) -> wisp.not_found()
       }
     ["api", "v1", "projects", project_id, "members", user_id, "capabilities"] ->
       case int.parse(project_id), int.parse(user_id) {
-        Ok(pid), Ok(uid) -> capabilities.handle_member_capabilities(req, auth_ctx(ctx), pid, uid)
+        Ok(pid), Ok(uid) ->
+          capabilities.handle_member_capabilities(req, auth_ctx(ctx), pid, uid)
         _, _ -> wisp.not_found()
       }
     // Reverse direction: capability → members (Story 4.7 AC20-21)
-    ["api", "v1", "projects", project_id, "capabilities", capability_id, "members"] ->
+    [
+      "api",
+      "v1",
+      "projects",
+      project_id,
+      "capabilities",
+      capability_id,
+      "members",
+    ] ->
       case int.parse(project_id), int.parse(capability_id) {
-        Ok(pid), Ok(cid) -> capabilities.handle_capability_members(req, auth_ctx(ctx), pid, cid)
+        Ok(pid), Ok(cid) ->
+          capabilities.handle_capability_members(req, auth_ctx(ctx), pid, cid)
         _, _ -> wisp.not_found()
       }
     // Single capability operations (DELETE) - Story 4.9 AC9
     ["api", "v1", "projects", project_id, "capabilities", capability_id] ->
       case int.parse(project_id), int.parse(capability_id) {
-        Ok(pid), Ok(cid) -> capabilities.handle_capability(req, auth_ctx(ctx), pid, cid)
+        Ok(pid), Ok(cid) ->
+          capabilities.handle_capability(req, auth_ctx(ctx), pid, cid)
         _, _ -> wisp.not_found()
       }
 

@@ -10,6 +10,8 @@
 //// - Update user roles (admin only)
 //// - Remove users from organizations
 
+import domain/org_role
+import domain/project_role
 import gleam/dynamic/decode
 import gleam/http
 import gleam/int
@@ -17,7 +19,6 @@ import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import pog
-import domain/org_role
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
@@ -64,7 +65,7 @@ fn handle_update(
       case decode.run(data, decoder) {
         Error(_) -> api.error(422, "VALIDATION_ERROR", "Invalid JSON")
 
-        Ok(new_role) -> {
+        Ok(new_role_value) -> {
           case auth.require_current_user(req, ctx) {
             Error(_) ->
               api.error(401, "AUTH_REQUIRED", "Authentication required")
@@ -83,32 +84,43 @@ fn handle_update(
                     Ok(Nil) -> {
                       let auth.Ctx(db: db, ..) = ctx
 
-                      case
-                        org_users_db.update_org_role(
-                          db,
-                          user.org_id,
-                          target_user_id,
-                          new_role,
-                        )
-                      {
-                        Ok(updated) ->
-                          api.ok(json.object([#("user", user_json(updated))]))
+                      case org_role.parse(new_role_value) {
+                        Ok(new_role) ->
+                          case
+                            org_users_db.update_org_role(
+                              db,
+                              user.org_id,
+                              target_user_id,
+                              new_role,
+                            )
+                          {
+                            Ok(updated) ->
+                              api.ok(
+                                json.object([#("user", user_json(updated))]),
+                              )
 
-                        Error(org_users_db.InvalidRole) ->
+                            Error(org_users_db.InvalidRole) ->
+                              api.error(
+                                422,
+                                "VALIDATION_ERROR",
+                                "Invalid org_role",
+                              )
+
+                            Error(org_users_db.UserNotFound) ->
+                              api.error(404, "NOT_FOUND", "User not found")
+
+                            Error(org_users_db.CannotDemoteLastAdmin) ->
+                              api.error(
+                                409,
+                                "CONFLICT_LAST_ORG_ADMIN",
+                                "Cannot demote last org admin",
+                              )
+
+                            Error(org_users_db.DbError(_)) ->
+                              api.error(500, "INTERNAL", "Database error")
+                          }
+                        Error(_) ->
                           api.error(422, "VALIDATION_ERROR", "Invalid org_role")
-
-                        Error(org_users_db.UserNotFound) ->
-                          api.error(404, "NOT_FOUND", "User not found")
-
-                        Error(org_users_db.CannotDemoteLastAdmin) ->
-                          api.error(
-                            409,
-                            "CONFLICT_LAST_ORG_ADMIN",
-                            "Cannot demote last org admin",
-                          )
-
-                        Error(org_users_db.DbError(_)) ->
-                          api.error(500, "INTERNAL", "Database error")
                       }
                     }
                   }
@@ -213,14 +225,14 @@ fn user_json(user: org_users_db.OrgUser) -> json.Json {
   let org_users_db.OrgUser(
     id: id,
     email: email,
-    org_role: org_role,
+    org_role: role,
     created_at: created_at,
   ) = user
 
   json.object([
     #("id", json.int(id)),
     #("email", json.string(email)),
-    #("org_role", json.string(org_role)),
+    #("org_role", json.string(org_role.to_string(role))),
     #("created_at", json.string(created_at)),
   ])
 }
@@ -250,7 +262,8 @@ pub fn handle_user_project(
   project_id: String,
 ) -> wisp.Response {
   case req.method {
-    http.Delete -> handle_remove_user_from_project(req, ctx, user_id, project_id)
+    http.Delete ->
+      handle_remove_user_from_project(req, ctx, user_id, project_id)
     http.Patch -> handle_update_user_project_role(req, ctx, user_id, project_id)
     _ -> wisp.method_not_allowed([http.Delete, http.Patch])
   }
@@ -291,7 +304,12 @@ fn handle_list_user_projects(
               }
             }
 
-            _ -> api.error(403, "FORBIDDEN", "Only org admins can manage user projects")
+            _ ->
+              api.error(
+                403,
+                "FORBIDDEN",
+                "Only org admins can manage user projects",
+              )
           }
         }
       }
@@ -317,58 +335,98 @@ fn handle_add_user_to_project(
       }
 
       case decode.run(data, decoder) {
-        Error(_) -> api.error(422, "VALIDATION_ERROR", "Invalid JSON: project_id required")
+        Error(_) ->
+          api.error(
+            422,
+            "VALIDATION_ERROR",
+            "Invalid JSON: project_id required",
+          )
 
-        Ok(#(project_id, role)) -> {
+        Ok(#(project_id, role_value)) -> {
           case auth.require_current_user(req, ctx) {
-            Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+            Error(_) ->
+              api.error(401, "AUTH_REQUIRED", "Authentication required")
 
             Ok(user) -> {
               case user.org_role {
                 org_role.Admin -> {
                   case csrf.require_double_submit(req) {
                     Error(_) ->
-                      api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+                      api.error(
+                        403,
+                        "FORBIDDEN",
+                        "CSRF token missing or invalid",
+                      )
 
                     Ok(Nil) -> {
                       let auth.Ctx(db: db, ..) = ctx
 
-                      case projects_db.add_member(db, project_id, target_user_id, role) {
-                        Ok(member) -> {
-                          let project_name = get_project_name(db, project_id)
-                          api.ok(
-                            json.object([
-                              #(
-                                "project",
-                                project_member_json(project_id, project_name, member),
-                              ),
-                            ]),
-                          )
-                        }
+                      case project_role.parse(role_value) {
+                        Ok(role) ->
+                          case
+                            projects_db.add_member(
+                              db,
+                              project_id,
+                              target_user_id,
+                              role,
+                            )
+                          {
+                            Ok(member) -> {
+                              let project_name =
+                                get_project_name(db, project_id)
+                              api.ok(
+                                json.object([
+                                  #(
+                                    "project",
+                                    project_member_json(
+                                      project_id,
+                                      project_name,
+                                      member,
+                                    ),
+                                  ),
+                                ]),
+                              )
+                            }
 
-                        Error(projects_db.ProjectNotFound) ->
-                          api.error(404, "NOT_FOUND", "Project not found")
+                            Error(projects_db.ProjectNotFound) ->
+                              api.error(404, "NOT_FOUND", "Project not found")
 
-                        Error(projects_db.TargetUserNotFound) ->
-                          api.error(404, "NOT_FOUND", "User not found")
+                            Error(projects_db.TargetUserNotFound) ->
+                              api.error(404, "NOT_FOUND", "User not found")
 
-                        Error(projects_db.TargetUserWrongOrg) ->
-                          api.error(403, "FORBIDDEN", "User not in same organization")
+                            Error(projects_db.TargetUserWrongOrg) ->
+                              api.error(
+                                403,
+                                "FORBIDDEN",
+                                "User not in same organization",
+                              )
 
-                        Error(projects_db.AlreadyMember) ->
-                          api.error(409, "CONFLICT", "User is already a member of this project")
+                            Error(projects_db.AlreadyMember) ->
+                              api.error(
+                                409,
+                                "CONFLICT",
+                                "User is already a member of this project",
+                              )
 
-                        Error(projects_db.InvalidRole) ->
+                            Error(projects_db.InvalidRole) ->
+                              api.error(422, "VALIDATION_ERROR", "Invalid role")
+
+                            Error(projects_db.DbError(_)) ->
+                              api.error(500, "INTERNAL", "Database error")
+                          }
+                        Error(_) ->
                           api.error(422, "VALIDATION_ERROR", "Invalid role")
-
-                        Error(projects_db.DbError(_)) ->
-                          api.error(500, "INTERNAL", "Database error")
                       }
                     }
                   }
                 }
 
-                _ -> api.error(403, "FORBIDDEN", "Only org admins can add users to projects")
+                _ ->
+                  api.error(
+                    403,
+                    "FORBIDDEN",
+                    "Only org admins can add users to projects",
+                  )
               }
             }
           }
@@ -402,14 +460,20 @@ fn handle_remove_user_from_project(
                 Ok(Nil) -> {
                   let auth.Ctx(db: db, ..) = ctx
 
-                  case projects_db.remove_member(db, project_id, target_user_id) {
+                  case
+                    projects_db.remove_member(db, project_id, target_user_id)
+                  {
                     Ok(Nil) -> api.ok(json.object([]))
 
                     Error(projects_db.MembershipNotFound) ->
                       api.error(404, "NOT_FOUND", "Membership not found")
 
                     Error(projects_db.CannotRemoveLastManager) ->
-                      api.error(409, "CONFLICT", "Cannot remove last project admin")
+                      api.error(
+                        409,
+                        "CONFLICT",
+                        "Cannot remove last project admin",
+                      )
 
                     Error(projects_db.RemoveDbError(_)) ->
                       api.error(500, "INTERNAL", "Database error")
@@ -418,7 +482,12 @@ fn handle_remove_user_from_project(
               }
             }
 
-            _ -> api.error(403, "FORBIDDEN", "Only org admins can remove users from projects")
+            _ ->
+              api.error(
+                403,
+                "FORBIDDEN",
+                "Only org admins can remove users from projects",
+              )
           }
         }
       }
@@ -445,62 +514,102 @@ fn handle_update_user_project_role(
       }
 
       case decode.run(data, decoder) {
-        Error(_) -> api.error(422, "VALIDATION_ERROR", "Invalid JSON: role required")
+        Error(_) ->
+          api.error(422, "VALIDATION_ERROR", "Invalid JSON: role required")
 
-        Ok(new_role) -> {
+        Ok(role_value) -> {
           case auth.require_current_user(req, ctx) {
-            Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+            Error(_) ->
+              api.error(401, "AUTH_REQUIRED", "Authentication required")
 
             Ok(user) -> {
               case user.org_role {
                 org_role.Admin -> {
                   case csrf.require_double_submit(req) {
                     Error(_) ->
-                      api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+                      api.error(
+                        403,
+                        "FORBIDDEN",
+                        "CSRF token missing or invalid",
+                      )
 
                     Ok(Nil) -> {
                       let auth.Ctx(db: db, ..) = ctx
 
-                      case projects_db.update_member_role(db, project_id, target_user_id, new_role) {
-                        Ok(projects_db.RoleUpdated(
-                          user_id: _,
-                          email: _,
-                          role: role,
-                          previous_role: previous_role,
-                        )) -> {
-                          let project_name = get_project_name(db, project_id)
-                          api.ok(
-                            json.object([
-                              #(
-                                "project",
+                      case project_role.parse(role_value) {
+                        Ok(new_role) ->
+                          case
+                            projects_db.update_member_role(
+                              db,
+                              project_id,
+                              target_user_id,
+                              new_role,
+                            )
+                          {
+                            Ok(projects_db.RoleUpdated(
+                              user_id: _,
+                              email: _,
+                              role: role,
+                              previous_role: previous_role,
+                            )) -> {
+                              let project_name =
+                                get_project_name(db, project_id)
+                              api.ok(
                                 json.object([
-                                  #("id", json.int(project_id)),
-                                  #("name", json.string(project_name)),
-                                  #("role", json.string(role)),
-                                  #("previous_role", json.string(previous_role)),
+                                  #(
+                                    "project",
+                                    json.object([
+                                      #("id", json.int(project_id)),
+                                      #("name", json.string(project_name)),
+                                      #(
+                                        "role",
+                                        json.string(project_role.to_string(role)),
+                                      ),
+                                      #(
+                                        "previous_role",
+                                        json.string(project_role.to_string(
+                                          previous_role,
+                                        )),
+                                      ),
+                                    ]),
+                                  ),
                                 ]),
-                              ),
-                            ]),
-                          )
-                        }
+                              )
+                            }
 
-                        Error(projects_db.UpdateMemberNotFound) ->
-                          api.error(404, "NOT_FOUND", "User is not a member of this project")
+                            Error(projects_db.UpdateMemberNotFound) ->
+                              api.error(
+                                404,
+                                "NOT_FOUND",
+                                "User is not a member of this project",
+                              )
 
-                        Error(projects_db.UpdateLastManager) ->
-                          api.error(422, "LAST_MANAGER", "Cannot demote the last project manager")
+                            Error(projects_db.UpdateLastManager) ->
+                              api.error(
+                                422,
+                                "LAST_MANAGER",
+                                "Cannot demote the last project manager",
+                              )
 
-                        Error(projects_db.UpdateInvalidRole) ->
+                            Error(projects_db.UpdateInvalidRole) ->
+                              api.error(422, "VALIDATION_ERROR", "Invalid role")
+
+                            Error(projects_db.UpdateDbError(_)) ->
+                              api.error(500, "INTERNAL", "Database error")
+                          }
+                        Error(_) ->
                           api.error(422, "VALIDATION_ERROR", "Invalid role")
-
-                        Error(projects_db.UpdateDbError(_)) ->
-                          api.error(500, "INTERNAL", "Database error")
                       }
                     }
                   }
                 }
 
-                _ -> api.error(403, "FORBIDDEN", "Only org admins can change user project roles")
+                _ ->
+                  api.error(
+                    403,
+                    "FORBIDDEN",
+                    "Only org admins can change user project roles",
+                  )
               }
             }
           }
@@ -523,8 +632,7 @@ fn verify_same_org(
       }
     Ok(pog.Returned(rows: [], ..)) ->
       Error(api.error(404, "NOT_FOUND", "User not found"))
-    Error(_) ->
-      Error(api.error(500, "INTERNAL", "Database error"))
+    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
   }
 }
 
@@ -532,7 +640,7 @@ fn project_json(project: projects_db.Project) -> json.Json {
   json.object([
     #("id", json.int(project.id)),
     #("name", json.string(project.name)),
-    #("role", json.string(project.my_role)),
+    #("role", json.string(project_role.to_string(project.my_role))),
   ])
 }
 
@@ -544,7 +652,7 @@ fn project_member_json(
   json.object([
     #("id", json.int(project_id)),
     #("name", json.string(project_name)),
-    #("role", json.string(member.role)),
+    #("role", json.string(project_role.to_string(member.role))),
   ])
 }
 

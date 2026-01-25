@@ -208,4 +208,3 @@ pub fn get_project_metrics_summary(
     })
   })
 }
-

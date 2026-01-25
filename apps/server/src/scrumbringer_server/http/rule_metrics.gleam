@@ -75,10 +75,7 @@ pub fn handle_rule_executions(
   }
 }
 
-pub fn handle_org_metrics(
-  req: wisp.Request,
-  ctx: auth.Ctx,
-) -> wisp.Response {
+pub fn handle_org_metrics(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   case req.method {
     http.Get -> get_org_metrics(req, ctx)
     _ -> wisp.method_not_allowed([http.Get])
@@ -117,11 +114,13 @@ fn get_workflow_metrics(
 
           case workflows_db.get_workflow(db, workflow_id) {
             Ok(workflow) ->
-              case authorization.require_project_manager_with_org_bypass(
+              case
+                authorization.require_project_manager_with_org_bypass(
                   db,
                   user,
                   workflow.project_id,
-                ) {
+                )
+              {
                 Error(resp) -> resp
                 Ok(Nil) ->
                   case parse_date_range(req) {
@@ -186,7 +185,8 @@ fn get_rule_metrics(
                   case parse_date_range(req) {
                     Error(resp) -> resp
                     Ok(#(from, to)) ->
-                      case rule_metrics_db.get_rule_metrics(db, rule_id, from, to)
+                      case
+                        rule_metrics_db.get_rule_metrics(db, rule_id, from, to)
                       {
                         Ok(Some(metrics)) ->
                           api.ok(
@@ -199,7 +199,10 @@ fn get_rule_metrics(
                                 "evaluated_count",
                                 json.int(metrics.evaluated_count),
                               ),
-                              #("applied_count", json.int(metrics.applied_count)),
+                              #(
+                                "applied_count",
+                                json.int(metrics.applied_count),
+                              ),
                               #(
                                 "suppressed_count",
                                 json.int(metrics.suppressed_count),
@@ -229,8 +232,7 @@ fn get_rule_metrics(
                           )
                         Ok(None) ->
                           api.error(404, "NOT_FOUND", "Rule not found")
-                        Error(_) ->
-                          api.error(500, "INTERNAL", "Database error")
+                        Error(_) -> api.error(500, "INTERNAL", "Database error")
                       }
                   }
               }
@@ -433,11 +435,13 @@ fn workflow_from_rule(
 ) -> Result(workflows_db.Workflow, wisp.Response) {
   case workflows_db.get_workflow(db, rule.workflow_id) {
     Ok(workflow) ->
-      case authorization.require_project_manager_with_org_bypass(
-                  db,
-                  user,
-                  workflow.project_id,
-                ) {
+      case
+        authorization.require_project_manager_with_org_bypass(
+          db,
+          user,
+          workflow.project_id,
+        )
+      {
         Ok(Nil) -> Ok(workflow)
         Error(resp) -> Error(resp)
       }
@@ -521,7 +525,9 @@ fn timestamp_to_string(ts: Timestamp) -> String {
 // JSON Serialization
 // =============================================================================
 
-fn rule_metrics_summary_json(metrics: rule_metrics_db.RuleMetricsSummary) -> json.Json {
+fn rule_metrics_summary_json(
+  metrics: rule_metrics_db.RuleMetricsSummary,
+) -> json.Json {
   json.object([
     #("rule_id", json.int(metrics.rule_id)),
     #("rule_name", json.string(metrics.rule_name)),
@@ -532,7 +538,9 @@ fn rule_metrics_summary_json(metrics: rule_metrics_db.RuleMetricsSummary) -> jso
   ])
 }
 
-fn workflow_summary_json(summary: rule_metrics_db.WorkflowMetricsSummary) -> json.Json {
+fn workflow_summary_json(
+  summary: rule_metrics_db.WorkflowMetricsSummary,
+) -> json.Json {
   json.object([
     #("workflow_id", json.int(summary.workflow_id)),
     #("workflow_name", json.string(summary.workflow_name)),

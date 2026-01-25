@@ -88,7 +88,11 @@ pub fn delete_capability(
   project_id: Int,
   capability_id: Int,
 ) -> Result(Bool, pog.QueryError) {
-  use returned <- result.try(sql.capabilities_delete(db, capability_id, project_id))
+  use returned <- result.try(sql.capabilities_delete(
+    db,
+    capability_id,
+    project_id,
+  ))
   Ok(returned.count > 0)
 }
 
@@ -98,7 +102,11 @@ pub fn capability_is_in_project(
   capability_id: Int,
   project_id: Int,
 ) -> Result(Bool, pog.QueryError) {
-  use returned <- result.try(sql.capabilities_is_in_project(db, capability_id, project_id))
+  use returned <- result.try(sql.capabilities_is_in_project(
+    db,
+    capability_id,
+    project_id,
+  ))
   case returned.rows {
     [row, ..] -> Ok(row.ok)
     [] -> Ok(False)
@@ -111,7 +119,11 @@ pub fn list_member_capabilities(
   project_id: Int,
   user_id: Int,
 ) -> Result(List(ProjectMemberCapability), pog.QueryError) {
-  use returned <- result.try(sql.project_member_capabilities_list(db, project_id, user_id))
+  use returned <- result.try(sql.project_member_capabilities_list(
+    db,
+    project_id,
+    user_id,
+  ))
 
   returned.rows
   |> list.map(fn(row) {
@@ -132,7 +144,12 @@ pub fn add_member_capability(
   user_id: Int,
   capability_id: Int,
 ) -> Result(Nil, pog.QueryError) {
-  use _ <- result.try(sql.project_member_capabilities_insert(db, project_id, user_id, capability_id))
+  use _ <- result.try(sql.project_member_capabilities_insert(
+    db,
+    project_id,
+    user_id,
+    capability_id,
+  ))
   Ok(Nil)
 }
 
@@ -143,7 +160,12 @@ pub fn remove_member_capability(
   user_id: Int,
   capability_id: Int,
 ) -> Result(Bool, pog.QueryError) {
-  use returned <- result.try(sql.project_member_capabilities_delete(db, project_id, user_id, capability_id))
+  use returned <- result.try(sql.project_member_capabilities_delete(
+    db,
+    project_id,
+    user_id,
+    capability_id,
+  ))
   Ok(returned.count > 0)
 }
 
@@ -153,7 +175,11 @@ pub fn remove_all_member_capabilities(
   project_id: Int,
   user_id: Int,
 ) -> Result(Nil, pog.QueryError) {
-  use _ <- result.try(sql.project_member_capabilities_delete_all(db, project_id, user_id))
+  use _ <- result.try(sql.project_member_capabilities_delete_all(
+    db,
+    project_id,
+    user_id,
+  ))
   Ok(Nil)
 }
 
@@ -172,7 +198,11 @@ pub fn list_capability_members(
   project_id: Int,
   capability_id: Int,
 ) -> Result(List(CapabilityMember), pog.QueryError) {
-  use returned <- result.try(sql.capability_members_list(db, project_id, capability_id))
+  use returned <- result.try(sql.capability_members_list(
+    db,
+    project_id,
+    capability_id,
+  ))
 
   returned.rows
   |> list.map(fn(row) {
@@ -191,6 +221,10 @@ pub fn remove_all_capability_members(
   project_id: Int,
   capability_id: Int,
 ) -> Result(Nil, pog.QueryError) {
-  use _ <- result.try(sql.capability_members_delete_all(db, project_id, capability_id))
+  use _ <- result.try(sql.capability_members_delete_all(
+    db,
+    project_id,
+    capability_id,
+  ))
   Ok(Nil)
 }

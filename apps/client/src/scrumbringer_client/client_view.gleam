@@ -632,7 +632,9 @@ fn build_center_panel(model: Model, user: User) -> Element(Msg) {
     task_types: task_types,
     capabilities: capabilities,
     type_filter: parse_filter_id(model.member.member_filters_type_id),
-    capability_filter: parse_filter_id(model.member.member_filters_capability_id),
+    capability_filter: parse_filter_id(
+      model.member.member_filters_capability_id,
+    ),
     search_query: model.member.member_filters_q,
     on_type_filter_change: fn(value) { pool_msg(MemberPoolTypeChanged(value)) },
     on_capability_filter_change: fn(value) {
@@ -714,7 +716,8 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
       // Calculate elapsed time
       let started_ms = client_ffi.parse_iso_ms(started_at)
       let local_now_ms = client_ffi.now_ms()
-      let server_now_ms = local_now_ms - model.member.now_working_server_offset_ms
+      let server_now_ms =
+        local_now_ms - model.member.now_working_server_offset_ms
       let elapsed =
         update_helpers.now_working_elapsed_from_ms(
           accumulated_s,
@@ -882,7 +885,8 @@ fn view_claimed_task_row(
     task
   let is_active = active_task_id == opt.Some(id)
   let disable_actions =
-    model.member.member_task_mutation_in_flight || model.member.member_now_working_in_flight
+    model.member.member_task_mutation_in_flight
+    || model.member.member_now_working_in_flight
 
   let start_or_pause = case is_active {
     True ->
@@ -922,7 +926,11 @@ fn view_claimed_task_row(
     element.fragment([
       div([attribute.class("task-row-title")], [
         span([attribute.attribute("style", "margin-right: 6px;")], [
-          admin_view.view_task_type_icon_inline(task_type.icon, 16, model.ui.theme),
+          admin_view.view_task_type_icon_inline(
+            task_type.icon,
+            16,
+            model.ui.theme,
+          ),
         ]),
         text(title),
       ]),

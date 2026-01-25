@@ -17,9 +17,8 @@ import gleam/result
 import gleam/string
 import pog
 import scrumbringer_server
-import scrumbringer_server/services/rules_engine.{
-  type StateChangeEvent, Card, StateChangeEvent, Task,
-}
+import scrumbringer_server/services/rules_engine
+import scrumbringer_server/services/rules_target
 import wisp
 import wisp/simulate
 
@@ -101,14 +100,22 @@ pub fn bootstrap() -> Result(
     }
     status ->
       Error(
-        "Bootstrap failed: status=" <> int.to_string(status) <> " body=" <> simulate.read_body(res),
+        "Bootstrap failed: status="
+        <> int.to_string(status)
+        <> " body="
+        <> simulate.read_body(res),
       )
   }
 }
 
 /// Extract session and CSRF tokens from response headers.
-pub fn extract_session(headers: List(#(String, String))) -> Result(Session, String) {
-  case find_cookie_value(headers, "sb_session"), find_cookie_value(headers, "sb_csrf") {
+pub fn extract_session(
+  headers: List(#(String, String)),
+) -> Result(Session, String) {
+  case
+    find_cookie_value(headers, "sb_session"),
+    find_cookie_value(headers, "sb_csrf")
+  {
     Some(token), Some(csrf) -> Ok(Session(token: token, csrf: csrf))
     None, _ -> Error("Missing sb_session cookie")
     _, None -> Error("Missing sb_csrf cookie")
@@ -160,7 +167,9 @@ pub fn create_member_user(
     |> pog.parameter(pog.text(email))
     |> pog.parameter(pog.text(invite_code))
     |> pog.execute(db)
-    |> result.map_error(fn(e) { "Failed to insert invite: " <> string.inspect(e) }),
+    |> result.map_error(fn(e) {
+      "Failed to insert invite: " <> string.inspect(e)
+    }),
   )
 
   // Register user
@@ -205,7 +214,12 @@ pub fn create_project(
     200 -> decode_entity_id(simulate.read_body(res), Project)
     status ->
       Error(
-        "create_project failed: status=" <> int.to_string(status) <> " name=" <> name <> " body=" <> simulate.read_body(res),
+        "create_project failed: status="
+        <> int.to_string(status)
+        <> " name="
+        <> name
+        <> " body="
+        <> simulate.read_body(res),
       )
   }
 }
@@ -237,7 +251,12 @@ pub fn create_task_type(
     200 -> decode_entity_id(simulate.read_body(res), TaskType)
     status ->
       Error(
-        "create_task_type failed: status=" <> int.to_string(status) <> " name=" <> name <> " body=" <> simulate.read_body(res),
+        "create_task_type failed: status="
+        <> int.to_string(status)
+        <> " name="
+        <> name
+        <> " body="
+        <> simulate.read_body(res),
       )
   }
 }
@@ -269,7 +288,12 @@ pub fn create_workflow(
     200 -> decode_entity_id(simulate.read_body(res), Workflow)
     status ->
       Error(
-        "create_workflow failed: status=" <> int.to_string(status) <> " name=" <> name <> " body=" <> simulate.read_body(res),
+        "create_workflow failed: status="
+        <> int.to_string(status)
+        <> " name="
+        <> name
+        <> " body="
+        <> simulate.read_body(res),
       )
   }
 }
@@ -353,7 +377,12 @@ fn do_create_rule(
     200 -> decode_entity_id(simulate.read_body(res), Rule)
     status ->
       Error(
-        "create_rule failed: status=" <> int.to_string(status) <> " name=" <> name <> " body=" <> simulate.read_body(res),
+        "create_rule failed: status="
+        <> int.to_string(status)
+        <> " name="
+        <> name
+        <> " body="
+        <> simulate.read_body(res),
       )
   }
 }
@@ -366,7 +395,15 @@ pub fn create_template(
   type_id: Int,
   name: String,
 ) -> Result(Int, String) {
-  create_template_full(handler, session, project_id, type_id, name, "Auto-created task", None)
+  create_template_full(
+    handler,
+    session,
+    project_id,
+    type_id,
+    name,
+    "Auto-created task",
+    None,
+  )
 }
 
 /// Create a task template with description (default priority 3).
@@ -378,7 +415,15 @@ pub fn create_template_with_desc(
   name: String,
   description: String,
 ) -> Result(Int, String) {
-  create_template_full(handler, session, project_id, type_id, name, description, None)
+  create_template_full(
+    handler,
+    session,
+    project_id,
+    type_id,
+    name,
+    description,
+    None,
+  )
 }
 
 /// Create a task template with all options.
@@ -413,7 +458,12 @@ pub fn create_template_full(
     200 -> decode_entity_id(simulate.read_body(res), Template)
     status ->
       Error(
-        "create_template failed: status=" <> int.to_string(status) <> " name=" <> name <> " body=" <> simulate.read_body(res),
+        "create_template failed: status="
+        <> int.to_string(status)
+        <> " name="
+        <> name
+        <> " body="
+        <> simulate.read_body(res),
       )
   }
 }
@@ -447,7 +497,12 @@ pub fn create_task(
     200 -> decode_entity_id(simulate.read_body(res), TaskEntity)
     status ->
       Error(
-        "create_task failed: status=" <> int.to_string(status) <> " title=" <> title <> " body=" <> simulate.read_body(res),
+        "create_task failed: status="
+        <> int.to_string(status)
+        <> " title="
+        <> title
+        <> " body="
+        <> simulate.read_body(res),
       )
   }
 }
@@ -519,7 +574,12 @@ pub fn create_card(
     200 -> decode_entity_id(simulate.read_body(res), CardEntity)
     status ->
       Error(
-        "create_card failed: status=" <> int.to_string(status) <> " title=" <> title <> " body=" <> simulate.read_body(res),
+        "create_card failed: status="
+        <> int.to_string(status)
+        <> " title="
+        <> title
+        <> " body="
+        <> simulate.read_body(res),
       )
   }
 }
@@ -535,7 +595,10 @@ pub fn attach_template(
     handler(
       simulate.request(
         http.Post,
-        "/api/v1/rules/" <> int.to_string(rule_id) <> "/templates/" <> int.to_string(template_id),
+        "/api/v1/rules/"
+          <> int.to_string(rule_id)
+          <> "/templates/"
+          <> int.to_string(template_id),
       )
       |> with_auth(session)
       |> simulate.json_body(json.object([#("execution_order", json.int(1))])),
@@ -545,7 +608,14 @@ pub fn attach_template(
     200 -> Ok(Nil)
     status ->
       Error(
-        "attach_template failed: status=" <> int.to_string(status) <> " rule_id=" <> int.to_string(rule_id) <> " template_id=" <> int.to_string(template_id) <> " body=" <> simulate.read_body(res),
+        "attach_template failed: status="
+        <> int.to_string(status)
+        <> " rule_id="
+        <> int.to_string(rule_id)
+        <> " template_id="
+        <> int.to_string(template_id)
+        <> " body="
+        <> simulate.read_body(res),
       )
   }
 }
@@ -665,7 +735,10 @@ pub fn fetch_rule_execution(
   let decoder = {
     use outcome <- decode.field(0, decode.string)
     use suppression_reason <- decode.field(1, decode.string)
-    decode.success(RuleExecution(outcome: outcome, suppression_reason: suppression_reason))
+    decode.success(RuleExecution(
+      outcome: outcome,
+      suppression_reason: suppression_reason,
+    ))
   }
 
   case
@@ -721,14 +794,18 @@ pub fn decode_entity_id(body: String, entity: Entity) -> Result(Int, String) {
 
       case decode.run(dynamic, response_decoder) {
         Ok(id) -> Ok(id)
-        Error(_) -> Error("Failed to decode " <> entity_str <> " id from: " <> body)
+        Error(_) ->
+          Error("Failed to decode " <> entity_str <> " id from: " <> body)
       }
     }
   }
 }
 
 /// Decode a list of names from an API response using type-safe Entity.
-pub fn decode_entity_names(body: String, entity: Entity) -> Result(List(String), String) {
+pub fn decode_entity_names(
+  body: String,
+  entity: Entity,
+) -> Result(List(String), String) {
   let entity_str = entity_to_string(entity)
   case json.parse(body, decode.dynamic) {
     Error(_) -> Error("Invalid JSON: " <> body)
@@ -750,7 +827,8 @@ pub fn decode_entity_names(body: String, entity: Entity) -> Result(List(String),
 
       case decode.run(dynamic, response_decoder) {
         Ok(names) -> Ok(names)
-        Error(_) -> Error("Failed to decode " <> entity_str <> " names from: " <> body)
+        Error(_) ->
+          Error("Failed to decode " <> entity_str <> " names from: " <> body)
       }
     }
   }
@@ -785,7 +863,21 @@ pub fn with_auth(req: wisp.Request, session: Session) -> wisp.Request {
 // Event Construction Helpers
 // =============================================================================
 
-/// Create a StateChangeEvent for a task resource (user_triggered defaults to True, card_id None).
+fn task_state_option(state: Option(String)) -> Option(rules_target.TaskState) {
+  case state {
+    Some(value) -> Some(rules_target.task_state(value))
+    None -> None
+  }
+}
+
+fn card_state_option(state: Option(String)) -> Option(rules_target.CardState) {
+  case state {
+    Some(value) -> Some(rules_target.card_state(value))
+    None -> None
+  }
+}
+
+/// Create a StateChange for a task resource (user_triggered defaults to True, card_id None).
 pub fn task_event(
   task_id: Int,
   project_id: Int,
@@ -794,13 +886,20 @@ pub fn task_event(
   from_state: Option(String),
   to_state: String,
   task_type_id: Option(Int),
-) -> StateChangeEvent {
+) -> rules_engine.StateChange {
   task_event_with_card(
-    task_id, project_id, org_id, user_id, from_state, to_state, task_type_id, None,
+    task_id,
+    project_id,
+    org_id,
+    user_id,
+    from_state,
+    to_state,
+    task_type_id,
+    None,
   )
 }
 
-/// Create a StateChangeEvent for a task resource with card_id.
+/// Create a StateChange for a task resource with card_id.
 pub fn task_event_with_card(
   task_id: Int,
   project_id: Int,
@@ -810,13 +909,21 @@ pub fn task_event_with_card(
   to_state: String,
   task_type_id: Option(Int),
   card_id: Option(Int),
-) -> StateChangeEvent {
+) -> rules_engine.StateChange {
   task_event_full(
-    task_id, project_id, org_id, user_id, from_state, to_state, task_type_id, True, card_id,
+    task_id,
+    project_id,
+    org_id,
+    user_id,
+    from_state,
+    to_state,
+    task_type_id,
+    True,
+    card_id,
   )
 }
 
-/// Create a StateChangeEvent for a task with full control (user_triggered, card_id).
+/// Create a StateChange for a task with full control (user_triggered, card_id).
 pub fn task_event_full(
   task_id: Int,
   project_id: Int,
@@ -827,22 +934,26 @@ pub fn task_event_full(
   task_type_id: Option(Int),
   user_triggered: Bool,
   card_id: Option(Int),
-) -> StateChangeEvent {
-  StateChangeEvent(
-    resource_type: Task,
-    resource_id: task_id,
-    from_state: from_state,
-    to_state: to_state,
-    project_id: project_id,
-    org_id: org_id,
+) -> rules_engine.StateChange {
+  let ctx =
+    rules_engine.TaskContext(
+      task_id: task_id,
+      project_id: project_id,
+      org_id: org_id,
+      type_id: option.unwrap(task_type_id, 0),
+      card_id: card_id,
+    )
+
+  rules_engine.TaskChange(
+    ctx: ctx,
+    from_state: task_state_option(from_state),
+    to_state: rules_target.task_state(to_state),
     user_id: user_id,
     user_triggered: user_triggered,
-    task_type_id: task_type_id,
-    card_id: card_id,
   )
 }
 
-/// Create a StateChangeEvent for a card resource (user_triggered defaults to True).
+/// Create a StateChange for a card resource (user_triggered defaults to True).
 pub fn card_event(
   card_id: Int,
   project_id: Int,
@@ -850,11 +961,19 @@ pub fn card_event(
   user_id: Int,
   from_state: Option(String),
   to_state: String,
-) -> StateChangeEvent {
-  card_event_full(card_id, project_id, org_id, user_id, from_state, to_state, True)
+) -> rules_engine.StateChange {
+  card_event_full(
+    card_id,
+    project_id,
+    org_id,
+    user_id,
+    from_state,
+    to_state,
+    True,
+  )
 }
 
-/// Create a StateChangeEvent for a card resource with explicit user_triggered.
+/// Create a StateChange for a card resource with explicit user_triggered.
 pub fn card_event_full(
   card_id: Int,
   project_id: Int,
@@ -863,18 +982,15 @@ pub fn card_event_full(
   from_state: Option(String),
   to_state: String,
   user_triggered: Bool,
-) -> StateChangeEvent {
-  StateChangeEvent(
-    resource_type: Card,
-    resource_id: card_id,
-    from_state: from_state,
-    to_state: to_state,
+) -> rules_engine.StateChange {
+  rules_engine.CardChange(
+    card_id: card_id,
     project_id: project_id,
     org_id: org_id,
+    from_state: card_state_option(from_state),
+    to_state: rules_target.card_state(to_state),
     user_id: user_id,
     user_triggered: user_triggered,
-    task_type_id: None,
-    card_id: None,
   )
 }
 
@@ -893,7 +1009,9 @@ pub fn set_workflow_active(
   |> pog.parameter(pog.int(workflow_id))
   |> pog.execute(db)
   |> result.map(fn(_) { Nil })
-  |> result.map_error(fn(e) { "set_workflow_active failed: " <> string.inspect(e) })
+  |> result.map_error(fn(e) {
+    "set_workflow_active failed: " <> string.inspect(e)
+  })
 }
 
 /// Set the active status of a workflow via HTTP API (WITH cascade to rules).
@@ -907,15 +1025,20 @@ pub fn set_workflow_active_cascade(
     True -> 1
     False -> 0
   }
-  let res = handler(
-    simulate.request(http.Patch, "/api/v1/workflows/" <> int.to_string(workflow_id))
-    |> with_auth(session)
-    |> simulate.json_body(json.object([#("active", json.int(active_int))])),
-  )
+  let res =
+    handler(
+      simulate.request(
+        http.Patch,
+        "/api/v1/workflows/" <> int.to_string(workflow_id),
+      )
+      |> with_auth(session)
+      |> simulate.json_body(json.object([#("active", json.int(active_int))])),
+    )
 
   case res.status {
     200 -> Ok(Nil)
-    _ -> Error("set_workflow_active_cascade failed: " <> int.to_string(res.status))
+    _ ->
+      Error("set_workflow_active_cascade failed: " <> int.to_string(res.status))
   }
 }
 
@@ -939,10 +1062,14 @@ pub fn delete_workflow(
   session: Session,
   workflow_id: Int,
 ) -> Result(Nil, String) {
-  let res = handler(
-    simulate.request(http.Delete, "/api/v1/workflows/" <> int.to_string(workflow_id))
-    |> with_auth(session),
-  )
+  let res =
+    handler(
+      simulate.request(
+        http.Delete,
+        "/api/v1/workflows/" <> int.to_string(workflow_id),
+      )
+      |> with_auth(session),
+    )
 
   case res.status {
     204 -> Ok(Nil)
@@ -954,7 +1081,10 @@ pub fn delete_workflow(
 // Internal Helpers
 // =============================================================================
 
-fn find_cookie_value(headers: List(#(String, String)), name: String) -> Option(String) {
+fn find_cookie_value(
+  headers: List(#(String, String)),
+  name: String,
+) -> Option(String) {
   let target = name <> "="
 
   let cookies =
@@ -1001,7 +1131,9 @@ fn reset_workflow_tables(db: pog.Connection) -> Result(Nil, String) {
   )
   |> pog.execute(db)
   |> result.map(fn(_) { Nil })
-  |> result.map_error(fn(e) { "reset_workflow_tables failed: " <> string.inspect(e) })
+  |> result.map_error(fn(e) {
+    "reset_workflow_tables failed: " <> string.inspect(e)
+  })
 }
 
 fn getenv(key: String, default: String) -> String {

@@ -10,6 +10,7 @@
 //// - Update user organization roles
 //// - Validate role changes (prevent demoting last admin)
 
+import domain/org_role.{type OrgRole}
 import gleam/dynamic/decode
 import gleam/list
 import gleam/option as opt
@@ -18,7 +19,7 @@ import pog
 import scrumbringer_server/sql
 
 pub type OrgUser {
-  OrgUser(id: Int, email: String, org_role: String, created_at: String)
+  OrgUser(id: Int, email: String, org_role: OrgRole, created_at: String)
 }
 
 pub type UpdateOrgRoleError {
@@ -26,6 +27,18 @@ pub type UpdateOrgRoleError {
   CannotDemoteLastAdmin
   InvalidRole
   DbError(pog.QueryError)
+}
+
+fn parse_org_role(value: String) -> Result(OrgRole, pog.QueryError) {
+  case org_role.parse(value) {
+    Ok(role) -> Ok(role)
+    Error(_) ->
+      Error(pog.PostgresqlError(
+        code: "INVALID_ROLE",
+        name: "invalid_role",
+        message: "Invalid org role: " <> value,
+      ))
+  }
 }
 
 pub fn list_org_users(
@@ -36,15 +49,15 @@ pub fn list_org_users(
   use returned <- result.try(sql.org_users_list(db, org_id, q))
 
   returned.rows
-  |> list.map(fn(row) {
-    OrgUser(
+  |> list.try_map(fn(row) {
+    use role <- result.try(parse_org_role(row.org_role))
+    Ok(OrgUser(
       id: row.id,
       email: row.email,
-      org_role: row.org_role,
+      org_role: role,
       created_at: row.created_at,
-    )
+    ))
   })
-  |> Ok
 }
 
 type OrgUserRow {
@@ -55,10 +68,8 @@ pub fn update_org_role(
   db: pog.Connection,
   org_id: Int,
   user_id: Int,
-  org_role: String,
+  new_role: OrgRole,
 ) -> Result(OrgUser, UpdateOrgRoleError) {
-  use _ <- result.try(validate_org_role(org_role))
-
   pog.transaction(db, fn(tx) {
     use existing <- result.try(
       fetch_user_for_update(tx, org_id, user_id)
@@ -70,8 +81,12 @@ pub fn update_org_role(
 
       opt.Some(row) -> {
         let OrgUserRow(org_role: current_role, ..) = row
+        use current_role <- result.try(
+          parse_org_role(current_role)
+          |> result.map_error(DbError),
+        )
 
-        case current_role == "admin" && org_role == "member" {
+        case current_role == org_role.Admin && new_role == org_role.Member {
           True -> {
             use admin_count <- result.try(
               count_org_admins(tx, org_id)
@@ -80,14 +95,14 @@ pub fn update_org_role(
 
             case admin_count <= 1 {
               True -> Error(CannotDemoteLastAdmin)
-              False -> update_role_row(tx, org_id, user_id, org_role)
+              False -> update_role_row(tx, org_id, user_id, new_role)
             }
           }
 
           False -> {
-            case current_role == org_role {
+            case current_role == new_role {
               True -> Ok(row)
-              False -> update_role_row(tx, org_id, user_id, org_role)
+              False -> update_role_row(tx, org_id, user_id, new_role)
             }
           }
         }
@@ -95,23 +110,18 @@ pub fn update_org_role(
     }
   })
   |> result.map_error(transaction_error_to_update_error)
-  |> result.map(fn(row) {
+  |> result.try(fn(row) {
     let OrgUserRow(
       id: id,
       email: email,
-      org_role: org_role,
+      org_role: role_value,
       created_at: created_at,
     ) = row
-
-    OrgUser(id: id, email: email, org_role: org_role, created_at: created_at)
+    use role <- result.try(
+      parse_org_role(role_value) |> result.map_error(DbError),
+    )
+    Ok(OrgUser(id: id, email: email, org_role: role, created_at: created_at))
   })
-}
-
-fn validate_org_role(value: String) -> Result(Nil, UpdateOrgRoleError) {
-  case value {
-    "admin" | "member" -> Ok(Nil)
-    _ -> Error(InvalidRole)
-  }
 }
 
 fn fetch_user_for_update(
@@ -171,7 +181,7 @@ fn update_role_row(
   db: pog.Connection,
   org_id: Int,
   user_id: Int,
-  org_role: String,
+  new_role: OrgRole,
 ) -> Result(OrgUserRow, UpdateOrgRoleError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -180,6 +190,7 @@ fn update_role_row(
     use created_at <- decode.field(3, decode.string)
     decode.success(OrgUserRow(id:, email:, org_role:, created_at:))
   }
+  let org_role_value = org_role.to_string(new_role)
 
   case
     pog.query(
@@ -187,7 +198,7 @@ fn update_role_row(
     )
     |> pog.parameter(pog.int(org_id))
     |> pog.parameter(pog.int(user_id))
-    |> pog.parameter(pog.text(org_role))
+    |> pog.parameter(pog.text(org_role_value))
     |> pog.returning(decoder)
     |> pog.execute(db)
   {

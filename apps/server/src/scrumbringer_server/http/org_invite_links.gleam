@@ -3,11 +3,11 @@
 //// Provides endpoints for listing and creating/regenerating invite links.
 //// Admin-only operations requiring CSRF protection.
 
+import domain/org_role
 import gleam/dynamic/decode
 import gleam/http
 import gleam/json
 import gleam/string
-import domain/org_role
 import helpers/json as json_helpers
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth

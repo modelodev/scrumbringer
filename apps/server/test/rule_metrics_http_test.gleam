@@ -147,7 +147,12 @@ pub fn workflow_metrics_aggregates_all_rules_test() {
   let assert Ok(project_id) =
     fixtures.create_project(handler, session, "AggregationTest")
   let assert Ok(workflow_id) =
-    fixtures.create_workflow(handler, session, project_id, "Aggregation Workflow")
+    fixtures.create_workflow(
+      handler,
+      session,
+      project_id,
+      "Aggregation Workflow",
+    )
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Item", "box")
   let assert Ok(rule1_id) =
@@ -206,7 +211,12 @@ pub fn executions_list_returns_paginated_results_test() {
   let assert Ok(project_id) =
     fixtures.create_project(handler, session, "ExecutionsTest")
   let assert Ok(workflow_id) =
-    fixtures.create_workflow(handler, session, project_id, "Executions Workflow")
+    fixtures.create_workflow(
+      handler,
+      session,
+      project_id,
+      "Executions Workflow",
+    )
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Story", "bookmark")
   let assert Ok(rule_id) =

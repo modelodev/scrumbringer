@@ -3,10 +3,10 @@
 //// Provides endpoints for creating invite codes that allow new users
 //// to join an organization. Only organization admins can create invites.
 
+import domain/org_role
 import gleam/dynamic/decode
 import gleam/http
 import gleam/json
-import domain/org_role
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf

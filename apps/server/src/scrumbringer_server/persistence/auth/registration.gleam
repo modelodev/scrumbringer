@@ -16,10 +16,10 @@
 //// - **queries.gleam**: Database operations
 //// - **auth_logic.gleam**: Error types
 
+import domain/org_role
 import gleam/option.{type Option, Some}
 import gleam/result
 import pog
-import domain/org_role
 import scrumbringer_server/persistence/auth/queries
 import scrumbringer_server/services/auth_logic
 import scrumbringer_server/services/org_invite_links_db

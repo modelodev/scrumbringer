@@ -6,6 +6,7 @@ import gleam/http
 import gleam/int
 import gleam/json
 import gleam/list
+import gleam/option.{None, Some}
 import helpers/json as json_helpers
 import pog
 import scrumbringer_server/http/api
@@ -13,6 +14,7 @@ import scrumbringer_server/http/auth
 import scrumbringer_server/http/authorization
 import scrumbringer_server/http/csrf
 import scrumbringer_server/services/rules_db
+import scrumbringer_server/services/rules_target
 import scrumbringer_server/services/task_templates_db
 import scrumbringer_server/services/workflows_db
 import wisp
@@ -77,12 +79,14 @@ fn handle_list(
 
           case workflows_db.get_workflow(db, workflow_id) {
             Ok(workflow) ->
-              case authorization.require_project_manager_simple(
+              case
+                authorization.require_project_manager_simple(
                   db,
                   user,
                   workflow.org_id,
                   workflow.project_id,
-                ) {
+                )
+              {
                 Error(resp) -> resp
                 Ok(Nil) ->
                   case rules_db.list_rules_for_workflow(db, workflow_id) {
@@ -90,7 +94,9 @@ fn handle_list(
                       // Story 4.10 AC23: Include templates for each rule
                       let rules_with_templates =
                         list.map(rules, fn(rule) {
-                          let templates = case rules_db.list_rule_templates(db, rule.id) {
+                          let templates = case
+                            rules_db.list_rule_templates(db, rule.id)
+                          {
                             Ok(t) -> t
                             Error(_) -> []
                           }
@@ -98,7 +104,10 @@ fn handle_list(
                         })
                       api.ok(
                         json.object([
-                          #("rules", json.preprocessed_array(rules_with_templates)),
+                          #(
+                            "rules",
+                            json.preprocessed_array(rules_with_templates),
+                          ),
                         ]),
                       )
                     }
@@ -130,12 +139,14 @@ fn handle_create(
 
           case workflows_db.get_workflow(db, workflow_id) {
             Ok(workflow) ->
-              case authorization.require_project_manager_simple(
+              case
+                authorization.require_project_manager_simple(
                   db,
                   user,
                   workflow.org_id,
                   workflow.project_id,
-                ) {
+                )
+              {
                 Error(resp) -> resp
                 Ok(Nil) -> create_rule(req, ctx, workflow_id)
               }
@@ -167,12 +178,14 @@ fn handle_update(
               case workflow_from_rule(db, rule) {
                 Error(resp) -> resp
                 Ok(workflow) ->
-                  case authorization.require_project_manager_simple(
-                  db,
-                  user,
-                  workflow.org_id,
-                  workflow.project_id,
-                ) {
+                  case
+                    authorization.require_project_manager_simple(
+                      db,
+                      user,
+                      workflow.org_id,
+                      workflow.project_id,
+                    )
+                  {
                     Error(resp) -> resp
                     Ok(Nil) -> update_rule(req, ctx, rule_id)
                   }
@@ -205,12 +218,14 @@ fn handle_delete(
               case workflow_from_rule(db, rule) {
                 Error(resp) -> resp
                 Ok(workflow) ->
-                  case authorization.require_project_manager_simple(
-                  db,
-                  user,
-                  workflow.org_id,
-                  workflow.project_id,
-                ) {
+                  case
+                    authorization.require_project_manager_simple(
+                      db,
+                      user,
+                      workflow.org_id,
+                      workflow.project_id,
+                    )
+                  {
                     Error(resp) -> resp
                     Ok(Nil) ->
                       case csrf.require_double_submit(req) {
@@ -259,12 +274,14 @@ fn handle_attach_template(
               case workflow_from_rule(db, rule) {
                 Error(resp) -> resp
                 Ok(workflow) ->
-                  case authorization.require_project_manager_simple(
-                  db,
-                  user,
-                  workflow.org_id,
-                  workflow.project_id,
-                ) {
+                  case
+                    authorization.require_project_manager_simple(
+                      db,
+                      user,
+                      workflow.org_id,
+                      workflow.project_id,
+                    )
+                  {
                     Error(resp) -> resp
                     Ok(Nil) ->
                       case validate_template_scope(db, workflow, template_id) {
@@ -302,12 +319,14 @@ fn handle_detach_template(
               case workflow_from_rule(db, rule) {
                 Error(resp) -> resp
                 Ok(workflow) ->
-                  case authorization.require_project_manager_simple(
-                  db,
-                  user,
-                  workflow.org_id,
-                  workflow.project_id,
-                ) {
+                  case
+                    authorization.require_project_manager_simple(
+                      db,
+                      user,
+                      workflow.org_id,
+                      workflow.project_id,
+                    )
+                  {
                     Error(resp) -> resp
                     Ok(Nil) ->
                       detach_rule_template(req, ctx, rule_id, template_id)
@@ -399,24 +418,36 @@ fn update_rule(req: wisp.Request, ctx: auth.Ctx, rule_id: Int) -> wisp.Response 
       use data <- wisp.require_json(req)
 
       let decoder = {
-        use name <- decode.optional_field("name", "__unset__", decode.string)
-        use goal <- decode.optional_field("goal", "__unset__", decode.string)
+        use name <- decode.optional_field(
+          "name",
+          None,
+          decode.optional(decode.string),
+        )
+        use goal <- decode.optional_field(
+          "goal",
+          None,
+          decode.optional(decode.string),
+        )
         use resource_type <- decode.optional_field(
           "resource_type",
-          "__unset__",
-          decode.string,
+          None,
+          decode.optional(decode.string),
         )
         use task_type_id <- decode.optional_field(
           "task_type_id",
-          -1,
-          decode.int,
+          None,
+          decode.optional(decode.int),
         )
         use to_state <- decode.optional_field(
           "to_state",
-          "__unset__",
-          decode.string,
+          None,
+          decode.optional(decode.string),
         )
-        use active <- decode.optional_field("active", -1, decode.int)
+        use active <- decode.optional_field(
+          "active",
+          None,
+          decode.optional(decode.int),
+        )
         decode.success(#(
           name,
           goal,
@@ -433,15 +464,24 @@ fn update_rule(req: wisp.Request, ctx: auth.Ctx, rule_id: Int) -> wisp.Response 
         Ok(#(name, goal, resource_type, task_type_id, to_state, active)) -> {
           let auth.Ctx(db: db, ..) = ctx
 
-          let active_flag = case active {
-            -1 -> -1
-            0 -> 0
-            _ -> 1
+          let active_value = case active {
+            None -> None
+            Some(-1) -> None
+            Some(0) -> Some(False)
+            Some(_) -> Some(True)
           }
 
           let resource_type_value = case resource_type {
-            "__unset__" -> "task"
+            Some("__unset__") -> None
             _ -> resource_type
+          }
+          let to_state_value = case to_state {
+            Some("__unset__") -> None
+            _ -> to_state
+          }
+          let task_type_value = case task_type_id {
+            Some(-1) -> None
+            _ -> task_type_id
           }
 
           case
@@ -451,9 +491,9 @@ fn update_rule(req: wisp.Request, ctx: auth.Ctx, rule_id: Int) -> wisp.Response 
               name,
               goal,
               resource_type_value,
-              task_type_id,
-              to_state,
-              active_flag,
+              task_type_value,
+              to_state_value,
+              active_value,
             )
           {
             Ok(rule) -> api.ok(json.object([#("rule", rule_json(rule))]))
@@ -620,12 +660,13 @@ fn rule_json_with_templates(
     workflow_id: workflow_id,
     name: name,
     goal: goal,
-    resource_type: resource_type,
-    task_type_id: task_type_id,
-    to_state: to_state,
+    target: target,
     active: active,
     created_at: created_at,
   ) = rule
+  let resource_type = rules_target.resource_type(target)
+  let task_type_id = rules_target.task_type_id(target)
+  let to_state = rules_target.to_state_string(target)
 
   json.object([
     #("id", json.int(id)),

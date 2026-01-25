@@ -52,17 +52,17 @@ pub fn list_tasks_for_project(
   project_id: Int,
   _user_id: Int,
   status: Option(task_status.TaskStatus),
-  type_id: Int,
-  capability_id: Int,
-  q: String,
+  type_id: Option(Int),
+  capability_id: Option(Int),
+  q: Option(String),
 ) -> Result(List(Task), pog.QueryError) {
   use returned <- result.try(sql.tasks_list(
     db,
     project_id,
     status_filter_to_db_string(status),
-    type_id,
-    capability_id,
-    q,
+    option_to_int(type_id),
+    option_to_int(capability_id),
+    option_to_string(q),
   ))
 
   returned.rows
@@ -74,6 +74,38 @@ fn status_filter_to_db_string(status: Option(task_status.TaskStatus)) -> String 
   case status {
     None -> ""
     Some(value) -> task_status.to_db_status(value)
+  }
+}
+
+fn option_to_int(value: Option(Int)) -> Int {
+  case value {
+    None -> 0
+    Some(id) -> id
+  }
+}
+
+fn option_to_string(value: Option(String)) -> String {
+  case value {
+    None -> ""
+    Some(text) -> text
+  }
+}
+
+const unset_update_string = "__unset__"
+
+const unset_update_int = -1
+
+fn option_to_update_string(value: Option(String)) -> String {
+  case value {
+    None -> unset_update_string
+    Some(text) -> text
+  }
+}
+
+fn option_to_update_int(value: Option(Int)) -> Int {
+  case value {
+    None -> unset_update_int
+    Some(id) -> id
   }
 }
 
@@ -112,7 +144,7 @@ pub fn create_task(
             task.project_id,
             task.id,
             created_by,
-            "task_created",
+            task_events_db.TaskCreated,
           )
           |> result.map_error(CreateDbError),
         )
@@ -145,10 +177,10 @@ pub fn update_task_claimed_by_user(
   db: pog.Connection,
   task_id: Int,
   user_id: Int,
-  title: String,
-  description: String,
-  priority: Int,
-  type_id: Int,
+  title: Option(String),
+  description: Option(String),
+  priority: Option(Int),
+  type_id: Option(Int),
   version: Int,
 ) -> Result(Task, NotFoundOrDbError) {
   case
@@ -156,10 +188,10 @@ pub fn update_task_claimed_by_user(
       db,
       task_id,
       user_id,
-      title,
-      description,
-      priority,
-      type_id,
+      option_to_update_string(title),
+      option_to_update_string(description),
+      option_to_update_int(priority),
+      option_to_update_int(type_id),
       version,
     )
   {
@@ -189,7 +221,7 @@ pub fn claim_task(
             task.project_id,
             task.id,
             user_id,
-            "task_claimed",
+            task_events_db.TaskClaimed,
           )
           |> result.map_error(DbError),
         )
@@ -232,7 +264,7 @@ pub fn release_task(
             task.project_id,
             task.id,
             user_id,
-            "task_released",
+            task_events_db.TaskReleased,
           )
           |> result.map_error(DbError),
         )
@@ -275,7 +307,7 @@ pub fn complete_task(
             task.project_id,
             task.id,
             user_id,
-            "task_completed",
+            task_events_db.TaskCompleted,
           )
           |> result.map_error(DbError),
         )

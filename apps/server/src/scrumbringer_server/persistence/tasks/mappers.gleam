@@ -22,8 +22,8 @@
 //// - **sql.gleam**: Provides row types from squirrel
 //// - **domain/task_status**: Provides TaskStatus ADT
 
-import gleam/option.{type Option, None, Some}
 import domain/task_status
+import gleam/option.{type Option, None, Some}
 import scrumbringer_server/sql
 
 /// Task record with type-safe status.

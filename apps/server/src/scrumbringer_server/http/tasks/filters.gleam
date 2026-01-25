@@ -17,12 +17,12 @@
 //// }
 //// ```
 
+import domain/task_status.{type TaskStatus}
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
-import domain/task_status.{type TaskStatus}
 import scrumbringer_server/http/api
 import wisp
 
@@ -32,15 +32,13 @@ import wisp
 
 /// Parsed task list filters.
 ///
-/// `status` is None when no filter is applied, Some(TaskStatus) otherwise.
-/// `type_id` and `capability_id` are 0 when no filter is applied.
-/// `q` is empty string when no search query.
+/// All fields are Option-based: None means "no filter".
 pub type TaskFilters {
   TaskFilters(
     status: Option(TaskStatus),
-    type_id: Int,
-    capability_id: Int,
-    q: String,
+    type_id: Option(Int),
+    capability_id: Option(Int),
+    q: Option(String),
   )
 }
 
@@ -119,9 +117,9 @@ fn parse_status_filter(
 /// Parse capability_id filter: no commas allowed (single value only).
 fn parse_capability_filter(
   query: List(#(String, String)),
-) -> Result(Int, wisp.Response) {
+) -> Result(Option(Int), wisp.Response) {
   case single_query_value(query, "capability_id") {
-    Ok(None) -> Ok(0)
+    Ok(None) -> Ok(None)
 
     Ok(Some(value)) ->
       case string.contains(value, ",") {
@@ -129,7 +127,7 @@ fn parse_capability_filter(
           Error(api.error(422, "VALIDATION_ERROR", "Invalid capability_id"))
         False ->
           case int.parse(value) {
-            Ok(id) -> Ok(id)
+            Ok(id) -> Ok(Some(id))
             Error(_) ->
               Error(api.error(422, "VALIDATION_ERROR", "Invalid capability_id"))
           }
@@ -145,19 +143,19 @@ fn parse_capability_filter(
 /// ## Example
 ///
 /// ```gleam
-/// parse_int_filter([#("type_id", "5")], "type_id")  // Ok(5)
-/// parse_int_filter([], "type_id")                   // Ok(0)
+/// parse_int_filter([#("type_id", "5")], "type_id")  // Ok(Some(5))
+/// parse_int_filter([], "type_id")                   // Ok(None)
 /// ```
 pub fn parse_int_filter(
   query: List(#(String, String)),
   key: String,
-) -> Result(Int, wisp.Response) {
+) -> Result(Option(Int), wisp.Response) {
   case single_query_value(query, key) {
-    Ok(None) -> Ok(0)
+    Ok(None) -> Ok(None)
 
     Ok(Some(value)) ->
       case int.parse(value) {
-        Ok(id) -> Ok(id)
+        Ok(id) -> Ok(Some(id))
         Error(_) -> Error(api.error(422, "VALIDATION_ERROR", "Invalid " <> key))
       }
 
@@ -170,16 +168,16 @@ pub fn parse_int_filter(
 /// ## Example
 ///
 /// ```gleam
-/// parse_string_filter([#("q", "search")], "q")  // Ok("search")
-/// parse_string_filter([], "q")                   // Ok("")
+/// parse_string_filter([#("q", "search")], "q")  // Ok(Some("search"))
+/// parse_string_filter([], "q")                   // Ok(None)
 /// ```
 pub fn parse_string_filter(
   query: List(#(String, String)),
   key: String,
-) -> Result(String, wisp.Response) {
+) -> Result(Option(String), wisp.Response) {
   case single_query_value(query, key) {
-    Ok(None) -> Ok("")
-    Ok(Some(value)) -> Ok(value)
+    Ok(None) -> Ok(None)
+    Ok(Some(value)) -> Ok(normalize_optional_string(value))
     Error(_) -> Error(api.error(422, "VALIDATION_ERROR", "Invalid " <> key))
   }
 }
@@ -216,5 +214,12 @@ pub fn single_query_value(
     [] -> Ok(None)
     [value] -> Ok(Some(value))
     _ -> Error(Nil)
+  }
+}
+
+fn normalize_optional_string(value: String) -> Option(String) {
+  case value == "" {
+    True -> None
+    False -> Some(value)
   }
 }

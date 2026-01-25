@@ -263,7 +263,10 @@ fn view_org_role_cell(model: Model, u: OrgUser) -> Element(Msg) {
 
 /// Dialog for viewing/managing user's project memberships.
 fn view_user_projects_dialog(model: Model) -> Element(Msg) {
-  case model.admin.user_projects_dialog_open, model.admin.user_projects_dialog_user {
+  case
+    model.admin.user_projects_dialog_open,
+    model.admin.user_projects_dialog_user
+  {
     True, opt.Some(user) -> {
       dialog.view(
         dialog.DialogConfig(
@@ -396,10 +399,12 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
               // Project selector
               select(
                 [
-                  attribute.value(case model.admin.user_projects_add_project_id {
-                    opt.Some(id) -> int.to_string(id)
-                    opt.None -> ""
-                  }),
+                  attribute.value(
+                    case model.admin.user_projects_add_project_id {
+                      opt.Some(id) -> int.to_string(id)
+                      opt.None -> ""
+                    },
+                  ),
                   attribute.disabled(model.admin.user_projects_in_flight),
                   event.on_input(fn(value) {
                     admin_msg(UserProjectsAddProjectChanged(value))
@@ -699,7 +704,11 @@ pub fn view_members(
           opt.Some(err) -> div([attribute.class("error")], [text(err)])
           opt.None -> element.none()
         },
-        view_members_table(model, model.admin.members, model.admin.org_users_cache),
+        view_members_table(
+          model,
+          model.admin.members,
+          model.admin.org_users_cache,
+        ),
         // Add member dialog
         case model.admin.members_add_dialog_open {
           True -> view_add_member_dialog(model)
@@ -1321,7 +1330,10 @@ fn view_member_capabilities_dialog(
                 ],
                 list.map(capabilities, fn(cap) {
                   let is_selected =
-                    list.contains(model.admin.member_capabilities_selected, cap.id)
+                    list.contains(
+                      model.admin.member_capabilities_selected,
+                      cap.id,
+                    )
                   label(
                     [
                       attribute.class("checkbox-label"),
@@ -2111,7 +2123,11 @@ fn view_workflows_list(
         // Story 4.9 AC21: Contextual hint with link to Templates
         view_rules_hint(model),
         // Project workflows table (AC23)
-        view_workflows_table(model, model.admin.workflows_project, opt.Some(project)),
+        view_workflows_table(
+          model,
+          model.admin.workflows_project,
+          opt.Some(project),
+        ),
         // Workflow CRUD dialog component (handles create, edit, delete)
         view_workflow_crud_dialog(model),
       ])
@@ -2508,7 +2524,11 @@ fn view_rule_row_expandable(
                       text(" · "),
                     ]),
                     span([attribute.class("task-type-inline")], [
-                      icons.view_task_type_icon_inline(tt.icon, 14, model.ui.theme),
+                      icons.view_task_type_icon_inline(
+                        tt.icon,
+                        14,
+                        model.ui.theme,
+                      ),
                     ]),
                     text(" " <> tt.name),
                   ])
