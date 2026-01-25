@@ -86,8 +86,8 @@ pub type TaskContext {
 pub type StateChange {
   TaskChange(
     ctx: TaskContext,
-    from_state: Option(rules_target.TaskState),
-    to_state: rules_target.TaskState,
+    from_state: Option(String),
+    to_state: String,
     user_id: Int,
     user_triggered: Bool,
   )
@@ -95,8 +95,8 @@ pub type StateChange {
     card_id: Int,
     project_id: Int,
     org_id: Int,
-    from_state: Option(rules_target.CardState),
-    to_state: rules_target.CardState,
+    from_state: Option(String),
+    to_state: String,
     user_id: Int,
     user_triggered: Bool,
   )
@@ -126,8 +126,8 @@ pub type RuleEngineError {
 pub fn task_event(
   ctx: TaskContext,
   user_id: Int,
-  from_state: Option(rules_target.TaskState),
-  to_state: rules_target.TaskState,
+  from_state: Option(String),
+  to_state: String,
 ) -> StateChange {
   TaskChange(
     ctx: ctx,
@@ -145,13 +145,14 @@ pub fn card_event(
   project_id: Int,
   org_id: Int,
   user_id: Int,
-  to_state: rules_target.CardState,
+  from_state: Option(String),
+  to_state: String,
 ) -> StateChange {
   CardChange(
     card_id: card_id,
     project_id: project_id,
     org_id: org_id,
-    from_state: option.None,
+    from_state: from_state,
     to_state: to_state,
     user_id: user_id,
     user_triggered: True,
@@ -277,7 +278,7 @@ fn find_matching_rules(
   event: StateChange,
 ) -> Result(List(MatchingRule), RuleEngineError) {
   let resource_type_str = event_resource_type(event)
-  let task_type_param = option.unwrap(event_task_type_id(event), -1)
+  let task_type_param = event_task_type_id(event)
   let to_state_value = event_to_state_string(event)
 
   case
@@ -674,18 +675,14 @@ fn event_card_id(event: StateChange) -> Option(Int) {
 
 fn event_to_state_string(event: StateChange) -> String {
   case event {
-    TaskChange(to_state: to_state, ..) ->
-      rules_target.task_state_to_string(to_state)
-    CardChange(to_state: to_state, ..) ->
-      rules_target.card_state_to_string(to_state)
+    TaskChange(to_state: to_state, ..) -> to_state
+    CardChange(to_state: to_state, ..) -> to_state
   }
 }
 
 fn event_from_state_string(event: StateChange) -> Option(String) {
   case event {
-    TaskChange(from_state: from_state, ..) ->
-      from_state |> option.map(rules_target.task_state_to_string)
-    CardChange(from_state: from_state, ..) ->
-      from_state |> option.map(rules_target.card_state_to_string)
+    TaskChange(from_state: from_state, ..) -> from_state
+    CardChange(from_state: from_state, ..) -> from_state
   }
 }

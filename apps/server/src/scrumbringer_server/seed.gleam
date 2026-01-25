@@ -18,7 +18,6 @@ import gleam/string
 import pog
 import scrumbringer_server
 import scrumbringer_server/services/rules_engine
-import scrumbringer_server/services/rules_target
 import scrumbringer_server/services/task_events_db
 
 // =============================================================================
@@ -1178,12 +1177,7 @@ fn seed_task_event(
       type_id: task_type_id,
       card_id: None,
     )
-  let from = case from_state {
-    Some(value) -> Some(rules_target.task_state(value))
-    None -> None
-  }
-
-  rules_engine.task_event(ctx, user_id, from, rules_target.task_state(to_state))
+  rules_engine.task_event(ctx, user_id, from_state, to_state)
 }
 
 fn seed_card_event(
@@ -1194,18 +1188,12 @@ fn seed_card_event(
   from_state: Option(String),
   to_state: String,
 ) -> rules_engine.StateChange {
-  let from = case from_state {
-    Some(value) -> Some(rules_target.card_state(value))
-    None -> None
-  }
-
-  rules_engine.CardChange(
-    card_id: card_id,
-    project_id: project_id,
-    org_id: org_id,
-    from_state: from,
-    to_state: rules_target.card_state(to_state),
-    user_id: user_id,
-    user_triggered: True,
+  rules_engine.card_event(
+    card_id,
+    project_id,
+    org_id,
+    user_id,
+    from_state,
+    to_state,
   )
 }

@@ -361,8 +361,8 @@ fn create_rule(
         use resource_type <- decode.field("resource_type", decode.string)
         use task_type_id <- decode.optional_field(
           "task_type_id",
-          -1,
-          decode.int,
+          None,
+          decode.optional(decode.int),
         )
         use to_state <- decode.field("to_state", decode.string)
         use active <- decode.optional_field("active", False, decode.bool)
@@ -382,27 +382,38 @@ fn create_rule(
         Ok(#(name, goal, resource_type, task_type_id, to_state, active)) -> {
           let auth.Ctx(db: db, ..) = ctx
 
-          case
-            rules_db.create_rule(
-              db,
-              workflow_id,
-              name,
-              goal,
-              resource_type,
-              task_type_id,
-              to_state,
-              active,
-            )
-          {
-            Ok(rule) -> api.ok(json.object([#("rule", rule_json(rule))]))
-            Error(rules_db.CreateInvalidResourceType) ->
-              api.error(422, "VALIDATION_ERROR", "Invalid resource_type")
-            Error(rules_db.CreateInvalidTaskType) ->
-              api.error(422, "VALIDATION_ERROR", "Invalid task_type_id")
-            Error(rules_db.CreateInvalidWorkflow) ->
-              api.error(404, "NOT_FOUND", "Workflow not found")
-            Error(rules_db.CreateDbError(_)) ->
-              api.error(500, "INTERNAL", "Database error")
+          let task_type_param = case task_type_id {
+            Some(value) if value <= 0 ->
+              Error(api.error(422, "VALIDATION_ERROR", "Invalid task_type_id"))
+            Some(value) -> Ok(value)
+            None -> Ok(0)
+          }
+
+          case task_type_param {
+            Error(response) -> response
+            Ok(task_type_param) ->
+              case
+                rules_db.create_rule(
+                  db,
+                  workflow_id,
+                  name,
+                  goal,
+                  resource_type,
+                  task_type_param,
+                  to_state,
+                  active,
+                )
+              {
+                Ok(rule) -> api.ok(json.object([#("rule", rule_json(rule))]))
+                Error(rules_db.CreateInvalidResourceType) ->
+                  api.error(422, "VALIDATION_ERROR", "Invalid resource_type")
+                Error(rules_db.CreateInvalidTaskType) ->
+                  api.error(422, "VALIDATION_ERROR", "Invalid task_type_id")
+                Error(rules_db.CreateInvalidWorkflow) ->
+                  api.error(404, "NOT_FOUND", "Workflow not found")
+                Error(rules_db.CreateDbError(_)) ->
+                  api.error(500, "INTERNAL", "Database error")
+              }
           }
         }
       }

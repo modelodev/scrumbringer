@@ -2,7 +2,7 @@
 -- Find active rules that match a state change event.
 -- For task events, filters by task_type_id if specified.
 -- For card events, task_type_id filter is ignored.
--- Params: $1=resource_type, $2=to_state, $3=project_id, $4=org_id, $5=task_type_id (-1 means no filter)
+-- Params: $1=resource_type, $2=to_state, $3=project_id, $4=org_id, $5=task_type_id
 select
   r.id,
   r.workflow_id,
@@ -29,7 +29,7 @@ where r.active = true
   and (
     $1 != 'task'
     or r.task_type_id is null
-    or $5 < 0
+    or $5 is null
     or r.task_type_id = $5
   )
 order by w.project_id nulls last, r.id;

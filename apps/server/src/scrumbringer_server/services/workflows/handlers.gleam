@@ -30,7 +30,6 @@ import pog
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
 import scrumbringer_server/services/cards_db
 import scrumbringer_server/services/rules_engine
-import scrumbringer_server/services/rules_target
 import scrumbringer_server/services/task_types_db
 import scrumbringer_server/services/work_sessions_db
 import scrumbringer_server/services/workflows/authorization
@@ -379,10 +378,8 @@ fn handle_claim_task(
                   current.type_id,
                   current.card_id,
                 )
-              let from_state =
-                rules_target.task_state(task_status_to_string(current.status))
-              let to_state =
-                rules_target.task_state(task_status_to_string(task.status))
+              let from_state = task_status_to_string(current.status)
+              let to_state = task_status_to_string(task.status)
               let _ =
                 evaluate_task_rules(db, ctx, user_id, from_state, to_state)
 
@@ -451,12 +448,8 @@ fn handle_release_task(
                       current.type_id,
                       current.card_id,
                     )
-                  let from_state =
-                    rules_target.task_state(task_status_to_string(
-                      current.status,
-                    ))
-                  let to_state =
-                    rules_target.task_state(task_status_to_string(task.status))
+                  let from_state = task_status_to_string(current.status)
+                  let to_state = task_status_to_string(task.status)
                   let _ =
                     evaluate_task_rules(db, ctx, user_id, from_state, to_state)
 
@@ -528,12 +521,8 @@ fn handle_complete_task(
                       current.type_id,
                       current.card_id,
                     )
-                  let from_state =
-                    rules_target.task_state(task_status_to_string(
-                      current.status,
-                    ))
-                  let to_state =
-                    rules_target.task_state(task_status_to_string(task.status))
+                  let from_state = task_status_to_string(current.status)
+                  let to_state = task_status_to_string(task.status)
                   let _ =
                     evaluate_task_rules(db, ctx, user_id, from_state, to_state)
 
@@ -591,8 +580,8 @@ fn evaluate_task_rules(
   db: pog.Connection,
   ctx: rules_engine.TaskContext,
   user_id: Int,
-  from_state: rules_target.TaskState,
-  to_state: rules_target.TaskState,
+  from_state: String,
+  to_state: String,
 ) -> Nil {
   let event = rules_engine.task_event(ctx, user_id, Some(from_state), to_state)
   // Fire and forget - don't block on rules engine
@@ -606,13 +595,7 @@ fn evaluate_task_rules_created(
   ctx: rules_engine.TaskContext,
   user_id: Int,
 ) -> Nil {
-  let event =
-    rules_engine.task_event(
-      ctx,
-      user_id,
-      None,
-      rules_target.task_state("available"),
-    )
+  let event = rules_engine.task_event(ctx, user_id, None, "available")
   // Fire and forget - don't block on rules engine
   let _ = rules_engine.evaluate_rules(db, event)
   Nil
@@ -635,13 +618,19 @@ fn maybe_evaluate_card_rules(
         Error(_) -> Nil
         Ok(card) -> {
           // Derive current state string
-          let state =
-            rules_target.card_state(cards_db.state_to_string(card.state))
+          let state = cards_db.state_to_string(card.state)
 
           // We evaluate rules for the current state
           // The rules engine tracks idempotency per (rule, card, state)
           let event =
-            rules_engine.card_event(cid, project_id, org_id, user_id, state)
+            rules_engine.card_event(
+              cid,
+              project_id,
+              org_id,
+              user_id,
+              None,
+              state,
+            )
 
           let _ = rules_engine.evaluate_rules(db, event)
           Nil

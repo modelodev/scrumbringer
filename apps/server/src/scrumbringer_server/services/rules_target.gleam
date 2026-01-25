@@ -1,39 +1,12 @@
-//// Rule target and state types for workflow rules.
+//// Rule target types for workflow rules.
 ////
-//// These types prevent mixing task and card states while keeping the
-//// underlying state values flexible (string-backed).
+//// Task and card targets are kept distinct while using plain state strings.
 
 import gleam/option.{type Option, None, Some}
 
-pub type TaskState {
-  TaskState(String)
-}
-
-pub type CardState {
-  CardState(String)
-}
-
-pub fn task_state(value: String) -> TaskState {
-  TaskState(value)
-}
-
-pub fn card_state(value: String) -> CardState {
-  CardState(value)
-}
-
-pub fn task_state_to_string(state: TaskState) -> String {
-  let TaskState(value) = state
-  value
-}
-
-pub fn card_state_to_string(state: CardState) -> String {
-  let CardState(value) = state
-  value
-}
-
 pub type RuleTarget {
-  TaskRule(to_state: TaskState, task_type_id: Option(Int))
-  CardRule(to_state: CardState)
+  TaskRule(to_state: String, task_type_id: Option(Int))
+  CardRule(to_state: String)
 }
 
 pub type RuleTargetError {
@@ -52,11 +25,11 @@ pub fn from_strings(
   }
 
   case resource_type {
-    "task" -> Ok(TaskRule(task_state(to_state), task_type_opt))
+    "task" -> Ok(TaskRule(to_state, task_type_opt))
     "card" ->
       case task_type_opt {
         Some(_) -> Error(TaskTypeNotAllowedForCard)
-        None -> Ok(CardRule(card_state(to_state)))
+        None -> Ok(CardRule(to_state))
       }
     _ -> Error(InvalidResourceType)
   }
@@ -78,8 +51,8 @@ pub fn task_type_id(target: RuleTarget) -> Option(Int) {
 
 pub fn to_state_string(target: RuleTarget) -> String {
   case target {
-    TaskRule(to_state, _) -> task_state_to_string(to_state)
-    CardRule(to_state) -> card_state_to_string(to_state)
+    TaskRule(to_state, _) -> to_state
+    CardRule(to_state) -> to_state
   }
 }
 

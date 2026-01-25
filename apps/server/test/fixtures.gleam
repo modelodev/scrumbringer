@@ -18,7 +18,6 @@ import gleam/string
 import pog
 import scrumbringer_server
 import scrumbringer_server/services/rules_engine
-import scrumbringer_server/services/rules_target
 import wisp
 import wisp/simulate
 
@@ -859,24 +858,6 @@ pub fn with_auth(req: wisp.Request, session: Session) -> wisp.Request {
   |> request.set_header("X-CSRF", session.csrf)
 }
 
-// =============================================================================
-// Event Construction Helpers
-// =============================================================================
-
-fn task_state_option(state: Option(String)) -> Option(rules_target.TaskState) {
-  case state {
-    Some(value) -> Some(rules_target.task_state(value))
-    None -> None
-  }
-}
-
-fn card_state_option(state: Option(String)) -> Option(rules_target.CardState) {
-  case state {
-    Some(value) -> Some(rules_target.card_state(value))
-    None -> None
-  }
-}
-
 /// Create a StateChange for a task resource (user_triggered defaults to True, card_id None).
 pub fn task_event(
   task_id: Int,
@@ -946,8 +927,8 @@ pub fn task_event_full(
 
   rules_engine.TaskChange(
     ctx: ctx,
-    from_state: task_state_option(from_state),
-    to_state: rules_target.task_state(to_state),
+    from_state: from_state,
+    to_state: to_state,
     user_id: user_id,
     user_triggered: user_triggered,
   )
@@ -987,8 +968,8 @@ pub fn card_event_full(
     card_id: card_id,
     project_id: project_id,
     org_id: org_id,
-    from_state: card_state_option(from_state),
-    to_state: rules_target.card_state(to_state),
+    from_state: from_state,
+    to_state: to_state,
     user_id: user_id,
     user_triggered: user_triggered,
   )

@@ -3257,7 +3257,7 @@ pub fn rules_find_matching(
   arg_2: String,
   arg_3: Int,
   arg_4: Int,
-  arg_5: Int,
+  arg_5: Option(Int),
 ) -> Result(pog.Returned(RulesFindMatchingRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -3317,7 +3317,7 @@ where r.active = true
   and (
     $1 != 'task'
     or r.task_type_id is null
-    or $5 < 0
+    or $5 is null
     or r.task_type_id = $5
   )
 order by w.project_id nulls last, r.id;
@@ -3327,7 +3327,7 @@ order by w.project_id nulls last, r.id;
   |> pog.parameter(pog.text(arg_2))
   |> pog.parameter(pog.int(arg_3))
   |> pog.parameter(pog.int(arg_4))
-  |> pog.parameter(pog.int(arg_5))
+  |> pog.parameter(pog.nullable(pog.int, arg_5))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
