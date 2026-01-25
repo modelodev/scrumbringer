@@ -58,6 +58,7 @@ import scrumbringer_client/ui/card_badge
 import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/status_block
 import scrumbringer_client/update_helpers
 
 // =============================================================================
@@ -244,7 +245,7 @@ fn view_tasks_loading(model: Model) -> Element(Msg) {
 
 /// Error state view.
 fn view_tasks_error(message: String) -> Element(Msg) {
-  div([attribute.class("error")], [text(message)])
+  status_block.error_text(message)
 }
 
 /// No matches for current filters.

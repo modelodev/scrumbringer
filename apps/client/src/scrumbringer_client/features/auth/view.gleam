@@ -52,6 +52,7 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/reset_password
 import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/status_block
 import scrumbringer_client/update_helpers
 
 /// Renders the login page with email/password form.
@@ -207,9 +208,10 @@ pub fn view_accept_invite(model: Model) -> Element(Msg) {
 
   let content = case state {
     accept_invite.NoToken ->
-      div([attrs.error()], [
-        text(update_helpers.i18n_t(model, i18n_text.MissingInviteToken)),
-      ])
+      status_block.error_text(update_helpers.i18n_t(
+        model,
+        i18n_text.MissingInviteToken,
+      ))
 
     accept_invite.Validating ->
       div([attribute.class("loading")], [
@@ -217,7 +219,7 @@ pub fn view_accept_invite(model: Model) -> Element(Msg) {
       ])
 
     accept_invite.Invalid(code: _, message: message) ->
-      div([attrs.error()], [text(message)])
+      status_block.error_text(message)
 
     accept_invite.Ready(email) ->
       view_accept_invite_form(model, email, password, False, password_error)
