@@ -25,7 +25,7 @@ where r.active = true
   -- Project-scoped workflows only apply to their project
   and w.org_id = $4
   and (w.project_id is null or w.project_id = $3)
-  -- Task type filter: only for task events, ignore if task_type_id is null or -1
+  -- Task type filter: only for task events, ignore if task_type_id is null
   and (
     $1 != 'task'
     or r.task_type_id is null

@@ -86,9 +86,9 @@ pub fn validate_priority(priority: Int) -> Result(Nil, wisp.Response) {
 /// ## Example
 ///
 /// ```gleam
-/// validate_optional_priority(-1)  // Ok(Nil) - not provided
-/// validate_optional_priority(3)   // Ok(Nil) - valid
-/// validate_optional_priority(10)  // Error - invalid
+/// validate_optional_priority(Unset)    // Ok(Nil) - not provided
+/// validate_optional_priority(Set(3))   // Ok(Nil) - valid
+/// validate_optional_priority(Set(10))  // Error - invalid
 /// ```
 pub fn validate_optional_priority(
   priority: FieldUpdate(Int),
