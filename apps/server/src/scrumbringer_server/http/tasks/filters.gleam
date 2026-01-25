@@ -24,23 +24,8 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import scrumbringer_server/http/api
+import scrumbringer_server/services/workflows/types as workflow_types
 import wisp
-
-// =============================================================================
-// Types
-// =============================================================================
-
-/// Parsed task list filters.
-///
-/// All fields are Option-based: None means "no filter".
-pub type TaskFilters {
-  TaskFilters(
-    status: Option(TaskStatus),
-    type_id: Option(Int),
-    capability_id: Option(Int),
-    q: Option(String),
-  )
-}
 
 // =============================================================================
 // Main Parser
@@ -59,35 +44,17 @@ pub type TaskFilters {
 /// ```
 pub fn parse_task_filters(
   query: List(#(String, String)),
-) -> Result(TaskFilters, wisp.Response) {
+) -> Result(workflow_types.TaskFilters, wisp.Response) {
   use status <- result.try(parse_status_filter(query))
   use type_id <- result.try(parse_int_filter(query, "type_id"))
   use capability_id <- result.try(parse_capability_filter(query))
   use q <- result.try(parse_string_filter(query, "q"))
-  Ok(TaskFilters(
+  Ok(workflow_types.TaskFilters(
     status: status,
     type_id: type_id,
     capability_id: capability_id,
     q: q,
   ))
-}
-
-/// Convert status filter to database query string.
-///
-/// Returns empty string for None (no filter), or the status string for Some.
-///
-/// ## Example
-///
-/// ```gleam
-/// status_filter_to_db_string(None)                    // ""
-/// status_filter_to_db_string(Some(Available))         // "available"
-/// status_filter_to_db_string(Some(Claimed(Taken)))    // "claimed"
-/// ```
-pub fn status_filter_to_db_string(status: Option(TaskStatus)) -> String {
-  case status {
-    None -> ""
-    Some(s) -> task_status.to_db_status(s)
-  }
 }
 
 // =============================================================================

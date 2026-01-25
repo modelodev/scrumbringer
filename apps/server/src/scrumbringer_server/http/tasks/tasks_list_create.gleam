@@ -35,18 +35,10 @@ pub fn handle_tasks_list(
             Error(resp) -> resp
 
             Ok(task_filters) -> {
-              let actor_filters =
-                workflow_types.TaskFilters(
-                  status: task_filters.status,
-                  type_id: task_filters.type_id,
-                  capability_id: task_filters.capability_id,
-                  q: task_filters.q,
-                )
-
               case
                 workflow.handle(
                   db,
-                  workflow_types.ListTasks(project_id, user.id, actor_filters),
+                  workflow_types.ListTasks(project_id, user.id, task_filters),
                 )
               {
                 Ok(workflow_types.TasksList(tasks)) ->
