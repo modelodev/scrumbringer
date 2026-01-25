@@ -76,7 +76,7 @@ pub type ProjectTask {
     description: String,
     priority: Int,
     status: String,
-    work_state: String,
+    work_state: WorkState,
     created_by: Int,
     claimed_by: Option(Int),
     claimed_at: Option(String),
@@ -310,7 +310,7 @@ fn do_map_project_tasks(
       let completed_at = empty_string_to_option(row.completed_at)
       let first_claim_at = empty_string_to_option(row.first_claim_at)
 
-      let work_state = derive_work_state(row.status, row.is_ongoing)
+      let work_state = work_state_from(row.status, row.is_ongoing)
 
       do_map_project_tasks(rest, [
         ProjectTask(
@@ -367,11 +367,6 @@ fn empty_string_to_option(value: String) -> Option(String) {
   }
 }
 
-fn derive_work_state(status: String, is_ongoing: Bool) -> String {
-  work_state_from(status, is_ongoing)
-  |> work_state_to_string
-}
-
 /// Derive work state from status and ongoing flag.
 pub fn work_state_from(status: String, is_ongoing: Bool) -> WorkState {
   case status {
@@ -386,7 +381,7 @@ pub fn work_state_from(status: String, is_ongoing: Bool) -> WorkState {
   }
 }
 
-fn work_state_to_string(state: WorkState) -> String {
+pub fn work_state_to_string(state: WorkState) -> String {
   case state {
     task_status.WorkAvailable -> "available"
     task_status.WorkClaimed -> "claimed"

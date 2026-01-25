@@ -20,10 +20,9 @@
 import gleam/json
 import gleam/option.{type Option, None, Some}
 import helpers/json as json_helpers
-
 import scrumbringer_server/http/metrics_service.{
   type MetricsOverview, type ProjectMetricsRow, type ProjectTask,
-  type TimeToFirstClaimBucket,
+  type TimeToFirstClaimBucket, work_state_to_string,
 }
 
 // =============================================================================
@@ -132,7 +131,7 @@ fn project_task_json(task: ProjectTask) -> json.Json {
     #("description", json.string(task.description)),
     #("priority", json.int(task.priority)),
     #("status", json.string(task.status)),
-    #("work_state", json.string(task.work_state)),
+    #("work_state", json.string(work_state_to_string(task.work_state))),
     #("created_by", json.int(task.created_by)),
     #("claimed_by", option_int_json(task.claimed_by)),
     #("claimed_at", option_string_json(task.claimed_at)),
