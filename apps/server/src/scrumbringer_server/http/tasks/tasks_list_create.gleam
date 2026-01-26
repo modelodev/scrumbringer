@@ -4,6 +4,7 @@ import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
+import gleam/option.{None}
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
@@ -94,7 +95,11 @@ pub fn handle_tasks_create(
                 )
                 use priority <- decode.field("priority", decode.int)
                 use type_id <- decode.field("type_id", decode.int)
-                use card_id <- decode.optional_field("card_id", 0, decode.int)
+                use card_id <- decode.optional_field(
+                  "card_id",
+                  None,
+                  decode.optional(decode.int),
+                )
                 decode.success(#(title, description, priority, type_id, card_id))
               }
 

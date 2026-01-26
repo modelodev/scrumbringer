@@ -13,7 +13,7 @@ import envoy
 import gleam/int
 import gleam/io
 import gleam/list
-import gleam/option.{type Option}
+import gleam/option
 import gleam/result
 import gleam/string
 import helpers/option as option_helpers
@@ -75,7 +75,7 @@ pub type TaskContext {
     project_id: Int,
     org_id: Int,
     type_id: Int,
-    card_id: Option(Int),
+    card_id: option.Option(Int),
   )
 }
 
@@ -86,7 +86,7 @@ pub type TaskContext {
 pub type StateChange {
   TaskChange(
     ctx: TaskContext,
-    from_state: Option(String),
+    from_state: option.Option(String),
     to_state: String,
     user_id: Int,
     user_triggered: Bool,
@@ -95,7 +95,7 @@ pub type StateChange {
     card_id: Int,
     project_id: Int,
     org_id: Int,
-    from_state: Option(String),
+    from_state: option.Option(String),
     to_state: String,
     user_id: Int,
     user_triggered: Bool,
@@ -126,7 +126,7 @@ pub type RuleEngineError {
 pub fn task_event(
   ctx: TaskContext,
   user_id: Int,
-  from_state: Option(String),
+  from_state: option.Option(String),
   to_state: String,
 ) -> StateChange {
   TaskChange(
@@ -145,7 +145,7 @@ pub fn card_event(
   project_id: Int,
   org_id: Int,
   user_id: Int,
-  from_state: Option(String),
+  from_state: option.Option(String),
   to_state: String,
 ) -> StateChange {
   CardChange(
@@ -245,12 +245,12 @@ type MatchingRule {
     id: Int,
     workflow_id: Int,
     name: String,
-    goal: Option(String),
+    goal: option.Option(String),
     target: rules_target.RuleTarget,
     active: Bool,
     created_at: String,
     workflow_org_id: Int,
-    workflow_project_id: Option(Int),
+    workflow_project_id: option.Option(Int),
   )
 }
 
@@ -258,9 +258,9 @@ type ExecutionTemplate {
   ExecutionTemplate(
     id: Int,
     org_id: Int,
-    project_id: Option(Int),
+    project_id: option.Option(Int),
     name: String,
-    description: Option(String),
+    description: option.Option(String),
     type_id: Int,
     priority: Int,
     created_by: Int,
@@ -278,7 +278,7 @@ fn find_matching_rules(
   event: StateChange,
 ) -> Result(List(MatchingRule), RuleEngineError) {
   let resource_type_str = event_resource_type(event)
-  let task_type_param = event_task_type_id(event)
+  let task_type_param = option_int_to_db(event_task_type_id(event))
   let to_state_value = event_to_state_string(event)
 
   case
@@ -490,8 +490,12 @@ fn create_task_from_template(
       user_name,
     )
 
-  // Inherit card_id from triggering task (0 means no card)
-  let card_id_param = option.unwrap(event_card_id(event), 0)
+  // Inherit card_id from triggering task (None means no card)
+  let card_id_param = event_card_id(event)
+  let card_label = case card_id_param {
+    option.None -> "none"
+    option.Some(value) -> int.to_string(value)
+  }
 
   log(
     "    Creating task: \""
@@ -499,7 +503,7 @@ fn create_task_from_template(
     <> "\" (type="
     <> int.to_string(template.type_id)
     <> ", card="
-    <> int.to_string(card_id_param)
+    <> card_label
     <> ")",
   )
 
@@ -514,7 +518,7 @@ fn create_task_from_template(
       description,
       template.priority,
       event_user_id(event),
-      card_id_param,
+      option_int_to_db(card_id_param),
     )
   {
     Ok(pog.Returned(rows: [row, ..], ..)) -> {
@@ -655,7 +659,7 @@ fn event_user_triggered(event: StateChange) -> Bool {
   }
 }
 
-fn event_task_type_id(event: StateChange) -> Option(Int) {
+fn event_task_type_id(event: StateChange) -> option.Option(Int) {
   case event {
     TaskChange(ctx: ctx, ..) ->
       case ctx.type_id {
@@ -666,10 +670,17 @@ fn event_task_type_id(event: StateChange) -> Option(Int) {
   }
 }
 
-fn event_card_id(event: StateChange) -> Option(Int) {
+fn event_card_id(event: StateChange) -> option.Option(Int) {
   case event {
     TaskChange(ctx: ctx, ..) -> ctx.card_id
     CardChange(..) -> option.None
+  }
+}
+
+fn option_int_to_db(value: option.Option(Int)) -> Int {
+  case value {
+    option.None -> 0
+    option.Some(actual) -> actual
   }
 }
 
@@ -680,7 +691,7 @@ fn event_to_state_string(event: StateChange) -> String {
   }
 }
 
-fn event_from_state_string(event: StateChange) -> Option(String) {
+fn event_from_state_string(event: StateChange) -> option.Option(String) {
   case event {
     TaskChange(from_state: from_state, ..) -> from_state
     CardChange(from_state: from_state, ..) -> from_state

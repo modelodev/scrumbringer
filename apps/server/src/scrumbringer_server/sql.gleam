@@ -5,7 +5,6 @@
 ////
 
 import gleam/dynamic/decode
-import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
 import pog
 
@@ -3257,7 +3256,7 @@ pub fn rules_find_matching(
   arg_2: String,
   arg_3: Int,
   arg_4: Int,
-  arg_5: Option(Int),
+  arg_5: Int,
 ) -> Result(pog.Returned(RulesFindMatchingRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -3317,7 +3316,7 @@ where r.active = true
   and (
     $1 != 'task'
     or r.task_type_id is null
-    or $5 is null
+    or $5 <= 0
     or r.task_type_id = $5
   )
 order by w.project_id nulls last, r.id;
@@ -3327,7 +3326,7 @@ order by w.project_id nulls last, r.id;
   |> pog.parameter(pog.text(arg_2))
   |> pog.parameter(pog.int(arg_3))
   |> pog.parameter(pog.int(arg_4))
-  |> pog.parameter(pog.nullable(pog.int, arg_5))
+  |> pog.parameter(pog.int(arg_5))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -4424,10 +4423,10 @@ pub fn task_templates_update(
   arg_1: Int,
   arg_2: Int,
   arg_3: Int,
-  arg_4: Option(String),
-  arg_5: Option(String),
-  arg_6: Option(Int),
-  arg_7: Option(Int),
+  arg_4: String,
+  arg_5: String,
+  arg_6: Int,
+  arg_7: Int,
 ) -> Result(pog.Returned(TaskTemplatesUpdateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -4463,7 +4462,7 @@ WITH current AS (
 ), type_ok AS (
   SELECT
     CASE
-      WHEN $6 is null THEN current.type_id
+      WHEN $6 <= 0 THEN current.type_id
       ELSE (
         SELECT tt.id
         FROM task_types tt
@@ -4481,10 +4480,10 @@ WITH current AS (
 ), updated AS (
   UPDATE task_templates
   SET
-    name = case when $4 is null then name else $4 end,
-    description = case when $5 is null then description else nullif($5, '') end,
+    name = case when $4 = '__unset__' then name else $4 end,
+    description = case when $5 = '__unset__' then description else nullif($5, '') end,
     type_id = type_ok.type_id,
-    priority = case when $7 is null then priority else $7 end
+    priority = case when $7 <= 0 then priority else $7 end
   FROM type_ok
   WHERE task_templates.id = $1
     AND task_templates.org_id = $3
@@ -4510,10 +4509,10 @@ JOIN task_types tt on tt.id = updated.type_id;
   |> pog.parameter(pog.int(arg_1))
   |> pog.parameter(pog.int(arg_2))
   |> pog.parameter(pog.int(arg_3))
-  |> pog.parameter(pog.nullable(pog.text, arg_4))
-  |> pog.parameter(pog.nullable(pog.text, arg_5))
-  |> pog.parameter(pog.nullable(pog.int, arg_6))
-  |> pog.parameter(pog.nullable(pog.int, arg_7))
+  |> pog.parameter(pog.text(arg_4))
+  |> pog.parameter(pog.text(arg_5))
+  |> pog.parameter(pog.int(arg_6))
+  |> pog.parameter(pog.int(arg_7))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -5099,7 +5098,7 @@ pub type TasksCreateRow {
 
 /// name: create_task
 /// Create a new task in a project, ensuring the task type belongs to the project
-/// and optionally associating with a card (if card_id > 0 and belongs to same project).
+/// and optionally associating with a card (if card_id is provided and belongs to same project).
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -5161,15 +5160,15 @@ pub fn tasks_create(
 
   "-- name: create_task
 -- Create a new task in a project, ensuring the task type belongs to the project
--- and optionally associating with a card (if card_id > 0 and belongs to same project).
+-- and optionally associating with a card (if card_id is provided and belongs to same project).
 with type_ok as (
   select id
   from task_types
   where id = $1
     and project_id = $2
 ), card_ok as (
-  -- If card_id is 0 (or null-like sentinel), allow creation.
-  -- If card_id > 0, require it to belong to the same project.
+  -- If card_id <= 0, allow creation.
+  -- If card_id is provided, require it to belong to the same project.
   select case
     when $7 <= 0 then null
     else (select id from cards where id = $7 and project_id = $2)
@@ -5186,8 +5185,8 @@ with type_ok as (
     card_ok.id
   from type_ok, card_ok
   where type_ok.id is not null
-    -- Block if card_id > 0 but card_ok.id is null (invalid card)
-    and (($7 <= 0) or (card_ok.id is not null))
+    -- Block if card_id is provided but card_ok.id is null (invalid card)
+    and ($7 <= 0 or card_ok.id is not null)
   returning
     id,
     project_id,
@@ -5406,10 +5405,10 @@ pub type TasksListRow {
 pub fn tasks_list(
   db: pog.Connection,
   arg_1: Int,
-  arg_2: Option(String),
-  arg_3: Option(Int),
-  arg_4: Option(Int),
-  arg_5: Option(String),
+  arg_2: String,
+  arg_3: Int,
+  arg_4: Int,
+  arg_5: String,
 ) -> Result(pog.Returned(TasksListRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -5495,11 +5494,11 @@ from tasks t
 join task_types tt on tt.id = t.type_id
 left join cards c on c.id = t.card_id
 where t.project_id = $1
-  and ($2 is null or t.status = $2)
-  and ($3 is null or t.type_id = $3)
-  and ($4 is null or tt.capability_id = $4)
+  and ($2 = '' or t.status = $2)
+  and ($3 <= 0 or t.type_id = $3)
+  and ($4 <= 0 or tt.capability_id = $4)
   and (
-    $5 is null
+    $5 = ''
     or t.title ilike ('%' || $5 || '%')
     or t.description ilike ('%' || $5 || '%')
   )
@@ -5507,10 +5506,10 @@ order by t.created_at desc;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
-  |> pog.parameter(pog.nullable(pog.text, arg_2))
-  |> pog.parameter(pog.nullable(pog.int, arg_3))
-  |> pog.parameter(pog.nullable(pog.int, arg_4))
-  |> pog.parameter(pog.nullable(pog.text, arg_5))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.parameter(pog.int(arg_4))
+  |> pog.parameter(pog.text(arg_5))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -5813,10 +5812,10 @@ pub fn tasks_update(
   db: pog.Connection,
   arg_1: Int,
   arg_2: Int,
-  arg_3: Option(String),
-  arg_4: Option(String),
-  arg_5: Option(Int),
-  arg_6: Option(Int),
+  arg_3: String,
+  arg_4: String,
+  arg_5: Int,
+  arg_6: Int,
   arg_7: Int,
 ) -> Result(pog.Returned(TasksUpdateRow), pog.QueryError) {
   let decoder = {
@@ -5866,15 +5865,15 @@ pub fn tasks_update(
 
   "-- name: update_task_claimed_by_user
 with updated as (
-  update tasks
-  set
-    title = case when $3 is null then title else $3 end,
-    description = case when $4 is null then description else nullif($4, '') end,
-    priority = case when $5 is null then priority else $5 end,
-    type_id = case when $6 is null then type_id else $6 end,
-    version = version + 1
-  where id = $1
-    and claimed_by = $2
+update tasks
+set
+  title = case when $3 = '__unset__' then title else $3 end,
+  description = case when $4 = '__unset__' then description else nullif($4, '') end,
+  priority = case when $5 <= 0 then priority else $5 end,
+  type_id = case when $6 <= 0 then type_id else $6 end,
+  version = version + 1
+where id = $1
+  and claimed_by = $2
     and status = 'claimed'
     and version = $7
   returning
@@ -5908,10 +5907,10 @@ left join cards c on c.id = updated.card_id;
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
   |> pog.parameter(pog.int(arg_2))
-  |> pog.parameter(pog.nullable(pog.text, arg_3))
-  |> pog.parameter(pog.nullable(pog.text, arg_4))
-  |> pog.parameter(pog.nullable(pog.int, arg_5))
-  |> pog.parameter(pog.nullable(pog.int, arg_6))
+  |> pog.parameter(pog.text(arg_3))
+  |> pog.parameter(pog.text(arg_4))
+  |> pog.parameter(pog.int(arg_5))
+  |> pog.parameter(pog.int(arg_6))
   |> pog.parameter(pog.int(arg_7))
   |> pog.returning(decoder)
   |> pog.execute(db)
@@ -6316,8 +6315,8 @@ pub fn workflows_update(
   arg_1: Int,
   arg_2: Int,
   arg_3: Int,
-  arg_4: Option(String),
-  arg_5: Option(String),
+  arg_4: String,
+  arg_5: String,
 ) -> Result(pog.Returned(WorkflowsUpdateRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -6343,8 +6342,8 @@ pub fn workflows_update(
   "-- name: update_workflow
 UPDATE workflows
 SET
-  name = case when $4 is null then name else $4 end,
-  description = case when $5 is null then description else nullif($5, '') end
+  name = case when $4 = '__unset__' then name else $4 end,
+  description = case when $5 = '__unset__' then description else nullif($5, '') end
 WHERE id = $1
   AND org_id = $2
   AND (
@@ -6367,8 +6366,8 @@ RETURNING
   |> pog.parameter(pog.int(arg_1))
   |> pog.parameter(pog.int(arg_2))
   |> pog.parameter(pog.int(arg_3))
-  |> pog.parameter(pog.nullable(pog.text, arg_4))
-  |> pog.parameter(pog.nullable(pog.text, arg_5))
+  |> pog.parameter(pog.text(arg_4))
+  |> pog.parameter(pog.text(arg_5))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

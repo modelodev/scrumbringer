@@ -60,9 +60,9 @@ pub fn list_tasks_for_project(
     db,
     project_id,
     status_filter_to_db_string(status),
-    type_id,
-    capability_id,
-    q,
+    option_int_to_db(type_id),
+    option_int_to_db(capability_id),
+    option_string_to_db(q),
   ))
 
   returned.rows
@@ -70,12 +70,10 @@ pub fn list_tasks_for_project(
   |> Ok
 }
 
-fn status_filter_to_db_string(
-  status: Option(task_status.TaskStatus),
-) -> Option(String) {
+fn status_filter_to_db_string(status: Option(task_status.TaskStatus)) -> String {
   case status {
-    None -> None
-    Some(value) -> Some(task_status.to_db_status(value))
+    None -> ""
+    Some(value) -> task_status.to_db_status(value)
   }
 }
 
@@ -89,7 +87,7 @@ pub fn create_task(
   description: String,
   priority: Int,
   created_by: Int,
-  card_id: Int,
+  card_id: Option(Int),
 ) -> Result(Task, CreateTaskError) {
   pog.transaction(db, fn(tx) {
     case
@@ -101,7 +99,7 @@ pub fn create_task(
         description,
         priority,
         created_by,
-        card_id,
+        option_int_to_db(card_id),
       )
     {
       Ok(pog.Returned(rows: [row, ..], ..)) -> {
@@ -158,16 +156,37 @@ pub fn update_task_claimed_by_user(
       db,
       task_id,
       user_id,
-      title,
-      description,
-      priority,
-      type_id,
+      option_string_update_to_db(title),
+      option_string_update_to_db(description),
+      option_int_to_db(priority),
+      option_int_to_db(type_id),
       version,
     )
   {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(mappers.from_update_row(row))
     Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
     Error(e) -> Error(DbError(e))
+  }
+}
+
+fn option_int_to_db(value: Option(Int)) -> Int {
+  case value {
+    None -> 0
+    Some(actual) -> actual
+  }
+}
+
+fn option_string_to_db(value: Option(String)) -> String {
+  case value {
+    None -> ""
+    Some(actual) -> actual
+  }
+}
+
+fn option_string_update_to_db(value: Option(String)) -> String {
+  case value {
+    None -> "__unset__"
+    Some(actual) -> actual
   }
 }
 

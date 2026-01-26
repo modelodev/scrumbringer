@@ -7,7 +7,7 @@ WITH current AS (
 ), type_ok AS (
   SELECT
     CASE
-      WHEN $6 is null THEN current.type_id
+      WHEN $6 <= 0 THEN current.type_id
       ELSE (
         SELECT tt.id
         FROM task_types tt
@@ -25,10 +25,10 @@ WITH current AS (
 ), updated AS (
   UPDATE task_templates
   SET
-    name = case when $4 is null then name else $4 end,
-    description = case when $5 is null then description else nullif($5, '') end,
+    name = case when $4 = '__unset__' then name else $4 end,
+    description = case when $5 = '__unset__' then description else nullif($5, '') end,
     type_id = type_ok.type_id,
-    priority = case when $7 is null then priority else $7 end
+    priority = case when $7 <= 0 then priority else $7 end
   FROM type_ok
   WHERE task_templates.id = $1
     AND task_templates.org_id = $3

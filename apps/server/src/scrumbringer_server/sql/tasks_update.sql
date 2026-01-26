@@ -2,10 +2,10 @@
 with updated as (
 update tasks
 set
-  title = case when $3 is null then title else $3 end,
-  description = case when $4 is null then description else nullif($4, '') end,
-  priority = case when $5 is null then priority else $5 end,
-  type_id = case when $6 is null then type_id else $6 end,
+  title = case when $3 = '__unset__' then title else $3 end,
+  description = case when $4 = '__unset__' then description else nullif($4, '') end,
+  priority = case when $5 <= 0 then priority else $5 end,
+  type_id = case when $6 <= 0 then type_id else $6 end,
   version = version + 1
 where id = $1
   and claimed_by = $2

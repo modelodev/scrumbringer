@@ -3,7 +3,7 @@
 //// Handles listing and CRUD for reusable task templates scoped to projects.
 
 import gleam/list
-import gleam/option.{type Option}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import helpers/option as option_helpers
@@ -184,15 +184,29 @@ pub fn update_template(
       template_id,
       project_id,
       org_id,
-      name,
-      description,
-      type_id,
-      priority,
+      option_string_update_to_db(name),
+      option_string_update_to_db(description),
+      option_int_to_db(type_id),
+      option_int_to_db(priority),
     )
   {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(from_update_row(row))
     Ok(pog.Returned(rows: [], ..)) -> Error(UpdateNotFound)
     Error(e) -> Error(UpdateDbError(e))
+  }
+}
+
+fn option_int_to_db(value: Option(Int)) -> Int {
+  case value {
+    None -> 0
+    Some(actual) -> actual
+  }
+}
+
+fn option_string_update_to_db(value: Option(String)) -> String {
+  case value {
+    None -> "__unset__"
+    Some(actual) -> actual
   }
 }
 

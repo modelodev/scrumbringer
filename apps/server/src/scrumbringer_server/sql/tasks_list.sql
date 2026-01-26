@@ -37,11 +37,11 @@ from tasks t
 join task_types tt on tt.id = t.type_id
 left join cards c on c.id = t.card_id
 where t.project_id = $1
-  and ($2 is null or t.status = $2)
-  and ($3 is null or t.type_id = $3)
-  and ($4 is null or tt.capability_id = $4)
+  and ($2 = '' or t.status = $2)
+  and ($3 <= 0 or t.type_id = $3)
+  and ($4 <= 0 or tt.capability_id = $4)
   and (
-    $5 is null
+    $5 = ''
     or t.title ilike ('%' || $5 || '%')
     or t.description ilike ('%' || $5 || '%')
   )

@@ -29,7 +29,7 @@ where r.active = true
   and (
     $1 != 'task'
     or r.task_type_id is null
-    or $5 is null
+    or $5 <= 0
     or r.task_type_id = $5
   )
 order by w.project_id nulls last, r.id;

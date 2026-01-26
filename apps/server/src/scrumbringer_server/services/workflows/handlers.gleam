@@ -237,48 +237,55 @@ fn handle_create_task(
   description: String,
   priority: Int,
   type_id: Int,
-  card_id: Int,
+  card_id: Option(Int),
 ) -> Result(Response, Error) {
   use _ <- authorization.require_project_member(db, project_id, user_id)
   use validated_title <- validation.validate_task_title(title)
   use _ <- validation.validate_priority(priority)
   use _ <- validation.validate_task_type_in_project(db, type_id, project_id)
 
-  case
-    tasks_queries.create_task(
-      db,
-      org_id,
-      type_id,
-      project_id,
-      validated_title,
-      description,
-      priority,
-      user_id,
-      card_id,
-    )
-  {
-    Ok(task) -> {
-      // Trigger rules engine for task creation (null → available)
-      let card_id_opt = case card_id {
-        id if id > 0 -> Some(id)
-        _ -> None
-      }
-      let ctx =
-        rules_engine.TaskContext(
-          task.id,
-          project_id,
+  let normalized_card_id = case card_id {
+    None -> Ok(None)
+    Some(0) -> Ok(None)
+    Some(id) if id > 0 -> Ok(Some(id))
+    Some(_) -> Error(ValidationError("Invalid card_id"))
+  }
+
+  case normalized_card_id {
+    Error(err) -> Error(err)
+    Ok(card_id) ->
+      case
+        tasks_queries.create_task(
+          db,
           org_id,
           type_id,
-          card_id_opt,
+          project_id,
+          validated_title,
+          description,
+          priority,
+          user_id,
+          card_id,
         )
-      let _ = evaluate_task_rules_created(db, ctx, user_id)
-      Ok(TaskResult(task))
-    }
-    Error(tasks_queries.InvalidTypeId) ->
-      Error(ValidationError("Invalid type_id"))
-    Error(tasks_queries.InvalidCardId) ->
-      Error(ValidationError("Invalid card_id"))
-    Error(tasks_queries.CreateDbError(e)) -> Error(DbError(e))
+      {
+        Ok(task) -> {
+          // Trigger rules engine for task creation (null → available)
+          let ctx =
+            rules_engine.TaskContext(
+              task.id,
+              project_id,
+              org_id,
+              type_id,
+              card_id,
+            )
+          let _ = evaluate_task_rules_created(db, ctx, user_id)
+          Ok(TaskResult(task))
+        }
+        Error(tasks_queries.InvalidTypeId) ->
+          Error(ValidationError("Invalid type_id"))
+        Error(tasks_queries.InvalidCardId) ->
+          Error(ValidationError("Invalid card_id"))
+        Error(tasks_queries.CreateDbError(e)) -> Error(DbError(e))
+      }
   }
 }
 

@@ -5,7 +5,7 @@
 //// Note: Workflows are now project-scoped only (no org-scoped workflows).
 
 import gleam/list
-import gleam/option.{type Option}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import helpers/option as option_helpers
@@ -156,7 +156,14 @@ pub fn update_workflow(
   description: Option(String),
 ) -> Result(Workflow, UpdateWorkflowError) {
   case
-    sql.workflows_update(db, workflow_id, org_id, project_id, name, description)
+    sql.workflows_update(
+      db,
+      workflow_id,
+      org_id,
+      project_id,
+      option_string_update_to_db(name),
+      option_string_update_to_db(description),
+    )
   {
     Ok(pog.Returned(rows: [row, ..], ..)) ->
       Ok(Workflow(
@@ -181,6 +188,13 @@ pub fn update_workflow(
 
         _ -> Error(UpdateWorkflowDbError(error))
       }
+  }
+}
+
+fn option_string_update_to_db(value: Option(String)) -> String {
+  case value {
+    None -> "__unset__"
+    Some(actual) -> actual
   }
 }
 

@@ -1,8 +1,8 @@
 -- name: update_workflow
 UPDATE workflows
 SET
-  name = case when $4 is null then name else $4 end,
-  description = case when $5 is null then description else nullif($5, '') end
+  name = case when $4 = '__unset__' then name else $4 end,
+  description = case when $5 = '__unset__' then description else nullif($5, '') end
 WHERE id = $1
   AND org_id = $2
   AND (

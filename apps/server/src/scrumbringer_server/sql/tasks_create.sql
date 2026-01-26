@@ -1,14 +1,14 @@
 -- name: create_task
 -- Create a new task in a project, ensuring the task type belongs to the project
--- and optionally associating with a card (if card_id > 0 and belongs to same project).
+-- and optionally associating with a card (if card_id is provided and belongs to same project).
 with type_ok as (
   select id
   from task_types
   where id = $1
     and project_id = $2
 ), card_ok as (
-  -- If card_id is 0 (or null-like sentinel), allow creation.
-  -- If card_id > 0, require it to belong to the same project.
+  -- If card_id <= 0, allow creation.
+  -- If card_id is provided, require it to belong to the same project.
   select case
     when $7 <= 0 then null
     else (select id from cards where id = $7 and project_id = $2)
@@ -25,8 +25,8 @@ with type_ok as (
     card_ok.id
   from type_ok, card_ok
   where type_ok.id is not null
-    -- Block if card_id > 0 but card_ok.id is null (invalid card)
-    and (($7 <= 0) or (card_ok.id is not null))
+    -- Block if card_id is provided but card_ok.id is null (invalid card)
+    and ($7 <= 0 or card_ok.id is not null)
   returning
     id,
     project_id,
