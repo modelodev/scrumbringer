@@ -241,201 +241,188 @@ fn view_user_projects_dialog(model: Model) -> Element(Msg) {
     model.admin.user_projects_dialog_open,
     model.admin.user_projects_dialog_user
   {
-    True, opt.Some(user) -> {
-      dialog.view(
-        dialog.DialogConfig(
-          title: update_helpers.i18n_t(
-            model,
-            i18n_text.UserProjectsTitle(user.email),
-          ),
-          icon: opt.None,
-          size: dialog.DialogMd,
-          on_close: admin_msg(UserProjectsDialogClosed),
-        ),
-        True,
-        model.admin.user_projects_error,
-        // Content: project list and add form
-        [
-          // Current projects list
-          case model.admin.user_projects_list {
-            NotAsked | Loading ->
-              p([attribute.class("loading")], [
-                text(update_helpers.i18n_t(model, i18n_text.Loading)),
-              ])
-
-            Failed(err) -> div([attribute.class("error")], [text(err.message)])
-
-            Loaded(projects) ->
-              case list.is_empty(projects) {
-                True ->
-                  p([attribute.class("empty")], [
-                    text(update_helpers.i18n_t(
-                      model,
-                      i18n_text.UserProjectsEmpty,
-                    )),
-                  ])
-
-                False ->
-                  div([attribute.class("user-projects-list")], [
-                    table([attribute.class("table")], [
-                      thead([], [
-                        tr([], [
-                          th([], [
-                            text(update_helpers.i18n_t(model, i18n_text.Name)),
-                          ]),
-                          th([], [
-                            text(update_helpers.i18n_t(
-                              model,
-                              i18n_text.RoleInProject,
-                            )),
-                          ]),
-                          th([], [
-                            text(update_helpers.i18n_t(model, i18n_text.Actions)),
-                          ]),
-                        ]),
-                      ]),
-                      keyed.tbody(
-                        [],
-                        list.map(projects, fn(p) {
-                          #(
-                            int.to_string(p.id),
-                            tr([], [
-                              td([], [text(p.name)]),
-                              td([], [
-                                // Editable role dropdown
-                                select(
-                                  [
-                                    attribute.value(project_role.to_string(
-                                      p.my_role,
-                                    )),
-                                    attribute.disabled(
-                                      model.admin.user_projects_in_flight,
-                                    ),
-                                    event.on_input(fn(value) {
-                                      admin_msg(UserProjectRoleChangeRequested(
-                                        p.id,
-                                        value,
-                                      ))
-                                    }),
-                                  ],
-                                  [
-                                    option(
-                                      [attribute.value("manager")],
-                                      update_helpers.i18n_t(
-                                        model,
-                                        i18n_text.RoleManager,
-                                      ),
-                                    ),
-                                    option(
-                                      [attribute.value("member")],
-                                      update_helpers.i18n_t(
-                                        model,
-                                        i18n_text.RoleMember,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ]),
-                              td([], [
-                                button(
-                                  [
-                                    attribute.class("btn-danger btn-sm"),
-                                    attribute.disabled(
-                                      model.admin.user_projects_in_flight,
-                                    ),
-                                    event.on_click(
-                                      admin_msg(UserProjectRemoveClicked(p.id)),
-                                    ),
-                                  ],
-                                  [
-                                    text(update_helpers.i18n_t(
-                                      model,
-                                      i18n_text.UserProjectRemove,
-                                    )),
-                                  ],
-                                ),
-                              ]),
-                            ]),
-                          )
-                        }),
-                      ),
-                    ]),
-                  ])
-              }
-          },
-          // Add to project form
-          hr([]),
-          div([attribute.class("add-project-form")], [
-            h3([], [
-              text(update_helpers.i18n_t(model, i18n_text.UserProjectsAdd)),
-            ]),
-            div([attribute.class("field-row")], [
-              // Project selector
-              select(
-                [
-                  attribute.value(
-                    case model.admin.user_projects_add_project_id {
-                      opt.Some(id) -> int.to_string(id)
-                      opt.None -> ""
-                    },
-                  ),
-                  attribute.disabled(model.admin.user_projects_in_flight),
-                  event.on_input(fn(value) {
-                    admin_msg(UserProjectsAddProjectChanged(value))
-                  }),
-                ],
-                [
-                  option(
-                    [attribute.value("")],
-                    update_helpers.i18n_t(model, i18n_text.SelectProject),
-                  ),
-                  ..view_available_projects_options(model)
-                ],
-              ),
-              // Role selector
-              select(
-                [
-                  attribute.value(model.admin.user_projects_add_role),
-                  attribute.disabled(model.admin.user_projects_in_flight),
-                  event.on_input(fn(value) {
-                    admin_msg(UserProjectsAddRoleChanged(value))
-                  }),
-                ],
-                [
-                  option(
-                    [attribute.value("member")],
-                    update_helpers.i18n_t(model, i18n_text.RoleMember),
-                  ),
-                  option(
-                    [attribute.value("manager")],
-                    update_helpers.i18n_t(model, i18n_text.RoleManager),
-                  ),
-                ],
-              ),
-              button(
-                [
-                  attribute.disabled(
-                    model.admin.user_projects_in_flight
-                    || opt.is_none(model.admin.user_projects_add_project_id),
-                  ),
-                  event.on_click(admin_msg(UserProjectsAddSubmitted)),
-                ],
-                [text(update_helpers.i18n_t(model, i18n_text.Add))],
-              ),
-            ]),
-          ]),
-        ],
-        // Footer: close button
-        [
-          button([event.on_click(admin_msg(UserProjectsDialogClosed))], [
-            text(update_helpers.i18n_t(model, i18n_text.Close)),
-          ]),
-        ],
-      )
-    }
+    True, opt.Some(user) -> view_user_projects_dialog_open(model, user)
 
     _, _ -> element.none()
   }
+}
+
+fn view_user_projects_dialog_open(model: Model, user: OrgUser) -> Element(Msg) {
+  dialog.view(
+    dialog.DialogConfig(
+      title: update_helpers.i18n_t(
+        model,
+        i18n_text.UserProjectsTitle(user.email),
+      ),
+      icon: opt.None,
+      size: dialog.DialogMd,
+      on_close: admin_msg(UserProjectsDialogClosed),
+    ),
+    True,
+    model.admin.user_projects_error,
+    // Content: project list and add form
+    [
+      view_user_projects_list(model),
+      // Add to project form
+      hr([]),
+      view_user_projects_add_form(model),
+    ],
+    // Footer: close button
+    [
+      button([event.on_click(admin_msg(UserProjectsDialogClosed))], [
+        text(update_helpers.i18n_t(model, i18n_text.Close)),
+      ]),
+    ],
+  )
+}
+
+fn view_user_projects_list(model: Model) -> Element(Msg) {
+  case model.admin.user_projects_list {
+    NotAsked | Loading ->
+      p([attribute.class("loading")], [
+        text(update_helpers.i18n_t(model, i18n_text.Loading)),
+      ])
+    Failed(err) -> div([attribute.class("error")], [text(err.message)])
+    Loaded(projects) -> view_user_projects_list_loaded(model, projects)
+  }
+}
+
+fn view_user_projects_list_loaded(
+  model: Model,
+  projects: List(Project),
+) -> Element(Msg) {
+  case list.is_empty(projects) {
+    True ->
+      p([attribute.class("empty")], [
+        text(update_helpers.i18n_t(model, i18n_text.UserProjectsEmpty)),
+      ])
+    False -> view_user_projects_table(model, projects)
+  }
+}
+
+fn view_user_projects_table(
+  model: Model,
+  projects: List(Project),
+) -> Element(Msg) {
+  div([attribute.class("user-projects-list")], [
+    table([attribute.class("table")], [
+      thead([], [
+        tr([], [
+          th([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
+          th([], [
+            text(update_helpers.i18n_t(model, i18n_text.RoleInProject)),
+          ]),
+          th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
+        ]),
+      ]),
+      keyed.tbody(
+        [],
+        list.map(projects, fn(p) {
+          #(
+            int.to_string(p.id),
+            tr([], [
+              td([], [text(p.name)]),
+              td([], [
+                // Editable role dropdown
+                select(
+                  [
+                    attribute.value(project_role.to_string(p.my_role)),
+                    attribute.disabled(model.admin.user_projects_in_flight),
+                    event.on_input(fn(value) {
+                      admin_msg(UserProjectRoleChangeRequested(p.id, value))
+                    }),
+                  ],
+                  [
+                    option(
+                      [attribute.value("manager")],
+                      update_helpers.i18n_t(model, i18n_text.RoleManager),
+                    ),
+                    option(
+                      [attribute.value("member")],
+                      update_helpers.i18n_t(model, i18n_text.RoleMember),
+                    ),
+                  ],
+                ),
+              ]),
+              td([], [
+                button(
+                  [
+                    attribute.class("btn-danger btn-sm"),
+                    attribute.disabled(model.admin.user_projects_in_flight),
+                    event.on_click(admin_msg(UserProjectRemoveClicked(p.id))),
+                  ],
+                  [
+                    text(update_helpers.i18n_t(
+                      model,
+                      i18n_text.UserProjectRemove,
+                    )),
+                  ],
+                ),
+              ]),
+            ]),
+          )
+        }),
+      ),
+    ]),
+  ])
+}
+
+fn view_user_projects_add_form(model: Model) -> Element(Msg) {
+  div([attribute.class("add-project-form")], [
+    h3([], [text(update_helpers.i18n_t(model, i18n_text.UserProjectsAdd))]),
+    div([attribute.class("field-row")], [
+      // Project selector
+      select(
+        [
+          attribute.value(case model.admin.user_projects_add_project_id {
+            opt.Some(id) -> int.to_string(id)
+            opt.None -> ""
+          }),
+          attribute.disabled(model.admin.user_projects_in_flight),
+          event.on_input(fn(value) {
+            admin_msg(UserProjectsAddProjectChanged(value))
+          }),
+        ],
+        [
+          option(
+            [attribute.value("")],
+            update_helpers.i18n_t(model, i18n_text.SelectProject),
+          ),
+          ..view_available_projects_options(model)
+        ],
+      ),
+      // Role selector
+      select(
+        [
+          attribute.value(model.admin.user_projects_add_role),
+          attribute.disabled(model.admin.user_projects_in_flight),
+          event.on_input(fn(value) {
+            admin_msg(UserProjectsAddRoleChanged(value))
+          }),
+        ],
+        [
+          option(
+            [attribute.value("member")],
+            update_helpers.i18n_t(model, i18n_text.RoleMember),
+          ),
+          option(
+            [attribute.value("manager")],
+            update_helpers.i18n_t(model, i18n_text.RoleManager),
+          ),
+        ],
+      ),
+      button(
+        [
+          attribute.disabled(
+            model.admin.user_projects_in_flight
+            || opt.is_none(model.admin.user_projects_add_project_id),
+          ),
+          event.on_click(admin_msg(UserProjectsAddSubmitted)),
+        ],
+        [text(update_helpers.i18n_t(model, i18n_text.Add))],
+      ),
+    ]),
+  ])
 }
 
 /// Get available projects to add user to (exclude projects user is already in).
@@ -463,35 +450,49 @@ fn view_available_projects_options(model: Model) -> List(Element(Msg)) {
 fn format_projects_summary(model: Model, user_id: Int) -> String {
   // Check if this is the user whose dialog is open and projects are loaded
   case model.admin.user_projects_dialog_user, model.admin.user_projects_list {
-    opt.Some(dialog_user), Loaded(projects) if dialog_user.id == user_id -> {
-      let count = list.length(projects)
-      case count {
-        0 -> update_helpers.i18n_t(model, i18n_text.ProjectsSummary(0, ""))
-        _ -> {
-          let names =
-            projects
-            |> list.take(3)
-            |> list.map(fn(p) {
-              case p.my_role {
-                Manager -> p.name <> " (mgr)"
-                Member -> p.name
-              }
-            })
-            |> string.join(", ")
-
-          let suffix = case list.length(projects) > 3 {
-            True -> ", +" <> int.to_string(list.length(projects) - 3)
-            False -> ""
-          }
-
-          update_helpers.i18n_t(
-            model,
-            i18n_text.ProjectsSummary(count, names <> suffix),
-          )
-        }
-      }
-    }
+    opt.Some(dialog_user), Loaded(projects) if dialog_user.id == user_id ->
+      format_projects_summary_loaded(model, projects)
     _, _ -> "..."
+  }
+}
+
+fn format_projects_summary_loaded(
+  model: Model,
+  projects: List(Project),
+) -> String {
+  let count = list.length(projects)
+  case count {
+    0 -> update_helpers.i18n_t(model, i18n_text.ProjectsSummary(0, ""))
+    _ -> format_projects_summary_named(model, projects, count)
+  }
+}
+
+fn format_projects_summary_named(
+  model: Model,
+  projects: List(Project),
+  count: Int,
+) -> String {
+  let names =
+    projects
+    |> list.take(3)
+    |> list.map(project_label_for_summary)
+    |> string.join(", ")
+
+  let suffix = case list.length(projects) > 3 {
+    True -> ", +" <> int.to_string(list.length(projects) - 3)
+    False -> ""
+  }
+
+  update_helpers.i18n_t(
+    model,
+    i18n_text.ProjectsSummary(count, names <> suffix),
+  )
+}
+
+fn project_label_for_summary(project: Project) -> String {
+  case project.my_role {
+    Manager -> project.name <> " (mgr)"
+    Member -> project.name
   }
 }
 
@@ -866,6 +867,7 @@ fn view_capabilities_list(
 // Capability Members Dialog (Story 4.7 AC16-17)
 // =============================================================================
 
+// Justification: large function kept intact to preserve cohesive UI logic.
 fn view_capability_members_dialog(
   model: Model,
   capability_id: Int,
@@ -1018,6 +1020,7 @@ fn view_heroicon_inline(
   ])
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Render a task type icon using the icon catalog.
 /// Falls back to CDN for icons not in catalog, or text for non-heroicons.
 /// Exported for use in pool/task card views.
@@ -1164,6 +1167,7 @@ pub fn view_cards(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Render the card-crud-dialog Lustre component.
 /// Made public for use in client_view.gleam (Story 4.8 UX: global dialog rendering)
 pub fn view_card_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {

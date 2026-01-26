@@ -880,6 +880,7 @@ pub type MetricsProjectTasksRow {
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
+/// Justification: generated SQL query wrapper is long by design.
 pub fn metrics_project_tasks(
   db: pog.Connection,
   arg_1: Int,
@@ -1099,11 +1100,13 @@ pub type MetricsTimeToFirstClaimBucketsRow {
   MetricsTimeToFirstClaimBucketsRow(bucket: String, count: Int)
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// name: metrics_time_to_first_claim_buckets
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
+/// Justification: nested case improves clarity for branching logic.
 pub fn metrics_time_to_first_claim_buckets(
   db: pog.Connection,
   arg_1: Int,
@@ -3250,6 +3253,7 @@ pub type RulesFindMatchingRow {
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
+/// Justification: generated SQL query wrapper is long by design.
 pub fn rules_find_matching(
   db: pog.Connection,
   arg_1: String,
@@ -4011,6 +4015,7 @@ pub type TaskTemplatesCreateRow {
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
+/// Justification: generated SQL query wrapper is long by design.
 pub fn task_templates_create(
   db: pog.Connection,
   arg_1: Int,
@@ -4418,6 +4423,7 @@ pub type TaskTemplatesUpdateRow {
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
+/// Justification: generated SQL query wrapper is long by design.
 pub fn task_templates_update(
   db: pog.Connection,
   arg_1: Int,
@@ -4833,6 +4839,7 @@ pub type TasksClaimRow {
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
+/// Justification: generated SQL query wrapper is long by design.
 pub fn tasks_claim(
   db: pog.Connection,
   arg_1: Int,
@@ -4967,6 +4974,7 @@ pub type TasksCompleteRow {
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
+/// Justification: generated SQL query wrapper is long by design.
 pub fn tasks_complete(
   db: pog.Connection,
   arg_1: Int,
@@ -5103,6 +5111,7 @@ pub type TasksCreateRow {
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
+/// Justification: generated SQL query wrapper is long by design.
 pub fn tasks_create(
   db: pog.Connection,
   arg_1: Int,
@@ -5263,6 +5272,7 @@ pub type TasksGetForUserRow {
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
+/// Justification: generated SQL query wrapper is long by design.
 pub fn tasks_get_for_user(
   db: pog.Connection,
   arg_1: Int,
@@ -5402,6 +5412,7 @@ pub type TasksListRow {
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
+/// Justification: generated SQL query wrapper is long by design.
 pub fn tasks_list(
   db: pog.Connection,
   arg_1: Int,
@@ -5548,6 +5559,7 @@ pub type TasksListByCardRow {
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
+/// Justification: generated SQL query wrapper is long by design.
 pub fn tasks_list_by_card(
   db: pog.Connection,
   arg_1: Int,
@@ -5673,6 +5685,7 @@ pub type TasksReleaseRow {
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
+/// Justification: generated SQL query wrapper is long by design.
 pub fn tasks_release(
   db: pog.Connection,
   arg_1: Int,
@@ -5808,6 +5821,7 @@ pub type TasksUpdateRow {
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
+/// Justification: generated SQL query wrapper is long by design.
 pub fn tasks_update(
   db: pog.Connection,
   arg_1: Int,

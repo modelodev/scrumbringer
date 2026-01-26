@@ -60,21 +60,27 @@ fn handle_list(
 ) -> wisp.Response {
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+    Ok(user) -> list_cards_for_user(ctx, project_id, user.id)
+  }
+}
 
-    Ok(user) -> {
-      let auth.Ctx(db: db, ..) = ctx
+fn list_cards_for_user(
+  ctx: auth.Ctx,
+  project_id: Int,
+  user_id: Int,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
 
-      // Check user is member of project
-      case authorization.is_project_member(db, user.id, project_id) {
-        False -> api.error(403, "FORBIDDEN", "Not a member of this project")
-        True -> {
-          case cards_db.list_cards(db, project_id) {
-            Ok(cards) -> api.ok(json.object([#("cards", cards_to_json(cards))]))
-            Error(_) -> api.error(500, "INTERNAL", "Database error")
-          }
-        }
-      }
-    }
+  case authorization.is_project_member(db, user_id, project_id) {
+    False -> api.error(403, "FORBIDDEN", "Not a member of this project")
+    True -> list_cards_in_project(db, project_id)
+  }
+}
+
+fn list_cards_in_project(db: pog.Connection, project_id: Int) -> wisp.Response {
+  case cards_db.list_cards(db, project_id) {
+    Ok(cards) -> api.ok(json.object([#("cards", cards_to_json(cards))]))
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
   }
 }
 
@@ -104,13 +110,14 @@ const valid_colors = [
 fn validate_color(color: String) -> Result(Option(String), wisp.Response) {
   case color {
     "" -> Ok(None)
-    c -> {
-      case list.contains(valid_colors, c) {
-        True -> Ok(Some(c))
-        False ->
-          Error(api.error(422, "VALIDATION_ERROR", "Invalid color value"))
-      }
-    }
+    c -> validate_named_color(c)
+  }
+}
+
+fn validate_named_color(color: String) -> Result(Option(String), wisp.Response) {
+  case list.contains(valid_colors, color) {
+    True -> Ok(Some(color))
+    False -> Error(api.error(422, "VALIDATION_ERROR", "Invalid color value"))
   }
 }
 
@@ -125,21 +132,28 @@ fn decode_card_payload_data(
   }
 
   case decode.run(data, decoder) {
-    Ok(#(title, description, color)) -> {
-      case validate_color(color) {
-        Error(resp) -> Error(resp)
-        Ok(validated_color) ->
-          Ok(#(
-            title,
-            case description {
-              "" -> None
-              s -> Some(s)
-            },
-            validated_color,
-          ))
-      }
-    }
+    Ok(#(title, description, color)) ->
+      normalize_card_payload(title, description, color)
     Error(_) -> Error(api.error(422, "VALIDATION_ERROR", "Invalid JSON body"))
+  }
+}
+
+fn normalize_card_payload(
+  title: String,
+  description: String,
+  color: String,
+) -> Result(#(String, Option(String), Option(String)), wisp.Response) {
+  case validate_color(color) {
+    Error(resp) -> Error(resp)
+    Ok(validated_color) ->
+      Ok(#(title, normalize_optional(description), validated_color))
+  }
+}
+
+fn normalize_optional(value: String) -> Option(String) {
+  case value {
+    "" -> None
+    other -> Some(other)
   }
 }
 
@@ -150,42 +164,73 @@ fn handle_create(
 ) -> wisp.Response {
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+    Ok(user) -> create_card_with_csrf(req, ctx, project_id, user.id)
+  }
+}
 
-    Ok(user) ->
-      case csrf.require_double_submit(req) {
-        Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+fn create_card_with_csrf(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+  user_id: Int,
+) -> wisp.Response {
+  case csrf.require_double_submit(req) {
+    Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+    Ok(Nil) -> create_card_with_auth(req, ctx, project_id, user_id)
+  }
+}
 
-        Ok(Nil) -> {
-          let auth.Ctx(db: db, ..) = ctx
+fn create_card_with_auth(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+  user_id: Int,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
 
-          case require_project_admin(db, user.id, project_id) {
-            Error(resp) -> resp
-            Ok(Nil) -> {
-              use data <- wisp.require_json(req)
+  case require_project_admin(db, user_id, project_id) {
+    Error(resp) -> resp
+    Ok(Nil) -> create_card_with_payload(req, ctx, project_id, user_id)
+  }
+}
 
-              case decode_card_payload_data(data) {
-                Error(resp) -> resp
-                Ok(#(title, description, color)) -> {
-                  case
-                    cards_db.create_card(
-                      db,
-                      project_id,
-                      title,
-                      description,
-                      color,
-                      user.id,
-                    )
-                  {
-                    Ok(card) ->
-                      api.ok(json.object([#("card", card_to_json(card))]))
-                    Error(_) -> api.error(500, "INTERNAL", "Database error")
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+fn create_card_with_payload(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+  user_id: Int,
+) -> wisp.Response {
+  use data <- wisp.require_json(req)
+
+  case decode_card_payload_data(data) {
+    Error(resp) -> resp
+    Ok(#(title, description, color)) ->
+      create_card_in_project(
+        ctx,
+        project_id,
+        title,
+        description,
+        color,
+        user_id,
+      )
+  }
+}
+
+fn create_card_in_project(
+  ctx: auth.Ctx,
+  project_id: Int,
+  title: String,
+  description: Option(String),
+  color: Option(String),
+  user_id: Int,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+
+  case
+    cards_db.create_card(db, project_id, title, description, color, user_id)
+  {
+    Ok(card) -> api.ok(json.object([#("card", card_to_json(card))]))
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
   }
 }
 
@@ -206,26 +251,30 @@ pub fn handle_card(
 fn handle_get(req: wisp.Request, ctx: auth.Ctx, card_id: Int) -> wisp.Response {
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+    Ok(user) -> get_card_for_user(ctx, card_id, user.id)
+  }
+}
 
-    Ok(user) -> {
-      let auth.Ctx(db: db, ..) = ctx
+fn get_card_for_user(ctx: auth.Ctx, card_id: Int, user_id: Int) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
 
-      case cards_db.get_card(db, card_id) {
-        Error(cards_db.CardNotFound) ->
-          api.error(404, "NOT_FOUND", "Card not found")
-        Error(cards_db.DbError(_)) ->
-          api.error(500, "INTERNAL", "Database error")
-        Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
+  case cards_db.get_card(db, card_id) {
+    Error(cards_db.CardNotFound) ->
+      api.error(404, "NOT_FOUND", "Card not found")
+    Error(cards_db.DbError(_)) -> api.error(500, "INTERNAL", "Database error")
+    Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
+    Ok(card) -> respond_with_card_if_member(db, user_id, card)
+  }
+}
 
-        Ok(card) -> {
-          // Check user is member of the card's project
-          case authorization.is_project_member(db, user.id, card.project_id) {
-            False -> api.error(403, "FORBIDDEN", "Not a member of this project")
-            True -> api.ok(json.object([#("card", card_to_json(card))]))
-          }
-        }
-      }
-    }
+fn respond_with_card_if_member(
+  db: pog.Connection,
+  user_id: Int,
+  card: cards_db.Card,
+) -> wisp.Response {
+  case authorization.is_project_member(db, user_id, card.project_id) {
+    False -> api.error(403, "FORBIDDEN", "Not a member of this project")
+    True -> api.ok(json.object([#("card", card_to_json(card))]))
   }
 }
 
@@ -236,54 +285,80 @@ fn handle_update(
 ) -> wisp.Response {
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+    Ok(user) -> update_card_with_csrf(req, ctx, card_id, user.id)
+  }
+}
 
-    Ok(user) ->
-      case csrf.require_double_submit(req) {
-        Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+fn update_card_with_csrf(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  card_id: Int,
+  user_id: Int,
+) -> wisp.Response {
+  case csrf.require_double_submit(req) {
+    Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+    Ok(Nil) -> update_card_with_auth(req, ctx, card_id, user_id)
+  }
+}
 
-        Ok(Nil) -> {
-          let auth.Ctx(db: db, ..) = ctx
+fn update_card_with_auth(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  card_id: Int,
+  user_id: Int,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
 
-          // First get the card to find its project_id
-          case cards_db.get_card(db, card_id) {
-            Error(cards_db.CardNotFound) ->
-              api.error(404, "NOT_FOUND", "Card not found")
-            Error(_) -> api.error(500, "INTERNAL", "Database error")
+  case cards_db.get_card(db, card_id) {
+    Error(cards_db.CardNotFound) ->
+      api.error(404, "NOT_FOUND", "Card not found")
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
+    Ok(card) -> update_card_in_project(req, ctx, card, user_id)
+  }
+}
 
-            Ok(card) -> {
-              case require_project_admin(db, user.id, card.project_id) {
-                Error(resp) -> resp
-                Ok(Nil) -> {
-                  use data <- wisp.require_json(req)
+fn update_card_in_project(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  card: cards_db.Card,
+  user_id: Int,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
 
-                  case decode_card_payload_data(data) {
-                    Error(resp) -> resp
-                    Ok(#(title, description, color)) -> {
-                      case
-                        cards_db.update_card(
-                          db,
-                          card_id,
-                          title,
-                          description,
-                          color,
-                        )
-                      {
-                        Ok(updated) ->
-                          api.ok(
-                            json.object([#("card", card_to_json(updated))]),
-                          )
-                        Error(cards_db.CardNotFound) ->
-                          api.error(404, "NOT_FOUND", "Card not found")
-                        Error(_) -> api.error(500, "INTERNAL", "Database error")
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+  case require_project_admin(db, user_id, card.project_id) {
+    Error(resp) -> resp
+    Ok(Nil) -> update_card_with_payload(req, ctx, card.id)
+  }
+}
+
+fn update_card_with_payload(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  card_id: Int,
+) -> wisp.Response {
+  use data <- wisp.require_json(req)
+
+  case decode_card_payload_data(data) {
+    Error(resp) -> resp
+    Ok(#(title, description, color)) ->
+      update_card_in_db(ctx, card_id, title, description, color)
+  }
+}
+
+fn update_card_in_db(
+  ctx: auth.Ctx,
+  card_id: Int,
+  title: String,
+  description: Option(String),
+  color: Option(String),
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+
+  case cards_db.update_card(db, card_id, title, description, color) {
+    Ok(updated) -> api.ok(json.object([#("card", card_to_json(updated))]))
+    Error(cards_db.CardNotFound) ->
+      api.error(404, "NOT_FOUND", "Card not found")
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
   }
 }
 
@@ -294,43 +369,62 @@ fn handle_delete(
 ) -> wisp.Response {
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+    Ok(user) -> delete_card_with_csrf(req, ctx, card_id, user.id)
+  }
+}
 
-    Ok(user) ->
-      case csrf.require_double_submit(req) {
-        Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+fn delete_card_with_csrf(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  card_id: Int,
+  user_id: Int,
+) -> wisp.Response {
+  case csrf.require_double_submit(req) {
+    Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+    Ok(Nil) -> delete_card_with_auth(ctx, card_id, user_id)
+  }
+}
 
-        Ok(Nil) -> {
-          let auth.Ctx(db: db, ..) = ctx
+fn delete_card_with_auth(
+  ctx: auth.Ctx,
+  card_id: Int,
+  user_id: Int,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
 
-          // First get the card to find its project_id
-          case cards_db.get_card(db, card_id) {
-            Error(cards_db.CardNotFound) ->
-              api.error(404, "NOT_FOUND", "Card not found")
-            Error(_) -> api.error(500, "INTERNAL", "Database error")
+  case cards_db.get_card(db, card_id) {
+    Error(cards_db.CardNotFound) ->
+      api.error(404, "NOT_FOUND", "Card not found")
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
+    Ok(card) -> delete_card_in_project(ctx, card, user_id)
+  }
+}
 
-            Ok(card) -> {
-              case require_project_admin(db, user.id, card.project_id) {
-                Error(resp) -> resp
-                Ok(Nil) ->
-                  case cards_db.delete_card(db, card_id) {
-                    Ok(Nil) -> wisp.no_content()
-                    Error(cards_db.CardHasTasks(count)) ->
-                      api.error(
-                        409,
-                        "CONFLICT_HAS_TASKS",
-                        "Cannot delete card with "
-                          <> int.to_string(count)
-                          <> " tasks",
-                      )
-                    Error(cards_db.CardNotFound) ->
-                      api.error(404, "NOT_FOUND", "Card not found")
-                    Error(_) -> api.error(500, "INTERNAL", "Database error")
-                  }
-              }
-            }
-          }
-        }
-      }
+fn delete_card_in_project(
+  ctx: auth.Ctx,
+  card: cards_db.Card,
+  user_id: Int,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+
+  case require_project_admin(db, user_id, card.project_id) {
+    Error(resp) -> resp
+    Ok(Nil) -> delete_card_in_db(db, card.id)
+  }
+}
+
+fn delete_card_in_db(db: pog.Connection, card_id: Int) -> wisp.Response {
+  case cards_db.delete_card(db, card_id) {
+    Ok(Nil) -> wisp.no_content()
+    Error(cards_db.CardHasTasks(count)) ->
+      api.error(
+        409,
+        "CONFLICT_HAS_TASKS",
+        "Cannot delete card with " <> int.to_string(count) <> " tasks",
+      )
+    Error(cards_db.CardNotFound) ->
+      api.error(404, "NOT_FOUND", "Card not found")
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
   }
 }
 

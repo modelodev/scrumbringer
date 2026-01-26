@@ -14,20 +14,30 @@
 ////
 //// - Database operations (see `services/projects_db.gleam`)
 //// - Authentication (see `http/auth.gleam`)
+////
+//// ## Relations
+////
+//// - Uses `services/projects_db` for persistence
+//// - Uses `http/auth` and `http/csrf` for auth and CSRF validation
 
 import domain/org_role
 import domain/project_role
+import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
+import gleam/result
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
 import scrumbringer_server/services/projects_db
+import scrumbringer_server/services/store_state.{type StoredUser}
 import wisp
 
+/// Handle /api/projects requests.
+/// Example: handle_projects(req, ctx)
 pub fn handle_projects(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   case req.method {
     http.Get -> handle_list(req, ctx)
@@ -36,6 +46,8 @@ pub fn handle_projects(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   }
 }
 
+/// Handle /api/projects/:id/members requests.
+/// Example: handle_members(req, ctx, project_id)
 pub fn handle_members(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -48,6 +60,8 @@ pub fn handle_members(
   }
 }
 
+/// Handle /api/projects/:id/members/:user_id requests.
+/// Example: handle_member(req, ctx, project_id, user_id)
 pub fn handle_member(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -61,7 +75,8 @@ pub fn handle_member(
   }
 }
 
-/// Handle PATCH/DELETE /api/v1/projects/:id
+/// Handle /api/projects/:id requests.
+/// Example: handle_project(req, ctx, project_id)
 pub fn handle_project(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -79,60 +94,10 @@ fn handle_project_update(
   ctx: auth.Ctx,
   project_id: String,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) -> {
-      case csrf.require_double_submit(req) {
-        Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
-
-        Ok(Nil) -> {
-          case int.parse(project_id) {
-            Error(_) -> api.error(404, "NOT_FOUND", "Project not found")
-
-            Ok(project_id) -> {
-              let auth.Ctx(db: db, ..) = ctx
-
-              // Only org admins can update projects
-              case user.org_role {
-                org_role.Admin -> {
-                  use body <- wisp.require_json(req)
-                  let decoder =
-                    decode.field("name", decode.string, decode.success)
-
-                  case decode.run(body, decoder) {
-                    Error(_) ->
-                      api.error(400, "INVALID_BODY", "Invalid request body")
-
-                    Ok(name) -> {
-                      case projects_db.update_project(db, project_id, name) {
-                        Ok(project) ->
-                          api.ok(
-                            json.object([#("project", project_json(project))]),
-                          )
-
-                        Error(projects_db.UpdateProjectNotFound) ->
-                          api.error(404, "NOT_FOUND", "Project not found")
-
-                        Error(projects_db.UpdateProjectDbError(_)) ->
-                          api.error(500, "INTERNAL", "Database error")
-                      }
-                    }
-                  }
-                }
-
-                _ ->
-                  api.error(
-                    403,
-                    "FORBIDDEN",
-                    "Only org admins can update projects",
-                  )
-              }
-            }
-          }
-        }
-      }
-    }
+  use data <- wisp.require_json(req)
+  case update_project(req, ctx, project_id, data) {
+    Ok(project) -> api.ok(json.object([#("project", project_json(project))]))
+    Error(resp) -> resp
   }
 }
 
@@ -141,46 +106,9 @@ fn handle_project_delete(
   ctx: auth.Ctx,
   project_id: String,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) -> {
-      case csrf.require_double_submit(req) {
-        Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
-
-        Ok(Nil) -> {
-          case int.parse(project_id) {
-            Error(_) -> api.error(404, "NOT_FOUND", "Project not found")
-
-            Ok(project_id) -> {
-              let auth.Ctx(db: db, ..) = ctx
-
-              // Only org admins can delete projects
-              case user.org_role {
-                org_role.Admin -> {
-                  case projects_db.delete_project(db, project_id) {
-                    Ok(_) -> api.no_content()
-
-                    Error(projects_db.DeleteProjectNotFound) ->
-                      api.error(404, "NOT_FOUND", "Project not found")
-
-                    Error(projects_db.DeleteProjectDbError(_)) ->
-                      api.error(500, "INTERNAL", "Database error")
-                  }
-                }
-
-                _ ->
-                  api.error(
-                    403,
-                    "FORBIDDEN",
-                    "Only org admins can delete projects",
-                  )
-              }
-            }
-          }
-        }
-      }
-    }
+  case delete_project(req, ctx, project_id) {
+    Ok(Nil) -> api.no_content()
+    Error(resp) -> resp
   }
 }
 
@@ -190,58 +118,9 @@ fn handle_member_delete(
   project_id: String,
   user_id: String,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) -> {
-      case csrf.require_double_submit(req) {
-        Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
-
-        Ok(Nil) -> {
-          case int.parse(project_id) {
-            Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-
-            Ok(project_id) ->
-              case int.parse(user_id) {
-                Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-
-                Ok(target_user_id) -> {
-                  let auth.Ctx(db: db, ..) = ctx
-
-                  case require_project_admin(db, project_id, user.id) {
-                    Error(resp) -> resp
-
-                    Ok(Nil) -> {
-                      case
-                        projects_db.remove_member(
-                          db,
-                          project_id,
-                          target_user_id,
-                        )
-                      {
-                        Ok(Nil) -> api.no_content()
-
-                        Error(projects_db.MembershipNotFound) ->
-                          api.error(404, "NOT_FOUND", "Membership not found")
-
-                        Error(projects_db.CannotRemoveLastManager) ->
-                          api.error(
-                            422,
-                            "VALIDATION_ERROR",
-                            "Cannot remove last project admin",
-                          )
-
-                        Error(projects_db.RemoveDbError(_)) ->
-                          api.error(500, "INTERNAL", "Database error")
-                      }
-                    }
-                  }
-                }
-              }
-          }
-        }
-      }
-    }
+  case remove_member(req, ctx, project_id, user_id) {
+    Ok(Nil) -> api.no_content()
+    Error(resp) -> resp
   }
 }
 
@@ -251,170 +130,44 @@ fn handle_member_role_update(
   project_id: String,
   user_id: String,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) -> {
-      case csrf.require_double_submit(req) {
-        Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
-
-        Ok(Nil) -> {
-          case int.parse(project_id) {
-            Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-
-            Ok(project_id) ->
-              case int.parse(user_id) {
-                Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-
-                Ok(target_user_id) -> {
-                  let auth.Ctx(db: db, ..) = ctx
-
-                  // Only org admins can change project member roles
-                  case user.org_role {
-                    org_role.Admin -> {
-                      use data <- wisp.require_json(req)
-
-                      let decoder = {
-                        use role <- decode.field("role", decode.string)
-                        decode.success(role)
-                      }
-
-                      case decode.run(data, decoder) {
-                        Error(_) ->
-                          api.error(400, "VALIDATION_ERROR", "Invalid JSON")
-
-                        Ok(role_value) ->
-                          case project_role.parse(role_value) {
-                            Ok(new_role) ->
-                              case
-                                projects_db.update_member_role(
-                                  db,
-                                  project_id,
-                                  target_user_id,
-                                  new_role,
-                                )
-                              {
-                                Ok(result) ->
-                                  api.ok(
-                                    json.object([
-                                      #(
-                                        "member",
-                                        role_update_result_json(result),
-                                      ),
-                                    ]),
-                                  )
-
-                                Error(projects_db.UpdateMemberNotFound) ->
-                                  api.error(
-                                    404,
-                                    "NOT_FOUND",
-                                    "Membership not found",
-                                  )
-
-                                Error(projects_db.UpdateLastManager) ->
-                                  api.error(
-                                    422,
-                                    "VALIDATION_ERROR",
-                                    "Cannot demote last project manager",
-                                  )
-
-                                Error(projects_db.UpdateInvalidRole) ->
-                                  api.error(
-                                    400,
-                                    "VALIDATION_ERROR",
-                                    "Invalid role",
-                                  )
-
-                                Error(projects_db.UpdateDbError(_)) ->
-                                  api.error(500, "INTERNAL", "Database error")
-                              }
-                            Error(_) ->
-                              api.error(400, "VALIDATION_ERROR", "Invalid role")
-                          }
-                      }
-                    }
-                    _ ->
-                      api.error(
-                        403,
-                        "FORBIDDEN",
-                        "Only org admins can change project member roles",
-                      )
-                  }
-                }
-              }
-          }
-        }
-      }
-    }
+  use data <- wisp.require_json(req)
+  case update_member_role(req, ctx, project_id, user_id, data) {
+    Ok(result) ->
+      api.ok(json.object([#("member", role_update_result_json(result))]))
+    Error(resp) -> resp
   }
 }
 
 fn handle_create(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) -> {
-      case user.org_role {
-        org_role.Admin -> create_as_admin(req, ctx, user.id, user.org_id)
-        _ -> api.error(403, "FORBIDDEN", "Forbidden")
-      }
-    }
+  use data <- wisp.require_json(req)
+  case create_project(req, ctx, data) {
+    Ok(project) -> api.ok(json.object([#("project", project_json(project))]))
+    Error(resp) -> resp
   }
 }
 
-fn create_as_admin(
+fn create_project(
   req: wisp.Request,
   ctx: auth.Ctx,
-  user_id: Int,
-  org_id: Int,
-) -> wisp.Response {
-  case csrf.require_double_submit(req) {
-    Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
-
-    Ok(Nil) -> {
-      use data <- wisp.require_json(req)
-
-      let decoder = {
-        use name <- decode.field("name", decode.string)
-        decode.success(name)
-      }
-
-      case decode.run(data, decoder) {
-        Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
-
-        Ok(name) -> {
-          let auth.Ctx(db: db, ..) = ctx
-
-          case projects_db.create_project(db, org_id, user_id, name) {
-            Ok(project) ->
-              api.ok(json.object([#("project", project_json(project))]))
-            Error(_) -> api.error(500, "INTERNAL", "Database error")
-          }
-        }
-      }
-    }
+  data: dynamic.Dynamic,
+) -> Result(projects_db.Project, wisp.Response) {
+  use user <- result.try(require_current_user(req, ctx))
+  use _ <- result.try(require_org_admin(user))
+  use _ <- result.try(require_csrf(req))
+  use name <- result.try(decode_project_name(data))
+  let auth.Ctx(db: db, ..) = ctx
+  case projects_db.create_project(db, user.org_id, user.id, name) {
+    Ok(project) -> Ok(project)
+    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
   }
 }
 
 fn handle_list(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) -> {
-      let auth.Ctx(db: db, ..) = ctx
-
-      case projects_db.list_projects_for_user(db, user.id) {
-        Ok(projects) ->
-          api.ok(
-            json.object([
-              #("projects", projects |> list_to_json(fn(p) { project_json(p) })),
-            ]),
-          )
-        Error(_) -> api.error(500, "INTERNAL", "Database error")
-      }
-    }
+  case list_projects(req, ctx) {
+    Ok(payload) -> api.ok(payload)
+    Error(resp) -> resp
   }
 }
 
@@ -425,37 +178,9 @@ fn handle_members_list(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) -> {
-      case int.parse(project_id) {
-        Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-
-        Ok(project_id) -> {
-          let auth.Ctx(db: db, ..) = ctx
-
-          case require_project_admin(db, project_id, user.id) {
-            Error(resp) -> resp
-
-            Ok(Nil) -> {
-              case projects_db.list_members(db, project_id) {
-                Ok(members) ->
-                  api.ok(
-                    json.object([
-                      #(
-                        "members",
-                        members |> list_to_json(fn(m) { member_json(m) }),
-                      ),
-                    ]),
-                  )
-                Error(_) -> api.error(500, "INTERNAL", "Database error")
-              }
-            }
-          }
-        }
-      }
-    }
+  case list_members(req, ctx, project_id) {
+    Ok(payload) -> api.ok(payload)
+    Error(resp) -> resp
   }
 }
 
@@ -464,89 +189,265 @@ fn handle_members_add(
   ctx: auth.Ctx,
   project_id: String,
 ) -> wisp.Response {
+  use data <- wisp.require_json(req)
+  case add_member(req, ctx, project_id, data) {
+    Ok(member) -> api.ok(json.object([#("member", member_json(member))]))
+    Error(resp) -> resp
+  }
+}
+
+fn update_project(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+  data: dynamic.Dynamic,
+) -> Result(projects_db.Project, wisp.Response) {
+  use user <- result.try(require_current_user(req, ctx))
+  use _ <- result.try(require_org_admin(user))
+  use _ <- result.try(require_csrf(req))
+  use project_id <- result.try(parse_project_id(project_id))
+  use name <- result.try(decode_project_name(data))
+  let auth.Ctx(db: db, ..) = ctx
+  case projects_db.update_project(db, project_id, name) {
+    Ok(project) -> Ok(project)
+    Error(projects_db.UpdateProjectNotFound) ->
+      Error(api.error(404, "NOT_FOUND", "Project not found"))
+    Error(projects_db.UpdateProjectDbError(_)) ->
+      Error(api.error(500, "INTERNAL", "Database error"))
+  }
+}
+
+fn delete_project(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+) -> Result(Nil, wisp.Response) {
+  use user <- result.try(require_current_user(req, ctx))
+  use _ <- result.try(require_org_admin(user))
+  use _ <- result.try(require_csrf(req))
+  use project_id <- result.try(parse_project_id(project_id))
+  let auth.Ctx(db: db, ..) = ctx
+  case projects_db.delete_project(db, project_id) {
+    Ok(_) -> Ok(Nil)
+    Error(projects_db.DeleteProjectNotFound) ->
+      Error(api.error(404, "NOT_FOUND", "Project not found"))
+    Error(projects_db.DeleteProjectDbError(_)) ->
+      Error(api.error(500, "INTERNAL", "Database error"))
+  }
+}
+
+fn remove_member(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+  user_id: String,
+) -> Result(Nil, wisp.Response) {
+  use user <- result.try(require_current_user(req, ctx))
+  use _ <- result.try(require_csrf(req))
+  use project_id <- result.try(parse_project_id(project_id))
+  use target_user_id <- result.try(parse_user_id(user_id))
+  let auth.Ctx(db: db, ..) = ctx
+  use _ <- result.try(require_project_admin(db, project_id, user.id))
+  case projects_db.remove_member(db, project_id, target_user_id) {
+    Ok(Nil) -> Ok(Nil)
+    Error(projects_db.MembershipNotFound) ->
+      Error(api.error(404, "NOT_FOUND", "Membership not found"))
+    Error(projects_db.CannotRemoveLastManager) ->
+      Error(api.error(
+        422,
+        "VALIDATION_ERROR",
+        "Cannot remove last project admin",
+      ))
+    Error(projects_db.RemoveDbError(_)) ->
+      Error(api.error(500, "INTERNAL", "Database error"))
+  }
+}
+
+fn update_member_role(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+  user_id: String,
+  data: dynamic.Dynamic,
+) -> Result(projects_db.UpdateMemberRoleResult, wisp.Response) {
+  use user <- result.try(require_current_user(req, ctx))
+  use _ <- result.try(require_org_admin(user))
+  use _ <- result.try(require_csrf(req))
+  use project_id <- result.try(parse_project_id(project_id))
+  use target_user_id <- result.try(parse_user_id(user_id))
+  use role_value <- result.try(decode_role_value(data))
+  use new_role <- result.try(parse_project_role(role_value))
+  let auth.Ctx(db: db, ..) = ctx
+  case
+    projects_db.update_member_role(db, project_id, target_user_id, new_role)
+  {
+    Ok(result) -> Ok(result)
+    Error(projects_db.UpdateMemberNotFound) ->
+      Error(api.error(404, "NOT_FOUND", "Membership not found"))
+    Error(projects_db.UpdateLastManager) ->
+      Error(api.error(
+        422,
+        "VALIDATION_ERROR",
+        "Cannot demote last project manager",
+      ))
+    Error(projects_db.UpdateInvalidRole) ->
+      Error(api.error(400, "VALIDATION_ERROR", "Invalid role"))
+    Error(projects_db.UpdateDbError(_)) ->
+      Error(api.error(500, "INTERNAL", "Database error"))
+  }
+}
+
+fn list_projects(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+) -> Result(json.Json, wisp.Response) {
+  use user <- result.try(require_current_user(req, ctx))
+  let auth.Ctx(db: db, ..) = ctx
+  case projects_db.list_projects_for_user(db, user.id) {
+    Ok(projects) ->
+      Ok(
+        json.object([
+          #("projects", projects |> list_to_json(fn(p) { project_json(p) })),
+        ]),
+      )
+    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+  }
+}
+
+fn list_members(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+) -> Result(json.Json, wisp.Response) {
+  use user <- result.try(require_current_user(req, ctx))
+  use project_id <- result.try(parse_project_id(project_id))
+  let auth.Ctx(db: db, ..) = ctx
+  use _ <- result.try(require_project_admin(db, project_id, user.id))
+  case projects_db.list_members(db, project_id) {
+    Ok(members) ->
+      Ok(
+        json.object([
+          #("members", members |> list_to_json(fn(m) { member_json(m) })),
+        ]),
+      )
+    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+  }
+}
+
+fn add_member(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+  data: dynamic.Dynamic,
+) -> Result(projects_db.ProjectMember, wisp.Response) {
+  use user <- result.try(require_current_user(req, ctx))
+  use _ <- result.try(require_csrf(req))
+  use project_id <- result.try(parse_project_id(project_id))
+  let auth.Ctx(db: db, ..) = ctx
+  use _ <- result.try(require_project_admin(db, project_id, user.id))
+  use #(target_user_id, role_value) <- result.try(decode_member_payload(data))
+  use role <- result.try(parse_project_role(role_value))
+  case projects_db.add_member(db, project_id, target_user_id, role) {
+    Ok(member) -> Ok(member)
+    Error(projects_db.ProjectNotFound) ->
+      Error(api.error(404, "NOT_FOUND", "Project not found"))
+    Error(projects_db.TargetUserNotFound) ->
+      Error(api.error(404, "NOT_FOUND", "User not found"))
+    Error(projects_db.TargetUserWrongOrg) ->
+      Error(api.error(
+        422,
+        "VALIDATION_ERROR",
+        "User must be in same organization",
+      ))
+    Error(projects_db.AlreadyMember) ->
+      Error(api.error(422, "VALIDATION_ERROR", "User is already a member"))
+    Error(projects_db.InvalidRole) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid role"))
+    Error(projects_db.DbError(_)) ->
+      Error(api.error(500, "INTERNAL", "Database error"))
+  }
+}
+
+fn require_current_user(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+) -> Result(StoredUser, wisp.Response) {
   case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+    Ok(user) -> Ok(user)
+    Error(_) ->
+      Error(api.error(401, "AUTH_REQUIRED", "Authentication required"))
+  }
+}
 
-    Ok(user) -> {
-      case csrf.require_double_submit(req) {
-        Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+fn require_org_admin(user: StoredUser) -> Result(Nil, wisp.Response) {
+  case user.org_role {
+    org_role.Admin -> Ok(Nil)
+    _ ->
+      Error(api.error(403, "FORBIDDEN", "Only org admins can manage projects"))
+  }
+}
 
-        Ok(Nil) -> {
-          case int.parse(project_id) {
-            Error(_) -> api.error(404, "NOT_FOUND", "Not found")
+fn require_csrf(req: wisp.Request) -> Result(Nil, wisp.Response) {
+  case csrf.require_double_submit(req) {
+    Ok(Nil) -> Ok(Nil)
+    Error(_) ->
+      Error(api.error(403, "FORBIDDEN", "CSRF token missing or invalid"))
+  }
+}
 
-            Ok(project_id) -> {
-              let auth.Ctx(db: db, ..) = ctx
+fn parse_project_id(value: String) -> Result(Int, wisp.Response) {
+  case int.parse(value) {
+    Ok(id) -> Ok(id)
+    Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
+  }
+}
 
-              case require_project_admin(db, project_id, user.id) {
-                Error(resp) -> resp
+fn parse_user_id(value: String) -> Result(Int, wisp.Response) {
+  case int.parse(value) {
+    Ok(id) -> Ok(id)
+    Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
+  }
+}
 
-                Ok(Nil) -> {
-                  use data <- wisp.require_json(req)
+fn decode_project_name(data: dynamic.Dynamic) -> Result(String, wisp.Response) {
+  let decoder = decode.field("name", decode.string, decode.success)
+  case decode.run(data, decoder) {
+    Ok(name) -> Ok(name)
+    Error(_) -> Error(api.error(400, "INVALID_BODY", "Invalid request body"))
+  }
+}
 
-                  let decoder = {
-                    use user_id <- decode.field("user_id", decode.int)
-                    use role <- decode.field("role", decode.string)
-                    decode.success(#(user_id, role))
-                  }
+fn decode_member_payload(
+  data: dynamic.Dynamic,
+) -> Result(#(Int, String), wisp.Response) {
+  let decoder = {
+    use user_id <- decode.field("user_id", decode.int)
+    use role <- decode.field("role", decode.string)
+    decode.success(#(user_id, role))
+  }
+  case decode.run(data, decoder) {
+    Ok(payload) -> Ok(payload)
+    Error(_) -> Error(api.error(400, "VALIDATION_ERROR", "Invalid JSON"))
+  }
+}
 
-                  case decode.run(data, decoder) {
-                    Error(_) ->
-                      api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+fn decode_role_value(data: dynamic.Dynamic) -> Result(String, wisp.Response) {
+  let decoder = {
+    use role <- decode.field("role", decode.string)
+    decode.success(role)
+  }
+  case decode.run(data, decoder) {
+    Ok(role) -> Ok(role)
+    Error(_) -> Error(api.error(400, "VALIDATION_ERROR", "Invalid JSON"))
+  }
+}
 
-                    Ok(#(target_user_id, role_value)) ->
-                      case project_role.parse(role_value) {
-                        Ok(role) ->
-                          case
-                            projects_db.add_member(
-                              db,
-                              project_id,
-                              target_user_id,
-                              role,
-                            )
-                          {
-                            Ok(member) ->
-                              api.ok(
-                                json.object([#("member", member_json(member))]),
-                              )
-
-                            Error(projects_db.ProjectNotFound) ->
-                              api.error(404, "NOT_FOUND", "Project not found")
-
-                            Error(projects_db.TargetUserNotFound) ->
-                              api.error(404, "NOT_FOUND", "User not found")
-
-                            Error(projects_db.TargetUserWrongOrg) ->
-                              api.error(
-                                422,
-                                "VALIDATION_ERROR",
-                                "User must be in same organization",
-                              )
-
-                            Error(projects_db.AlreadyMember) ->
-                              api.error(
-                                422,
-                                "VALIDATION_ERROR",
-                                "User is already a member",
-                              )
-
-                            Error(projects_db.InvalidRole) ->
-                              api.error(422, "VALIDATION_ERROR", "Invalid role")
-
-                            Error(projects_db.DbError(_)) ->
-                              api.error(500, "INTERNAL", "Database error")
-                          }
-                        Error(_) ->
-                          api.error(422, "VALIDATION_ERROR", "Invalid role")
-                      }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
+fn parse_project_role(
+  value: String,
+) -> Result(project_role.ProjectRole, wisp.Response) {
+  case project_role.parse(value) {
+    Ok(role) -> Ok(role)
+    Error(_) -> Error(api.error(400, "VALIDATION_ERROR", "Invalid role"))
   }
 }
 

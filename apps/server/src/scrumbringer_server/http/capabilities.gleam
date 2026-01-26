@@ -14,6 +14,7 @@ import gleam/dynamic/decode
 import gleam/http
 import gleam/json
 import gleam/list
+import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
@@ -71,34 +72,42 @@ fn handle_list(
 
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) -> {
-      let auth.Ctx(db: db, ..) = ctx
-
-      // Must be a member of the project
-      case projects_db.is_project_member(db, project_id, user.id) {
-        Ok(True) -> {
-          case capabilities_db.list_capabilities_for_project(db, project_id) {
-            Ok(capabilities) ->
-              api.ok(
-                json.object([
-                  #(
-                    "capabilities",
-                    json.array(capabilities, of: capability_json),
-                  ),
-                ]),
-              )
-
-            Error(_) -> api.error(500, "INTERNAL", "Database error")
-          }
-        }
-        Ok(False) -> api.error(403, "FORBIDDEN", "Not a member of this project")
-        Error(_) -> api.error(500, "INTERNAL", "Database error")
-      }
-    }
+    Ok(user) -> list_capabilities_for_user(ctx, project_id, user.id)
   }
 }
 
+fn list_capabilities_for_user(
+  ctx: auth.Ctx,
+  project_id: Int,
+  user_id: Int,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+
+  // Must be a member of the project
+  case projects_db.is_project_member(db, project_id, user_id) {
+    Ok(True) -> list_capabilities_for_project(db, project_id)
+    Ok(False) -> api.error(403, "FORBIDDEN", "Not a member of this project")
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
+  }
+}
+
+fn list_capabilities_for_project(
+  db: pog.Connection,
+  project_id: Int,
+) -> wisp.Response {
+  case capabilities_db.list_capabilities_for_project(db, project_id) {
+    Ok(capabilities) ->
+      api.ok(
+        json.object([
+          #("capabilities", json.array(capabilities, of: capability_json)),
+        ]),
+      )
+
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
+  }
+}
+
+// Justification: nested case improves clarity for branching logic.
 fn handle_create(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -125,6 +134,7 @@ fn handle_create(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Story 4.9 AC9: Delete a capability (manager only).
 fn handle_delete(
   req: wisp.Request,
@@ -161,17 +171,21 @@ fn delete_capability(
   case csrf.require_double_submit(req) {
     Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
 
-    Ok(Nil) -> {
-      let auth.Ctx(db: db, ..) = ctx
+    Ok(Nil) -> delete_capability_from_project(ctx, project_id, capability_id)
+  }
+}
 
-      case capabilities_db.delete_capability(db, project_id, capability_id) {
-        Ok(True) -> api.ok(json.object([#("id", json.int(capability_id))]))
+fn delete_capability_from_project(
+  ctx: auth.Ctx,
+  project_id: Int,
+  capability_id: Int,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
 
-        Ok(False) -> api.error(404, "NOT_FOUND", "Capability not found")
-
-        Error(_) -> api.error(500, "INTERNAL", "Database error")
-      }
-    }
+  case capabilities_db.delete_capability(db, project_id, capability_id) {
+    Ok(True) -> api.ok(json.object([#("id", json.int(capability_id))]))
+    Ok(False) -> api.error(404, "NOT_FOUND", "Capability not found")
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
   }
 }
 
@@ -182,39 +196,43 @@ fn create_capability(
 ) -> wisp.Response {
   case csrf.require_double_submit(req) {
     Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+    Ok(Nil) -> create_capability_with_payload(req, ctx, project_id)
+  }
+}
 
-    Ok(Nil) -> {
-      use data <- wisp.require_json(req)
+fn create_capability_with_payload(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+) -> wisp.Response {
+  use data <- wisp.require_json(req)
 
-      let decoder = {
-        use name <- decode.field("name", decode.string)
-        decode.success(name)
-      }
+  let decoder = {
+    use name <- decode.field("name", decode.string)
+    decode.success(name)
+  }
 
-      case decode.run(data, decoder) {
-        Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+  case decode.run(data, decoder) {
+    Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+    Ok(name) -> create_capability_in_project(ctx, project_id, name)
+  }
+}
 
-        Ok(name) -> {
-          let auth.Ctx(db: db, ..) = ctx
+fn create_capability_in_project(
+  ctx: auth.Ctx,
+  project_id: Int,
+  name: String,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
 
-          case capabilities_db.create_capability(db, project_id, name) {
-            Ok(capability) ->
-              api.ok(
-                json.object([#("capability", capability_json(capability))]),
-              )
+  case capabilities_db.create_capability(db, project_id, name) {
+    Ok(capability) ->
+      api.ok(json.object([#("capability", capability_json(capability))]))
 
-            Error(capabilities_db.AlreadyExists) ->
-              api.error(
-                422,
-                "VALIDATION_ERROR",
-                "Capability name already exists",
-              )
+    Error(capabilities_db.AlreadyExists) ->
+      api.error(422, "VALIDATION_ERROR", "Capability name already exists")
 
-            Error(_) -> api.error(500, "INTERNAL", "Database error")
-          }
-        }
-      }
-    }
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
   }
 }
 
@@ -228,27 +246,38 @@ fn handle_get_member_capabilities(
 
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+    Ok(user) ->
+      list_member_capabilities_for_user(ctx, project_id, user.id, user_id)
+  }
+}
 
-    Ok(user) -> {
-      let auth.Ctx(db: db, ..) = ctx
+fn list_member_capabilities_for_user(
+  ctx: auth.Ctx,
+  project_id: Int,
+  member_id: Int,
+  user_id: Int,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
 
-      // Must be a member of the project
-      case projects_db.is_project_member(db, project_id, user.id) {
-        Ok(True) -> {
-          case
-            capabilities_db.list_member_capabilities(db, project_id, user_id)
-          {
-            Ok(capabilities) -> {
-              let ids = list.map(capabilities, fn(c) { c.capability_id })
-              api.ok(json.object([#("capability_ids", ids_json(ids))]))
-            }
-            Error(_) -> api.error(500, "INTERNAL", "Database error")
-          }
-        }
-        Ok(False) -> api.error(403, "FORBIDDEN", "Not a member of this project")
-        Error(_) -> api.error(500, "INTERNAL", "Database error")
-      }
+  // Must be a member of the project
+  case projects_db.is_project_member(db, project_id, member_id) {
+    Ok(True) -> list_member_capabilities(db, project_id, user_id)
+    Ok(False) -> api.error(403, "FORBIDDEN", "Not a member of this project")
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
+  }
+}
+
+fn list_member_capabilities(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+) -> wisp.Response {
+  case capabilities_db.list_member_capabilities(db, project_id, user_id) {
+    Ok(capabilities) -> {
+      let ids = list.map(capabilities, fn(c) { c.capability_id })
+      api.ok(json.object([#("capability_ids", ids_json(ids))]))
     }
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
   }
 }
 
@@ -263,21 +292,35 @@ fn handle_put_member_capabilities(
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
 
-    Ok(user) -> {
-      // User can update their own capabilities, or manager can update any member
-      let auth.Ctx(db: db, ..) = ctx
-      let can_update = case user.id == target_user_id {
-        True -> projects_db.is_project_member(db, project_id, user.id)
-        False -> projects_db.is_project_manager(db, project_id, user.id)
-      }
+    Ok(user) ->
+      update_member_capabilities_with_auth(
+        req,
+        ctx,
+        project_id,
+        target_user_id,
+        user.id,
+      )
+  }
+}
 
-      case can_update {
-        Ok(True) ->
-          update_member_capabilities(req, ctx, project_id, target_user_id)
-        Ok(False) -> api.error(403, "FORBIDDEN", "Not authorized")
-        Error(_) -> api.error(500, "INTERNAL", "Database error")
-      }
-    }
+fn update_member_capabilities_with_auth(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+  target_user_id: Int,
+  acting_user_id: Int,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+
+  let can_update = case acting_user_id == target_user_id {
+    True -> projects_db.is_project_member(db, project_id, acting_user_id)
+    False -> projects_db.is_project_manager(db, project_id, acting_user_id)
+  }
+
+  case can_update {
+    Ok(True) -> update_member_capabilities(req, ctx, project_id, target_user_id)
+    Ok(False) -> api.error(403, "FORBIDDEN", "Not authorized")
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
   }
 }
 
@@ -289,71 +332,93 @@ fn update_member_capabilities(
 ) -> wisp.Response {
   case csrf.require_double_submit(req) {
     Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+    Ok(Nil) ->
+      update_member_capabilities_with_payload(req, ctx, project_id, user_id)
+  }
+}
 
-    Ok(Nil) -> {
-      use data <- wisp.require_json(req)
+fn update_member_capabilities_with_payload(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+  user_id: Int,
+) -> wisp.Response {
+  use data <- wisp.require_json(req)
 
-      let decoder = {
-        use ids <- decode.field("capability_ids", decode.list(decode.int))
-        decode.success(ids)
+  let decoder = {
+    use ids <- decode.field("capability_ids", decode.list(decode.int))
+    decode.success(ids)
+  }
+
+  case decode.run(data, decoder) {
+    Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+    Ok(new_ids) ->
+      update_member_capabilities_with_ids(ctx, project_id, user_id, new_ids)
+  }
+}
+
+fn update_member_capabilities_with_ids(
+  ctx: auth.Ctx,
+  project_id: Int,
+  user_id: Int,
+  new_ids: List(Int),
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+
+  case validate_capability_ids(db, project_id, new_ids) {
+    Error(response) -> response
+    Ok(_) -> replace_member_capabilities(db, project_id, user_id, new_ids)
+  }
+}
+
+fn validate_capability_ids(
+  db: pog.Connection,
+  project_id: Int,
+  ids: List(Int),
+) -> Result(Nil, wisp.Response) {
+  let validation_result =
+    list.try_map(ids, fn(cap_id) {
+      case capabilities_db.capability_is_in_project(db, cap_id, project_id) {
+        Ok(True) -> Ok(cap_id)
+        Ok(False) -> Error("invalid")
+        Error(_) -> Error("db_error")
       }
+    })
 
-      case decode.run(data, decoder) {
-        Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+  case validation_result {
+    Error("invalid") ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid capability_id"))
+    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+    Ok(_) -> Ok(Nil)
+  }
+}
 
-        Ok(new_ids) -> {
-          let auth.Ctx(db: db, ..) = ctx
+fn replace_member_capabilities(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+  new_ids: List(Int),
+) -> wisp.Response {
+  case capabilities_db.remove_all_member_capabilities(db, project_id, user_id) {
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
+    Ok(Nil) -> add_member_capabilities(db, project_id, user_id, new_ids)
+  }
+}
 
-          // First, verify all capability IDs belong to this project
-          let validation_result =
-            list.try_map(new_ids, fn(cap_id) {
-              case
-                capabilities_db.capability_is_in_project(db, cap_id, project_id)
-              {
-                Ok(True) -> Ok(cap_id)
-                Ok(False) -> Error("invalid")
-                Error(_) -> Error("db_error")
-              }
-            })
+fn add_member_capabilities(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+  new_ids: List(Int),
+) -> wisp.Response {
+  let add_result =
+    list.try_map(new_ids, fn(cap_id) {
+      capabilities_db.add_member_capability(db, project_id, user_id, cap_id)
+    })
 
-          case validation_result {
-            Error("invalid") ->
-              api.error(422, "VALIDATION_ERROR", "Invalid capability_id")
-            Error(_) -> api.error(500, "INTERNAL", "Database error")
-            Ok(_) -> {
-              // Remove all existing and add new ones
-              case
-                capabilities_db.remove_all_member_capabilities(
-                  db,
-                  project_id,
-                  user_id,
-                )
-              {
-                Error(_) -> api.error(500, "INTERNAL", "Database error")
-                Ok(Nil) -> {
-                  let add_result =
-                    list.try_map(new_ids, fn(cap_id) {
-                      capabilities_db.add_member_capability(
-                        db,
-                        project_id,
-                        user_id,
-                        cap_id,
-                      )
-                    })
-                  case add_result {
-                    Ok(_) ->
-                      api.ok(
-                        json.object([#("capability_ids", ids_json(new_ids))]),
-                      )
-                    Error(_) -> api.error(500, "INTERNAL", "Database error")
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
+  case add_result {
+    Ok(_) -> api.ok(json.object([#("capability_ids", ids_json(new_ids))]))
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
   }
 }
 
@@ -407,34 +472,42 @@ fn handle_get_capability_members(
 
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) -> {
-      let auth.Ctx(db: db, ..) = ctx
-
-      // Must be a member of the project
-      case projects_db.is_project_member(db, project_id, user.id) {
-        Ok(True) -> {
-          case
-            capabilities_db.list_capability_members(
-              db,
-              project_id,
-              capability_id,
-            )
-          {
-            Ok(members) -> {
-              let ids = list.map(members, fn(m) { m.user_id })
-              api.ok(json.object([#("user_ids", ids_json(ids))]))
-            }
-            Error(_) -> api.error(500, "INTERNAL", "Database error")
-          }
-        }
-        Ok(False) -> api.error(403, "FORBIDDEN", "Not a member of this project")
-        Error(_) -> api.error(500, "INTERNAL", "Database error")
-      }
-    }
+    Ok(user) ->
+      list_capability_members_for_user(ctx, project_id, capability_id, user.id)
   }
 }
 
+fn list_capability_members_for_user(
+  ctx: auth.Ctx,
+  project_id: Int,
+  capability_id: Int,
+  user_id: Int,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+
+  // Must be a member of the project
+  case projects_db.is_project_member(db, project_id, user_id) {
+    Ok(True) -> list_capability_members(db, project_id, capability_id)
+    Ok(False) -> api.error(403, "FORBIDDEN", "Not a member of this project")
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
+  }
+}
+
+fn list_capability_members(
+  db: pog.Connection,
+  project_id: Int,
+  capability_id: Int,
+) -> wisp.Response {
+  case capabilities_db.list_capability_members(db, project_id, capability_id) {
+    Ok(members) -> {
+      let ids = list.map(members, fn(m) { m.user_id })
+      api.ok(json.object([#("user_ids", ids_json(ids))]))
+    }
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
+  }
+}
+
+// Justification: nested case improves clarity for branching logic.
 fn handle_put_capability_members(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -473,70 +546,113 @@ fn update_capability_members(
 ) -> wisp.Response {
   case csrf.require_double_submit(req) {
     Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+    Ok(Nil) ->
+      update_capability_members_with_payload(
+        req,
+        ctx,
+        project_id,
+        capability_id,
+      )
+  }
+}
 
-    Ok(Nil) -> {
-      use data <- wisp.require_json(req)
+fn update_capability_members_with_payload(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+  capability_id: Int,
+) -> wisp.Response {
+  use data <- wisp.require_json(req)
 
-      let decoder = {
-        use ids <- decode.field("user_ids", decode.list(decode.int))
-        decode.success(ids)
+  let decoder = {
+    use ids <- decode.field("user_ids", decode.list(decode.int))
+    decode.success(ids)
+  }
+
+  case decode.run(data, decoder) {
+    Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+    Ok(new_ids) ->
+      update_capability_members_with_ids(
+        ctx,
+        project_id,
+        capability_id,
+        new_ids,
+      )
+  }
+}
+
+fn update_capability_members_with_ids(
+  ctx: auth.Ctx,
+  project_id: Int,
+  capability_id: Int,
+  new_ids: List(Int),
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+
+  case validate_member_ids(db, project_id, new_ids) {
+    Error(response) -> response
+    Ok(_) -> replace_capability_members(db, project_id, capability_id, new_ids)
+  }
+}
+
+fn validate_member_ids(
+  db: pog.Connection,
+  project_id: Int,
+  user_ids: List(Int),
+) -> Result(Nil, wisp.Response) {
+  let validation_result =
+    list.try_map(user_ids, fn(user_id) {
+      case projects_db.is_project_member(db, project_id, user_id) {
+        Ok(True) -> Ok(user_id)
+        Ok(False) -> Error("invalid")
+        Error(_) -> Error("db_error")
       }
+    })
 
-      case decode.run(data, decoder) {
-        Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+  case validation_result {
+    Error("invalid") ->
+      Error(api.error(
+        422,
+        "VALIDATION_ERROR",
+        "Invalid user_id (not a project member)",
+      ))
+    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+    Ok(_) -> Ok(Nil)
+  }
+}
 
-        Ok(new_ids) -> {
-          let auth.Ctx(db: db, ..) = ctx
+fn replace_capability_members(
+  db: pog.Connection,
+  project_id: Int,
+  capability_id: Int,
+  new_ids: List(Int),
+) -> wisp.Response {
+  case
+    capabilities_db.remove_all_capability_members(db, project_id, capability_id)
+  {
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
+    Ok(Nil) -> add_capability_members(db, project_id, capability_id, new_ids)
+  }
+}
 
-          // First, verify all user IDs are project members
-          let validation_result =
-            list.try_map(new_ids, fn(user_id) {
-              case projects_db.is_project_member(db, project_id, user_id) {
-                Ok(True) -> Ok(user_id)
-                Ok(False) -> Error("invalid")
-                Error(_) -> Error("db_error")
-              }
-            })
+fn add_capability_members(
+  db: pog.Connection,
+  project_id: Int,
+  capability_id: Int,
+  new_ids: List(Int),
+) -> wisp.Response {
+  let add_result =
+    list.try_map(new_ids, fn(user_id) {
+      capabilities_db.add_member_capability(
+        db,
+        project_id,
+        user_id,
+        capability_id,
+      )
+    })
 
-          case validation_result {
-            Error("invalid") ->
-              api.error(
-                422,
-                "VALIDATION_ERROR",
-                "Invalid user_id (not a project member)",
-              )
-            Error(_) -> api.error(500, "INTERNAL", "Database error")
-            Ok(_) -> {
-              // Remove all existing and add new ones
-              case
-                capabilities_db.remove_all_capability_members(
-                  db,
-                  project_id,
-                  capability_id,
-                )
-              {
-                Error(_) -> api.error(500, "INTERNAL", "Database error")
-                Ok(Nil) -> {
-                  let add_result =
-                    list.try_map(new_ids, fn(user_id) {
-                      capabilities_db.add_member_capability(
-                        db,
-                        project_id,
-                        user_id,
-                        capability_id,
-                      )
-                    })
-                  case add_result {
-                    Ok(_) ->
-                      api.ok(json.object([#("user_ids", ids_json(new_ids))]))
-                    Error(_) -> api.error(500, "INTERNAL", "Database error")
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
+  case add_result {
+    Ok(_) -> api.ok(json.object([#("user_ids", ids_json(new_ids))]))
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
   }
 }

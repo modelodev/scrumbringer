@@ -114,6 +114,7 @@ pub fn handle_member_add_user_selected(
 // Submission Handlers
 // =============================================================================
 
+// Justification: nested case improves clarity for branching logic.
 /// Handle member add form submission.
 pub fn handle_member_add_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.admin.members_add_in_flight {

@@ -1,6 +1,23 @@
-////
 //// Database access layer for rule metrics.
 ////
+//// ## Mission
+////
+//// Provide query access to rule execution metrics.
+////
+//// ## Responsibilities
+////
+//// - Fetch aggregated rule metrics
+//// - Fetch execution drill-down details
+//// - Provide org/project summary views
+////
+//// ## Non-responsibilities
+////
+//// - HTTP response formatting (see `http/rule_metrics.gleam`)
+//// - Rule evaluation (see `services/rules_engine.gleam`)
+////
+//// ## Relationships
+////
+//// - Uses `sql.gleam` for query execution
 
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -14,6 +31,7 @@ import scrumbringer_server/sql
 // Types
 // =============================================================================
 
+/// Aggregated metrics for a rule.
 pub type RuleMetricsSummary {
   RuleMetricsSummary(
     rule_id: Int,
@@ -25,6 +43,7 @@ pub type RuleMetricsSummary {
   )
 }
 
+/// Detailed metrics for a rule, including suppression breakdown.
 pub type RuleMetricsDetailed {
   RuleMetricsDetailed(
     rule_id: Int,
@@ -39,6 +58,7 @@ pub type RuleMetricsDetailed {
   )
 }
 
+/// Single rule execution record for drill-down views.
 pub type RuleExecution {
   RuleExecution(
     id: Int,
@@ -52,6 +72,7 @@ pub type RuleExecution {
   )
 }
 
+/// Aggregated metrics summary for a workflow.
 pub type WorkflowMetricsSummary {
   WorkflowMetricsSummary(
     workflow_id: Int,
@@ -69,6 +90,9 @@ pub type WorkflowMetricsSummary {
 // =============================================================================
 
 /// Get aggregated metrics for all rules in a workflow.
+///
+/// Example:
+///   get_workflow_metrics(db, workflow_id, from, to)
 pub fn get_workflow_metrics(
   db: pog.Connection,
   workflow_id: Int,
@@ -92,6 +116,9 @@ pub fn get_workflow_metrics(
 }
 
 /// Get detailed metrics for a single rule with suppression breakdown.
+///
+/// Example:
+///   get_rule_metrics(db, rule_id, from, to)
 pub fn get_rule_metrics(
   db: pog.Connection,
   rule_id: Int,
@@ -119,6 +146,9 @@ pub fn get_rule_metrics(
 }
 
 /// Get paginated list of executions for a rule (drill-down).
+///
+/// Example:
+///   list_rule_executions(db, rule_id, from, to, limit, offset)
 pub fn list_rule_executions(
   db: pog.Connection,
   rule_id: Int,
@@ -146,6 +176,9 @@ pub fn list_rule_executions(
 }
 
 /// Count total executions for a rule (for pagination).
+///
+/// Example:
+///   count_rule_executions(db, rule_id, from, to)
 pub fn count_rule_executions(
   db: pog.Connection,
   rule_id: Int,
@@ -162,6 +195,9 @@ pub fn count_rule_executions(
 }
 
 /// Get org-wide rule metrics summary.
+///
+/// Example:
+///   get_org_metrics_summary(db, org_id, from, to)
 pub fn get_org_metrics_summary(
   db: pog.Connection,
   org_id: Int,
@@ -186,6 +222,9 @@ pub fn get_org_metrics_summary(
 }
 
 /// Get project-scoped rule metrics summary.
+///
+/// Example:
+///   get_project_metrics_summary(db, project_id, from, to)
 pub fn get_project_metrics_summary(
   db: pog.Connection,
   project_id: Int,

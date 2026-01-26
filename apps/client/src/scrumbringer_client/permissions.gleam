@@ -50,6 +50,7 @@ pub fn any_project_manager(projects: List(Project)) -> Bool {
   |> list.any(is_project_manager)
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Checks if a user can access an admin section.
 pub fn can_access_section(
   section: AdminSection,

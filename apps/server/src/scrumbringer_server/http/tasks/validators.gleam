@@ -81,6 +81,7 @@ pub fn validate_priority(priority: Int) -> Result(Nil, wisp.Response) {
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Validate optional priority: Unset means not provided, otherwise 1-5.
 ///
 /// ## Example
@@ -90,6 +91,7 @@ pub fn validate_priority(priority: Int) -> Result(Nil, wisp.Response) {
 /// validate_optional_priority(Set(3))   // Ok(Nil) - valid
 /// validate_optional_priority(Set(10))  // Error - invalid
 /// ```
+/// Justification: nested case improves clarity for branching logic.
 pub fn validate_optional_priority(
   priority: FieldUpdate(Int),
 ) -> Result(Nil, wisp.Response) {
@@ -110,6 +112,7 @@ pub fn validate_optional_priority(
 // Type Validation
 // =============================================================================
 
+// Justification: nested case improves clarity for branching logic.
 /// Validate task type update: Unset means no update, otherwise check project.
 ///
 /// ## Example
@@ -120,6 +123,7 @@ pub fn validate_optional_priority(
 ///   Error(response) -> response
 /// }
 /// ```
+/// Justification: nested case improves clarity for branching logic.
 pub fn validate_type_update(
   db: pog.Connection,
   type_id: FieldUpdate(Int),

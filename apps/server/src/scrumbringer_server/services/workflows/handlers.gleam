@@ -27,6 +27,7 @@
 import domain/task_status.{Available, Claimed, Completed, task_status_to_string}
 import gleam/option.{type Option, None, Some}
 import pog
+import scrumbringer_server/persistence/tasks/mappers as task_mappers
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
 import scrumbringer_server/services/cards_db
 import scrumbringer_server/services/rules_engine
@@ -158,6 +159,7 @@ fn handle_create_task_type(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Story 4.9 AC13: Update task type name, icon, or capability.
 fn handle_update_task_type(
   db: pog.Connection,
@@ -228,6 +230,7 @@ fn handle_list_tasks(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn handle_create_task(
   db: pog.Connection,
   project_id: Int,
@@ -315,45 +318,74 @@ fn handle_update_task(
     Error(tasks_queries.DbError(e)) -> Error(DbError(e))
 
     Ok(current) ->
-      case current.status {
-        Available | Completed -> Error(NotAuthorized)
+      update_task_for_current(db, task_id, user_id, version, updates, current)
+  }
+}
 
-        Claimed(_) ->
-          case current.claimed_by {
-            Some(id) if id == user_id -> {
-              use _ <- validation.validate_type_update(
-                db,
-                updates.type_id,
-                current.project_id,
-              )
+fn update_task_for_current(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  version: Int,
+  updates: TaskUpdates,
+  current: task_mappers.Task,
+) -> Result(Response, Error) {
+  case current.status {
+    Available | Completed -> Error(NotAuthorized)
+    Claimed(_) ->
+      update_task_for_claimed(db, task_id, user_id, version, updates, current)
+  }
+}
 
-              let title_update = field_update_to_option(updates.title)
-              let description_update =
-                field_update_to_option(updates.description)
-              let priority_update = field_update_to_option(updates.priority)
-              let type_id_update = field_update_to_option(updates.type_id)
+fn update_task_for_claimed(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  version: Int,
+  updates: TaskUpdates,
+  current: task_mappers.Task,
+) -> Result(Response, Error) {
+  case current.claimed_by {
+    Some(id) if id == user_id ->
+      update_task_for_owner(db, task_id, user_id, version, updates, current)
+    _ -> Error(NotAuthorized)
+  }
+}
 
-              case
-                tasks_queries.update_task_claimed_by_user(
-                  db,
-                  task_id,
-                  user_id,
-                  title_update,
-                  description_update,
-                  priority_update,
-                  type_id_update,
-                  version,
-                )
-              {
-                Ok(task) -> Ok(TaskResult(task))
-                Error(tasks_queries.NotFound) -> Error(VersionConflict)
-                Error(tasks_queries.DbError(e)) -> Error(DbError(e))
-              }
-            }
+fn update_task_for_owner(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  version: Int,
+  updates: TaskUpdates,
+  current: task_mappers.Task,
+) -> Result(Response, Error) {
+  use _ <- validation.validate_type_update(
+    db,
+    updates.type_id,
+    current.project_id,
+  )
 
-            _ -> Error(NotAuthorized)
-          }
-      }
+  let title_update = field_update_to_option(updates.title)
+  let description_update = field_update_to_option(updates.description)
+  let priority_update = field_update_to_option(updates.priority)
+  let type_id_update = field_update_to_option(updates.type_id)
+
+  case
+    tasks_queries.update_task_claimed_by_user(
+      db,
+      task_id,
+      user_id,
+      title_update,
+      description_update,
+      priority_update,
+      type_id_update,
+      version,
+    )
+  {
+    Ok(task) -> Ok(TaskResult(task))
+    Error(tasks_queries.NotFound) -> Error(VersionConflict)
+    Error(tasks_queries.DbError(e)) -> Error(DbError(e))
   }
 }
 
@@ -369,44 +401,70 @@ fn handle_claim_task(
     Error(tasks_queries.DbError(e)) -> Error(DbError(e))
 
     Ok(current) ->
-      case current.status {
-        Claimed(_) -> Error(AlreadyClaimed)
-        Completed -> Error(InvalidTransition)
-
-        Available ->
-          case tasks_queries.claim_task(db, org_id, task_id, user_id, version) {
-            Ok(task) -> {
-              // Trigger rules engine for task state change
-              let ctx =
-                rules_engine.TaskContext(
-                  task_id,
-                  current.project_id,
-                  org_id,
-                  current.type_id,
-                  current.card_id,
-                )
-              let from_state = task_status_to_string(current.status)
-              let to_state = task_status_to_string(task.status)
-              let _ =
-                evaluate_task_rules(db, ctx, user_id, from_state, to_state)
-
-              // Check for card state change if task belongs to a card
-              let _ =
-                maybe_evaluate_card_rules(
-                  db,
-                  current.card_id,
-                  current.project_id,
-                  org_id,
-                  user_id,
-                )
-              Ok(TaskResult(task))
-            }
-            Error(tasks_queries.NotFound) ->
-              detect_conflict(db, task_id, user_id)
-            Error(tasks_queries.DbError(e)) -> Error(DbError(e))
-          }
-      }
+      claim_task_for_current(db, task_id, user_id, org_id, version, current)
   }
+}
+
+fn claim_task_for_current(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+  current: task_mappers.Task,
+) -> Result(Response, Error) {
+  case current.status {
+    Claimed(_) -> Error(AlreadyClaimed)
+    Completed -> Error(InvalidTransition)
+    Available ->
+      claim_available_task(db, task_id, user_id, org_id, version, current)
+  }
+}
+
+fn claim_available_task(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+  current: task_mappers.Task,
+) -> Result(Response, Error) {
+  case tasks_queries.claim_task(db, org_id, task_id, user_id, version) {
+    Ok(task) -> claim_task_success(db, task_id, user_id, org_id, current, task)
+    Error(tasks_queries.NotFound) -> detect_conflict(db, task_id, user_id)
+    Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+  }
+}
+
+fn claim_task_success(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  current: task_mappers.Task,
+  task: task_mappers.Task,
+) -> Result(Response, Error) {
+  let ctx =
+    rules_engine.TaskContext(
+      task_id,
+      current.project_id,
+      org_id,
+      current.type_id,
+      current.card_id,
+    )
+  let from_state = task_status_to_string(current.status)
+  let to_state = task_status_to_string(task.status)
+  let _ = evaluate_task_rules(db, ctx, user_id, from_state, to_state)
+
+  let _ =
+    maybe_evaluate_card_rules(
+      db,
+      current.card_id,
+      current.project_id,
+      org_id,
+      user_id,
+    )
+  Ok(TaskResult(task))
 }
 
 fn handle_release_task(
@@ -421,65 +479,93 @@ fn handle_release_task(
     Error(tasks_queries.DbError(e)) -> Error(DbError(e))
 
     Ok(current) ->
-      case current.status {
-        Available | Completed -> Error(InvalidTransition)
-
-        Claimed(_) ->
-          case current.claimed_by {
-            Some(id) if id == user_id -> {
-              // Close any active work session before releasing
-              let _ =
-                work_sessions_db.close_session_for_task(
-                  db,
-                  user_id,
-                  task_id,
-                  "task_released",
-                )
-
-              case
-                tasks_queries.release_task(
-                  db,
-                  org_id,
-                  task_id,
-                  user_id,
-                  version,
-                )
-              {
-                Ok(task) -> {
-                  // Trigger rules engine for task state change
-                  let ctx =
-                    rules_engine.TaskContext(
-                      task_id,
-                      current.project_id,
-                      org_id,
-                      current.type_id,
-                      current.card_id,
-                    )
-                  let from_state = task_status_to_string(current.status)
-                  let to_state = task_status_to_string(task.status)
-                  let _ =
-                    evaluate_task_rules(db, ctx, user_id, from_state, to_state)
-
-                  // Check for card state change if task belongs to a card
-                  let _ =
-                    maybe_evaluate_card_rules(
-                      db,
-                      current.card_id,
-                      current.project_id,
-                      org_id,
-                      user_id,
-                    )
-                  Ok(TaskResult(task))
-                }
-                Error(tasks_queries.NotFound) -> Error(VersionConflict)
-                Error(tasks_queries.DbError(e)) -> Error(DbError(e))
-              }
-            }
-
-            _ -> Error(NotAuthorized)
-          }
-      }
+      release_task_for_current(db, task_id, user_id, org_id, version, current)
   }
+}
+
+fn release_task_for_current(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+  current: task_mappers.Task,
+) -> Result(Response, Error) {
+  case current.status {
+    Available | Completed -> Error(InvalidTransition)
+    Claimed(_) ->
+      release_task_for_claimed(db, task_id, user_id, org_id, version, current)
+  }
+}
+
+fn release_task_for_claimed(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+  current: task_mappers.Task,
+) -> Result(Response, Error) {
+  case current.claimed_by {
+    Some(id) if id == user_id ->
+      release_task_for_owner(db, task_id, user_id, org_id, version, current)
+    _ -> Error(NotAuthorized)
+  }
+}
+
+fn release_task_for_owner(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+  current: task_mappers.Task,
+) -> Result(Response, Error) {
+  let _ =
+    work_sessions_db.close_session_for_task(
+      db,
+      user_id,
+      task_id,
+      "task_released",
+    )
+
+  case tasks_queries.release_task(db, org_id, task_id, user_id, version) {
+    Ok(task) ->
+      release_task_success(db, task_id, user_id, org_id, current, task)
+    Error(tasks_queries.NotFound) -> Error(VersionConflict)
+    Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+  }
+}
+
+fn release_task_success(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  current: task_mappers.Task,
+  task: task_mappers.Task,
+) -> Result(Response, Error) {
+  let ctx =
+    rules_engine.TaskContext(
+      task_id,
+      current.project_id,
+      org_id,
+      current.type_id,
+      current.card_id,
+    )
+  let from_state = task_status_to_string(current.status)
+  let to_state = task_status_to_string(task.status)
+  let _ = evaluate_task_rules(db, ctx, user_id, from_state, to_state)
+
+  let _ =
+    maybe_evaluate_card_rules(
+      db,
+      current.card_id,
+      current.project_id,
+      org_id,
+      user_id,
+    )
+  Ok(TaskResult(task))
 }
 
 fn handle_complete_task(
@@ -494,65 +580,93 @@ fn handle_complete_task(
     Error(tasks_queries.DbError(e)) -> Error(DbError(e))
 
     Ok(current) ->
-      case current.status {
-        Available | Completed -> Error(InvalidTransition)
-
-        Claimed(_) ->
-          case current.claimed_by {
-            Some(id) if id == user_id -> {
-              // Close any active work session before completing
-              let _ =
-                work_sessions_db.close_session_for_task(
-                  db,
-                  user_id,
-                  task_id,
-                  "task_completed",
-                )
-
-              case
-                tasks_queries.complete_task(
-                  db,
-                  org_id,
-                  task_id,
-                  user_id,
-                  version,
-                )
-              {
-                Ok(task) -> {
-                  // Trigger rules engine for task state change
-                  let ctx =
-                    rules_engine.TaskContext(
-                      task_id,
-                      current.project_id,
-                      org_id,
-                      current.type_id,
-                      current.card_id,
-                    )
-                  let from_state = task_status_to_string(current.status)
-                  let to_state = task_status_to_string(task.status)
-                  let _ =
-                    evaluate_task_rules(db, ctx, user_id, from_state, to_state)
-
-                  // Check for card state change if task belongs to a card
-                  let _ =
-                    maybe_evaluate_card_rules(
-                      db,
-                      current.card_id,
-                      current.project_id,
-                      org_id,
-                      user_id,
-                    )
-                  Ok(TaskResult(task))
-                }
-                Error(tasks_queries.NotFound) -> Error(VersionConflict)
-                Error(tasks_queries.DbError(e)) -> Error(DbError(e))
-              }
-            }
-
-            _ -> Error(NotAuthorized)
-          }
-      }
+      complete_task_for_current(db, task_id, user_id, org_id, version, current)
   }
+}
+
+fn complete_task_for_current(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+  current: task_mappers.Task,
+) -> Result(Response, Error) {
+  case current.status {
+    Available | Completed -> Error(InvalidTransition)
+    Claimed(_) ->
+      complete_task_for_claimed(db, task_id, user_id, org_id, version, current)
+  }
+}
+
+fn complete_task_for_claimed(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+  current: task_mappers.Task,
+) -> Result(Response, Error) {
+  case current.claimed_by {
+    Some(id) if id == user_id ->
+      complete_task_for_owner(db, task_id, user_id, org_id, version, current)
+    _ -> Error(NotAuthorized)
+  }
+}
+
+fn complete_task_for_owner(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  version: Int,
+  current: task_mappers.Task,
+) -> Result(Response, Error) {
+  let _ =
+    work_sessions_db.close_session_for_task(
+      db,
+      user_id,
+      task_id,
+      "task_completed",
+    )
+
+  case tasks_queries.complete_task(db, org_id, task_id, user_id, version) {
+    Ok(task) ->
+      complete_task_success(db, task_id, user_id, org_id, current, task)
+    Error(tasks_queries.NotFound) -> Error(VersionConflict)
+    Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+  }
+}
+
+fn complete_task_success(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  org_id: Int,
+  current: task_mappers.Task,
+  task: task_mappers.Task,
+) -> Result(Response, Error) {
+  let ctx =
+    rules_engine.TaskContext(
+      task_id,
+      current.project_id,
+      org_id,
+      current.type_id,
+      current.card_id,
+    )
+  let from_state = task_status_to_string(current.status)
+  let to_state = task_status_to_string(task.status)
+  let _ = evaluate_task_rules(db, ctx, user_id, from_state, to_state)
+
+  let _ =
+    maybe_evaluate_card_rules(
+      db,
+      current.card_id,
+      current.project_id,
+      org_id,
+      user_id,
+    )
+  Ok(TaskResult(task))
 }
 
 // =============================================================================
@@ -568,11 +682,14 @@ fn detect_conflict(
     Error(tasks_queries.NotFound) -> Error(NotFound)
     Error(tasks_queries.DbError(e)) -> Error(DbError(e))
 
-    Ok(current) ->
-      case current.status {
-        Claimed(_) -> Error(ClaimOwnershipConflict(current.claimed_by))
-        _ -> Error(VersionConflict)
-      }
+    Ok(current) -> conflict_from_task(current)
+  }
+}
+
+fn conflict_from_task(current: task_mappers.Task) -> Result(Response, Error) {
+  case current.status {
+    Claimed(_) -> Error(ClaimOwnershipConflict(current.claimed_by))
+    _ -> Error(VersionConflict)
   }
 }
 
@@ -619,30 +736,35 @@ fn maybe_evaluate_card_rules(
 ) -> Nil {
   case card_id {
     None -> Nil
-    Some(cid) -> {
-      // Get current card state after task change
-      case cards_db.get_card(db, cid) {
-        Error(_) -> Nil
-        Ok(card) -> {
-          // Derive current state string
-          let state = cards_db.state_to_string(card.state)
+    Some(cid) ->
+      evaluate_card_rules_for_task(db, cid, project_id, org_id, user_id)
+  }
+}
 
-          // We evaluate rules for the current state
-          // The rules engine tracks idempotency per (rule, card, state)
-          let event =
-            rules_engine.card_event(
-              cid,
-              project_id,
-              org_id,
-              user_id,
-              None,
-              state,
-            )
+fn evaluate_card_rules_for_task(
+  db: pog.Connection,
+  card_id: Int,
+  project_id: Int,
+  org_id: Int,
+  user_id: Int,
+) -> Nil {
+  case cards_db.get_card(db, card_id) {
+    Error(_) -> Nil
+    Ok(card) -> {
+      let state = cards_db.state_to_string(card.state)
 
-          let _ = rules_engine.evaluate_rules(db, event)
-          Nil
-        }
-      }
+      let event =
+        rules_engine.card_event(
+          card_id,
+          project_id,
+          org_id,
+          user_id,
+          None,
+          state,
+        )
+
+      let _ = rules_engine.evaluate_rules(db, event)
+      Nil
     }
   }
 }

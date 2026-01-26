@@ -74,6 +74,7 @@ pub fn init(token: String) -> #(Model, Action) {
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Handles messages and returns updated model with any actions.
 pub fn update(model: Model, msg: Msg) -> #(Model, Action) {
   case msg {
@@ -107,34 +108,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Action) {
       NoOp,
     )
 
-    Submitted -> {
-      case model.state {
-        Ready(email) -> {
-          case string.length(model.password) < 12 {
-            True -> #(
-              Model(
-                ..model,
-                password_error: option.Some(
-                  "Password must be at least 12 characters",
-                ),
-              ),
-              NoOp,
-            )
-
-            False -> #(
-              Model(
-                ..model,
-                state: Registering(email),
-                submit_error: option.None,
-              ),
-              Register(token: model.token, password: model.password),
-            )
-          }
-        }
-
-        _ -> #(model, NoOp)
-      }
-    }
+    Submitted -> handle_submitted(model)
 
     Registered(Ok(user)) -> #(Model(..model, state: Done), Authed(user))
 
@@ -162,5 +136,29 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Action) {
     }
 
     ErrorDismissed -> #(Model(..model, submit_error: option.None), NoOp)
+  }
+}
+
+fn handle_submitted(model: Model) -> #(Model, Effect) {
+  case model.state {
+    Ready(email) -> handle_ready_submit(model, email)
+    _ -> #(model, NoOp)
+  }
+}
+
+fn handle_ready_submit(model: Model, email: String) -> #(Model, Effect) {
+  case string.length(model.password) < 12 {
+    True -> #(
+      Model(
+        ..model,
+        password_error: option.Some("Password must be at least 12 characters"),
+      ),
+      NoOp,
+    )
+
+    False -> #(
+      Model(..model, state: Registering(email), submit_error: option.None),
+      Register(token: model.token, password: model.password),
+    )
   }
 }

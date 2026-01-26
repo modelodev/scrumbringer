@@ -233,6 +233,7 @@ pub fn insert_user(
   Ok(row)
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Map user insert error to auth error.
 pub fn map_user_insert_error(error: pog.QueryError) -> auth_logic.AuthError {
   case error {

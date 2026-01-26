@@ -63,6 +63,7 @@ pub fn require_project_manager_simple(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Require user is manager for a project-scoped resource.
 /// Org admins always have access regardless of project assignment.
 pub fn require_project_manager_with_org_bypass(

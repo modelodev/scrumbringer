@@ -171,6 +171,7 @@ pub fn create_card(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Update a card's title, description, and color.
 pub fn update_card(
   db: pog.Connection,

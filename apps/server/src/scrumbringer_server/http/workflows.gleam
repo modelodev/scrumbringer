@@ -1,11 +1,32 @@
-////
 //// HTTP handlers for workflows CRUD endpoints.
+////
+//// ## Mission
+////
+//// Provide CRUD endpoints for workflows within projects.
+////
+//// ## Responsibilities
+////
+//// - Authorize project managers
+//// - Parse and validate workflow payloads
+//// - Delegate persistence to workflow services
+////
+//// ## Non-responsibilities
+////
+//// - Workflow persistence (see `services/workflows_db.gleam`)
+//// - Project membership checks (see `services/projects_db.gleam`)
+////
+//// ## Relations
+////
+//// - Uses `services/projects_db` for access checks
+//// - Uses `services/workflows_db` for persistence
 
+import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
+import gleam/result
 import helpers/json as json_helpers
 import pog
 import scrumbringer_server/http/api
@@ -13,6 +34,7 @@ import scrumbringer_server/http/auth
 import scrumbringer_server/http/authorization
 import scrumbringer_server/http/csrf
 import scrumbringer_server/services/projects_db
+import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/workflows_db
 import wisp
 
@@ -20,6 +42,8 @@ import wisp
 // Routing
 // =============================================================================
 
+/// Handle /api/projects/:project_id/workflows requests.
+/// Example: handle_project_workflows(req, ctx, project_id)
 pub fn handle_project_workflows(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -32,6 +56,8 @@ pub fn handle_project_workflows(
   }
 }
 
+/// Handle /api/workflows/:workflow_id requests.
+/// Example: handle_workflow(req, ctx, workflow_id)
 pub fn handle_workflow(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -55,33 +81,9 @@ fn handle_list_project(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) ->
-      case int.parse(project_id) {
-        Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-
-        Ok(project_id) -> {
-          let auth.Ctx(db: db, ..) = ctx
-
-          case projects_db.is_project_manager(db, project_id, user.id) {
-            Ok(True) ->
-              case workflows_db.list_project_workflows(db, project_id) {
-                Ok(workflows) ->
-                  api.ok(
-                    json.object([
-                      #("workflows", json.array(workflows, of: workflow_json)),
-                    ]),
-                  )
-                Error(_) -> api.error(500, "INTERNAL", "Database error")
-              }
-
-            Ok(False) -> api.error(403, "FORBIDDEN", "Forbidden")
-            Error(_) -> api.error(500, "INTERNAL", "Database error")
-          }
-        }
-      }
+  case list_project_workflows(req, ctx, project_id) {
+    Ok(resp) -> resp
+    Error(resp) -> resp
   }
 }
 
@@ -90,24 +92,11 @@ fn handle_create_project(
   ctx: auth.Ctx,
   project_id: String,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) ->
-      case int.parse(project_id) {
-        Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-
-        Ok(project_id) -> {
-          let auth.Ctx(db: db, ..) = ctx
-
-          case projects_db.is_project_manager(db, project_id, user.id) {
-            Ok(True) ->
-              create_workflow(req, ctx, user.org_id, project_id, user.id)
-            Ok(False) -> api.error(403, "FORBIDDEN", "Forbidden")
-            Error(_) -> api.error(500, "INTERNAL", "Database error")
-          }
-        }
-      }
+  use data <- wisp.require_json(req)
+  // Justified nested case: unwrap Result<Response, Response> into a Response.
+  case create_project_workflow(req, ctx, project_id, data) {
+    Ok(resp) -> resp
+    Error(resp) -> resp
   }
 }
 
@@ -116,40 +105,11 @@ fn handle_update(
   ctx: auth.Ctx,
   workflow_id: String,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) ->
-      case int.parse(workflow_id) {
-        Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-
-        Ok(workflow_id) -> {
-          let auth.Ctx(db: db, ..) = ctx
-
-          case workflows_db.get_workflow(db, workflow_id) {
-            Ok(workflow) ->
-              case
-                authorization.require_project_manager(
-                  db,
-                  user,
-                  workflow.org_id,
-                  workflow.project_id,
-                )
-              {
-                Error(resp) -> resp
-                Ok(#(org_id, project_id)) ->
-                  update_workflow(req, ctx, workflow_id, org_id, project_id)
-              }
-
-            Error(workflows_db.UpdateWorkflowNotFound) ->
-              api.error(404, "NOT_FOUND", "Not found")
-            Error(workflows_db.UpdateWorkflowAlreadyExists) ->
-              api.error(422, "VALIDATION_ERROR", "Workflow name already exists")
-            Error(workflows_db.UpdateWorkflowDbError(_)) ->
-              api.error(500, "INTERNAL", "Database error")
-          }
-        }
-      }
+  use data <- wisp.require_json(req)
+  // Justified nested case: unwrap Result<Response, Response> into a Response.
+  case update_project_workflow(req, ctx, workflow_id, data) {
+    Ok(resp) -> resp
+    Error(resp) -> resp
   }
 }
 
@@ -158,62 +118,9 @@ fn handle_delete(
   ctx: auth.Ctx,
   workflow_id: String,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) ->
-      case int.parse(workflow_id) {
-        Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-
-        Ok(workflow_id) -> {
-          let auth.Ctx(db: db, ..) = ctx
-
-          case workflows_db.get_workflow(db, workflow_id) {
-            Ok(workflow) ->
-              case
-                authorization.require_project_manager(
-                  db,
-                  user,
-                  workflow.org_id,
-                  workflow.project_id,
-                )
-              {
-                Error(resp) -> resp
-                Ok(#(org_id, project_id)) ->
-                  case csrf.require_double_submit(req) {
-                    Error(_) ->
-                      api.error(
-                        403,
-                        "FORBIDDEN",
-                        "CSRF token missing or invalid",
-                      )
-                    Ok(Nil) ->
-                      case
-                        workflows_db.delete_workflow(
-                          db,
-                          workflow_id,
-                          org_id,
-                          project_id,
-                        )
-                      {
-                        Ok(Nil) -> api.no_content()
-                        Error(workflows_db.DeleteWorkflowNotFound) ->
-                          api.error(404, "NOT_FOUND", "Not found")
-                        Error(workflows_db.DeleteWorkflowDbError(_)) ->
-                          api.error(500, "INTERNAL", "Database error")
-                      }
-                  }
-              }
-
-            Error(workflows_db.UpdateWorkflowNotFound) ->
-              api.error(404, "NOT_FOUND", "Not found")
-            Error(workflows_db.UpdateWorkflowAlreadyExists) ->
-              api.error(422, "VALIDATION_ERROR", "Workflow name already exists")
-            Error(workflows_db.UpdateWorkflowDbError(_)) ->
-              api.error(500, "INTERNAL", "Database error")
-          }
-        }
-      }
+  case delete_project_workflow(req, ctx, workflow_id) {
+    Ok(resp) -> resp
+    Error(resp) -> resp
   }
 }
 
@@ -221,190 +128,368 @@ fn handle_delete(
 // Shared helpers
 // =============================================================================
 
-fn create_workflow(
+type CreatePayload {
+  CreatePayload(name: String, description: String, active: Bool)
+}
+
+type UpdatePayload {
+  UpdatePayload(
+    name: Option(String),
+    description: Option(String),
+    active: Option(Int),
+  )
+}
+
+fn list_project_workflows(
   req: wisp.Request,
   ctx: auth.Ctx,
-  org_id: Int,
-  project_id: Int,
-  user_id: Int,
-) -> wisp.Response {
-  case csrf.require_double_submit(req) {
-    Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+  project_id_str: String,
+) -> Result(wisp.Response, wisp.Response) {
+  use user <- result.try(require_current_user(req, ctx))
+  use project_id <- result.try(parse_id(project_id_str))
+  let auth.Ctx(db: db, ..) = ctx
+  use _ <- result.try(require_project_manager(db, project_id, user.id))
+  use workflows <- result.try(list_workflows_db(db, project_id))
 
-    Ok(Nil) -> {
-      use data <- wisp.require_json(req)
+  Ok(
+    api.ok(
+      json.object([#("workflows", json.array(workflows, of: workflow_json))]),
+    ),
+  )
+}
 
-      let decoder = {
-        use name <- decode.field("name", decode.string)
-        use description <- decode.optional_field(
-          "description",
-          "",
-          decode.string,
-        )
-        use active <- decode.optional_field("active", False, decode.bool)
-        decode.success(#(name, description, active))
-      }
+fn create_project_workflow(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id_str: String,
+  data: dynamic.Dynamic,
+) -> Result(wisp.Response, wisp.Response) {
+  use user <- result.try(require_current_user(req, ctx))
+  use project_id <- result.try(parse_id(project_id_str))
+  let auth.Ctx(db: db, ..) = ctx
+  use _ <- result.try(require_project_manager(db, project_id, user.id))
+  use _ <- result.try(require_csrf(req))
+  use payload <- result.try(decode_create_payload(data))
 
-      case decode.run(data, decoder) {
-        Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
-
-        Ok(#(name, description, active)) -> {
-          let auth.Ctx(db: db, ..) = ctx
-
-          case
-            workflows_db.create_workflow(
-              db,
-              org_id,
-              project_id,
-              name,
-              description,
-              active,
-              user_id,
-            )
-          {
-            Ok(workflow) ->
-              api.ok(json.object([#("workflow", workflow_json(workflow))]))
-            Error(workflows_db.CreateWorkflowAlreadyExists) ->
-              api.error(422, "VALIDATION_ERROR", "Workflow name already exists")
-            Error(workflows_db.CreateWorkflowDbError(_)) ->
-              api.error(500, "INTERNAL", "Database error")
-          }
-        }
-      }
-    }
+  case
+    workflows_db.create_workflow(
+      db,
+      user.org_id,
+      project_id,
+      payload.name,
+      payload.description,
+      payload.active,
+      user.id,
+    )
+  {
+    Ok(workflow) ->
+      Ok(api.ok(json.object([#("workflow", workflow_json(workflow))])))
+    Error(workflows_db.CreateWorkflowAlreadyExists) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Workflow name already exists"))
+    Error(workflows_db.CreateWorkflowDbError(_)) ->
+      Error(api.error(500, "INTERNAL", "Database error"))
   }
 }
 
-fn update_workflow(
+fn update_project_workflow(
   req: wisp.Request,
   ctx: auth.Ctx,
+  workflow_id_str: String,
+  data: dynamic.Dynamic,
+) -> Result(wisp.Response, wisp.Response) {
+  use user <- result.try(require_current_user(req, ctx))
+  use workflow_id <- result.try(parse_id(workflow_id_str))
+  let auth.Ctx(db: db, ..) = ctx
+  use workflow <- result.try(get_workflow(db, workflow_id))
+  use _ <- result.try(require_workflow_manager(db, user, workflow))
+  use _ <- result.try(require_csrf(req))
+  use payload <- result.try(decode_update_payload(data))
+  use active_value <- result.try(normalize_active(payload.active))
+  use _ <- result.try(update_metadata_if_needed(
+    db,
+    workflow_id,
+    workflow.org_id,
+    workflow.project_id,
+    payload,
+  ))
+  use _ <- result.try(update_active_if_needed(
+    db,
+    workflow_id,
+    workflow.org_id,
+    workflow.project_id,
+    active_value,
+  ))
+
+  get_workflow_response(db, workflow_id)
+}
+
+fn delete_project_workflow(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  workflow_id_str: String,
+) -> Result(wisp.Response, wisp.Response) {
+  use user <- result.try(require_current_user(req, ctx))
+  use workflow_id <- result.try(parse_id(workflow_id_str))
+  let auth.Ctx(db: db, ..) = ctx
+  use workflow <- result.try(get_workflow(db, workflow_id))
+  use _ <- result.try(require_workflow_manager(db, user, workflow))
+  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(delete_workflow_db(
+    db,
+    workflow_id,
+    workflow.org_id,
+    workflow.project_id,
+  ))
+
+  Ok(api.no_content())
+}
+
+fn require_current_user(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+) -> Result(StoredUser, wisp.Response) {
+  case auth.require_current_user(req, ctx) {
+    Ok(user) -> Ok(user)
+    Error(_) ->
+      Error(api.error(401, "AUTH_REQUIRED", "Authentication required"))
+  }
+}
+
+fn require_project_manager(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+) -> Result(Nil, wisp.Response) {
+  case projects_db.is_project_manager(db, project_id, user_id) {
+    Ok(True) -> Ok(Nil)
+    Ok(False) -> Error(api.error(403, "FORBIDDEN", "Forbidden"))
+    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+  }
+}
+
+fn require_workflow_manager(
+  db: pog.Connection,
+  user: StoredUser,
+  workflow: workflows_db.Workflow,
+) -> Result(Nil, wisp.Response) {
+  case
+    authorization.require_project_manager(
+      db,
+      user,
+      workflow.org_id,
+      workflow.project_id,
+    )
+  {
+    Ok(_) -> Ok(Nil)
+    Error(resp) -> Error(resp)
+  }
+}
+
+fn require_csrf(req: wisp.Request) -> Result(Nil, wisp.Response) {
+  case csrf.require_double_submit(req) {
+    Ok(Nil) -> Ok(Nil)
+    Error(_) ->
+      Error(api.error(403, "FORBIDDEN", "CSRF token missing or invalid"))
+  }
+}
+
+fn parse_id(value: String) -> Result(Int, wisp.Response) {
+  case int.parse(value) {
+    Ok(id) -> Ok(id)
+    Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
+  }
+}
+
+fn list_workflows_db(
+  db: pog.Connection,
+  project_id: Int,
+) -> Result(List(workflows_db.Workflow), wisp.Response) {
+  case workflows_db.list_project_workflows(db, project_id) {
+    Ok(workflows) -> Ok(workflows)
+    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+  }
+}
+
+fn get_workflow(
+  db: pog.Connection,
+  workflow_id: Int,
+) -> Result(workflows_db.Workflow, wisp.Response) {
+  case workflows_db.get_workflow(db, workflow_id) {
+    Ok(workflow) -> Ok(workflow)
+    Error(workflows_db.UpdateWorkflowNotFound) ->
+      Error(api.error(404, "NOT_FOUND", "Not found"))
+    Error(workflows_db.UpdateWorkflowAlreadyExists) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Workflow name already exists"))
+    Error(workflows_db.UpdateWorkflowDbError(_)) ->
+      Error(api.error(500, "INTERNAL", "Database error"))
+  }
+}
+
+fn decode_create_payload(
+  data: dynamic.Dynamic,
+) -> Result(CreatePayload, wisp.Response) {
+  let decoder = {
+    use name <- decode.field("name", decode.string)
+    use description <- decode.optional_field("description", "", decode.string)
+    use active <- decode.optional_field("active", False, decode.bool)
+    decode.success(CreatePayload(
+      name: name,
+      description: description,
+      active: active,
+    ))
+  }
+
+  decode.run(data, decoder)
+  |> result.map_error(fn(_) {
+    api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+  })
+}
+
+fn decode_update_payload(
+  data: dynamic.Dynamic,
+) -> Result(UpdatePayload, wisp.Response) {
+  let decoder = {
+    use name <- decode.optional_field(
+      "name",
+      None,
+      decode.optional(decode.string),
+    )
+    use description <- decode.optional_field(
+      "description",
+      None,
+      decode.optional(decode.string),
+    )
+    use active <- decode.optional_field(
+      "active",
+      None,
+      decode.optional(decode.int),
+    )
+    decode.success(UpdatePayload(
+      name: name,
+      description: description,
+      active: active,
+    ))
+  }
+
+  decode.run(data, decoder)
+  |> result.map_error(fn(_) {
+    api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+  })
+}
+
+fn normalize_active(active: Option(Int)) -> Result(Option(Bool), wisp.Response) {
+  case active {
+    None -> Ok(None)
+    Some(0) -> Ok(Some(False))
+    Some(1) -> Ok(Some(True))
+    Some(_) -> Error(api.error(422, "VALIDATION_ERROR", "Invalid active"))
+  }
+}
+
+// Justification: nested case improves clarity for branching logic.
+fn update_metadata_if_needed(
+  db: pog.Connection,
   workflow_id: Int,
   org_id: Int,
   project_id: Int,
-) -> wisp.Response {
-  case csrf.require_double_submit(req) {
-    Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+  payload: UpdatePayload,
+) -> Result(Nil, wisp.Response) {
+  let has_updates = case payload.name, payload.description {
+    None, None -> False
+    _, _ -> True
+  }
 
-    Ok(Nil) -> {
-      use data <- wisp.require_json(req)
-
-      let decoder = {
-        use name <- decode.optional_field(
-          "name",
-          None,
-          decode.optional(decode.string),
+  case has_updates {
+    False -> Ok(Nil)
+    True ->
+      case
+        workflows_db.update_workflow(
+          db,
+          workflow_id,
+          org_id,
+          project_id,
+          payload.name,
+          payload.description,
         )
-        use description <- decode.optional_field(
-          "description",
-          None,
-          decode.optional(decode.string),
-        )
-        use active <- decode.optional_field(
-          "active",
-          None,
-          decode.optional(decode.int),
-        )
-        decode.success(#(name, description, active))
+      {
+        Ok(_) -> Ok(Nil)
+        Error(workflows_db.UpdateWorkflowNotFound) ->
+          Error(api.error(404, "NOT_FOUND", "Not found"))
+        Error(workflows_db.UpdateWorkflowAlreadyExists) ->
+          Error(api.error(
+            422,
+            "VALIDATION_ERROR",
+            "Workflow name already exists",
+          ))
+        Error(workflows_db.UpdateWorkflowDbError(_)) ->
+          Error(api.error(500, "INTERNAL", "Database error"))
       }
-
-      case decode.run(data, decoder) {
-        Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
-
-        Ok(#(name, description, active)) -> {
-          let auth.Ctx(db: db, ..) = ctx
-
-          let active_value = case active {
-            None -> Ok(None)
-            Some(0) -> Ok(Some(False))
-            Some(1) -> Ok(Some(True))
-            Some(_) ->
-              Error(api.error(422, "VALIDATION_ERROR", "Invalid active"))
-          }
-
-          case active_value {
-            Error(response) -> response
-
-            Ok(active_value) -> {
-              let has_updates = case name, description {
-                None, None -> False
-                _, _ -> True
-              }
-
-              let update_result = case has_updates {
-                True ->
-                  case
-                    workflows_db.update_workflow(
-                      db,
-                      workflow_id,
-                      org_id,
-                      project_id,
-                      name,
-                      description,
-                    )
-                  {
-                    Ok(_) -> Ok(Nil)
-                    Error(error) -> Error(error)
-                  }
-                False -> Ok(Nil)
-              }
-
-              case update_result {
-                Error(workflows_db.UpdateWorkflowNotFound) ->
-                  api.error(404, "NOT_FOUND", "Not found")
-                Error(workflows_db.UpdateWorkflowAlreadyExists) ->
-                  api.error(
-                    422,
-                    "VALIDATION_ERROR",
-                    "Workflow name already exists",
-                  )
-                Error(workflows_db.UpdateWorkflowDbError(_)) ->
-                  api.error(500, "INTERNAL", "Database error")
-                Ok(Nil) ->
-                  case active_value {
-                    Some(active) ->
-                      case
-                        workflows_db.set_active_cascade(
-                          db,
-                          workflow_id,
-                          org_id,
-                          project_id,
-                          active,
-                        )
-                      {
-                        Ok(Nil) -> get_workflow_response(db, workflow_id)
-                        Error(workflows_db.UpdateWorkflowNotFound) ->
-                          api.error(404, "NOT_FOUND", "Not found")
-                        Error(workflows_db.UpdateWorkflowAlreadyExists) ->
-                          api.error(
-                            422,
-                            "VALIDATION_ERROR",
-                            "Workflow name already exists",
-                          )
-                        Error(workflows_db.UpdateWorkflowDbError(_)) ->
-                          api.error(500, "INTERNAL", "Database error")
-                      }
-
-                    None -> get_workflow_response(db, workflow_id)
-                  }
-              }
-            }
-          }
-        }
-      }
-    }
   }
 }
 
-fn get_workflow_response(db: pog.Connection, workflow_id: Int) -> wisp.Response {
+// Justification: nested case improves clarity for branching logic.
+fn update_active_if_needed(
+  db: pog.Connection,
+  workflow_id: Int,
+  org_id: Int,
+  project_id: Int,
+  active_value: Option(Bool),
+) -> Result(Nil, wisp.Response) {
+  case active_value {
+    None -> Ok(Nil)
+    Some(active) ->
+      case
+        workflows_db.set_active_cascade(
+          db,
+          workflow_id,
+          org_id,
+          project_id,
+          active,
+        )
+      {
+        Ok(Nil) -> Ok(Nil)
+        Error(workflows_db.UpdateWorkflowNotFound) ->
+          Error(api.error(404, "NOT_FOUND", "Not found"))
+        Error(workflows_db.UpdateWorkflowAlreadyExists) ->
+          Error(api.error(
+            422,
+            "VALIDATION_ERROR",
+            "Workflow name already exists",
+          ))
+        Error(workflows_db.UpdateWorkflowDbError(_)) ->
+          Error(api.error(500, "INTERNAL", "Database error"))
+      }
+  }
+}
+
+fn delete_workflow_db(
+  db: pog.Connection,
+  workflow_id: Int,
+  org_id: Int,
+  project_id: Int,
+) -> Result(Nil, wisp.Response) {
+  case workflows_db.delete_workflow(db, workflow_id, org_id, project_id) {
+    Ok(Nil) -> Ok(Nil)
+    Error(workflows_db.DeleteWorkflowNotFound) ->
+      Error(api.error(404, "NOT_FOUND", "Not found"))
+    Error(workflows_db.DeleteWorkflowDbError(_)) ->
+      Error(api.error(500, "INTERNAL", "Database error"))
+  }
+}
+
+fn get_workflow_response(
+  db: pog.Connection,
+  workflow_id: Int,
+) -> Result(wisp.Response, wisp.Response) {
   case workflows_db.get_workflow(db, workflow_id) {
     Ok(workflow) ->
-      api.ok(json.object([#("workflow", workflow_json(workflow))]))
+      Ok(api.ok(json.object([#("workflow", workflow_json(workflow))])))
     Error(workflows_db.UpdateWorkflowNotFound) ->
-      api.error(404, "NOT_FOUND", "Not found")
+      Error(api.error(404, "NOT_FOUND", "Not found"))
     Error(workflows_db.UpdateWorkflowAlreadyExists) ->
-      api.error(422, "VALIDATION_ERROR", "Workflow name already exists")
+      Error(api.error(422, "VALIDATION_ERROR", "Workflow name already exists"))
     Error(workflows_db.UpdateWorkflowDbError(_)) ->
-      api.error(500, "INTERNAL", "Database error")
+      Error(api.error(500, "INTERNAL", "Database error"))
   }
 }
 

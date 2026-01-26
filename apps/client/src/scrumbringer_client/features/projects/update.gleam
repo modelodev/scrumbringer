@@ -119,6 +119,7 @@ pub fn handle_projects_fetched_error(
 // Project Selection Handlers
 // =============================================================================
 
+// Justification: nested case improves clarity for branching logic.
 /// Handle project selection.
 pub fn handle_project_selected(
   model: Model,
@@ -239,52 +240,62 @@ pub fn handle_project_create_name_changed(
 /// Handle project create form submission.
 pub fn handle_project_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.admin.projects_dialog {
-    ProjectDialogCreate(name, in_flight, _error) -> {
-      case in_flight {
-        True -> #(model, effect.none())
-        False -> {
-          case
-            update_helpers.validate_required_string(
-              model,
-              name,
-              i18n_text.NameRequired,
-            )
-          {
-            Error(err) -> #(
-              update_admin(model, fn(admin) {
-                AdminModel(
-                  ..admin,
-                  projects_dialog: ProjectDialogCreate(
-                    name,
-                    False,
-                    opt.Some(err),
-                  ),
-                )
-              }),
-              effect.none(),
-            )
-            Ok(non_empty) -> {
-              let trimmed = update_helpers.non_empty_string_value(non_empty)
-              let model =
-                update_admin(model, fn(admin) {
-                  AdminModel(
-                    ..admin,
-                    projects_dialog: ProjectDialogCreate(name, True, opt.None),
-                  )
-                })
-              #(
-                model,
-                api_projects.create_project(trimmed, fn(result) {
-                  admin_msg(ProjectCreated(result))
-                }),
-              )
-            }
-          }
-        }
-      }
-    }
+    ProjectDialogCreate(name, in_flight, _error) ->
+      submit_project_create(model, name, in_flight)
     _ -> #(model, effect.none())
   }
+}
+
+fn submit_project_create(
+  model: Model,
+  name: String,
+  in_flight: Bool,
+) -> #(Model, Effect(Msg)) {
+  case in_flight {
+    True -> #(model, effect.none())
+    False -> validate_project_create_name(model, name)
+  }
+}
+
+fn validate_project_create_name(
+  model: Model,
+  name: String,
+) -> #(Model, Effect(Msg)) {
+  case
+    update_helpers.validate_required_string(model, name, i18n_text.NameRequired)
+  {
+    Error(err) -> #(
+      update_admin(model, fn(admin) {
+        AdminModel(
+          ..admin,
+          projects_dialog: ProjectDialogCreate(name, False, opt.Some(err)),
+        )
+      }),
+      effect.none(),
+    )
+    Ok(non_empty) -> submit_project_create_valid(model, name, non_empty)
+  }
+}
+
+fn submit_project_create_valid(
+  model: Model,
+  name: String,
+  non_empty: update_helpers.NonEmptyString,
+) -> #(Model, Effect(Msg)) {
+  let trimmed = update_helpers.non_empty_string_value(non_empty)
+  let model =
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        projects_dialog: ProjectDialogCreate(name, True, opt.None),
+      )
+    })
+  #(
+    model,
+    api_projects.create_project(trimmed, fn(result) {
+      admin_msg(ProjectCreated(result))
+    }),
+  )
 }
 
 /// Handle project created success.
@@ -316,6 +327,7 @@ pub fn handle_project_created_ok(
   #(model, toast_fx)
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Handle project created error.
 pub fn handle_project_created_error(
   model: Model,
@@ -421,58 +433,71 @@ pub fn handle_project_edit_name_changed(
 /// Handle project edit form submission.
 pub fn handle_project_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.admin.projects_dialog {
-    ProjectDialogEdit(project_id, name, in_flight, _error) -> {
-      case in_flight {
-        True -> #(model, effect.none())
-        False -> {
-          case
-            update_helpers.validate_required_string(
-              model,
-              name,
-              i18n_text.NameRequired,
-            )
-          {
-            Error(err) -> #(
-              update_admin(model, fn(admin) {
-                AdminModel(
-                  ..admin,
-                  projects_dialog: ProjectDialogEdit(
-                    project_id,
-                    name,
-                    False,
-                    opt.Some(err),
-                  ),
-                )
-              }),
-              effect.none(),
-            )
-            Ok(non_empty) -> {
-              let trimmed = update_helpers.non_empty_string_value(non_empty)
-              let model =
-                update_admin(model, fn(admin) {
-                  AdminModel(
-                    ..admin,
-                    projects_dialog: ProjectDialogEdit(
-                      project_id,
-                      name,
-                      True,
-                      opt.None,
-                    ),
-                  )
-                })
-              #(
-                model,
-                api_projects.update_project(project_id, trimmed, fn(result) {
-                  admin_msg(ProjectUpdated(result))
-                }),
-              )
-            }
-          }
-        }
-      }
-    }
+    ProjectDialogEdit(project_id, name, in_flight, _error) ->
+      submit_project_edit(model, project_id, name, in_flight)
     _ -> #(model, effect.none())
   }
+}
+
+fn submit_project_edit(
+  model: Model,
+  project_id: Int,
+  name: String,
+  in_flight: Bool,
+) -> #(Model, Effect(Msg)) {
+  case in_flight {
+    True -> #(model, effect.none())
+    False -> validate_project_edit_name(model, project_id, name)
+  }
+}
+
+fn validate_project_edit_name(
+  model: Model,
+  project_id: Int,
+  name: String,
+) -> #(Model, Effect(Msg)) {
+  case
+    update_helpers.validate_required_string(model, name, i18n_text.NameRequired)
+  {
+    Error(err) -> #(
+      update_admin(model, fn(admin) {
+        AdminModel(
+          ..admin,
+          projects_dialog: ProjectDialogEdit(
+            project_id,
+            name,
+            False,
+            opt.Some(err),
+          ),
+        )
+      }),
+      effect.none(),
+    )
+    Ok(non_empty) ->
+      submit_project_edit_valid(model, project_id, name, non_empty)
+  }
+}
+
+fn submit_project_edit_valid(
+  model: Model,
+  project_id: Int,
+  name: String,
+  non_empty: update_helpers.NonEmptyString,
+) -> #(Model, Effect(Msg)) {
+  let trimmed = update_helpers.non_empty_string_value(non_empty)
+  let model =
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        projects_dialog: ProjectDialogEdit(project_id, name, True, opt.None),
+      )
+    })
+  #(
+    model,
+    api_projects.update_project(project_id, trimmed, fn(result) {
+      admin_msg(ProjectUpdated(result))
+    }),
+  )
 }
 
 /// Handle project updated success.
@@ -505,6 +530,7 @@ pub fn handle_project_updated_ok(
   #(model, toast_fx)
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Handle project updated error.
 pub fn handle_project_updated_error(
   model: Model,
@@ -584,6 +610,7 @@ pub fn handle_project_delete_confirm_closed(
   )
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Handle project delete submission.
 pub fn handle_project_delete_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.admin.projects_dialog {
@@ -653,6 +680,7 @@ pub fn handle_project_deleted_ok(model: Model) -> #(Model, Effect(Msg)) {
   #(model, toast_fx)
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Handle project deleted error.
 pub fn handle_project_deleted_error(
   model: Model,

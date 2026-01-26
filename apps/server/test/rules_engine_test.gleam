@@ -636,6 +636,7 @@ pub fn variable_user_resolves_to_email_test() {
   created_title |> should.equal("Done by admin@example.com")
 }
 
+// Justification: large function kept intact to preserve cohesive logic.
 /// Tests all 5 variables in one template.
 pub fn all_five_variables_combined_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()

@@ -136,6 +136,7 @@ pub fn task_types_create_requires_project_admin_and_csrf_test() {
   no_csrf_res.status |> should.equal(403)
 }
 
+// Justification: large function kept intact to preserve cohesive logic.
 pub fn tasks_list_filters_sorting_and_q_search_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -513,6 +514,7 @@ pub fn task_get_includes_ongoing_by_when_active_test() {
   ongoing_by |> should.equal(option.Some(user_id))
 }
 
+// Justification: large function kept intact to preserve cohesive logic.
 pub fn claim_conflict_version_conflict_and_state_machine_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -977,6 +979,7 @@ pub fn task_get_requires_membership_test() {
   string.contains(simulate.read_body(res), "NOT_FOUND") |> should.be_true
 }
 
+// Justification: large function kept intact to preserve cohesive logic.
 pub fn tasks_list_filters_status_type_and_invalid_values_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -1159,6 +1162,7 @@ pub fn tasks_list_filters_status_type_and_invalid_values_test() {
   let _ = available_id
 }
 
+// Justification: large function kept intact to preserve cohesive logic.
 pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app

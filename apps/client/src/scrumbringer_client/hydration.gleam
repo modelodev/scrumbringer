@@ -119,6 +119,10 @@ fn collect(requirements: List(#(Bool, Command))) -> List(Command) {
   })
 }
 
+/// Provides plan.
+///
+/// Example:
+///   plan(...)
 pub fn plan(route: router.Route, snap: Snapshot) -> List(Command) {
   case route {
     router.AcceptInvite(_) | router.ResetPassword(_) -> []
@@ -152,6 +156,7 @@ fn plan_admin(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn plan_admin_authed(
   snap: Snapshot,
   section: AdminSection,
@@ -263,43 +268,44 @@ fn plan_org(snap: Snapshot, section: AdminSection) -> List(Command) {
   case snap.auth {
     Unknown -> [FetchMe]
     Unauthed -> [Redirect(to: router.Login)]
-    Authed(role) -> {
-      case role == Admin {
-        False -> [
-          Redirect(to: router.Member(member_section.Pool, None, None)),
-        ]
-        True -> {
-          // Base resources for org routes
-          let base =
-            collect([
-              #(needs_fetch(snap.projects), FetchProjects),
-              #(needs_fetch(snap.invite_links), FetchInviteLinks),
-              #(needs_fetch(snap.capabilities), FetchCapabilities),
-              #(needs_fetch(snap.me_metrics), FetchMeMetrics),
-              #(needs_fetch(snap.work_sessions), FetchWorkSessions),
-            ])
-
-          // Section-specific resources
-          let section_cmds = case section {
-            permissions.OrgSettings ->
-              collect([
-                #(needs_fetch(snap.org_settings_users), FetchOrgSettingsUsers),
-              ])
-            permissions.Metrics ->
-              collect([
-                #(
-                  needs_fetch(snap.org_metrics_overview),
-                  FetchOrgMetricsOverview,
-                ),
-              ])
-            _ -> []
-          }
-
-          list.append(base, section_cmds)
-        }
-      }
-    }
+    Authed(role) -> plan_org_for_role(snap, section, role)
   }
+}
+
+fn plan_org_for_role(
+  snap: Snapshot,
+  section: AdminSection,
+  role: OrgRole,
+) -> List(Command) {
+  case role == Admin {
+    False -> [Redirect(to: router.Member(member_section.Pool, None, None))]
+    True -> plan_org_for_admin(snap, section)
+  }
+}
+
+fn plan_org_for_admin(snap: Snapshot, section: AdminSection) -> List(Command) {
+  let base =
+    collect([
+      #(needs_fetch(snap.projects), FetchProjects),
+      #(needs_fetch(snap.invite_links), FetchInviteLinks),
+      #(needs_fetch(snap.capabilities), FetchCapabilities),
+      #(needs_fetch(snap.me_metrics), FetchMeMetrics),
+      #(needs_fetch(snap.work_sessions), FetchWorkSessions),
+    ])
+
+  let section_cmds = case section {
+    permissions.OrgSettings ->
+      collect([
+        #(needs_fetch(snap.org_settings_users), FetchOrgSettingsUsers),
+      ])
+    permissions.Metrics ->
+      collect([
+        #(needs_fetch(snap.org_metrics_overview), FetchOrgMetricsOverview),
+      ])
+    _ -> []
+  }
+
+  list.append(base, section_cmds)
 }
 
 fn plan_member(snap: Snapshot) -> List(Command) {

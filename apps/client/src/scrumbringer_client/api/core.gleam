@@ -44,6 +44,7 @@ import domain/api_error.{
 }
 
 // Re-export ApiResult for backwards compatibility
+/// Represents ApiResult.
 pub type ApiResult(a) =
   SharedApiResult(a)
 

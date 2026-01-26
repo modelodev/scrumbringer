@@ -177,49 +177,55 @@ pub fn evaluate_rules(
       log("Skipped: event not user-triggered")
       Ok([])
     }
-    True -> {
-      // Find matching active rules
-      use rules <- result.try(find_matching_rules(db, event))
+    True -> evaluate_user_triggered_rules(db, event)
+  }
+}
 
-      log("Found " <> int.to_string(list.length(rules)) <> " matching rule(s)")
+fn evaluate_user_triggered_rules(
+  db: pog.Connection,
+  event: StateChange,
+) -> Result(List(RuleResult), RuleEngineError) {
+  use rules <- result.try(find_matching_rules(db, event))
 
-      // Evaluate each rule
-      let results =
-        rules
-        |> list.map(fn(rule) {
-          log(
-            "Evaluating rule: "
-            <> rule.name
-            <> " (id="
-            <> int.to_string(rule.id)
-            <> ")",
-          )
-          evaluate_single_rule(db, rule, event)
-        })
-        |> result.all
+  log("Found " <> int.to_string(list.length(rules)) <> " matching rule(s)")
 
-      case results {
-        Ok(r) -> {
-          let applied =
-            list.filter(r, fn(rr) {
-              case rr.outcome {
-                Applied(_) -> True
-                Suppressed(_) -> False
-              }
-            })
-          log(
-            "Completed: "
-            <> int.to_string(list.length(applied))
-            <> " rule(s) applied",
-          )
-        }
-        Error(e) -> {
-          log("Error during rule evaluation: " <> debug_error(e))
-        }
-      }
+  let results =
+    rules
+    |> list.map(fn(rule) {
+      log(
+        "Evaluating rule: "
+        <> rule.name
+        <> " (id="
+        <> int.to_string(rule.id)
+        <> ")",
+      )
+      evaluate_single_rule(db, rule, event)
+    })
+    |> result.all
 
-      results
-    }
+  log_results(results)
+
+  results
+}
+
+fn log_results(results: Result(List(RuleResult), RuleEngineError)) -> Nil {
+  case results {
+    Ok(r) -> log_applied_results(r)
+    Error(e) -> log("Error during rule evaluation: " <> debug_error(e))
+  }
+}
+
+fn log_applied_results(results: List(RuleResult)) -> Nil {
+  let applied = list.filter(results, is_rule_applied)
+  log(
+    "Completed: " <> int.to_string(list.length(applied)) <> " rule(s) applied",
+  )
+}
+
+fn is_rule_applied(result: RuleResult) -> Bool {
+  case result.outcome {
+    Applied(_) -> True
+    Suppressed(_) -> False
   }
 }
 
@@ -334,73 +340,112 @@ fn evaluate_single_rule(
       log("  Error checking idempotency: " <> debug_error(e))
       Error(e)
     }
-    Ok(True) -> {
-      log("  Suppressed: already executed for this resource")
-      // Already executed, log suppression
-      let _ =
-        log_execution(
-          db,
-          rule.id,
-          origin_type,
-          origin_id,
-          "suppressed",
-          "idempotent",
-          event_user_id(event),
-        )
-      Ok(RuleResult(rule.id, Suppressed("idempotent")))
-    }
-    Ok(False) -> {
-      // Execute: get templates and create tasks
-      use templates <- result.try(get_rule_templates(db, rule.id))
-
-      log("  Found " <> int.to_string(list.length(templates)) <> " template(s)")
-
-      case templates {
-        [] -> {
-          log("  Applied: no templates to execute")
-          // No templates, but rule fired
-          let _ =
-            log_execution(
-              db,
-              rule.id,
-              origin_type,
-              origin_id,
-              "applied",
-              "",
-              event_user_id(event),
-            )
-          Ok(RuleResult(rule.id, Applied(0)))
-        }
-
-        _ -> {
-          // Create tasks from templates
-          use tasks_created <- result.try(create_tasks_from_templates(
-            db,
-            templates,
-            event,
-          ))
-
-          log(
-            "  Applied: created " <> int.to_string(tasks_created) <> " task(s)",
-          )
-
-          // Log execution
-          let _ =
-            log_execution(
-              db,
-              rule.id,
-              origin_type,
-              origin_id,
-              "applied",
-              "",
-              event_user_id(event),
-            )
-
-          Ok(RuleResult(rule.id, Applied(tasks_created)))
-        }
-      }
-    }
+    Ok(True) ->
+      suppress_idempotent_execution(db, rule, origin_type, origin_id, event)
+    Ok(False) ->
+      evaluate_rule_templates(db, rule, event, origin_type, origin_id)
   }
+}
+
+fn suppress_idempotent_execution(
+  db: pog.Connection,
+  rule: MatchingRule,
+  origin_type: String,
+  origin_id: Int,
+  event: StateChange,
+) -> Result(RuleResult, RuleEngineError) {
+  log("  Suppressed: already executed for this resource")
+
+  let _ =
+    log_execution(
+      db,
+      rule.id,
+      origin_type,
+      origin_id,
+      "suppressed",
+      "idempotent",
+      event_user_id(event),
+    )
+
+  Ok(RuleResult(rule.id, Suppressed("idempotent")))
+}
+
+fn evaluate_rule_templates(
+  db: pog.Connection,
+  rule: MatchingRule,
+  event: StateChange,
+  origin_type: String,
+  origin_id: Int,
+) -> Result(RuleResult, RuleEngineError) {
+  use templates <- result.try(get_rule_templates(db, rule.id))
+
+  log("  Found " <> int.to_string(list.length(templates)) <> " template(s)")
+
+  case templates {
+    [] -> apply_rule_without_templates(db, rule, origin_type, origin_id, event)
+    _ ->
+      apply_rule_with_templates(
+        db,
+        rule,
+        templates,
+        origin_type,
+        origin_id,
+        event,
+      )
+  }
+}
+
+fn apply_rule_without_templates(
+  db: pog.Connection,
+  rule: MatchingRule,
+  origin_type: String,
+  origin_id: Int,
+  event: StateChange,
+) -> Result(RuleResult, RuleEngineError) {
+  log("  Applied: no templates to execute")
+
+  let _ =
+    log_execution(
+      db,
+      rule.id,
+      origin_type,
+      origin_id,
+      "applied",
+      "",
+      event_user_id(event),
+    )
+
+  Ok(RuleResult(rule.id, Applied(0)))
+}
+
+fn apply_rule_with_templates(
+  db: pog.Connection,
+  rule: MatchingRule,
+  templates: List(ExecutionTemplate),
+  origin_type: String,
+  origin_id: Int,
+  event: StateChange,
+) -> Result(RuleResult, RuleEngineError) {
+  use tasks_created <- result.try(create_tasks_from_templates(
+    db,
+    templates,
+    event,
+  ))
+
+  log("  Applied: created " <> int.to_string(tasks_created) <> " task(s)")
+
+  let _ =
+    log_execution(
+      db,
+      rule.id,
+      origin_type,
+      origin_id,
+      "applied",
+      "",
+      event_user_id(event),
+    )
+
+  Ok(RuleResult(rule.id, Applied(tasks_created)))
 }
 
 fn check_already_executed(
@@ -659,6 +704,7 @@ fn event_user_triggered(event: StateChange) -> Bool {
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn event_task_type_id(event: StateChange) -> option.Option(Int) {
   case event {
     TaskChange(ctx: ctx, ..) ->

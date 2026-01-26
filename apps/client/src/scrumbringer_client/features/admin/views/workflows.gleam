@@ -145,6 +145,8 @@ fn view_rules_hint(model: Model) -> Element(Msg) {
 }
 
 /// Render the workflow-crud-dialog Lustre component.
+// Justification: nested case keeps dialog mode and project scoping logic colocated.
+
 fn view_workflow_crud_dialog(model: Model) -> Element(Msg) {
   case model.admin.workflows_dialog_mode {
     opt.None -> element.none()
@@ -389,6 +391,7 @@ fn find_workflow_name(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn view_rules_table(
   model: Model,
   rules: Remote(List(Rule)),
@@ -444,6 +447,8 @@ fn view_rules_table(
 }
 
 /// Render an expandable rule row with optional expansion for attached templates.
+// Justification: large function kept intact to preserve cohesive UI logic.
+
 fn view_rule_row_expandable(
   model: Model,
   rule: Rule,
@@ -497,64 +502,13 @@ fn view_rule_row_expandable(
         td([], [text(rule.name)]),
         // Resource type with task type info if applicable
         td([attribute.class("cell-resource-type")], [
-          case rule.resource_type, rule.task_type_id {
-            "task", opt.Some(type_id) -> {
-              // Find task type info for icon and name
-              let task_type_info = case model.admin.task_types {
-                Loaded(types) -> list.find(types, fn(tt) { tt.id == type_id })
-                _ -> Error(Nil)
-              }
-              case task_type_info {
-                Ok(tt) ->
-                  span([attribute.class("resource-type-task")], [
-                    text("task"),
-                    span([attribute.class("resource-type-separator")], [
-                      text(" · "),
-                    ]),
-                    span([attribute.class("task-type-inline")], [
-                      icons.view_task_type_icon_inline(
-                        tt.icon,
-                        14,
-                        model.ui.theme,
-                      ),
-                    ]),
-                    text(" " <> tt.name),
-                  ])
-                // Fallback if task type not found
-                Error(_) -> text("task")
-              }
-            }
-            resource_type, _ -> text(resource_type)
-          },
+          view_rule_resource_type(model, rule),
         ]),
         // To state
         td([], [text(rule.to_state)]),
         // Active status with completeness indicator (AC6-8)
         td([attribute.class("cell-status")], [
-          case rule.active {
-            True ->
-              case template_count > 0 {
-                // AC8: Active rule with templates shows check
-                True ->
-                  span([attribute.class("rule-complete-indicator")], [
-                    icons.nav_icon(icons.Check, icons.Small),
-                  ])
-                // AC6-7: Active rule without templates shows warning
-                False ->
-                  span(
-                    [
-                      attribute.class("rule-incomplete-indicator"),
-                      attribute.title(t(i18n_text.NoTemplatesWontCreateTasks)),
-                    ],
-                    [icons.nav_icon(icons.Warning, icons.Small)],
-                  )
-              }
-            // Inactive rules show X
-            False ->
-              span([attribute.class("rule-inactive-indicator")], [
-                icons.nav_icon(icons.XMark, icons.Small),
-              ])
-          },
+          view_rule_active_status(model, rule.active, template_count),
         ]),
         // Templates count badge
         td([attribute.class("cell-templates")], [
@@ -594,6 +548,59 @@ fn view_rule_row_expandable(
   case is_expanded {
     False -> [main_row]
     True -> [main_row, view_rule_templates_expansion(model, rule)]
+  }
+}
+
+// Justification: nested case keeps resource type rendering readable with optional
+// task type lookup and a fallback for missing types.
+fn view_rule_resource_type(model: Model, rule: Rule) -> Element(Msg) {
+  case rule.resource_type, rule.task_type_id {
+    "task", opt.Some(type_id) ->
+      case find_task_type(model, type_id) {
+        opt.Some(tt) ->
+          span([attribute.class("resource-type-task")], [
+            text("task"),
+            span([attribute.class("resource-type-separator")], [text(" · ")]),
+            span([attribute.class("task-type-inline")], [
+              icons.view_task_type_icon_inline(tt.icon, 14, model.ui.theme),
+            ]),
+            text(" " <> tt.name),
+          ])
+        opt.None -> text("task")
+      }
+    resource_type, _ -> text(resource_type)
+  }
+}
+
+// Justification: nested case avoids collapsing active/template semantics into
+// fragile conditionals and keeps UI intent explicit.
+fn view_rule_active_status(
+  model: Model,
+  is_active: Bool,
+  template_count: Int,
+) -> Element(Msg) {
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
+
+  case is_active {
+    True ->
+      case template_count > 0 {
+        True ->
+          span([attribute.class("rule-complete-indicator")], [
+            icons.nav_icon(icons.Check, icons.Small),
+          ])
+        False ->
+          span(
+            [
+              attribute.class("rule-incomplete-indicator"),
+              attribute.title(t(i18n_text.NoTemplatesWontCreateTasks)),
+            ],
+            [icons.nav_icon(icons.Warning, icons.Small)],
+          )
+      }
+    False ->
+      span([attribute.class("rule-inactive-indicator")], [
+        icons.nav_icon(icons.XMark, icons.Small),
+      ])
   }
 }
 
@@ -669,21 +676,18 @@ fn view_attached_template_item(
     set.contains(model.admin.detaching_templates, #(rule_id, tmpl.id))
 
   // Find task type info for icon (if available)
-  let task_type_info = case model.admin.task_types {
-    Loaded(types) -> list.find(types, fn(tt) { tt.id == tmpl.type_id })
-    _ -> Error(Nil)
-  }
+  let task_type_info = find_task_type(model, tmpl.type_id)
 
   div([attribute.class("attached-template-row")], [
     // AC4: Template info with icon + priority
     div([attribute.class("attached-template-info")], [
       // Task type icon
       case task_type_info {
-        Ok(tt) ->
+        opt.Some(tt) ->
           span([attribute.class("template-type-icon")], [
             icons.view_task_type_icon_inline(tt.icon, 16, model.ui.theme),
           ])
-        Error(_) -> element.none()
+        opt.None -> element.none()
       },
       // Template name
       span([attribute.class("attached-template-name")], [text(tmpl.name)]),
@@ -713,6 +717,8 @@ fn view_attached_template_item(
 /// AC11: Already attached templates excluded
 /// AC12: Radio buttons for selection
 /// AC14-15: Empty state with link to Templates
+// Justification: large function kept intact to preserve cohesive UI logic.
+
 fn view_attach_template_modal(model: Model) -> Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
 
@@ -720,32 +726,9 @@ fn view_attach_template_modal(model: Model) -> Element(Msg) {
     opt.None -> element.none()
     opt.Some(rule_id) -> {
       // Get available templates (exclude already attached ones)
-      let attached_ids = case model.admin.rules {
-        Loaded(rules) -> {
-          case list.find(rules, fn(r) { r.id == rule_id }) {
-            Ok(rule) -> list.map(rule.templates, fn(tmpl) { tmpl.id })
-            Error(_) -> []
-          }
-        }
-        _ -> []
-      }
-
-      // AC10, AC11: Filter to project templates, exclude already attached
-      let available_templates = case
-        model.admin.task_templates_org,
-        model.admin.task_templates_project
-      {
-        Loaded(org), Loaded(proj) -> {
-          list.filter(list.append(org, proj), fn(tmpl) {
-            !list.contains(attached_ids, tmpl.id)
-          })
-        }
-        Loaded(org), _ ->
-          list.filter(org, fn(tmpl) { !list.contains(attached_ids, tmpl.id) })
-        _, Loaded(proj) ->
-          list.filter(proj, fn(tmpl) { !list.contains(attached_ids, tmpl.id) })
-        _, _ -> []
-      }
+      let attached_ids = attached_template_ids(model, rule_id)
+      let available_templates =
+        available_templates_for_modal(model, attached_ids)
 
       div([attribute.class("modal-backdrop")], [
         div([attribute.class("modal-sm")], [
@@ -759,81 +742,121 @@ fn view_attach_template_modal(model: Model) -> Element(Msg) {
               [icons.nav_icon(icons.Close, icons.Small)],
             ),
           ]),
-          div([attribute.class("modal-body")], [
-            case available_templates {
-              // AC14-15: Empty state with link to Templates section
-              [] ->
-                div([attribute.class("modal-empty-state")], [
-                  icons.nav_icon(icons.TaskTemplates, icons.Large),
-                  p([], [text(t(i18n_text.NoTemplatesInProject))]),
-                  a(
-                    [
-                      attribute.href("/config/templates"),
-                      attribute.class("link-to-templates"),
-                    ],
-                    [text(t(i18n_text.CreateTemplateLink))],
-                  ),
-                ])
-              // AC12: Radio buttons for template selection
-              templates ->
-                div([attribute.class("form")], [
-                  p([attribute.class("form-hint")], [
-                    text(t(i18n_text.AvailableTemplatesInProject)),
-                  ]),
-                  div(
-                    [attribute.class("radio-group template-radio-list")],
-                    list.map(templates, fn(tmpl) {
-                      view_template_radio_option(model, tmpl)
-                    }),
-                  ),
-                  // Hint about already attached templates
-                  p([attribute.class("form-hint-secondary")], [
-                    icons.nav_icon(icons.Info, icons.Small),
-                    text(
-                      " "
-                      <> t(i18n_text.AttachedTemplates)
-                      <> ": "
-                      <> int.to_string(list.length(attached_ids)),
-                    ),
-                  ]),
-                ])
-            },
-          ]),
-          div([attribute.class("modal-footer")], [
-            button(
-              [
-                attribute.class("btn btn-secondary"),
-                event.on_click(pool_msg(AttachTemplateModalClosed)),
-              ],
-              [text(t(i18n_text.Cancel))],
-            ),
-            // AC20: Loading state on submit button
-            case model.admin.attach_template_loading {
-              True ->
-                button(
-                  [
-                    attribute.class("btn btn-primary"),
-                    attribute.disabled(True),
-                  ],
-                  [text(t(i18n_text.Attaching))],
-                )
-              False ->
-                button(
-                  [
-                    attribute.class("btn btn-primary"),
-                    attribute.disabled(opt.is_none(
-                      model.admin.attach_template_selected,
-                    )),
-                    event.on_click(pool_msg(AttachTemplateSubmitted)),
-                  ],
-                  [text(t(i18n_text.Attach))],
-                )
-            },
-          ]),
+          view_attach_template_modal_body(
+            model,
+            attached_ids,
+            available_templates,
+          ),
+          view_attach_template_modal_footer(model),
         ]),
       ])
     }
   }
+}
+
+// Justification: nested case keeps rule lookup and template extraction explicit.
+fn attached_template_ids(model: Model, rule_id: Int) -> List(Int) {
+  case model.admin.rules {
+    Loaded(rules) ->
+      case list.find(rules, fn(r) { r.id == rule_id }) {
+        Ok(rule) -> list.map(rule.templates, fn(tmpl) { tmpl.id })
+        Error(_) -> []
+      }
+    _ -> []
+  }
+}
+
+fn available_templates_for_modal(
+  model: Model,
+  attached_ids: List(Int),
+) -> List(TaskTemplate) {
+  case model.admin.task_templates_org, model.admin.task_templates_project {
+    Loaded(org), Loaded(proj) ->
+      list.filter(list.append(org, proj), fn(tmpl) {
+        !list.contains(attached_ids, tmpl.id)
+      })
+    Loaded(org), _ ->
+      list.filter(org, fn(tmpl) { !list.contains(attached_ids, tmpl.id) })
+    _, Loaded(proj) ->
+      list.filter(proj, fn(tmpl) { !list.contains(attached_ids, tmpl.id) })
+    _, _ -> []
+  }
+}
+
+fn view_attach_template_modal_body(
+  model: Model,
+  attached_ids: List(Int),
+  available_templates: List(TaskTemplate),
+) -> Element(Msg) {
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
+
+  div([attribute.class("modal-body")], [
+    case available_templates {
+      [] ->
+        div([attribute.class("modal-empty-state")], [
+          icons.nav_icon(icons.TaskTemplates, icons.Large),
+          p([], [text(t(i18n_text.NoTemplatesInProject))]),
+          a(
+            [
+              attribute.href("/config/templates"),
+              attribute.class("link-to-templates"),
+            ],
+            [text(t(i18n_text.CreateTemplateLink))],
+          ),
+        ])
+      templates ->
+        div([attribute.class("form")], [
+          p([attribute.class("form-hint")], [
+            text(t(i18n_text.AvailableTemplatesInProject)),
+          ]),
+          div(
+            [attribute.class("radio-group template-radio-list")],
+            list.map(templates, fn(tmpl) {
+              view_template_radio_option(model, tmpl)
+            }),
+          ),
+          p([attribute.class("form-hint-secondary")], [
+            icons.nav_icon(icons.Info, icons.Small),
+            text(
+              " "
+              <> t(i18n_text.AttachedTemplates)
+              <> ": "
+              <> int.to_string(list.length(attached_ids)),
+            ),
+          ]),
+        ])
+    },
+  ])
+}
+
+fn view_attach_template_modal_footer(model: Model) -> Element(Msg) {
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
+
+  div([attribute.class("modal-footer")], [
+    button(
+      [
+        attribute.class("btn btn-secondary"),
+        event.on_click(pool_msg(AttachTemplateModalClosed)),
+      ],
+      [text(t(i18n_text.Cancel))],
+    ),
+    // AC20: Loading state on submit button
+    case model.admin.attach_template_loading {
+      True ->
+        button([attribute.class("btn btn-primary"), attribute.disabled(True)], [
+          text(t(i18n_text.Attaching)),
+        ])
+      False ->
+        button(
+          [
+            attribute.class("btn btn-primary"),
+            attribute.disabled(opt.is_none(model.admin.attach_template_selected)),
+            event.on_click(pool_msg(AttachTemplateSubmitted)),
+          ],
+          [text(t(i18n_text.Attach))],
+        )
+    },
+  ])
 }
 
 /// Render a radio button option for template selection.
@@ -844,10 +867,7 @@ fn view_template_radio_option(model: Model, tmpl: TaskTemplate) -> Element(Msg) 
   let radio_id = "template-radio-" <> int.to_string(tmpl.id)
 
   // Find task type info for icon
-  let task_type_info = case model.admin.task_types {
-    Loaded(types) -> list.find(types, fn(tt) { tt.id == tmpl.type_id })
-    _ -> Error(Nil)
-  }
+  let task_type_info = find_task_type(model, tmpl.type_id)
 
   div(
     [
@@ -872,11 +892,11 @@ fn view_template_radio_option(model: Model, tmpl: TaskTemplate) -> Element(Msg) 
       label([attribute.for(radio_id), attribute.class("radio-label")], [
         // Task type icon
         case task_type_info {
-          Ok(tt) ->
+          opt.Some(tt) ->
             span([attribute.class("template-type-icon")], [
               icons.view_task_type_icon_inline(tt.icon, 16, model.ui.theme),
             ])
-          Error(_) -> element.none()
+          opt.None -> element.none()
         },
         // Template name
         span([attribute.class("template-name")], [text(tmpl.name)]),
@@ -889,19 +909,33 @@ fn view_template_radio_option(model: Model, tmpl: TaskTemplate) -> Element(Msg) 
   )
 }
 
+fn find_task_type(model: Model, type_id: Int) -> opt.Option(TaskType) {
+  case model.admin.task_types {
+    Loaded(types) ->
+      list.find(types, fn(tt) { tt.id == type_id }) |> opt.from_result
+    _ -> opt.None
+  }
+}
+
 /// Get metrics for a specific rule from the workflow metrics.
 fn get_rule_metrics(
   metrics: Remote(api_workflows.WorkflowMetrics),
   rule_id: Int,
 ) -> #(Int, Int) {
   case metrics {
-    Loaded(wm) -> {
-      case list.find(wm.rules, fn(rm) { rm.rule_id == rule_id }) {
-        Ok(rm) -> #(rm.applied_count, rm.suppressed_count)
-        Error(_) -> #(0, 0)
-      }
-    }
+    Loaded(wm) -> rule_metrics_for_loaded(wm, rule_id)
     _ -> #(0, 0)
+  }
+}
+
+// Justification: nested case isolates loaded metrics lookup from empty fallback.
+fn rule_metrics_for_loaded(
+  metrics: api_workflows.WorkflowMetrics,
+  rule_id: Int,
+) -> #(Int, Int) {
+  case list.find(metrics.rules, fn(rm) { rm.rule_id == rule_id }) {
+    Ok(rm) -> #(rm.applied_count, rm.suppressed_count)
+    Error(_) -> #(0, 0)
   }
 }
 
@@ -1095,6 +1129,8 @@ fn view_templates_hint(model: Model) -> Element(Msg) {
 }
 
 /// Render the task-template-crud-dialog Lustre component.
+// Justification: nested case keeps dialog mode and project scoping logic colocated.
+
 fn view_task_template_crud_dialog(model: Model) -> Element(Msg) {
   case model.admin.task_templates_dialog_mode {
     opt.None -> element.none()
@@ -1465,31 +1501,35 @@ fn view_rule_metrics_results(model: Model) -> Element(Msg) {
         text(err.message),
       ])
 
-    Loaded(workflows) ->
-      case workflows {
-        [] ->
-          div([attribute.class("empty-state")], [
-            div([attribute.class("empty-state-icon")], [
-              icons.nav_icon(icons.EmptyMailbox, icons.Large),
-            ]),
-            div([attribute.class("empty-state-title")], [
-              text("No hay ejecuciones"),
-            ]),
-            div([attribute.class("empty-state-description")], [
-              text(
-                "No se encontraron ejecuciones de automatizaciones en el rango seleccionado.",
-              ),
-            ]),
-          ])
-        _ ->
-          div([attribute.class("admin-card")], [
-            div([attribute.class("admin-card-header")], [
-              span([], [icons.nav_icon(icons.ClipboardDoc, icons.Small)]),
-              text(" Resultados"),
-            ]),
-            view_rule_metrics_table(model, model.admin.admin_rule_metrics),
-          ])
-      }
+    Loaded(workflows) -> view_rule_metrics_loaded(model, workflows)
+  }
+}
+
+fn view_rule_metrics_loaded(
+  model: Model,
+  workflows: List(api_workflows.OrgWorkflowMetricsSummary),
+) -> Element(Msg) {
+  case workflows {
+    [] ->
+      div([attribute.class("empty-state")], [
+        div([attribute.class("empty-state-icon")], [
+          icons.nav_icon(icons.EmptyMailbox, icons.Large),
+        ]),
+        div([attribute.class("empty-state-title")], [text("No hay ejecuciones")]),
+        div([attribute.class("empty-state-description")], [
+          text(
+            "No se encontraron ejecuciones de automatizaciones en el rango seleccionado.",
+          ),
+        ]),
+      ])
+    _ ->
+      div([attribute.class("admin-card")], [
+        div([attribute.class("admin-card-header")], [
+          span([], [icons.nav_icon(icons.ClipboardDoc, icons.Small)]),
+          text(" Resultados"),
+        ]),
+        view_rule_metrics_table(model, model.admin.admin_rule_metrics),
+      ])
   }
 }
 
@@ -1510,56 +1550,59 @@ fn view_rule_metrics_table(
 
     Failed(err) -> div([attribute.class("error")], [text(err.message)])
 
-    Loaded(workflows) ->
-      case workflows {
-        [] ->
-          div([attribute.class("empty")], [
-            text(update_helpers.i18n_t(model, i18n_text.RuleMetricsNoData)),
-          ])
-        _ ->
-          element.fragment([
-            table([attribute.class("table")], [
-              thead([], [
-                tr([], [
-                  th([], []),
-                  th([], [
-                    text(update_helpers.i18n_t(model, i18n_text.WorkflowName)),
-                  ]),
-                  th([], [
-                    text(update_helpers.i18n_t(
-                      model,
-                      i18n_text.RuleMetricsRuleCount,
-                    )),
-                  ]),
-                  th([], [
-                    text(update_helpers.i18n_t(
-                      model,
-                      i18n_text.RuleMetricsEvaluated,
-                    )),
-                  ]),
-                  th([], [
-                    text(update_helpers.i18n_t(
-                      model,
-                      i18n_text.RuleMetricsApplied,
-                    )),
-                  ]),
-                  th([], [
-                    text(update_helpers.i18n_t(
-                      model,
-                      i18n_text.RuleMetricsSuppressed,
-                    )),
-                  ]),
-                ]),
+    Loaded(workflows) -> view_rule_metrics_table_loaded(model, workflows)
+  }
+}
+
+fn view_rule_metrics_table_loaded(
+  model: Model,
+  workflows: List(api_workflows.OrgWorkflowMetricsSummary),
+) -> Element(Msg) {
+  case workflows {
+    [] ->
+      div([attribute.class("empty")], [
+        text(update_helpers.i18n_t(model, i18n_text.RuleMetricsNoData)),
+      ])
+    _ ->
+      element.fragment([
+        table([attribute.class("table")], [
+          thead([], [
+            tr([], [
+              th([], []),
+              th([], [
+                text(update_helpers.i18n_t(model, i18n_text.WorkflowName)),
               ]),
-              keyed.tbody(
-                [],
-                list.flat_map(workflows, fn(w) { view_workflow_row(model, w) }),
-              ),
+              th([], [
+                text(update_helpers.i18n_t(
+                  model,
+                  i18n_text.RuleMetricsRuleCount,
+                )),
+              ]),
+              th([], [
+                text(update_helpers.i18n_t(
+                  model,
+                  i18n_text.RuleMetricsEvaluated,
+                )),
+              ]),
+              th([], [
+                text(update_helpers.i18n_t(model, i18n_text.RuleMetricsApplied)),
+              ]),
+              th([], [
+                text(update_helpers.i18n_t(
+                  model,
+                  i18n_text.RuleMetricsSuppressed,
+                )),
+              ]),
             ]),
-            // Drill-down modal
-            view_rule_drilldown_modal(model),
-          ])
-      }
+          ]),
+          keyed.tbody(
+            [],
+            list.flat_map(workflows, fn(w) { view_workflow_row(model, w) }),
+          ),
+        ]),
+        // Drill-down modal
+        view_rule_drilldown_modal(model),
+      ])
   }
 }
 
@@ -1614,93 +1657,99 @@ fn view_workflow_rules_expansion(
   model: Model,
   _workflow_id: Int,
 ) -> #(String, Element(Msg)) {
-  let content = case model.admin.admin_rule_metrics_workflow_details {
-    NotAsked | Loading ->
-      div([attribute.class("loading")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
-      ])
-
-    Failed(err) -> div([attribute.class("error")], [text(err.message)])
-
-    Loaded(details) ->
-      case details.rules {
-        [] ->
-          div([attribute.class("empty")], [
-            text(update_helpers.i18n_t(model, i18n_text.RuleMetricsNoRules)),
-          ])
-        rules ->
-          table([attribute.class("table nested-table")], [
-            thead([], [
-              tr([], [
-                th([], [text(update_helpers.i18n_t(model, i18n_text.RuleName))]),
-                th([], [
-                  text(update_helpers.i18n_t(
-                    model,
-                    i18n_text.RuleMetricsEvaluated,
-                  )),
-                ]),
-                th([], [
-                  text(update_helpers.i18n_t(
-                    model,
-                    i18n_text.RuleMetricsApplied,
-                  )),
-                ]),
-                th([], [
-                  text(update_helpers.i18n_t(
-                    model,
-                    i18n_text.RuleMetricsSuppressed,
-                  )),
-                ]),
-                th([], []),
-              ]),
-            ]),
-            keyed.tbody(
-              [],
-              list.map(rules, fn(r) {
-                #(
-                  "rule-" <> int.to_string(r.rule_id),
-                  tr([], [
-                    td([], [text(r.rule_name)]),
-                    td([], [text(int.to_string(r.evaluated_count))]),
-                    td([attribute.class("metric-cell")], [
-                      span([attribute.class("metric applied")], [
-                        text(int.to_string(r.applied_count)),
-                      ]),
-                    ]),
-                    td([attribute.class("metric-cell")], [
-                      span([attribute.class("metric suppressed")], [
-                        text(int.to_string(r.suppressed_count)),
-                      ]),
-                    ]),
-                    td([], [
-                      button(
-                        [
-                          attribute.class("btn-small"),
-                          event.on_click(
-                            pool_msg(AdminRuleMetricsDrilldownClicked(r.rule_id)),
-                          ),
-                        ],
-                        [
-                          text(update_helpers.i18n_t(
-                            model,
-                            i18n_text.ViewDetails,
-                          )),
-                        ],
-                      ),
-                    ]),
-                  ]),
-                )
-              }),
-            ),
-          ])
-      }
-  }
+  let content =
+    view_workflow_rules_expansion_content(
+      model,
+      model.admin.admin_rule_metrics_workflow_details,
+    )
 
   #(
     "expansion",
     tr([attribute.class("expansion-row")], [
       td([attribute.attribute("colspan", "6")], [
         div([attribute.class("expansion-content")], [content]),
+      ]),
+    ]),
+  )
+}
+
+fn view_workflow_rules_expansion_content(
+  model: Model,
+  details: Remote(api_workflows.OrgWorkflowMetricsDetail),
+) -> Element(Msg) {
+  case details {
+    NotAsked | Loading ->
+      div([attribute.class("loading")], [
+        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+      ])
+    Failed(err) -> div([attribute.class("error")], [text(err.message)])
+    Loaded(loaded) -> view_workflow_rules_expansion_loaded(model, loaded)
+  }
+}
+
+fn view_workflow_rules_expansion_loaded(
+  model: Model,
+  details: api_workflows.OrgWorkflowMetricsDetail,
+) -> Element(Msg) {
+  case details.rules {
+    [] ->
+      div([attribute.class("empty")], [
+        text(update_helpers.i18n_t(model, i18n_text.RuleMetricsNoRules)),
+      ])
+    rules ->
+      table([attribute.class("table nested-table")], [
+        thead([], [
+          tr([], [
+            th([], [text(update_helpers.i18n_t(model, i18n_text.RuleName))]),
+            th([], [
+              text(update_helpers.i18n_t(model, i18n_text.RuleMetricsEvaluated)),
+            ]),
+            th([], [
+              text(update_helpers.i18n_t(model, i18n_text.RuleMetricsApplied)),
+            ]),
+            th([], [
+              text(update_helpers.i18n_t(model, i18n_text.RuleMetricsSuppressed)),
+            ]),
+            th([], []),
+          ]),
+        ]),
+        keyed.tbody(
+          [],
+          list.map(rules, fn(r) { view_workflow_rule_metrics_row(model, r) }),
+        ),
+      ])
+  }
+}
+
+fn view_workflow_rule_metrics_row(
+  model: Model,
+  rule_metrics: api_workflows.RuleMetricsRow,
+) -> #(String, Element(Msg)) {
+  #(
+    "rule-" <> int.to_string(rule_metrics.rule_id),
+    tr([], [
+      td([], [text(rule_metrics.rule_name)]),
+      td([], [text(int.to_string(rule_metrics.evaluated_count))]),
+      td([attribute.class("metric-cell")], [
+        span([attribute.class("metric applied")], [
+          text(int.to_string(rule_metrics.applied_count)),
+        ]),
+      ]),
+      td([attribute.class("metric-cell")], [
+        span([attribute.class("metric suppressed")], [
+          text(int.to_string(rule_metrics.suppressed_count)),
+        ]),
+      ]),
+      td([], [
+        button(
+          [
+            attribute.class("btn-small"),
+            event.on_click(
+              pool_msg(AdminRuleMetricsDrilldownClicked(rule_metrics.rule_id)),
+            ),
+          ],
+          [text(update_helpers.i18n_t(model, i18n_text.ViewDetails))],
+        ),
       ]),
     ]),
   )
@@ -1834,85 +1883,104 @@ fn view_drilldown_executions(model: Model) -> Element(Msg) {
 
     Failed(err) -> div([attribute.class("error")], [text(err.message)])
 
-    Loaded(response) ->
-      div([attribute.class("drilldown-executions")], [
-        h3([], [
-          text(update_helpers.i18n_t(model, i18n_text.RecentExecutions)),
-        ]),
-        case response.executions {
-          [] ->
-            div([attribute.class("empty")], [
-              text(update_helpers.i18n_t(model, i18n_text.NoExecutions)),
-            ])
-          executions ->
-            element.fragment([
-              table([attribute.class("table executions-table")], [
-                thead([], [
-                  tr([], [
-                    th([], [
-                      text(update_helpers.i18n_t(model, i18n_text.Origin)),
-                    ]),
-                    th([], [
-                      text(update_helpers.i18n_t(model, i18n_text.Outcome)),
-                    ]),
-                    th([], [text(update_helpers.i18n_t(model, i18n_text.User))]),
-                    th([], [
-                      text(update_helpers.i18n_t(model, i18n_text.Timestamp)),
-                    ]),
-                  ]),
+    Loaded(response) -> view_drilldown_executions_loaded(model, response)
+  }
+}
+
+fn view_drilldown_executions_loaded(
+  model: Model,
+  response: api_workflows.RuleExecutionsResponse,
+) -> Element(Msg) {
+  div([attribute.class("drilldown-executions")], [
+    h3([], [
+      text(update_helpers.i18n_t(model, i18n_text.RecentExecutions)),
+    ]),
+    case response.executions {
+      [] ->
+        div([attribute.class("empty")], [
+          text(update_helpers.i18n_t(model, i18n_text.NoExecutions)),
+        ])
+      executions ->
+        element.fragment([
+          table([attribute.class("table executions-table")], [
+            thead([], [
+              tr([], [
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.Origin)),
                 ]),
-                keyed.tbody(
-                  [],
-                  list.map(executions, fn(exec) {
-                    let outcome_class = case exec.outcome {
-                      "applied" -> "outcome-applied"
-                      "suppressed" -> "outcome-suppressed"
-                      _ -> ""
-                    }
-                    let outcome_text = case exec.outcome {
-                      "applied" ->
-                        update_helpers.i18n_t(model, i18n_text.OutcomeApplied)
-                      "suppressed" ->
-                        update_helpers.i18n_t(
-                          model,
-                          i18n_text.OutcomeSuppressed,
-                        )
-                        <> case exec.suppression_reason {
-                          "" -> ""
-                          reason -> " (" <> reason <> ")"
-                        }
-                      _ -> exec.outcome
-                    }
-                    #(
-                      int.to_string(exec.id),
-                      tr([], [
-                        td([], [
-                          text(
-                            exec.origin_type
-                            <> " #"
-                            <> int.to_string(exec.origin_id),
-                          ),
-                        ]),
-                        td([attribute.class(outcome_class)], [
-                          text(outcome_text),
-                        ]),
-                        td([], [
-                          text(case exec.user_email {
-                            "" -> "-"
-                            email -> email
-                          }),
-                        ]),
-                        td([], [text(exec.created_at)]),
-                      ]),
-                    )
-                  }),
-                ),
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.Outcome)),
+                ]),
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.User)),
+                ]),
+                th([], [
+                  text(update_helpers.i18n_t(model, i18n_text.Timestamp)),
+                ]),
               ]),
-              // Pagination
-              view_executions_pagination(model, response.pagination),
-            ])
-        },
-      ])
+            ]),
+            keyed.tbody(
+              [],
+              list.map(executions, fn(exec) { view_execution_row(model, exec) }),
+            ),
+          ]),
+          // Pagination
+          view_executions_pagination(model, response.pagination),
+        ])
+    },
+  ])
+}
+
+fn view_execution_row(
+  model: Model,
+  exec: api_workflows.RuleExecution,
+) -> #(String, Element(Msg)) {
+  let outcome_class = outcome_class_for(exec.outcome)
+  let outcome_text = outcome_text_for(model, exec)
+  let user_email = display_user_email(exec.user_email)
+
+  #(
+    int.to_string(exec.id),
+    tr([], [
+      td([], [
+        text(exec.origin_type <> " #" <> int.to_string(exec.origin_id)),
+      ]),
+      td([attribute.class(outcome_class)], [text(outcome_text)]),
+      td([], [text(user_email)]),
+      td([], [text(exec.created_at)]),
+    ]),
+  )
+}
+
+fn outcome_class_for(outcome: String) -> String {
+  case outcome {
+    "applied" -> "outcome-applied"
+    "suppressed" -> "outcome-suppressed"
+    _ -> ""
+  }
+}
+
+fn outcome_text_for(model: Model, exec: api_workflows.RuleExecution) -> String {
+  case exec.outcome {
+    "applied" -> update_helpers.i18n_t(model, i18n_text.OutcomeApplied)
+    "suppressed" ->
+      update_helpers.i18n_t(model, i18n_text.OutcomeSuppressed)
+      <> suppression_reason_suffix(exec.suppression_reason)
+    _ -> exec.outcome
+  }
+}
+
+fn suppression_reason_suffix(reason: String) -> String {
+  case reason {
+    "" -> ""
+    _ -> " (" <> reason <> ")"
+  }
+}
+
+fn display_user_email(user_email: String) -> String {
+  case user_email {
+    "" -> "-"
+    _ -> user_email
   }
 }
 

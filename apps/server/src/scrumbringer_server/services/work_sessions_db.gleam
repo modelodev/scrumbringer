@@ -11,6 +11,15 @@
 //// - Start, pause, and heartbeat work sessions
 //// - Accumulate time spent on tasks
 //// - Close stale sessions automatically
+////
+//// ## Non-responsibilities
+////
+//// - HTTP request handling (see `http/work_sessions.gleam`)
+//// - Task lifecycle mutations (see `persistence/tasks/queries.gleam`)
+////
+//// ## Relationships
+////
+//// - Uses `pog` for DB access
 
 import gleam/dynamic/decode
 import gleam/int
@@ -59,6 +68,9 @@ pub const stale_cutoff_seconds = 180
 // =============================================================================
 
 /// Get all active work sessions for a user.
+///
+/// Example:
+///   get_active_sessions(db, user_id)
 pub fn get_active_sessions(
   db: pog.Connection,
   user_id: Int,
@@ -68,10 +80,15 @@ pub fn get_active_sessions(
   Ok(WorkSessionsState(active_sessions: sessions, as_of: as_of))
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Start a work session on a task.
 /// - Validates task is claimed by user
 /// - Validates task is not completed
 /// - Creates new session or returns existing (idempotent)
+///
+/// Example:
+///   start_session(db, user_id, task_id)
+/// Justification: nested case improves clarity for branching logic.
 pub fn start_session(
   db: pog.Connection,
   user_id: Int,
@@ -105,6 +122,9 @@ pub fn start_session(
 /// Pause (end) a work session on a task.
 /// - Closes active session and flushes accumulated time
 /// - Idempotent: returns OK even if no session exists
+///
+/// Example:
+///   pause_session(db, user_id, task_id)
 pub fn pause_session(
   db: pog.Connection,
   user_id: Int,
@@ -122,6 +142,9 @@ pub fn pause_session(
 /// Send heartbeat for an active session.
 /// - Updates last_heartbeat_at
 /// - Optionally flushes accumulated time incrementally
+///
+/// Example:
+///   heartbeat_session(db, user_id, task_id)
 pub fn heartbeat_session(
   db: pog.Connection,
   user_id: Int,
@@ -143,6 +166,9 @@ pub fn heartbeat_session(
 
 /// Close session for a task (called by complete/release).
 /// Returns the ended reason.
+///
+/// Example:
+///   close_session_for_task(db, user_id, task_id, "released")
 pub fn close_session_for_task(
   db: pog.Connection,
   user_id: Int,
@@ -153,6 +179,9 @@ pub fn close_session_for_task(
 }
 
 /// Close all stale sessions (background job or lazy cleanup).
+///
+/// Example:
+///   close_stale_sessions(db)
 pub fn close_stale_sessions(db: pog.Connection) -> Result(Int, pog.QueryError) {
   let query = "
     WITH closed AS (
@@ -195,6 +224,9 @@ pub fn close_stale_sessions(db: pog.Connection) -> Result(Int, pog.QueryError) {
 }
 
 /// Get time tracking data for a task (total and by user).
+///
+/// Example:
+///   get_task_time_tracking(db, task_id)
 pub fn get_task_time_tracking(
   db: pog.Connection,
   task_id: Int,
@@ -259,6 +291,7 @@ pub fn get_task_time_tracking(
 // Supporting Types
 // =============================================================================
 
+/// Aggregated time tracking data for a task.
 pub type TaskTimeTracking {
   TaskTimeTracking(
     total_s: Int,
@@ -267,6 +300,7 @@ pub type TaskTimeTracking {
   )
 }
 
+/// Per-user contribution data for a task.
 pub type ContributorTime {
   ContributorTime(
     user_id: Int,
@@ -293,10 +327,12 @@ type TaskClaimState {
   Completed
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn task_claim_state(status: String, claimed_by: Option(Int)) -> TaskClaimState {
   case status {
     "completed" -> Completed
     "claimed" ->
+      // Justification: nested case disambiguates claimed vs available.
       case claimed_by {
         Some(user_id) -> ClaimedBy(user_id)
         None -> Available
@@ -305,6 +341,7 @@ fn task_claim_state(status: String, claimed_by: Option(Int)) -> TaskClaimState {
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn validate_task_for_session(
   db: pog.Connection,
   user_id: Int,

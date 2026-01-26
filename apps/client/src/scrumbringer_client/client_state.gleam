@@ -179,6 +179,7 @@ pub type Rect {
 }
 
 /// Tests if a point (x, y) is inside the rectangle (inclusive bounds).
+/// Justification: large function kept intact to preserve cohesive UI logic.
 pub fn rect_contains_point(rect: Rect, x: Int, y: Int) -> Bool {
   let Rect(left: left, top: top, width: width, height: height) = rect
   x >= left && x <= left + width && y >= top && y <= top + height
@@ -289,6 +290,7 @@ pub type CoreModel {
   )
 }
 
+/// Represents AuthModel.
 pub type AuthModel {
   AuthModel(
     login_email: String,
@@ -306,6 +308,7 @@ pub type AuthModel {
   )
 }
 
+/// Represents UiModel.
 pub type UiModel {
   UiModel(
     is_mobile: Bool,
@@ -318,12 +321,14 @@ pub type UiModel {
   )
 }
 
+/// Represents MobileDrawerState.
 pub type MobileDrawerState {
   DrawerClosed
   DrawerLeftOpen
   DrawerRightOpen
 }
 
+/// Represents SidebarCollapse.
 pub type SidebarCollapse {
   NoneCollapsed
   ConfigCollapsed
@@ -331,6 +336,7 @@ pub type SidebarCollapse {
   BothCollapsed
 }
 
+/// Represents OrgUsersSearchState.
 pub type OrgUsersSearchState {
   OrgUsersSearchIdle(query: String, token: Int)
   OrgUsersSearchLoading(query: String, token: Int)
@@ -338,6 +344,7 @@ pub type OrgUsersSearchState {
   OrgUsersSearchFailed(query: String, token: Int, error: ApiError)
 }
 
+/// Represents ProjectDialogState.
 pub type ProjectDialogState {
   ProjectDialogClosed
   ProjectDialogCreate(name: String, in_flight: Bool, error: Option(String))
@@ -350,6 +357,7 @@ pub type ProjectDialogState {
   ProjectDialogDelete(id: Int, name: String, in_flight: Bool)
 }
 
+/// Represents AdminModel.
 pub type AdminModel {
   AdminModel(
     invite_links: Remote(List(InviteLink)),
@@ -457,6 +465,7 @@ pub type AdminModel {
   )
 }
 
+/// Represents MemberModel.
 pub type MemberModel {
   MemberModel(
     member_section: member_section.MemberSection,
@@ -517,6 +526,7 @@ pub type MemberModel {
   )
 }
 
+/// Represents Model.
 pub type Model {
   Model(
     core: CoreModel,
@@ -530,6 +540,7 @@ pub type Model {
 // Messages
 // ----------------------------------------------------------------------------
 
+/// Represents AuthMsg.
 pub type AuthMsg {
   LoginEmailChanged(String)
   LoginPasswordChanged(String)
@@ -547,6 +558,7 @@ pub type AuthMsg {
   LogoutFinished(ApiResult(Nil))
 }
 
+/// Represents AdminMsg.
 pub type AdminMsg {
   ProjectsFetched(ApiResult(List(Project)))
   ProjectCreateDialogOpened
@@ -647,6 +659,7 @@ pub type AdminMsg {
   TaskTypeCrudDeleted(Int)
 }
 
+/// Represents PoolMsg.
 pub type PoolMsg {
   MemberPoolMyTasksRectFetched(Int, Int, Int, Int)
   MemberPoolDragToClaimArmed(Bool)
@@ -816,38 +829,74 @@ pub type Msg {
   ProjectSelected(String)
 }
 
+/// Provides auth msg.
+///
+/// Example:
+///   auth_msg(...)
 pub fn auth_msg(msg: AuthMsg) -> Msg {
   AuthMsg(msg)
 }
 
+/// Provides admin msg.
+///
+/// Example:
+///   admin_msg(...)
 pub fn admin_msg(msg: AdminMsg) -> Msg {
   AdminMsg(msg)
 }
 
+/// Provides pool msg.
+///
+/// Example:
+///   pool_msg(...)
 pub fn pool_msg(msg: PoolMsg) -> Msg {
   PoolMsg(msg)
 }
 
+/// Updates core.
+///
+/// Example:
+///   update_core(...)
 pub fn update_core(model: Model, f: fn(CoreModel) -> CoreModel) -> Model {
   Model(..model, core: f(model.core))
 }
 
+/// Updates auth.
+///
+/// Example:
+///   update_auth(...)
 pub fn update_auth(model: Model, f: fn(AuthModel) -> AuthModel) -> Model {
   Model(..model, auth: f(model.auth))
 }
 
+/// Updates admin.
+///
+/// Example:
+///   update_admin(...)
 pub fn update_admin(model: Model, f: fn(AdminModel) -> AdminModel) -> Model {
   Model(..model, admin: f(model.admin))
 }
 
+/// Updates member.
+///
+/// Example:
+///   update_member(...)
 pub fn update_member(model: Model, f: fn(MemberModel) -> MemberModel) -> Model {
   Model(..model, member: f(model.member))
 }
 
+/// Updates ui.
+///
+/// Example:
+///   update_ui(...)
 pub fn update_ui(model: Model, f: fn(UiModel) -> UiModel) -> Model {
   Model(..model, ui: f(model.ui))
 }
 
+/// Provides sidebar collapse from bools.
+///
+/// Example:
+///   sidebar_collapse_from_bools(...)
 pub fn sidebar_collapse_from_bools(config: Bool, org: Bool) -> SidebarCollapse {
   case config, org {
     True, True -> BothCollapsed
@@ -857,6 +906,10 @@ pub fn sidebar_collapse_from_bools(config: Bool, org: Bool) -> SidebarCollapse {
   }
 }
 
+/// Provides sidebar collapse to bools.
+///
+/// Example:
+///   sidebar_collapse_to_bools(...)
 pub fn sidebar_collapse_to_bools(state: SidebarCollapse) -> #(Bool, Bool) {
   case state {
     NoneCollapsed -> #(False, False)
@@ -866,26 +919,46 @@ pub fn sidebar_collapse_to_bools(state: SidebarCollapse) -> #(Bool, Bool) {
   }
 }
 
+/// Provides sidebar config collapsed.
+///
+/// Example:
+///   sidebar_config_collapsed(...)
 pub fn sidebar_config_collapsed(state: SidebarCollapse) -> Bool {
   let #(config, _org) = sidebar_collapse_to_bools(state)
   config
 }
 
+/// Provides sidebar org collapsed.
+///
+/// Example:
+///   sidebar_org_collapsed(...)
 pub fn sidebar_org_collapsed(state: SidebarCollapse) -> Bool {
   let #(_config, org) = sidebar_collapse_to_bools(state)
   org
 }
 
+/// Toggles sidebar config.
+///
+/// Example:
+///   toggle_sidebar_config(...)
 pub fn toggle_sidebar_config(state: SidebarCollapse) -> SidebarCollapse {
   let #(config, org) = sidebar_collapse_to_bools(state)
   sidebar_collapse_from_bools(!config, org)
 }
 
+/// Toggles sidebar org.
+///
+/// Example:
+///   toggle_sidebar_org(...)
 pub fn toggle_sidebar_org(state: SidebarCollapse) -> SidebarCollapse {
   let #(config, org) = sidebar_collapse_to_bools(state)
   sidebar_collapse_from_bools(config, !org)
 }
 
+/// Provides mobile drawer left open.
+///
+/// Example:
+///   mobile_drawer_left_open(...)
 pub fn mobile_drawer_left_open(state: MobileDrawerState) -> Bool {
   case state {
     DrawerLeftOpen -> True
@@ -893,6 +966,10 @@ pub fn mobile_drawer_left_open(state: MobileDrawerState) -> Bool {
   }
 }
 
+/// Provides mobile drawer right open.
+///
+/// Example:
+///   mobile_drawer_right_open(...)
 pub fn mobile_drawer_right_open(state: MobileDrawerState) -> Bool {
   case state {
     DrawerRightOpen -> True
@@ -900,6 +977,10 @@ pub fn mobile_drawer_right_open(state: MobileDrawerState) -> Bool {
   }
 }
 
+/// Toggles left drawer.
+///
+/// Example:
+///   toggle_left_drawer(...)
 pub fn toggle_left_drawer(state: MobileDrawerState) -> MobileDrawerState {
   case state {
     DrawerLeftOpen -> DrawerClosed
@@ -907,6 +988,10 @@ pub fn toggle_left_drawer(state: MobileDrawerState) -> MobileDrawerState {
   }
 }
 
+/// Toggles right drawer.
+///
+/// Example:
+///   toggle_right_drawer(...)
 pub fn toggle_right_drawer(state: MobileDrawerState) -> MobileDrawerState {
   case state {
     DrawerRightOpen -> DrawerClosed
@@ -914,6 +999,10 @@ pub fn toggle_right_drawer(state: MobileDrawerState) -> MobileDrawerState {
   }
 }
 
+/// Closes drawers.
+///
+/// Example:
+///   close_drawers(...)
 pub fn close_drawers(_state: MobileDrawerState) -> MobileDrawerState {
   DrawerClosed
 }
@@ -979,6 +1068,7 @@ pub fn remote_to_resource_state(remote: Remote(a)) -> hydration.ResourceState {
 /// - `page` defaults to `Login`
 /// - `member_create_priority` defaults to `"3"` (medium)
 /// - `members_add_role` defaults to `Member`
+/// Justification: large function kept intact to preserve cohesive UI logic.
 pub fn default_model() -> Model {
   Model(
     core: CoreModel(

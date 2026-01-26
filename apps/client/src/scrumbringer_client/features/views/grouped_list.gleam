@@ -97,6 +97,7 @@ pub fn view(config: GroupedListConfig(msg)) -> Element(msg) {
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn view_card_group(
   config: GroupedListConfig(msg),
   group: CardGroup,

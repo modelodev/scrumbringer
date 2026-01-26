@@ -14,6 +14,7 @@ import wisp/simulate
 
 const secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
+// Justification: large function kept intact to preserve cohesive logic.
 pub fn task_notes_create_does_not_require_claim_and_task_patch_still_requires_claim_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -121,6 +122,7 @@ pub fn task_notes_create_does_not_require_claim_and_task_patch_still_requires_cl
   let _ = member1_csrf
 }
 
+// Justification: large function kept intact to preserve cohesive logic.
 pub fn task_notes_list_requires_task_membership_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -225,6 +227,7 @@ pub fn task_notes_list_requires_task_membership_test() {
   |> should.be_true
 }
 
+// Justification: large function kept intact to preserve cohesive logic.
 pub fn task_notes_are_append_only_and_no_edit_delete_routes_exist_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -475,6 +478,7 @@ pub fn task_positions_upsert_requires_csrf_test() {
   put_res.status |> should.equal(403)
 }
 
+// Justification: large function kept intact to preserve cohesive logic.
 pub fn task_positions_are_per_user_and_can_be_filtered_by_project_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app

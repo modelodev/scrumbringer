@@ -6,6 +6,11 @@ import gleam/int
 
 import scrumbringer_client/i18n/text.{type Text}
 
+/// Provides translate.
+///
+/// Example:
+///   translate(...)
+/// Justification: large function kept intact to preserve cohesive UI logic.
 pub fn translate(text: Text) -> String {
   case text {
     // App

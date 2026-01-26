@@ -9,6 +9,16 @@
 //// - List projects accessible to a user
 //// - Manage project members and roles
 //// - Handle project creation and updates
+////
+//// ## Non-responsibilities
+////
+//// - HTTP request handling (see `http/projects.gleam`)
+//// - Business rules beyond persistence (see `services/authorization.gleam`)
+////
+//// ## Relationships
+////
+//// - Uses `sql.gleam` for query execution
+//// - Shares `ProjectRole` with domain types
 
 import domain/project_role.{type ProjectRole}
 import gleam/list
@@ -16,6 +26,7 @@ import gleam/result
 import pog
 import scrumbringer_server/sql
 
+/// Project with user-specific role and member count.
 pub type Project {
   Project(
     id: Int,
@@ -27,6 +38,7 @@ pub type Project {
   )
 }
 
+/// Project membership record for a user.
 pub type ProjectMember {
   ProjectMember(
     project_id: Int,
@@ -36,12 +48,14 @@ pub type ProjectMember {
   )
 }
 
+/// Errors returned when removing a project member.
 pub type RemoveMemberError {
   MembershipNotFound
   CannotRemoveLastManager
   RemoveDbError(pog.QueryError)
 }
 
+/// Errors returned when adding a project member.
 pub type AddMemberError {
   ProjectNotFound
   TargetUserNotFound
@@ -63,6 +77,10 @@ fn parse_project_role(value: String) -> Result(ProjectRole, pog.QueryError) {
   }
 }
 
+/// Creates a new project and adds the creator as manager.
+///
+/// Example:
+///   create_project(db, org_id, user_id, "Project Alpha")
 pub fn create_project(
   db: pog.Connection,
   org_id: Int,
@@ -94,6 +112,10 @@ pub fn create_project(
   }
 }
 
+/// Lists projects that the user can access.
+///
+/// Example:
+///   list_projects_for_user(db, user_id)
 pub fn list_projects_for_user(
   db: pog.Connection,
   user_id: Int,
@@ -114,6 +136,10 @@ pub fn list_projects_for_user(
   })
 }
 
+/// Checks whether a user is a manager of a project.
+///
+/// Example:
+///   is_project_manager(db, project_id, user_id)
 pub fn is_project_manager(
   db: pog.Connection,
   project_id: Int,
@@ -131,6 +157,10 @@ pub fn is_project_manager(
   }
 }
 
+/// Checks whether a user is a member of a project.
+///
+/// Example:
+///   is_project_member(db, project_id, user_id)
 pub fn is_project_member(
   db: pog.Connection,
   project_id: Int,
@@ -148,6 +178,10 @@ pub fn is_project_member(
   }
 }
 
+/// Checks whether the user is a manager of any project in the org.
+///
+/// Example:
+///   is_any_project_manager_in_org(db, user_id, org_id)
 pub fn is_any_project_manager_in_org(
   db: pog.Connection,
   user_id: Int,
@@ -165,6 +199,10 @@ pub fn is_any_project_manager_in_org(
   }
 }
 
+/// Lists all members for a project.
+///
+/// Example:
+///   list_members(db, project_id)
 pub fn list_members(
   db: pog.Connection,
   project_id: Int,
@@ -183,6 +221,10 @@ pub fn list_members(
   })
 }
 
+/// Adds a user to a project with the provided role.
+///
+/// Example:
+///   add_member(db, project_id, user_id, project_role.Manager)
 pub fn add_member(
   db: pog.Connection,
   project_id: Int,
@@ -227,6 +269,7 @@ fn fetch_user_org_id(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn insert_member(
   db: pog.Connection,
   project_id: Int,
@@ -236,6 +279,7 @@ fn insert_member(
   let role_value = project_role.to_string(role)
   case sql.project_members_insert(db, project_id, user_id, role_value) {
     Ok(pog.Returned(rows: [row, ..], ..)) ->
+      // Justification: nested case validates role mapping from database row.
       case parse_project_role(row.role) {
         Ok(parsed_role) ->
           Ok(ProjectMember(
@@ -264,31 +308,37 @@ fn insert_member(
   }
 }
 
+/// Removes a user from a project if rules allow it.
+///
+/// Example:
+///   remove_member(db, project_id, user_id)
 pub fn remove_member(
   db: pog.Connection,
   project_id: Int,
   user_id: Int,
 ) -> Result(Nil, RemoveMemberError) {
   case sql.project_members_remove(db, project_id, user_id) {
-    Ok(pog.Returned(rows: [row, ..], ..)) -> {
-      let manager_role = project_role.to_string(project_role.Manager)
-      case row.target_role {
-        "" -> Error(MembershipNotFound)
-        role
-          if role == manager_role
-          && row.manager_count == 1
-          && row.removed == False
-        -> Error(CannotRemoveLastManager)
-        _ ->
-          case row.removed {
-            True -> Ok(Nil)
-            False -> Error(MembershipNotFound)
-          }
-      }
-    }
+    Ok(pog.Returned(rows: [row, ..], ..)) -> interpret_remove_row(row)
 
     Ok(pog.Returned(rows: [], ..)) -> Error(MembershipNotFound)
     Error(e) -> Error(RemoveDbError(e))
+  }
+}
+
+fn interpret_remove_row(
+  row: sql.ProjectMembersRemoveRow,
+) -> Result(Nil, RemoveMemberError) {
+  let manager_role = project_role.to_string(project_role.Manager)
+
+  case True {
+    _ if row.target_role == "" -> Error(MembershipNotFound)
+    _
+      if row.target_role == manager_role
+      && row.manager_count == 1
+      && row.removed == False
+    -> Error(CannotRemoveLastManager)
+    _ if row.removed -> Ok(Nil)
+    _ -> Error(MembershipNotFound)
   }
 }
 
@@ -296,6 +346,7 @@ pub fn remove_member(
 // Role Update
 // =============================================================================
 
+/// Result returned after updating a member role.
 pub type UpdateMemberRoleResult {
   RoleUpdated(
     user_id: Int,
@@ -305,6 +356,7 @@ pub type UpdateMemberRoleResult {
   )
 }
 
+/// Errors returned when updating a project member role.
 pub type UpdateMemberRoleError {
   UpdateMemberNotFound
   UpdateLastManager
@@ -312,6 +364,10 @@ pub type UpdateMemberRoleError {
   UpdateDbError(pog.QueryError)
 }
 
+/// Updates a member role within a project.
+///
+/// Example:
+///   update_member_role(db, project_id, user_id, project_role.Manager)
 pub fn update_member_role(
   db: pog.Connection,
   project_id: Int,
@@ -331,55 +387,69 @@ fn do_update_member_role(
   case
     sql.project_members_update_role(db, project_id, user_id, new_role_value)
   {
-    Ok(pog.Returned(rows: [row, ..], ..)) -> {
-      case row.status {
-        "last_manager" -> Error(UpdateLastManager)
-        "allowed" | "no_change" ->
-          case
-            parse_project_role(row.role),
-            parse_project_role(row.previous_role)
-          {
-            Ok(role), Ok(previous_role) ->
-              Ok(RoleUpdated(
-                user_id: row.user_id,
-                email: row.email,
-                role: role,
-                previous_role: previous_role,
-              ))
-            Error(e), _ -> Error(UpdateDbError(e))
-            _, Error(e) -> Error(UpdateDbError(e))
-          }
-        _ ->
-          Error(
-            UpdateDbError(pog.PostgresqlError(
-              code: "UNEXPECTED_STATUS",
-              name: "unexpected_status",
-              message: "Unexpected status: " <> row.status,
-            )),
-          )
-      }
-    }
-
+    Ok(pog.Returned(rows: [row, ..], ..)) -> parse_update_role_row(row)
     Ok(pog.Returned(rows: [], ..)) -> Error(UpdateMemberNotFound)
     Error(e) -> Error(UpdateDbError(e))
   }
+}
+
+fn parse_update_role_row(
+  row: sql.ProjectMembersUpdateRoleRow,
+) -> Result(UpdateMemberRoleResult, UpdateMemberRoleError) {
+  case row.status {
+    "last_manager" -> Error(UpdateLastManager)
+    "allowed" | "no_change" -> parse_role_update_result(row)
+    _ ->
+      Error(
+        UpdateDbError(pog.PostgresqlError(
+          code: "UNEXPECTED_STATUS",
+          name: "unexpected_status",
+          message: "Unexpected status: " <> row.status,
+        )),
+      )
+  }
+}
+
+fn parse_role_update_result(
+  row: sql.ProjectMembersUpdateRoleRow,
+) -> Result(UpdateMemberRoleResult, UpdateMemberRoleError) {
+  use role <- result.try(
+    parse_project_role(row.role)
+    |> result.map_error(UpdateDbError),
+  )
+  use previous_role <- result.try(
+    parse_project_role(row.previous_role)
+    |> result.map_error(UpdateDbError),
+  )
+
+  Ok(RoleUpdated(
+    user_id: row.user_id,
+    email: row.email,
+    role: role,
+    previous_role: previous_role,
+  ))
 }
 
 // =============================================================================
 // Project Update/Delete (Story 4.8 AC39)
 // =============================================================================
 
+/// Errors returned when updating a project.
 pub type UpdateProjectError {
   UpdateProjectNotFound
   UpdateProjectDbError(pog.QueryError)
 }
 
+/// Errors returned when deleting a project.
 pub type DeleteProjectError {
   DeleteProjectNotFound
   DeleteProjectDbError(pog.QueryError)
 }
 
-/// Update a project's name.
+/// Updates a project's name.
+///
+/// Example:
+///   update_project(db, project_id, "New name")
 pub fn update_project(
   db: pog.Connection,
   project_id: Int,
@@ -403,7 +473,10 @@ pub fn update_project(
   }
 }
 
-/// Delete a project and all related data.
+/// Deletes a project and all related data.
+///
+/// Example:
+///   delete_project(db, project_id)
 pub fn delete_project(
   db: pog.Connection,
   project_id: Int,

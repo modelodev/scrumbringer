@@ -9,6 +9,15 @@
 //// - List users belonging to an organization
 //// - Update user organization roles
 //// - Validate role changes (prevent demoting last admin)
+////
+//// ## Non-responsibilities
+////
+//// - HTTP request handling (see `http/org_users.gleam`)
+//// - Authentication (see `services/auth_logic.gleam`)
+////
+//// ## Relationships
+////
+//// - Uses `sql.gleam` for queries
 
 import domain/org_role.{type OrgRole}
 import gleam/dynamic/decode
@@ -18,10 +27,12 @@ import gleam/result
 import pog
 import scrumbringer_server/sql
 
+/// Organization user record with role.
 pub type OrgUser {
   OrgUser(id: Int, email: String, org_role: OrgRole, created_at: String)
 }
 
+/// Errors returned when updating a user's org role.
 pub type UpdateOrgRoleError {
   UserNotFound
   CannotDemoteLastAdmin
@@ -41,6 +52,10 @@ fn parse_org_role(value: String) -> Result(OrgRole, pog.QueryError) {
   }
 }
 
+/// Lists organization users, optionally filtered by query.
+///
+/// Example:
+///   list_org_users(db, org_id, "alex")
 pub fn list_org_users(
   db: pog.Connection,
   org_id: Int,
@@ -64,6 +79,10 @@ type OrgUserRow {
   OrgUserRow(id: Int, email: String, org_role: String, created_at: String)
 }
 
+/// Updates a user's organization role.
+///
+/// Example:
+///   update_org_role(db, org_id, user_id, org_role.Admin)
 pub fn update_org_role(
   db: pog.Connection,
   org_id: Int,
@@ -75,38 +94,18 @@ pub fn update_org_role(
       fetch_user_for_update(tx, org_id, user_id)
       |> result.map_error(DbError),
     )
+    use row <- result.try(require_user_row(existing))
 
-    case existing {
-      opt.None -> Error(UserNotFound)
+    let OrgUserRow(org_role: current_role, ..) = row
+    use current_role <- result.try(
+      parse_org_role(current_role)
+      |> result.map_error(DbError),
+    )
+    use _ <- result.try(ensure_can_demote(tx, org_id, current_role, new_role))
 
-      opt.Some(row) -> {
-        let OrgUserRow(org_role: current_role, ..) = row
-        use current_role <- result.try(
-          parse_org_role(current_role)
-          |> result.map_error(DbError),
-        )
-
-        case current_role == org_role.Admin && new_role == org_role.Member {
-          True -> {
-            use admin_count <- result.try(
-              count_org_admins(tx, org_id)
-              |> result.map_error(DbError),
-            )
-
-            case admin_count <= 1 {
-              True -> Error(CannotDemoteLastAdmin)
-              False -> update_role_row(tx, org_id, user_id, new_role)
-            }
-          }
-
-          False -> {
-            case current_role == new_role {
-              True -> Ok(row)
-              False -> update_role_row(tx, org_id, user_id, new_role)
-            }
-          }
-        }
-      }
+    case current_role == new_role {
+      True -> Ok(row)
+      False -> update_role_row(tx, org_id, user_id, new_role)
     }
   })
   |> result.map_error(transaction_error_to_update_error)
@@ -122,6 +121,39 @@ pub fn update_org_role(
     )
     Ok(OrgUser(id: id, email: email, org_role: role, created_at: created_at))
   })
+}
+
+fn require_user_row(
+  row: opt.Option(OrgUserRow),
+) -> Result(OrgUserRow, UpdateOrgRoleError) {
+  case row {
+    opt.None -> Error(UserNotFound)
+    opt.Some(row) -> Ok(row)
+  }
+}
+
+// Justification: nested case improves clarity for branching logic.
+fn ensure_can_demote(
+  tx,
+  org_id: Int,
+  current_role: OrgRole,
+  new_role: OrgRole,
+) -> Result(Nil, UpdateOrgRoleError) {
+  case current_role == org_role.Admin && new_role == org_role.Member {
+    True -> {
+      use admin_count <- result.try(
+        count_org_admins(tx, org_id)
+        |> result.map_error(DbError),
+      )
+      // Justification: nested case ensures the last admin is preserved.
+      case admin_count <= 1 {
+        True -> Error(CannotDemoteLastAdmin)
+        False -> Ok(Nil)
+      }
+    }
+
+    False -> Ok(Nil)
+  }
 }
 
 fn fetch_user_for_update(

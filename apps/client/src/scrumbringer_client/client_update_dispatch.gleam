@@ -25,6 +25,7 @@ import scrumbringer_client/features/tasks/update as tasks_workflow
 import scrumbringer_client/router
 import scrumbringer_client/update_helpers
 
+/// Represents AdminContext.
 pub type AdminContext(msg) {
   AdminContext(
     member_refresh: fn(client_state.Model) -> #(client_state.Model, Effect(msg)),
@@ -35,12 +36,18 @@ pub type AdminContext(msg) {
   )
 }
 
+/// Represents PoolContext.
 pub type PoolContext(msg) {
   PoolContext(
     member_refresh: fn(client_state.Model) -> #(client_state.Model, Effect(msg)),
   )
 }
 
+/// Handles admin.
+///
+/// Example:
+///   handle_admin(...)
+/// Justification: large function kept intact to preserve cohesive UI logic.
 pub fn handle_admin(
   model: client_state.Model,
   inner: client_state.AdminMsg,
@@ -441,6 +448,11 @@ pub fn handle_admin(
   }
 }
 
+/// Handles pool.
+///
+/// Example:
+///   handle_pool(...)
+/// Justification: large function kept intact to preserve cohesive UI logic.
 pub fn handle_pool(
   model: client_state.Model,
   inner: client_state.PoolMsg,

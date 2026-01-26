@@ -74,6 +74,7 @@ pub fn handle_member_remove_cancelled(model: Model) -> #(Model, Effect(Msg)) {
   )
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Handle member remove confirmation.
 pub fn handle_member_remove_confirmed(model: Model) -> #(Model, Effect(Msg)) {
   case model.admin.members_remove_in_flight {

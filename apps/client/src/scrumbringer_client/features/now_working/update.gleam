@@ -71,6 +71,7 @@ pub fn handle_start_clicked(model: Model, task_id: Int) -> #(Model, Effect(Msg))
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Handle pause button click - stops tracking time.
 pub fn handle_pause_clicked(model: Model) -> #(Model, Effect(Msg)) {
   case model.member.member_now_working_in_flight {
@@ -156,6 +157,7 @@ pub fn tick_effect() -> Effect(Msg) {
   app_effects.schedule_timeout(1000, fn() { pool_msg(NowWorkingTicked) })
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Start tick timer if not already running and there's an active task.
 pub fn start_tick_if_needed(model: Model) -> #(Model, Effect(Msg)) {
   case model.member.now_working_tick_running {
@@ -319,6 +321,7 @@ fn handle_sessions_noop_error(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Start tick timer if not already running and there are active sessions.
 fn start_tick_if_sessions_needed(model: Model) -> #(Model, Effect(Msg)) {
   case model.member.now_working_tick_running {

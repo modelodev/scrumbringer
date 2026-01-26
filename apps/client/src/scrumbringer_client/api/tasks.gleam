@@ -54,21 +54,27 @@ import scrumbringer_client/api/tasks/task_types
 // this module provides access to. The actual types are imported directly
 // from the domain modules.
 
+/// Represents TaskAlias.
 pub type TaskAlias =
   Task
 
+/// Represents TaskFiltersAlias.
 pub type TaskFiltersAlias =
   TaskFilters
 
+/// Represents TaskNoteAlias.
 pub type TaskNoteAlias =
   TaskNote
 
+/// Represents TaskPositionAlias.
 pub type TaskPositionAlias =
   TaskPosition
 
+/// Represents TaskTypeAlias.
 pub type TaskTypeAlias =
   TaskType
 
+/// Represents TaskTypeInlineAlias.
 pub type TaskTypeInlineAlias =
   TaskTypeInline
 

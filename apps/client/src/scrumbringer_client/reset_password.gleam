@@ -106,56 +106,64 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Action) {
       NoOp,
     )
 
-    Submitted -> {
-      case model.state {
-        Ready(email) -> {
-          case string.length(model.password) < 12 {
-            True -> #(
-              Model(
-                ..model,
-                password_error: option.Some(
-                  "Password must be at least 12 characters",
-                ),
-              ),
-              NoOp,
-            )
-
-            False -> #(
-              Model(..model, state: Consuming(email), submit_error: option.None),
-              Consume(token: model.token, password: model.password),
-            )
-          }
-        }
-
-        _ -> #(model, NoOp)
-      }
-    }
+    Submitted -> handle_submitted(model)
 
     Consumed(Ok(_)) -> #(Model(..model, state: Done), GoToLogin)
 
-    Consumed(Error(err)) -> {
-      case model.state {
-        Consuming(email) -> {
-          let new_state = case err.code {
-            "RESET_TOKEN_INVALID" | "RESET_TOKEN_USED" ->
-              Invalid(code: err.code, message: err.message)
-            _ -> Ready(email)
-          }
-
-          #(
-            Model(
-              ..model,
-              state: new_state,
-              submit_error: option.Some(err.message),
-            ),
-            NoOp,
-          )
-        }
-
-        _ -> #(model, NoOp)
-      }
-    }
+    Consumed(Error(err)) -> handle_consumed_error(model, err)
 
     ErrorDismissed -> #(Model(..model, submit_error: option.None), NoOp)
+  }
+}
+
+fn handle_submitted(model: Model) -> #(Model, Effect) {
+  case model.state {
+    Ready(email) -> handle_ready_submit(model, email)
+    _ -> #(model, NoOp)
+  }
+}
+
+fn handle_ready_submit(model: Model, email: String) -> #(Model, Effect) {
+  case string.length(model.password) < 12 {
+    True -> #(
+      Model(
+        ..model,
+        password_error: option.Some("Password must be at least 12 characters"),
+      ),
+      NoOp,
+    )
+
+    False -> #(
+      Model(..model, state: Consuming(email), submit_error: option.None),
+      Consume(token: model.token, password: model.password),
+    )
+  }
+}
+
+fn handle_consumed_error(model: Model, err: api.Error) -> #(Model, Effect) {
+  case model.state {
+    Consuming(email) -> apply_consumed_error(model, email, err)
+    _ -> #(model, NoOp)
+  }
+}
+
+fn apply_consumed_error(
+  model: Model,
+  email: String,
+  err: api.Error,
+) -> #(Model, Effect) {
+  let new_state = consumed_error_state(email, err)
+
+  #(
+    Model(..model, state: new_state, submit_error: option.Some(err.message)),
+    NoOp,
+  )
+}
+
+fn consumed_error_state(email: String, err: api.Error) -> State {
+  case err.code {
+    "RESET_TOKEN_INVALID" | "RESET_TOKEN_USED" ->
+      Invalid(code: err.code, message: err.message)
+    _ -> Ready(email)
   }
 }

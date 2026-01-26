@@ -122,6 +122,7 @@ fn bootstrap_register(
 // Invite Registration
 // =============================================================================
 
+// Justification: nested case improves clarity for branching logic.
 /// Register user via invite token.
 fn invite_register(
   db: pog.Connection,

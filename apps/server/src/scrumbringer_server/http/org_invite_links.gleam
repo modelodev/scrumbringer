@@ -4,6 +4,7 @@
 //// Admin-only operations requiring CSRF protection.
 
 import domain/org_role
+import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/http
 import gleam/json
@@ -13,6 +14,7 @@ import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
 import scrumbringer_server/services/org_invite_links_db
+import scrumbringer_server/services/store_state.{type StoredUser}
 import wisp
 
 /// Routes /api/org/invite-links requests (GET list, POST upsert).
@@ -33,6 +35,9 @@ pub fn handle_invite_links(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
 }
 
 /// Handles POST /api/org/invite-links/regenerate to regenerate a link.
+///
+/// Example:
+///   handle_regenerate(req, ctx)
 pub fn handle_regenerate(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
   handle_upsert(req, ctx)
@@ -43,25 +48,7 @@ fn handle_list(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
 
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) ->
-      case user.org_role {
-        org_role.Admin -> {
-          let auth.Ctx(db: db, ..) = ctx
-
-          case org_invite_links_db.list_invite_links(db, user.org_id) {
-            Ok(links) ->
-              api.ok(
-                json.object([
-                  #("invite_links", json.array(links, of: invite_link_json)),
-                ]),
-              )
-            Error(_) -> api.error(500, "INTERNAL", "Database error")
-          }
-        }
-
-        _ -> api.error(403, "FORBIDDEN", "Forbidden")
-      }
+    Ok(user) -> list_for_user(ctx, user)
   }
 }
 
@@ -70,13 +57,39 @@ fn handle_upsert(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
 
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+    Ok(user) -> upsert_for_user(req, ctx, user)
+  }
+}
 
-    Ok(user) -> {
-      case user.org_role {
-        org_role.Admin -> upsert_as_admin(req, ctx, user.id, user.org_id)
-        _ -> api.error(403, "FORBIDDEN", "Forbidden")
-      }
-    }
+fn list_for_user(ctx: auth.Ctx, user: StoredUser) -> wisp.Response {
+  case require_admin(user) {
+    Error(resp) -> resp
+    Ok(Nil) -> list_invite_links(ctx, user.org_id)
+  }
+}
+
+fn list_invite_links(ctx: auth.Ctx, org_id: Int) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+
+  case org_invite_links_db.list_invite_links(db, org_id) {
+    Ok(links) ->
+      api.ok(
+        json.object([
+          #("invite_links", json.array(links, of: invite_link_json)),
+        ]),
+      )
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
+  }
+}
+
+fn upsert_for_user(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  user: StoredUser,
+) -> wisp.Response {
+  case require_admin(user) {
+    Error(resp) -> resp
+    Ok(Nil) -> upsert_as_admin(req, ctx, user.id, user.org_id)
   }
 }
 
@@ -86,53 +99,59 @@ fn upsert_as_admin(
   user_id: Int,
   org_id: Int,
 ) -> wisp.Response {
-  case csrf.require_double_submit(req) {
-    Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+  case require_csrf(req) {
+    Error(resp) -> resp
+    Ok(Nil) -> upsert_with_csrf(req, ctx, user_id, org_id)
+  }
+}
 
-    Ok(Nil) -> {
-      use data <- wisp.require_json(req)
+// Justification: nested case improves clarity for branching logic.
+fn upsert_with_csrf(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  user_id: Int,
+  org_id: Int,
+) -> wisp.Response {
+  use data <- wisp.require_json(req)
 
-      let decoder = {
-        use email <- decode.field("email", decode.string)
-        decode.success(email)
-      }
+  case decode_email_payload(data) {
+    Error(resp) -> resp
 
-      case decode.run(data, decoder) {
-        Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+    Ok(email_raw) -> {
+      let email = normalize_email(email_raw)
 
-        Ok(email_raw) -> {
-          let email = normalize_email(email_raw)
-
-          case validate_email(email) {
-            Error(_) -> api.error(422, "VALIDATION_ERROR", "Invalid email")
-
-            Ok(Nil) -> {
-              let auth.Ctx(db: db, ..) = ctx
-
-              case
-                org_invite_links_db.upsert_invite_link(
-                  db,
-                  org_id,
-                  user_id,
-                  email,
-                )
-              {
-                Ok(link) ->
-                  api.ok(
-                    json.object([#("invite_link", invite_link_json(link))]),
-                  )
-
-                Error(org_invite_links_db.NoRowReturned) ->
-                  api.error(500, "INTERNAL", "Database error")
-
-                Error(org_invite_links_db.DbError(_)) ->
-                  api.error(500, "INTERNAL", "Database error")
-              }
-            }
-          }
-        }
+      // Justification: nested case validates email before persistence.
+      case validate_email(email) {
+        Error(_) -> api.error(422, "VALIDATION_ERROR", "Invalid email")
+        Ok(Nil) -> upsert_invite_link(ctx, org_id, user_id, email)
       }
     }
+  }
+}
+
+fn upsert_invite_link(
+  ctx: auth.Ctx,
+  org_id: Int,
+  user_id: Int,
+  email: String,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+
+  case org_invite_links_db.upsert_invite_link(db, org_id, user_id, email) {
+    Ok(link) -> api.ok(json.object([#("invite_link", invite_link_json(link))]))
+
+    Error(org_invite_links_db.NoRowReturned) ->
+      api.error(500, "INTERNAL", "Database error")
+
+    Error(org_invite_links_db.DbError(_)) ->
+      api.error(500, "INTERNAL", "Database error")
+  }
+}
+
+fn require_admin(user: StoredUser) -> Result(Nil, wisp.Response) {
+  case user.org_role {
+    org_role.Admin -> Ok(Nil)
+    _ -> Error(api.error(403, "FORBIDDEN", "Forbidden"))
   }
 }
 
@@ -143,23 +162,43 @@ fn normalize_email(email: String) -> String {
 }
 
 fn validate_email(email: String) -> Result(Nil, Nil) {
-  case string.contains(email, "@") {
-    False -> Error(Nil)
+  case string.split_once(email, "@") {
+    Error(_) -> Error(Nil)
+    Ok(#(local, domain)) -> validate_email_parts(local, domain)
+  }
+}
 
-    True -> {
-      case string.split_once(email, "@") {
-        Error(_) -> Error(Nil)
-        Ok(#(local, domain)) ->
-          case local == "" || domain == "" {
-            True -> Error(Nil)
-            False ->
-              case string.contains(domain, ".") {
-                True -> Ok(Nil)
-                False -> Error(Nil)
-              }
-          }
-      }
-    }
+fn validate_email_parts(local: String, domain: String) -> Result(Nil, Nil) {
+  case local == "" || domain == "" {
+    True -> Error(Nil)
+    False -> validate_domain(domain)
+  }
+}
+
+fn validate_domain(domain: String) -> Result(Nil, Nil) {
+  case string.contains(domain, ".") {
+    True -> Ok(Nil)
+    False -> Error(Nil)
+  }
+}
+
+fn decode_email_payload(data: dynamic.Dynamic) -> Result(String, wisp.Response) {
+  let decoder = {
+    use email <- decode.field("email", decode.string)
+    decode.success(email)
+  }
+
+  case decode.run(data, decoder) {
+    Error(_) -> Error(api.error(400, "VALIDATION_ERROR", "Invalid JSON"))
+    Ok(email) -> Ok(email)
+  }
+}
+
+fn require_csrf(req: wisp.Request) -> Result(Nil, wisp.Response) {
+  case csrf.require_double_submit(req) {
+    Ok(Nil) -> Ok(Nil)
+    Error(_) ->
+      Error(api.error(403, "FORBIDDEN", "CSRF token missing or invalid"))
   }
 }
 

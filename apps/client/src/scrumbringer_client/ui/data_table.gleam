@@ -166,6 +166,7 @@ pub fn with_error_prefix(
 // View
 // =============================================================================
 
+// Justification: nested case improves clarity for branching logic.
 /// Render the data table.
 pub fn view(config: DataTableConfig(row, msg)) -> Element(msg) {
   let DataTableConfig(
@@ -311,6 +312,7 @@ pub fn sortable_column_with_class(
 // Remote Data Support
 // =============================================================================
 
+// Justification: nested case improves clarity for branching logic.
 /// Render a table with Remote data, handling all states automatically.
 ///
 /// Shows loading spinner for NotAsked/Loading, error for Failed,
@@ -330,6 +332,7 @@ pub fn sortable_column_with_class(
 ///     |> data_table.with_key(fn(p) { int.to_string(p.id) }),
 /// )
 /// ```
+/// Justification: nested case improves clarity for branching logic.
 pub fn view_remote(
   remote: Remote(List(row)),
   loading_msg loading_msg: String,
@@ -349,11 +352,13 @@ pub fn view_remote(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Render a table with Remote data and custom error handling.
 ///
 /// Use when you need special handling for 403/forbidden errors.
 /// If config has an empty_state set via with_empty_state(), it will be used
 /// instead of the empty_msg text.
+/// Justification: nested case improves clarity for branching logic.
 pub fn view_remote_with_forbidden(
   remote: Remote(List(row)),
   loading_msg loading_msg: String,

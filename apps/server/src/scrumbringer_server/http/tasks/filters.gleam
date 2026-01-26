@@ -61,6 +61,7 @@ pub fn parse_task_filters(
 // Individual Parsers
 // =============================================================================
 
+// Justification: nested case improves clarity for branching logic.
 /// Parse status filter: must be available, claimed, or completed.
 ///
 /// Returns None for empty/missing, Some(TaskStatus) for valid values,
@@ -88,23 +89,29 @@ fn parse_capability_filter(
   case single_query_value(query, "capability_id") {
     Ok(None) -> Ok(None)
 
-    Ok(Some(value)) ->
-      case string.contains(value, ",") {
-        True ->
-          Error(api.error(422, "VALIDATION_ERROR", "Invalid capability_id"))
-        False ->
-          case int.parse(value) {
-            Ok(id) -> Ok(Some(id))
-            Error(_) ->
-              Error(api.error(422, "VALIDATION_ERROR", "Invalid capability_id"))
-          }
-      }
+    Ok(Some(value)) -> parse_capability_value(value)
 
     Error(_) ->
       Error(api.error(422, "VALIDATION_ERROR", "Invalid capability_id"))
   }
 }
 
+fn parse_capability_value(value: String) -> Result(Option(Int), wisp.Response) {
+  case string.contains(value, ",") {
+    True -> Error(api.error(422, "VALIDATION_ERROR", "Invalid capability_id"))
+    False -> parse_capability_id(value)
+  }
+}
+
+fn parse_capability_id(value: String) -> Result(Option(Int), wisp.Response) {
+  case int.parse(value) {
+    Ok(id) -> Ok(Some(id))
+    Error(_) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid capability_id"))
+  }
+}
+
+// Justification: nested case improves clarity for branching logic.
 /// Parse integer filter from query parameter.
 ///
 /// ## Example
@@ -113,6 +120,7 @@ fn parse_capability_filter(
 /// parse_int_filter([#("type_id", "5")], "type_id")  // Ok(Some(5))
 /// parse_int_filter([], "type_id")                   // Ok(None)
 /// ```
+/// Justification: nested case improves clarity for branching logic.
 pub fn parse_int_filter(
   query: List(#(String, String)),
   key: String,

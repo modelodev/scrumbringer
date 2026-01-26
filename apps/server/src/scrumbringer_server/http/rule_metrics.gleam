@@ -1,9 +1,26 @@
-////
 //// HTTP handlers for rule metrics endpoints.
 ////
-//// Provides read-only access to rule execution metrics for admin users.
-//// Includes workflow-level aggregates, rule-level details with suppression
-//// breakdown, and drill-down to individual executions.
+//// ## Mission
+////
+//// Serve read-only rule metrics for admins across workflows, rules, and
+//// execution drill-downs.
+////
+//// ## Responsibilities
+////
+//// - Parse query parameters for date ranges and pagination
+//// - Authorize access for admin users
+//// - Assemble JSON responses from metrics queries
+////
+//// ## Non-responsibilities
+////
+//// - Computing metrics (see `services/rule_metrics_db.gleam`)
+//// - Defining rules or workflows (see `services/rules_db.gleam`)
+////
+//// ## Relationships
+////
+//// - Uses `http/auth.gleam` for session identity
+//// - Delegates data access to `services/rule_metrics_db.gleam`
+//// - Maps domain rows into JSON responses in this module
 
 import domain/org_role.{Admin}
 import gleam/http
@@ -42,6 +59,10 @@ const max_limit = 100
 // Routing
 // =============================================================================
 
+/// Routes workflow metrics requests (GET only).
+///
+/// Example:
+///   handle_workflow_metrics(req, ctx, workflow_id)
 pub fn handle_workflow_metrics(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -53,6 +74,10 @@ pub fn handle_workflow_metrics(
   }
 }
 
+/// Routes rule metrics requests (GET only).
+///
+/// Example:
+///   handle_rule_metrics(req, ctx, rule_id)
 pub fn handle_rule_metrics(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -64,6 +89,10 @@ pub fn handle_rule_metrics(
   }
 }
 
+/// Routes rule execution drill-down requests (GET only).
+///
+/// Example:
+///   handle_rule_executions(req, ctx, rule_id)
 pub fn handle_rule_executions(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -75,6 +104,10 @@ pub fn handle_rule_executions(
   }
 }
 
+/// Routes organization metrics requests (GET only).
+///
+/// Example:
+///   handle_org_metrics(req, ctx)
 pub fn handle_org_metrics(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   case req.method {
     http.Get -> get_org_metrics(req, ctx)
@@ -82,6 +115,10 @@ pub fn handle_org_metrics(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   }
 }
 
+/// Routes project metrics requests (GET only).
+///
+/// Example:
+///   handle_project_metrics(req, ctx, project_id)
 pub fn handle_project_metrics(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -104,61 +141,91 @@ fn get_workflow_metrics(
 ) -> wisp.Response {
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+    Ok(user) -> get_workflow_metrics_for_user(req, ctx, workflow_id, user)
+  }
+}
 
-    Ok(user) ->
-      case int.parse(workflow_id) {
-        Error(_) -> api.error(404, "NOT_FOUND", "Not found")
+fn get_workflow_metrics_for_user(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  workflow_id: String,
+  user: StoredUser,
+) -> wisp.Response {
+  case int.parse(workflow_id) {
+    Error(_) -> api.error(404, "NOT_FOUND", "Not found")
+    Ok(parsed_id) -> get_workflow_metrics_for_id(req, ctx, parsed_id, user)
+  }
+}
 
-        Ok(workflow_id) -> {
-          let auth.Ctx(db: db, ..) = ctx
+fn get_workflow_metrics_for_id(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  workflow_id: Int,
+  user: StoredUser,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
 
-          case workflows_db.get_workflow(db, workflow_id) {
-            Ok(workflow) ->
-              case
-                authorization.require_project_manager_with_org_bypass(
-                  db,
-                  user,
-                  workflow.project_id,
-                )
-              {
-                Error(resp) -> resp
-                Ok(Nil) ->
-                  case parse_date_range(req) {
-                    Error(resp) -> resp
-                    Ok(#(from, to)) ->
-                      case
-                        rule_metrics_db.get_workflow_metrics(
-                          db,
-                          workflow_id,
-                          from,
-                          to,
-                        )
-                      {
-                        Ok(rules) -> {
-                          let totals = calculate_totals(rules)
-                          api.ok(
-                            json.object([
-                              #("workflow_id", json.int(workflow_id)),
-                              #("workflow_name", json.string(workflow.name)),
-                              #("from", json.string(timestamp_to_string(from))),
-                              #("to", json.string(timestamp_to_string(to))),
-                              #(
-                                "rules",
-                                json.array(rules, of: rule_metrics_summary_json),
-                              ),
-                              #("totals", totals_json(totals)),
-                            ]),
-                          )
-                        }
-                        Error(_) -> api.error(500, "INTERNAL", "Database error")
-                      }
-                  }
-              }
+  case workflows_db.get_workflow(db, workflow_id) {
+    Ok(workflow) ->
+      get_workflow_metrics_for_workflow(req, db, workflow_id, workflow, user)
+    Error(_) -> api.error(404, "NOT_FOUND", "Not found")
+  }
+}
 
-            Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-          }
-        }
-      }
+fn get_workflow_metrics_for_workflow(
+  req: wisp.Request,
+  db: pog.Connection,
+  workflow_id: Int,
+  workflow: workflows_db.Workflow,
+  user: StoredUser,
+) -> wisp.Response {
+  case
+    authorization.require_project_manager_with_org_bypass(
+      db,
+      user,
+      workflow.project_id,
+    )
+  {
+    Error(resp) -> resp
+    Ok(Nil) -> get_workflow_metrics_with_range(req, db, workflow_id, workflow)
+  }
+}
+
+fn get_workflow_metrics_with_range(
+  req: wisp.Request,
+  db: pog.Connection,
+  workflow_id: Int,
+  workflow: workflows_db.Workflow,
+) -> wisp.Response {
+  case parse_date_range(req) {
+    Error(resp) -> resp
+    Ok(#(from, to)) ->
+      get_workflow_metrics_response(db, workflow_id, workflow, from, to)
+  }
+}
+
+fn get_workflow_metrics_response(
+  db: pog.Connection,
+  workflow_id: Int,
+  workflow: workflows_db.Workflow,
+  from: Timestamp,
+  to: Timestamp,
+) -> wisp.Response {
+  case rule_metrics_db.get_workflow_metrics(db, workflow_id, from, to) {
+    Ok(rules) -> {
+      let totals = calculate_totals(rules)
+      api.ok(
+        json.object([
+          #("workflow_id", json.int(workflow_id)),
+          #("workflow_name", json.string(workflow.name)),
+          #("from", json.string(timestamp_to_string(from))),
+          #("to", json.string(timestamp_to_string(to))),
+          #("rules", json.array(rules, of: rule_metrics_summary_json)),
+          #("totals", totals_json(totals)),
+        ]),
+      )
+    }
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
   }
 }
 
@@ -169,78 +236,90 @@ fn get_rule_metrics(
 ) -> wisp.Response {
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+    Ok(user) -> get_rule_metrics_for_user(req, ctx, rule_id, user)
+  }
+}
 
-    Ok(user) ->
-      case int.parse(rule_id) {
-        Error(_) -> api.error(404, "NOT_FOUND", "Not found")
+fn get_rule_metrics_for_user(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  rule_id: String,
+  user: StoredUser,
+) -> wisp.Response {
+  case int.parse(rule_id) {
+    Error(_) -> api.error(404, "NOT_FOUND", "Not found")
+    Ok(parsed_id) -> get_rule_metrics_for_id(req, ctx, parsed_id, user)
+  }
+}
 
-        Ok(rule_id) -> {
-          let auth.Ctx(db: db, ..) = ctx
+fn get_rule_metrics_for_id(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  rule_id: Int,
+  user: StoredUser,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
 
-          case rules_db.get_rule(db, rule_id) {
-            Ok(rule) ->
-              case workflow_from_rule(db, user, rule) {
-                Error(resp) -> resp
-                Ok(_workflow) ->
-                  case parse_date_range(req) {
-                    Error(resp) -> resp
-                    Ok(#(from, to)) ->
-                      case
-                        rule_metrics_db.get_rule_metrics(db, rule_id, from, to)
-                      {
-                        Ok(Some(metrics)) ->
-                          api.ok(
-                            json.object([
-                              #("rule_id", json.int(metrics.rule_id)),
-                              #("rule_name", json.string(metrics.rule_name)),
-                              #("from", json.string(timestamp_to_string(from))),
-                              #("to", json.string(timestamp_to_string(to))),
-                              #(
-                                "evaluated_count",
-                                json.int(metrics.evaluated_count),
-                              ),
-                              #(
-                                "applied_count",
-                                json.int(metrics.applied_count),
-                              ),
-                              #(
-                                "suppressed_count",
-                                json.int(metrics.suppressed_count),
-                              ),
-                              #(
-                                "suppression_breakdown",
-                                json.object([
-                                  #(
-                                    "idempotent",
-                                    json.int(metrics.suppressed_idempotent),
-                                  ),
-                                  #(
-                                    "not_user_triggered",
-                                    json.int(metrics.suppressed_not_user),
-                                  ),
-                                  #(
-                                    "not_matching",
-                                    json.int(metrics.suppressed_not_matching),
-                                  ),
-                                  #(
-                                    "inactive",
-                                    json.int(metrics.suppressed_inactive),
-                                  ),
-                                ]),
-                              ),
-                            ]),
-                          )
-                        Ok(None) ->
-                          api.error(404, "NOT_FOUND", "Rule not found")
-                        Error(_) -> api.error(500, "INTERNAL", "Database error")
-                      }
-                  }
-              }
+  case rules_db.get_rule(db, rule_id) {
+    Ok(rule) -> get_rule_metrics_for_rule(req, db, rule_id, rule, user)
+    Error(_) -> api.error(404, "NOT_FOUND", "Not found")
+  }
+}
 
-            Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-          }
-        }
-      }
+fn get_rule_metrics_for_rule(
+  req: wisp.Request,
+  db: pog.Connection,
+  rule_id: Int,
+  rule: rules_db.Rule,
+  user: StoredUser,
+) -> wisp.Response {
+  case workflow_from_rule(db, user, rule) {
+    Error(resp) -> resp
+    Ok(_workflow) -> get_rule_metrics_with_range(req, db, rule_id)
+  }
+}
+
+fn get_rule_metrics_with_range(
+  req: wisp.Request,
+  db: pog.Connection,
+  rule_id: Int,
+) -> wisp.Response {
+  case parse_date_range(req) {
+    Error(resp) -> resp
+    Ok(#(from, to)) -> get_rule_metrics_response(db, rule_id, from, to)
+  }
+}
+
+fn get_rule_metrics_response(
+  db: pog.Connection,
+  rule_id: Int,
+  from: Timestamp,
+  to: Timestamp,
+) -> wisp.Response {
+  case rule_metrics_db.get_rule_metrics(db, rule_id, from, to) {
+    Ok(Some(metrics)) ->
+      api.ok(
+        json.object([
+          #("rule_id", json.int(metrics.rule_id)),
+          #("rule_name", json.string(metrics.rule_name)),
+          #("from", json.string(timestamp_to_string(from))),
+          #("to", json.string(timestamp_to_string(to))),
+          #("evaluated_count", json.int(metrics.evaluated_count)),
+          #("applied_count", json.int(metrics.applied_count)),
+          #("suppressed_count", json.int(metrics.suppressed_count)),
+          #(
+            "suppression_breakdown",
+            json.object([
+              #("idempotent", json.int(metrics.suppressed_idempotent)),
+              #("not_user_triggered", json.int(metrics.suppressed_not_user)),
+              #("not_matching", json.int(metrics.suppressed_not_matching)),
+              #("inactive", json.int(metrics.suppressed_inactive)),
+            ]),
+          ),
+        ]),
+      )
+    Ok(None) -> api.error(404, "NOT_FOUND", "Rule not found")
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
   }
 }
 
@@ -251,74 +330,112 @@ fn get_rule_executions(
 ) -> wisp.Response {
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+    Ok(user) -> get_rule_executions_for_user(req, ctx, rule_id, user)
+  }
+}
 
-    Ok(user) ->
-      case int.parse(rule_id) {
-        Error(_) -> api.error(404, "NOT_FOUND", "Not found")
+fn get_rule_executions_for_user(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  rule_id: String,
+  user: StoredUser,
+) -> wisp.Response {
+  case int.parse(rule_id) {
+    Error(_) -> api.error(404, "NOT_FOUND", "Not found")
+    Ok(parsed_id) -> get_rule_executions_for_id(req, ctx, parsed_id, user)
+  }
+}
 
-        Ok(rule_id) -> {
-          let auth.Ctx(db: db, ..) = ctx
+fn get_rule_executions_for_id(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  rule_id: Int,
+  user: StoredUser,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
 
-          case rules_db.get_rule(db, rule_id) {
-            Ok(rule) ->
-              case workflow_from_rule(db, user, rule) {
-                Error(resp) -> resp
-                Ok(_workflow) ->
-                  case parse_date_range(req) {
-                    Error(resp) -> resp
-                    Ok(#(from, to)) -> {
-                      let #(limit, offset) = parse_pagination(req)
+  case rules_db.get_rule(db, rule_id) {
+    Ok(rule) -> get_rule_executions_for_rule(req, db, rule_id, rule, user)
+    Error(_) -> api.error(404, "NOT_FOUND", "Not found")
+  }
+}
 
-                      case
-                        rule_metrics_db.list_rule_executions(
-                          db,
-                          rule_id,
-                          from,
-                          to,
-                          limit,
-                          offset,
-                        )
-                      {
-                        Ok(executions) ->
-                          case
-                            rule_metrics_db.count_rule_executions(
-                              db,
-                              rule_id,
-                              from,
-                              to,
-                            )
-                          {
-                            Ok(total) ->
-                              api.ok(
-                                json.object([
-                                  #("rule_id", json.int(rule_id)),
-                                  #(
-                                    "executions",
-                                    json.array(executions, of: execution_json),
-                                  ),
-                                  #(
-                                    "pagination",
-                                    json.object([
-                                      #("limit", json.int(limit)),
-                                      #("offset", json.int(offset)),
-                                      #("total", json.int(total)),
-                                    ]),
-                                  ),
-                                ]),
-                              )
-                            Error(_) ->
-                              api.error(500, "INTERNAL", "Database error")
-                          }
-                        Error(_) -> api.error(500, "INTERNAL", "Database error")
-                      }
-                    }
-                  }
-              }
+fn get_rule_executions_for_rule(
+  req: wisp.Request,
+  db: pog.Connection,
+  rule_id: Int,
+  rule: rules_db.Rule,
+  user: StoredUser,
+) -> wisp.Response {
+  case workflow_from_rule(db, user, rule) {
+    Error(resp) -> resp
+    Ok(_workflow) -> get_rule_executions_with_range(req, db, rule_id)
+  }
+}
 
-            Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-          }
-        }
-      }
+fn get_rule_executions_with_range(
+  req: wisp.Request,
+  db: pog.Connection,
+  rule_id: Int,
+) -> wisp.Response {
+  case parse_date_range(req) {
+    Error(resp) -> resp
+    Ok(#(from, to)) -> get_rule_executions_response(req, db, rule_id, from, to)
+  }
+}
+
+fn get_rule_executions_response(
+  req: wisp.Request,
+  db: pog.Connection,
+  rule_id: Int,
+  from: Timestamp,
+  to: Timestamp,
+) -> wisp.Response {
+  let #(limit, offset) = parse_pagination(req)
+
+  case
+    rule_metrics_db.list_rule_executions(db, rule_id, from, to, limit, offset)
+  {
+    Ok(executions) ->
+      count_rule_executions_response(
+        db,
+        rule_id,
+        from,
+        to,
+        executions,
+        limit,
+        offset,
+      )
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
+  }
+}
+
+fn count_rule_executions_response(
+  db: pog.Connection,
+  rule_id: Int,
+  from: Timestamp,
+  to: Timestamp,
+  executions: List(rule_metrics_db.RuleExecution),
+  limit: Int,
+  offset: Int,
+) -> wisp.Response {
+  case rule_metrics_db.count_rule_executions(db, rule_id, from, to) {
+    Ok(total) ->
+      api.ok(
+        json.object([
+          #("rule_id", json.int(rule_id)),
+          #("executions", json.array(executions, of: execution_json)),
+          #(
+            "pagination",
+            json.object([
+              #("limit", json.int(limit)),
+              #("offset", json.int(offset)),
+              #("total", json.int(total)),
+            ]),
+          ),
+        ]),
+      )
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
   }
 }
 
@@ -326,42 +443,53 @@ fn get_org_metrics(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
 
-    Ok(user) ->
-      case user.org_role {
-        Admin ->
-          case parse_date_range(req) {
-            Error(resp) -> resp
-            Ok(#(from, to)) -> {
-              let auth.Ctx(db: db, ..) = ctx
+    Ok(user) -> get_org_metrics_for_user(req, ctx, user)
+  }
+}
 
-              case
-                rule_metrics_db.get_org_metrics_summary(
-                  db,
-                  user.org_id,
-                  from,
-                  to,
-                )
-              {
-                Ok(workflows) -> {
-                  let totals = calculate_workflow_totals(workflows)
-                  api.ok(
-                    json.object([
-                      #("from", json.string(timestamp_to_string(from))),
-                      #("to", json.string(timestamp_to_string(to))),
-                      #(
-                        "workflows",
-                        json.array(workflows, of: workflow_summary_json),
-                      ),
-                      #("totals", totals_json(totals)),
-                    ]),
-                  )
-                }
-                Error(_) -> api.error(500, "INTERNAL", "Database error")
-              }
-            }
-          }
-        _ -> api.error(403, "FORBIDDEN", "Admin role required")
-      }
+fn get_org_metrics_for_user(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  user: StoredUser,
+) -> wisp.Response {
+  case user.org_role {
+    Admin -> get_org_metrics_with_range(req, ctx, user.org_id)
+    _ -> api.error(403, "FORBIDDEN", "Admin role required")
+  }
+}
+
+fn get_org_metrics_with_range(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  org_id: Int,
+) -> wisp.Response {
+  case parse_date_range(req) {
+    Error(resp) -> resp
+    Ok(#(from, to)) -> get_org_metrics_response(ctx, org_id, from, to)
+  }
+}
+
+fn get_org_metrics_response(
+  ctx: auth.Ctx,
+  org_id: Int,
+  from: Timestamp,
+  to: Timestamp,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+
+  case rule_metrics_db.get_org_metrics_summary(db, org_id, from, to) {
+    Ok(workflows) -> {
+      let totals = calculate_workflow_totals(workflows)
+      api.ok(
+        json.object([
+          #("from", json.string(timestamp_to_string(from))),
+          #("to", json.string(timestamp_to_string(to))),
+          #("workflows", json.array(workflows, of: workflow_summary_json)),
+          #("totals", totals_json(totals)),
+        ]),
+      )
+    }
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
   }
 }
 
@@ -372,36 +500,63 @@ fn get_project_metrics(
 ) -> wisp.Response {
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+    Ok(user) -> get_project_metrics_for_user(req, ctx, project_id, user)
+  }
+}
 
-    Ok(user) ->
-      case int.parse(project_id) {
-        Error(_) -> api.error(404, "NOT_FOUND", "Not found")
+fn get_project_metrics_for_user(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+  user: StoredUser,
+) -> wisp.Response {
+  case int.parse(project_id) {
+    Error(_) -> api.error(404, "NOT_FOUND", "Not found")
+    Ok(parsed_id) -> get_project_metrics_for_id(req, ctx, parsed_id, user)
+  }
+}
 
-        Ok(project_id) -> {
-          let auth.Ctx(db: db, ..) = ctx
+fn get_project_metrics_for_id(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: Int,
+  user: StoredUser,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
 
-          // Verify user is admin of this project's org or a project admin
-          case projects_db.is_project_manager(db, user.id, project_id) {
-            Ok(True) ->
-              case parse_date_range(req) {
-                Error(resp) -> resp
-                Ok(#(from, to)) ->
-                  do_get_project_metrics(db, project_id, from, to)
-              }
-            Ok(False) ->
-              case user.org_role {
-                Admin ->
-                  case parse_date_range(req) {
-                    Error(resp) -> resp
-                    Ok(#(from, to)) ->
-                      do_get_project_metrics(db, project_id, from, to)
-                  }
-                _ -> api.error(403, "FORBIDDEN", "Admin role required")
-              }
-            Error(_) -> api.error(500, "INTERNAL", "Database error")
-          }
-        }
-      }
+  case authorize_project_metrics(db, user, project_id) {
+    Error(resp) -> resp
+    Ok(Nil) -> get_project_metrics_with_range(req, db, project_id)
+  }
+}
+
+fn get_project_metrics_with_range(
+  req: wisp.Request,
+  db: pog.Connection,
+  project_id: Int,
+) -> wisp.Response {
+  case parse_date_range(req) {
+    Error(resp) -> resp
+    Ok(#(from, to)) -> do_get_project_metrics(db, project_id, from, to)
+  }
+}
+
+fn authorize_project_metrics(
+  db: pog.Connection,
+  user: StoredUser,
+  project_id: Int,
+) -> Result(Nil, wisp.Response) {
+  case projects_db.is_project_manager(db, user.id, project_id) {
+    Ok(True) -> Ok(Nil)
+    Ok(False) -> require_admin_role(user)
+    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+  }
+}
+
+fn require_admin_role(user: StoredUser) -> Result(Nil, wisp.Response) {
+  case user.org_role {
+    Admin -> Ok(Nil)
+    _ -> Error(api.error(403, "FORBIDDEN", "Admin role required"))
   }
 }
 
@@ -434,18 +589,25 @@ fn workflow_from_rule(
   rule: rules_db.Rule,
 ) -> Result(workflows_db.Workflow, wisp.Response) {
   case workflows_db.get_workflow(db, rule.workflow_id) {
-    Ok(workflow) ->
-      case
-        authorization.require_project_manager_with_org_bypass(
-          db,
-          user,
-          workflow.project_id,
-        )
-      {
-        Ok(Nil) -> Ok(workflow)
-        Error(resp) -> Error(resp)
-      }
+    Ok(workflow) -> authorize_workflow_access(db, user, workflow)
     Error(_) -> Error(api.error(404, "NOT_FOUND", "Workflow not found"))
+  }
+}
+
+fn authorize_workflow_access(
+  db: pog.Connection,
+  user: StoredUser,
+  workflow: workflows_db.Workflow,
+) -> Result(workflows_db.Workflow, wisp.Response) {
+  case
+    authorization.require_project_manager_with_org_bypass(
+      db,
+      user,
+      workflow.project_id,
+    )
+  {
+    Ok(Nil) -> Ok(workflow)
+    Error(resp) -> Error(resp)
   }
 }
 
@@ -475,6 +637,15 @@ fn parse_date_range(
   // Validate from <= to
   let range = timestamp.difference(to, from)
   let zero = duration.seconds(0)
+  validate_range_order(range, from, to, zero)
+}
+
+fn validate_range_order(
+  range: duration.Duration,
+  from: Timestamp,
+  to: Timestamp,
+  zero: duration.Duration,
+) -> Result(#(Timestamp, Timestamp), wisp.Response) {
   case duration.compare(range, zero) {
     order.Lt ->
       Error(api.error(
@@ -482,19 +653,24 @@ fn parse_date_range(
         "INVALID_DATE_RANGE",
         "Start date must be before or equal to end date",
       ))
-    _ -> {
-      // Validate max range (90 days)
-      let max_range = duration.seconds(max_days * 86_400)
-      case duration.compare(range, max_range) {
-        order.Gt ->
-          Error(api.error(
-            400,
-            "INVALID_DATE_RANGE",
-            "Date range cannot exceed 90 days",
-          ))
-        _ -> Ok(#(from, to))
-      }
-    }
+    _ -> validate_range_limit(range, from, to)
+  }
+}
+
+fn validate_range_limit(
+  range: duration.Duration,
+  from: Timestamp,
+  to: Timestamp,
+) -> Result(#(Timestamp, Timestamp), wisp.Response) {
+  let max_range = duration.seconds(max_days * 86_400)
+  case duration.compare(range, max_range) {
+    order.Gt ->
+      Error(api.error(
+        400,
+        "INVALID_DATE_RANGE",
+        "Date range cannot exceed 90 days",
+      ))
+    _ -> Ok(#(from, to))
   }
 }
 

@@ -71,6 +71,7 @@ pub fn view_invites(model: Model) -> Element(Msg) {
 // Private Helpers
 // =============================================================================
 
+// Justification: nested case improves clarity for branching logic.
 fn view_latest_invite(model: Model, origin: String) -> Element(Msg) {
   case model.admin.invite_link_last {
     opt.None -> element.none()

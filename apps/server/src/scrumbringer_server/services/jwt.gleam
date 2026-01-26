@@ -69,6 +69,7 @@ pub fn sign(claims: Claims, secret: BitArray) -> String {
   signing_input <> "." <> signature_b64
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Verifies a JWT and returns its claims if valid.
 pub fn verify(token: String, secret: BitArray) -> Result(Claims, JwtError) {
   case string.split(token, ".") {

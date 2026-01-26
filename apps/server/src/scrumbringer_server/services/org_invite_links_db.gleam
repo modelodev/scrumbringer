@@ -10,6 +10,15 @@
 //// - Validate and consume invite links
 //// - Track invite link state (active, used, invalidated)
 //// - Support link regeneration by admins
+////
+//// ## Non-responsibilities
+////
+//// - HTTP request handling (see `http/org_invite_links.gleam`)
+//// - User registration flow (see `persistence/auth/registration.gleam`)
+////
+//// ## Relationships
+////
+//// - Uses `sql.gleam` for persistence
 
 import gleam/bit_array
 import gleam/crypto
@@ -21,12 +30,14 @@ import gleam/string
 import pog
 import scrumbringer_server/sql
 
+/// State of an invite link token.
 pub type InviteLinkState {
   Active
   Used
   Invalidated
 }
 
+/// Status returned when looking up a token.
 pub type TokenStatus {
   TokenMissing
   TokenUsed
@@ -34,6 +45,10 @@ pub type TokenStatus {
   TokenActive(org_id: Int, email: String)
 }
 
+/// Converts an invite link state to its DB string.
+///
+/// Example:
+///   state_to_string(Active)
 pub fn state_to_string(state: InviteLinkState) -> String {
   case state {
     Active -> "active"
@@ -42,6 +57,7 @@ pub fn state_to_string(state: InviteLinkState) -> String {
   }
 }
 
+/// Invite link record returned by persistence.
 pub type OrgInviteLink {
   OrgInviteLink(
     email: String,
@@ -53,11 +69,16 @@ pub type OrgInviteLink {
   )
 }
 
+/// Errors returned when upserting an invite link.
 pub type UpsertInviteLinkError {
   DbError(pog.QueryError)
   NoRowReturned
 }
 
+/// Inserts or updates an invite link for an email.
+///
+/// Example:
+///   upsert_invite_link(db, org_id, user_id, "invitee@example.com")
 pub fn upsert_invite_link(
   db: pog.Connection,
   org_id: Int,
@@ -90,19 +111,56 @@ fn upsert_with_retry(
     Ok(pog.Returned(rows: [], ..)) -> Error(NoRowReturned)
 
     Error(error) ->
-      case error {
-        pog.ConstraintViolated(constraint: constraint, ..) ->
-          case attempts > 0 && string.contains(constraint, "org_invite_links") {
-            True ->
-              upsert_with_retry(db, org_id, created_by, email, attempts - 1)
-            False -> Error(DbError(error))
-          }
-
-        _ -> Error(DbError(error))
-      }
+      handle_upsert_error(db, org_id, created_by, email, attempts, error)
   }
 }
 
+fn handle_upsert_error(
+  db: pog.Connection,
+  org_id: Int,
+  created_by: Int,
+  email: String,
+  attempts: Int,
+  error: pog.QueryError,
+) -> Result(OrgInviteLink, UpsertInviteLinkError) {
+  case error {
+    pog.ConstraintViolated(constraint: constraint, ..) ->
+      handle_constraint_retry(
+        db,
+        org_id,
+        created_by,
+        email,
+        attempts,
+        error,
+        constraint,
+      )
+    _ -> Error(DbError(error))
+  }
+}
+
+fn handle_constraint_retry(
+  db: pog.Connection,
+  org_id: Int,
+  created_by: Int,
+  email: String,
+  attempts: Int,
+  error: pog.QueryError,
+  constraint: String,
+) -> Result(OrgInviteLink, UpsertInviteLinkError) {
+  case should_retry_token(attempts, constraint) {
+    True -> upsert_with_retry(db, org_id, created_by, email, attempts - 1)
+    False -> Error(DbError(error))
+  }
+}
+
+fn should_retry_token(attempts: Int, constraint: String) -> Bool {
+  attempts > 0 && string.contains(constraint, "org_invite_links")
+}
+
+/// Lists invite links for an organization.
+///
+/// Example:
+///   list_invite_links(db, org_id)
 pub fn list_invite_links(
   db: pog.Connection,
   org_id: Int,
@@ -123,6 +181,10 @@ pub fn list_invite_links(
   |> Ok
 }
 
+/// Builds the URL path for a token.
+///
+/// Example:
+///   url_path(token)
 pub fn url_path(token: String) -> String {
   "/accept-invite?token=" <> token
 }
@@ -154,6 +216,10 @@ type TokenRow {
   TokenRow(org_id: Int, email: String, used: Bool, invalidated: Bool)
 }
 
+/// Fetches the current status for a token.
+///
+/// Example:
+///   token_status(db, token)
 pub fn token_status(
   db: pog.Connection,
   token: String,
@@ -161,6 +227,10 @@ pub fn token_status(
   token_status_internal(db, token, False)
 }
 
+/// Fetches the status for a token with row lock.
+///
+/// Example:
+///   token_status_for_update(db, token)
 pub fn token_status_for_update(
   db: pog.Connection,
   token: String,
@@ -207,6 +277,10 @@ fn token_status_internal(
   }
 }
 
+/// Marks a token as used by a user.
+///
+/// Example:
+///   mark_token_used(db, token, user_id)
 pub fn mark_token_used(
   db: pog.Connection,
   token: String,

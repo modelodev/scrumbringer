@@ -34,51 +34,63 @@ pub fn handle_me_metrics(req: wisp.Request, ctx: auth.Ctx) -> wisp.Response {
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
 
-    Ok(user) -> {
-      let auth.Ctx(db: db, ..) = ctx
-
-      case parse_window_days(req) {
-        Error(resp) -> resp
-
-        Ok(window_days) ->
-          case sql.metrics_my(db, user.id, int.to_string(window_days)) {
-            Ok(pog.Returned(rows: [row, ..], ..)) ->
-              api.ok(
-                json.object([
-                  #(
-                    "metrics",
-                    json.object([
-                      #("window_days", json.int(window_days)),
-                      #("claimed_count", json.int(row.claimed_count)),
-                      #("released_count", json.int(row.released_count)),
-                      #("completed_count", json.int(row.completed_count)),
-                    ]),
-                  ),
-                ]),
-              )
-
-            Ok(pog.Returned(rows: [], ..)) ->
-              api.ok(
-                json.object([
-                  #(
-                    "metrics",
-                    json.object([
-                      #("window_days", json.int(window_days)),
-                      #("claimed_count", json.int(0)),
-                      #("released_count", json.int(0)),
-                      #("completed_count", json.int(0)),
-                    ]),
-                  ),
-                ]),
-              )
-
-            Error(_) -> api.error(500, "INTERNAL", "Database error")
-          }
-      }
-    }
+    Ok(user) -> metrics_for_user(req, ctx, user.id)
   }
 }
 
+fn metrics_for_user(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  user_id: Int,
+) -> wisp.Response {
+  case parse_window_days(req) {
+    Error(resp) -> resp
+    Ok(window_days) -> metrics_response(ctx, user_id, window_days)
+  }
+}
+
+fn metrics_response(
+  ctx: auth.Ctx,
+  user_id: Int,
+  window_days: Int,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+
+  case sql.metrics_my(db, user_id, int.to_string(window_days)) {
+    Ok(pog.Returned(rows: [row, ..], ..)) ->
+      api.ok(metrics_json(
+        window_days,
+        row.claimed_count,
+        row.released_count,
+        row.completed_count,
+      ))
+
+    Ok(pog.Returned(rows: [], ..)) -> api.ok(metrics_json(window_days, 0, 0, 0))
+
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
+  }
+}
+
+fn metrics_json(
+  window_days: Int,
+  claimed_count: Int,
+  released_count: Int,
+  completed_count: Int,
+) -> json.Json {
+  json.object([
+    #(
+      "metrics",
+      json.object([
+        #("window_days", json.int(window_days)),
+        #("claimed_count", json.int(claimed_count)),
+        #("released_count", json.int(released_count)),
+        #("completed_count", json.int(completed_count)),
+      ]),
+    ),
+  ])
+}
+
+// Justification: nested case improves clarity for branching logic.
 fn parse_window_days(req: wisp.Request) -> Result(Int, wisp.Response) {
   let query = wisp.get_query(req)
 
@@ -86,6 +98,7 @@ fn parse_window_days(req: wisp.Request) -> Result(Int, wisp.Response) {
     Ok(None) -> Ok(default_window_days)
 
     Ok(Some(value)) ->
+      // Justification: nested case validates and bounds the parsed integer.
       case int.parse(value) {
         Ok(days) if days >= 1 && days <= max_window_days -> Ok(days)
         _ -> Error(api.error(422, "VALIDATION_ERROR", "Invalid window_days"))

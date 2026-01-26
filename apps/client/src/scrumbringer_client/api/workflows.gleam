@@ -545,6 +545,10 @@ fn rule_metrics_summary_decoder() -> decode.Decoder(RuleMetricsSummary) {
   ))
 }
 
+/// Provides workflow metrics decoder.
+///
+/// Example:
+///   workflow_metrics_decoder(...)
 pub fn workflow_metrics_decoder() -> decode.Decoder(WorkflowMetrics) {
   use workflow_id <- decode.field("workflow_id", decode.int)
   use workflow_name <- decode.field("workflow_name", decode.string)
@@ -587,6 +591,10 @@ pub type OrgWorkflowMetricsSummary {
   )
 }
 
+/// Provides org workflow metrics summary decoder.
+///
+/// Example:
+///   org_workflow_metrics_summary_decoder(...)
 pub fn org_workflow_metrics_summary_decoder() -> decode.Decoder(
   OrgWorkflowMetricsSummary,
 ) {
@@ -695,6 +703,10 @@ fn suppression_breakdown_decoder() -> decode.Decoder(SuppressionBreakdown) {
   ))
 }
 
+/// Provides rule metrics detailed decoder.
+///
+/// Example:
+///   rule_metrics_detailed_decoder(...)
 pub fn rule_metrics_detailed_decoder() -> decode.Decoder(RuleMetricsDetailed) {
   use rule_id <- decode.field("rule_id", decode.int)
   use rule_name <- decode.field("rule_name", decode.string)
@@ -800,6 +812,10 @@ fn pagination_decoder() -> decode.Decoder(Pagination) {
   decode.success(Pagination(limit: limit, offset: offset, total: total))
 }
 
+/// Provides rule executions response decoder.
+///
+/// Example:
+///   rule_executions_response_decoder(...)
 pub fn rule_executions_response_decoder() -> decode.Decoder(
   RuleExecutionsResponse,
 ) {

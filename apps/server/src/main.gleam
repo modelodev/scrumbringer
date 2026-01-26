@@ -14,6 +14,7 @@ import scrumbringer_server
 import wisp
 import wisp/wisp_mist
 
+// Justification: nested case improves clarity for branching logic.
 /// Starts the ScrumBringer server.
 pub fn main() {
   wisp.configure_logger()

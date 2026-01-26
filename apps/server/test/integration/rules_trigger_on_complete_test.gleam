@@ -26,6 +26,7 @@ pub fn main() {
 // Core Integration Test: Complete Task -> Rules Fire -> Tasks Created
 // =============================================================================
 
+// Justification: large function kept intact to preserve cohesive logic.
 /// Verifies that completing a task via HTTP API triggers rules and creates tasks.
 /// This is the critical end-to-end test that validates the complete flow.
 pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
@@ -151,6 +152,7 @@ pub fn complete_task_via_api_triggers_rules_and_creates_tasks_test() {
   |> should.be_true
 }
 
+// Justification: large function kept intact to preserve cohesive logic.
 /// Verifies that multiple templates attached to a rule create multiple tasks.
 pub fn complete_task_with_multiple_templates_creates_all_tasks_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
@@ -271,6 +273,7 @@ pub fn complete_task_with_multiple_templates_creates_all_tasks_test() {
   qa_count_after |> should.equal(3)
 }
 
+// Justification: large function kept intact to preserve cohesive logic.
 /// Verifies idempotency: completing the same task twice doesn't create duplicate tasks.
 pub fn completing_same_task_twice_is_idempotent_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
@@ -465,6 +468,7 @@ pub fn inactive_rule_does_not_trigger_on_api_complete_test() {
 // Card Inheritance Tests
 // =============================================================================
 
+// Justification: large function kept intact to preserve cohesive logic.
 /// Verifies that completing a task with a card creates child tasks with the same card.
 pub fn complete_task_with_card_creates_child_tasks_with_same_card_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()

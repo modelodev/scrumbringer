@@ -1,8 +1,26 @@
 //// HTTP handlers for task notes (comments).
 ////
-//// Provides endpoints for listing notes on a task and adding
-//// new notes. Requires task access (membership in task's project).
+//// ## Mission
+////
+//// Provide endpoints for listing and creating notes on tasks.
+////
+//// ## Responsibilities
+////
+//// - Parse route params and JSON payloads
+//// - Enforce CSRF for mutations
+//// - Validate task access
+////
+//// ## Non-responsibilities
+////
+//// - Task persistence (see `persistence/tasks/queries.gleam`)
+//// - Note persistence (see `services/task_notes_db.gleam`)
+////
+//// ## Relationships
+////
+//// - Uses `http/auth.gleam` for user identity
+//// - Uses `services/task_notes_db.gleam` for persistence
 
+import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/http
 import gleam/int
@@ -12,10 +30,14 @@ import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
+import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/task_notes_db
 import wisp
 
 /// Routes /api/tasks/:id/notes requests (GET list, POST create).
+///
+/// Example:
+///   handle_task_notes(req, ctx, "123")
 pub fn handle_task_notes(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -37,29 +59,7 @@ fn handle_list(
 
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) ->
-      case int.parse(task_id) {
-        Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-
-        Ok(task_id) -> {
-          let auth.Ctx(db: db, ..) = ctx
-
-          case require_task_access(db, task_id, user.id) {
-            Error(resp) -> resp
-
-            Ok(Nil) ->
-              case task_notes_db.list_notes_for_task(db, task_id) {
-                Ok(notes) ->
-                  api.ok(
-                    json.object([#("notes", json.array(notes, of: note_json))]),
-                  )
-
-                Error(_) -> api.error(500, "INTERNAL", "Database error")
-              }
-          }
-        }
-      }
+    Ok(user) -> list_notes_for_user(ctx, user, task_id)
   }
 }
 
@@ -72,52 +72,118 @@ fn handle_create(
 
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
+    Ok(user) -> create_note_for_user(req, ctx, user, task_id)
+  }
+}
 
-    Ok(user) ->
-      case csrf.require_double_submit(req) {
-        Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+fn list_notes_for_user(
+  ctx: auth.Ctx,
+  user: StoredUser,
+  task_id: String,
+) -> wisp.Response {
+  case parse_task_id(task_id) {
+    Error(resp) -> resp
+    Ok(task_id) -> list_notes(ctx, user.id, task_id)
+  }
+}
 
-        Ok(Nil) ->
-          case int.parse(task_id) {
-            Error(_) -> api.error(404, "NOT_FOUND", "Not found")
+// Justification: nested case improves clarity for branching logic.
+fn list_notes(ctx: auth.Ctx, user_id: Int, task_id: Int) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
 
-            Ok(task_id) -> {
-              let auth.Ctx(db: db, ..) = ctx
+  case require_task_access(db, task_id, user_id) {
+    Error(resp) -> resp
 
-              case require_task_access(db, task_id, user.id) {
-                Error(resp) -> resp
+    Ok(Nil) ->
+      case task_notes_db.list_notes_for_task(db, task_id) {
+        Ok(notes) ->
+          api.ok(json.object([#("notes", json.array(notes, of: note_json))]))
 
-                Ok(Nil) -> {
-                  use data <- wisp.require_json(req)
-
-                  let decoder = {
-                    use content <- decode.field("content", decode.string)
-                    decode.success(content)
-                  }
-
-                  case decode.run(data, decoder) {
-                    Error(_) ->
-                      api.error(400, "VALIDATION_ERROR", "Invalid JSON")
-
-                    Ok(content) ->
-                      case
-                        task_notes_db.create_note(db, task_id, user.id, content)
-                      {
-                        Ok(note) ->
-                          api.ok(json.object([#("note", note_json(note))]))
-
-                        Error(task_notes_db.DbError(_)) ->
-                          api.error(500, "INTERNAL", "Database error")
-
-                        Error(task_notes_db.UnexpectedEmptyResult) ->
-                          api.error(500, "INTERNAL", "Database error")
-                      }
-                  }
-                }
-              }
-            }
-          }
+        Error(_) -> api.error(500, "INTERNAL", "Database error")
       }
+  }
+}
+
+fn create_note_for_user(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  user: StoredUser,
+  task_id: String,
+) -> wisp.Response {
+  case require_csrf(req) {
+    Error(resp) -> resp
+    Ok(Nil) -> create_note_with_csrf(req, ctx, user, task_id)
+  }
+}
+
+// Justification: nested case improves clarity for branching logic.
+fn create_note_with_csrf(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  user: StoredUser,
+  task_id: String,
+) -> wisp.Response {
+  case parse_task_id(task_id) {
+    Error(resp) -> resp
+
+    Ok(task_id) -> {
+      use data <- wisp.require_json(req)
+
+      case decode_note_payload(data) {
+        Error(resp) -> resp
+        Ok(content) -> create_note(ctx, user, task_id, content)
+      }
+    }
+  }
+}
+
+// Justification: nested case improves clarity for branching logic.
+fn create_note(
+  ctx: auth.Ctx,
+  user: StoredUser,
+  task_id: Int,
+  content: String,
+) -> wisp.Response {
+  let auth.Ctx(db: db, ..) = ctx
+
+  case require_task_access(db, task_id, user.id) {
+    Error(resp) -> resp
+
+    Ok(Nil) ->
+      case task_notes_db.create_note(db, task_id, user.id, content) {
+        Ok(note) -> api.ok(json.object([#("note", note_json(note))]))
+        Error(task_notes_db.DbError(_)) ->
+          api.error(500, "INTERNAL", "Database error")
+        Error(task_notes_db.UnexpectedEmptyResult) ->
+          api.error(500, "INTERNAL", "Database error")
+      }
+  }
+}
+
+fn decode_note_payload(data: dynamic.Dynamic) -> Result(String, wisp.Response) {
+  let decoder = {
+    use content <- decode.field("content", decode.string)
+    decode.success(content)
+  }
+
+  case decode.run(data, decoder) {
+    Error(_) -> Error(api.error(400, "VALIDATION_ERROR", "Invalid JSON"))
+    Ok(content) -> Ok(content)
+  }
+}
+
+fn require_csrf(req: wisp.Request) -> Result(Nil, wisp.Response) {
+  case csrf.require_double_submit(req) {
+    Ok(Nil) -> Ok(Nil)
+    Error(_) ->
+      Error(api.error(403, "FORBIDDEN", "CSRF token missing or invalid"))
+  }
+}
+
+fn parse_task_id(task_id: String) -> Result(Int, wisp.Response) {
+  case int.parse(task_id) {
+    Ok(id) -> Ok(id)
+    Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
   }
 }
 

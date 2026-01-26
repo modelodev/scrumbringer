@@ -488,6 +488,7 @@ pub fn handle_rule_attach_template_selected(
   )
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Handle rule attach template submitted.
 pub fn handle_rule_attach_template_submitted(
   model: Model,
@@ -726,6 +727,7 @@ pub fn handle_attach_template_selected(
   )
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Handle submit of template attachment.
 pub fn handle_attach_template_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.admin.attach_template_modal, model.admin.attach_template_selected {

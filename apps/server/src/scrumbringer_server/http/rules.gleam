@@ -1,12 +1,33 @@
-////
 //// HTTP handlers for workflow rules CRUD and template associations.
+////
+//// ## Mission
+////
+//// Provide rule management endpoints for workflow automation.
+////
+//// ## Responsibilities
+////
+//// - Authorize project managers for rule operations
+//// - Parse and validate rule payloads
+//// - Delegate persistence to rule services
+////
+//// ## Non-responsibilities
+////
+//// - Rule persistence (see `services/rules_db.gleam`)
+//// - Workflow persistence (see `services/workflows_db.gleam`)
+////
+//// ## Relations
+////
+//// - Uses `services/rules_db` and `services/workflows_db` for persistence
+//// - Uses `http/authorization` for access control
 
+import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
+import gleam/result
 import helpers/json as json_helpers
 import pog
 import scrumbringer_server/http/api
@@ -15,10 +36,13 @@ import scrumbringer_server/http/authorization
 import scrumbringer_server/http/csrf
 import scrumbringer_server/services/rules_db
 import scrumbringer_server/services/rules_target
+import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/task_templates_db
 import scrumbringer_server/services/workflows_db
 import wisp
 
+/// Handle /api/workflows/:workflow_id/rules requests.
+/// Example: handle_workflow_rules(req, ctx, workflow_id)
 pub fn handle_workflow_rules(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -31,6 +55,8 @@ pub fn handle_workflow_rules(
   }
 }
 
+/// Handle /api/rules/:rule_id requests.
+/// Example: handle_rule(req, ctx, rule_id)
 pub fn handle_rule(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -43,6 +69,8 @@ pub fn handle_rule(
   }
 }
 
+/// Handle /api/rules/:rule_id/templates/:template_id requests.
+/// Example: handle_rule_template(req, ctx, rule_id, template_id)
 pub fn handle_rule_template(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -67,58 +95,9 @@ fn handle_list(
 ) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) ->
-      case int.parse(workflow_id) {
-        Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-
-        Ok(workflow_id) -> {
-          let auth.Ctx(db: db, ..) = ctx
-
-          case workflows_db.get_workflow(db, workflow_id) {
-            Ok(workflow) ->
-              case
-                authorization.require_project_manager_simple(
-                  db,
-                  user,
-                  workflow.org_id,
-                  workflow.project_id,
-                )
-              {
-                Error(resp) -> resp
-                Ok(Nil) ->
-                  case rules_db.list_rules_for_workflow(db, workflow_id) {
-                    Ok(rules) -> {
-                      // Story 4.10 AC23: Include templates for each rule
-                      let rules_with_templates =
-                        list.map(rules, fn(rule) {
-                          let templates = case
-                            rules_db.list_rule_templates(db, rule.id)
-                          {
-                            Ok(t) -> t
-                            Error(_) -> []
-                          }
-                          rule_json_with_templates(rule, templates)
-                        })
-                      api.ok(
-                        json.object([
-                          #(
-                            "rules",
-                            json.preprocessed_array(rules_with_templates),
-                          ),
-                        ]),
-                      )
-                    }
-                    Error(_) -> api.error(500, "INTERNAL", "Database error")
-                  }
-              }
-
-            Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-          }
-        }
-      }
+  case list_rules(req, ctx, workflow_id) {
+    Ok(resp) -> resp
+    Error(resp) -> resp
   }
 }
 
@@ -127,34 +106,11 @@ fn handle_create(
   ctx: auth.Ctx,
   workflow_id: String,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) ->
-      case int.parse(workflow_id) {
-        Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-
-        Ok(workflow_id) -> {
-          let auth.Ctx(db: db, ..) = ctx
-
-          case workflows_db.get_workflow(db, workflow_id) {
-            Ok(workflow) ->
-              case
-                authorization.require_project_manager_simple(
-                  db,
-                  user,
-                  workflow.org_id,
-                  workflow.project_id,
-                )
-              {
-                Error(resp) -> resp
-                Ok(Nil) -> create_rule(req, ctx, workflow_id)
-              }
-
-            Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-          }
-        }
-      }
+  use data <- wisp.require_json(req)
+  // Justified nested case: unwrap Result<Response, Response> into a Response.
+  case create_rule_flow(req, ctx, workflow_id, data) {
+    Ok(resp) -> resp
+    Error(resp) -> resp
   }
 }
 
@@ -163,38 +119,11 @@ fn handle_update(
   ctx: auth.Ctx,
   rule_id: String,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) ->
-      case int.parse(rule_id) {
-        Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-
-        Ok(rule_id) -> {
-          let auth.Ctx(db: db, ..) = ctx
-
-          case rules_db.get_rule(db, rule_id) {
-            Ok(rule) ->
-              case workflow_from_rule(db, rule) {
-                Error(resp) -> resp
-                Ok(workflow) ->
-                  case
-                    authorization.require_project_manager_simple(
-                      db,
-                      user,
-                      workflow.org_id,
-                      workflow.project_id,
-                    )
-                  {
-                    Error(resp) -> resp
-                    Ok(Nil) -> update_rule(req, ctx, rule_id)
-                  }
-              }
-
-            Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-          }
-        }
-      }
+  use data <- wisp.require_json(req)
+  // Justified nested case: unwrap Result<Response, Response> into a Response.
+  case update_rule_flow(req, ctx, rule_id, data) {
+    Ok(resp) -> resp
+    Error(resp) -> resp
   }
 }
 
@@ -203,54 +132,9 @@ fn handle_delete(
   ctx: auth.Ctx,
   rule_id: String,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) ->
-      case int.parse(rule_id) {
-        Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-
-        Ok(rule_id) -> {
-          let auth.Ctx(db: db, ..) = ctx
-
-          case rules_db.get_rule(db, rule_id) {
-            Ok(rule) ->
-              case workflow_from_rule(db, rule) {
-                Error(resp) -> resp
-                Ok(workflow) ->
-                  case
-                    authorization.require_project_manager_simple(
-                      db,
-                      user,
-                      workflow.org_id,
-                      workflow.project_id,
-                    )
-                  {
-                    Error(resp) -> resp
-                    Ok(Nil) ->
-                      case csrf.require_double_submit(req) {
-                        Error(_) ->
-                          api.error(
-                            403,
-                            "FORBIDDEN",
-                            "CSRF token missing or invalid",
-                          )
-                        Ok(Nil) ->
-                          case rules_db.delete_rule(db, rule_id) {
-                            Ok(Nil) -> api.no_content()
-                            Error(rules_db.DeleteNotFound) ->
-                              api.error(404, "NOT_FOUND", "Not found")
-                            Error(rules_db.DeleteDbError(_)) ->
-                              api.error(500, "INTERNAL", "Database error")
-                          }
-                      }
-                  }
-              }
-
-            Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-          }
-        }
-      }
+  case delete_rule_flow(req, ctx, rule_id) {
+    Ok(resp) -> resp
+    Error(resp) -> resp
   }
 }
 
@@ -260,42 +144,11 @@ fn handle_attach_template(
   rule_id: String,
   template_id: String,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) ->
-      case parse_ids(rule_id, template_id) {
-        Error(resp) -> resp
-        Ok(#(rule_id, template_id)) -> {
-          let auth.Ctx(db: db, ..) = ctx
-
-          case rules_db.get_rule(db, rule_id) {
-            Ok(rule) ->
-              case workflow_from_rule(db, rule) {
-                Error(resp) -> resp
-                Ok(workflow) ->
-                  case
-                    authorization.require_project_manager_simple(
-                      db,
-                      user,
-                      workflow.org_id,
-                      workflow.project_id,
-                    )
-                  {
-                    Error(resp) -> resp
-                    Ok(Nil) ->
-                      case validate_template_scope(db, workflow, template_id) {
-                        Error(resp) -> resp
-                        Ok(Nil) ->
-                          attach_rule_template(req, ctx, rule_id, template_id)
-                      }
-                  }
-              }
-
-            Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-          }
-        }
-      }
+  use data <- wisp.require_json(req)
+  // Justified nested case: unwrap Result<Response, Response> into a Response.
+  case attach_template_flow(req, ctx, rule_id, template_id, data) {
+    Ok(resp) -> resp
+    Error(resp) -> resp
   }
 }
 
@@ -305,38 +158,9 @@ fn handle_detach_template(
   rule_id: String,
   template_id: String,
 ) -> wisp.Response {
-  case auth.require_current_user(req, ctx) {
-    Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-
-    Ok(user) ->
-      case parse_ids(rule_id, template_id) {
-        Error(resp) -> resp
-        Ok(#(rule_id, template_id)) -> {
-          let auth.Ctx(db: db, ..) = ctx
-
-          case rules_db.get_rule(db, rule_id) {
-            Ok(rule) ->
-              case workflow_from_rule(db, rule) {
-                Error(resp) -> resp
-                Ok(workflow) ->
-                  case
-                    authorization.require_project_manager_simple(
-                      db,
-                      user,
-                      workflow.org_id,
-                      workflow.project_id,
-                    )
-                  {
-                    Error(resp) -> resp
-                    Ok(Nil) ->
-                      detach_rule_template(req, ctx, rule_id, template_id)
-                  }
-              }
-
-            Error(_) -> api.error(404, "NOT_FOUND", "Not found")
-          }
-        }
-      }
+  case detach_template_flow(req, ctx, rule_id, template_id) {
+    Ok(resp) -> resp
+    Error(resp) -> resp
   }
 }
 
@@ -344,279 +168,479 @@ fn handle_detach_template(
 // Shared helpers
 // =============================================================================
 
-fn create_rule(
+type CreatePayload {
+  CreatePayload(
+    name: String,
+    goal: String,
+    resource_type: String,
+    task_type_id: Option(Int),
+    to_state: String,
+    active: Bool,
+  )
+}
+
+type UpdatePayload {
+  UpdatePayload(
+    name: Option(String),
+    goal: Option(String),
+    resource_type: Option(String),
+    task_type_id: Option(Int),
+    to_state: Option(String),
+    active: Option(Int),
+  )
+}
+
+fn list_rules(
   req: wisp.Request,
   ctx: auth.Ctx,
-  workflow_id: Int,
-) -> wisp.Response {
-  case csrf.require_double_submit(req) {
-    Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+  workflow_id_str: String,
+) -> Result(wisp.Response, wisp.Response) {
+  use #(_, workflow, db) <- result.try(load_workflow_access(
+    req,
+    ctx,
+    workflow_id_str,
+  ))
+  use rules <- result.try(list_rules_for_workflow(db, workflow.id))
 
-    Ok(Nil) -> {
-      use data <- wisp.require_json(req)
-
-      let decoder = {
-        use name <- decode.field("name", decode.string)
-        use goal <- decode.optional_field("goal", "", decode.string)
-        use resource_type <- decode.field("resource_type", decode.string)
-        use task_type_id <- decode.optional_field(
-          "task_type_id",
-          None,
-          decode.optional(decode.int),
-        )
-        use to_state <- decode.field("to_state", decode.string)
-        use active <- decode.optional_field("active", False, decode.bool)
-        decode.success(#(
-          name,
-          goal,
-          resource_type,
-          task_type_id,
-          to_state,
-          active,
-        ))
+  let rules_with_templates =
+    list.map(rules, fn(rule) {
+      let templates = case rules_db.list_rule_templates(db, rule.id) {
+        Ok(t) -> t
+        Error(_) -> []
       }
+      rule_json_with_templates(rule, templates)
+    })
 
-      case decode.run(data, decoder) {
-        Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
-
-        Ok(#(name, goal, resource_type, task_type_id, to_state, active)) -> {
-          let auth.Ctx(db: db, ..) = ctx
-
-          let task_type_param = case task_type_id {
-            Some(value) if value <= 0 ->
-              Error(api.error(422, "VALIDATION_ERROR", "Invalid task_type_id"))
-            Some(value) -> Ok(value)
-            None -> Ok(0)
-          }
-
-          case task_type_param {
-            Error(response) -> response
-            Ok(task_type_param) ->
-              case
-                rules_db.create_rule(
-                  db,
-                  workflow_id,
-                  name,
-                  goal,
-                  resource_type,
-                  task_type_param,
-                  to_state,
-                  active,
-                )
-              {
-                Ok(rule) -> api.ok(json.object([#("rule", rule_json(rule))]))
-                Error(rules_db.CreateInvalidResourceType) ->
-                  api.error(422, "VALIDATION_ERROR", "Invalid resource_type")
-                Error(rules_db.CreateInvalidTaskType) ->
-                  api.error(422, "VALIDATION_ERROR", "Invalid task_type_id")
-                Error(rules_db.CreateInvalidWorkflow) ->
-                  api.error(404, "NOT_FOUND", "Workflow not found")
-                Error(rules_db.CreateDbError(_)) ->
-                  api.error(500, "INTERNAL", "Database error")
-              }
-          }
-        }
-      }
-    }
-  }
+  Ok(
+    api.ok(
+      json.object([
+        #("rules", json.preprocessed_array(rules_with_templates)),
+      ]),
+    ),
+  )
 }
 
-fn update_rule(req: wisp.Request, ctx: auth.Ctx, rule_id: Int) -> wisp.Response {
-  case csrf.require_double_submit(req) {
-    Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
-
-    Ok(Nil) -> {
-      use data <- wisp.require_json(req)
-
-      let decoder = {
-        use name <- decode.optional_field(
-          "name",
-          None,
-          decode.optional(decode.string),
-        )
-        use goal <- decode.optional_field(
-          "goal",
-          None,
-          decode.optional(decode.string),
-        )
-        use resource_type <- decode.optional_field(
-          "resource_type",
-          None,
-          decode.optional(decode.string),
-        )
-        use task_type_id <- decode.optional_field(
-          "task_type_id",
-          None,
-          decode.optional(decode.int),
-        )
-        use to_state <- decode.optional_field(
-          "to_state",
-          None,
-          decode.optional(decode.string),
-        )
-        use active <- decode.optional_field(
-          "active",
-          None,
-          decode.optional(decode.int),
-        )
-        decode.success(#(
-          name,
-          goal,
-          resource_type,
-          task_type_id,
-          to_state,
-          active,
-        ))
-      }
-
-      case decode.run(data, decoder) {
-        Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
-
-        Ok(#(name, goal, resource_type, task_type_id, to_state, active)) -> {
-          let auth.Ctx(db: db, ..) = ctx
-
-          let active_value = case active {
-            None -> Ok(None)
-            Some(0) -> Ok(Some(False))
-            Some(1) -> Ok(Some(True))
-            Some(_) ->
-              Error(api.error(422, "VALIDATION_ERROR", "Invalid active"))
-          }
-
-          let task_type_value = case task_type_id {
-            Some(value) if value <= 0 ->
-              Error(api.error(422, "VALIDATION_ERROR", "Invalid task_type_id"))
-            _ -> Ok(task_type_id)
-          }
-
-          case active_value {
-            Error(response) -> response
-
-            Ok(active_value) ->
-              case task_type_value {
-                Error(response) -> response
-
-                Ok(task_type_value) ->
-                  case
-                    rules_db.update_rule(
-                      db,
-                      rule_id,
-                      name,
-                      goal,
-                      resource_type,
-                      task_type_value,
-                      to_state,
-                      active_value,
-                    )
-                  {
-                    Ok(rule) ->
-                      api.ok(json.object([#("rule", rule_json(rule))]))
-                    Error(rules_db.UpdateNotFound) ->
-                      api.error(404, "NOT_FOUND", "Not found")
-                    Error(rules_db.UpdateInvalidResourceType) ->
-                      api.error(
-                        422,
-                        "VALIDATION_ERROR",
-                        "Invalid resource_type",
-                      )
-                    Error(rules_db.UpdateInvalidTaskType) ->
-                      api.error(422, "VALIDATION_ERROR", "Invalid task_type_id")
-                    Error(rules_db.UpdateDbError(_)) ->
-                      api.error(500, "INTERNAL", "Database error")
-                  }
-              }
-          }
-        }
-      }
-    }
-  }
-}
-
-fn attach_rule_template(
+fn create_rule_flow(
   req: wisp.Request,
   ctx: auth.Ctx,
-  rule_id: Int,
-  template_id: Int,
-) -> wisp.Response {
-  case csrf.require_double_submit(req) {
-    Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+  workflow_id_str: String,
+  data: dynamic.Dynamic,
+) -> Result(wisp.Response, wisp.Response) {
+  use #(_, workflow, db) <- result.try(load_workflow_access(
+    req,
+    ctx,
+    workflow_id_str,
+  ))
+  use _ <- result.try(require_csrf(req))
+  use payload <- result.try(decode_create_payload(data))
+  use task_type_param <- result.try(normalize_task_type_create(
+    payload.task_type_id,
+  ))
 
-    Ok(Nil) -> {
-      use data <- wisp.require_json(req)
-
-      let decoder = {
-        use execution_order <- decode.optional_field(
-          "execution_order",
-          0,
-          decode.int,
-        )
-        decode.success(execution_order)
-      }
-
-      case decode.run(data, decoder) {
-        Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
-
-        Ok(execution_order) -> {
-          let auth.Ctx(db: db, ..) = ctx
-
-          case
-            rules_db.attach_template(db, rule_id, template_id, execution_order)
-          {
-            Ok(Nil) ->
-              case rules_db.list_rule_templates(db, rule_id) {
-                Ok(templates) ->
-                  api.ok(
-                    json.object([
-                      #("templates", json.array(templates, of: template_json)),
-                    ]),
-                  )
-                Error(_) -> api.error(500, "INTERNAL", "Database error")
-              }
-            Error(rules_db.AttachNotFound) ->
-              api.error(404, "NOT_FOUND", "Not found")
-            Error(rules_db.AttachDbError(_)) ->
-              api.error(500, "INTERNAL", "Database error")
-          }
-        }
-      }
-    }
+  case
+    rules_db.create_rule(
+      db,
+      workflow.id,
+      payload.name,
+      payload.goal,
+      payload.resource_type,
+      task_type_param,
+      payload.to_state,
+      payload.active,
+    )
+  {
+    Ok(rule) -> Ok(api.ok(json.object([#("rule", rule_json(rule))])))
+    Error(rules_db.CreateInvalidResourceType) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid resource_type"))
+    Error(rules_db.CreateInvalidTaskType) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid task_type_id"))
+    Error(rules_db.CreateInvalidWorkflow) ->
+      Error(api.error(404, "NOT_FOUND", "Workflow not found"))
+    Error(rules_db.CreateDbError(_)) ->
+      Error(api.error(500, "INTERNAL", "Database error"))
   }
 }
 
-fn detach_rule_template(
+fn update_rule_flow(
   req: wisp.Request,
   ctx: auth.Ctx,
-  rule_id: Int,
-  template_id: Int,
-) -> wisp.Response {
-  case csrf.require_double_submit(req) {
-    Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
+  rule_id_str: String,
+  data: dynamic.Dynamic,
+) -> Result(wisp.Response, wisp.Response) {
+  use #(rule, _workflow, db) <- result.try(load_rule_access(
+    req,
+    ctx,
+    rule_id_str,
+  ))
+  use _ <- result.try(require_csrf(req))
+  use payload <- result.try(decode_update_payload(data))
+  use active_value <- result.try(normalize_active(payload.active))
+  use task_type_value <- result.try(normalize_task_type_update(
+    payload.task_type_id,
+  ))
 
-    Ok(Nil) -> {
-      let auth.Ctx(db: db, ..) = ctx
-
-      case rules_db.detach_template(db, rule_id, template_id) {
-        Ok(Nil) -> api.no_content()
-        Error(rules_db.DetachNotFound) ->
-          api.error(404, "NOT_FOUND", "Not found")
-        Error(rules_db.DetachDbError(_)) ->
-          api.error(500, "INTERNAL", "Database error")
-      }
-    }
+  case
+    rules_db.update_rule(
+      db,
+      rule.id,
+      payload.name,
+      payload.goal,
+      payload.resource_type,
+      task_type_value,
+      payload.to_state,
+      active_value,
+    )
+  {
+    Ok(rule) -> Ok(api.ok(json.object([#("rule", rule_json(rule))])))
+    Error(rules_db.UpdateNotFound) ->
+      Error(api.error(404, "NOT_FOUND", "Not found"))
+    Error(rules_db.UpdateInvalidResourceType) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid resource_type"))
+    Error(rules_db.UpdateInvalidTaskType) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid task_type_id"))
+    Error(rules_db.UpdateDbError(_)) ->
+      Error(api.error(500, "INTERNAL", "Database error"))
   }
 }
 
-fn parse_ids(
-  rule_id: String,
-  template_id: String,
-) -> Result(#(Int, Int), wisp.Response) {
-  case int.parse(rule_id) {
+fn delete_rule_flow(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  rule_id_str: String,
+) -> Result(wisp.Response, wisp.Response) {
+  use #(rule, _workflow, db) <- result.try(load_rule_access(
+    req,
+    ctx,
+    rule_id_str,
+  ))
+  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(delete_rule_db(db, rule.id))
+  Ok(api.no_content())
+}
+
+fn attach_template_flow(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  rule_id_str: String,
+  template_id_str: String,
+  data: dynamic.Dynamic,
+) -> Result(wisp.Response, wisp.Response) {
+  use #(rule, workflow, db) <- result.try(load_rule_access(
+    req,
+    ctx,
+    rule_id_str,
+  ))
+  use template_id <- result.try(parse_id(template_id_str))
+  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(validate_template_scope(db, workflow, template_id))
+  use execution_order <- result.try(decode_execution_order(data))
+  use templates <- result.try(attach_rule_template_db(
+    db,
+    rule.id,
+    template_id,
+    execution_order,
+  ))
+
+  Ok(
+    api.ok(
+      json.object([
+        #("templates", json.array(templates, of: template_json)),
+      ]),
+    ),
+  )
+}
+
+fn detach_template_flow(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  rule_id_str: String,
+  template_id_str: String,
+) -> Result(wisp.Response, wisp.Response) {
+  use #(rule, _workflow, db) <- result.try(load_rule_access(
+    req,
+    ctx,
+    rule_id_str,
+  ))
+  use template_id <- result.try(parse_id(template_id_str))
+  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(detach_rule_template_db(db, rule.id, template_id))
+  Ok(api.no_content())
+}
+
+fn load_workflow_access(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  workflow_id_str: String,
+) -> Result(#(StoredUser, workflows_db.Workflow, pog.Connection), wisp.Response) {
+  use user <- result.try(require_current_user(req, ctx))
+  use workflow_id <- result.try(parse_id(workflow_id_str))
+  let auth.Ctx(db: db, ..) = ctx
+  use workflow <- result.try(get_workflow(db, workflow_id))
+  use _ <- result.try(require_project_manager(db, user, workflow))
+  Ok(#(user, workflow, db))
+}
+
+fn load_rule_access(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  rule_id_str: String,
+) -> Result(
+  #(rules_db.Rule, workflows_db.Workflow, pog.Connection),
+  wisp.Response,
+) {
+  use user <- result.try(require_current_user(req, ctx))
+  use rule_id <- result.try(parse_id(rule_id_str))
+  let auth.Ctx(db: db, ..) = ctx
+  use rule <- result.try(get_rule(db, rule_id))
+  use workflow <- result.try(workflow_from_rule(db, rule))
+  use _ <- result.try(require_project_manager(db, user, workflow))
+  Ok(#(rule, workflow, db))
+}
+
+fn require_current_user(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+) -> Result(StoredUser, wisp.Response) {
+  case auth.require_current_user(req, ctx) {
+    Ok(user) -> Ok(user)
+    Error(_) ->
+      Error(api.error(401, "AUTH_REQUIRED", "Authentication required"))
+  }
+}
+
+fn require_project_manager(
+  db: pog.Connection,
+  user: StoredUser,
+  workflow: workflows_db.Workflow,
+) -> Result(Nil, wisp.Response) {
+  case
+    authorization.require_project_manager_simple(
+      db,
+      user,
+      workflow.org_id,
+      workflow.project_id,
+    )
+  {
+    Ok(Nil) -> Ok(Nil)
+    Error(resp) -> Error(resp)
+  }
+}
+
+fn require_csrf(req: wisp.Request) -> Result(Nil, wisp.Response) {
+  case csrf.require_double_submit(req) {
+    Ok(Nil) -> Ok(Nil)
+    Error(_) ->
+      Error(api.error(403, "FORBIDDEN", "CSRF token missing or invalid"))
+  }
+}
+
+fn parse_id(value: String) -> Result(Int, wisp.Response) {
+  case int.parse(value) {
+    Ok(id) -> Ok(id)
     Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
-    Ok(rule_id) ->
-      case int.parse(template_id) {
-        Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
-        Ok(template_id) -> Ok(#(rule_id, template_id))
+  }
+}
+
+fn get_workflow(
+  db: pog.Connection,
+  workflow_id: Int,
+) -> Result(workflows_db.Workflow, wisp.Response) {
+  case workflows_db.get_workflow(db, workflow_id) {
+    Ok(workflow) -> Ok(workflow)
+    Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
+  }
+}
+
+fn get_rule(
+  db: pog.Connection,
+  rule_id: Int,
+) -> Result(rules_db.Rule, wisp.Response) {
+  case rules_db.get_rule(db, rule_id) {
+    Ok(rule) -> Ok(rule)
+    Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
+  }
+}
+
+fn list_rules_for_workflow(
+  db: pog.Connection,
+  workflow_id: Int,
+) -> Result(List(rules_db.Rule), wisp.Response) {
+  case rules_db.list_rules_for_workflow(db, workflow_id) {
+    Ok(rules) -> Ok(rules)
+    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+  }
+}
+
+fn decode_create_payload(
+  data: dynamic.Dynamic,
+) -> Result(CreatePayload, wisp.Response) {
+  let decoder = {
+    use name <- decode.field("name", decode.string)
+    use goal <- decode.optional_field("goal", "", decode.string)
+    use resource_type <- decode.field("resource_type", decode.string)
+    use task_type_id <- decode.optional_field(
+      "task_type_id",
+      None,
+      decode.optional(decode.int),
+    )
+    use to_state <- decode.field("to_state", decode.string)
+    use active <- decode.optional_field("active", False, decode.bool)
+    decode.success(CreatePayload(
+      name: name,
+      goal: goal,
+      resource_type: resource_type,
+      task_type_id: task_type_id,
+      to_state: to_state,
+      active: active,
+    ))
+  }
+
+  decode.run(data, decoder)
+  |> result.map_error(fn(_) {
+    api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+  })
+}
+
+fn decode_update_payload(
+  data: dynamic.Dynamic,
+) -> Result(UpdatePayload, wisp.Response) {
+  let decoder = {
+    use name <- decode.optional_field(
+      "name",
+      None,
+      decode.optional(decode.string),
+    )
+    use goal <- decode.optional_field(
+      "goal",
+      None,
+      decode.optional(decode.string),
+    )
+    use resource_type <- decode.optional_field(
+      "resource_type",
+      None,
+      decode.optional(decode.string),
+    )
+    use task_type_id <- decode.optional_field(
+      "task_type_id",
+      None,
+      decode.optional(decode.int),
+    )
+    use to_state <- decode.optional_field(
+      "to_state",
+      None,
+      decode.optional(decode.string),
+    )
+    use active <- decode.optional_field(
+      "active",
+      None,
+      decode.optional(decode.int),
+    )
+    decode.success(UpdatePayload(
+      name: name,
+      goal: goal,
+      resource_type: resource_type,
+      task_type_id: task_type_id,
+      to_state: to_state,
+      active: active,
+    ))
+  }
+
+  decode.run(data, decoder)
+  |> result.map_error(fn(_) {
+    api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+  })
+}
+
+fn decode_execution_order(data: dynamic.Dynamic) -> Result(Int, wisp.Response) {
+  let decoder = {
+    use execution_order <- decode.optional_field(
+      "execution_order",
+      0,
+      decode.int,
+    )
+    decode.success(execution_order)
+  }
+
+  decode.run(data, decoder)
+  |> result.map_error(fn(_) {
+    api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+  })
+}
+
+fn normalize_task_type_create(
+  task_type_id: Option(Int),
+) -> Result(Int, wisp.Response) {
+  case task_type_id {
+    Some(value) if value <= 0 ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid task_type_id"))
+    Some(value) -> Ok(value)
+    None -> Ok(0)
+  }
+}
+
+fn normalize_task_type_update(
+  task_type_id: Option(Int),
+) -> Result(Option(Int), wisp.Response) {
+  case task_type_id {
+    Some(value) if value <= 0 ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid task_type_id"))
+    _ -> Ok(task_type_id)
+  }
+}
+
+fn normalize_active(active: Option(Int)) -> Result(Option(Bool), wisp.Response) {
+  case active {
+    None -> Ok(None)
+    Some(0) -> Ok(Some(False))
+    Some(1) -> Ok(Some(True))
+    Some(_) -> Error(api.error(422, "VALIDATION_ERROR", "Invalid active"))
+  }
+}
+
+fn delete_rule_db(
+  db: pog.Connection,
+  rule_id: Int,
+) -> Result(Nil, wisp.Response) {
+  case rules_db.delete_rule(db, rule_id) {
+    Ok(Nil) -> Ok(Nil)
+    Error(rules_db.DeleteNotFound) ->
+      Error(api.error(404, "NOT_FOUND", "Not found"))
+    Error(rules_db.DeleteDbError(_)) ->
+      Error(api.error(500, "INTERNAL", "Database error"))
+  }
+}
+
+// Justification: nested case improves clarity for branching logic.
+fn attach_rule_template_db(
+  db: pog.Connection,
+  rule_id: Int,
+  template_id: Int,
+  execution_order: Int,
+) -> Result(List(rules_db.RuleTemplate), wisp.Response) {
+  case rules_db.attach_template(db, rule_id, template_id, execution_order) {
+    Ok(Nil) ->
+      case rules_db.list_rule_templates(db, rule_id) {
+        Ok(templates) -> Ok(templates)
+        Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
       }
+    Error(rules_db.AttachNotFound) ->
+      Error(api.error(404, "NOT_FOUND", "Not found"))
+    Error(rules_db.AttachDbError(_)) ->
+      Error(api.error(500, "INTERNAL", "Database error"))
+  }
+}
+
+fn detach_rule_template_db(
+  db: pog.Connection,
+  rule_id: Int,
+  template_id: Int,
+) -> Result(Nil, wisp.Response) {
+  case rules_db.detach_template(db, rule_id, template_id) {
+    Ok(Nil) -> Ok(Nil)
+    Error(rules_db.DetachNotFound) ->
+      Error(api.error(404, "NOT_FOUND", "Not found"))
+    Error(rules_db.DetachDbError(_)) ->
+      Error(api.error(500, "INTERNAL", "Database error"))
   }
 }
 
@@ -632,6 +656,7 @@ fn workflow_from_rule(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn validate_template_scope(
   db: pog.Connection,
   workflow: workflows_db.Workflow,

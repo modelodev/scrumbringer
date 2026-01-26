@@ -103,6 +103,7 @@ fn has_active_filters(model: Model) -> Bool {
   || string.trim(model.member.member_filters_q) != ""
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Renders the main pool section with filters, canvas/list toggle, and tasks.
 pub fn view_pool_main(model: Model, _user: User) -> Element(Msg) {
   case update_helpers.active_projects(model) {
@@ -372,6 +373,7 @@ pub fn view_pool_task_row(model: Model, task: Task) -> Element(Msg) {
 }
 
 /// Renders a task card for the pool canvas view with drag-and-drop support.
+/// Justification: large function kept intact to preserve cohesive UI logic.
 pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
   let Task(
     id: id,

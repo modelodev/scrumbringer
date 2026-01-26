@@ -180,6 +180,7 @@ pub fn view_heroicon_inline(
 // Task Type Icon Utilities
 // =============================================================================
 
+// Justification: nested case improves clarity for branching logic.
 /// Render a task type icon inline with theme awareness.
 ///
 /// Uses the curated icon catalog for embedded SVG rendering.

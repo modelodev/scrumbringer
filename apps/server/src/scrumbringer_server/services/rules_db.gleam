@@ -1,5 +1,24 @@
-////
 //// Database operations for workflow rules and template attachments.
+////
+//// ## Mission
+////
+//// Provide persistence and mapping for workflow rules and their template links.
+////
+//// ## Responsibilities
+////
+//// - Query and mutate rule records
+//// - Map SQL rows into domain types
+//// - Attach and detach rule templates
+////
+//// ## Non-responsibilities
+////
+//// - Rule evaluation (see `services/rules_engine.gleam`)
+//// - HTTP request handling (see `http/rules.gleam`)
+////
+//// ## Relationships
+////
+//// - Uses `services/rules_target.gleam` for typed rule targets
+//// - Executes queries from `sql.gleam`
 
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -10,6 +29,7 @@ import pog
 import scrumbringer_server/services/rules_target
 import scrumbringer_server/sql
 
+/// Rule record with a typed target.
 pub type Rule {
   Rule(
     id: Int,
@@ -22,6 +42,7 @@ pub type Rule {
   )
 }
 
+/// Template associated with a rule, including execution order.
 pub type RuleTemplate {
   RuleTemplate(
     id: Int,
@@ -38,6 +59,7 @@ pub type RuleTemplate {
   )
 }
 
+/// Errors returned when creating a rule.
 pub type CreateRuleError {
   CreateInvalidWorkflow
   CreateInvalidTaskType
@@ -45,6 +67,7 @@ pub type CreateRuleError {
   CreateDbError(pog.QueryError)
 }
 
+/// Errors returned when updating a rule.
 pub type UpdateRuleError {
   UpdateNotFound
   UpdateInvalidTaskType
@@ -52,16 +75,19 @@ pub type UpdateRuleError {
   UpdateDbError(pog.QueryError)
 }
 
+/// Errors returned when deleting a rule.
 pub type DeleteRuleError {
   DeleteNotFound
   DeleteDbError(pog.QueryError)
 }
 
+/// Errors returned when attaching a template to a rule.
 pub type AttachTemplateError {
   AttachNotFound
   AttachDbError(pog.QueryError)
 }
 
+/// Errors returned when detaching a template from a rule.
 pub type DetachTemplateError {
   DetachNotFound
   DetachDbError(pog.QueryError)
@@ -165,6 +191,10 @@ fn target_error_to_update_error(
 // Public API
 // =============================================================================
 
+/// Lists rules for a workflow.
+///
+/// Example:
+///   list_rules_for_workflow(db, workflow_id)
 pub fn list_rules_for_workflow(
   db: pog.Connection,
   workflow_id: Int,
@@ -176,6 +206,10 @@ pub fn list_rules_for_workflow(
   |> Ok
 }
 
+/// Fetches a single rule by id.
+///
+/// Example:
+///   get_rule(db, rule_id)
 pub fn get_rule(
   db: pog.Connection,
   rule_id: Int,
@@ -187,6 +221,10 @@ pub fn get_rule(
   }
 }
 
+/// Creates a new rule for a workflow.
+///
+/// Example:
+///   create_rule(db, workflow_id, name, goal, target)
 pub fn create_rule(
   db: pog.Connection,
   workflow_id: Int,
@@ -204,6 +242,28 @@ pub fn create_rule(
   let #(resource_type_value, task_type_value, to_state_value) =
     rules_target.to_db_values(target)
 
+  create_rule_in_db(
+    db,
+    workflow_id,
+    name,
+    goal,
+    resource_type_value,
+    task_type_value,
+    to_state_value,
+    active,
+  )
+}
+
+fn create_rule_in_db(
+  db: pog.Connection,
+  workflow_id: Int,
+  name: String,
+  goal: String,
+  resource_type_value: String,
+  task_type_value: Int,
+  to_state_value: String,
+  active: Bool,
+) -> Result(Rule, CreateRuleError) {
   case
     sql.rules_create(
       db,
@@ -218,19 +278,32 @@ pub fn create_rule(
   {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(rule_from_create_row(row))
     Ok(pog.Returned(rows: [], ..)) -> Error(CreateInvalidWorkflow)
-    Error(error) ->
-      case error {
-        pog.ConstraintViolated(constraint: constraint, ..) ->
-          case string.contains(constraint, "task_types") {
-            True -> Error(CreateInvalidTaskType)
-            False -> Error(CreateDbError(error))
-          }
-
-        _ -> Error(CreateDbError(error))
-      }
+    Error(error) -> Error(map_create_rule_error(error))
   }
 }
 
+fn map_create_rule_error(error: pog.QueryError) -> CreateRuleError {
+  case error {
+    pog.ConstraintViolated(constraint: constraint, ..) ->
+      map_create_rule_constraint(error, constraint)
+    _ -> CreateDbError(error)
+  }
+}
+
+fn map_create_rule_constraint(
+  error: pog.QueryError,
+  constraint: String,
+) -> CreateRuleError {
+  case string.contains(constraint, "task_types") {
+    True -> CreateInvalidTaskType
+    False -> CreateDbError(error)
+  }
+}
+
+/// Updates an existing rule.
+///
+/// Example:
+///   update_rule(db, rule_id, name, goal, target)
 pub fn update_rule(
   db: pog.Connection,
   rule_id: Int,
@@ -242,79 +315,137 @@ pub fn update_rule(
   active: Option(Bool),
 ) -> Result(Rule, UpdateRuleError) {
   case sql.rules_get(db, rule_id) {
-    Ok(pog.Returned(rows: [row, ..], ..)) -> {
-      let name_value = case name {
-        Some(value) -> value
-        None -> row.name
-      }
-      let goal_value = case goal {
-        Some(value) -> value
-        None -> row.goal
-      }
-      let resource_type_value = case resource_type {
-        Some(value) -> value
-        None -> row.resource_type
-      }
-      let task_type_value = case task_type_id {
-        Some(value) -> value
-        None -> row.task_type_id
-      }
-      let to_state_value = case to_state {
-        Some(value) -> value
-        None -> row.to_state
-      }
-      let active_value = case active {
-        Some(value) -> value
-        None -> row.active
-      }
-
-      use target <- result.try(
-        rules_target.from_strings(
-          resource_type_value,
-          task_type_value,
-          to_state_value,
-        )
-        |> result.map_error(target_error_to_update_error),
+    Ok(pog.Returned(rows: [row, ..], ..)) ->
+      update_rule_with_row(
+        db,
+        rule_id,
+        row,
+        name,
+        goal,
+        resource_type,
+        task_type_id,
+        to_state,
+        active,
       )
-      let #(resource_type_param, task_type_param, to_state_param) =
-        rules_target.to_db_values(target)
-      let active_flag = case active_value {
-        True -> 1
-        False -> 0
-      }
-
-      case
-        sql.rules_update(
-          db,
-          rule_id,
-          name_value,
-          goal_value,
-          resource_type_param,
-          task_type_param,
-          to_state_param,
-          active_flag,
-        )
-      {
-        Ok(pog.Returned(rows: [updated_row, ..], ..)) ->
-          Ok(rule_from_update_row(updated_row))
-        Ok(pog.Returned(rows: [], ..)) -> Error(UpdateNotFound)
-        Error(error) ->
-          case error {
-            pog.ConstraintViolated(constraint: constraint, ..) ->
-              case string.contains(constraint, "task_types") {
-                True -> Error(UpdateInvalidTaskType)
-                False -> Error(UpdateDbError(error))
-              }
-
-            _ -> Error(UpdateDbError(error))
-          }
-      }
-    }
     Ok(pog.Returned(rows: [], ..)) -> Error(UpdateNotFound)
     Error(error) -> Error(UpdateDbError(error))
   }
 }
 
+fn update_rule_with_row(
+  db: pog.Connection,
+  rule_id: Int,
+  row: sql.RulesGetRow,
+  name: Option(String),
+  goal: Option(String),
+  resource_type: Option(String),
+  task_type_id: Option(Int),
+  to_state: Option(String),
+  active: Option(Bool),
+) -> Result(Rule, UpdateRuleError) {
+  let name_value = case name {
+    Some(value) -> value
+    None -> row.name
+  }
+  let goal_value = case goal {
+    Some(value) -> value
+    None -> row.goal
+  }
+  let resource_type_value = case resource_type {
+    Some(value) -> value
+    None -> row.resource_type
+  }
+  let task_type_value = case task_type_id {
+    Some(value) -> value
+    None -> row.task_type_id
+  }
+  let to_state_value = case to_state {
+    Some(value) -> value
+    None -> row.to_state
+  }
+  let active_value = case active {
+    Some(value) -> value
+    None -> row.active
+  }
+
+  use target <- result.try(
+    rules_target.from_strings(
+      resource_type_value,
+      task_type_value,
+      to_state_value,
+    )
+    |> result.map_error(target_error_to_update_error),
+  )
+  let #(resource_type_param, task_type_param, to_state_param) =
+    rules_target.to_db_values(target)
+  let active_flag = case active_value {
+    True -> 1
+    False -> 0
+  }
+
+  update_rule_in_db(
+    db,
+    rule_id,
+    name_value,
+    goal_value,
+    resource_type_param,
+    task_type_param,
+    to_state_param,
+    active_flag,
+  )
+}
+
+fn update_rule_in_db(
+  db: pog.Connection,
+  rule_id: Int,
+  name_value: String,
+  goal_value: String,
+  resource_type_param: String,
+  task_type_param: Int,
+  to_state_param: String,
+  active_flag: Int,
+) -> Result(Rule, UpdateRuleError) {
+  case
+    sql.rules_update(
+      db,
+      rule_id,
+      name_value,
+      goal_value,
+      resource_type_param,
+      task_type_param,
+      to_state_param,
+      active_flag,
+    )
+  {
+    Ok(pog.Returned(rows: [updated_row, ..], ..)) ->
+      Ok(rule_from_update_row(updated_row))
+    Ok(pog.Returned(rows: [], ..)) -> Error(UpdateNotFound)
+    Error(error) -> Error(map_update_rule_error(error))
+  }
+}
+
+fn map_update_rule_error(error: pog.QueryError) -> UpdateRuleError {
+  case error {
+    pog.ConstraintViolated(constraint: constraint, ..) ->
+      map_update_rule_constraint(error, constraint)
+    _ -> UpdateDbError(error)
+  }
+}
+
+fn map_update_rule_constraint(
+  error: pog.QueryError,
+  constraint: String,
+) -> UpdateRuleError {
+  case string.contains(constraint, "task_types") {
+    True -> UpdateInvalidTaskType
+    False -> UpdateDbError(error)
+  }
+}
+
+/// Deletes a rule by id.
+///
+/// Example:
+///   delete_rule(db, rule_id)
 pub fn delete_rule(
   db: pog.Connection,
   rule_id: Int,
@@ -326,6 +457,10 @@ pub fn delete_rule(
   }
 }
 
+/// Lists templates attached to a rule.
+///
+/// Example:
+///   list_rule_templates(db, rule_id)
 pub fn list_rule_templates(
   db: pog.Connection,
   rule_id: Int,
@@ -337,6 +472,10 @@ pub fn list_rule_templates(
   |> Ok
 }
 
+/// Attaches a template to a rule with an execution order.
+///
+/// Example:
+///   attach_template(db, rule_id, template_id, 1)
 pub fn attach_template(
   db: pog.Connection,
   rule_id: Int,
@@ -350,6 +489,10 @@ pub fn attach_template(
   }
 }
 
+/// Detaches a template from a rule.
+///
+/// Example:
+///   detach_template(db, rule_id, template_id)
 pub fn detach_template(
   db: pog.Connection,
   rule_id: Int,

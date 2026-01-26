@@ -127,6 +127,7 @@ pub fn view_login(model: Model) -> Element(Msg) {
   ])
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Renders the forgot password form with email input and reset link display.
 pub fn view_forgot_password(model: Model) -> Element(Msg) {
   let submit_label = case model.auth.forgot_password_in_flight {

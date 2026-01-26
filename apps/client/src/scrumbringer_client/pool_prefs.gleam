@@ -61,6 +61,10 @@ pub type FiltersVisibility {
   FiltersHidden
 }
 
+/// Provides visibility from bool.
+///
+/// Example:
+///   visibility_from_bool(...)
 pub fn visibility_from_bool(value: Bool) -> FiltersVisibility {
   case value {
     True -> FiltersVisible
@@ -68,6 +72,10 @@ pub fn visibility_from_bool(value: Bool) -> FiltersVisibility {
   }
 }
 
+/// Provides visibility to bool.
+///
+/// Example:
+///   visibility_to_bool(...)
 pub fn visibility_to_bool(value: FiltersVisibility) -> Bool {
   case value {
     FiltersVisible -> True
@@ -149,17 +157,26 @@ pub fn shortcut_action(event: KeyEvent) -> ShortcutAction {
   // Esc always works to close dialogs
   case key {
     "escape" -> CloseDialog
-    _ ->
-      // Other shortcuts don't work when editing or modal is open
-      case editing || modal_open {
-        True -> NoAction
-        False ->
-          case key {
-            "n" -> OpenCreate
-            "f" -> ToggleFilters
-            "/" -> FocusSearch
-            _ -> NoAction
-          }
-      }
+    _ -> shortcut_action_for_key(key, editing, modal_open)
+  }
+}
+
+fn shortcut_action_for_key(
+  key: String,
+  editing: Bool,
+  modal_open: Bool,
+) -> ShortcutAction {
+  case editing || modal_open {
+    True -> NoAction
+    False -> shortcut_action_for_unlocked_key(key)
+  }
+}
+
+fn shortcut_action_for_unlocked_key(key: String) -> ShortcutAction {
+  case key {
+    "n" -> OpenCreate
+    "f" -> ToggleFilters
+    "/" -> FocusSearch
+    _ -> NoAction
   }
 }

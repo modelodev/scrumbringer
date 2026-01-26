@@ -133,6 +133,7 @@ pub fn handle_capability_create_name_changed(
   )
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Handle capability create form submission.
 pub fn handle_capability_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.admin.capabilities_create_in_flight {

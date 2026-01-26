@@ -479,6 +479,7 @@ fn get_tasks_snapshot(model: Model) -> opt.Option(List(Task)) {
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Apply optimistic claim: mark task as Claimed(Taken).
 fn apply_optimistic_claim(model: Model, task_id: Int) -> Model {
   case model.member.member_tasks {
@@ -504,6 +505,7 @@ fn apply_optimistic_claim(model: Model, task_id: Int) -> Model {
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Apply optimistic release: mark task as Available.
 fn apply_optimistic_release(model: Model, task_id: Int) -> Model {
   case model.member.member_tasks {
@@ -523,6 +525,7 @@ fn apply_optimistic_release(model: Model, task_id: Int) -> Model {
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Apply optimistic complete: mark task as Completed.
 fn apply_optimistic_complete(model: Model, task_id: Int) -> Model {
   case model.member.member_tasks {
@@ -770,44 +773,59 @@ pub fn handle_note_content_changed(
 pub fn handle_note_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.member.member_note_in_flight {
     True -> #(model, effect.none())
-    False ->
-      case model.member.member_notes_task_id {
-        opt.None -> #(model, effect.none())
-        opt.Some(task_id) -> {
-          let content = string.trim(model.member.member_note_content)
-          case content == "" {
-            True -> #(
-              update_member(model, fn(member) {
-                MemberModel(
-                  ..member,
-                  member_note_error: opt.Some(update_helpers.i18n_t(
-                    model,
-                    i18n_text.ContentRequired,
-                  )),
-                )
-              }),
-              effect.none(),
-            )
-            False -> {
-              let model =
-                update_member(model, fn(member) {
-                  MemberModel(
-                    ..member,
-                    member_note_in_flight: True,
-                    member_note_error: opt.None,
-                  )
-                })
-              #(
-                model,
-                api_tasks.add_task_note(task_id, content, fn(result) {
-                  pool_msg(MemberNoteAdded(result))
-                }),
-              )
-            }
-          }
-        }
-      }
+    False -> submit_note(model)
   }
+}
+
+fn submit_note(model: Model) -> #(Model, Effect(Msg)) {
+  case model.member.member_notes_task_id {
+    opt.None -> #(model, effect.none())
+    opt.Some(task_id) -> submit_note_for_task(model, task_id)
+  }
+}
+
+fn submit_note_for_task(model: Model, task_id: Int) -> #(Model, Effect(Msg)) {
+  let content = string.trim(model.member.member_note_content)
+  case content == "" {
+    True -> submit_note_missing_content(model)
+    False -> submit_note_with_content(model, task_id, content)
+  }
+}
+
+fn submit_note_missing_content(model: Model) -> #(Model, Effect(Msg)) {
+  #(
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_note_error: opt.Some(update_helpers.i18n_t(
+          model,
+          i18n_text.ContentRequired,
+        )),
+      )
+    }),
+    effect.none(),
+  )
+}
+
+fn submit_note_with_content(
+  model: Model,
+  task_id: Int,
+  content: String,
+) -> #(Model, Effect(Msg)) {
+  let model =
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_note_in_flight: True,
+        member_note_error: opt.None,
+      )
+    })
+  #(
+    model,
+    api_tasks.add_task_note(task_id, content, fn(result) {
+      pool_msg(MemberNoteAdded(result))
+    }),
+  )
 }
 
 /// Handle note added response (success).

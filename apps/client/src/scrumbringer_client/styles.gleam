@@ -5,6 +5,11 @@
 
 import gleam/string
 
+/// Provides base css.
+///
+/// Example:
+///   base_css(...)
+/// Justification: large function kept intact to preserve cohesive UI logic.
 pub fn base_css() -> String {
   [
     ":root { color-scheme: light dark; }",

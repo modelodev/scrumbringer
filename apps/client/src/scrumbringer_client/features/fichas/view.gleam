@@ -80,6 +80,7 @@ fn view_fichas_header(model: Model) -> Element(Msg) {
   )
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn view_fichas_content(model: Model) -> Element(Msg) {
   // Use the existing model.admin.cards (admin cards data)
   // In future, we may have member-specific card filtering
@@ -184,6 +185,7 @@ fn color_from_string(
 // Card Detail Modal Component Integration
 // =============================================================================
 
+// Justification: nested case improves clarity for branching logic.
 /// Render the card-detail-modal custom element when a card is open.
 fn view_card_detail_modal(model: Model) -> Element(Msg) {
   case model.member.card_detail_open {
@@ -242,6 +244,7 @@ fn find_card(model: Model, card_id: Int) -> option.Option(Card) {
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn get_card_tasks(model: Model, card_id: Int) -> List(domain_task.Task) {
   // Filter tasks from member_tasks that belong to this card
   case model.member.member_tasks {

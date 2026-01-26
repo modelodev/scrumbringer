@@ -66,22 +66,42 @@ fn create_with_retry(
     Ok(pog.Returned(rows: [], ..)) -> Error(NoRowReturned)
 
     Error(error) ->
-      case error {
-        pog.ConstraintViolated(constraint: constraint, ..) ->
-          case attempts > 0 && string.contains(constraint, "org_invites") {
-            True ->
-              create_with_retry(
-                db,
-                org_id,
-                created_by,
-                expires_in_hours,
-                attempts - 1,
-              )
-            False -> Error(DbError(error))
-          }
+      handle_create_error(
+        error,
+        db,
+        org_id,
+        created_by,
+        expires_in_hours,
+        attempts,
+      )
+  }
+}
 
-        _ -> Error(DbError(error))
+// Justification: nested case improves clarity for branching logic.
+fn handle_create_error(
+  error: pog.QueryError,
+  db: pog.Connection,
+  org_id: Int,
+  created_by: Int,
+  expires_in_hours: Int,
+  attempts: Int,
+) -> Result(OrgInvite, CreateInviteError) {
+  case error {
+    pog.ConstraintViolated(constraint: constraint, ..) ->
+      // Justification: nested case retries on token uniqueness violations.
+      case attempts > 0 && string.contains(constraint, "org_invites") {
+        True ->
+          create_with_retry(
+            db,
+            org_id,
+            created_by,
+            expires_in_hours,
+            attempts - 1,
+          )
+        False -> Error(DbError(error))
       }
+
+    _ -> Error(DbError(error))
   }
 }
 

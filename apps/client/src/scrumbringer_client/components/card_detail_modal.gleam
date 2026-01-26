@@ -612,6 +612,7 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
   ])
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn view_card_tasks_section(model: Model) -> Element(Msg) {
   let tasks = case model.tasks {
     Loaded(t) -> t

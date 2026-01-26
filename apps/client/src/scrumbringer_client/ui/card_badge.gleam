@@ -29,6 +29,7 @@ import scrumbringer_client/ui/color_picker.{type CardColor}
 // Initials Generation
 // =============================================================================
 
+// Justification: nested case improves clarity for branching logic.
 /// Generate initials from a card title.
 ///
 /// Rules:
@@ -36,6 +37,7 @@ import scrumbringer_client/ui/color_picker.{type CardColor}
 /// 2. If single word, take first 2 characters (e.g., "Refactor" → "RE")
 /// 3. Uppercase always
 /// 4. Max 2 characters
+/// Justification: nested case improves clarity for branching logic.
 pub fn generate_initials(title: String) -> String {
   let words =
     title

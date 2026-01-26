@@ -378,39 +378,45 @@ fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg))
 fn handle_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.create_in_flight {
     True -> #(model, effect.none())
-    False ->
-      case model.create_title {
-        "" -> #(
-          Model(
-            ..model,
-            create_error: option.Some(t(model.locale, i18n_text.TitleRequired)),
-          ),
-          effect.none(),
-        )
-        title ->
-          case model.project_id {
-            option.Some(project_id) -> #(
-              Model(..model, create_in_flight: True, create_error: option.None),
-              api_cards.create_card(
-                project_id,
-                title,
-                model.create_description,
-                model.create_color,
-                CreateResult,
-              ),
-            )
-            option.None -> #(
-              Model(
-                ..model,
-                create_error: option.Some(t(
-                  model.locale,
-                  i18n_text.SelectProjectFirst,
-                )),
-              ),
-              effect.none(),
-            )
-          }
-      }
+    False -> submit_create_title(model)
+  }
+}
+
+fn submit_create_title(model: Model) -> #(Model, Effect(Msg)) {
+  case model.create_title {
+    "" -> #(
+      Model(
+        ..model,
+        create_error: option.Some(t(model.locale, i18n_text.TitleRequired)),
+      ),
+      effect.none(),
+    )
+    title -> submit_create_with_title(model, title)
+  }
+}
+
+fn submit_create_with_title(
+  model: Model,
+  title: String,
+) -> #(Model, Effect(Msg)) {
+  case model.project_id {
+    option.Some(project_id) -> #(
+      Model(..model, create_in_flight: True, create_error: option.None),
+      api_cards.create_card(
+        project_id,
+        title,
+        model.create_description,
+        model.create_color,
+        CreateResult,
+      ),
+    )
+    option.None -> #(
+      Model(
+        ..model,
+        create_error: option.Some(t(model.locale, i18n_text.SelectProjectFirst)),
+      ),
+      effect.none(),
+    )
   }
 }
 
@@ -433,30 +439,36 @@ fn handle_create_success(model: Model, card: Card) -> #(Model, Effect(Msg)) {
 fn handle_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.edit_in_flight {
     True -> #(model, effect.none())
-    False ->
-      case model.edit_title {
-        "" -> #(
-          Model(
-            ..model,
-            edit_error: option.Some(t(model.locale, i18n_text.TitleRequired)),
-          ),
-          effect.none(),
-        )
-        title ->
-          case model.mode {
-            option.Some(ModeEdit(card)) -> #(
-              Model(..model, edit_in_flight: True, edit_error: option.None),
-              api_cards.update_card(
-                card.id,
-                title,
-                model.edit_description,
-                model.edit_color,
-                EditResult,
-              ),
-            )
-            _ -> #(model, effect.none())
-          }
-      }
+    False -> submit_edit(model)
+  }
+}
+
+fn submit_edit(model: Model) -> #(Model, Effect(Msg)) {
+  case model.edit_title {
+    "" -> #(
+      Model(
+        ..model,
+        edit_error: option.Some(t(model.locale, i18n_text.TitleRequired)),
+      ),
+      effect.none(),
+    )
+    title -> submit_edit_with_title(model, title)
+  }
+}
+
+fn submit_edit_with_title(model: Model, title: String) -> #(Model, Effect(Msg)) {
+  case model.mode {
+    option.Some(ModeEdit(card)) -> #(
+      Model(..model, edit_in_flight: True, edit_error: option.None),
+      api_cards.update_card(
+        card.id,
+        title,
+        model.edit_description,
+        model.edit_color,
+        EditResult,
+      ),
+    )
+    _ -> #(model, effect.none())
   }
 }
 
@@ -464,6 +476,7 @@ fn handle_edit_success(model: Model, card: Card) -> #(Model, Effect(Msg)) {
   #(reset_edit_fields(model), emit_card_updated(card))
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn handle_delete_confirmed(model: Model) -> #(Model, Effect(Msg)) {
   case model.delete_in_flight {
     True -> #(model, effect.none())

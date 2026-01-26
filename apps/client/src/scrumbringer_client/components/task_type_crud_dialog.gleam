@@ -310,6 +310,7 @@ fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg))
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn handle_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.project_id {
     None -> #(model, effect.none())
@@ -351,6 +352,7 @@ fn handle_create_success(
   )
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn handle_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.mode {
     Some(ModeEdit(task_type)) -> {

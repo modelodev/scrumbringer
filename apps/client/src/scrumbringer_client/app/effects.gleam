@@ -160,6 +160,7 @@ pub fn save_sidebar_state(state: client_state.SidebarCollapse) -> Effect(msg) {
   })
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Load sidebar collapse state from localStorage.
 ///
 /// Returns the persisted SidebarCollapse value.

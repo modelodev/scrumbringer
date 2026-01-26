@@ -42,6 +42,7 @@ import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/time
 import wisp
 
+/// Context shared by auth HTTP handlers (DB + JWT secret).
 pub type Ctx {
   Ctx(db: pog.Connection, jwt_secret: BitArray)
 }
@@ -49,6 +50,15 @@ pub type Ctx {
 const invite_rate_limit_window_seconds = 60
 
 const invite_rate_limit_limit = 30
+
+type RegistrationPayload {
+  RegistrationPayload(
+    email_raw: String,
+    password: String,
+    org_name_raw: String,
+    invite_token_raw: String,
+  )
+}
 
 fn client_ip(req: wisp.Request) -> opt.Option(String) {
   let xff =
@@ -97,82 +107,104 @@ fn invite_rate_limit_ok(prefix: String, req: wisp.Request) -> Bool {
   }
 }
 
+fn empty_to_option(value: String) -> opt.Option(String) {
+  case value {
+    "" -> opt.None
+    _ -> opt.Some(value)
+  }
+}
+
+fn register_decoder() -> decode.Decoder(RegistrationPayload) {
+  use email <- decode.optional_field("email", "", decode.string)
+  use password <- decode.field("password", decode.string)
+  use org_name <- decode.optional_field("org_name", "", decode.string)
+  use invite_token <- decode.optional_field("invite_token", "", decode.string)
+  decode.success(RegistrationPayload(
+    email_raw: email,
+    password: password,
+    org_name_raw: org_name,
+    invite_token_raw: invite_token,
+  ))
+}
+
+fn validate_password(password: String) -> Result(Nil, wisp.Response) {
+  case string.length(password) < 12 {
+    True ->
+      Error(api.error(
+        422,
+        "VALIDATION_ERROR",
+        "Password must be at least 12 characters",
+      ))
+
+    False -> Ok(Nil)
+  }
+}
+
+/// Registers a new user via the public API.
+///
+/// Example:
+///   handle_register(req, ctx)
 pub fn handle_register(req: wisp.Request, ctx: Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
 
   case invite_rate_limit_ok("register_invite", req) {
     False -> api.error(429, "RATE_LIMITED", "Too many attempts")
 
-    True -> {
-      use data <- wisp.require_json(req)
-
-      let decoder = {
-        use email <- decode.optional_field("email", "", decode.string)
-        use password <- decode.field("password", decode.string)
-        use org_name <- decode.optional_field("org_name", "", decode.string)
-        use invite_token <- decode.optional_field(
-          "invite_token",
-          "",
-          decode.string,
-        )
-        decode.success(#(email, password, org_name, invite_token))
-      }
-
-      case decode.run(data, decoder) {
-        Ok(#(email_raw, password, org_name_raw, invite_token_raw)) -> {
-          case string.length(password) < 12 {
-            True ->
-              api.error(
-                422,
-                "VALIDATION_ERROR",
-                "Password must be at least 12 characters",
-              )
-
-            False -> {
-              let org_name = case org_name_raw {
-                "" -> opt.None
-                other -> opt.Some(other)
-              }
-
-              let email = case email_raw {
-                "" -> opt.None
-                other -> opt.Some(other)
-              }
-
-              let invite_token = case invite_token_raw {
-                "" -> opt.None
-                other -> opt.Some(other)
-              }
-
-              let now_iso = time.now_iso8601()
-              let now_unix = time.now_unix_seconds()
-
-              let Ctx(db: db, jwt_secret: jwt_secret) = ctx
-
-              case
-                auth_registration.register(
-                  db,
-                  email,
-                  password,
-                  org_name,
-                  invite_token,
-                  now_iso,
-                  now_unix,
-                )
-              {
-                Ok(user) -> ok_with_auth(user, jwt_secret)
-                Error(error) -> auth_error_response(error)
-              }
-            }
-          }
-        }
-
-        Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
-      }
-    }
+    True -> register_with_payload(req, ctx)
   }
 }
 
+fn register_with_payload(req: wisp.Request, ctx: Ctx) -> wisp.Response {
+  use data <- wisp.require_json(req)
+
+  case decode.run(data, register_decoder()) {
+    Ok(payload) -> register_with_payload_value(ctx, payload)
+    Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
+  }
+}
+
+fn register_with_payload_value(
+  ctx: Ctx,
+  payload: RegistrationPayload,
+) -> wisp.Response {
+  case validate_password(payload.password) {
+    Error(response) -> response
+    Ok(Nil) -> register_valid_payload(ctx, payload)
+  }
+}
+
+fn register_valid_payload(
+  ctx: Ctx,
+  payload: RegistrationPayload,
+) -> wisp.Response {
+  let Ctx(db: db, jwt_secret: jwt_secret) = ctx
+
+  let org_name = empty_to_option(payload.org_name_raw)
+  let email = empty_to_option(payload.email_raw)
+  let invite_token = empty_to_option(payload.invite_token_raw)
+  let now_iso = time.now_iso8601()
+  let now_unix = time.now_unix_seconds()
+
+  case
+    auth_registration.register(
+      db,
+      email,
+      payload.password,
+      org_name,
+      invite_token,
+      now_iso,
+      now_unix,
+    )
+  {
+    Ok(user) -> ok_with_auth(user, jwt_secret)
+    Error(error) -> auth_error_response(error)
+  }
+}
+
+/// Validates an invite link token and returns the associated email if valid.
+///
+/// Example:
+///   handle_invite_link_validate(req, ctx, token)
 pub fn handle_invite_link_validate(
   req: wisp.Request,
   ctx: Ctx,
@@ -182,29 +214,34 @@ pub fn handle_invite_link_validate(
 
   case invite_rate_limit_ok("invite_links", req) {
     False -> api.error(429, "RATE_LIMITED", "Too many attempts")
-
-    True -> {
-      let Ctx(db: db, ..) = ctx
-
-      case org_invite_links_db.token_status(db, token) {
-        Error(_) -> api.error(500, "INTERNAL", "Database error")
-
-        Ok(org_invite_links_db.TokenMissing) ->
-          api.error(403, "INVITE_INVALID", "Invite token invalid")
-
-        Ok(org_invite_links_db.TokenInvalidated) ->
-          api.error(403, "INVITE_INVALID", "Invite token invalid")
-
-        Ok(org_invite_links_db.TokenUsed) ->
-          api.error(403, "INVITE_USED", "Invite token already used")
-
-        Ok(org_invite_links_db.TokenActive(email: email, ..)) ->
-          api.ok(json.object([#("email", json.string(email))]))
-      }
-    }
+    True -> invite_link_status(ctx, token)
   }
 }
 
+fn invite_link_status(ctx: Ctx, token: String) -> wisp.Response {
+  let Ctx(db: db, ..) = ctx
+
+  case org_invite_links_db.token_status(db, token) {
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
+
+    Ok(org_invite_links_db.TokenMissing) ->
+      api.error(403, "INVITE_INVALID", "Invite token invalid")
+
+    Ok(org_invite_links_db.TokenInvalidated) ->
+      api.error(403, "INVITE_INVALID", "Invite token invalid")
+
+    Ok(org_invite_links_db.TokenUsed) ->
+      api.error(403, "INVITE_USED", "Invite token already used")
+
+    Ok(org_invite_links_db.TokenActive(email: email, ..)) ->
+      api.ok(json.object([#("email", json.string(email))]))
+  }
+}
+
+/// Authenticates a user and sets session cookies.
+///
+/// Example:
+///   handle_login(req, ctx)
 pub fn handle_login(req: wisp.Request, ctx: Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
   use data <- wisp.require_json(req)
@@ -216,19 +253,29 @@ pub fn handle_login(req: wisp.Request, ctx: Ctx) -> wisp.Response {
   }
 
   case decode.run(data, decoder) {
-    Ok(#(email, password)) -> {
-      let Ctx(db: db, jwt_secret: jwt_secret) = ctx
-
-      case auth_login.login(db, email, password) {
-        Ok(user) -> ok_with_auth(user, jwt_secret)
-        Error(_) -> api.error(403, "FORBIDDEN", "Invalid credentials")
-      }
-    }
+    Ok(#(email, password)) -> login_with_credentials(ctx, email, password)
 
     Error(_) -> api.error(400, "VALIDATION_ERROR", "Invalid JSON")
   }
 }
 
+fn login_with_credentials(
+  ctx: Ctx,
+  email: String,
+  password: String,
+) -> wisp.Response {
+  let Ctx(db: db, jwt_secret: jwt_secret) = ctx
+
+  case auth_login.login(db, email, password) {
+    Ok(user) -> ok_with_auth(user, jwt_secret)
+    Error(_) -> api.error(403, "FORBIDDEN", "Invalid credentials")
+  }
+}
+
+/// Returns the current authenticated user.
+///
+/// Example:
+///   handle_me(req, ctx)
 pub fn handle_me(req: wisp.Request, ctx: Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Get)
 
@@ -238,21 +285,27 @@ pub fn handle_me(req: wisp.Request, ctx: Ctx) -> wisp.Response {
   }
 }
 
+/// Clears auth cookies and ends the session.
+///
+/// Example:
+///   handle_logout(req, ctx)
 pub fn handle_logout(req: wisp.Request, ctx: Ctx) -> wisp.Response {
   use <- wisp.require_method(req, http.Post)
 
   case require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
 
-    Ok(_user) -> {
-      case csrf.require_double_submit(req) {
-        Ok(Nil) ->
-          api.no_content()
-          |> api.clear_auth_cookies
+    Ok(_user) -> logout_with_csrf(req)
+  }
+}
 
-        Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
-      }
-    }
+fn logout_with_csrf(req: wisp.Request) -> wisp.Response {
+  case csrf.require_double_submit(req) {
+    Ok(Nil) ->
+      api.no_content()
+      |> api.clear_auth_cookies
+
+    Error(_) -> api.error(403, "FORBIDDEN", "CSRF token missing or invalid")
   }
 }
 
@@ -267,6 +320,10 @@ fn ok_with_auth(user: StoredUser, jwt_secret: BitArray) -> wisp.Response {
   |> api.set_auth_cookies(session_jwt, csrf)
 }
 
+/// Extracts the current user or returns an auth error.
+///
+/// Example:
+///   case require_current_user(req, ctx) { Ok(user) -> user, Error(_) -> todo }
 pub fn require_current_user(
   req: wisp.Request,
   ctx: Ctx,

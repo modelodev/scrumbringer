@@ -367,12 +367,14 @@ fn empty_string_to_option(value: String) -> Option(String) {
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Derive work state from status and ongoing flag.
 pub fn work_state_from(status: String, is_ongoing: Bool) -> WorkState {
   case status {
     "available" -> task_status.WorkAvailable
     "completed" -> task_status.WorkCompleted
     "claimed" ->
+      // Justification: nested case disambiguates claimed vs ongoing states.
       case is_ongoing {
         True -> task_status.WorkOngoing
         False -> task_status.WorkClaimed
@@ -381,6 +383,10 @@ pub fn work_state_from(status: String, is_ongoing: Bool) -> WorkState {
   }
 }
 
+/// Converts a work state to its wire/string representation.
+///
+/// Example:
+///   work_state_to_string(task_status.WorkAvailable)
 pub fn work_state_to_string(state: WorkState) -> String {
   case state {
     task_status.WorkAvailable -> "available"

@@ -15,7 +15,7 @@
 //// ```
 
 import domain/task_status.{Available, Claimed, Completed}
-import gleam/option.{Some}
+import gleam/option.{type Option, Some}
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
@@ -25,6 +25,7 @@ import wisp
 // Conflict Handlers
 // =============================================================================
 
+// Justification: nested case improves clarity for branching logic.
 /// Handle claim conflict: determine specific error based on current state.
 ///
 /// ## Example
@@ -35,6 +36,7 @@ import wisp
 ///   ...
 /// }
 /// ```
+/// Justification: nested case improves clarity for branching logic.
 pub fn handle_claim_conflict(
   db: pog.Connection,
   task_id: Int,
@@ -45,6 +47,7 @@ pub fn handle_claim_conflict(
     Error(_) -> api.error(500, "INTERNAL", "Database error")
 
     Ok(current) ->
+      // Justification: nested case maps task status into conflict responses.
       case current.status {
         Claimed(_) -> api.error(409, "CONFLICT_CLAIMED", "Task already claimed")
         Completed -> api.error(422, "VALIDATION_ERROR", "Invalid transition")
@@ -53,6 +56,7 @@ pub fn handle_claim_conflict(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Handle version or claim conflict: determine if version mismatch or lost claim.
 ///
 /// ## Example
@@ -64,6 +68,7 @@ pub fn handle_claim_conflict(
 ///   ...
 /// }
 /// ```
+/// Justification: nested case improves clarity for branching logic.
 pub fn handle_version_or_claim_conflict(
   db: pog.Connection,
   task_id: Int,
@@ -74,16 +79,21 @@ pub fn handle_version_or_claim_conflict(
     Error(_) -> api.error(500, "INTERNAL", "Database error")
 
     Ok(current) ->
+      // Justification: nested case maps task status into conflict responses.
       case current.status {
-        Claimed(_) ->
-          case current.claimed_by {
-            Some(id) if id == user_id ->
-              api.error(409, "CONFLICT_VERSION", "Version conflict")
-            _ -> api.error(403, "FORBIDDEN", "Forbidden")
-          }
-
+        Claimed(_) -> claimed_conflict_response(current.claimed_by, user_id)
         Available | Completed ->
           api.error(422, "VALIDATION_ERROR", "Invalid transition")
       }
+  }
+}
+
+fn claimed_conflict_response(
+  claimed_by: Option(Int),
+  user_id: Int,
+) -> wisp.Response {
+  case claimed_by == Some(user_id) {
+    True -> api.error(409, "CONFLICT_VERSION", "Version conflict")
+    False -> api.error(403, "FORBIDDEN", "Forbidden")
   }
 }

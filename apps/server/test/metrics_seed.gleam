@@ -35,6 +35,7 @@ import scrumbringer_server/services/rules_engine
 // Public API
 // =============================================================================
 
+// Justification: large function kept intact to preserve cohesive logic.
 /// Run the full seed and return summary stats.
 pub fn seed() -> Result(SeedResult, String) {
   io.println("\n========================================")

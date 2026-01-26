@@ -10,6 +10,16 @@
 //// - Login credential verification
 //// - Organization creation for new users
 //// - Password hashing and validation
+////
+//// ## Non-responsibilities
+////
+//// - HTTP request handling (see `http/auth.gleam`)
+//// - Database persistence (see `persistence/auth/`)
+////
+//// ## Relationships
+////
+//// - Depends on `services/password.gleam` for hashing
+//// - Uses `services/store_state.gleam` for in-memory state models
 
 import domain/org_role.{Admin, Member}
 import gleam/dict
@@ -19,6 +29,7 @@ import pog
 import scrumbringer_server/services/password
 import scrumbringer_server/services/store_state as ss
 
+/// Errors returned by authentication workflows.
 pub type AuthError {
   InviteRequired
   InviteInvalid
@@ -31,6 +42,10 @@ pub type AuthError {
   DbError(pog.QueryError)
 }
 
+/// Registers a user in the in-memory auth state.
+///
+/// Example:
+///   register(state, email, password, org_name, invite_code, now_iso, now_unix)
 pub fn register(
   state: ss.State,
   email: String,
@@ -200,22 +215,36 @@ fn validate_invite(
   code: String,
   now_unix: Int,
 ) -> Result(ss.OrgInvite, AuthError) {
-  case dict.get(state.invites_by_code, code) {
-    Error(_) -> Error(InviteInvalid)
-    Ok(invite) -> {
-      case invite.used_at_unix {
-        Some(_) -> Error(InviteUsed)
-        None -> {
-          case invite.expires_at_unix {
-            Some(expires) if now_unix > expires -> Error(InviteExpired)
-            _ -> Ok(invite)
-          }
-        }
-      }
-    }
+  use invite <- result.try(
+    dict.get(state.invites_by_code, code)
+    |> result.replace_error(InviteInvalid),
+  )
+  use _ <- result.try(check_invite_used(invite))
+  use _ <- result.try(check_invite_expired(invite, now_unix))
+  Ok(invite)
+}
+
+fn check_invite_used(invite: ss.OrgInvite) -> Result(Nil, AuthError) {
+  case invite.used_at_unix {
+    Some(_) -> Error(InviteUsed)
+    None -> Ok(Nil)
   }
 }
 
+fn check_invite_expired(
+  invite: ss.OrgInvite,
+  now_unix: Int,
+) -> Result(Nil, AuthError) {
+  case invite.expires_at_unix {
+    Some(expires) if now_unix > expires -> Error(InviteExpired)
+    _ -> Ok(Nil)
+  }
+}
+
+/// Authenticates a user against the in-memory auth state.
+///
+/// Example:
+///   login(state, email, password)
 pub fn login(
   state: ss.State,
   email: String,
@@ -242,10 +271,18 @@ pub fn login(
   }
 }
 
+/// Returns a user by id from the in-memory auth state.
+///
+/// Example:
+///   get_user(state, user_id)
 pub fn get_user(state: ss.State, user_id: Int) -> Result(ss.StoredUser, Nil) {
   dict.get(state.users_by_id, user_id)
 }
 
+/// Inserts an invite into the in-memory state.
+///
+/// Example:
+///   insert_invite(state, invite)
 pub fn insert_invite(state: ss.State, invite: ss.OrgInvite) -> ss.State {
   ss.State(
     ..state,

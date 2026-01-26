@@ -1,6 +1,22 @@
 //// Database operations for task templates.
 ////
-//// Handles listing and CRUD for reusable task templates scoped to projects.
+//// ## Mission
+////
+//// Persist reusable task templates scoped to projects.
+////
+//// ## Responsibilities
+////
+//// - List, create, update, and delete templates
+//// - Map SQL rows into domain records
+////
+//// ## Non-responsibilities
+////
+//// - HTTP request handling (see `http/task_templates.gleam`)
+//// - Task type validation rules (see `services/task_types_db.gleam`)
+////
+//// ## Relationships
+////
+//// - Uses `sql.gleam` for query execution
 
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -10,7 +26,7 @@ import helpers/option as option_helpers
 import pog
 import scrumbringer_server/sql
 
-/// Story 4.9 AC20: Added rules_count field.
+/// Template definition for creating tasks (includes rules_count).
 pub type TaskTemplate {
   TaskTemplate(
     id: Int,
@@ -27,17 +43,20 @@ pub type TaskTemplate {
   )
 }
 
+/// Errors returned when creating a template.
 pub type CreateTemplateError {
   CreateInvalidTypeId
   CreateDbError(pog.QueryError)
 }
 
+/// Errors returned when updating a template.
 pub type UpdateTemplateError {
   UpdateNotFound
   UpdateInvalidTypeId
   UpdateDbError(pog.QueryError)
 }
 
+/// Errors returned when deleting a template.
 pub type DeleteTemplateError {
   DeleteNotFound
   DeleteDbError(pog.QueryError)
@@ -118,6 +137,10 @@ fn from_update_row(row: sql.TaskTemplatesUpdateRow) -> TaskTemplate {
 // Public API
 // =============================================================================
 
+/// Lists templates for a project.
+///
+/// Example:
+///   list_project_templates(db, project_id)
 pub fn list_project_templates(
   db: pog.Connection,
   project_id: Int,
@@ -129,6 +152,10 @@ pub fn list_project_templates(
   |> Ok
 }
 
+/// Fetches a template by id.
+///
+/// Example:
+///   get_template(db, template_id)
 pub fn get_template(
   db: pog.Connection,
   template_id: Int,
@@ -140,6 +167,10 @@ pub fn get_template(
   }
 }
 
+/// Creates a new task template.
+///
+/// Example:
+///   create_template(db, org_id, project_id, name, desc, type_id, priority, user_id)
 pub fn create_template(
   db: pog.Connection,
   org_id: Int,
@@ -168,6 +199,10 @@ pub fn create_template(
   }
 }
 
+/// Updates a task template.
+///
+/// Example:
+///   update_template(db, template_id, org_id, project_id, name, desc, type_id, priority)
 pub fn update_template(
   db: pog.Connection,
   template_id: Int,
@@ -210,6 +245,10 @@ fn option_string_update_to_db(value: Option(String)) -> String {
   }
 }
 
+/// Deletes a template by id.
+///
+/// Example:
+///   delete_template(db, template_id, org_id)
 pub fn delete_template(
   db: pog.Connection,
   template_id: Int,
@@ -222,6 +261,11 @@ pub fn delete_template(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
+/// Maps constraint violations into domain errors.
+///
+/// Example:
+///   constraint_to_error(error)
 pub fn constraint_to_error(
   error: pog.QueryError,
 ) -> Result(Nil, CreateTemplateError) {

@@ -321,40 +321,45 @@ fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg))
 fn handle_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.create_in_flight {
     True -> #(model, effect.none())
-    False ->
-      case model.create_name {
-        "" -> #(
-          Model(
-            ..model,
-            create_error: option.Some(t(model.locale, i18n_text.NameRequired)),
-          ),
-          effect.none(),
-        )
-        name ->
-          // Workflows are now project-scoped only
-          case model.project_id {
-            option.Some(project_id) -> #(
-              Model(..model, create_in_flight: True, create_error: option.None),
-              api_workflows.create_project_workflow(
-                project_id,
-                name,
-                model.create_description,
-                model.create_active,
-                CreateResult,
-              ),
-            )
-            option.None -> #(
-              Model(
-                ..model,
-                create_error: option.Some(t(
-                  model.locale,
-                  i18n_text.SelectProjectFirst,
-                )),
-              ),
-              effect.none(),
-            )
-          }
-      }
+    False -> submit_workflow_name(model)
+  }
+}
+
+fn submit_workflow_name(model: Model) -> #(Model, Effect(Msg)) {
+  case model.create_name {
+    "" -> #(
+      Model(
+        ..model,
+        create_error: option.Some(t(model.locale, i18n_text.NameRequired)),
+      ),
+      effect.none(),
+    )
+    name -> submit_workflow_with_name(model, name)
+  }
+}
+
+fn submit_workflow_with_name(
+  model: Model,
+  name: String,
+) -> #(Model, Effect(Msg)) {
+  case model.project_id {
+    option.Some(project_id) -> #(
+      Model(..model, create_in_flight: True, create_error: option.None),
+      api_workflows.create_project_workflow(
+        project_id,
+        name,
+        model.create_description,
+        model.create_active,
+        CreateResult,
+      ),
+    )
+    option.None -> #(
+      Model(
+        ..model,
+        create_error: option.Some(t(model.locale, i18n_text.SelectProjectFirst)),
+      ),
+      effect.none(),
+    )
   }
 }
 
@@ -379,30 +384,36 @@ fn handle_create_success(
 fn handle_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.edit_in_flight {
     True -> #(model, effect.none())
-    False ->
-      case model.edit_name {
-        "" -> #(
-          Model(
-            ..model,
-            edit_error: option.Some(t(model.locale, i18n_text.NameRequired)),
-          ),
-          effect.none(),
-        )
-        name ->
-          case model.mode {
-            option.Some(ModeEdit(workflow)) -> #(
-              Model(..model, edit_in_flight: True, edit_error: option.None),
-              api_workflows.update_workflow(
-                workflow.id,
-                name,
-                model.edit_description,
-                model.edit_active,
-                EditResult,
-              ),
-            )
-            _ -> #(model, effect.none())
-          }
-      }
+    False -> submit_edit(model)
+  }
+}
+
+fn submit_edit(model: Model) -> #(Model, Effect(Msg)) {
+  case model.edit_name {
+    "" -> #(
+      Model(
+        ..model,
+        edit_error: option.Some(t(model.locale, i18n_text.NameRequired)),
+      ),
+      effect.none(),
+    )
+    name -> submit_edit_with_name(model, name)
+  }
+}
+
+fn submit_edit_with_name(model: Model, name: String) -> #(Model, Effect(Msg)) {
+  case model.mode {
+    option.Some(ModeEdit(workflow)) -> #(
+      Model(..model, edit_in_flight: True, edit_error: option.None),
+      api_workflows.update_workflow(
+        workflow.id,
+        name,
+        model.edit_description,
+        model.edit_active,
+        EditResult,
+      ),
+    )
+    _ -> #(model, effect.none())
   }
 }
 
@@ -413,6 +424,7 @@ fn handle_edit_success(
   #(reset_edit_fields(model), emit_workflow_updated(workflow))
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn handle_delete_confirmed(model: Model) -> #(Model, Effect(Msg)) {
   case model.delete_in_flight {
     True -> #(model, effect.none())

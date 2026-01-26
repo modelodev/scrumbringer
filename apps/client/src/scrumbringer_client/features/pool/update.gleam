@@ -37,10 +37,10 @@ import scrumbringer_client/api/tasks as api_tasks
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, MemberCanvasRectFetched, MemberDrag, MemberModel,
-  MemberPoolMyTasksRectFetched, MemberPositionSaved, MemberTaskClaimed,
-  PoolDragDragging, PoolDragIdle, PoolDragPendingRect, Rect, pool_msg,
-  rect_contains_point, update_member,
+  type Model, type Msg, type PoolDragState, MemberCanvasRectFetched, MemberDrag,
+  MemberModel, MemberPoolMyTasksRectFetched, MemberPositionSaved,
+  MemberTaskClaimed, PoolDragDragging, PoolDragIdle, PoolDragPendingRect, Rect,
+  pool_msg, rect_contains_point, update_member,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/member_section
@@ -207,90 +207,101 @@ pub fn handle_global_keydown(
   model: Model,
   event: pool_prefs.KeyEvent,
 ) -> #(Model, Effect(Msg)) {
-  case
-    model.core.page == client_state.Member
-    && model.member.member_section == member_section.Pool
-  {
+  case is_pool_shortcut_target(model) {
     False -> #(model, effect.none())
-    True -> {
-      case pool_prefs.shortcut_action(event) {
-        pool_prefs.NoAction -> #(model, effect.none())
+    True -> handle_pool_shortcut_action(model, event)
+  }
+}
 
-        pool_prefs.ToggleFilters -> {
-          let next = !model.member.member_pool_filters_visible
-          #(
-            update_member(model, fn(member) {
-              MemberModel(..member, member_pool_filters_visible: next)
-            }),
-            save_pool_filters_visible_effect(next),
-          )
-        }
+fn is_pool_shortcut_target(model: Model) -> Bool {
+  model.core.page == client_state.Member
+  && model.member.member_section == member_section.Pool
+}
 
-        pool_prefs.FocusSearch -> {
-          let should_show = !model.member.member_pool_filters_visible
-          let model =
-            update_member(model, fn(member) {
-              MemberModel(..member, member_pool_filters_visible: True)
-            })
-          let show_fx = case should_show {
-            True -> save_pool_filters_visible_effect(True)
-            False -> effect.none()
-          }
-          #(
-            model,
-            effect.batch([
-              show_fx,
-              app_effects.focus_element_after_timeout("pool-filter-q", 0),
-            ]),
-          )
-        }
+fn handle_pool_shortcut_action(
+  model: Model,
+  event: pool_prefs.KeyEvent,
+) -> #(Model, Effect(Msg)) {
+  case pool_prefs.shortcut_action(event) {
+    pool_prefs.NoAction -> #(model, effect.none())
+    pool_prefs.ToggleFilters -> toggle_filters_shortcut(model)
+    pool_prefs.FocusSearch -> focus_search_shortcut(model)
+    pool_prefs.OpenCreate -> open_create_shortcut(model)
+    pool_prefs.CloseDialog -> close_dialog_shortcut(model)
+  }
+}
 
-        pool_prefs.OpenCreate -> {
-          case model.member.member_create_dialog_open {
-            True -> #(model, effect.none())
-            False -> #(
-              update_member(model, fn(member) {
-                MemberModel(..member, member_create_dialog_open: True)
-              }),
-              effect.none(),
-            )
-          }
-        }
+fn toggle_filters_shortcut(model: Model) -> #(Model, Effect(Msg)) {
+  let next = !model.member.member_pool_filters_visible
+  #(
+    update_member(model, fn(member) {
+      MemberModel(..member, member_pool_filters_visible: next)
+    }),
+    save_pool_filters_visible_effect(next),
+  )
+}
 
-        pool_prefs.CloseDialog -> {
-          // Close any open dialog
-          case
-            model.member.member_create_dialog_open,
-            opt.is_some(model.member.member_notes_task_id),
-            opt.is_some(model.member.member_position_edit_task)
-          {
-            True, _, _ -> #(
-              update_member(model, fn(member) {
-                MemberModel(..member, member_create_dialog_open: False)
-              }),
-              effect.none(),
-            )
-            _, True, _ -> #(
-              update_member(model, fn(member) {
-                MemberModel(..member, member_notes_task_id: opt.None)
-              }),
-              effect.none(),
-            )
-            _, _, True -> #(
-              update_member(model, fn(member) {
-                MemberModel(
-                  ..member,
-                  member_position_edit_task: opt.None,
-                  member_position_edit_error: opt.None,
-                )
-              }),
-              effect.none(),
-            )
-            _, _, _ -> #(model, effect.none())
-          }
-        }
-      }
-    }
+fn focus_search_shortcut(model: Model) -> #(Model, Effect(Msg)) {
+  let should_show = !model.member.member_pool_filters_visible
+  let model =
+    update_member(model, fn(member) {
+      MemberModel(..member, member_pool_filters_visible: True)
+    })
+  let show_fx = case should_show {
+    True -> save_pool_filters_visible_effect(True)
+    False -> effect.none()
+  }
+
+  #(
+    model,
+    effect.batch([
+      show_fx,
+      app_effects.focus_element_after_timeout("pool-filter-q", 0),
+    ]),
+  )
+}
+
+fn open_create_shortcut(model: Model) -> #(Model, Effect(Msg)) {
+  case model.member.member_create_dialog_open {
+    True -> #(model, effect.none())
+    False -> #(
+      update_member(model, fn(member) {
+        MemberModel(..member, member_create_dialog_open: True)
+      }),
+      effect.none(),
+    )
+  }
+}
+
+fn close_dialog_shortcut(model: Model) -> #(Model, Effect(Msg)) {
+  case
+    model.member.member_create_dialog_open,
+    opt.is_some(model.member.member_notes_task_id),
+    opt.is_some(model.member.member_position_edit_task)
+  {
+    True, _, _ -> #(
+      update_member(model, fn(member) {
+        MemberModel(..member, member_create_dialog_open: False)
+      }),
+      effect.none(),
+    )
+    _, True, _ -> #(
+      update_member(model, fn(member) {
+        MemberModel(..member, member_notes_task_id: opt.None)
+      }),
+      effect.none(),
+    )
+    _, _, True -> #(
+      update_member(model, fn(member) {
+        MemberModel(
+          ..member,
+          member_position_edit_task: opt.None,
+          member_position_edit_error: opt.None,
+        )
+      }),
+      effect.none(),
+    )
+    _, _, _ -> #(model, effect.none())
   }
 }
 
@@ -303,15 +314,12 @@ pub fn handle_pool_drag_to_claim_armed(
   model: Model,
   armed: Bool,
 ) -> #(Model, Effect(Msg)) {
-  let next_drag = case armed {
-    True ->
-      case model.member.member_pool_drag {
-        PoolDragDragging(rect: rect, ..) ->
-          PoolDragDragging(over_my_tasks: False, rect: rect)
-        PoolDragPendingRect -> PoolDragPendingRect
-        PoolDragIdle -> PoolDragPendingRect
-      }
-    False -> PoolDragIdle
+  let next_drag = case armed, model.member.member_pool_drag {
+    True, PoolDragDragging(rect: rect, ..) ->
+      PoolDragDragging(over_my_tasks: False, rect: rect)
+    True, PoolDragPendingRect -> PoolDragPendingRect
+    True, PoolDragIdle -> PoolDragPendingRect
+    False, _ -> PoolDragIdle
   }
 
   #(
@@ -331,15 +339,13 @@ pub fn handle_pool_my_tasks_rect_fetched(
   height: Int,
 ) -> #(Model, Effect(Msg)) {
   let rect = Rect(left: left, top: top, width: width, height: height)
-  let next_drag = case model.member.member_pool_drag {
-    PoolDragDragging(over_my_tasks: over, ..) ->
+  let next_drag = case model.member.member_pool_drag, model.member.member_drag {
+    PoolDragDragging(over_my_tasks: over, ..), _ ->
       PoolDragDragging(over_my_tasks: over, rect: rect)
-    PoolDragPendingRect ->
-      case model.member.member_drag {
-        opt.Some(_) -> PoolDragDragging(over_my_tasks: False, rect: rect)
-        opt.None -> PoolDragIdle
-      }
-    PoolDragIdle -> PoolDragIdle
+    PoolDragPendingRect, opt.Some(_) ->
+      PoolDragDragging(over_my_tasks: False, rect: rect)
+    PoolDragPendingRect, opt.None -> PoolDragIdle
+    PoolDragIdle, _ -> PoolDragIdle
   }
 
   #(
@@ -419,18 +425,14 @@ pub fn handle_drag_moved(
       let x = client_x - model.member.member_canvas_left - ox
       let y = client_y - model.member.member_canvas_top - oy
 
-      let over_my_tasks = case model.member.member_pool_drag {
-        PoolDragDragging(rect: rect, ..) ->
-          rect_contains_point(rect, client_x, client_y)
-        _ -> False
-      }
-
-      let next_drag = case model.member.member_pool_drag {
-        PoolDragDragging(rect: rect, ..) ->
-          PoolDragDragging(over_my_tasks: over_my_tasks, rect: rect)
-        PoolDragPendingRect -> PoolDragPendingRect
-        PoolDragIdle -> PoolDragIdle
-      }
+      let over_my_tasks =
+        pool_drag_over_my_tasks(
+          model.member.member_pool_drag,
+          client_x,
+          client_y,
+        )
+      let next_drag =
+        next_pool_drag_state(model.member.member_pool_drag, over_my_tasks)
 
       #(
         update_member(model, fn(member) {
@@ -457,60 +459,94 @@ pub fn handle_drag_ended(model: Model) -> #(Model, Effect(Msg)) {
 
     opt.Some(drag) -> {
       let MemberDrag(task_id: task_id, ..) = drag
-
-      let over_my_tasks = case model.member.member_pool_drag {
-        PoolDragDragging(over_my_tasks: over, ..) -> over
-        _ -> False
-      }
-
-      let model =
-        update_member(model, fn(member) {
-          MemberModel(
-            ..member,
-            member_drag: opt.None,
-            member_pool_drag: PoolDragIdle,
-          )
-        })
-
-      case over_my_tasks {
-        True -> {
-          case
-            update_helpers.find_task_by_id(model.member.member_tasks, task_id)
-          {
-            opt.Some(Task(version: version, ..)) ->
-              case model.member.member_task_mutation_in_flight {
-                True -> #(model, effect.none())
-                False -> #(
-                  update_member(model, fn(member) {
-                    MemberModel(..member, member_task_mutation_in_flight: True)
-                  }),
-                  api_tasks.claim_task(task_id, version, fn(result) {
-                    pool_msg(MemberTaskClaimed(result))
-                  }),
-                )
-              }
-
-            opt.None -> #(model, effect.none())
-          }
-        }
-
-        False -> {
-          let #(x, y) = case
-            dict.get(model.member.member_positions_by_task, task_id)
-          {
-            Ok(xy) -> xy
-            Error(_) -> #(0, 0)
-          }
-
-          #(
-            model,
-            api_tasks.upsert_me_task_position(task_id, x, y, fn(result) {
-              pool_msg(MemberPositionSaved(result))
-            }),
-          )
-        }
-      }
+      handle_drag_end_for_task(model, task_id)
     }
+  }
+}
+
+fn pool_drag_over_my_tasks(
+  drag_state: PoolDragState,
+  client_x: Int,
+  client_y: Int,
+) -> Bool {
+  case drag_state {
+    PoolDragDragging(rect: rect, ..) ->
+      rect_contains_point(rect, client_x, client_y)
+    _ -> False
+  }
+}
+
+fn next_pool_drag_state(
+  drag_state: PoolDragState,
+  over_my_tasks: Bool,
+) -> PoolDragState {
+  case drag_state {
+    PoolDragDragging(rect: rect, ..) ->
+      PoolDragDragging(over_my_tasks: over_my_tasks, rect: rect)
+    PoolDragPendingRect -> PoolDragPendingRect
+    PoolDragIdle -> PoolDragIdle
+  }
+}
+
+fn handle_drag_end_for_task(model: Model, task_id: Int) -> #(Model, Effect(Msg)) {
+  let over_my_tasks = is_over_my_tasks(model.member.member_pool_drag)
+  let model = clear_pool_drag_state(model)
+
+  case over_my_tasks {
+    True -> handle_claim_drop(model, task_id)
+    False -> handle_position_drop(model, task_id)
+  }
+}
+
+fn is_over_my_tasks(drag_state: PoolDragState) -> Bool {
+  case drag_state {
+    PoolDragDragging(over_my_tasks: over, ..) -> over
+    _ -> False
+  }
+}
+
+fn clear_pool_drag_state(model: Model) -> Model {
+  update_member(model, fn(member) {
+    MemberModel(..member, member_drag: opt.None, member_pool_drag: PoolDragIdle)
+  })
+}
+
+fn handle_claim_drop(model: Model, task_id: Int) -> #(Model, Effect(Msg)) {
+  case
+    update_helpers.find_task_by_id(model.member.member_tasks, task_id),
+    model.member.member_task_mutation_in_flight
+  {
+    opt.Some(Task(version: version, ..)), False -> #(
+      update_member(model, fn(member) {
+        MemberModel(..member, member_task_mutation_in_flight: True)
+      }),
+      api_tasks.claim_task(task_id, version, fn(result) {
+        pool_msg(MemberTaskClaimed(result))
+      }),
+    )
+    opt.Some(_), True -> #(model, effect.none())
+    opt.None, _ -> #(model, effect.none())
+  }
+}
+
+fn handle_position_drop(model: Model, task_id: Int) -> #(Model, Effect(Msg)) {
+  let #(x, y) =
+    position_for_task(model.member.member_positions_by_task, task_id)
+  #(
+    model,
+    api_tasks.upsert_me_task_position(task_id, x, y, fn(result) {
+      pool_msg(MemberPositionSaved(result))
+    }),
+  )
+}
+
+fn position_for_task(
+  positions: dict.Dict(Int, #(Int, Int)),
+  task_id: Int,
+) -> #(Int, Int) {
+  case dict.get(positions, task_id) {
+    Ok(xy) -> xy
+    Error(_) -> #(0, 0)
   }
 }
 
@@ -582,6 +618,7 @@ pub fn handle_position_edit_y_changed(
   )
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Handle position edit form submission.
 pub fn handle_position_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.member.member_position_edit_in_flight {
@@ -589,42 +626,57 @@ pub fn handle_position_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
     False ->
       case model.member.member_position_edit_task {
         opt.None -> #(model, effect.none())
-        opt.Some(task_id) ->
-          case
-            int.parse(model.member.member_position_edit_x),
-            int.parse(model.member.member_position_edit_y)
-          {
-            Ok(x), Ok(y) -> {
-              let model =
-                update_member(model, fn(member) {
-                  MemberModel(
-                    ..member,
-                    member_position_edit_in_flight: True,
-                    member_position_edit_error: opt.None,
-                  )
-                })
-              #(
-                model,
-                api_tasks.upsert_me_task_position(task_id, x, y, fn(result) {
-                  pool_msg(MemberPositionSaved(result))
-                }),
-              )
-            }
-            _, _ -> #(
-              update_member(model, fn(member) {
-                MemberModel(
-                  ..member,
-                  member_position_edit_error: opt.Some(update_helpers.i18n_t(
-                    model,
-                    i18n_text.InvalidXY,
-                  )),
-                )
-              }),
-              effect.none(),
-            )
-          }
+        opt.Some(task_id) -> submit_position_edit(model, task_id)
       }
   }
+}
+
+fn submit_position_edit(model: Model, task_id: Int) -> #(Model, Effect(Msg)) {
+  case
+    int.parse(model.member.member_position_edit_x),
+    int.parse(model.member.member_position_edit_y)
+  {
+    Ok(x), Ok(y) -> submit_position_edit_valid(model, task_id, x, y)
+    _, _ -> submit_position_edit_invalid(model)
+  }
+}
+
+fn submit_position_edit_valid(
+  model: Model,
+  task_id: Int,
+  x: Int,
+  y: Int,
+) -> #(Model, Effect(Msg)) {
+  let model =
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_position_edit_in_flight: True,
+        member_position_edit_error: opt.None,
+      )
+    })
+
+  #(
+    model,
+    api_tasks.upsert_me_task_position(task_id, x, y, fn(result) {
+      pool_msg(MemberPositionSaved(result))
+    }),
+  )
+}
+
+fn submit_position_edit_invalid(model: Model) -> #(Model, Effect(Msg)) {
+  #(
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_position_edit_error: opt.Some(update_helpers.i18n_t(
+          model,
+          i18n_text.InvalidXY,
+        )),
+      )
+    }),
+    effect.none(),
+  )
 }
 
 /// Handle position saved response (success).

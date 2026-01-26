@@ -144,26 +144,50 @@ pub fn clear_filters(state: UrlState) -> UrlState {
 // Accessors (read-only)
 // =============================================================================
 
+/// Provides project.
+///
+/// Example:
+///   project(...)
 pub fn project(state: UrlState) -> Option(Int) {
   state.project
 }
 
+/// Provides view.
+///
+/// Example:
+///   view(...)
 pub fn view(state: UrlState) -> ViewMode {
   state.view
 }
 
+/// Provides type filter.
+///
+/// Example:
+///   type_filter(...)
 pub fn type_filter(state: UrlState) -> Option(Int) {
   state.type_filter
 }
 
+/// Provides capability filter.
+///
+/// Example:
+///   capability_filter(...)
 pub fn capability_filter(state: UrlState) -> Option(Int) {
   state.capability_filter
 }
 
+/// Provides search.
+///
+/// Example:
+///   search(...)
 pub fn search(state: UrlState) -> Option(String) {
   state.search
 }
 
+/// Provides expanded card.
+///
+/// Example:
+///   expanded_card(...)
 pub fn expanded_card(state: UrlState) -> Option(Int) {
   state.expanded_card
 }
@@ -257,6 +281,7 @@ fn parse_query_pairs(query: String) -> List(#(String, String)) {
   })
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn parse_optional_int_param(
   params: List(#(String, String)),
   key: String,
@@ -272,6 +297,7 @@ fn parse_optional_int_param(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn parse_optional_view_param(
   params: List(#(String, String)),
   key: String,

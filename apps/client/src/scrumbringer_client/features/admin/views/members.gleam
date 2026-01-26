@@ -59,6 +59,7 @@ import scrumbringer_client/utils/format_date
 // Members View
 // =============================================================================
 
+// Justification: nested case improves clarity for branching logic.
 /// Project members management view.
 pub fn view_members(
   model: Model,
@@ -345,6 +346,7 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
   ])
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn view_org_users_search_results(
   model: Model,
   results: OrgUsersSearchState,
@@ -460,6 +462,8 @@ fn view_remove_member_dialog(
 
 /// Member capabilities dialog (AC11-14).
 /// Shows checkboxes for all project capabilities, allowing assignment.
+// Justification: large function kept intact to preserve cohesive UI logic.
+
 fn view_member_capabilities_dialog(
   model: Model,
   user_id: Int,

@@ -131,6 +131,7 @@ pub fn handle_org_users_search_results_ok(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Handle org users search results error.
 /// Ignores stale responses by checking token.
 pub fn handle_org_users_search_results_error(

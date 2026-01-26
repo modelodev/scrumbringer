@@ -387,50 +387,57 @@ fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg))
 fn handle_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.create_in_flight {
     True -> #(model, effect.none())
-    False ->
-      case model.create_name, model.create_type_id {
-        "", _ -> #(
-          Model(
-            ..model,
-            create_error: option.Some(t(model.locale, i18n_text.NameRequired)),
-          ),
-          effect.none(),
-        )
-        _, option.None -> #(
-          Model(
-            ..model,
-            create_error: option.Some(t(model.locale, i18n_text.TypeRequired)),
-          ),
-          effect.none(),
-        )
-        name, option.Some(type_id) -> {
-          let priority = int.parse(model.create_priority) |> result.unwrap(3)
-          // Templates are now project-scoped only
-          case model.project_id {
-            option.Some(project_id) -> #(
-              Model(..model, create_in_flight: True, create_error: option.None),
-              api_workflows.create_project_template(
-                project_id,
-                name,
-                model.create_description,
-                type_id,
-                priority,
-                CreateResult,
-              ),
-            )
-            option.None -> #(
-              Model(
-                ..model,
-                create_error: option.Some(t(
-                  model.locale,
-                  i18n_text.SelectProjectFirst,
-                )),
-              ),
-              effect.none(),
-            )
-          }
-        }
-      }
+    False -> submit_template_create(model)
+  }
+}
+
+fn submit_template_create(model: Model) -> #(Model, Effect(Msg)) {
+  case model.create_name, model.create_type_id {
+    "", _ -> #(
+      Model(
+        ..model,
+        create_error: option.Some(t(model.locale, i18n_text.NameRequired)),
+      ),
+      effect.none(),
+    )
+    _, option.None -> #(
+      Model(
+        ..model,
+        create_error: option.Some(t(model.locale, i18n_text.TypeRequired)),
+      ),
+      effect.none(),
+    )
+    name, option.Some(type_id) ->
+      submit_template_with_type(model, name, type_id)
+  }
+}
+
+fn submit_template_with_type(
+  model: Model,
+  name: String,
+  type_id: Int,
+) -> #(Model, Effect(Msg)) {
+  let priority = int.parse(model.create_priority) |> result.unwrap(3)
+
+  case model.project_id {
+    option.Some(project_id) -> #(
+      Model(..model, create_in_flight: True, create_error: option.None),
+      api_workflows.create_project_template(
+        project_id,
+        name,
+        model.create_description,
+        type_id,
+        priority,
+        CreateResult,
+      ),
+    )
+    option.None -> #(
+      Model(
+        ..model,
+        create_error: option.Some(t(model.locale, i18n_text.SelectProjectFirst)),
+      ),
+      effect.none(),
+    )
   }
 }
 
@@ -456,41 +463,51 @@ fn handle_create_success(
 fn handle_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.edit_in_flight {
     True -> #(model, effect.none())
-    False ->
-      case model.edit_name, model.edit_type_id {
-        "", _ -> #(
-          Model(
-            ..model,
-            edit_error: option.Some(t(model.locale, i18n_text.NameRequired)),
-          ),
-          effect.none(),
-        )
-        _, option.None -> #(
-          Model(
-            ..model,
-            edit_error: option.Some(t(model.locale, i18n_text.TypeRequired)),
-          ),
-          effect.none(),
-        )
-        name, option.Some(type_id) ->
-          case model.mode {
-            option.Some(ModeEdit(template)) -> {
-              let priority = int.parse(model.edit_priority) |> result.unwrap(3)
-              #(
-                Model(..model, edit_in_flight: True, edit_error: option.None),
-                api_workflows.update_template(
-                  template.id,
-                  name,
-                  model.edit_description,
-                  type_id,
-                  priority,
-                  EditResult,
-                ),
-              )
-            }
-            _ -> #(model, effect.none())
-          }
-      }
+    False -> submit_edit(model)
+  }
+}
+
+fn submit_edit(model: Model) -> #(Model, Effect(Msg)) {
+  case model.edit_name, model.edit_type_id {
+    "", _ -> #(
+      Model(
+        ..model,
+        edit_error: option.Some(t(model.locale, i18n_text.NameRequired)),
+      ),
+      effect.none(),
+    )
+    _, option.None -> #(
+      Model(
+        ..model,
+        edit_error: option.Some(t(model.locale, i18n_text.TypeRequired)),
+      ),
+      effect.none(),
+    )
+    name, option.Some(type_id) -> submit_edit_with_fields(model, name, type_id)
+  }
+}
+
+fn submit_edit_with_fields(
+  model: Model,
+  name: String,
+  type_id: Int,
+) -> #(Model, Effect(Msg)) {
+  case model.mode {
+    option.Some(ModeEdit(template)) -> {
+      let priority = int.parse(model.edit_priority) |> result.unwrap(3)
+      #(
+        Model(..model, edit_in_flight: True, edit_error: option.None),
+        api_workflows.update_template(
+          template.id,
+          name,
+          model.edit_description,
+          type_id,
+          priority,
+          EditResult,
+        ),
+      )
+    }
+    _ -> #(model, effect.none())
   }
 }
 
@@ -501,6 +518,7 @@ fn handle_edit_success(
   #(reset_edit_fields(model), emit_template_updated(template))
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn handle_delete_confirmed(model: Model) -> #(Model, Effect(Msg)) {
   case model.delete_in_flight {
     True -> #(model, effect.none())
@@ -640,6 +658,7 @@ fn view(model: Model) -> Element(Msg) {
   }
 }
 
+// Justification: large function kept intact to preserve cohesive UI logic.
 fn view_create_dialog(model: Model) -> Element(Msg) {
   div([attribute.class("dialog-overlay")], [
     div(
@@ -746,6 +765,7 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
   ])
 }
 
+// Justification: large function kept intact to preserve cohesive UI logic.
 fn view_edit_dialog(model: Model) -> Element(Msg) {
   div([attribute.class("dialog-overlay")], [
     div(

@@ -149,6 +149,7 @@ pub fn handle_org_settings_role_changed(
   )
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Handle org settings save click.
 pub fn handle_org_settings_save_clicked(
   model: Model,
@@ -326,6 +327,7 @@ pub fn handle_org_settings_saved_error(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Handle save all pending org role changes.
 /// Iterates through org_settings_role_drafts and saves each pending change.
 pub fn handle_org_settings_save_all_clicked(
@@ -377,6 +379,7 @@ fn get_user_role_draft(model: Model, user_id: Int) -> String {
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Look up user's current role from org_settings_users.
 fn get_current_user_role(model: Model, user_id: Int) -> String {
   case model.admin.org_settings_users {

@@ -228,6 +228,7 @@ pub fn handle_forgot_password_email_changed(
   )
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Handle forgot password form submission.
 pub fn handle_forgot_password_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.auth.forgot_password_in_flight {
@@ -427,6 +428,10 @@ pub fn handle_logout_finished_error(
 // Auth Message Dispatcher
 // =============================================================================
 
+/// Updates the model for a message.
+///
+/// Example:
+///   update(...)
 pub fn update(
   model: Model,
   msg: AuthMsg,

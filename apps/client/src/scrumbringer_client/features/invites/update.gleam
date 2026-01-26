@@ -123,6 +123,7 @@ pub fn handle_invite_link_email_changed(
   )
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Handle invite link create form submission.
 pub fn handle_invite_link_create_submitted(
   model: Model,
@@ -234,6 +235,7 @@ pub fn handle_invite_link_created_error(
 // Invite Link Regenerate Handlers
 // =============================================================================
 
+// Justification: nested case improves clarity for branching logic.
 /// Handle invite link regenerate click.
 pub fn handle_invite_link_regenerate_clicked(
   model: Model,

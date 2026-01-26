@@ -334,6 +334,7 @@ fn get_claimed_not_working(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Calculate aggregated time for all active sessions.
 fn aggregate_session_time(_model: Model, sessions: List(SessionInfo)) -> String {
   case sessions {

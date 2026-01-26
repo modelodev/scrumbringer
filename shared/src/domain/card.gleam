@@ -86,20 +86,16 @@ pub fn derive_state(
   completed_count: Int,
   available_count: Int,
 ) -> CardState {
-  case task_count {
-    0 -> Pendiente
-    _ -> {
-      case task_count == completed_count {
-        True -> Cerrada
-        False -> {
-          // If any task is NOT available (claimed or completed), there's progress
-          case available_count < task_count {
-            True -> EnCurso
-            False -> Pendiente
-          }
-        }
-      }
-    }
+  // If any task is NOT available (claimed or completed), there's progress.
+  case
+    task_count == 0,
+    task_count == completed_count,
+    available_count < task_count
+  {
+    True, _, _ -> Pendiente
+    False, True, _ -> Cerrada
+    False, False, True -> EnCurso
+    False, False, False -> Pendiente
   }
 }
 

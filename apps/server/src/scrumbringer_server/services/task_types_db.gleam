@@ -116,10 +116,7 @@ pub fn create_task_type(
   icon: String,
   capability_id: Option(Int),
 ) -> Result(TaskType, CreateTaskTypeError) {
-  let capability_param = case capability_id {
-    None -> 0
-    Some(id) -> id
-  }
+  let capability_param = capability_param(capability_id)
 
   case sql.task_types_create(db, project_id, name, icon, capability_param) {
     Ok(pog.Returned(rows: [row, ..], ..)) ->
@@ -134,20 +131,35 @@ pub fn create_task_type(
 
     Ok(pog.Returned(rows: [], ..)) -> Error(NoRowReturned)
 
-    Error(error) ->
-      case error {
-        pog.ConstraintViolated(constraint: constraint, ..) ->
-          case string.contains(constraint, "task_types") {
-            True -> Error(AlreadyExists)
-            False ->
-              case string.contains(constraint, "capability") {
-                True -> Error(InvalidCapabilityId)
-                False -> Error(DbError(error))
-              }
-          }
+    Error(error) -> Error(map_create_task_type_error(error))
+  }
+}
 
-        _ -> Error(DbError(error))
-      }
+fn map_create_task_type_error(error: pog.QueryError) -> CreateTaskTypeError {
+  case error {
+    pog.ConstraintViolated(constraint: constraint, ..) ->
+      map_create_task_type_constraint(error, constraint)
+    _ -> DbError(error)
+  }
+}
+
+fn map_create_task_type_constraint(
+  error: pog.QueryError,
+  constraint: String,
+) -> CreateTaskTypeError {
+  case string.contains(constraint, "task_types") {
+    True -> AlreadyExists
+    False -> map_create_capability_constraint(error, constraint)
+  }
+}
+
+fn map_create_capability_constraint(
+  error: pog.QueryError,
+  constraint: String,
+) -> CreateTaskTypeError {
+  case string.contains(constraint, "capability") {
+    True -> InvalidCapabilityId
+    False -> DbError(error)
   }
 }
 
@@ -167,10 +179,7 @@ pub fn update_task_type(
   icon: String,
   capability_id: Option(Int),
 ) -> Result(TaskType, UpdateTaskTypeError) {
-  let capability_param = case capability_id {
-    None -> 0
-    Some(id) -> id
-  }
+  let capability_param = capability_param(capability_id)
 
   case sql.task_types_update(db, type_id, name, icon, capability_param) {
     Ok(pog.Returned(rows: [row, ..], ..)) ->
@@ -184,8 +193,14 @@ pub fn update_task_type(
       ))
 
     Ok(pog.Returned(rows: [], ..)) -> Error(UpdateNotFound)
-
     Error(error) -> Error(UpdateDbError(error))
+  }
+}
+
+fn capability_param(capability_id: Option(Int)) -> Int {
+  case capability_id {
+    None -> 0
+    Some(id) -> id
   }
 }
 

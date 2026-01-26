@@ -57,6 +57,7 @@ pub fn validate_priority(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Validate optional priority (Unset means no update).
 pub fn validate_optional_priority(
   priority: FieldUpdate(Int),
@@ -88,6 +89,7 @@ pub fn validate_task_type_in_project(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Validate type update (Unset means no update).
 pub fn validate_type_update(
   db: pog.Connection,

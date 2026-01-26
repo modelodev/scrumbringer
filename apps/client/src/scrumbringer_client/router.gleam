@@ -148,6 +148,7 @@ fn parse_query_params(search: String) -> Result(QueryParams, QueryParseError) {
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn parse_optional_int_param(
   search: String,
   key: String,
@@ -163,6 +164,7 @@ fn parse_optional_int_param(
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn parse_optional_view_param(
   search: String,
   key: String,
@@ -196,37 +198,63 @@ fn parse_pathname(pathname: String, search: String, query: QueryParams) -> Route
 
     "/reset-password" -> ResetPassword(token_from_search(search))
 
-    _ -> {
-      // Story 4.5: New /config/* routes (project-scoped)
-      case string.starts_with(pathname, "/config") {
-        True -> {
-          let slug = path_segment(pathname, "/config")
-          Config(config_section_from_slug(slug), project_id)
-        }
-
-        False ->
-          // Story 4.5: New /org/* routes (org-scoped)
-          case string.starts_with(pathname, "/org") {
-            True -> {
-              let slug = path_segment(pathname, "/org")
-              Org(org_section_from_slug(slug))
-            }
-
-            False ->
-              case string.starts_with(pathname, "/app") {
-                True -> {
-                  let slug = path_segment(pathname, "/app")
-                  Member(member_section.from_slug(slug), project_id, view_mode)
-                }
-
-                False -> Login
-              }
-          }
-      }
-    }
+    _ -> parse_app_route(pathname, project_id, view_mode)
   }
 }
 
+fn parse_app_route(
+  pathname: String,
+  project_id: Option(Int),
+  view_mode: ViewMode,
+) -> Route {
+  case string.starts_with(pathname, "/config") {
+    True -> parse_config_route(pathname, project_id)
+    False -> parse_org_route(pathname, project_id, view_mode)
+  }
+}
+
+fn parse_config_route(pathname: String, project_id: Option(Int)) -> Route {
+  let slug = path_segment(pathname, "/config")
+  Config(config_section_from_slug(slug), project_id)
+}
+
+fn parse_org_route(
+  pathname: String,
+  project_id: Option(Int),
+  view_mode: ViewMode,
+) -> Route {
+  case string.starts_with(pathname, "/org") {
+    True -> parse_org_section(pathname)
+    False -> parse_member_route(pathname, project_id, view_mode)
+  }
+}
+
+fn parse_org_section(pathname: String) -> Route {
+  let slug = path_segment(pathname, "/org")
+  Org(org_section_from_slug(slug))
+}
+
+fn parse_member_route(
+  pathname: String,
+  project_id: Option(Int),
+  view_mode: ViewMode,
+) -> Route {
+  case string.starts_with(pathname, "/app") {
+    True -> parse_member_section(pathname, project_id, view_mode)
+    False -> Login
+  }
+}
+
+fn parse_member_section(
+  pathname: String,
+  project_id: Option(Int),
+  view_mode: ViewMode,
+) -> Route {
+  let slug = path_segment(pathname, "/app")
+  Member(member_section.from_slug(slug), project_id, view_mode)
+}
+
+// Justification: nested case improves clarity for branching logic.
 /// Format a Route into a URL string.
 ///
 /// ## Example
@@ -235,6 +263,7 @@ fn parse_pathname(pathname: String, search: String, query: QueryParams) -> Route
 /// format(Login)  // "/"
 /// format(Config(Members, Some(5)))  // "/config/members?project=5"
 /// format(AcceptInvite("abc123"))  // "/accept-invite?token=abc123"
+/// Justification: nested case improves clarity for branching logic.
 /// ```
 pub fn format(route: Route) -> String {
   case route {
@@ -303,6 +332,7 @@ fn token_from_search(search: String) -> String {
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn query_param(search: String, key: String) -> Option(String) {
   let cleaned = case string.starts_with(search, "?") {
     True -> string.drop_start(search, 1)

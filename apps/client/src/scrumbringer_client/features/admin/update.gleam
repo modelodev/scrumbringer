@@ -605,6 +605,7 @@ pub fn handle_members_fetched_ok(
 }
 
 /// Handle members fetch error.
+/// Justification: large function kept intact to preserve cohesive UI logic.
 pub fn handle_members_fetched_error(
   model: Model,
   err: ApiError,

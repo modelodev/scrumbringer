@@ -284,6 +284,7 @@ fn view_nav_link(
 // Configuration Section
 // =============================================================================
 
+// Justification: large function kept intact to preserve cohesive UI logic.
 fn view_config_section(config: LeftPanelConfig(msg)) -> Element(msg) {
   let collapsed_class = case config.config_collapsed {
     True -> " collapsed"

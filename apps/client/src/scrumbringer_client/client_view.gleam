@@ -167,6 +167,7 @@ pub fn now_working_elapsed_from_ms_for_test(
 // client_state.Admin Views (Story 4.5: Now uses 3-panel layout like client_state.Member views)
 // =============================================================================
 
+// Justification: nested case improves clarity for branching logic.
 fn view_admin(model: client_state.Model) -> Element(client_state.Msg) {
   case model.core.user {
     opt.None -> auth_view.view_login(model)
@@ -244,6 +245,7 @@ fn view_admin_section_content(
 // Story 4.5: Old admin topbar, nav, nav_grouped, nav_group, nav_item, nav_icon
 // functions removed - now using unified 3-panel layout with left_panel.gleam
 
+// Justification: nested case improves clarity for branching logic.
 fn view_section(
   model: client_state.Model,
   user: User,
@@ -287,6 +289,7 @@ fn view_section(
 // client_state.Member Views
 // =============================================================================
 
+// Justification: nested case improves clarity for branching logic.
 fn view_member(model: client_state.Model) -> Element(client_state.Msg) {
   case model.core.user {
     opt.None -> auth_view.view_login(model)
@@ -457,6 +460,8 @@ fn view_member_three_panel(
 }
 
 /// Builds the left panel with project selector and navigation
+// Justification: large function kept intact to preserve cohesive UI logic.
+
 fn build_left_panel(
   model: client_state.Model,
   user: User,
@@ -581,6 +586,8 @@ fn build_left_panel(
 }
 
 /// Builds the center panel with view mode toggle and content
+// Justification: large function kept intact to preserve cohesive UI logic.
+
 fn build_center_panel(
   model: client_state.Model,
   user: User,
@@ -705,6 +712,8 @@ fn build_center_panel(
 }
 
 /// Builds the right panel with activity and profile
+// Justification: large function kept intact to preserve cohesive UI logic.
+
 fn build_right_panel(
   model: client_state.Model,
   user: User,

@@ -1,19 +1,42 @@
 //// Rule target types for workflow rules.
 ////
-//// Task and card targets are kept distinct while using plain state strings.
+//// ## Mission
+////
+//// Provide typed rule targets for task and card rules.
+////
+//// ## Responsibilities
+////
+//// - Parse and validate target inputs
+//// - Convert targets to DB-friendly values
+////
+//// ## Non-responsibilities
+////
+//// - Rule persistence (see `services/rules_db.gleam`)
+//// - Rule evaluation (see `services/rules_engine.gleam`)
+////
+//// ## Relationships
+////
+//// - Used by `services/rules_db.gleam` and `services/rules_engine.gleam`
 
 import gleam/option.{type Option, None, Some}
 
+/// Target for a rule (task or card).
 pub type RuleTarget {
   TaskRule(to_state: String, task_type_id: Option(Int))
   CardRule(to_state: String)
 }
 
+/// Errors returned when parsing rule targets.
 pub type RuleTargetError {
   InvalidResourceType
   TaskTypeNotAllowedForCard
 }
 
+// Justification: nested case improves clarity for branching logic.
+/// Parses a rule target from DB string values.
+///
+/// Example:
+///   from_strings("task", 0, "claimed")
 pub fn from_strings(
   resource_type: String,
   task_type_id: Int,
@@ -27,6 +50,7 @@ pub fn from_strings(
   case resource_type {
     "task" -> Ok(TaskRule(to_state, task_type_opt))
     "card" ->
+      // Justification: nested case prevents task types on card rules.
       case task_type_opt {
         Some(_) -> Error(TaskTypeNotAllowedForCard)
         None -> Ok(CardRule(to_state))
@@ -35,6 +59,10 @@ pub fn from_strings(
   }
 }
 
+/// Returns the resource type string for a target.
+///
+/// Example:
+///   resource_type(TaskRule("claimed", None))
 pub fn resource_type(target: RuleTarget) -> String {
   case target {
     TaskRule(_, _) -> "task"
@@ -42,6 +70,10 @@ pub fn resource_type(target: RuleTarget) -> String {
   }
 }
 
+/// Returns the optional task type id for a target.
+///
+/// Example:
+///   task_type_id(CardRule("ready"))
 pub fn task_type_id(target: RuleTarget) -> Option(Int) {
   case target {
     TaskRule(_, task_type_id) -> task_type_id
@@ -49,6 +81,10 @@ pub fn task_type_id(target: RuleTarget) -> Option(Int) {
   }
 }
 
+/// Returns the state string for a target.
+///
+/// Example:
+///   to_state_string(TaskRule("claimed", None))
 pub fn to_state_string(target: RuleTarget) -> String {
   case target {
     TaskRule(to_state, _) -> to_state
@@ -56,6 +92,10 @@ pub fn to_state_string(target: RuleTarget) -> String {
   }
 }
 
+/// Returns DB tuple values for a target.
+///
+/// Example:
+///   to_db_values(TaskRule("claimed", Some(1)))
 pub fn to_db_values(target: RuleTarget) -> #(String, Int, String) {
   let resource_type = resource_type(target)
   let state = to_state_string(target)

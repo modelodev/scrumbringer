@@ -69,6 +69,7 @@ import scrumbringer_client/update_helpers
 // Re-export view_task_type_icon_inline from client_view for internal use
 // This function is needed for rendering task type icons in the bar
 
+// Justification: nested case improves clarity for branching logic.
 /// Renders the My Bar section with claimed tasks and metrics.
 pub fn view_bar(model: Model, user: User) -> Element(Msg) {
   case update_helpers.active_projects(model) {
@@ -314,6 +315,7 @@ pub fn view_member_metrics_panel(model: Model) -> Element(Msg) {
 }
 
 /// Render a task row for the bar/list view mode.
+/// Justification: large function kept intact to preserve cohesive UI logic.
 pub fn view_member_bar_task_row(
   model: Model,
   user: User,
@@ -504,6 +506,7 @@ fn view_heroicon_inline(
   )
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Render task type icon using the icon catalog.
 /// Falls back to CDN or text for icons not in catalog.
 fn view_task_type_icon_inline(
@@ -550,6 +553,7 @@ pub fn member_bar_status_rank(status: TaskStatus) -> Int {
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 /// Compare tasks for bar sorting (priority desc, status, created desc).
 pub fn compare_member_bar_tasks(a: Task, b: Task) -> order.Order {
   let Task(priority: priority_a, status: status_a, created_at: created_at_a, ..) =

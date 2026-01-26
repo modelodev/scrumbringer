@@ -8,6 +8,10 @@ import gleam/result
 
 import scrumbringer_client/i18n/locale.{type Locale, deserialize}
 
+/// Decodes locale.
+///
+/// Example:
+///   decode_locale(...)
 pub fn decode_locale(
   value: String,
   to_msg: fn(Locale) -> msg,
@@ -15,6 +19,10 @@ pub fn decode_locale(
   Ok(to_msg(deserialize(value)))
 }
 
+/// Decodes int attribute.
+///
+/// Example:
+///   decode_int_attribute(...)
 pub fn decode_int_attribute(
   value: String,
   to_msg: fn(Int) -> msg,
@@ -24,6 +32,10 @@ pub fn decode_int_attribute(
   |> result.replace_error(Nil)
 }
 
+/// Decodes optional int attribute.
+///
+/// Example:
+///   decode_optional_int_attribute(...)
 pub fn decode_optional_int_attribute(
   value: String,
   to_msg: fn(Option(Int)) -> msg,
@@ -37,6 +49,10 @@ pub fn decode_optional_int_attribute(
   }
 }
 
+/// Decodes create mode.
+///
+/// Example:
+///   decode_create_mode(...)
 pub fn decode_create_mode(
   value: String,
   create_mode: mode,

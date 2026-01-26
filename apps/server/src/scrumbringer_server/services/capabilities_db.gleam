@@ -69,16 +69,22 @@ pub fn create_capability(
 
     Ok(pog.Returned(rows: [], ..)) -> Error(NoRowReturned)
 
-    Error(error) ->
-      case error {
-        pog.ConstraintViolated(constraint: constraint, ..) ->
-          case string.contains(constraint, "capabilities") {
-            True -> Error(AlreadyExists)
-            False -> Error(DbError(error))
-          }
+    Error(error) -> map_create_error(error)
+  }
+}
 
-        _ -> Error(DbError(error))
+// Justification: nested case improves clarity for branching logic.
+fn map_create_error(
+  error: pog.QueryError,
+) -> Result(Capability, CreateCapabilityError) {
+  case error {
+    pog.ConstraintViolated(constraint: constraint, ..) ->
+      // Justification: nested case inspects constraint name for uniqueness errors.
+      case string.contains(constraint, "capabilities") {
+        True -> Error(AlreadyExists)
+        False -> Error(DbError(error))
       }
+    _ -> Error(DbError(error))
   }
 }
 

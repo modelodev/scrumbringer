@@ -406,6 +406,7 @@ fn view_my_card_item(
 // Preferences Popup (Story 4.8 UX: moved from inline section)
 // =============================================================================
 
+// Justification: nested case improves clarity for branching logic.
 fn view_preferences_popup(config: RightPanelConfig(msg)) -> Element(msg) {
   case config.preferences_popup_open {
     False -> element.none()

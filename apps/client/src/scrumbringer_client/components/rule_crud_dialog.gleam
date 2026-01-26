@@ -250,6 +250,7 @@ fn default_model() -> Model {
 // Update
 // =============================================================================
 
+// Justification: large function kept intact to preserve cohesive UI logic.
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     LocaleReceived(loc) -> #(Model(..model, locale: loc), effect.none())
@@ -464,6 +465,7 @@ fn default_state_for_resource_type(resource_type: String) -> String {
   }
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn handle_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.create_in_flight {
     True -> #(model, effect.none())
@@ -515,33 +517,39 @@ fn handle_create_success(model: Model, rule: Rule) -> #(Model, Effect(Msg)) {
 fn handle_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case model.edit_in_flight {
     True -> #(model, effect.none())
-    False ->
-      case model.edit_name {
-        "" -> #(
-          Model(
-            ..model,
-            edit_error: option.Some(t(model.locale, i18n_text.NameRequired)),
-          ),
-          effect.none(),
-        )
-        name ->
-          case model.mode {
-            option.Some(ModeEdit(rule)) -> #(
-              Model(..model, edit_in_flight: True, edit_error: option.None),
-              api_workflows.update_rule(
-                rule.id,
-                name,
-                model.edit_goal,
-                model.edit_resource_type,
-                model.edit_task_type_id,
-                model.edit_to_state,
-                model.edit_active,
-                EditResult,
-              ),
-            )
-            _ -> #(model, effect.none())
-          }
-      }
+    False -> submit_edit_name(model)
+  }
+}
+
+fn submit_edit_name(model: Model) -> #(Model, Effect(Msg)) {
+  case model.edit_name {
+    "" -> #(
+      Model(
+        ..model,
+        edit_error: option.Some(t(model.locale, i18n_text.NameRequired)),
+      ),
+      effect.none(),
+    )
+    name -> submit_edit_with_name(model, name)
+  }
+}
+
+fn submit_edit_with_name(model: Model, name: String) -> #(Model, Effect(Msg)) {
+  case model.mode {
+    option.Some(ModeEdit(rule)) -> #(
+      Model(..model, edit_in_flight: True, edit_error: option.None),
+      api_workflows.update_rule(
+        rule.id,
+        name,
+        model.edit_goal,
+        model.edit_resource_type,
+        model.edit_task_type_id,
+        model.edit_to_state,
+        model.edit_active,
+        EditResult,
+      ),
+    )
+    _ -> #(model, effect.none())
   }
 }
 
@@ -549,6 +557,7 @@ fn handle_edit_success(model: Model, rule: Rule) -> #(Model, Effect(Msg)) {
   #(reset_edit_fields(model), emit_rule_updated(rule))
 }
 
+// Justification: nested case improves clarity for branching logic.
 fn handle_delete_confirmed(model: Model) -> #(Model, Effect(Msg)) {
   case model.delete_in_flight {
     True -> #(model, effect.none())
@@ -686,6 +695,7 @@ fn view(model: Model) -> Element(Msg) {
   }
 }
 
+// Justification: large function kept intact to preserve cohesive UI logic.
 fn view_create_dialog(model: Model) -> Element(Msg) {
   div([attribute.class("dialog-overlay")], [
     div(
@@ -794,6 +804,7 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
   ])
 }
 
+// Justification: large function kept intact to preserve cohesive UI logic.
 fn view_edit_dialog(model: Model) -> Element(Msg) {
   div([attribute.class("dialog-overlay")], [
     div(

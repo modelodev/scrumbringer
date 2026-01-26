@@ -1,5 +1,25 @@
 //// Standalone seed module for populating test data.
 ////
+//// ## Mission
+////
+//// Populate the database with realistic demo data for development and metrics.
+////
+//// ## Responsibilities
+////
+//// - Create sample users, projects, and workflows
+//// - Generate representative task data and metrics events
+//// - Print a summary of created data
+////
+//// ## Non-responsibilities
+////
+//// - Runtime server startup (see `main.gleam`)
+//// - Request handling (see `http/` modules)
+////
+//// ## Relationships
+////
+//// - Uses `scrumbringer_server.new_app` for DB access
+//// - Inserts data consumed by metrics endpoints
+////
 //// ## Usage
 ////
 //// ```bash
@@ -24,6 +44,10 @@ import scrumbringer_server/services/task_events_db
 // Main Entry Point
 // =============================================================================
 
+/// Runs the seed script and prints a summary of generated data.
+///
+/// Example:
+///   main()
 pub fn main() {
   io.println("\n========================================")
   io.println("  METRICS SEED - Standalone")
@@ -66,6 +90,7 @@ pub fn main() {
 // Types
 // =============================================================================
 
+/// Summary statistics for the seed run.
 pub type SeedStats {
   SeedStats(
     projects: Int,
@@ -84,6 +109,8 @@ pub type SeedStats {
 // Seed Logic
 // =============================================================================
 
+// Justification: run_seed orchestrates the full seed flow in one place for
+// readability and sequential logging, and is intentionally long.
 fn run_seed() -> Result(SeedStats, String) {
   use db_url <- result.try(database_url())
   io.println("[OK] DATABASE_URL found")

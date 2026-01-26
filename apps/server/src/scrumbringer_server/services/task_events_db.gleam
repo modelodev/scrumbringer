@@ -1,7 +1,22 @@
 //// Database operations for task event logging.
 ////
-//// Task events track actions performed on tasks (claim, release, complete, etc.)
-//// for audit and analytics purposes.
+//// ## Mission
+////
+//// Persist task events for audit trails and analytics.
+////
+//// ## Responsibilities
+////
+//// - Map event types to DB values
+//// - Insert task event records
+////
+//// ## Non-responsibilities
+////
+//// - Event generation (see `persistence/tasks/queries.gleam`)
+//// - Metrics aggregation (see `services/rule_metrics_db.gleam`)
+////
+//// ## Relationships
+////
+//// - Uses `sql.gleam` for query execution
 
 import gleam/result
 import pog
@@ -15,6 +30,10 @@ pub type TaskEventType {
   TaskCompleted
 }
 
+/// Converts a task event type to its DB string value.
+///
+/// Example:
+///   event_type_to_string(TaskClaimed)
 pub fn event_type_to_string(event_type: TaskEventType) -> String {
   case event_type {
     TaskCreated -> "task_created"

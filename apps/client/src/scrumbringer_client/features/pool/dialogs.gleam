@@ -51,6 +51,7 @@ import scrumbringer_client/update_helpers
 // =============================================================================
 
 /// Renders the task creation dialog.
+/// Justification: large function kept intact to preserve cohesive UI logic.
 pub fn view_create_dialog(model: Model) -> Element(Msg) {
   div([attribute.class("dialog-overlay")], [
     div([attribute.class("dialog dialog-md")], [

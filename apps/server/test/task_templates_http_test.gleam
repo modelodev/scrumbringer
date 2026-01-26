@@ -15,6 +15,7 @@ import wisp/simulate
 
 const secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
+// Justification: large function kept intact to preserve cohesive logic.
 pub fn task_templates_project_crud_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
