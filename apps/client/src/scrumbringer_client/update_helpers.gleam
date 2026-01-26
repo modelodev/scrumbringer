@@ -52,7 +52,7 @@ import domain/org.{type OrgUser}
 import domain/project.{type Project}
 import domain/task.{
   type ActiveTask, type Task, type TaskPosition, type WorkSession, ActiveTask,
-  ActiveTaskPayload, Task, TaskPosition, WorkSessionsPayload,
+  Task, TaskPosition, WorkSessionsPayload,
 }
 import domain/task_type.{type TaskType}
 import scrumbringer_client/client_state.{
@@ -247,7 +247,7 @@ pub fn selected_project(model: Model) -> Option(Project) {
 }
 
 /// Get the currently active task from work sessions, if any.
-/// Returns the first active work session converted to ActiveTask for compatibility.
+/// Returns the first active work session converted to ActiveTask for UI helpers.
 ///
 /// ## Example
 ///
@@ -256,16 +256,10 @@ pub fn selected_project(model: Model) -> Option(Project) {
 /// // Some(active_task) or None
 /// ```
 pub fn now_working_active_task(model: Model) -> Option(ActiveTask) {
-  // First check work sessions (new API)
   case model.member.member_work_sessions {
     Loaded(WorkSessionsPayload(active_sessions: [first, ..], ..)) ->
       Some(work_session_to_active_task(first))
-    _ ->
-      // Fallback to legacy active_task
-      case model.member.member_active_task {
-        Loaded(ActiveTaskPayload(active_task: active_task, ..)) -> active_task
-        _ -> None
-      }
+    _ -> None
   }
 }
 

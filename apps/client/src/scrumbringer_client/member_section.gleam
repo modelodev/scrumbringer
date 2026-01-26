@@ -21,34 +21,22 @@ pub type MemberSection {
 
 /// Parses a URL slug into a MemberSection (defaults to Pool).
 ///
-/// Story 4.4: my-bar and my-skills are deprecated - redirect to Pool.
-/// Their functionality moves to the right panel of the 3-panel layout.
-///
 /// ## Example
 ///
 /// ```gleam
 /// from_slug("fichas")
 /// // -> Fichas
 ///
-/// from_slug("my-bar")  // deprecated
-/// // -> Pool
+/// from_slug("my-bar")
+/// // -> MyBar
 /// ```
 pub fn from_slug(slug: String) -> MemberSection {
   case slug {
     "fichas" -> Fichas
     "pool" -> Pool
-    // Story 4.4: Deprecated routes redirect to Pool
-    // "my-bar" and "my-skills" content now lives in right panel
-    "my-bar" | "my-skills" -> Pool
+    "my-bar" -> MyBar
+    "my-skills" -> MySkills
     _ -> Pool
-  }
-}
-
-/// Returns True if the slug is deprecated and should trigger a redirect.
-pub fn is_deprecated_slug(slug: String) -> Bool {
-  case slug {
-    "my-bar" | "my-skills" -> True
-    _ -> False
   }
 }
 

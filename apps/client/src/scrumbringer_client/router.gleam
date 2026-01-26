@@ -3,13 +3,12 @@
 //// ## Mission
 ////
 //// Provides URL parsing, formatting, and navigation effects for client-side
-//// routing. Handles both modern path-based URLs and legacy hash-based URLs
-//// for backwards compatibility.
+//// routing using path-based URLs.
 ////
 //// ## Responsibilities
 ////
 //// - Route type definitions (Login, Admin, Member, etc.)
-//// - URL parsing (`parse`) with legacy hash support
+//// - URL parsing (`parse`)
 //// - URL formatting (`format`)
 //// - Navigation effects (`push`, `replace`)
 //// - Page title updates (`update_page_title`)
@@ -26,17 +25,17 @@
 //// import scrumbringer_client/router
 ////
 //// // Parse URL
-//// case router.parse("/admin/members", "?project=5", "") {
+//// case router.parse("/config/members", "?project=5", "") {
 ////   router.Parsed(route) -> apply_route(route)
 ////   router.Redirect(route) -> redirect_to(route)
 //// }
 ////
 //// // Format URL
-//// let url = router.format(router.Admin(permissions.Members, Some(5)))
-//// // "/admin/members?project=5"
+//// let url = router.format(router.Config(permissions.Members, Some(5)))
+//// // "/config/members?project=5"
 ////
 //// // Navigate with push (adds history entry)
-//// router.push(router.Admin(permissions.Projects, None))
+//// router.push(router.Config(permissions.Projects, None))
 ////
 //// // Navigate with replace (no history entry)
 //// router.replace(router.Login)
@@ -62,8 +61,7 @@ import scrumbringer_client/permissions
 
 /// Client route representing the current page and state.
 ///
-/// Story 4.5: Routes now use /config/* and /org/* instead of /admin/*.
-/// /admin/* routes are redirected to their new equivalents.
+/// Story 4.5: Routes use /config/* and /org/* for admin sections.
 ///
 /// ## Example
 ///
@@ -86,12 +84,10 @@ pub type Route {
     project_id: Option(Int),
     view_mode: Option(ViewMode),
   )
-  // Legacy route - kept for redirect handling
-  Admin(section: permissions.AdminSection, project_id: Option(Int))
 }
 
 /// Result of parsing a URL, indicating whether it was parsed directly
-/// or needs a redirect (for legacy URLs or invalid query params).
+/// or needs a redirect (for invalid query params).
 pub type ParseResult {
   Parsed(Route)
   Redirect(Route)
@@ -113,10 +109,7 @@ type QueryParseError {
 
 /// Parse URL components into a Route.
 ///
-/// Handles both modern path-based URLs and legacy hash-based URLs.
-/// Returns Redirect if the URL uses legacy format or has invalid query params.
-///
-/// Story 4.5: /admin/* routes are redirected to /config/* or /org/*
+/// Returns Redirect if the URL has invalid query params.
 ///
 /// ## Example
 ///
@@ -124,56 +117,19 @@ type QueryParseError {
 /// parse("/config/members", "?project=5", "")
 /// // Parsed(Config(Members, Some(5)))
 ///
-/// parse("/admin/members", "?project=5", "")
-/// // Redirect(Config(Members, Some(5))) -- admin redirects to config
-///
-/// parse("/admin/invites", "", "")
-/// // Redirect(Org(Invites)) -- org sections redirect to /org
 /// ```
-pub fn parse(pathname: String, search: String, hash: String) -> ParseResult {
+pub fn parse(pathname: String, search: String, _hash: String) -> ParseResult {
   let query_result = parse_query_params(search)
   let #(query_params, query_invalid) = case query_result {
     Ok(params) -> #(params, False)
     Error(InvalidQuery(params, _)) -> #(params, True)
   }
 
-  // Legacy support: old hash routing `/?project=2#/admin/members`.
-  let legacy = case pathname == "/" {
-    True -> parse_legacy_hash(hash, query_params)
-    False -> None
-  }
+  let route = parse_pathname(pathname, search, query_params)
 
-  let route = case legacy {
-    Some(route) -> route
-    None -> parse_pathname(pathname, search, query_params)
-  }
-
-  // Story 4.5: Convert Admin routes to Config/Org routes
-  let #(route, admin_redirect) = convert_admin_route(route)
-
-  // Normalize invalid `project=` query values by removing them (replaceState).
-  // Also redirect deprecated member section slugs (Story 4.4)
-  // Story 4.5: Redirect /admin/* to new routes
-  let needs_redirect =
-    legacy != None
-    || query_invalid
-    || has_deprecated_member_slug(pathname)
-    || admin_redirect
-
-  case needs_redirect {
+  case query_invalid {
     True -> Redirect(route)
     False -> Parsed(route)
-  }
-}
-
-/// Story 4.4: Check if pathname contains a deprecated member section slug
-fn has_deprecated_member_slug(pathname: String) -> Bool {
-  case string.starts_with(pathname, "/app/") {
-    True -> {
-      let slug = path_segment(pathname, "/app")
-      member_section.is_deprecated_slug(slug)
-    }
-    False -> False
   }
 }
 
@@ -231,28 +187,6 @@ fn view_mode_from_param(raw: String) -> Option(ViewMode) {
   }
 }
 
-fn parse_legacy_hash(hash: String, query: QueryParams) -> Option(Route) {
-  let QueryParams(project_id: project_id, view_mode: view_mode) = query
-  case string.starts_with(hash, "#/admin/") {
-    True -> {
-      let slug = drop_prefix(hash, "#/admin/")
-      let section = admin_section_from_slug(slug)
-      Some(Admin(section, project_id))
-    }
-
-    False ->
-      case string.starts_with(hash, "#/app/") {
-        True -> {
-          let slug = drop_prefix(hash, "#/app/")
-          let section = member_section.from_slug(slug)
-          Some(Member(section, project_id, view_mode))
-        }
-
-        False -> None
-      }
-  }
-}
-
 fn parse_pathname(pathname: String, search: String, query: QueryParams) -> Route {
   let QueryParams(project_id: project_id, view_mode: view_mode) = query
   case pathname {
@@ -279,26 +213,13 @@ fn parse_pathname(pathname: String, search: String, query: QueryParams) -> Route
             }
 
             False ->
-              // Legacy /admin/* routes - redirect to new routes
-              case string.starts_with(pathname, "/admin") {
+              case string.starts_with(pathname, "/app") {
                 True -> {
-                  let slug = path_segment(pathname, "/admin")
-                  Admin(admin_section_from_slug(slug), project_id)
+                  let slug = path_segment(pathname, "/app")
+                  Member(member_section.from_slug(slug), project_id, view_mode)
                 }
 
-                False ->
-                  case string.starts_with(pathname, "/app") {
-                    True -> {
-                      let slug = path_segment(pathname, "/app")
-                      Member(
-                        member_section.from_slug(slug),
-                        project_id,
-                        view_mode,
-                      )
-                    }
-
-                    False -> Login
-                  }
+                False -> Login
               }
           }
       }
@@ -312,7 +233,7 @@ fn parse_pathname(pathname: String, search: String, query: QueryParams) -> Route
 ///
 /// ```gleam
 /// format(Login)  // "/"
-/// format(Admin(Members, Some(5)))  // "/admin/members?project=5"
+/// format(Config(Members, Some(5)))  // "/config/members?project=5"
 /// format(AcceptInvite("abc123"))  // "/accept-invite?token=abc123"
 /// ```
 pub fn format(route: Route) -> String {
@@ -340,12 +261,6 @@ pub fn format(route: Route) -> String {
     // Story 4.5: New /org/* routes for org-scoped admin
     Org(section) -> {
       "/org/" <> org_section_slug(section)
-    }
-
-    // Legacy /admin/* routes - kept for backwards compat
-    Admin(section, project_id) -> {
-      let base = "/admin/" <> admin_section_slug(section)
-      with_project(base, project_id)
     }
 
     Member(section, project_id, view) -> {
@@ -417,42 +332,6 @@ fn path_segment(pathname: String, prefix: String) -> String {
   }
 }
 
-fn drop_prefix(value: String, prefix: String) -> String {
-  string.drop_start(value, string.length(prefix))
-}
-
-fn admin_section_from_slug(slug: String) -> permissions.AdminSection {
-  case slug {
-    "org-settings" -> permissions.OrgSettings
-    "projects" -> permissions.Projects
-    "metrics" -> permissions.Metrics
-    "members" -> permissions.Members
-    "capabilities" -> permissions.Capabilities
-    "task-types" -> permissions.TaskTypes
-    "invites" -> permissions.Invites
-    "cards" -> permissions.Cards
-    "workflows" -> permissions.Workflows
-    "task-templates" -> permissions.TaskTemplates
-    _ -> permissions.Invites
-  }
-}
-
-fn admin_section_slug(section: permissions.AdminSection) -> String {
-  case section {
-    permissions.Invites -> "invites"
-    permissions.OrgSettings -> "org-settings"
-    permissions.Projects -> "projects"
-    permissions.Metrics -> "metrics"
-    permissions.RuleMetrics -> "rule-metrics"
-    permissions.Members -> "members"
-    permissions.Capabilities -> "capabilities"
-    permissions.TaskTypes -> "task-types"
-    permissions.Cards -> "cards"
-    permissions.Workflows -> "workflows"
-    permissions.TaskTemplates -> "task-templates"
-  }
-}
-
 // =============================================================================
 // Story 4.5: Config and Org Route Helpers
 // =============================================================================
@@ -512,29 +391,6 @@ fn org_section_slug(section: permissions.AdminSection) -> String {
   }
 }
 
-/// Check if a section is org-scoped (vs project-scoped)
-fn is_org_section(section: permissions.AdminSection) -> Bool {
-  case section {
-    permissions.Invites
-    | permissions.OrgSettings
-    | permissions.Projects
-    | permissions.Metrics -> True
-    _ -> False
-  }
-}
-
-/// Convert legacy Admin route to Config or Org route
-fn convert_admin_route(route: Route) -> #(Route, Bool) {
-  case route {
-    Admin(section, project_id) ->
-      case is_org_section(section) {
-        True -> #(Org(section), True)
-        False -> #(Config(section, project_id), True)
-      }
-    _ -> #(route, False)
-  }
-}
-
 /// Apply mobile-specific routing rules.
 ///
 /// Story 4.4: With the new 3-panel layout, mobile uses drawers instead of
@@ -564,8 +420,8 @@ pub fn apply_mobile_rules(result: ParseResult, _is_mobile: Bool) -> ParseResult 
 /// ## Example
 ///
 /// ```gleam
-/// router.push(router.Admin(permissions.Projects, Some(5)))
-/// // Navigates to "/admin/projects?project=5" with history entry
+/// router.push(router.Config(permissions.Projects, Some(5)))
+/// // Navigates to "/config/projects?project=5" with history entry
 /// ```
 pub fn push(route: Route) -> Effect(msg) {
   let url = format(route)
@@ -593,7 +449,7 @@ pub fn replace(route: Route) -> Effect(msg) {
 /// ## Example
 ///
 /// ```gleam
-/// router.update_page_title(router.Admin(permissions.Projects, None), locale)
+/// router.update_page_title(router.Config(permissions.Projects, None), locale)
 /// // Sets document title to "Projects - Scrumbringer"
 /// ```
 pub fn update_page_title(
@@ -613,10 +469,9 @@ pub fn page_title_for_route(route: Route, locale: i18n_locale.Locale) -> String 
     AcceptInvite(_) -> None
     ResetPassword(_) -> None
 
-    // Story 4.5: New routes use same title logic as Admin
+    // Story 4.5: Config/Org routes use admin section titles
     Config(section, _) -> Some(admin_section_title(section, locale))
     Org(section) -> Some(admin_section_title(section, locale))
-    Admin(section, _) -> Some(admin_section_title(section, locale))
 
     Member(section, _, _) -> Some(member_section_title(section, locale))
   }

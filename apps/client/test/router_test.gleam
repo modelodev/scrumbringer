@@ -8,15 +8,6 @@ import scrumbringer_client/member_section
 import scrumbringer_client/permissions
 import scrumbringer_client/router
 
-// Story 4.5: /admin/* redirects to /config/* or /org/*
-pub fn parse_admin_members_redirects_to_config_test() {
-  let parsed = router.parse("/admin/members", "?project=2", "")
-
-  // Admin routes now redirect to Config routes
-  parsed
-  |> should.equal(router.Redirect(router.Config(permissions.Members, Some(2))))
-}
-
 // Story 4.5: New /config/* routes
 pub fn parse_config_members_with_project_test() {
   let parsed = router.parse("/config/members", "?project=2", "")
@@ -41,23 +32,16 @@ pub fn parse_accept_invite_token_test() {
   |> should.equal(router.Parsed(router.AcceptInvite("il_token")))
 }
 
-// Story 4.5: Legacy hash routes also redirect to Config
-pub fn parse_legacy_hash_redirects_to_config_test() {
-  router.parse("/", "?project=2", "#/admin/members")
-  |> should.equal(router.Redirect(router.Config(permissions.Members, Some(2))))
-}
-
 // Story 4.5: Invalid project redirects to Config with None
 pub fn parse_invalid_project_redirects_and_drops_project_test() {
-  let parsed = router.parse("/admin/members", "?project=nope", "")
+  let parsed = router.parse("/config/members", "?project=nope", "")
 
-  // Admin routes redirect to Config, and invalid project is dropped
+  // Invalid project is dropped via redirect
   parsed
   |> should.equal(router.Redirect(router.Config(permissions.Members, None)))
 }
 
-// Story 4.4: Mobile no longer redirects to my-bar since it's deprecated
-// Pool is the main view in the new 3-panel layout
+// Story 4.4: Mobile keeps pool route in 3-panel layout
 pub fn mobile_keeps_pool_route_test() {
   router.parse("/app/pool", "?project=2", "")
   |> router.apply_mobile_rules(True)
@@ -118,26 +102,17 @@ pub fn roundtrip_org_invites_test() {
   router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
 }
 
-// Story 4.5: Admin routes still format to /admin/* but parsing redirects
-pub fn format_admin_formats_to_admin_path_test() {
-  let route = router.Admin(permissions.Members, Some(2))
-  router.format(route) |> should.equal("/admin/members?project=2")
-}
-
-// Story 4.4: my-bar is deprecated and redirects to Pool
-pub fn deprecated_my_bar_redirects_to_pool_test() {
-  // Parsing /app/my-bar now redirects to Pool
+pub fn parse_my_bar_route_test() {
   router.parse("/app/my-bar", "", "")
   |> should.equal(
-    router.Redirect(router.Member(member_section.Pool, None, None)),
+    router.Parsed(router.Member(member_section.MyBar, None, None)),
   )
 }
 
-// Story 4.4: my-skills is deprecated and redirects to Pool
-pub fn deprecated_my_skills_redirects_to_pool_test() {
+pub fn parse_my_skills_route_test() {
   router.parse("/app/my-skills", "", "")
   |> should.equal(
-    router.Redirect(router.Member(member_section.Pool, None, None)),
+    router.Parsed(router.Member(member_section.MySkills, None, None)),
   )
 }
 

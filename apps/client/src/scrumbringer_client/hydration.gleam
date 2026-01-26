@@ -56,7 +56,7 @@ pub type Snapshot {
     task_types: ResourceState,
     task_types_project_id: Option(Int),
     member_tasks: ResourceState,
-    active_task: ResourceState,
+    work_sessions: ResourceState,
     me_metrics: ResourceState,
     org_metrics_overview: ResourceState,
     org_metrics_project_tasks: ResourceState,
@@ -76,7 +76,7 @@ pub type Command {
   FetchMembers(project_id: Int)
   FetchTaskTypes(project_id: Int)
   RefreshMember
-  FetchActiveTask
+  FetchWorkSessions
   FetchMeMetrics
   FetchOrgMetricsOverview
   FetchOrgMetricsProjectTasks(project_id: Int)
@@ -123,8 +123,7 @@ pub fn plan(route: router.Route, snap: Snapshot) -> List(Command) {
   case route {
     router.AcceptInvite(_) | router.ResetPassword(_) -> []
     router.Login -> plan_login(snap)
-    router.Config(section, project_id) | router.Admin(section, project_id) ->
-      plan_admin(snap, section, project_id)
+    router.Config(section, project_id) -> plan_admin(snap, section, project_id)
     router.Org(section) -> plan_org(snap, section)
     router.Member(_, _, _) -> plan_member(snap)
   }
@@ -204,7 +203,7 @@ fn plan_admin_with_access(
       #(is_org_admin && needs_fetch(snap.invite_links), FetchInviteLinks),
       #(needs_fetch(snap.capabilities), FetchCapabilities),
       #(needs_fetch(snap.me_metrics), FetchMeMetrics),
-      #(needs_fetch(snap.active_task), FetchActiveTask),
+      #(needs_fetch(snap.work_sessions), FetchWorkSessions),
     ])
 
   // Section-specific resources
@@ -277,7 +276,7 @@ fn plan_org(snap: Snapshot, section: AdminSection) -> List(Command) {
               #(needs_fetch(snap.invite_links), FetchInviteLinks),
               #(needs_fetch(snap.capabilities), FetchCapabilities),
               #(needs_fetch(snap.me_metrics), FetchMeMetrics),
-              #(needs_fetch(snap.active_task), FetchActiveTask),
+              #(needs_fetch(snap.work_sessions), FetchWorkSessions),
             ])
 
           // Section-specific resources
@@ -312,7 +311,7 @@ fn plan_member(snap: Snapshot) -> List(Command) {
         #(needs_fetch(snap.projects), FetchProjects),
         #(needs_fetch(snap.capabilities), FetchCapabilities),
         #(needs_fetch(snap.my_capability_ids), FetchMeCapabilityIds),
-        #(needs_fetch(snap.active_task), FetchActiveTask),
+        #(needs_fetch(snap.work_sessions), FetchWorkSessions),
         #(needs_fetch(snap.me_metrics), FetchMeMetrics),
         #(needs_fetch(snap.org_users_cache), FetchOrgUsersCache),
         #(needs_fetch(snap.member_tasks), RefreshMember),

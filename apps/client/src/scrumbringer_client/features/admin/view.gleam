@@ -11,13 +11,10 @@
 //// - Project members management view
 //// - Task types management view
 ////
-//// ## Line Count Justification
+//// ## Structure Note
 ////
-//// ~780 lines: Consolidates all admin panel views that share a common admin
-//// context (permissions, project selection, CRUD patterns). These views are
-//// tightly coupled through shared UI patterns and state dependencies. Splitting
-//// further would fragment the cohesive admin experience. Each sub-view (members,
-//// capabilities, task_types, org_settings) requires similar imports and patterns.
+//// Members and workflow-related views live in `features/admin/views/*`.
+//// This module keeps core admin views and delegates to those submodules.
 ////
 //// ## Relations
 ////

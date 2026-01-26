@@ -76,8 +76,7 @@ import domain/org.{type InviteLink, type OrgUser}
 import domain/project.{type Project, type ProjectMember}
 import domain/project_role.{type ProjectRole, Member as MemberRole}
 import domain/task.{
-  type ActiveTaskPayload, type Task, type TaskNote, type TaskPosition,
-  type WorkSessionsPayload,
+  type Task, type TaskNote, type TaskPosition, type WorkSessionsPayload,
 }
 import domain/task_type.{type TaskType}
 import domain/view_mode
@@ -462,7 +461,6 @@ pub type MemberModel {
   MemberModel(
     member_section: member_section.MemberSection,
     view_mode: view_mode.ViewMode,
-    member_active_task: Remote(ActiveTaskPayload),
     member_work_sessions: Remote(WorkSessionsPayload),
     member_metrics: Remote(MyMetrics),
     member_now_working_in_flight: Bool,
@@ -694,10 +692,6 @@ pub type PoolMsg {
   MemberTaskCompleted(ApiResult(Task))
   MemberNowWorkingStartClicked(Int)
   MemberNowWorkingPauseClicked
-  MemberActiveTaskFetched(ApiResult(ActiveTaskPayload))
-  MemberActiveTaskStarted(ApiResult(ActiveTaskPayload))
-  MemberActiveTaskPaused(ApiResult(ActiveTaskPayload))
-  MemberActiveTaskHeartbeated(ApiResult(ActiveTaskPayload))
   MemberWorkSessionsFetched(ApiResult(WorkSessionsPayload))
   MemberWorkSessionStarted(ApiResult(WorkSessionsPayload))
   MemberWorkSessionPaused(ApiResult(WorkSessionsPayload))
@@ -1128,7 +1122,6 @@ pub fn default_model() -> Model {
     member: MemberModel(
       member_section: member_section.Pool,
       view_mode: view_mode.Pool,
-      member_active_task: NotAsked,
       member_work_sessions: NotAsked,
       member_metrics: NotAsked,
       member_now_working_in_flight: False,

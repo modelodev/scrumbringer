@@ -23,14 +23,14 @@ pub fn admin_members_unknown_auth_requires_fetch_me_test() {
       task_types: hydration.NotAsked,
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
-      active_task: hydration.NotAsked,
+      work_sessions: hydration.NotAsked,
       me_metrics: hydration.NotAsked,
       org_metrics_overview: hydration.NotAsked,
       org_metrics_project_tasks: hydration.NotAsked,
       org_metrics_project_id: None,
     )
 
-  hydration.plan(router.Admin(permissions.Members, Some(2)), snap)
+  hydration.plan(router.Config(permissions.Members, Some(2)), snap)
   |> should.equal([hydration.FetchMe])
 }
 
@@ -50,20 +50,20 @@ pub fn admin_members_authed_admin_plans_projects_then_members_test() {
       task_types: hydration.NotAsked,
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
-      active_task: hydration.NotAsked,
+      work_sessions: hydration.NotAsked,
       me_metrics: hydration.NotAsked,
       org_metrics_overview: hydration.NotAsked,
       org_metrics_project_tasks: hydration.NotAsked,
       org_metrics_project_id: None,
     )
 
-  hydration.plan(router.Admin(permissions.Members, Some(2)), snap)
+  hydration.plan(router.Config(permissions.Members, Some(2)), snap)
   |> should.equal([
     hydration.FetchProjects,
     hydration.FetchInviteLinks,
     hydration.FetchCapabilities,
     hydration.FetchMeMetrics,
-    hydration.FetchActiveTask,
+    hydration.FetchWorkSessions,
   ])
 
   let snap_with_projects =
@@ -81,17 +81,20 @@ pub fn admin_members_authed_admin_plans_projects_then_members_test() {
       task_types: hydration.NotAsked,
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
-      active_task: hydration.NotAsked,
+      work_sessions: hydration.NotAsked,
       me_metrics: hydration.NotAsked,
       org_metrics_overview: hydration.NotAsked,
       org_metrics_project_tasks: hydration.NotAsked,
       org_metrics_project_id: None,
     )
 
-  hydration.plan(router.Admin(permissions.Members, Some(2)), snap_with_projects)
+  hydration.plan(
+    router.Config(permissions.Members, Some(2)),
+    snap_with_projects,
+  )
   |> should.equal([
     hydration.FetchMeMetrics,
-    hydration.FetchActiveTask,
+    hydration.FetchWorkSessions,
     hydration.FetchMembers(project_id: 2),
   ])
 }
@@ -112,16 +115,16 @@ pub fn admin_route_non_admin_redirects_to_member_pool_test() {
       task_types: hydration.NotAsked,
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
-      active_task: hydration.NotAsked,
+      work_sessions: hydration.NotAsked,
       me_metrics: hydration.NotAsked,
       org_metrics_overview: hydration.NotAsked,
       org_metrics_project_tasks: hydration.NotAsked,
       org_metrics_project_id: None,
     )
 
-  hydration.plan(router.Admin(permissions.Invites, Some(2)), snap)
+  hydration.plan(router.Org(permissions.Invites), snap)
   |> should.equal([
-    hydration.Redirect(to: router.Member(member_section.Pool, Some(2), None)),
+    hydration.Redirect(to: router.Member(member_section.Pool, None, None)),
   ])
 }
 
@@ -143,14 +146,14 @@ pub fn admin_members_project_manager_not_loaded_fetches_projects_test() {
       task_types: hydration.NotAsked,
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
-      active_task: hydration.NotAsked,
+      work_sessions: hydration.NotAsked,
       me_metrics: hydration.NotAsked,
       org_metrics_overview: hydration.NotAsked,
       org_metrics_project_tasks: hydration.NotAsked,
       org_metrics_project_id: None,
     )
 
-  hydration.plan(router.Admin(permissions.Members, Some(8)), snap)
+  hydration.plan(router.Config(permissions.Members, Some(8)), snap)
   |> should.equal([hydration.FetchProjects])
 }
 
@@ -172,7 +175,7 @@ pub fn admin_members_project_manager_loaded_grants_access_test() {
       task_types: hydration.NotAsked,
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
-      active_task: hydration.NotAsked,
+      work_sessions: hydration.NotAsked,
       me_metrics: hydration.NotAsked,
       org_metrics_overview: hydration.NotAsked,
       org_metrics_project_tasks: hydration.NotAsked,
@@ -180,11 +183,11 @@ pub fn admin_members_project_manager_loaded_grants_access_test() {
     )
 
   // Should NOT redirect - should fetch members instead
-  hydration.plan(router.Admin(permissions.Members, Some(8)), snap)
+  hydration.plan(router.Config(permissions.Members, Some(8)), snap)
   |> should.equal([
     hydration.FetchCapabilities,
     hydration.FetchMeMetrics,
-    hydration.FetchActiveTask,
+    hydration.FetchWorkSessions,
     hydration.FetchMembers(project_id: 8),
   ])
 }
@@ -207,7 +210,7 @@ pub fn admin_org_level_section_pm_redirects_test() {
       task_types: hydration.NotAsked,
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
-      active_task: hydration.NotAsked,
+      work_sessions: hydration.NotAsked,
       me_metrics: hydration.NotAsked,
       org_metrics_overview: hydration.NotAsked,
       org_metrics_project_tasks: hydration.NotAsked,
@@ -215,9 +218,9 @@ pub fn admin_org_level_section_pm_redirects_test() {
     )
 
   // Should redirect because Invites is org-level
-  hydration.plan(router.Admin(permissions.Invites, Some(8)), snap)
+  hydration.plan(router.Org(permissions.Invites), snap)
   |> should.equal([
-    hydration.Redirect(to: router.Member(member_section.Pool, Some(8), None)),
+    hydration.Redirect(to: router.Member(member_section.Pool, None, None)),
   ])
 }
 
@@ -238,7 +241,7 @@ pub fn member_pool_with_projects_loaded_only_refreshes_member_test() {
       task_types: hydration.NotAsked,
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
-      active_task: hydration.NotAsked,
+      work_sessions: hydration.NotAsked,
       me_metrics: hydration.NotAsked,
       org_metrics_overview: hydration.NotAsked,
       org_metrics_project_tasks: hydration.NotAsked,
@@ -247,7 +250,7 @@ pub fn member_pool_with_projects_loaded_only_refreshes_member_test() {
 
   hydration.plan(router.Member(member_section.Pool, Some(2), None), snap)
   |> should.equal([
-    hydration.FetchActiveTask,
+    hydration.FetchWorkSessions,
     hydration.FetchMeMetrics,
     hydration.RefreshMember,
   ])

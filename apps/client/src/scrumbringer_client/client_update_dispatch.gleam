@@ -777,26 +777,6 @@ pub fn handle_pool(
     client_state.MemberNowWorkingPauseClicked ->
       now_working_workflow.handle_pause_clicked(model)
 
-    client_state.MemberActiveTaskFetched(Ok(payload)) ->
-      now_working_workflow.handle_fetched_ok(model, payload)
-    client_state.MemberActiveTaskFetched(Error(err)) ->
-      now_working_workflow.handle_fetched_error(model, err)
-
-    client_state.MemberActiveTaskStarted(Ok(payload)) ->
-      now_working_workflow.handle_started_ok(model, payload)
-    client_state.MemberActiveTaskStarted(Error(err)) ->
-      now_working_workflow.handle_started_error(model, err)
-
-    client_state.MemberActiveTaskPaused(Ok(payload)) ->
-      now_working_workflow.handle_paused_ok(model, payload)
-    client_state.MemberActiveTaskPaused(Error(err)) ->
-      now_working_workflow.handle_paused_error(model, err)
-
-    client_state.MemberActiveTaskHeartbeated(Ok(payload)) ->
-      now_working_workflow.handle_heartbeated_ok(model, payload)
-    client_state.MemberActiveTaskHeartbeated(Error(err)) ->
-      now_working_workflow.handle_heartbeated_error(model, err)
-
     // Work sessions (multi-session) - delegate to workflow
     client_state.MemberWorkSessionsFetched(Ok(payload)) ->
       now_working_workflow.handle_sessions_fetched_ok(model, payload)

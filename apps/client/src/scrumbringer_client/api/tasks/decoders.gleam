@@ -7,7 +7,7 @@
 //// ## Responsibilities
 ////
 //// - Decode Task, TaskType, TaskNote, TaskPosition
-//// - Decode ActiveTask and ActiveTaskPayload
+//// - Decode WorkSession and WorkSessionsPayload
 //// - Map status strings to domain types
 ////
 //// ## Relations
@@ -21,9 +21,8 @@ import gleam/option
 import scrumbringer_client/api/core.{optional_field}
 
 import domain/task.{
-  type ActiveTask, type ActiveTaskPayload, type Task, type TaskNote,
-  type TaskPosition, type WorkSession, type WorkSessionsPayload, ActiveTask,
-  ActiveTaskPayload, Task, TaskNote, TaskPosition, WorkSession,
+  type Task, type TaskNote, type TaskPosition, type WorkSession,
+  type WorkSessionsPayload, Task, TaskNote, TaskPosition, WorkSession,
   WorkSessionsPayload,
 }
 import domain/task_status.{
@@ -200,40 +199,6 @@ pub fn position_decoder() -> decode.Decoder(TaskPosition) {
     y: y,
     updated_at: updated_at,
   ))
-}
-
-// =============================================================================
-// Active Task Decoders
-// =============================================================================
-
-/// Decoder for ActiveTask.
-pub fn active_task_decoder() -> decode.Decoder(ActiveTask) {
-  use task_id <- decode.field("task_id", decode.int)
-  use project_id <- decode.field("project_id", decode.int)
-  use started_at <- decode.field("started_at", decode.string)
-  use accumulated <- optional_field("accumulated_s", decode.int)
-
-  let accumulated_s = case accumulated {
-    option.Some(v) -> v
-    option.None -> 0
-  }
-
-  decode.success(ActiveTask(
-    task_id: task_id,
-    project_id: project_id,
-    started_at: started_at,
-    accumulated_s: accumulated_s,
-  ))
-}
-
-/// Decoder for active task payload.
-pub fn active_task_payload_decoder() -> decode.Decoder(ActiveTaskPayload) {
-  use active_task <- decode.field(
-    "active_task",
-    decode.optional(active_task_decoder()),
-  )
-  use as_of <- decode.field("as_of", decode.string)
-  decode.success(ActiveTaskPayload(active_task: active_task, as_of: as_of))
 }
 
 // =============================================================================

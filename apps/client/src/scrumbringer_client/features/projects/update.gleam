@@ -166,9 +166,13 @@ pub fn handle_project_selected(
 
       let pause_fx = case should_pause {
         True ->
-          api_tasks.pause_me_active_task(fn(result) {
-            pool_msg(client_state.MemberActiveTaskPaused(result))
-          })
+          case update_helpers.now_working_active_task_id(model) {
+            opt.Some(task_id) ->
+              api_tasks.pause_work_session(task_id, fn(result) {
+                pool_msg(client_state.MemberWorkSessionPaused(result))
+              })
+            opt.None -> effect.none()
+          }
         False -> effect.none()
       }
 

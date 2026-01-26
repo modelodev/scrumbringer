@@ -199,13 +199,12 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
     router.Login -> Login
     router.AcceptInvite(_) -> AcceptInvitePage
     router.ResetPassword(_) -> ResetPasswordPage
-    router.Admin(_, _) | router.Config(_, _) | router.Org(_) -> Admin
+    router.Config(_, _) | router.Org(_) -> Admin
     router.Member(_, _, _) -> Member
   }
 
   let active_section = case route {
-    router.Admin(section, _) | router.Config(section, _) | router.Org(section) ->
-      section
+    router.Config(section, _) | router.Org(section) -> section
     _ -> permissions.Invites
   }
 
@@ -215,9 +214,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
   }
 
   let selected_project_id = case route {
-    router.Admin(_, project_id)
-    | router.Config(_, project_id)
-    | router.Member(_, project_id, _) -> project_id
+    router.Config(_, project_id) | router.Member(_, project_id, _) -> project_id
     router.Org(_) -> opt.None
     _ -> opt.None
   }

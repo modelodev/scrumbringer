@@ -31,7 +31,6 @@
 import gleam/list
 
 import lustre/attribute
-import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html.{button, div, span, text}
 import lustre/event
@@ -82,49 +81,6 @@ pub fn init() -> ToastState {
 
 /// Duration in milliseconds before auto-dismiss (3 seconds).
 pub const auto_dismiss_ms = 3000
-
-/// Update toast state with a message.
-///
-/// Returns the new state and an optional effect for scheduling ticks.
-///
-/// ## Example
-///
-/// ```gleam
-/// let #(new_state, effect) = toast.update(state, Show("Saved!", Success), now_ms())
-/// ```
-pub fn update(
-  state: ToastState,
-  msg: ToastMsg,
-  now: Int,
-  schedule_tick: fn(Int) -> Effect(ToastMsg),
-) -> #(ToastState, Effect(ToastMsg)) {
-  case msg {
-    Show(message:, variant:) -> {
-      let id = new_toast_id(state.next_id)
-      let toast = Toast(id:, message:, variant:, created_at: now)
-      let new_state =
-        ToastState(toasts: [toast, ..state.toasts], next_id: state.next_id + 1)
-      #(new_state, schedule_tick(auto_dismiss_ms))
-    }
-
-    Dismiss(id:) -> {
-      let new_toasts =
-        list.filter(state.toasts, fn(t) { !toast_id_eq(t.id, id) })
-      #(ToastState(..state, toasts: new_toasts), effect.none())
-    }
-
-    Tick(now:) -> {
-      let cutoff = now - auto_dismiss_ms
-      let new_toasts =
-        list.filter(state.toasts, fn(t) { t.created_at > cutoff })
-      let eff = case list.is_empty(new_toasts) {
-        True -> effect.none()
-        False -> schedule_tick(1000)
-      }
-      #(ToastState(..state, toasts: new_toasts), eff)
-    }
-  }
-}
 
 /// Check if there are any toasts to display.
 pub fn has_toasts(state: ToastState) -> Bool {

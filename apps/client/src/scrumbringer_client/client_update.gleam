@@ -15,16 +15,11 @@
 //// - Type definitions (see `client_state.gleam`)
 //// - View rendering (see `scrumbringer_client.gleam`)
 ////
-//// ## Line Count Justification
+//// ## Structure Note
 ////
-//// ~2300 lines: Central TEA update hub that dispatches all client_state.Msg variants to
-//// feature-specific update handlers. While large, this file acts as an
-//// orchestration layer with clear delegation patterns:
-//// - Each `case msg { ... }` branch delegates to `features/*/update.gleam`
-//// - Splitting further would fragment the single entry point pattern
-//// - Lustre's TEA model benefits from a unified `update` function
-//// Future: Consider code generation for message dispatch if client_state.Msg variants
-//// exceed 100.
+//// Central TEA update hub with thin dispatch to feature handlers.
+//// Admin/Pool subtrees are delegated to `client_update_dispatch.gleam`
+//// to keep this file focused on top-level orchestration.
 
 import domain/org_role
 import gleam/dict
@@ -313,30 +308,6 @@ fn apply_route_fields(
       #(model, fx)
     }
 
-    // Legacy client_state.Admin routes - still supported but will redirect via router.parse()
-    router.Admin(section, project_id) -> {
-      let model =
-        client_state.update_member(
-          client_state.update_core(model, fn(core) {
-            client_state.CoreModel(
-              ..core,
-              page: client_state.Admin,
-              active_section: section,
-              selected_project_id: project_id,
-            )
-          }),
-          fn(member) {
-            client_state.MemberModel(
-              ..member,
-              member_drag: opt.None,
-              member_pool_drag: client_state.PoolDragIdle,
-            )
-          },
-        )
-      let #(model, fx) = refresh_section_for_test(model)
-      #(model, fx)
-    }
-
     router.Member(section, project_id, view) -> {
       let capabilities_fx = case model.core.page, project_id {
         client_state.Admin, opt.Some(pid) ->
@@ -411,7 +382,7 @@ fn build_snapshot(model: client_state.Model) -> hydration.Snapshot {
     task_types: remote_state(model.admin.task_types),
     task_types_project_id: model.admin.task_types_project_id,
     member_tasks: remote_state(model.member.member_tasks),
-    active_task: remote_state(model.member.member_active_task),
+    work_sessions: remote_state(model.member.member_work_sessions),
     me_metrics: remote_state(model.member.member_metrics),
     org_metrics_overview: remote_state(model.admin.admin_metrics_overview),
     org_metrics_project_tasks: remote_state(
@@ -581,7 +552,7 @@ fn hydrate_model(
               }
             }
 
-            hydration.FetchActiveTask -> {
+            hydration.FetchWorkSessions -> {
               case m.member.member_work_sessions {
                 client_state.Loading | client_state.Loaded(_) -> #(m, fx)
 
@@ -1785,11 +1756,15 @@ pub fn update(
 
           let pause_fx = case should_pause {
             True ->
-              api_tasks.pause_me_active_task(fn(result) {
-                client_state.pool_msg(client_state.MemberActiveTaskPaused(
-                  result,
-                ))
-              })
+              case update_helpers.now_working_active_task_id(model) {
+                opt.Some(task_id) ->
+                  api_tasks.pause_work_session(task_id, fn(result) {
+                    client_state.pool_msg(client_state.MemberWorkSessionPaused(
+                      result,
+                    ))
+                  })
+                opt.None -> effect.none()
+              }
             False -> effect.none()
           }
 

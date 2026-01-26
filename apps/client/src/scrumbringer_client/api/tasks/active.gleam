@@ -21,7 +21,7 @@ import gleam/option
 
 import lustre/effect.{type Effect}
 
-import domain/task.{type ActiveTaskPayload, type WorkSessionsPayload}
+import domain/task.{type WorkSessionsPayload}
 import scrumbringer_client/api/core
 import scrumbringer_client/api/tasks/decoders
 
@@ -83,64 +83,6 @@ pub fn heartbeat_work_session(
     "/api/v1/me/work-sessions/heartbeat",
     option.Some(body),
     decoders.work_sessions_payload_decoder(),
-    to_msg,
-  )
-}
-
-// =============================================================================
-// Legacy API Functions (for backwards compatibility during transition)
-// =============================================================================
-
-/// Get current user's active task (legacy single-session).
-pub fn get_me_active_task(
-  to_msg: fn(core.ApiResult(ActiveTaskPayload)) -> msg,
-) -> Effect(msg) {
-  core.request(
-    "GET",
-    "/api/v1/me/active-task",
-    option.None,
-    decoders.active_task_payload_decoder(),
-    to_msg,
-  )
-}
-
-/// Start working on a task (legacy single-session).
-pub fn start_me_active_task(
-  task_id: Int,
-  to_msg: fn(core.ApiResult(ActiveTaskPayload)) -> msg,
-) -> Effect(msg) {
-  let body = json.object([#("task_id", json.int(task_id))])
-  core.request(
-    "POST",
-    "/api/v1/me/active-task/start",
-    option.Some(body),
-    decoders.active_task_payload_decoder(),
-    to_msg,
-  )
-}
-
-/// Pause working on the active task (legacy single-session).
-pub fn pause_me_active_task(
-  to_msg: fn(core.ApiResult(ActiveTaskPayload)) -> msg,
-) -> Effect(msg) {
-  core.request(
-    "POST",
-    "/api/v1/me/active-task/pause",
-    option.None,
-    decoders.active_task_payload_decoder(),
-    to_msg,
-  )
-}
-
-/// Send heartbeat for active task (legacy single-session).
-pub fn heartbeat_me_active_task(
-  to_msg: fn(core.ApiResult(ActiveTaskPayload)) -> msg,
-) -> Effect(msg) {
-  core.request(
-    "POST",
-    "/api/v1/me/active-task/heartbeat",
-    option.None,
-    decoders.active_task_payload_decoder(),
     to_msg,
   )
 }

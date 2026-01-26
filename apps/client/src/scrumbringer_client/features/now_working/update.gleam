@@ -8,7 +8,7 @@
 //// ## Responsibilities
 ////
 //// - Handle start/pause button clicks
-//// - Process API responses for active task operations
+//// - Process API responses for work session operations
 //// - Manage timer tick and heartbeat synchronization
 //// - Track server time offset for accurate elapsed time display
 ////
@@ -22,7 +22,7 @@
 ////
 //// - **client_state.gleam**: Provides Model, Msg types
 //// - **client_update.gleam**: Delegates now_working messages here
-//// - **api/tasks.gleam**: Provides active task API functions
+//// - **api/tasks.gleam**: Provides work session API functions
 //// - **update_helpers.gleam**: Provides now_working_active_task helper
 
 import gleam/option as opt
@@ -34,10 +34,7 @@ import scrumbringer_client/api/tasks as api_tasks
 
 // Domain types
 import domain/api_error.{type ApiError}
-import domain/task.{
-  type ActiveTaskPayload, type WorkSessionsPayload, ActiveTaskPayload,
-  WorkSessionsPayload,
-}
+import domain/task.{type WorkSessionsPayload, WorkSessionsPayload}
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
@@ -109,160 +106,6 @@ fn get_first_active_session_task_id(model: Model) -> opt.Option(Int) {
     Loaded(WorkSessionsPayload(active_sessions: [first, ..], ..)) ->
       opt.Some(first.task_id)
     _ -> opt.None
-  }
-}
-
-/// Handle successful active task fetch response.
-pub fn handle_fetched_ok(
-  model: Model,
-  payload: ActiveTaskPayload,
-) -> #(Model, Effect(Msg)) {
-  let ActiveTaskPayload(as_of: as_of, ..) = payload
-  let server_ms = client_ffi.parse_iso_ms(as_of)
-  let offset = client_ffi.now_ms() - server_ms
-
-  update_member(model, fn(member) {
-    MemberModel(
-      ..member,
-      member_active_task: Loaded(payload),
-      now_working_server_offset_ms: offset,
-    )
-  })
-  |> start_tick_if_needed
-}
-
-/// Handle failed active task fetch response.
-pub fn handle_fetched_error(
-  model: Model,
-  err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
-      update_member(model, fn(member) {
-        MemberModel(..member, member_active_task: Failed(err))
-      }),
-      effect.none(),
-    )
-  }
-}
-
-/// Handle successful start response.
-pub fn handle_started_ok(
-  model: Model,
-  payload: ActiveTaskPayload,
-) -> #(Model, Effect(Msg)) {
-  let ActiveTaskPayload(as_of: as_of, ..) = payload
-  let server_ms = client_ffi.parse_iso_ms(as_of)
-  let offset = client_ffi.now_ms() - server_ms
-
-  update_member(model, fn(member) {
-    MemberModel(
-      ..member,
-      member_now_working_in_flight: False,
-      member_active_task: Loaded(payload),
-      now_working_server_offset_ms: offset,
-    )
-  })
-  |> start_tick_if_needed
-}
-
-/// Handle failed start response.
-pub fn handle_started_error(
-  model: Model,
-  err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  let model =
-    update_member(model, fn(member) {
-      MemberModel(..member, member_now_working_in_flight: False)
-    })
-
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
-      update_member(model, fn(member) {
-        MemberModel(..member, member_now_working_error: opt.Some(err.message))
-      }),
-      update_helpers.toast_error(err.message),
-    )
-  }
-}
-
-/// Handle successful pause response.
-pub fn handle_paused_ok(
-  model: Model,
-  payload: ActiveTaskPayload,
-) -> #(Model, Effect(Msg)) {
-  let ActiveTaskPayload(as_of: as_of, ..) = payload
-  let server_ms = client_ffi.parse_iso_ms(as_of)
-  let offset = client_ffi.now_ms() - server_ms
-
-  let model =
-    update_member(model, fn(member) {
-      MemberModel(
-        ..member,
-        member_now_working_in_flight: False,
-        member_active_task: Loaded(payload),
-        now_working_server_offset_ms: offset,
-      )
-    })
-
-  let model = case update_helpers.now_working_active_task(model) {
-    opt.None ->
-      update_member(model, fn(member) {
-        MemberModel(..member, now_working_tick_running: False)
-      })
-    opt.Some(_) -> model
-  }
-
-  #(model, effect.none())
-}
-
-/// Handle failed pause response.
-pub fn handle_paused_error(model: Model, err: ApiError) -> #(Model, Effect(Msg)) {
-  let model =
-    update_member(model, fn(member) {
-      MemberModel(..member, member_now_working_in_flight: False)
-    })
-
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
-      update_member(model, fn(member) {
-        MemberModel(..member, member_now_working_error: opt.Some(err.message))
-      }),
-      update_helpers.toast_error(err.message),
-    )
-  }
-}
-
-/// Handle successful heartbeat response.
-pub fn handle_heartbeated_ok(
-  model: Model,
-  payload: ActiveTaskPayload,
-) -> #(Model, Effect(Msg)) {
-  let ActiveTaskPayload(as_of: as_of, ..) = payload
-  let server_ms = client_ffi.parse_iso_ms(as_of)
-  let offset = client_ffi.now_ms() - server_ms
-
-  update_member(model, fn(member) {
-    MemberModel(
-      ..member,
-      member_active_task: Loaded(payload),
-      now_working_server_offset_ms: offset,
-    )
-  })
-  |> start_tick_if_needed
-}
-
-/// Handle failed heartbeat response.
-pub fn handle_heartbeated_error(
-  model: Model,
-  err: ApiError,
-) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(model, effect.none())
   }
 }
 

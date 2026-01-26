@@ -26,14 +26,13 @@
 //// - **tasks/operations.gleam**: Core task CRUD operations
 //// - **tasks/task_types.gleam**: Task type API functions
 //// - **tasks/notes.gleam**: Task notes API functions
-//// - **tasks/active.gleam**: Active task API functions
+//// - **tasks/active.gleam**: Work session API functions
 //// - **tasks/positions.gleam**: Task position API functions
 //// - **tasks/capabilities.gleam**: User capability API functions
 
 // Re-export domain types for backwards compatibility
 import domain/task.{
-  type ActiveTask, type ActiveTaskPayload, type Task, type TaskFilters,
-  type TaskNote, type TaskPosition,
+  type Task, type TaskFilters, type TaskNote, type TaskPosition,
 }
 import domain/task_status
 import domain/task_type.{type TaskType, type TaskTypeInline}
@@ -67,12 +66,6 @@ pub type TaskNoteAlias =
 pub type TaskPositionAlias =
   TaskPosition
 
-pub type ActiveTaskAlias =
-  ActiveTask
-
-pub type ActiveTaskPayloadAlias =
-  ActiveTaskPayload
-
 pub type TaskTypeAlias =
   TaskType
 
@@ -92,8 +85,6 @@ pub const task_status_to_string = task_status.task_status_to_string
 // =============================================================================
 
 pub const task_decoder = decoders.task_decoder
-
-pub const active_task_payload_decoder = decoders.active_task_payload_decoder
 
 // =============================================================================
 // Re-export Functions: Task Types
@@ -145,18 +136,6 @@ pub const start_work_session = active.start_work_session
 pub const pause_work_session = active.pause_work_session
 
 pub const heartbeat_work_session = active.heartbeat_work_session
-
-// =============================================================================
-// Re-export Functions: Active Task (legacy - deprecated)
-// =============================================================================
-
-pub const get_me_active_task = active.get_me_active_task
-
-pub const start_me_active_task = active.start_me_active_task
-
-pub const pause_me_active_task = active.pause_me_active_task
-
-pub const heartbeat_me_active_task = active.heartbeat_me_active_task
 
 // =============================================================================
 // Re-export Functions: Positions
