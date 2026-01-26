@@ -18,10 +18,8 @@
 //// - API: api/workflows.gleam for CRUD operations
 
 import gleam/dynamic/decode.{type Decoder}
-import gleam/int
 import gleam/json
 import gleam/option.{type Option}
-import gleam/result
 
 import lustre
 import lustre/attribute
@@ -36,6 +34,7 @@ import domain/workflow.{type Workflow, Workflow}
 
 import scrumbringer_client/api/core.{type ApiResult}
 import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/components/crud_dialog_base
 import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
@@ -127,25 +126,16 @@ fn on_attribute_change() -> List(component.Option(Msg)) {
 }
 
 fn decode_locale(value: String) -> Result(Msg, Nil) {
-  Ok(LocaleReceived(locale.deserialize(value)))
+  crud_dialog_base.decode_locale(value, LocaleReceived)
 }
 
 fn decode_project_id(value: String) -> Result(Msg, Nil) {
-  case value {
-    "" | "null" | "undefined" -> Ok(ProjectIdReceived(option.None))
-    _ ->
-      int.parse(value)
-      |> result.map(fn(id) { ProjectIdReceived(option.Some(id)) })
-      |> result.replace_error(Nil)
-  }
+  crud_dialog_base.decode_optional_int_attribute(value, ProjectIdReceived)
 }
 
 fn decode_mode(value: String) -> Result(Msg, Nil) {
-  case value {
-    "create" -> Ok(ModeReceived(ModeCreate))
-    // edit and delete modes need workflow data from property
-    _ -> Error(Nil)
-  }
+  // edit and delete modes need workflow data from property
+  crud_dialog_base.decode_create_mode(value, ModeCreate, ModeReceived)
 }
 
 fn workflow_property_decoder() -> Decoder(Msg) {

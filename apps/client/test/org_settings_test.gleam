@@ -16,6 +16,7 @@ import scrumbringer_client/client_state.{
 }
 import scrumbringer_client/features/admin/org_settings
 import scrumbringer_client/permissions
+import scrumbringer_client/ui/toast
 
 // =============================================================================
 // Test Helpers
@@ -238,8 +239,8 @@ pub fn saved_ok_returns_no_effect_test() {
   let #(_next, fx) =
     org_settings.handle_org_settings_saved_ok(model, updated_org_user)
 
-  // Assert: should return effect.none()
-  fx |> should.equal(effect.none())
+  // Assert: should return a toast effect (not none)
+  should.be_false(fx == effect.none())
 }
 
 // =============================================================================
@@ -417,16 +418,12 @@ pub fn saved_ok_shows_toast_when_done_test() {
           org_settings_save_in_flight: True,
         )
       }),
-      fn(ui) { UiModel(..ui, toast: opt.None) },
+      fn(ui) { UiModel(..ui, toast_state: toast.init()) },
     )
 
-  let #(updated_model, _effect) =
+  let #(_updated_model, fx) =
     org_settings.handle_org_settings_saved_ok(model, user)
 
-  // Toast should be shown
-  case updated_model.ui.toast {
-    opt.Some(_) -> True
-    opt.None -> False
-  }
-  |> should.equal(True)
+  // Toast should be queued via effect (not immediately in state)
+  should.be_false(fx == effect.none())
 }

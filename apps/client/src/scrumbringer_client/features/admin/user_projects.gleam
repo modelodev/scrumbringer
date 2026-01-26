@@ -28,9 +28,9 @@ import domain/org.{type OrgUser}
 import domain/project.{type Project}
 import scrumbringer_client/api/org as api_org
 import scrumbringer_client/client_state.{
-  type Model, type Msg, AdminModel, Failed, Loaded, Loading, NotAsked, UiModel,
+  type Model, type Msg, AdminModel, Failed, Loaded, Loading, NotAsked,
   UserProjectAdded, UserProjectRemoved, UserProjectRoleChanged,
-  UserProjectsFetched, admin_msg, update_admin, update_ui,
+  UserProjectsFetched, admin_msg, update_admin,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -361,27 +361,20 @@ pub fn handle_user_project_role_changed_ok(
     other -> other
   }
 
-  #(
-    update_ui(
-      update_admin(model, fn(admin) {
-        AdminModel(
-          ..admin,
-          user_projects_list: updated_projects,
-          user_projects_in_flight: False,
-        )
-      }),
-      fn(ui) {
-        UiModel(
-          ..ui,
-          toast: opt.Some(update_helpers.i18n_t(
-            model,
-            i18n_text.ProjectRoleUpdated,
-          )),
-        )
-      },
-    ),
-    effect.none(),
-  )
+  let model =
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        user_projects_list: updated_projects,
+        user_projects_in_flight: False,
+      )
+    })
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.ProjectRoleUpdated,
+    ))
+  #(model, toast_fx)
 }
 
 /// Handle project role change error.
@@ -389,17 +382,14 @@ pub fn handle_user_project_role_changed_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  #(
-    update_ui(
-      update_admin(model, fn(admin) {
-        AdminModel(
-          ..admin,
-          user_projects_in_flight: False,
-          user_projects_error: opt.Some(err.message),
-        )
-      }),
-      fn(ui) { UiModel(..ui, toast: opt.Some(err.message)) },
-    ),
-    effect.none(),
-  )
+  let model =
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        user_projects_in_flight: False,
+        user_projects_error: opt.Some(err.message),
+      )
+    })
+  let toast_fx = update_helpers.toast_error(err.message)
+  #(model, toast_fx)
 }

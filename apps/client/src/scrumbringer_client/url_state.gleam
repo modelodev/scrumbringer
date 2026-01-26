@@ -32,6 +32,30 @@ pub opaque type UrlState {
   )
 }
 
+/// Parsed query parameters for UrlState.
+pub type UrlQueryParams {
+  UrlQueryParams(
+    project: Option(Int),
+    view: Option(ViewMode),
+    type_filter: Option(Int),
+    capability_filter: Option(Int),
+    search: Option(String),
+    expanded_card: Option(Int),
+  )
+}
+
+type QueryError {
+  InvalidProject(String)
+  InvalidView(String)
+  InvalidType(String)
+  InvalidCapability(String)
+  InvalidCard(String)
+}
+
+type QueryParseError {
+  InvalidQuery(params: UrlQueryParams, errors: List(QueryError))
+}
+
 /// Crea un UrlState vacío (sin proyecto, vista Pool)
 pub fn empty() -> UrlState {
   UrlState(
@@ -49,35 +73,21 @@ pub fn empty() -> UrlState {
 pub fn parse(uri: Uri) -> UrlState {
   let query = uri.query |> option.unwrap("")
   let params = parse_query_params(query)
-
-  UrlState(
-    project: params |> get_int("project"),
-    view: params
-      |> get_string("view")
-      |> option.map(view_mode.from_string)
-      |> option.unwrap(view_mode.Pool),
-    type_filter: params |> get_int("type"),
-    capability_filter: params |> get_int("cap"),
-    search: params |> get_string("search"),
-    expanded_card: params |> get_int("card"),
-  )
+  let query_params = case params {
+    Ok(p) -> p
+    Error(InvalidQuery(p, _)) -> p
+  }
+  to_state(query_params)
 }
 
 /// Parsea un query string directamente
 pub fn parse_query(query: String) -> UrlState {
   let params = parse_query_params(query)
-
-  UrlState(
-    project: params |> get_int("project"),
-    view: params
-      |> get_string("view")
-      |> option.map(view_mode.from_string)
-      |> option.unwrap(view_mode.Pool),
-    type_filter: params |> get_int("type"),
-    capability_filter: params |> get_int("cap"),
-    search: params |> get_string("search"),
-    expanded_card: params |> get_int("card"),
-  )
+  let query_params = case params {
+    Ok(p) -> p
+    Error(InvalidQuery(p, _)) -> p
+  }
+  to_state(query_params)
 }
 
 // =============================================================================
@@ -190,7 +200,52 @@ pub fn to_app_url(state: UrlState) -> String {
 // Helpers privados
 // =============================================================================
 
-fn parse_query_params(query: String) -> List(#(String, String)) {
+fn to_state(params: UrlQueryParams) -> UrlState {
+  UrlState(
+    project: params.project,
+    view: params.view |> option.unwrap(view_mode.Pool),
+    type_filter: params.type_filter,
+    capability_filter: params.capability_filter,
+    search: params.search,
+    expanded_card: params.expanded_card,
+  )
+}
+
+fn parse_query_params(query: String) -> Result(UrlQueryParams, QueryParseError) {
+  let params = parse_query_pairs(query)
+
+  let #(project, project_error) =
+    parse_optional_int_param(params, "project", InvalidProject)
+  let #(view, view_error) = parse_optional_view_param(params, "view")
+  let #(type_filter, type_error) =
+    parse_optional_int_param(params, "type", InvalidType)
+  let #(capability_filter, cap_error) =
+    parse_optional_int_param(params, "cap", InvalidCapability)
+  let search = get_string(params, "search")
+  let #(expanded_card, card_error) =
+    parse_optional_int_param(params, "card", InvalidCard)
+
+  let query_params =
+    UrlQueryParams(
+      project: project,
+      view: view,
+      type_filter: type_filter,
+      capability_filter: capability_filter,
+      search: search,
+      expanded_card: expanded_card,
+    )
+
+  let errors =
+    [project_error, view_error, type_error, cap_error, card_error]
+    |> list.filter_map(fn(err) { option.to_result(err, Nil) })
+
+  case errors {
+    [] -> Ok(query_params)
+    _ -> Error(InvalidQuery(query_params, errors))
+  }
+}
+
+fn parse_query_pairs(query: String) -> List(#(String, String)) {
   query
   |> string.split("&")
   |> list.filter_map(fn(pair) {
@@ -202,15 +257,47 @@ fn parse_query_params(query: String) -> List(#(String, String)) {
   })
 }
 
+fn parse_optional_int_param(
+  params: List(#(String, String)),
+  key: String,
+  err: fn(String) -> QueryError,
+) -> #(Option(Int), Option(QueryError)) {
+  case get_string(params, key) {
+    None -> #(None, None)
+    Some(raw) ->
+      case int.parse(raw) {
+        Ok(value) -> #(Some(value), None)
+        Error(_) -> #(None, Some(err(raw)))
+      }
+  }
+}
+
+fn parse_optional_view_param(
+  params: List(#(String, String)),
+  key: String,
+) -> #(Option(ViewMode), Option(QueryError)) {
+  case get_string(params, key) {
+    None -> #(None, None)
+    Some(raw) ->
+      case view_mode_from_param(raw) {
+        Some(mode) -> #(Some(mode), None)
+        None -> #(None, Some(InvalidView(raw)))
+      }
+  }
+}
+
+fn view_mode_from_param(raw: String) -> Option(ViewMode) {
+  case raw {
+    "pool" -> Some(view_mode.Pool)
+    "list" -> Some(view_mode.List)
+    "cards" -> Some(view_mode.Cards)
+    _ -> None
+  }
+}
+
 fn get_string(params: List(#(String, String)), key: String) -> Option(String) {
   params
   |> list.find(fn(p) { p.0 == key })
   |> result.map(fn(p) { p.1 })
   |> option.from_result
-}
-
-fn get_int(params: List(#(String, String)), key: String) -> Option(Int) {
-  params
-  |> get_string(key)
-  |> option.then(fn(s) { int.parse(s) |> option.from_result })
 }

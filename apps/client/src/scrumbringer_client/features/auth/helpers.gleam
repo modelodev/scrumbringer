@@ -25,6 +25,7 @@ import domain/api_error.{type ApiError}
 import scrumbringer_client/client_state as client_state_module
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/toast
 
 // =============================================================================
 // Drag State Management
@@ -41,8 +42,7 @@ pub fn clear_drag_state(
     client_state_module.MemberModel(
       ..member,
       member_drag: None,
-      member_pool_drag_to_claim_armed: False,
-      member_pool_drag_over_my_tasks: False,
+      member_pool_drag: client_state_module.PoolDragIdle,
     )
   })
 }
@@ -80,13 +80,13 @@ pub fn handle_auth_error(
     401 -> Some(reset_to_login(model))
     403 ->
       Some(#(
-        client_state_module.update_ui(model, fn(ui) {
-          client_state_module.UiModel(
-            ..ui,
-            toast: Some(i18n.t(model.ui.locale, i18n_text.NotPermitted)),
-          )
+        model,
+        effect.from(fn(dispatch) {
+          dispatch(client_state_module.ToastShow(
+            i18n.t(model.ui.locale, i18n_text.NotPermitted),
+            toast.Warning,
+          ))
         }),
-        effect.none(),
       ))
     _ -> None
   }

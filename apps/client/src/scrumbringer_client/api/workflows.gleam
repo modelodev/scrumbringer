@@ -12,7 +12,9 @@ import gleam/option.{type Option, None, Some}
 
 import lustre/effect.{type Effect}
 
-import scrumbringer_client/api/core.{type ApiResult}
+import scrumbringer_client/api/core.{
+  type ApiResult, nullable_int, nullable_string,
+}
 
 import domain/workflow.{
   type Rule, type RuleTemplate, type TaskTemplate, type Workflow, Rule,
@@ -129,14 +131,6 @@ fn rule_template_decoder() -> decode.Decoder(RuleTemplate) {
     created_at: created_at,
     execution_order: execution_order,
   ))
-}
-
-fn nullable_int() -> decode.Decoder(Option(Int)) {
-  decode.optional(decode.int)
-}
-
-fn nullable_string() -> decode.Decoder(Option(String)) {
-  decode.optional(decode.string)
 }
 
 // =============================================================================

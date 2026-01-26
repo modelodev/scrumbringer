@@ -34,8 +34,8 @@ import domain/org.{type InviteLink}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
   type Model, type Msg, AdminModel, Failed, InviteLinkCopyFinished,
-  InviteLinkCreated, InviteLinkRegenerated, InviteLinksFetched, Loaded, UiModel,
-  admin_msg, update_admin, update_ui,
+  InviteLinkCreated, InviteLinkRegenerated, InviteLinksFetched, Loaded,
+  admin_msg, update_admin,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -173,33 +173,25 @@ pub fn handle_invite_link_created_ok(
   link: InviteLink,
 ) -> #(Model, Effect(Msg)) {
   let model =
-    update_ui(
-      update_admin(model, fn(admin) {
-        AdminModel(
-          ..admin,
-          invite_link_in_flight: False,
-          invite_create_dialog_open: False,
-          invite_link_last: opt.Some(link),
-          invite_link_email: "",
-        )
-      }),
-      fn(ui) {
-        UiModel(
-          ..ui,
-          toast: opt.Some(update_helpers.i18n_t(
-            model,
-            i18n_text.InviteLinkCreated,
-          )),
-        )
-      },
-    )
-
-  #(
-    model,
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        invite_link_in_flight: False,
+        invite_create_dialog_open: False,
+        invite_link_last: opt.Some(link),
+        invite_link_email: "",
+      )
+    })
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.InviteLinkCreated,
+    ))
+  let list_fx =
     api_org.list_invite_links(fn(result) {
       admin_msg(InviteLinksFetched(result))
-    }),
-  )
+    })
+  #(model, effect.batch([list_fx, toast_fx]))
 }
 
 /// Handle invite link created error.
@@ -210,25 +202,20 @@ pub fn handle_invite_link_created_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     403 -> #(
-      update_ui(
-        update_admin(model, fn(admin) {
-          AdminModel(
-            ..admin,
-            invite_link_in_flight: False,
-            invite_link_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NotPermitted,
-            )),
-          )
-        }),
-        fn(ui) {
-          UiModel(
-            ..ui,
-            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-          )
-        },
-      ),
-      effect.none(),
+      update_admin(model, fn(admin) {
+        AdminModel(
+          ..admin,
+          invite_link_in_flight: False,
+          invite_link_error: opt.Some(update_helpers.i18n_t(
+            model,
+            i18n_text.NotPermitted,
+          )),
+        )
+      }),
+      update_helpers.toast_warning(update_helpers.i18n_t(
+        model,
+        i18n_text.NotPermitted,
+      )),
     )
     _ -> #(
       update_admin(model, fn(admin) {
@@ -299,32 +286,24 @@ pub fn handle_invite_link_regenerated_ok(
   link: InviteLink,
 ) -> #(Model, Effect(Msg)) {
   let model =
-    update_ui(
-      update_admin(model, fn(admin) {
-        AdminModel(
-          ..admin,
-          invite_link_in_flight: False,
-          invite_link_last: opt.Some(link),
-          invite_link_email: "",
-        )
-      }),
-      fn(ui) {
-        UiModel(
-          ..ui,
-          toast: opt.Some(update_helpers.i18n_t(
-            model,
-            i18n_text.InviteLinkRegenerated,
-          )),
-        )
-      },
-    )
-
-  #(
-    model,
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        invite_link_in_flight: False,
+        invite_link_last: opt.Some(link),
+        invite_link_email: "",
+      )
+    })
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.InviteLinkRegenerated,
+    ))
+  let list_fx =
     api_org.list_invite_links(fn(result) {
       admin_msg(InviteLinksFetched(result))
-    }),
-  )
+    })
+  #(model, effect.batch([list_fx, toast_fx]))
 }
 
 /// Handle invite link regenerated error.
@@ -335,25 +314,20 @@ pub fn handle_invite_link_regenerated_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     403 -> #(
-      update_ui(
-        update_admin(model, fn(admin) {
-          AdminModel(
-            ..admin,
-            invite_link_in_flight: False,
-            invite_link_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NotPermitted,
-            )),
-          )
-        }),
-        fn(ui) {
-          UiModel(
-            ..ui,
-            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-          )
-        },
-      ),
-      effect.none(),
+      update_admin(model, fn(admin) {
+        AdminModel(
+          ..admin,
+          invite_link_in_flight: False,
+          invite_link_error: opt.Some(update_helpers.i18n_t(
+            model,
+            i18n_text.NotPermitted,
+          )),
+        )
+      }),
+      update_helpers.toast_warning(update_helpers.i18n_t(
+        model,
+        i18n_text.NotPermitted,
+      )),
     )
     _ -> #(
       update_admin(model, fn(admin) {

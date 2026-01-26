@@ -18,6 +18,8 @@
 import gleam/dynamic/decode
 import gleam/option
 
+import scrumbringer_client/api/core.{optional_field}
+
 import domain/task.{
   type ActiveTask, type ActiveTaskPayload, type Task, type TaskNote,
   type TaskPosition, type WorkSession, type WorkSessionsPayload, ActiveTask,
@@ -46,11 +48,7 @@ pub fn task_type_decoder() -> decode.Decoder(TaskType) {
   use name <- decode.field("name", decode.string)
   use icon <- decode.field("icon", decode.string)
 
-  use capability_id <- decode.optional_field(
-    "capability_id",
-    option.None,
-    decode.optional(decode.int),
-  )
+  use capability_id <- optional_field("capability_id", decode.int)
 
   use tasks_count <- decode.optional_field("tasks_count", 0, decode.int)
 
@@ -107,19 +105,11 @@ pub fn task_decoder() -> decode.Decoder(Task) {
 
   use task_type <- decode.field("task_type", task_type_inline_decoder())
 
-  use ongoing_by <- decode.optional_field(
-    "ongoing_by",
-    option.None,
-    decode.optional(ongoing_by_decoder()),
-  )
+  use ongoing_by <- optional_field("ongoing_by", ongoing_by_decoder())
 
   use title <- decode.field("title", decode.string)
 
-  use description <- decode.optional_field(
-    "description",
-    option.None,
-    decode.optional(decode.string),
-  )
+  use description <- optional_field("description", decode.string)
 
   use priority <- decode.field("priority", decode.int)
 
@@ -133,43 +123,19 @@ pub fn task_decoder() -> decode.Decoder(Task) {
 
   use created_by <- decode.field("created_by", decode.int)
 
-  use claimed_by <- decode.optional_field(
-    "claimed_by",
-    option.None,
-    decode.optional(decode.int),
-  )
+  use claimed_by <- optional_field("claimed_by", decode.int)
 
-  use claimed_at <- decode.optional_field(
-    "claimed_at",
-    option.None,
-    decode.optional(decode.string),
-  )
+  use claimed_at <- optional_field("claimed_at", decode.string)
 
-  use completed_at <- decode.optional_field(
-    "completed_at",
-    option.None,
-    decode.optional(decode.string),
-  )
+  use completed_at <- optional_field("completed_at", decode.string)
 
   use created_at <- decode.field("created_at", decode.string)
   use version <- decode.field("version", decode.int)
 
   // Card (ficha) association - optional fields
-  use card_id <- decode.optional_field(
-    "card_id",
-    option.None,
-    decode.optional(decode.int),
-  )
-  use card_title <- decode.optional_field(
-    "card_title",
-    option.None,
-    decode.optional(decode.string),
-  )
-  use card_color <- decode.optional_field(
-    "card_color",
-    option.None,
-    decode.optional(decode.string),
-  )
+  use card_id <- optional_field("card_id", decode.int)
+  use card_title <- optional_field("card_title", decode.string)
+  use card_color <- optional_field("card_color", decode.string)
 
   decode.success(Task(
     id: id,
@@ -245,11 +211,7 @@ pub fn active_task_decoder() -> decode.Decoder(ActiveTask) {
   use task_id <- decode.field("task_id", decode.int)
   use project_id <- decode.field("project_id", decode.int)
   use started_at <- decode.field("started_at", decode.string)
-  use accumulated <- decode.optional_field(
-    "accumulated_s",
-    option.None,
-    decode.optional(decode.int),
-  )
+  use accumulated <- optional_field("accumulated_s", decode.int)
 
   let accumulated_s = case accumulated {
     option.Some(v) -> v
@@ -282,11 +244,7 @@ pub fn active_task_payload_decoder() -> decode.Decoder(ActiveTaskPayload) {
 pub fn work_session_decoder() -> decode.Decoder(WorkSession) {
   use task_id <- decode.field("task_id", decode.int)
   use started_at <- decode.field("started_at", decode.string)
-  use accumulated <- decode.optional_field(
-    "accumulated_s",
-    option.None,
-    decode.optional(decode.int),
-  )
+  use accumulated <- optional_field("accumulated_s", decode.int)
 
   let accumulated_s = case accumulated {
     option.Some(v) -> v

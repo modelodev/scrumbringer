@@ -18,11 +18,9 @@
 //// - API: api/tasks/task_types.gleam for CRUD operations
 
 import gleam/dynamic/decode.{type Decoder}
-import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/result
 import gleam/string
 
 import lustre
@@ -38,6 +36,7 @@ import domain/task_type.{type TaskType, TaskType}
 
 import scrumbringer_client/api/core.{type ApiResult}
 import scrumbringer_client/api/tasks/task_types as api_task_types
+import scrumbringer_client/components/crud_dialog_base
 import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
@@ -129,20 +128,15 @@ fn on_attribute_change() -> List(component.Option(Msg)) {
 }
 
 fn decode_locale(value: String) -> Result(Msg, Nil) {
-  Ok(LocaleReceived(locale.deserialize(value)))
+  crud_dialog_base.decode_locale(value, LocaleReceived)
 }
 
 fn decode_project_id(value: String) -> Result(Msg, Nil) {
-  int.parse(value)
-  |> result.map(ProjectIdReceived)
-  |> result.replace_error(Nil)
+  crud_dialog_base.decode_int_attribute(value, ProjectIdReceived)
 }
 
 fn decode_mode(value: String) -> Result(Msg, Nil) {
-  case value {
-    "create" -> Ok(ModeReceived(ModeCreate))
-    _ -> Error(Nil)
-  }
+  crud_dialog_base.decode_create_mode(value, ModeCreate, ModeReceived)
 }
 
 fn task_type_property_decoder() -> Decoder(Msg) {

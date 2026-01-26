@@ -56,11 +56,12 @@ import domain/task.{
 }
 import domain/task_type.{type TaskType}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, type Remote, CoreModel, Loaded, update_core,
+  type Model, type Msg, type Remote, CoreModel, Loaded, ToastShow, update_core,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/shared/i18n_helpers
+import scrumbringer_client/ui/toast
 
 // =============================================================================
 // Pure Data Transformations
@@ -510,15 +511,45 @@ pub fn handle_auth_error(
 // Form Validation Helpers
 // =============================================================================
 
+pub opaque type NonEmptyString {
+  NonEmptyString(String)
+}
+
+// =============================================================================
+// Toast Helpers
+// =============================================================================
+
+/// Build a toast effect to show a message with a variant.
+pub fn toast_effect(message: String, variant: toast.ToastVariant) -> Effect(Msg) {
+  effect.from(fn(dispatch) { dispatch(ToastShow(message, variant)) })
+}
+
+pub fn toast_success(message: String) -> Effect(Msg) {
+  toast_effect(message, toast.Success)
+}
+
+pub fn toast_error(message: String) -> Effect(Msg) {
+  toast_effect(message, toast.Error)
+}
+
+pub fn toast_warning(message: String) -> Effect(Msg) {
+  toast_effect(message, toast.Warning)
+}
+
+pub fn non_empty_string_value(value: NonEmptyString) -> String {
+  let NonEmptyString(inner) = value
+  inner
+}
+
 /// Validate that a string is not empty after trimming.
 ///
-/// Returns Ok with trimmed string, or Error with translated message.
+/// Returns Ok with NonEmptyString, or Error with translated message.
 ///
 /// ## Example
 ///
 /// ```gleam
 /// validate_required_string(model, "  hello  ", i18n_text.NameRequired)
-/// // Ok("hello")
+/// // Ok(NonEmptyString("hello"))
 ///
 /// validate_required_string(model, "   ", i18n_text.NameRequired)
 /// // Error("Name is required")
@@ -527,11 +558,23 @@ pub fn validate_required_string(
   model: Model,
   value: String,
   error_text: i18n_text.Text,
-) -> Result(String, String) {
+) -> Result(NonEmptyString, String) {
   let trimmed = string.trim(value)
   case trimmed == "" {
     True -> Error(i18n_t(model, error_text))
-    False -> Ok(trimmed)
+    False -> Ok(NonEmptyString(trimmed))
+  }
+}
+
+/// Validate that a string is not empty without trimming.
+pub fn validate_required_string_raw(
+  model: Model,
+  value: String,
+  error_text: i18n_text.Text,
+) -> Result(NonEmptyString, String) {
+  case value == "" {
+    True -> Error(i18n_t(model, error_text))
+    False -> Ok(NonEmptyString(value))
   }
 }
 
@@ -544,12 +587,12 @@ pub fn validate_required_string(
 ///   #(name, i18n_text.NameRequired),
 ///   #(email, i18n_text.EmailRequired),
 /// ])
-/// // Ok([trimmed_name, trimmed_email]) or Error("Name is required")
+/// // Ok([NonEmptyString(name), NonEmptyString(email)]) or Error("Name is required")
 /// ```
 pub fn validate_required_fields(
   model: Model,
   fields: List(#(String, i18n_text.Text)),
-) -> Result(List(String), String) {
+) -> Result(List(NonEmptyString), String) {
   fields
   |> list.try_map(fn(field) {
     let #(value, error_text) = field

@@ -9,7 +9,7 @@
 //// ## Responsibilities
 ////
 //// - Main `view` function dispatching to page views
-//// - Admin and member page assembly
+//// - client_state.Admin and member page assembly
 //// - Topbar, nav, and layout composition
 //// - Theme and locale switches
 ////
@@ -23,9 +23,9 @@
 ////
 //// - **features/pool/view.gleam**: Pool canvas, task cards, filters
 //// - **features/tasks/view.gleam**: Task view utilities and distributed task view docs
-//// - **features/metrics/view.gleam**: Admin metrics views
-//// - **features/skills/view.gleam**: Member skills/capabilities
-//// - **features/admin/view.gleam**: Admin section views
+//// - **features/metrics/view.gleam**: client_state.Admin metrics views
+//// - **features/skills/view.gleam**: client_state.Member skills/capabilities
+//// - **features/admin/view.gleam**: client_state.Admin section views
 //// - **features/auth/view.gleam**: Auth views (login, register, etc.)
 
 import gleam/int
@@ -44,21 +44,7 @@ import domain/project.{type Project}
 import domain/user.{type User}
 import domain/view_mode
 
-import scrumbringer_client/client_state.{
-  type Model, type Msg, AcceptInvite as AcceptInvitePage, Admin,
-  CardDialogCreate, CardDialogDelete, CardDialogEdit, Loaded, LocaleSelected,
-  Login, LogoutClicked, Member, MemberClaimClicked, MemberCompleteClicked,
-  MemberCreateDialogOpened, MemberDragEnded, MemberDragMoved,
-  MemberListCardToggled, MemberListHideCompletedToggled,
-  MemberNowWorkingPauseClicked, MemberNowWorkingStartClicked,
-  MemberPoolCapabilityChanged, MemberPoolSearchChanged, MemberPoolTypeChanged,
-  MemberReleaseClicked, MemberTaskDetailsOpened, MobileDrawersClosed,
-  MobileLeftDrawerToggled, MobileRightDrawerToggled, NavigateTo, NoOp,
-  OpenCardDetail, OpenCardDialog, PreferencesPopupToggled, ProjectSelected, Push,
-  ResetPassword as ResetPasswordPage, SidebarConfigToggled, SidebarOrgToggled,
-  ThemeSelected, ToastDismiss, ToastDismissed, ViewModeChanged, auth_msg,
-  pool_msg,
-}
+import scrumbringer_client/client_state
 
 // Story 4.8 UX: Collapse/expand card groups in Lista view
 // Story 4.8 UX: Preferences popup toggle and theme/locale
@@ -108,7 +94,7 @@ import scrumbringer_client/features/views/kanban_board
 // =============================================================================
 
 /// Renders the main application view.
-pub fn view(model: Model) -> Element(Msg) {
+pub fn view(model: client_state.Model) -> Element(client_state.Msg) {
   div(
     [
       attribute.class("app"),
@@ -123,7 +109,7 @@ pub fn view(model: Model) -> Element(Msg) {
   )
 }
 
-fn view_skip_link(model: Model) -> Element(Msg) {
+fn view_skip_link(model: client_state.Model) -> Element(client_state.Msg) {
   // A02: Skip link for keyboard navigation
   a(
     [
@@ -134,16 +120,12 @@ fn view_skip_link(model: Model) -> Element(Msg) {
   )
 }
 
-fn view_global_overlays(model: Model) -> Element(Msg) {
+fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) {
   element.fragment([
-    // Legacy toast (backward compatibility)
-    ui_toast.view(
-      model.ui.toast,
-      update_helpers.i18n_t(model, i18n_text.Dismiss),
-      ToastDismissed,
-    ),
     // New toast system with auto-dismiss (Story 4.8)
-    ui_toast.view_container(model.ui.toast_state, fn(id) { ToastDismiss(id) }),
+    ui_toast.view_container(model.ui.toast_state, fn(id) {
+      client_state.ToastDismiss(id)
+    }),
     // Global card dialog (Story 4.8 UX: renders on any page when open)
     case model.core.selected_project_id, model.admin.cards_dialog_mode {
       opt.Some(project_id), opt.Some(_) ->
@@ -158,13 +140,13 @@ fn view_global_overlays(model: Model) -> Element(Msg) {
   ])
 }
 
-fn view_page(model: Model) -> Element(Msg) {
+fn view_page(model: client_state.Model) -> Element(client_state.Msg) {
   case model.core.page {
-    Login -> auth_view.view_login(model)
-    AcceptInvitePage -> auth_view.view_accept_invite(model)
-    ResetPasswordPage -> auth_view.view_reset_password(model)
-    Admin -> view_admin(model)
-    Member -> view_member(model)
+    client_state.Login -> auth_view.view_login(model)
+    client_state.AcceptInvite -> auth_view.view_accept_invite(model)
+    client_state.ResetPassword -> auth_view.view_reset_password(model)
+    client_state.Admin -> view_admin(model)
+    client_state.Member -> view_member(model)
   }
 }
 
@@ -182,10 +164,10 @@ pub fn now_working_elapsed_from_ms_for_test(
 }
 
 // =============================================================================
-// Admin Views (Story 4.5: Now uses 3-panel layout like Member views)
+// client_state.Admin Views (Story 4.5: Now uses 3-panel layout like client_state.Member views)
 // =============================================================================
 
-fn view_admin(model: Model) -> Element(Msg) {
+fn view_admin(model: client_state.Model) -> Element(client_state.Msg) {
   case model.core.user {
     opt.None -> auth_view.view_login(model)
 
@@ -209,7 +191,10 @@ fn view_admin(model: Model) -> Element(Msg) {
 }
 
 /// Renders the admin view using the new unified 3-panel layout (Story 4.5)
-fn view_admin_three_panel(model: Model, user: User) -> Element(Msg) {
+fn view_admin_three_panel(
+  model: client_state.Model,
+  user: User,
+) -> Element(client_state.Msg) {
   let projects = update_helpers.active_projects(model)
   let is_pm = case update_helpers.selected_project(model) {
     opt.Some(project) -> permissions.is_project_manager(project)
@@ -233,7 +218,10 @@ fn view_admin_three_panel(model: Model, user: User) -> Element(Msg) {
 }
 
 /// Builds the center panel for admin/config/org routes
-fn build_admin_center_panel(model: Model, user: User) -> Element(Msg) {
+fn build_admin_center_panel(
+  model: client_state.Model,
+  user: User,
+) -> Element(client_state.Msg) {
   div(
     [
       attribute.class("admin-center-panel"),
@@ -244,7 +232,10 @@ fn build_admin_center_panel(model: Model, user: User) -> Element(Msg) {
 }
 
 /// Renders the admin section content (CRUD views)
-fn view_admin_section_content(model: Model, user: User) -> Element(Msg) {
+fn view_admin_section_content(
+  model: client_state.Model,
+  user: User,
+) -> Element(client_state.Msg) {
   let projects = update_helpers.active_projects(model)
   let selected = update_helpers.selected_project(model)
   view_section(model, user, projects, selected)
@@ -254,11 +245,11 @@ fn view_admin_section_content(model: Model, user: User) -> Element(Msg) {
 // functions removed - now using unified 3-panel layout with left_panel.gleam
 
 fn view_section(
-  model: Model,
+  model: client_state.Model,
   user: User,
   projects: List(Project),
   selected: opt.Option(Project),
-) -> Element(Msg) {
+) -> Element(client_state.Msg) {
   let allowed =
     permissions.can_access_section(
       model.core.active_section,
@@ -293,10 +284,10 @@ fn view_section(
 }
 
 // =============================================================================
-// Member Views
+// client_state.Member Views
 // =============================================================================
 
-fn view_member(model: Model) -> Element(Msg) {
+fn view_member(model: client_state.Model) -> Element(client_state.Msg) {
   case model.core.user {
     opt.None -> auth_view.view_login(model)
 
@@ -315,14 +306,19 @@ fn view_member(model: Model) -> Element(Msg) {
 }
 
 /// Mobile topbar with hamburger menu and user icon
-fn view_mobile_topbar(model: Model, _user: User) -> Element(Msg) {
+fn view_mobile_topbar(
+  model: client_state.Model,
+  _user: User,
+) -> Element(client_state.Msg) {
   div([attribute.class("mobile-topbar")], [
     button(
       [
         attribute.class("mobile-menu-btn"),
         attribute.attribute("data-testid", "mobile-menu-btn"),
         attribute.attribute("aria-label", "Open navigation menu"),
-        event.on_click(pool_msg(MobileLeftDrawerToggled)),
+        event.on_click(client_state.pool_msg(
+          client_state.MobileLeftDrawerToggled,
+        )),
       ],
       [icons.view_heroicon_inline("bars-3", 24, model.ui.theme)],
     ),
@@ -341,7 +337,9 @@ fn view_mobile_topbar(model: Model, _user: User) -> Element(Msg) {
         attribute.class("mobile-user-btn"),
         attribute.attribute("data-testid", "mobile-user-btn"),
         attribute.attribute("aria-label", "Open activity panel"),
-        event.on_click(pool_msg(MobileRightDrawerToggled)),
+        event.on_click(client_state.pool_msg(
+          client_state.MobileRightDrawerToggled,
+        )),
       ],
       [icons.view_heroicon_inline("user-circle", 24, model.ui.theme)],
     ),
@@ -349,10 +347,10 @@ fn view_mobile_topbar(model: Model, _user: User) -> Element(Msg) {
 }
 
 fn view_mobile_shell(
-  model: Model,
+  model: client_state.Model,
   user: User,
-  main_content: Element(Msg),
-) -> Element(Msg) {
+  main_content: Element(client_state.Msg),
+) -> Element(client_state.Msg) {
   div([attribute.class("member member-mobile")], [
     view_mobile_topbar(model, user),
     // A02: Skip link target - with padding for mini-bar
@@ -378,7 +376,10 @@ fn view_mobile_shell(
 }
 
 /// Left drawer containing navigation
-fn view_mobile_left_drawer(model: Model, user: User) -> Element(Msg) {
+fn view_mobile_left_drawer(
+  model: client_state.Model,
+  user: User,
+) -> Element(client_state.Msg) {
   let projects = update_helpers.active_projects(model)
   let is_pm = case update_helpers.selected_project(model) {
     opt.Some(project) -> permissions.is_project_manager(project)
@@ -390,26 +391,32 @@ fn view_mobile_left_drawer(model: Model, user: User) -> Element(Msg) {
     build_left_panel(model, user, projects, is_pm, is_org_admin)
 
   responsive_drawer.view(
-    model.ui.mobile_left_drawer_open,
+    client_state.mobile_drawer_left_open(model.ui.mobile_drawer),
     responsive_drawer.Left,
-    pool_msg(MobileDrawersClosed),
+    client_state.pool_msg(client_state.MobileDrawersClosed),
     left_content,
   )
 }
 
 /// Right drawer containing activity panel
-fn view_mobile_right_drawer(model: Model, user: User) -> Element(Msg) {
+fn view_mobile_right_drawer(
+  model: client_state.Model,
+  user: User,
+) -> Element(client_state.Msg) {
   let right_content = build_right_panel(model, user)
 
   responsive_drawer.view(
-    model.ui.mobile_right_drawer_open,
+    client_state.mobile_drawer_right_open(model.ui.mobile_drawer),
     responsive_drawer.Right,
-    pool_msg(MobileDrawersClosed),
+    client_state.pool_msg(client_state.MobileDrawersClosed),
     right_content,
   )
 }
 
-fn view_member_section(model: Model, user: User) -> Element(Msg) {
+fn view_member_section(
+  model: client_state.Model,
+  user: User,
+) -> Element(client_state.Msg) {
   case model.member.member_section {
     member_section.Pool -> pool_view.view_pool_main(model, user)
     member_section.MyBar -> my_bar_view.view_bar(model, user)
@@ -423,7 +430,10 @@ fn view_member_section(model: Model, user: User) -> Element(Msg) {
 // =============================================================================
 
 /// Renders the member view using the new 3-panel layout
-fn view_member_three_panel(model: Model, user: User) -> Element(Msg) {
+fn view_member_three_panel(
+  model: client_state.Model,
+  user: User,
+) -> Element(client_state.Msg) {
   let projects = update_helpers.active_projects(model)
   let is_pm = case update_helpers.selected_project(model) {
     opt.Some(project) -> permissions.is_project_manager(project)
@@ -448,23 +458,24 @@ fn view_member_three_panel(model: Model, user: User) -> Element(Msg) {
 
 /// Builds the left panel with project selector and navigation
 fn build_left_panel(
-  model: Model,
+  model: client_state.Model,
   user: User,
   projects: List(Project),
   is_pm: Bool,
   is_org_admin: Bool,
-) -> Element(Msg) {
+) -> Element(client_state.Msg) {
   // Story 4.5: Get badge counts for sidebar
   let pending_invites_count = case model.admin.invite_links {
-    Loaded(links) -> list.count(links, fn(link) { link.used_at == opt.None })
+    client_state.Loaded(links) ->
+      list.count(links, fn(link) { link.used_at == opt.None })
     _ -> 0
   }
 
-  // Story 4.5: Use Config and Org routes instead of Admin
+  // Story 4.5: Use Config and Org routes instead of client_state.Admin
   // Story 4.7: TRABAJO section visible for all roles (AC1, AC7-9)
-  // Only show active view indicator when on Member page (AC3)
+  // Only show active view indicator when on client_state.Member page (AC3)
   let current_view = case model.core.page {
-    Member -> opt.Some(model.member.view_mode)
+    client_state.Member -> opt.Some(model.member.view_mode)
     _ -> opt.None
   }
 
@@ -475,101 +486,120 @@ fn build_left_panel(
     selected_project_id: model.core.selected_project_id,
     is_pm: is_pm,
     is_org_admin: is_org_admin,
-    // Current view mode for active indicator (AC3) - only when on Member page
+    // Current view mode for active indicator (AC3) - only when on client_state.Member page
     current_view_mode: current_view,
     // Collapse state
-    config_collapsed: model.ui.sidebar_config_collapsed,
-    org_collapsed: model.ui.sidebar_org_collapsed,
+    config_collapsed: client_state.sidebar_config_collapsed(
+      model.ui.sidebar_collapse,
+    ),
+    org_collapsed: client_state.sidebar_org_collapsed(model.ui.sidebar_collapse),
     // Badge counts
     pending_invites_count: pending_invites_count,
     projects_count: list.length(projects),
     // Event handlers
-    on_project_change: ProjectSelected,
-    on_new_task: pool_msg(MemberCreateDialogOpened),
-    on_new_card: pool_msg(OpenCardDialog(CardDialogCreate)),
+    on_project_change: client_state.ProjectSelected,
+    on_new_task: client_state.pool_msg(client_state.MemberCreateDialogOpened),
+    on_new_card: client_state.pool_msg(client_state.OpenCardDialog(
+      client_state.CardDialogCreate,
+    )),
     // Navigation to work views (AC2)
-    on_navigate_pool: NavigateTo(
+    on_navigate_pool: client_state.NavigateTo(
       router.Member(
         member_section.Pool,
         model.core.selected_project_id,
         opt.Some(view_mode.Pool),
       ),
-      Push,
+      client_state.Push,
     ),
-    on_navigate_list: NavigateTo(
+    on_navigate_list: client_state.NavigateTo(
       router.Member(
         member_section.Pool,
         model.core.selected_project_id,
         opt.Some(view_mode.List),
       ),
-      Push,
+      client_state.Push,
     ),
-    on_navigate_cards: NavigateTo(
+    on_navigate_cards: client_state.NavigateTo(
       router.Member(
         member_section.Pool,
         model.core.selected_project_id,
         opt.Some(view_mode.Cards),
       ),
-      Push,
+      client_state.Push,
     ),
     // Config navigation
-    on_navigate_config_team: NavigateTo(
+    on_navigate_config_team: client_state.NavigateTo(
       router.Config(permissions.Members, model.core.selected_project_id),
-      Push,
+      client_state.Push,
     ),
-    on_navigate_config_capabilities: NavigateTo(
+    on_navigate_config_capabilities: client_state.NavigateTo(
       router.Config(permissions.Capabilities, model.core.selected_project_id),
-      Push,
+      client_state.Push,
     ),
     // Story 4.9: New config section navigation
-    on_navigate_config_cards: NavigateTo(
+    on_navigate_config_cards: client_state.NavigateTo(
       router.Config(permissions.Cards, model.core.selected_project_id),
-      Push,
+      client_state.Push,
     ),
-    on_navigate_config_task_types: NavigateTo(
+    on_navigate_config_task_types: client_state.NavigateTo(
       router.Config(permissions.TaskTypes, model.core.selected_project_id),
-      Push,
+      client_state.Push,
     ),
-    on_navigate_config_templates: NavigateTo(
+    on_navigate_config_templates: client_state.NavigateTo(
       router.Config(permissions.TaskTemplates, model.core.selected_project_id),
-      Push,
+      client_state.Push,
     ),
-    on_navigate_config_rules: NavigateTo(
+    on_navigate_config_rules: client_state.NavigateTo(
       router.Config(permissions.Workflows, model.core.selected_project_id),
-      Push,
+      client_state.Push,
     ),
-    // AC31: Metrics link for PM/Admin
-    on_navigate_config_metrics: NavigateTo(
+    // AC31: Metrics link for PM/client_state.Admin
+    on_navigate_config_metrics: client_state.NavigateTo(
       router.Config(permissions.RuleMetrics, model.core.selected_project_id),
-      Push,
+      client_state.Push,
     ),
-    on_navigate_org_invites: NavigateTo(router.Org(permissions.Invites), Push),
-    on_navigate_org_users: NavigateTo(router.Org(permissions.OrgSettings), Push),
-    on_navigate_org_projects: NavigateTo(router.Org(permissions.Projects), Push),
-    // AC32: Org Metrics link for Org Admin
-    on_navigate_org_metrics: NavigateTo(router.Org(permissions.Metrics), Push),
-    on_toggle_config: pool_msg(SidebarConfigToggled),
-    on_toggle_org: pool_msg(SidebarOrgToggled),
+    on_navigate_org_invites: client_state.NavigateTo(
+      router.Org(permissions.Invites),
+      client_state.Push,
+    ),
+    on_navigate_org_users: client_state.NavigateTo(
+      router.Org(permissions.OrgSettings),
+      client_state.Push,
+    ),
+    on_navigate_org_projects: client_state.NavigateTo(
+      router.Org(permissions.Projects),
+      client_state.Push,
+    ),
+    // AC32: Org Metrics link for Org client_state.Admin
+    on_navigate_org_metrics: client_state.NavigateTo(
+      router.Org(permissions.Metrics),
+      client_state.Push,
+    ),
+    on_toggle_config: client_state.pool_msg(client_state.SidebarConfigToggled),
+    on_toggle_org: client_state.pool_msg(client_state.SidebarOrgToggled),
   ))
 }
 
 /// Builds the center panel with view mode toggle and content
-fn build_center_panel(model: Model, user: User) -> Element(Msg) {
+fn build_center_panel(
+  model: client_state.Model,
+  user: User,
+) -> Element(client_state.Msg) {
   // Get filtered tasks and available filters
   let tasks = case model.member.member_tasks {
-    Loaded(t) -> t
+    client_state.Loaded(t) -> t
     _ -> []
   }
   let task_types = case model.member.member_task_types {
-    Loaded(tt) -> tt
+    client_state.Loaded(tt) -> tt
     _ -> []
   }
   let capabilities = case model.admin.capabilities {
-    Loaded(caps) -> caps
+    client_state.Loaded(caps) -> caps
     _ -> []
   }
   let cards = case model.admin.cards {
-    Loaded(c) -> c
+    client_state.Loaded(c) -> c
     _ -> []
   }
 
@@ -577,7 +607,7 @@ fn build_center_panel(model: Model, user: User) -> Element(Msg) {
   let pool_content = pool_view.view_pool_main(model, user)
   // AC7: Extract org users for displaying claimed-by info
   let org_users = case model.admin.org_users_cache {
-    Loaded(users) -> users
+    client_state.Loaded(users) -> users
     _ -> []
   }
   let list_content =
@@ -589,11 +619,17 @@ fn build_center_panel(model: Model, user: User) -> Element(Msg) {
       // Story 4.8 UX: Use model state for collapse/expand
       expanded_cards: model.member.member_list_expanded_cards,
       hide_completed: model.member.member_list_hide_completed,
-      on_toggle_card: fn(card_id) { pool_msg(MemberListCardToggled(card_id)) },
-      on_toggle_hide_completed: pool_msg(MemberListHideCompletedToggled),
-      on_task_click: fn(task_id) { pool_msg(MemberTaskDetailsOpened(task_id)) },
+      on_toggle_card: fn(card_id) {
+        client_state.pool_msg(client_state.MemberListCardToggled(card_id))
+      },
+      on_toggle_hide_completed: client_state.pool_msg(
+        client_state.MemberListHideCompletedToggled,
+      ),
+      on_task_click: fn(task_id) {
+        client_state.pool_msg(client_state.MemberTaskDetailsOpened(task_id))
+      },
       on_task_claim: fn(task_id, version) {
-        pool_msg(MemberClaimClicked(task_id, version))
+        client_state.pool_msg(client_state.MemberClaimClicked(task_id, version))
       },
     ))
   let cards_content =
@@ -610,25 +646,37 @@ fn build_center_panel(model: Model, user: User) -> Element(Msg) {
         }
         is_pm || user.org_role == org_role.Admin
       },
-      on_card_click: fn(card_id) { pool_msg(OpenCardDetail(card_id)) },
+      on_card_click: fn(card_id) {
+        client_state.pool_msg(client_state.OpenCardDetail(card_id))
+      },
       on_card_edit: fn(card_id) {
-        pool_msg(OpenCardDialog(CardDialogEdit(card_id)))
+        client_state.pool_msg(
+          client_state.OpenCardDialog(client_state.CardDialogEdit(card_id)),
+        )
       },
       on_card_delete: fn(card_id) {
-        pool_msg(OpenCardDialog(CardDialogDelete(card_id)))
+        client_state.pool_msg(
+          client_state.OpenCardDialog(client_state.CardDialogDelete(card_id)),
+        )
       },
-      on_new_card: pool_msg(OpenCardDialog(CardDialogCreate)),
+      on_new_card: client_state.pool_msg(client_state.OpenCardDialog(
+        client_state.CardDialogCreate,
+      )),
       // Story 4.8 UX: Task interaction handlers for consistency with Lista view
-      on_task_click: fn(task_id) { pool_msg(MemberTaskDetailsOpened(task_id)) },
+      on_task_click: fn(task_id) {
+        client_state.pool_msg(client_state.MemberTaskDetailsOpened(task_id))
+      },
       on_task_claim: fn(task_id, version) {
-        pool_msg(MemberClaimClicked(task_id, version))
+        client_state.pool_msg(client_state.MemberClaimClicked(task_id, version))
       },
     ))
 
   center_panel.view(center_panel.CenterPanelConfig(
     locale: model.ui.locale,
     view_mode: model.member.view_mode,
-    on_view_mode_change: fn(mode) { pool_msg(ViewModeChanged(mode)) },
+    on_view_mode_change: fn(mode) {
+      client_state.pool_msg(client_state.ViewModeChanged(mode))
+    },
     task_types: task_types,
     capabilities: capabilities,
     type_filter: parse_filter_id(model.member.member_filters_type_id),
@@ -636,25 +684,34 @@ fn build_center_panel(model: Model, user: User) -> Element(Msg) {
       model.member.member_filters_capability_id,
     ),
     search_query: model.member.member_filters_q,
-    on_type_filter_change: fn(value) { pool_msg(MemberPoolTypeChanged(value)) },
-    on_capability_filter_change: fn(value) {
-      pool_msg(MemberPoolCapabilityChanged(value))
+    on_type_filter_change: fn(value) {
+      client_state.pool_msg(client_state.MemberPoolTypeChanged(value))
     },
-    on_search_change: fn(value) { pool_msg(MemberPoolSearchChanged(value)) },
+    on_capability_filter_change: fn(value) {
+      client_state.pool_msg(client_state.MemberPoolCapabilityChanged(value))
+    },
+    on_search_change: fn(value) {
+      client_state.pool_msg(client_state.MemberPoolSearchChanged(value))
+    },
     pool_content: pool_content,
     list_content: list_content,
     cards_content: cards_content,
     // Drag handlers for pool (Story 4.7 fix)
-    on_drag_move: fn(x, y) { pool_msg(MemberDragMoved(x, y)) },
-    on_drag_end: pool_msg(MemberDragEnded),
+    on_drag_move: fn(x, y) {
+      client_state.pool_msg(client_state.MemberDragMoved(x, y))
+    },
+    on_drag_end: client_state.pool_msg(client_state.MemberDragEnded),
   ))
 }
 
 /// Builds the right panel with activity and profile
-fn build_right_panel(model: Model, user: User) -> Element(Msg) {
+fn build_right_panel(
+  model: client_state.Model,
+  user: User,
+) -> Element(client_state.Msg) {
   // Get claimed tasks for "my tasks" section
   let my_tasks = case model.member.member_tasks {
-    Loaded(tasks) ->
+    client_state.Loaded(tasks) ->
       list.filter(tasks, fn(t) {
         t.status == Claimed(Taken) && t.claimed_by == opt.Some(user.id)
       })
@@ -663,10 +720,10 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
 
   // Build my cards with progress (cards user is assigned to via tasks)
   let my_cards = case model.admin.cards {
-    Loaded(cards) -> {
+    client_state.Loaded(cards) -> {
       // Get all tasks to compute progress
       let all_tasks = case model.member.member_tasks {
-        Loaded(tasks) -> tasks
+        client_state.Loaded(tasks) -> tasks
         _ -> []
       }
       // Find cards where user has claimed tasks
@@ -706,7 +763,7 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
       ) = session
       // Find task title and type icon
       let #(title, type_icon) = case model.member.member_tasks {
-        Loaded(tasks) ->
+        client_state.Loaded(tasks) ->
           case list.find(tasks, fn(t) { t.id == id }) {
             Ok(t) -> #(t.title, t.task_type.icon)
             Error(_) -> #("Task #" <> int.to_string(id), "clipboard-document")
@@ -733,6 +790,8 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
       )
     })
 
+  let #(drag_armed, drag_over_my_tasks) = pool_drag_flags(model)
+
   right_panel.view(right_panel.RightPanelConfig(
     locale: model.ui.locale,
     user: opt.Some(user),
@@ -740,42 +799,56 @@ fn build_right_panel(model: Model, user: User) -> Element(Msg) {
     my_cards: my_cards,
     active_tasks: active_tasks_info,
     on_task_start: fn(task_id) {
-      pool_msg(MemberNowWorkingStartClicked(task_id))
+      client_state.pool_msg(client_state.MemberNowWorkingStartClicked(task_id))
     },
-    on_task_pause: fn(_task_id) { pool_msg(MemberNowWorkingPauseClicked) },
+    on_task_pause: fn(_task_id) {
+      client_state.pool_msg(client_state.MemberNowWorkingPauseClicked)
+    },
     on_task_complete: fn(task_id) {
       // Find task version for complete action
       case model.member.member_tasks {
-        Loaded(tasks) ->
+        client_state.Loaded(tasks) ->
           case list.find(tasks, fn(t) { t.id == task_id }) {
-            Ok(t) -> pool_msg(MemberCompleteClicked(task_id, t.version))
-            Error(_) -> NoOp
+            Ok(t) ->
+              client_state.pool_msg(client_state.MemberCompleteClicked(
+                task_id,
+                t.version,
+              ))
+            Error(_) -> client_state.NoOp
           }
-        _ -> NoOp
+        _ -> client_state.NoOp
       }
     },
-    on_logout: auth_msg(LogoutClicked),
+    on_logout: client_state.auth_msg(client_state.LogoutClicked),
     on_task_release: fn(task_id) {
       // Find task version for release action
       case model.member.member_tasks {
-        Loaded(tasks) ->
+        client_state.Loaded(tasks) ->
           case list.find(tasks, fn(t) { t.id == task_id }) {
-            Ok(t) -> pool_msg(MemberReleaseClicked(task_id, t.version))
-            Error(_) -> NoOp
+            Ok(t) ->
+              client_state.pool_msg(client_state.MemberReleaseClicked(
+                task_id,
+                t.version,
+              ))
+            Error(_) -> client_state.NoOp
           }
-        _ -> NoOp
+        _ -> client_state.NoOp
       }
     },
-    on_card_click: fn(card_id) { pool_msg(OpenCardDetail(card_id)) },
+    on_card_click: fn(card_id) {
+      client_state.pool_msg(client_state.OpenCardDetail(card_id))
+    },
     // Drag-to-claim state for Pool view (Story 4.7)
-    drag_armed: model.member.member_pool_drag_to_claim_armed,
-    drag_over_my_tasks: model.member.member_pool_drag_over_my_tasks,
+    drag_armed: drag_armed,
+    drag_over_my_tasks: drag_over_my_tasks,
     // Preferences popup (Story 4.8 UX: moved from inline to popup)
     preferences_popup_open: model.ui.preferences_popup_open,
-    on_preferences_toggle: pool_msg(PreferencesPopupToggled),
+    on_preferences_toggle: client_state.pool_msg(
+      client_state.PreferencesPopupToggled,
+    ),
     current_theme: model.ui.theme,
-    on_theme_change: ThemeSelected,
-    on_locale_change: LocaleSelected,
+    on_theme_change: client_state.ThemeSelected,
+    on_locale_change: client_state.LocaleSelected,
     disable_actions: model.member.member_task_mutation_in_flight
       || model.member.member_now_working_in_flight,
   ))
@@ -796,12 +869,15 @@ fn parse_filter_id(s: String) -> opt.Option(Int) {
 // Theme/locale switches are now in the layout panels
 
 // =============================================================================
-// Member Right Panel (Unified)
+// client_state.Member Right Panel (Unified)
 // =============================================================================
 
 /// Persistent right panel for member view.
 /// Combines Now Working status/timer and claimed tasks list.
-pub fn view_member_right_panel(model: Model, user: User) -> Element(Msg) {
+pub fn view_member_right_panel(
+  model: client_state.Model,
+  user: User,
+) -> Element(client_state.Msg) {
   div([attribute.class("pool-right")], [
     now_working_panel.view(model),
     view_claimed_tasks_section(model, user),
@@ -810,14 +886,18 @@ pub fn view_member_right_panel(model: Model, user: User) -> Element(Msg) {
 
 /// Claimed tasks section within the right panel.
 /// Shows list of tasks claimed by user with start/complete/release actions.
-fn view_claimed_tasks_section(model: Model, user: User) -> Element(Msg) {
+fn view_claimed_tasks_section(
+  model: client_state.Model,
+  user: User,
+) -> Element(client_state.Msg) {
+  let #(drag_armed, drag_over_my_tasks) = pool_drag_flags(model)
   let active_task_id = case update_helpers.now_working_active_task(model) {
     opt.Some(ActiveTask(task_id: id, ..)) -> opt.Some(id)
     opt.None -> opt.None
   }
 
   let claimed_tasks = case model.member.member_tasks {
-    Loaded(tasks) ->
+    client_state.Loaded(tasks) ->
       tasks
       |> list.filter(fn(t) {
         let Task(status: status, claimed_by: claimed_by, ..) = t
@@ -828,10 +908,7 @@ fn view_claimed_tasks_section(model: Model, user: User) -> Element(Msg) {
   }
 
   // Dropzone class for drag-to-claim visual feedback
-  let dropzone_class = case
-    model.member.member_pool_drag_to_claim_armed,
-    model.member.member_pool_drag_over_my_tasks
-  {
+  let dropzone_class = case drag_armed, drag_over_my_tasks {
     True, True -> "pool-my-tasks-dropzone drop-over"
     True, False -> "pool-my-tasks-dropzone drag-active"
     False, _ -> "pool-my-tasks-dropzone"
@@ -844,7 +921,7 @@ fn view_claimed_tasks_section(model: Model, user: User) -> Element(Msg) {
     ],
     [
       // Dropzone hint when dragging
-      case model.member.member_pool_drag_to_claim_armed {
+      case drag_armed {
         True ->
           div([attribute.class("dropzone-hint")], [
             text(
@@ -874,13 +951,21 @@ fn view_claimed_tasks_section(model: Model, user: User) -> Element(Msg) {
   )
 }
 
+fn pool_drag_flags(model: client_state.Model) -> #(Bool, Bool) {
+  case model.member.member_pool_drag {
+    client_state.PoolDragDragging(over_my_tasks: over, ..) -> #(True, over)
+    client_state.PoolDragPendingRect -> #(True, False)
+    client_state.PoolDragIdle -> #(False, False)
+  }
+}
+
 /// Renders a claimed task row with start/complete/release actions.
 fn view_claimed_task_row(
-  model: Model,
+  model: client_state.Model,
   _user: User,
   task: Task,
   active_task_id: opt.Option(Int),
-) -> Element(Msg) {
+) -> Element(client_state.Msg) {
   let Task(id: id, title: title, task_type: task_type, version: version, ..) =
     task
   let is_active = active_task_id == opt.Some(id)
@@ -898,7 +983,9 @@ fn view_claimed_task_row(
             update_helpers.i18n_t(model, i18n_text.Pause),
           ),
           attribute.disabled(disable_actions),
-          event.on_click(pool_msg(MemberNowWorkingPauseClicked)),
+          event.on_click(client_state.pool_msg(
+            client_state.MemberNowWorkingPauseClicked,
+          )),
         ],
         [icons.nav_icon(icons.Pause, icons.Small)],
       )
@@ -911,7 +998,9 @@ fn view_claimed_task_row(
             update_helpers.i18n_t(model, i18n_text.Start),
           ),
           attribute.disabled(disable_actions),
-          event.on_click(pool_msg(MemberNowWorkingStartClicked(id))),
+          event.on_click(
+            client_state.pool_msg(client_state.MemberNowWorkingStartClicked(id)),
+          ),
         ],
         [icons.nav_icon(icons.Play, icons.Small)],
       )
@@ -945,7 +1034,12 @@ fn view_claimed_task_row(
             update_helpers.i18n_t(model, i18n_text.Complete),
           ),
           attribute.disabled(disable_actions),
-          event.on_click(pool_msg(MemberCompleteClicked(id, version))),
+          event.on_click(
+            client_state.pool_msg(client_state.MemberCompleteClicked(
+              id,
+              version,
+            )),
+          ),
         ],
         [icons.nav_icon(icons.Check, icons.Small)],
       ),
@@ -957,7 +1051,9 @@ fn view_claimed_task_row(
             update_helpers.i18n_t(model, i18n_text.Release),
           ),
           attribute.disabled(disable_actions),
-          event.on_click(pool_msg(MemberReleaseClicked(id, version))),
+          event.on_click(
+            client_state.pool_msg(client_state.MemberReleaseClicked(id, version)),
+          ),
         ],
         [icons.nav_icon(icons.Return, icons.Small)],
       ),

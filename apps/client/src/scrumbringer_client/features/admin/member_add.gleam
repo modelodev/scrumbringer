@@ -25,8 +25,8 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiError}
 import domain/project_role.{type ProjectRole}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, AdminModel, Loaded, MemberAdded, NotAsked, UiModel,
-  admin_msg, update_admin, update_ui,
+  type Model, type Msg, AdminModel, MemberAdded, OrgUsersSearchIdle,
+  OrgUsersSearchLoaded, admin_msg, update_admin,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -47,8 +47,7 @@ pub fn handle_member_add_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
         members_add_dialog_open: True,
         members_add_selected_user: opt.None,
         members_add_error: opt.None,
-        org_users_search_query: "",
-        org_users_search_results: NotAsked,
+        org_users_search: OrgUsersSearchIdle("", 0),
       )
     }),
     effect.none(),
@@ -64,8 +63,7 @@ pub fn handle_member_add_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
         members_add_dialog_open: False,
         members_add_selected_user: opt.None,
         members_add_error: opt.None,
-        org_users_search_query: "",
-        org_users_search_results: NotAsked,
+        org_users_search: OrgUsersSearchIdle("", 0),
       )
     }),
     effect.none(),
@@ -94,8 +92,8 @@ pub fn handle_member_add_user_selected(
   model: Model,
   user_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  let selected = case model.admin.org_users_search_results {
-    Loaded(users) ->
+  let selected = case model.admin.org_users_search {
+    OrgUsersSearchLoaded(_, _, users) ->
       case list.find(users, fn(u) { u.id == user_id }) {
         Ok(user) -> opt.Some(user)
         Error(_) -> opt.None
@@ -179,14 +177,13 @@ pub fn handle_member_added_ok(
         members_add_dialog_open: False,
       )
     })
-  let model =
-    update_ui(model, fn(ui) {
-      UiModel(
-        ..ui,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.MemberAdded)),
-      )
-    })
-  refresh_fn(model)
+  let #(model, refresh_fx) = refresh_fn(model)
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.MemberAdded,
+    ))
+  #(model, effect.batch([refresh_fx, toast_fx]))
 }
 
 /// Handle member added error.
@@ -197,25 +194,20 @@ pub fn handle_member_added_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     403 -> #(
-      update_ui(
-        update_admin(model, fn(admin) {
-          AdminModel(
-            ..admin,
-            members_add_in_flight: False,
-            members_add_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NotPermitted,
-            )),
-          )
-        }),
-        fn(ui) {
-          UiModel(
-            ..ui,
-            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-          )
-        },
-      ),
-      effect.none(),
+      update_admin(model, fn(admin) {
+        AdminModel(
+          ..admin,
+          members_add_in_flight: False,
+          members_add_error: opt.Some(update_helpers.i18n_t(
+            model,
+            i18n_text.NotPermitted,
+          )),
+        )
+      }),
+      update_helpers.toast_warning(update_helpers.i18n_t(
+        model,
+        i18n_text.NotPermitted,
+      )),
     )
     _ -> #(
       update_admin(model, fn(admin) {

@@ -97,6 +97,20 @@ pub type ParseResult {
   Redirect(Route)
 }
 
+/// Parsed query parameters used by routes.
+pub type QueryParams {
+  QueryParams(project_id: Option(Int), view_mode: Option(ViewMode))
+}
+
+type QueryError {
+  InvalidProject(String)
+  InvalidView(String)
+}
+
+type QueryParseError {
+  InvalidQuery(params: QueryParams, errors: List(QueryError))
+}
+
 /// Parse URL components into a Route.
 ///
 /// Handles both modern path-based URLs and legacy hash-based URLs.
@@ -117,15 +131,21 @@ pub type ParseResult {
 /// // Redirect(Org(Invites)) -- org sections redirect to /org
 /// ```
 pub fn parse(pathname: String, search: String, hash: String) -> ParseResult {
+  let query_result = parse_query_params(search)
+  let #(query_params, query_invalid) = case query_result {
+    Ok(params) -> #(params, False)
+    Error(InvalidQuery(params, _)) -> #(params, True)
+  }
+
   // Legacy support: old hash routing `/?project=2#/admin/members`.
   let legacy = case pathname == "/" {
-    True -> parse_legacy_hash(hash, search)
+    True -> parse_legacy_hash(hash, query_params)
     False -> None
   }
 
   let route = case legacy {
     Some(route) -> route
-    None -> parse_pathname(pathname, search)
+    None -> parse_pathname(pathname, search, query_params)
   }
 
   // Story 4.5: Convert Admin routes to Config/Org routes
@@ -136,7 +156,7 @@ pub fn parse(pathname: String, search: String, hash: String) -> ParseResult {
   // Story 4.5: Redirect /admin/* to new routes
   let needs_redirect =
     legacy != None
-    || has_invalid_project(search)
+    || query_invalid
     || has_deprecated_member_slug(pathname)
     || admin_redirect
 
@@ -157,24 +177,67 @@ fn has_deprecated_member_slug(pathname: String) -> Bool {
   }
 }
 
-fn has_invalid_project(search: String) -> Bool {
-  case query_param(search, "project") {
-    None -> False
+fn parse_query_params(search: String) -> Result(QueryParams, QueryParseError) {
+  let #(project_id, project_error) = parse_optional_int_param(search, "project")
+  let #(view_mode, view_error) = parse_optional_view_param(search, "view")
+  let params = QueryParams(project_id: project_id, view_mode: view_mode)
+
+  let errors =
+    [project_error, view_error]
+    |> list.filter_map(fn(err) { option.to_result(err, Nil) })
+
+  case errors {
+    [] -> Ok(params)
+    _ -> Error(InvalidQuery(params, errors))
+  }
+}
+
+fn parse_optional_int_param(
+  search: String,
+  key: String,
+) -> #(Option(Int), Option(QueryError)) {
+  case query_param(search, key) {
+    None -> #(None, None)
 
     Some(raw) ->
       case int.parse(raw) {
-        Ok(_) -> False
-        Error(_) -> True
+        Ok(id) -> #(Some(id), None)
+        Error(_) -> #(None, Some(InvalidProject(raw)))
       }
   }
 }
 
-fn parse_legacy_hash(hash: String, search: String) -> Option(Route) {
+fn parse_optional_view_param(
+  search: String,
+  key: String,
+) -> #(Option(ViewMode), Option(QueryError)) {
+  case query_param(search, key) {
+    None -> #(None, None)
+
+    Some(raw) ->
+      case view_mode_from_param(raw) {
+        Some(mode) -> #(Some(mode), None)
+        None -> #(None, Some(InvalidView(raw)))
+      }
+  }
+}
+
+fn view_mode_from_param(raw: String) -> Option(ViewMode) {
+  case raw {
+    "pool" -> Some(view_mode.Pool)
+    "list" -> Some(view_mode.List)
+    "cards" -> Some(view_mode.Cards)
+    _ -> None
+  }
+}
+
+fn parse_legacy_hash(hash: String, query: QueryParams) -> Option(Route) {
+  let QueryParams(project_id: project_id, view_mode: view_mode) = query
   case string.starts_with(hash, "#/admin/") {
     True -> {
       let slug = drop_prefix(hash, "#/admin/")
       let section = admin_section_from_slug(slug)
-      Some(Admin(section, project_id_from_search(search)))
+      Some(Admin(section, project_id))
     }
 
     False ->
@@ -182,11 +245,7 @@ fn parse_legacy_hash(hash: String, search: String) -> Option(Route) {
         True -> {
           let slug = drop_prefix(hash, "#/app/")
           let section = member_section.from_slug(slug)
-          Some(Member(
-            section,
-            project_id_from_search(search),
-            view_mode_from_search(search),
-          ))
+          Some(Member(section, project_id, view_mode))
         }
 
         False -> None
@@ -194,7 +253,8 @@ fn parse_legacy_hash(hash: String, search: String) -> Option(Route) {
   }
 }
 
-fn parse_pathname(pathname: String, search: String) -> Route {
+fn parse_pathname(pathname: String, search: String, query: QueryParams) -> Route {
+  let QueryParams(project_id: project_id, view_mode: view_mode) = query
   case pathname {
     "/" -> Login
 
@@ -207,7 +267,7 @@ fn parse_pathname(pathname: String, search: String) -> Route {
       case string.starts_with(pathname, "/config") {
         True -> {
           let slug = path_segment(pathname, "/config")
-          Config(config_section_from_slug(slug), project_id_from_search(search))
+          Config(config_section_from_slug(slug), project_id)
         }
 
         False ->
@@ -223,10 +283,7 @@ fn parse_pathname(pathname: String, search: String) -> Route {
               case string.starts_with(pathname, "/admin") {
                 True -> {
                   let slug = path_segment(pathname, "/admin")
-                  Admin(
-                    admin_section_from_slug(slug),
-                    project_id_from_search(search),
-                  )
+                  Admin(admin_section_from_slug(slug), project_id)
                 }
 
                 False ->
@@ -235,8 +292,8 @@ fn parse_pathname(pathname: String, search: String) -> Route {
                       let slug = path_segment(pathname, "/app")
                       Member(
                         member_section.from_slug(slug),
-                        project_id_from_search(search),
-                        view_mode_from_search(search),
+                        project_id,
+                        view_mode,
                       )
                     }
 
@@ -329,23 +386,6 @@ fn token_from_search(search: String) -> String {
     Some(token) -> token
     None -> ""
   }
-}
-
-fn project_id_from_search(search: String) -> Option(Int) {
-  case query_param(search, "project") {
-    None -> None
-
-    Some(raw) ->
-      case int.parse(raw) {
-        Ok(id) -> Some(id)
-        Error(_) -> None
-      }
-  }
-}
-
-fn view_mode_from_search(search: String) -> Option(ViewMode) {
-  query_param(search, "view")
-  |> option.map(view_mode.from_string)
 }
 
 fn query_param(search: String, key: String) -> Option(String) {

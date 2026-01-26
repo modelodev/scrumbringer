@@ -15,6 +15,12 @@ pub type Theme {
   Dark
 }
 
+/// Stored theme decoding result.
+pub type ThemeStorage {
+  ThemeStored(Theme)
+  ThemeInvalid(String)
+}
+
 /// Converts a theme to its string representation.
 pub fn serialize(theme: Theme) -> String {
   case theme {
@@ -29,6 +35,20 @@ pub fn deserialize(value: String) -> Theme {
     "default" -> Default
     "dark" -> Dark
     _ -> Default
+  }
+}
+
+/// Encodes a theme for storage.
+pub fn encode_storage(theme: Theme) -> String {
+  serialize(theme)
+}
+
+/// Decodes a stored theme value with explicit invalid state.
+pub fn decode_storage(value: String) -> ThemeStorage {
+  case string.trim(value) {
+    "default" -> ThemeStored(Default)
+    "dark" -> ThemeStored(Dark)
+    other -> ThemeInvalid(other)
   }
 }
 
@@ -54,13 +74,15 @@ pub fn local_storage_set(key: String, value: String) -> Nil {
 
 /// Loads the theme preference from localStorage.
 pub fn load_from_storage() -> Theme {
-  local_storage_get_ffi(storage_key)
-  |> deserialize
+  case local_storage_get_ffi(storage_key) |> decode_storage {
+    ThemeStored(theme) -> theme
+    ThemeInvalid(_) -> Default
+  }
 }
 
 /// Saves the theme preference to localStorage.
 pub fn save_to_storage(theme: Theme) -> Nil {
-  local_storage_set_ffi(storage_key, serialize(theme))
+  local_storage_set_ffi(storage_key, encode_storage(theme))
 }
 
 /// Returns whether filters should be visible by default.

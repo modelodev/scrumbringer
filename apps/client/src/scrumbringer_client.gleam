@@ -238,15 +238,21 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
 
   let pool_filters_visible =
     theme.local_storage_get(pool_prefs.filters_visible_storage_key)
-    |> pool_prefs.deserialize_bool(pool_filters_default_visible)
+    |> pool_prefs.decode_filters_visibility
+    |> opt.unwrap(pool_prefs.visibility_from_bool(pool_filters_default_visible))
+    |> pool_prefs.visibility_to_bool
 
-  let pool_view_mode =
-    theme.local_storage_get(pool_prefs.view_mode_storage_key)
-    |> pool_prefs.deserialize_view_mode
+  let pool_view_mode = case
+    pool_prefs.decode_view_mode_storage(theme.local_storage_get(
+      pool_prefs.view_mode_storage_key,
+    ))
+  {
+    pool_prefs.ViewModeStored(mode) -> mode
+    pool_prefs.ViewModeInvalid(_) -> pool_prefs.Canvas
+  }
 
   // Load sidebar collapse state from localStorage
-  let #(sidebar_config_collapsed, sidebar_org_collapsed) =
-    app_effects.load_sidebar_state()
+  let sidebar_collapse = app_effects.load_sidebar_state()
 
   let model =
     client_state.default_model()
@@ -281,8 +287,7 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
         toast_state: toast.init(),
         theme: active_theme,
         locale: active_locale,
-        sidebar_config_collapsed: sidebar_config_collapsed,
-        sidebar_org_collapsed: sidebar_org_collapsed,
+        sidebar_collapse: sidebar_collapse,
       )
     })
 

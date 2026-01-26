@@ -27,7 +27,7 @@ import domain/org_role
 import domain/user.{User}
 import scrumbringer_client/client_state.{
   type Model, type Msg, AdminModel, CoreModel, Failed, Loaded, OrgSettingsSaved,
-  UiModel, admin_msg, update_admin, update_core, update_ui,
+  admin_msg, update_admin, update_core,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -101,14 +101,16 @@ pub fn handle_org_settings_users_fetched_error(
     401 -> update_helpers.reset_to_login(model)
 
     403 -> {
-      let toast = update_helpers.i18n_t(model, i18n_text.NotPermitted)
       let model =
         update_admin(model, fn(admin) {
           AdminModel(..admin, org_settings_users: Failed(err))
         })
-      let model =
-        update_ui(model, fn(ui) { UiModel(..ui, toast: opt.Some(toast)) })
-      #(model, effect.none())
+      let toast_fx =
+        update_helpers.toast_warning(update_helpers.i18n_t(
+          model,
+          i18n_text.NotPermitted,
+        ))
+      #(model, toast_fx)
     }
 
     _ -> #(
@@ -232,7 +234,6 @@ pub fn handle_org_settings_saved_ok(
   case remaining_changes {
     // No more pending changes, done
     [] -> {
-      let toast = update_helpers.i18n_t(model, i18n_text.RoleUpdated)
       let model =
         update_admin(model, fn(admin) {
           AdminModel(
@@ -246,9 +247,12 @@ pub fn handle_org_settings_saved_ok(
           )
         })
       let model = update_core(model, fn(core) { CoreModel(..core, user: user) })
-      let model =
-        update_ui(model, fn(ui) { UiModel(..ui, toast: opt.Some(toast)) })
-      #(model, effect.none())
+      let toast_fx =
+        update_helpers.toast_success(update_helpers.i18n_t(
+          model,
+          i18n_text.RoleUpdated,
+        ))
+      #(model, toast_fx)
     }
 
     // More pending changes, save next
@@ -284,14 +288,16 @@ pub fn handle_org_settings_saved_error(
     401 -> update_helpers.reset_to_login(model)
 
     403 -> {
-      let toast = update_helpers.i18n_t(model, i18n_text.NotPermitted)
       let model =
         update_admin(model, fn(admin) {
           AdminModel(..admin, org_settings_save_in_flight: False)
         })
-      let model =
-        update_ui(model, fn(ui) { UiModel(..ui, toast: opt.Some(toast)) })
-      #(model, effect.none())
+      let toast_fx =
+        update_helpers.toast_warning(update_helpers.i18n_t(
+          model,
+          i18n_text.NotPermitted,
+        ))
+      #(model, toast_fx)
     }
 
     409 -> #(

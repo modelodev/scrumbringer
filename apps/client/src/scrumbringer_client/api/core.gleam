@@ -99,6 +99,25 @@ fn read_cookie(name: String) -> option.Option(String) {
 // Response Decoding
 // =============================================================================
 
+/// Decoder for nullable int fields.
+pub fn nullable_int() -> decode.Decoder(option.Option(Int)) {
+  decode.optional(decode.int)
+}
+
+/// Decoder for nullable string fields.
+pub fn nullable_string() -> decode.Decoder(option.Option(String)) {
+  decode.optional(decode.string)
+}
+
+/// Helper for optional fields that map to Option values.
+pub fn optional_field(
+  name: String,
+  decoder: decode.Decoder(a),
+  next: fn(option.Option(a)) -> decode.Decoder(b),
+) -> decode.Decoder(b) {
+  decode.optional_field(name, option.None, decode.optional(decoder), next)
+}
+
 /// Wrap a decoder to extract from { "data": ... } envelope.
 pub fn envelope(payload: decode.Decoder(a)) -> decode.Decoder(a) {
   decode.field("data", payload, decode.success)

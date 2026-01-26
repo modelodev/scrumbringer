@@ -34,11 +34,13 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiError}
 import domain/task.{type TaskPosition, Task, TaskPosition}
 import scrumbringer_client/api/tasks as api_tasks
+import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
   type Model, type Msg, MemberCanvasRectFetched, MemberDrag, MemberModel,
-  MemberPoolMyTasksRectFetched, MemberPositionSaved, MemberTaskClaimed, Rect,
-  UiModel, pool_msg, rect_contains_point, update_member, update_ui,
+  MemberPoolMyTasksRectFetched, MemberPositionSaved, MemberTaskClaimed,
+  PoolDragDragging, PoolDragIdle, PoolDragPendingRect, Rect, pool_msg,
+  rect_contains_point, update_member,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/member_section
@@ -180,7 +182,9 @@ fn save_pool_filters_visible_effect(visible: Bool) -> Effect(Msg) {
   effect.from(fn(_dispatch) {
     theme.local_storage_set(
       pool_prefs.filters_visible_storage_key,
-      pool_prefs.serialize_bool(visible),
+      pool_prefs.encode_filters_visibility(pool_prefs.visibility_from_bool(
+        visible,
+      )),
     )
   })
 }
@@ -189,7 +193,7 @@ fn save_pool_view_mode_effect(mode: pool_prefs.ViewMode) -> Effect(Msg) {
   effect.from(fn(_dispatch) {
     theme.local_storage_set(
       pool_prefs.view_mode_storage_key,
-      pool_prefs.serialize_view_mode(mode),
+      pool_prefs.encode_view_mode_storage(mode),
     )
   })
 }
@@ -234,7 +238,10 @@ pub fn handle_global_keydown(
           }
           #(
             model,
-            effect.batch([show_fx, focus_element_effect("pool-filter-q")]),
+            effect.batch([
+              show_fx,
+              app_effects.focus_element_after_timeout("pool-filter-q", 0),
+            ]),
           )
         }
 
@@ -287,16 +294,6 @@ pub fn handle_global_keydown(
   }
 }
 
-fn focus_element_effect(id: String) -> Effect(Msg) {
-  effect.from(fn(_dispatch) {
-    client_ffi.set_timeout(0, fn(_) {
-      client_ffi.focus_element(id)
-      Nil
-    })
-    Nil
-  })
-}
-
 // =============================================================================
 // Drag-and-Drop Handlers
 // =============================================================================
@@ -306,13 +303,20 @@ pub fn handle_pool_drag_to_claim_armed(
   model: Model,
   armed: Bool,
 ) -> #(Model, Effect(Msg)) {
+  let next_drag = case armed {
+    True ->
+      case model.member.member_pool_drag {
+        PoolDragDragging(rect: rect, ..) ->
+          PoolDragDragging(over_my_tasks: False, rect: rect)
+        PoolDragPendingRect -> PoolDragPendingRect
+        PoolDragIdle -> PoolDragPendingRect
+      }
+    False -> PoolDragIdle
+  }
+
   #(
     update_member(model, fn(member) {
-      MemberModel(
-        ..member,
-        member_pool_drag_to_claim_armed: armed,
-        member_pool_drag_over_my_tasks: False,
-      )
+      MemberModel(..member, member_pool_drag: next_drag)
     }),
     effect.none(),
   )
@@ -326,17 +330,21 @@ pub fn handle_pool_my_tasks_rect_fetched(
   width: Int,
   height: Int,
 ) -> #(Model, Effect(Msg)) {
+  let rect = Rect(left: left, top: top, width: width, height: height)
+  let next_drag = case model.member.member_pool_drag {
+    PoolDragDragging(over_my_tasks: over, ..) ->
+      PoolDragDragging(over_my_tasks: over, rect: rect)
+    PoolDragPendingRect ->
+      case model.member.member_drag {
+        opt.Some(_) -> PoolDragDragging(over_my_tasks: False, rect: rect)
+        opt.None -> PoolDragIdle
+      }
+    PoolDragIdle -> PoolDragIdle
+  }
+
   #(
     update_member(model, fn(member) {
-      MemberModel(
-        ..member,
-        member_pool_my_tasks_rect: opt.Some(Rect(
-          left: left,
-          top: top,
-          width: width,
-          height: height,
-        )),
-      )
+      MemberModel(..member, member_pool_drag: next_drag)
     }),
     effect.none(),
   )
@@ -372,8 +380,7 @@ pub fn handle_drag_started(
           offset_x: offset_x,
           offset_y: offset_y,
         )),
-        member_pool_drag_to_claim_armed: True,
-        member_pool_drag_over_my_tasks: False,
+        member_pool_drag: PoolDragPendingRect,
       )
     })
 
@@ -412,10 +419,17 @@ pub fn handle_drag_moved(
       let x = client_x - model.member.member_canvas_left - ox
       let y = client_y - model.member.member_canvas_top - oy
 
-      let over_my_tasks = case model.member.member_pool_my_tasks_rect {
-        opt.Some(rect) if model.member.member_pool_drag_to_claim_armed ->
+      let over_my_tasks = case model.member.member_pool_drag {
+        PoolDragDragging(rect: rect, ..) ->
           rect_contains_point(rect, client_x, client_y)
         _ -> False
+      }
+
+      let next_drag = case model.member.member_pool_drag {
+        PoolDragDragging(rect: rect, ..) ->
+          PoolDragDragging(over_my_tasks: over_my_tasks, rect: rect)
+        PoolDragPendingRect -> PoolDragPendingRect
+        PoolDragIdle -> PoolDragIdle
       }
 
       #(
@@ -427,7 +441,7 @@ pub fn handle_drag_moved(
               task_id,
               #(x, y),
             ),
-            member_pool_drag_over_my_tasks: over_my_tasks,
+            member_pool_drag: next_drag,
           )
         }),
         effect.none(),
@@ -444,15 +458,17 @@ pub fn handle_drag_ended(model: Model) -> #(Model, Effect(Msg)) {
     opt.Some(drag) -> {
       let MemberDrag(task_id: task_id, ..) = drag
 
-      let over_my_tasks = model.member.member_pool_drag_over_my_tasks
+      let over_my_tasks = case model.member.member_pool_drag {
+        PoolDragDragging(over_my_tasks: over, ..) -> over
+        _ -> False
+      }
 
       let model =
         update_member(model, fn(member) {
           MemberModel(
             ..member,
             member_drag: opt.None,
-            member_pool_drag_to_claim_armed: False,
-            member_pool_drag_over_my_tasks: False,
+            member_pool_drag: PoolDragIdle,
           )
         })
 
@@ -643,20 +659,20 @@ pub fn handle_position_saved_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     _ -> #(
-      update_ui(
-        update_member(model, fn(member) {
-          MemberModel(
-            ..member,
-            member_position_edit_in_flight: False,
-            member_position_edit_error: opt.Some(err.message),
-          )
-        }),
-        fn(ui) { UiModel(..ui, toast: opt.Some(err.message)) },
-      ),
-      api_tasks.list_me_task_positions(
-        model.core.selected_project_id,
-        fn(result) { pool_msg(client_state.MemberPositionsFetched(result)) },
-      ),
+      update_member(model, fn(member) {
+        MemberModel(
+          ..member,
+          member_position_edit_in_flight: False,
+          member_position_edit_error: opt.Some(err.message),
+        )
+      }),
+      effect.batch([
+        api_tasks.list_me_task_positions(
+          model.core.selected_project_id,
+          fn(result) { pool_msg(client_state.MemberPositionsFetched(result)) },
+        ),
+        update_helpers.toast_error(err.message),
+      ]),
     )
   }
 }

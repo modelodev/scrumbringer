@@ -29,7 +29,8 @@ import domain/project_role
 import scrumbringer_client/client_state.{
   type Model, type Msg, ProjectCreateDialogClosed, ProjectCreateDialogOpened,
   ProjectCreateNameChanged, ProjectCreateSubmitted, ProjectDeleteConfirmClosed,
-  ProjectDeleteConfirmOpened, ProjectDeleteSubmitted, ProjectEditDialogClosed,
+  ProjectDeleteConfirmOpened, ProjectDeleteSubmitted, ProjectDialogCreate,
+  ProjectDialogDelete, ProjectDialogEdit, ProjectEditDialogClosed,
   ProjectEditDialogOpened, ProjectEditNameChanged, ProjectEditSubmitted,
   admin_msg,
 }
@@ -75,6 +76,16 @@ pub fn view_projects(model: Model) -> Element(Msg) {
 
 /// Dialog for creating a new project.
 fn view_projects_create_dialog(model: Model) -> Element(Msg) {
+  let #(is_open, name, in_flight, error) = case model.admin.projects_dialog {
+    ProjectDialogCreate(name, in_flight, error) -> #(
+      True,
+      name,
+      in_flight,
+      error,
+    )
+    _ -> #(False, "", False, opt.None)
+  }
+
   dialog.view(
     dialog.DialogConfig(
       title: update_helpers.i18n_t(model, i18n_text.CreateProject),
@@ -82,8 +93,8 @@ fn view_projects_create_dialog(model: Model) -> Element(Msg) {
       size: dialog.DialogSm,
       on_close: admin_msg(ProjectCreateDialogClosed),
     ),
-    model.admin.projects_create_dialog_open,
-    model.admin.projects_create_error,
+    is_open,
+    error,
     // Form content
     [
       form(
@@ -96,7 +107,7 @@ fn view_projects_create_dialog(model: Model) -> Element(Msg) {
             label([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
             input([
               attribute.type_("text"),
-              attribute.value(model.admin.projects_create_name),
+              attribute.value(name),
               event.on_input(fn(value) {
                 admin_msg(ProjectCreateNameChanged(value))
               }),
@@ -114,14 +125,14 @@ fn view_projects_create_dialog(model: Model) -> Element(Msg) {
         [
           attribute.type_("submit"),
           attribute.form("project-create-form"),
-          attribute.disabled(model.admin.projects_create_in_flight),
-          attribute.class(case model.admin.projects_create_in_flight {
+          attribute.disabled(in_flight),
+          attribute.class(case in_flight {
             True -> "btn-loading"
             False -> ""
           }),
         ],
         [
-          text(case model.admin.projects_create_in_flight {
+          text(case in_flight {
             True -> update_helpers.i18n_t(model, i18n_text.Creating)
             False -> update_helpers.i18n_t(model, i18n_text.Create)
           }),
@@ -133,6 +144,16 @@ fn view_projects_create_dialog(model: Model) -> Element(Msg) {
 
 /// Dialog for editing a project (Story 4.8 AC39).
 fn view_projects_edit_dialog(model: Model) -> Element(Msg) {
+  let #(is_open, name, in_flight, error) = case model.admin.projects_dialog {
+    ProjectDialogEdit(_id, name, in_flight, error) -> #(
+      True,
+      name,
+      in_flight,
+      error,
+    )
+    _ -> #(False, "", False, opt.None)
+  }
+
   dialog.view(
     dialog.DialogConfig(
       title: update_helpers.i18n_t(model, i18n_text.EditProject),
@@ -140,8 +161,8 @@ fn view_projects_edit_dialog(model: Model) -> Element(Msg) {
       size: dialog.DialogSm,
       on_close: admin_msg(ProjectEditDialogClosed),
     ),
-    model.admin.projects_edit_dialog_open,
-    model.admin.projects_edit_error,
+    is_open,
+    error,
     // Form content
     [
       form(
@@ -154,7 +175,7 @@ fn view_projects_edit_dialog(model: Model) -> Element(Msg) {
             label([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
             input([
               attribute.type_("text"),
-              attribute.value(model.admin.projects_edit_name),
+              attribute.value(name),
               event.on_input(fn(value) {
                 admin_msg(ProjectEditNameChanged(value))
               }),
@@ -172,14 +193,14 @@ fn view_projects_edit_dialog(model: Model) -> Element(Msg) {
         [
           attribute.type_("submit"),
           attribute.form("project-edit-form"),
-          attribute.disabled(model.admin.projects_edit_in_flight),
-          attribute.class(case model.admin.projects_edit_in_flight {
+          attribute.disabled(in_flight),
+          attribute.class(case in_flight {
             True -> "btn-loading"
             False -> ""
           }),
         ],
         [
-          text(case model.admin.projects_edit_in_flight {
+          text(case in_flight {
             True -> update_helpers.i18n_t(model, i18n_text.Saving)
             False -> update_helpers.i18n_t(model, i18n_text.Save)
           }),
@@ -191,6 +212,11 @@ fn view_projects_edit_dialog(model: Model) -> Element(Msg) {
 
 /// Delete confirmation dialog (Story 4.8 AC39).
 fn view_projects_delete_confirm(model: Model) -> Element(Msg) {
+  let #(is_open, name, in_flight) = case model.admin.projects_dialog {
+    ProjectDialogDelete(_id, name, in_flight) -> #(True, name, in_flight)
+    _ -> #(False, "", False)
+  }
+
   dialog.view(
     dialog.DialogConfig(
       title: update_helpers.i18n_t(model, i18n_text.DeleteProjectTitle),
@@ -198,15 +224,12 @@ fn view_projects_delete_confirm(model: Model) -> Element(Msg) {
       size: dialog.DialogSm,
       on_close: admin_msg(ProjectDeleteConfirmClosed),
     ),
-    model.admin.projects_delete_confirm_open,
+    is_open,
     opt.None,
     // Content
     [
       p([attribute.class("dialog-message")], [
-        text(update_helpers.i18n_t(
-          model,
-          i18n_text.DeleteProjectConfirm(model.admin.projects_delete_name),
-        )),
+        text(update_helpers.i18n_t(model, i18n_text.DeleteProjectConfirm(name))),
       ]),
       p([attribute.class("dialog-warning")], [
         text(update_helpers.i18n_t(model, i18n_text.DeleteProjectWarning)),
@@ -218,11 +241,11 @@ fn view_projects_delete_confirm(model: Model) -> Element(Msg) {
       button(
         [
           attribute.class("btn-danger"),
-          attribute.disabled(model.admin.projects_delete_in_flight),
+          attribute.disabled(in_flight),
           event.on_click(admin_msg(ProjectDeleteSubmitted)),
         ],
         [
-          text(case model.admin.projects_delete_in_flight {
+          text(case in_flight {
             True -> update_helpers.i18n_t(model, i18n_text.Deleting)
             False -> update_helpers.i18n_t(model, i18n_text.Delete)
           }),

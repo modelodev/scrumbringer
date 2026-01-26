@@ -162,6 +162,15 @@ pub type MemberDrag {
   MemberDrag(task_id: Int, offset_x: Int, offset_y: Int)
 }
 
+/// Drag-to-claim state for pool interactions.
+///
+/// Tracks the dropzone rect when available and whether the drag is over it.
+pub type PoolDragState {
+  PoolDragIdle
+  PoolDragPendingRect
+  PoolDragDragging(over_my_tasks: Bool, rect: Rect)
+}
+
 /// Rectangle geometry for hit testing.
 ///
 /// Used for detecting when a dragged card is over a drop target
@@ -301,16 +310,45 @@ pub type AuthModel {
 pub type UiModel {
   UiModel(
     is_mobile: Bool,
-    toast: Option(String),
     toast_state: toast.ToastState,
     theme: theme.Theme,
     locale: i18n_locale.Locale,
-    mobile_left_drawer_open: Bool,
-    mobile_right_drawer_open: Bool,
-    sidebar_config_collapsed: Bool,
-    sidebar_org_collapsed: Bool,
+    mobile_drawer: MobileDrawerState,
+    sidebar_collapse: SidebarCollapse,
     preferences_popup_open: Bool,
   )
+}
+
+pub type MobileDrawerState {
+  DrawerClosed
+  DrawerLeftOpen
+  DrawerRightOpen
+}
+
+pub type SidebarCollapse {
+  NoneCollapsed
+  ConfigCollapsed
+  OrgCollapsed
+  BothCollapsed
+}
+
+pub type OrgUsersSearchState {
+  OrgUsersSearchIdle(query: String, token: Int)
+  OrgUsersSearchLoading(query: String, token: Int)
+  OrgUsersSearchLoaded(query: String, token: Int, results: List(OrgUser))
+  OrgUsersSearchFailed(query: String, token: Int, error: ApiError)
+}
+
+pub type ProjectDialogState {
+  ProjectDialogClosed
+  ProjectDialogCreate(name: String, in_flight: Bool, error: Option(String))
+  ProjectDialogEdit(
+    id: Int,
+    name: String,
+    in_flight: Bool,
+    error: Option(String),
+  )
+  ProjectDialogDelete(id: Int, name: String, in_flight: Bool)
 }
 
 pub type AdminModel {
@@ -322,19 +360,7 @@ pub type AdminModel {
     invite_link_error: Option(String),
     invite_link_last: Option(InviteLink),
     invite_link_copy_status: Option(String),
-    projects_create_dialog_open: Bool,
-    projects_create_name: String,
-    projects_create_in_flight: Bool,
-    projects_create_error: Option(String),
-    projects_edit_dialog_open: Bool,
-    projects_edit_id: Option(Int),
-    projects_edit_name: String,
-    projects_edit_in_flight: Bool,
-    projects_edit_error: Option(String),
-    projects_delete_confirm_open: Bool,
-    projects_delete_id: Option(Int),
-    projects_delete_name: String,
-    projects_delete_in_flight: Bool,
+    projects_dialog: ProjectDialogState,
     capabilities: Remote(List(Capability)),
     capabilities_create_dialog_open: Bool,
     capabilities_create_name: String,
@@ -390,9 +416,7 @@ pub type AdminModel {
     capability_members_cache: Dict(Int, List(Int)),
     capability_members_selected: List(Int),
     capability_members_error: Option(String),
-    org_users_search_query: String,
-    org_users_search_token: Int,
-    org_users_search_results: Remote(List(OrgUser)),
+    org_users_search: OrgUsersSearchState,
     task_types: Remote(List(TaskType)),
     task_types_project_id: Option(Int),
     task_types_dialog_mode: Option(TaskTypeDialogMode),
@@ -480,9 +504,7 @@ pub type MemberModel {
     member_drag: Option(MemberDrag),
     member_canvas_left: Int,
     member_canvas_top: Int,
-    member_pool_my_tasks_rect: Option(Rect),
-    member_pool_drag_to_claim_armed: Bool,
-    member_pool_drag_over_my_tasks: Bool,
+    member_pool_drag: PoolDragState,
     member_position_edit_task: Option(Int),
     member_position_edit_x: String,
     member_position_edit_y: String,
@@ -792,7 +814,6 @@ pub type Msg {
   AuthMsg(AuthMsg)
   AdminMsg(AdminMsg)
   PoolMsg(PoolMsg)
-  ToastDismissed
   ToastShow(String, toast.ToastVariant)
   ToastDismiss(ToastId)
   ToastTick(Int)
@@ -831,6 +852,76 @@ pub fn update_member(model: Model, f: fn(MemberModel) -> MemberModel) -> Model {
 
 pub fn update_ui(model: Model, f: fn(UiModel) -> UiModel) -> Model {
   Model(..model, ui: f(model.ui))
+}
+
+pub fn sidebar_collapse_from_bools(config: Bool, org: Bool) -> SidebarCollapse {
+  case config, org {
+    True, True -> BothCollapsed
+    True, False -> ConfigCollapsed
+    False, True -> OrgCollapsed
+    False, False -> NoneCollapsed
+  }
+}
+
+pub fn sidebar_collapse_to_bools(state: SidebarCollapse) -> #(Bool, Bool) {
+  case state {
+    NoneCollapsed -> #(False, False)
+    ConfigCollapsed -> #(True, False)
+    OrgCollapsed -> #(False, True)
+    BothCollapsed -> #(True, True)
+  }
+}
+
+pub fn sidebar_config_collapsed(state: SidebarCollapse) -> Bool {
+  let #(config, _org) = sidebar_collapse_to_bools(state)
+  config
+}
+
+pub fn sidebar_org_collapsed(state: SidebarCollapse) -> Bool {
+  let #(_config, org) = sidebar_collapse_to_bools(state)
+  org
+}
+
+pub fn toggle_sidebar_config(state: SidebarCollapse) -> SidebarCollapse {
+  let #(config, org) = sidebar_collapse_to_bools(state)
+  sidebar_collapse_from_bools(!config, org)
+}
+
+pub fn toggle_sidebar_org(state: SidebarCollapse) -> SidebarCollapse {
+  let #(config, org) = sidebar_collapse_to_bools(state)
+  sidebar_collapse_from_bools(config, !org)
+}
+
+pub fn mobile_drawer_left_open(state: MobileDrawerState) -> Bool {
+  case state {
+    DrawerLeftOpen -> True
+    _ -> False
+  }
+}
+
+pub fn mobile_drawer_right_open(state: MobileDrawerState) -> Bool {
+  case state {
+    DrawerRightOpen -> True
+    _ -> False
+  }
+}
+
+pub fn toggle_left_drawer(state: MobileDrawerState) -> MobileDrawerState {
+  case state {
+    DrawerLeftOpen -> DrawerClosed
+    _ -> DrawerLeftOpen
+  }
+}
+
+pub fn toggle_right_drawer(state: MobileDrawerState) -> MobileDrawerState {
+  case state {
+    DrawerRightOpen -> DrawerClosed
+    _ -> DrawerRightOpen
+  }
+}
+
+pub fn close_drawers(_state: MobileDrawerState) -> MobileDrawerState {
+  DrawerClosed
 }
 
 // ----------------------------------------------------------------------------
@@ -938,19 +1029,7 @@ pub fn default_model() -> Model {
       invite_link_error: option.None,
       invite_link_last: option.None,
       invite_link_copy_status: option.None,
-      projects_create_dialog_open: False,
-      projects_create_name: "",
-      projects_create_in_flight: False,
-      projects_create_error: option.None,
-      projects_edit_dialog_open: False,
-      projects_edit_id: option.None,
-      projects_edit_name: "",
-      projects_edit_in_flight: False,
-      projects_edit_error: option.None,
-      projects_delete_confirm_open: False,
-      projects_delete_id: option.None,
-      projects_delete_name: "",
-      projects_delete_in_flight: False,
+      projects_dialog: ProjectDialogClosed,
       capabilities: NotAsked,
       capabilities_create_dialog_open: False,
       capabilities_create_name: "",
@@ -1006,9 +1085,7 @@ pub fn default_model() -> Model {
       capability_members_cache: dict.new(),
       capability_members_selected: [],
       capability_members_error: option.None,
-      org_users_search_query: "",
-      org_users_search_token: 0,
-      org_users_search_results: NotAsked,
+      org_users_search: OrgUsersSearchIdle("", 0),
       task_types: NotAsked,
       task_types_project_id: option.None,
       task_types_dialog_mode: option.None,
@@ -1093,9 +1170,7 @@ pub fn default_model() -> Model {
       member_drag: option.None,
       member_canvas_left: 0,
       member_canvas_top: 0,
-      member_pool_my_tasks_rect: option.None,
-      member_pool_drag_to_claim_armed: False,
-      member_pool_drag_over_my_tasks: False,
+      member_pool_drag: PoolDragIdle,
       member_position_edit_task: option.None,
       member_position_edit_x: "",
       member_position_edit_y: "",
@@ -1110,14 +1185,11 @@ pub fn default_model() -> Model {
     ),
     ui: UiModel(
       is_mobile: False,
-      toast: option.None,
       toast_state: toast.init(),
       theme: theme.Default,
       locale: i18n_locale.En,
-      mobile_left_drawer_open: False,
-      mobile_right_drawer_open: False,
-      sidebar_config_collapsed: False,
-      sidebar_org_collapsed: False,
+      mobile_drawer: DrawerClosed,
+      sidebar_collapse: NoneCollapsed,
       preferences_popup_open: False,
     ),
   )

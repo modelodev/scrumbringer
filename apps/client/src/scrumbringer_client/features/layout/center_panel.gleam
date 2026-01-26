@@ -25,6 +25,7 @@ import domain/view_mode.{type ViewMode, Cards, List, Pool}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/event_decoders
 
 // =============================================================================
 // Types
@@ -161,11 +162,10 @@ fn view_content(config: CenterPanelConfig(msg)) -> Element(msg) {
     Pool -> [
       attribute.class("center-content pool-drag-area"),
       attribute.attribute("data-testid", testid),
-      event.on("mousemove", {
-        use x <- decode.field("clientX", decode.int)
-        use y <- decode.field("clientY", decode.int)
-        decode.success(config.on_drag_move(x, y))
-      }),
+      event.on(
+        "mousemove",
+        event_decoders.mouse_client_position(config.on_drag_move),
+      ),
       event.on("mouseup", decode.success(config.on_drag_end)),
       event.on("mouseleave", decode.success(config.on_drag_end)),
     ]

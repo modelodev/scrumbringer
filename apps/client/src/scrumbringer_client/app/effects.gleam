@@ -29,6 +29,7 @@
 import lustre/effect.{type Effect}
 
 import scrumbringer_client/client_ffi
+import scrumbringer_client/client_state
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/router
@@ -82,7 +83,9 @@ pub fn save_pool_filters_visible(visible: Bool) -> Effect(msg) {
   effect.from(fn(_dispatch) {
     theme.local_storage_set(
       pool_prefs.filters_visible_storage_key,
-      pool_prefs.serialize_bool(visible),
+      pool_prefs.encode_filters_visibility(pool_prefs.visibility_from_bool(
+        visible,
+      )),
     )
   })
 }
@@ -92,7 +95,7 @@ pub fn save_pool_view_mode(mode: pool_prefs.ViewMode) -> Effect(msg) {
   effect.from(fn(_dispatch) {
     theme.local_storage_set(
       pool_prefs.view_mode_storage_key,
-      pool_prefs.serialize_view_mode(mode),
+      pool_prefs.encode_view_mode_storage(mode),
     )
   })
 }
@@ -108,6 +111,33 @@ pub fn focus_element(element_id: String) -> Effect(msg) {
   effect.from(fn(_dispatch) { client_ffi.focus_element(element_id) })
 }
 
+/// Focus an element after a timeout (in milliseconds).
+///
+/// Useful for focusing inputs after dialogs render.
+pub fn focus_element_after_timeout(element_id: String, ms: Int) -> Effect(msg) {
+  effect.from(fn(_dispatch) {
+    client_ffi.set_timeout(ms, fn(_) {
+      client_ffi.focus_element(element_id)
+      Nil
+    })
+    Nil
+  })
+}
+
+// =============================================================================
+// Timer Effects
+// =============================================================================
+
+/// Schedule a message after a timeout.
+///
+/// Useful for tickers and delayed UI updates.
+pub fn schedule_timeout(ms: Int, make_msg: fn() -> msg) -> Effect(msg) {
+  effect.from(fn(dispatch) {
+    client_ffi.set_timeout(ms, fn(_) { dispatch(make_msg()) })
+    Nil
+  })
+}
+
 // =============================================================================
 // Sidebar Preferences Persistence Effects
 // =============================================================================
@@ -118,36 +148,31 @@ const sidebar_storage_key = "scrumbringer:sidebar-collapsed"
 /// Save sidebar collapse state to localStorage.
 ///
 /// Persists both config and org section collapsed states as "config,org" format.
-pub fn save_sidebar_state(
-  config_collapsed: Bool,
-  org_collapsed: Bool,
-) -> Effect(msg) {
+pub fn save_sidebar_state(state: client_state.SidebarCollapse) -> Effect(msg) {
   effect.from(fn(_dispatch) {
-    let config_str = case config_collapsed {
-      True -> "1"
-      False -> "0"
+    let value = case state {
+      client_state.NoneCollapsed -> "0,0"
+      client_state.ConfigCollapsed -> "1,0"
+      client_state.OrgCollapsed -> "0,1"
+      client_state.BothCollapsed -> "1,1"
     }
-    let org_str = case org_collapsed {
-      True -> "1"
-      False -> "0"
-    }
-    theme.local_storage_set(sidebar_storage_key, config_str <> "," <> org_str)
+    theme.local_storage_set(sidebar_storage_key, value)
   })
 }
 
 /// Load sidebar collapse state from localStorage.
 ///
-/// Returns tuple of (config_collapsed, org_collapsed).
-/// Defaults to (False, False) if not found or invalid.
-pub fn load_sidebar_state() -> #(Bool, Bool) {
+/// Returns the persisted SidebarCollapse value.
+/// Defaults to NoneCollapsed if not found or invalid.
+pub fn load_sidebar_state() -> client_state.SidebarCollapse {
   case theme.local_storage_get(sidebar_storage_key) {
-    "" -> #(False, False)
+    "" -> client_state.NoneCollapsed
     val -> {
       case val {
-        "1,1" -> #(True, True)
-        "1,0" -> #(True, False)
-        "0,1" -> #(False, True)
-        _ -> #(False, False)
+        "1,1" -> client_state.BothCollapsed
+        "1,0" -> client_state.ConfigCollapsed
+        "0,1" -> client_state.OrgCollapsed
+        _ -> client_state.NoneCollapsed
       }
     }
   }

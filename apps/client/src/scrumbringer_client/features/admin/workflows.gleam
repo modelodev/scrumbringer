@@ -32,11 +32,10 @@ import scrumbringer_client/client_state.{
   AdminModel, AttachTemplateFailed, AttachTemplateSucceeded, Failed, Loaded,
   Loading, NotAsked, RuleMetricsFetched, RuleTemplateAttached,
   RuleTemplateDetached, RulesFetched, TaskTemplatesProjectFetched,
-  TaskTypesFetched, TemplateDetachFailed, TemplateDetachSucceeded, ToastShow,
-  UiModel, WorkflowsProjectFetched, admin_msg, pool_msg, update_admin, update_ui,
+  TaskTypesFetched, TemplateDetachFailed, TemplateDetachSucceeded,
+  WorkflowsProjectFetched, admin_msg, pool_msg, update_admin,
 }
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/ui/toast
 import scrumbringer_client/update_helpers
 
 import scrumbringer_client/api/tasks as api_tasks
@@ -138,14 +137,12 @@ pub fn handle_workflow_crud_created(
         workflows_dialog_mode: opt.None,
       )
     })
-  let model =
-    update_ui(model, fn(ui) {
-      UiModel(
-        ..ui,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.WorkflowCreated)),
-      )
-    })
-  #(model, effect.none())
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.WorkflowCreated,
+    ))
+  #(model, toast_fx)
 }
 
 /// Handle workflow updated event from component.
@@ -179,14 +176,12 @@ pub fn handle_workflow_crud_updated(
         workflows_dialog_mode: opt.None,
       )
     })
-  let model =
-    update_ui(model, fn(ui) {
-      UiModel(
-        ..ui,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.WorkflowUpdated)),
-      )
-    })
-  #(model, effect.none())
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.WorkflowUpdated,
+    ))
+  #(model, toast_fx)
 }
 
 /// Handle workflow deleted event from component.
@@ -215,14 +210,12 @@ pub fn handle_workflow_crud_deleted(
         workflows_dialog_mode: opt.None,
       )
     })
-  let model =
-    update_ui(model, fn(ui) {
-      UiModel(
-        ..ui,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.WorkflowDeleted)),
-      )
-    })
-  #(model, effect.none())
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.WorkflowDeleted,
+    ))
+  #(model, toast_fx)
 }
 
 /// Handle workflow rules clicked (navigate to rules view).
@@ -380,14 +373,12 @@ pub fn handle_rule_crud_created(
     update_admin(model, fn(admin) {
       AdminModel(..admin, rules: rules, rules_dialog_mode: opt.None)
     })
-  let model =
-    update_ui(model, fn(ui) {
-      UiModel(
-        ..ui,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.RuleCreated)),
-      )
-    })
-  #(model, effect.none())
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.RuleCreated,
+    ))
+  #(model, toast_fx)
 }
 
 /// Handle rule updated event from component.
@@ -412,14 +403,12 @@ pub fn handle_rule_crud_updated(
     update_admin(model, fn(admin) {
       AdminModel(..admin, rules: rules, rules_dialog_mode: opt.None)
     })
-  let model =
-    update_ui(model, fn(ui) {
-      UiModel(
-        ..ui,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.RuleUpdated)),
-      )
-    })
-  #(model, effect.none())
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.RuleUpdated,
+    ))
+  #(model, toast_fx)
 }
 
 /// Handle rule deleted event from component.
@@ -437,14 +426,12 @@ pub fn handle_rule_crud_deleted(
     update_admin(model, fn(admin) {
       AdminModel(..admin, rules: rules, rules_dialog_mode: opt.None)
     })
-  let model =
-    update_ui(model, fn(ui) {
-      UiModel(
-        ..ui,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.RuleDeleted)),
-      )
-    })
-  #(model, effect.none())
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.RuleDeleted,
+    ))
+  #(model, toast_fx)
 }
 
 // =============================================================================
@@ -791,8 +778,6 @@ pub fn handle_attach_template_succeeded(
     }
     other -> other
   }
-  // AC18: Show success toast
-  let toast_message = update_helpers.i18n_t(model, i18n_text.TemplateAttached)
   #(
     update_admin(model, fn(admin) {
       AdminModel(
@@ -803,9 +788,10 @@ pub fn handle_attach_template_succeeded(
         attach_template_loading: False,
       )
     }),
-    effect.from(fn(dispatch) {
-      dispatch(ToastShow(toast_message, toast.Success))
-    }),
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.TemplateAttached,
+    )),
   )
 }
 
@@ -825,8 +811,7 @@ pub fn handle_attach_template_failed(
           rules_attach_error: opt.Some(err.message),
         )
       }),
-      // AC22: Show error toast
-      effect.from(fn(dispatch) { dispatch(ToastShow(err.message, toast.Error)) }),
+      update_helpers.toast_error(err.message),
     )
   }
 }
@@ -881,15 +866,14 @@ pub fn handle_template_detach_succeeded(
     }
     other -> other
   }
-  // AC19: Show success toast
-  let toast_message = update_helpers.i18n_t(model, i18n_text.TemplateDetached)
   #(
     update_admin(model, fn(admin) {
       AdminModel(..admin, rules: updated_rules, detaching_templates: detaching)
     }),
-    effect.from(fn(dispatch) {
-      dispatch(ToastShow(toast_message, toast.Success))
-    }),
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.TemplateDetached,
+    )),
   )
 }
 
@@ -913,8 +897,7 @@ pub fn handle_template_detach_failed(
           rules_attach_error: opt.Some(err.message),
         )
       }),
-      // AC22: Show error toast
-      effect.from(fn(dispatch) { dispatch(ToastShow(err.message, toast.Error)) }),
+      update_helpers.toast_error(err.message),
     )
   }
 }
@@ -1015,17 +998,12 @@ pub fn handle_task_template_crud_created(
         task_templates_dialog_mode: opt.None,
       )
     })
-  let model =
-    update_ui(model, fn(ui) {
-      UiModel(
-        ..ui,
-        toast: opt.Some(update_helpers.i18n_t(
-          model,
-          i18n_text.TaskTemplateCreated,
-        )),
-      )
-    })
-  #(model, effect.none())
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.TaskTemplateCreated,
+    ))
+  #(model, toast_fx)
 }
 
 /// Handle task template updated event from component.
@@ -1059,17 +1037,12 @@ pub fn handle_task_template_crud_updated(
         task_templates_dialog_mode: opt.None,
       )
     })
-  let model =
-    update_ui(model, fn(ui) {
-      UiModel(
-        ..ui,
-        toast: opt.Some(update_helpers.i18n_t(
-          model,
-          i18n_text.TaskTemplateUpdated,
-        )),
-      )
-    })
-  #(model, effect.none())
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.TaskTemplateUpdated,
+    ))
+  #(model, toast_fx)
 }
 
 /// Handle task template deleted event from component.
@@ -1098,17 +1071,12 @@ pub fn handle_task_template_crud_deleted(
         task_templates_dialog_mode: opt.None,
       )
     })
-  let model =
-    update_ui(model, fn(ui) {
-      UiModel(
-        ..ui,
-        toast: opt.Some(update_helpers.i18n_t(
-          model,
-          i18n_text.TaskTemplateDeleted,
-        )),
-      )
-    })
-  #(model, effect.none())
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.TaskTemplateDeleted,
+    ))
+  #(model, toast_fx)
 }
 
 // =============================================================================

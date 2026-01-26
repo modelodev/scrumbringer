@@ -29,7 +29,6 @@
 //// - **client_update.gleam**: Integrates with main update
 
 import gleam/list
-import gleam/option.{type Option, None, Some}
 
 import lustre/attribute
 import lustre/effect.{type Effect}
@@ -277,47 +276,5 @@ fn do_int_to_string(n: Int, acc: String) -> String {
       }
       do_int_to_string(n / 10, char <> acc)
     }
-  }
-}
-
-// =============================================================================
-// Legacy View (Backward Compatibility)
-// =============================================================================
-
-/// Legacy view function for simple toast display.
-///
-/// **Deprecated**: Use `view_container` with `ToastState` instead.
-///
-/// ## Parameters
-///
-/// - `toast`: Optional toast message to display
-/// - `dismiss_label`: Accessible label for dismiss button
-/// - `on_dismiss`: Message to emit when dismiss is clicked
-pub fn view(
-  toast: Option(String),
-  dismiss_label: String,
-  on_dismiss: msg,
-) -> Element(msg) {
-  case toast {
-    None -> element.none()
-    Some(message) ->
-      div(
-        [
-          attribute.class("toast"),
-          attribute.attribute("role", "status"),
-          attribute.attribute("aria-live", "polite"),
-        ],
-        [
-          span([], [text(message)]),
-          button(
-            [
-              attribute.class("toast-dismiss btn-xs"),
-              attribute.attribute("aria-label", dismiss_label),
-              event.on_click(on_dismiss),
-            ],
-            [text("×")],
-          ),
-        ],
-      )
   }
 }

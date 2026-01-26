@@ -35,8 +35,7 @@ import domain/api_error.{type ApiError}
 import domain/task_type.{type TaskType}
 import scrumbringer_client/client_state.{
   type Model, type Msg, type TaskTypeDialogMode, AdminModel, Failed, IconError,
-  IconIdle, IconOk, Loaded, TaskTypeCreated, UiModel, admin_msg, update_admin,
-  update_ui,
+  IconIdle, IconOk, Loaded, TaskTypeCreated, admin_msg, update_admin,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -315,30 +314,25 @@ pub fn handle_task_type_created_ok(
   refresh_fn: fn(Model) -> #(Model, Effect(Msg)),
 ) -> #(Model, Effect(Msg)) {
   let model =
-    update_ui(
-      update_admin(model, fn(admin) {
-        AdminModel(
-          ..admin,
-          task_types_create_dialog_open: False,
-          task_types_create_in_flight: False,
-          task_types_create_name: "",
-          task_types_create_icon: "",
-          task_types_create_capability_id: opt.None,
-          task_types_icon_preview: IconIdle,
-        )
-      }),
-      fn(ui) {
-        UiModel(
-          ..ui,
-          toast: opt.Some(update_helpers.i18n_t(
-            model,
-            i18n_text.TaskTypeCreated,
-          )),
-        )
-      },
-    )
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        task_types_create_dialog_open: False,
+        task_types_create_in_flight: False,
+        task_types_create_name: "",
+        task_types_create_icon: "",
+        task_types_create_capability_id: opt.None,
+        task_types_icon_preview: IconIdle,
+      )
+    })
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.TaskTypeCreated,
+    ))
 
-  refresh_fn(model)
+  let #(next, fx) = refresh_fn(model)
+  #(next, effect.batch([fx, toast_fx]))
 }
 
 /// Handle task type created error.
@@ -349,25 +343,20 @@ pub fn handle_task_type_created_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     403 -> #(
-      update_ui(
-        update_admin(model, fn(admin) {
-          AdminModel(
-            ..admin,
-            task_types_create_in_flight: False,
-            task_types_create_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NotPermitted,
-            )),
-          )
-        }),
-        fn(ui) {
-          UiModel(
-            ..ui,
-            toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NotPermitted)),
-          )
-        },
-      ),
-      effect.none(),
+      update_admin(model, fn(admin) {
+        AdminModel(
+          ..admin,
+          task_types_create_in_flight: False,
+          task_types_create_error: opt.Some(update_helpers.i18n_t(
+            model,
+            i18n_text.NotPermitted,
+          )),
+        )
+      }),
+      update_helpers.toast_warning(update_helpers.i18n_t(
+        model,
+        i18n_text.NotPermitted,
+      )),
     )
     _ -> #(
       update_admin(model, fn(admin) {
@@ -416,22 +405,17 @@ pub fn handle_task_type_crud_created(
   refresh_fn: fn(Model) -> #(Model, Effect(Msg)),
 ) -> #(Model, Effect(Msg)) {
   let model =
-    update_ui(
-      update_admin(model, fn(admin) {
-        AdminModel(..admin, task_types_dialog_mode: opt.None)
-      }),
-      fn(ui) {
-        UiModel(
-          ..ui,
-          toast: opt.Some(update_helpers.i18n_t(
-            model,
-            i18n_text.TaskTypeCreated,
-          )),
-        )
-      },
-    )
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, task_types_dialog_mode: opt.None)
+    })
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.TaskTypeCreated,
+    ))
   // Refresh task types list to include the new type
-  refresh_fn(model)
+  let #(next, fx) = refresh_fn(model)
+  #(next, effect.batch([fx, toast_fx]))
 }
 
 /// Handle task type updated from component event.
@@ -453,27 +437,20 @@ pub fn handle_task_type_crud_updated(
       )
     other -> other
   }
-  #(
-    update_ui(
-      update_admin(model, fn(admin) {
-        AdminModel(
-          ..admin,
-          task_types: updated_list,
-          task_types_dialog_mode: opt.None,
-        )
-      }),
-      fn(ui) {
-        UiModel(
-          ..ui,
-          toast: opt.Some(update_helpers.i18n_t(
-            model,
-            i18n_text.TaskTypeUpdated,
-          )),
-        )
-      },
-    ),
-    effect.none(),
-  )
+  let model =
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        task_types: updated_list,
+        task_types_dialog_mode: opt.None,
+      )
+    })
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.TaskTypeUpdated,
+    ))
+  #(model, toast_fx)
 }
 
 /// Handle task type deleted from component event.
@@ -487,25 +464,18 @@ pub fn handle_task_type_crud_deleted(
       Loaded(list.filter(task_types, fn(tt) { tt.id != type_id }))
     other -> other
   }
-  #(
-    update_ui(
-      update_admin(model, fn(admin) {
-        AdminModel(
-          ..admin,
-          task_types: updated_list,
-          task_types_dialog_mode: opt.None,
-        )
-      }),
-      fn(ui) {
-        UiModel(
-          ..ui,
-          toast: opt.Some(update_helpers.i18n_t(
-            model,
-            i18n_text.TaskTypeDeleted,
-          )),
-        )
-      },
-    ),
-    effect.none(),
-  )
+  let model =
+    update_admin(model, fn(admin) {
+      AdminModel(
+        ..admin,
+        task_types: updated_list,
+        task_types_dialog_mode: opt.None,
+      )
+    })
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.TaskTypeDeleted,
+    ))
+  #(model, toast_fx)
 }

@@ -43,7 +43,8 @@ import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, Loading, MemberClaimClicked,
   MemberCompleteClicked, MemberCreateDialogOpened, MemberDragEnded,
-  MemberDragMoved, MemberDragStarted, MemberReleaseClicked, NotAsked, pool_msg,
+  MemberDragMoved, MemberDragStarted, MemberReleaseClicked, NotAsked,
+  PoolDragDragging, PoolDragIdle, PoolDragPendingRect, pool_msg,
 }
 import scrumbringer_client/features/admin/view as admin_view
 import scrumbringer_client/features/my_bar/view as my_bar_view
@@ -57,6 +58,7 @@ import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/card_badge
 import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/empty_state
+import scrumbringer_client/ui/event_decoders
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/status_block
 import scrumbringer_client/update_helpers
@@ -134,10 +136,13 @@ pub fn view_pool_main(model: Model, _user: User) -> Element(Msg) {
 
 /// Renders the right panel with claimed tasks dropzone.
 pub fn view_right_panel(model: Model, user: User) -> Element(Msg) {
-  let dropzone_class = case
-    model.member.member_pool_drag_to_claim_armed,
-    model.member.member_pool_drag_over_my_tasks
-  {
+  let #(drag_armed, drag_over) = case model.member.member_pool_drag {
+    PoolDragDragging(over_my_tasks: over, ..) -> #(True, over)
+    PoolDragPendingRect -> #(True, False)
+    PoolDragIdle -> #(False, False)
+  }
+
+  let dropzone_class = case drag_armed, drag_over {
     True, True -> "pool-my-tasks-dropzone drop-over"
     True, False -> "pool-my-tasks-dropzone drag-active"
     False, _ -> "pool-my-tasks-dropzone"
@@ -166,7 +171,7 @@ pub fn view_right_panel(model: Model, user: User) -> Element(Msg) {
         attribute.class(dropzone_class),
       ],
       [
-        case model.member.member_pool_drag_to_claim_armed {
+        case drag_armed {
           True ->
             div([attribute.class("dropzone-hint")], [
               text(
@@ -206,11 +211,12 @@ pub fn view_pool_body(model: Model, user: User) -> Element(Msg) {
   div(
     [
       attribute.class("pool-layout"),
-      event.on("mousemove", {
-        use x <- decode.field("clientX", decode.int)
-        use y <- decode.field("clientY", decode.int)
-        decode.success(pool_msg(MemberDragMoved(x, y)))
-      }),
+      event.on(
+        "mousemove",
+        event_decoders.mouse_client_position(fn(x, y) {
+          pool_msg(MemberDragMoved(x, y))
+        }),
+      ),
       event.on("mouseup", decode.success(pool_msg(MemberDragEnded))),
       event.on("mouseleave", decode.success(pool_msg(MemberDragEnded))),
     ],
@@ -506,11 +512,12 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
           update_helpers.i18n_t(model, i18n_text.Drag),
         ),
         attribute.attribute("type", "button"),
-        event.on("mousedown", {
-          use ox <- decode.field("offsetX", decode.int)
-          use oy <- decode.field("offsetY", decode.int)
-          decode.success(pool_msg(MemberDragStarted(id, ox, oy)))
-        }),
+        event.on(
+          "mousedown",
+          event_decoders.mouse_offset(fn(ox, oy) {
+            pool_msg(MemberDragStarted(id, ox, oy))
+          }),
+        ),
       ],
       [icons.nav_icon(icons.DragHandle, icons.Small)],
     )

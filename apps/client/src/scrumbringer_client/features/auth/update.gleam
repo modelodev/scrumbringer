@@ -22,7 +22,6 @@
 //// - **api/auth.gleam**: Provides API effects for auth operations
 
 import gleam/option as opt
-import gleam/string
 
 import lustre/effect.{type Effect}
 
@@ -41,8 +40,7 @@ import scrumbringer_client/client_state.{
   ForgotPasswordDismissed, ForgotPasswordEmailChanged, ForgotPasswordFinished,
   ForgotPasswordSubmitted, Login, LoginDomValuesRead, LoginEmailChanged,
   LoginFinished, LoginPasswordChanged, LoginSubmitted, LogoutClicked,
-  LogoutFinished, Member, ToastShow, UiModel, auth_msg, update_auth, update_core,
-  update_ui,
+  LogoutFinished, Member, ToastShow, auth_msg, update_auth, update_core,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/toast
@@ -80,12 +78,9 @@ pub fn handle_login_submitted(model: Model) -> #(Model, Effect(Msg)) {
     True -> #(model, effect.none())
     False -> {
       let model =
-        update_ui(
-          update_auth(model, fn(auth) {
-            AuthModel(..auth, login_in_flight: True, login_error: opt.None)
-          }),
-          fn(ui) { UiModel(..ui, toast: opt.None) },
-        )
+        update_auth(model, fn(auth) {
+          AuthModel(..auth, login_in_flight: True, login_error: opt.None)
+        })
       #(model, read_login_values_effect())
     }
   }
@@ -97,25 +92,23 @@ pub fn handle_login_dom_values_read(
   raw_email: String,
   raw_password: String,
 ) -> #(Model, Effect(Msg)) {
-  let email = string.trim(raw_email)
-  let password = raw_password
-
-  case email == "" || password == "" {
-    True -> #(
-      update_auth(model, fn(auth) {
-        AuthModel(
-          ..auth,
-          login_in_flight: False,
-          login_error: opt.Some(update_helpers.i18n_t(
-            model,
-            i18n_text.EmailAndPasswordRequired,
-          )),
-        )
-      }),
-      effect.none(),
+  let email_result =
+    update_helpers.validate_required_string(
+      model,
+      raw_email,
+      i18n_text.EmailAndPasswordRequired,
+    )
+  let password_result =
+    update_helpers.validate_required_string_raw(
+      model,
+      raw_password,
+      i18n_text.EmailAndPasswordRequired,
     )
 
-    False -> {
+  case email_result, password_result {
+    Ok(email), Ok(password) -> {
+      let email = update_helpers.non_empty_string_value(email)
+      let password = update_helpers.non_empty_string_value(password)
       let model =
         update_auth(model, fn(auth) {
           AuthModel(..auth, login_email: email, login_password: password)
@@ -127,6 +120,18 @@ pub fn handle_login_dom_values_read(
         }),
       )
     }
+    Error(err), _ -> #(
+      update_auth(model, fn(auth) {
+        AuthModel(..auth, login_in_flight: False, login_error: opt.Some(err))
+      }),
+      effect.none(),
+    )
+    _, Error(err) -> #(
+      update_auth(model, fn(auth) {
+        AuthModel(..auth, login_in_flight: False, login_error: opt.Some(err))
+      }),
+      effect.none(),
+    )
   }
 }
 
@@ -191,19 +196,16 @@ pub fn handle_forgot_password_clicked(model: Model) -> #(Model, Effect(Msg)) {
   let open = !model.auth.forgot_password_open
 
   #(
-    update_ui(
-      update_auth(model, fn(auth) {
-        AuthModel(
-          ..auth,
-          forgot_password_open: open,
-          forgot_password_in_flight: False,
-          forgot_password_result: opt.None,
-          forgot_password_error: opt.None,
-          forgot_password_copy_status: opt.None,
-        )
-      }),
-      fn(ui) { UiModel(..ui, toast: opt.None) },
-    ),
+    update_auth(model, fn(auth) {
+      AuthModel(
+        ..auth,
+        forgot_password_open: open,
+        forgot_password_in_flight: False,
+        forgot_password_result: opt.None,
+        forgot_password_error: opt.None,
+        forgot_password_copy_status: opt.None,
+      )
+    }),
     effect.none(),
   )
 }
@@ -232,23 +234,22 @@ pub fn handle_forgot_password_submitted(model: Model) -> #(Model, Effect(Msg)) {
     True -> #(model, effect.none())
 
     False -> {
-      let email = string.trim(model.auth.forgot_password_email)
-
-      case email == "" {
-        True -> #(
+      case
+        update_helpers.validate_required_string(
+          model,
+          model.auth.forgot_password_email,
+          i18n_text.EmailRequired,
+        )
+      {
+        Error(err) -> #(
           update_auth(model, fn(auth) {
-            AuthModel(
-              ..auth,
-              forgot_password_error: opt.Some(update_helpers.i18n_t(
-                model,
-                i18n_text.EmailRequired,
-              )),
-            )
+            AuthModel(..auth, forgot_password_error: opt.Some(err))
           }),
           effect.none(),
         )
 
-        False -> {
+        Ok(email) -> {
+          let email = update_helpers.non_empty_string_value(email)
           let model =
             update_auth(model, fn(auth) {
               AuthModel(
@@ -376,10 +377,7 @@ pub fn handle_forgot_password_dismissed(model: Model) -> #(Model, Effect(Msg)) {
 
 /// Handle logout click.
 pub fn handle_logout_clicked(model: Model) -> #(Model, Effect(Msg)) {
-  #(
-    update_ui(model, fn(ui) { UiModel(..ui, toast: opt.None) }),
-    api_auth.logout(fn(result) { auth_msg(LogoutFinished(result)) }),
-  )
+  #(model, api_auth.logout(fn(result) { auth_msg(LogoutFinished(result)) }))
 }
 
 /// Handle successful logout.
@@ -388,19 +386,16 @@ pub fn handle_logout_finished_ok(
   replace_url_fn: fn(Model) -> Effect(Msg),
 ) -> #(Model, Effect(Msg)) {
   let model =
-    update_ui(
-      update_core(model, fn(core) {
-        CoreModel(..core, page: Login, user: opt.None, auth_checked: False)
-      }),
-      fn(ui) {
-        UiModel(
-          ..ui,
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.LoggedOut)),
-        )
-      },
-    )
+    update_core(model, fn(core) {
+      CoreModel(..core, page: Login, user: opt.None, auth_checked: False)
+    })
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.LoggedOut,
+    ))
 
-  #(model, replace_url_fn(model))
+  #(model, effect.batch([replace_url_fn(model), toast_fx]))
 }
 
 /// Handle logout error.
@@ -419,13 +414,11 @@ pub fn handle_logout_finished_error(
     }
 
     False -> #(
-      update_ui(model, fn(ui) {
-        UiModel(
-          ..ui,
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.LogoutFailed)),
-        )
-      }),
-      effect.none(),
+      model,
+      update_helpers.toast_error(update_helpers.i18n_t(
+        model,
+        i18n_text.LogoutFailed,
+      )),
     )
   }
 }

@@ -36,8 +36,7 @@ import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/client_state.{
   type Model, type Msg, AdminModel, CapabilityMembersFetched,
   CapabilityMembersSaved, Failed, Loaded, MemberCapabilitiesFetched,
-  MemberCapabilitiesSaved, MemberRoleChanged, UiModel, admin_msg, update_admin,
-  update_ui,
+  MemberCapabilitiesSaved, MemberRoleChanged, admin_msg, update_admin,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -148,14 +147,12 @@ pub fn handle_member_role_changed_ok(
     update_admin(model, fn(admin) {
       AdminModel(..admin, members: updated_members)
     })
-  let model =
-    update_ui(model, fn(ui) {
-      UiModel(
-        ..ui,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.RoleUpdated)),
-      )
-    })
-  #(model, effect.none())
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.RoleUpdated,
+    ))
+  #(model, toast_fx)
 }
 
 /// Handle role change error.
@@ -166,21 +163,13 @@ pub fn handle_member_role_changed_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     422 -> #(
-      update_ui(model, fn(ui) {
-        UiModel(
-          ..ui,
-          toast: opt.Some(update_helpers.i18n_t(
-            model,
-            i18n_text.CannotDemoteLastManager,
-          )),
-        )
-      }),
-      effect.none(),
+      model,
+      update_helpers.toast_warning(update_helpers.i18n_t(
+        model,
+        i18n_text.CannotDemoteLastManager,
+      )),
     )
-    _ -> #(
-      update_ui(model, fn(ui) { UiModel(..ui, toast: opt.Some(err.message)) }),
-      effect.none(),
-    )
+    _ -> #(model, update_helpers.toast_error(err.message))
   }
 }
 
@@ -350,14 +339,12 @@ pub fn handle_member_capabilities_saved_ok(
         member_capabilities_selected: [],
       )
     })
-  let model =
-    update_ui(model, fn(ui) {
-      UiModel(
-        ..ui,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.SkillsSaved)),
-      )
-    })
-  #(model, effect.none())
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.SkillsSaved,
+    ))
+  #(model, toast_fx)
 }
 
 /// Handle capabilities save error.
@@ -546,14 +533,12 @@ pub fn handle_capability_members_saved_ok(
         capability_members_selected: [],
       )
     })
-  let model =
-    update_ui(model, fn(ui) {
-      UiModel(
-        ..ui,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.MembersSaved)),
-      )
-    })
-  #(model, effect.none())
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.MembersSaved,
+    ))
+  #(model, toast_fx)
 }
 
 /// Handle capability members save error.

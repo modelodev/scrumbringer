@@ -38,12 +38,12 @@ import domain/task.{
   type ActiveTaskPayload, type WorkSessionsPayload, ActiveTaskPayload,
   WorkSessionsPayload,
 }
+import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, MemberModel,
   MemberWorkSessionHeartbeated, MemberWorkSessionPaused,
-  MemberWorkSessionStarted, NowWorkingTicked, UiModel, pool_msg, update_member,
-  update_ui,
+  MemberWorkSessionStarted, NowWorkingTicked, pool_msg, update_member,
 }
 import scrumbringer_client/update_helpers
 
@@ -180,13 +180,10 @@ pub fn handle_started_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     _ -> #(
-      update_ui(
-        update_member(model, fn(member) {
-          MemberModel(..member, member_now_working_error: opt.Some(err.message))
-        }),
-        fn(ui) { UiModel(..ui, toast: opt.Some(err.message)) },
-      ),
-      effect.none(),
+      update_member(model, fn(member) {
+        MemberModel(..member, member_now_working_error: opt.Some(err.message))
+      }),
+      update_helpers.toast_error(err.message),
     )
   }
 }
@@ -231,13 +228,10 @@ pub fn handle_paused_error(model: Model, err: ApiError) -> #(Model, Effect(Msg))
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     _ -> #(
-      update_ui(
-        update_member(model, fn(member) {
-          MemberModel(..member, member_now_working_error: opt.Some(err.message))
-        }),
-        fn(ui) { UiModel(..ui, toast: opt.Some(err.message)) },
-      ),
-      effect.none(),
+      update_member(model, fn(member) {
+        MemberModel(..member, member_now_working_error: opt.Some(err.message))
+      }),
+      update_helpers.toast_error(err.message),
     )
   }
 }
@@ -316,10 +310,7 @@ pub fn handle_ticked(model: Model) -> #(Model, Effect(Msg)) {
 
 /// Create effect that schedules the next tick in 1 second.
 pub fn tick_effect() -> Effect(Msg) {
-  effect.from(fn(dispatch) {
-    client_ffi.set_timeout(1000, fn(_) { dispatch(pool_msg(NowWorkingTicked)) })
-    Nil
-  })
+  app_effects.schedule_timeout(1000, fn() { pool_msg(NowWorkingTicked) })
 }
 
 /// Start tick timer if not already running and there's an active task.
@@ -467,13 +458,10 @@ fn handle_sessions_toast_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     _ -> #(
-      update_ui(
-        update_member(model, fn(member) {
-          MemberModel(..member, member_now_working_error: opt.Some(err.message))
-        }),
-        fn(ui) { UiModel(..ui, toast: opt.Some(err.message)) },
-      ),
-      effect.none(),
+      update_member(model, fn(member) {
+        MemberModel(..member, member_now_working_error: opt.Some(err.message))
+      }),
+      update_helpers.toast_error(err.message),
     )
   }
 }

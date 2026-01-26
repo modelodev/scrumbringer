@@ -3,6 +3,7 @@
 //// Manages view mode (canvas/list), filter visibility persistence,
 //// and keyboard shortcut handling for the task pool interface.
 
+import gleam/option
 import gleam/string
 
 /// LocalStorage key for filter panel visibility.
@@ -15,6 +16,12 @@ pub const view_mode_storage_key = "sb_pool_view_mode"
 pub type ViewMode {
   Canvas
   List
+}
+
+/// Stored view mode decoding result.
+pub type ViewModeStorage {
+  ViewModeStored(ViewMode)
+  ViewModeInvalid(String)
 }
 
 /// Converts a view mode to its string representation.
@@ -31,6 +38,59 @@ pub fn deserialize_view_mode(value: String) -> ViewMode {
     "list" -> List
     "canvas" -> Canvas
     _ -> Canvas
+  }
+}
+
+/// Encodes a view mode for storage.
+pub fn encode_view_mode_storage(mode: ViewMode) -> String {
+  serialize_view_mode(mode)
+}
+
+/// Decodes a stored view mode value with explicit invalid state.
+pub fn decode_view_mode_storage(value: String) -> ViewModeStorage {
+  case string.trim(value) {
+    "list" -> ViewModeStored(List)
+    "canvas" -> ViewModeStored(Canvas)
+    other -> ViewModeInvalid(other)
+  }
+}
+
+/// Visibility state for pool filters.
+pub type FiltersVisibility {
+  FiltersVisible
+  FiltersHidden
+}
+
+pub fn visibility_from_bool(value: Bool) -> FiltersVisibility {
+  case value {
+    True -> FiltersVisible
+    False -> FiltersHidden
+  }
+}
+
+pub fn visibility_to_bool(value: FiltersVisibility) -> Bool {
+  case value {
+    FiltersVisible -> True
+    FiltersHidden -> False
+  }
+}
+
+/// Encodes filters visibility for storage.
+pub fn encode_filters_visibility(value: FiltersVisibility) -> String {
+  case value {
+    FiltersVisible -> "true"
+    FiltersHidden -> "false"
+  }
+}
+
+/// Decodes stored filters visibility with explicit invalid state.
+pub fn decode_filters_visibility(
+  value: String,
+) -> option.Option(FiltersVisibility) {
+  case string.trim(value) {
+    "true" -> option.Some(FiltersVisible)
+    "false" -> option.Some(FiltersHidden)
+    _ -> option.None
   }
 }
 

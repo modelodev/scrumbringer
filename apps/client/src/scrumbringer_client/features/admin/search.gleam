@@ -28,8 +28,9 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiError}
 import domain/org.{type OrgUser}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, AdminModel, Failed, Loaded, Loading, NotAsked,
-  OrgUsersSearchResults, admin_msg, update_admin,
+  type Model, type Msg, AdminModel, OrgUsersSearchFailed, OrgUsersSearchIdle,
+  OrgUsersSearchLoaded, OrgUsersSearchLoading, OrgUsersSearchResults, admin_msg,
+  update_admin,
 }
 import scrumbringer_client/update_helpers
 
@@ -45,9 +46,17 @@ pub fn handle_org_users_search_changed(
   model: Model,
   query: String,
 ) -> #(Model, Effect(Msg)) {
+  let next_state = case model.admin.org_users_search {
+    OrgUsersSearchIdle(_, token) -> OrgUsersSearchIdle(query, token)
+    OrgUsersSearchLoading(_, token) -> OrgUsersSearchLoading(query, token)
+    OrgUsersSearchLoaded(_, token, results) ->
+      OrgUsersSearchLoaded(query, token, results)
+    OrgUsersSearchFailed(_, token, err) ->
+      OrgUsersSearchFailed(query, token, err)
+  }
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, org_users_search_query: query)
+      AdminModel(..admin, org_users_search: next_state)
     }),
     effect.none(),
   )
@@ -59,22 +68,31 @@ pub fn handle_org_users_search_debounced(
   model: Model,
   query: String,
 ) -> #(Model, Effect(Msg)) {
+  let current_token = case model.admin.org_users_search {
+    OrgUsersSearchIdle(_, token)
+    | OrgUsersSearchLoading(_, token)
+    | OrgUsersSearchLoaded(_, token, _)
+    | OrgUsersSearchFailed(_, token, _) -> token
+  }
+
   case string.trim(query) == "" {
     True -> #(
       update_admin(model, fn(admin) {
-        AdminModel(..admin, org_users_search_results: NotAsked)
+        AdminModel(
+          ..admin,
+          org_users_search: OrgUsersSearchIdle(query, current_token),
+        )
       }),
       effect.none(),
     )
     False -> {
       // Generate new token for this request
-      let token = model.admin.org_users_search_token + 1
+      let token = current_token + 1
       let model =
         update_admin(model, fn(admin) {
           AdminModel(
             ..admin,
-            org_users_search_results: Loading,
-            org_users_search_token: token,
+            org_users_search: OrgUsersSearchLoading(query, token),
           )
         })
       // Pass token to API call so it's included in the response message
@@ -99,15 +117,17 @@ pub fn handle_org_users_search_results_ok(
   token: Int,
   users: List(OrgUser),
 ) -> #(Model, Effect(Msg)) {
-  // Ignore stale results (token doesn't match current expected token)
-  case token == model.admin.org_users_search_token {
-    True -> #(
+  case model.admin.org_users_search {
+    OrgUsersSearchLoading(query, current_token) if token == current_token -> #(
       update_admin(model, fn(admin) {
-        AdminModel(..admin, org_users_search_results: Loaded(users))
+        AdminModel(
+          ..admin,
+          org_users_search: OrgUsersSearchLoaded(query, current_token, users),
+        )
       }),
       effect.none(),
     )
-    False -> #(model, effect.none())
+    _ -> #(model, effect.none())
   }
 }
 
@@ -118,18 +138,20 @@ pub fn handle_org_users_search_results_error(
   token: Int,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  // Ignore stale results
-  case token == model.admin.org_users_search_token {
-    True ->
+  case model.admin.org_users_search {
+    OrgUsersSearchLoading(query, current_token) if token == current_token ->
       case err.status == 401 {
         True -> update_helpers.reset_to_login(model)
         False -> #(
           update_admin(model, fn(admin) {
-            AdminModel(..admin, org_users_search_results: Failed(err))
+            AdminModel(
+              ..admin,
+              org_users_search: OrgUsersSearchFailed(query, current_token, err),
+            )
           }),
           effect.none(),
         )
       }
-    False -> #(model, effect.none())
+    _ -> #(model, effect.none())
   }
 }

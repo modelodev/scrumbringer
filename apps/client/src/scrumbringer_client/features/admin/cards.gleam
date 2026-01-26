@@ -114,14 +114,12 @@ pub fn handle_card_crud_created(
         cards_dialog_mode: opt.None,
       )
     })
-  let model =
-    client_state.update_ui(model, fn(ui) {
-      client_state.UiModel(
-        ..ui,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.CardCreated)),
-      )
-    })
-  #(model, effect.none())
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.CardCreated,
+    ))
+  #(model, toast_fx)
 }
 
 /// Handle card updated event from component.
@@ -150,14 +148,12 @@ pub fn handle_card_crud_updated(
         cards_dialog_mode: opt.None,
       )
     })
-  let model =
-    client_state.update_ui(model, fn(ui) {
-      client_state.UiModel(
-        ..ui,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.CardUpdated)),
-      )
-    })
-  #(model, effect.none())
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.CardUpdated,
+    ))
+  #(model, toast_fx)
 }
 
 /// Handle card deleted event from component.
@@ -179,14 +175,12 @@ pub fn handle_card_crud_deleted(
         cards_dialog_mode: opt.None,
       )
     })
-  let model =
-    client_state.update_ui(model, fn(ui) {
-      client_state.UiModel(
-        ..ui,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.CardDeleted)),
-      )
-    })
-  #(model, effect.none())
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.CardDeleted,
+    ))
+  #(model, toast_fx)
 }
 
 // =============================================================================

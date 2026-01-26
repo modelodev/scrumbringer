@@ -54,8 +54,8 @@ import domain/task_status.{Available, Claimed, Completed, Taken}
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, Loading, MemberModel, MemberNoteAdded,
   MemberNotesFetched, MemberTaskClaimed, MemberTaskCompleted, MemberTaskCreated,
-  MemberTaskReleased, MemberWorkSessionsFetched, NotAsked, UiModel, pool_msg,
-  update_member, update_ui,
+  MemberTaskReleased, MemberWorkSessionsFetched, NotAsked, pool_msg,
+  update_member,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -321,26 +321,24 @@ pub fn handle_task_created_ok(
   member_refresh: fn(Model) -> #(Model, Effect(Msg)),
 ) -> #(Model, Effect(Msg)) {
   let model =
-    update_ui(
-      update_member(model, fn(member) {
-        MemberModel(
-          ..member,
-          member_create_in_flight: False,
-          member_create_dialog_open: False,
-          member_create_title: "",
-          member_create_description: "",
-          member_create_priority: "3",
-          member_create_type_id: "",
-        )
-      }),
-      fn(ui) {
-        UiModel(
-          ..ui,
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskCreated)),
-        )
-      },
-    )
-  member_refresh(model)
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_create_in_flight: False,
+        member_create_dialog_open: False,
+        member_create_title: "",
+        member_create_description: "",
+        member_create_priority: "3",
+        member_create_type_id: "",
+      )
+    })
+  let #(model, refresh_fx) = member_refresh(model)
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.TaskCreated,
+    ))
+  #(model, effect.batch([refresh_fx, toast_fx]))
 }
 
 /// Handle failed task creation.
@@ -578,14 +576,13 @@ pub fn handle_task_claimed_ok(
   member_refresh: fn(Model) -> #(Model, Effect(Msg)),
 ) -> #(Model, Effect(Msg)) {
   let model = clear_optimistic_state(model)
-  let model =
-    update_ui(model, fn(ui) {
-      UiModel(
-        ..ui,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskClaimed)),
-      )
-    })
-  member_refresh(model)
+  let #(model, refresh_fx) = member_refresh(model)
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.TaskClaimed,
+    ))
+  #(model, effect.batch([refresh_fx, toast_fx]))
 }
 
 /// Handle successful task release.
@@ -595,15 +592,12 @@ pub fn handle_task_released_ok(
   member_refresh: fn(Model) -> #(Model, Effect(Msg)),
 ) -> #(Model, Effect(Msg)) {
   let model = clear_optimistic_state(model)
-  let model =
-    update_ui(model, fn(ui) {
-      UiModel(
-        ..ui,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskReleased)),
-      )
-    })
-
   let #(model, fx) = member_refresh(model)
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.TaskReleased,
+    ))
   #(
     model,
     effect.batch([
@@ -611,6 +605,7 @@ pub fn handle_task_released_ok(
       api_tasks.get_work_sessions(fn(result) {
         pool_msg(MemberWorkSessionsFetched(result))
       }),
+      toast_fx,
     ]),
   )
 }
@@ -622,15 +617,12 @@ pub fn handle_task_completed_ok(
   member_refresh: fn(Model) -> #(Model, Effect(Msg)),
 ) -> #(Model, Effect(Msg)) {
   let model = clear_optimistic_state(model)
-  let model =
-    update_ui(model, fn(ui) {
-      UiModel(
-        ..ui,
-        toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskCompleted)),
-      )
-    })
-
   let #(model, fx) = member_refresh(model)
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.TaskCompleted,
+    ))
   #(
     model,
     effect.batch([
@@ -638,6 +630,7 @@ pub fn handle_task_completed_ok(
       api_tasks.get_work_sessions(fn(result) {
         pool_msg(MemberWorkSessionsFetched(result))
       }),
+      toast_fx,
     ]),
   )
 }
@@ -658,13 +651,11 @@ pub fn handle_mutation_error(
   case err.status {
     401 -> update_helpers.reset_to_login(model)
     404 -> #(
-      update_ui(model, fn(ui) {
-        UiModel(
-          ..ui,
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.TaskNotFound)),
-        )
-      }),
-      effect.none(),
+      model,
+      update_helpers.toast_warning(update_helpers.i18n_t(
+        model,
+        i18n_text.TaskNotFound,
+      )),
     )
     409 -> {
       // Conflict - task already claimed
@@ -672,10 +663,7 @@ pub fn handle_mutation_error(
         True -> update_helpers.i18n_t(model, i18n_text.TaskAlreadyClaimed)
         False -> update_helpers.i18n_t(model, i18n_text.TaskVersionConflict)
       }
-      #(
-        update_ui(model, fn(ui) { UiModel(..ui, toast: opt.Some(msg)) }),
-        effect.none(),
-      )
+      #(model, update_helpers.toast_warning(msg))
     }
     422 -> {
       // Version conflict or validation error
@@ -683,10 +671,7 @@ pub fn handle_mutation_error(
         True -> update_helpers.i18n_t(model, i18n_text.TaskVersionConflict)
         False -> err.message
       }
-      #(
-        update_ui(model, fn(ui) { UiModel(..ui, toast: opt.Some(msg)) }),
-        effect.none(),
-      )
+      #(model, update_helpers.toast_warning(msg))
     }
     _ -> {
       // Show rollback notice + original error
@@ -694,10 +679,7 @@ pub fn handle_mutation_error(
         update_helpers.i18n_t(model, i18n_text.TaskMutationRolledBack)
         <> ": "
         <> err.message
-      #(
-        update_ui(model, fn(ui) { UiModel(..ui, toast: opt.Some(msg)) }),
-        effect.none(),
-      )
+      #(model, update_helpers.toast_error(msg))
     }
   }
 }
@@ -838,25 +820,21 @@ pub fn handle_note_added_ok(
     _ -> [note]
   }
 
-  #(
-    update_ui(
-      update_member(model, fn(member) {
-        MemberModel(
-          ..member,
-          member_note_in_flight: False,
-          member_note_content: "",
-          member_notes: Loaded(updated),
-        )
-      }),
-      fn(ui) {
-        UiModel(
-          ..ui,
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.NoteAdded)),
-        )
-      },
-    ),
-    effect.none(),
-  )
+  let model =
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_note_in_flight: False,
+        member_note_content: "",
+        member_notes: Loaded(updated),
+      )
+    })
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.NoteAdded,
+    ))
+  #(model, toast_fx)
 }
 
 /// Handle note added response (error).

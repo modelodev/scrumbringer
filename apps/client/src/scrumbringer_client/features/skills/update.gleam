@@ -31,8 +31,8 @@ import domain/api_error.{type ApiError}
 import scrumbringer_client/api/tasks as api_tasks
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, MemberModel,
-  MemberMyCapabilityIdsFetched, MemberMyCapabilityIdsSaved, PoolMsg, UiModel,
-  update_member, update_ui,
+  MemberMyCapabilityIdsFetched, MemberMyCapabilityIdsSaved, PoolMsg,
+  update_member,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -146,23 +146,20 @@ pub fn handle_save_capabilities_ok(
   ids: List(Int),
 ) -> #(Model, Effect(Msg)) {
   let model =
-    update_ui(
-      update_member(model, fn(member) {
-        MemberModel(
-          ..member,
-          member_my_capabilities_in_flight: False,
-          member_my_capability_ids: Loaded(ids),
-          member_my_capability_ids_edit: update_helpers.ids_to_bool_dict(ids),
-        )
-      }),
-      fn(ui) {
-        UiModel(
-          ..ui,
-          toast: opt.Some(update_helpers.i18n_t(model, i18n_text.SkillsSaved)),
-        )
-      },
-    )
-  #(model, effect.none())
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_my_capabilities_in_flight: False,
+        member_my_capability_ids: Loaded(ids),
+        member_my_capability_ids_edit: update_helpers.ids_to_bool_dict(ids),
+      )
+    })
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(
+      model,
+      i18n_text.SkillsSaved,
+    ))
+  #(model, toast_fx)
 }
 
 /// Handle failed save capabilities response.
@@ -186,17 +183,15 @@ pub fn handle_save_capabilities_error(
         _, _ -> effect.none()
       }
       let model =
-        update_ui(
-          update_member(model, fn(member) {
-            MemberModel(
-              ..member,
-              member_my_capabilities_in_flight: False,
-              member_my_capabilities_error: opt.Some(err.message),
-            )
-          }),
-          fn(ui) { UiModel(..ui, toast: opt.Some(err.message)) },
-        )
-      #(model, refetch_effect)
+        update_member(model, fn(member) {
+          MemberModel(
+            ..member,
+            member_my_capabilities_in_flight: False,
+            member_my_capabilities_error: opt.Some(err.message),
+          )
+        })
+      let toast_fx = update_helpers.toast_error(err.message)
+      #(model, effect.batch([refetch_effect, toast_fx]))
     }
   }
 }
