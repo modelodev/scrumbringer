@@ -83,6 +83,7 @@ import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
+import scrumbringer_client/ui/error as ui_error
 import scrumbringer_client/ui/icon_catalog
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/section_header
@@ -282,7 +283,7 @@ fn view_user_projects_list(model: Model) -> Element(Msg) {
       p([attribute.class("loading")], [
         text(update_helpers.i18n_t(model, i18n_text.Loading)),
       ])
-    Failed(err) -> div([attribute.class("error")], [text(err.message)])
+    Failed(err) -> ui_error.error(err)
     Loaded(projects) -> view_user_projects_list_loaded(model, projects)
   }
 }

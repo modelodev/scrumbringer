@@ -57,15 +57,14 @@ pub fn handle_member_metrics_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_member(model, fn(member) {
         MemberModel(..member, member_metrics: Failed(err))
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 // =============================================================================
@@ -90,15 +89,14 @@ pub fn handle_admin_overview_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(..admin, admin_metrics_overview: Failed(err))
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 // =============================================================================
@@ -129,13 +127,12 @@ pub fn handle_admin_project_tasks_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(..admin, admin_metrics_project_tasks: Failed(err))
       }),
       effect.none(),
     )
-  }
+  })
 }

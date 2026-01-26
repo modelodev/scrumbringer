@@ -57,15 +57,14 @@ pub fn handle_org_users_cache_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status == 401 {
-    True -> update_helpers.reset_to_login(model)
-    False -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(..admin, org_users_cache: Failed(err))
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 // =============================================================================
@@ -97,29 +96,29 @@ pub fn handle_org_settings_users_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
+  update_helpers.handle_401_or(model, err, fn() {
+    case err.status {
+      403 -> {
+        let model =
+          update_admin(model, fn(admin) {
+            AdminModel(..admin, org_settings_users: Failed(err))
+          })
+        let toast_fx =
+          update_helpers.toast_warning(update_helpers.i18n_t(
+            model,
+            i18n_text.NotPermitted,
+          ))
+        #(model, toast_fx)
+      }
 
-    403 -> {
-      let model =
+      _ -> #(
         update_admin(model, fn(admin) {
           AdminModel(..admin, org_settings_users: Failed(err))
-        })
-      let toast_fx =
-        update_helpers.toast_warning(update_helpers.i18n_t(
-          model,
-          i18n_text.NotPermitted,
-        ))
-      #(model, toast_fx)
+        }),
+        effect.none(),
+      )
     }
-
-    _ -> #(
-      update_admin(model, fn(admin) {
-        AdminModel(..admin, org_settings_users: Failed(err))
-      }),
-      effect.none(),
-    )
-  }
+  })
 }
 
 // =============================================================================
@@ -285,46 +284,46 @@ pub fn handle_org_settings_saved_error(
   user_id: Int,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
+  update_helpers.handle_401_or(model, err, fn() {
+    case err.status {
+      403 -> {
+        let model =
+          update_admin(model, fn(admin) {
+            AdminModel(..admin, org_settings_save_in_flight: False)
+          })
+        let toast_fx =
+          update_helpers.toast_warning(update_helpers.i18n_t(
+            model,
+            i18n_text.NotPermitted,
+          ))
+        #(model, toast_fx)
+      }
 
-    403 -> {
-      let model =
+      409 -> #(
         update_admin(model, fn(admin) {
-          AdminModel(..admin, org_settings_save_in_flight: False)
-        })
-      let toast_fx =
-        update_helpers.toast_warning(update_helpers.i18n_t(
-          model,
-          i18n_text.NotPermitted,
-        ))
-      #(model, toast_fx)
+          AdminModel(
+            ..admin,
+            org_settings_save_in_flight: False,
+            org_settings_error_user_id: opt.Some(user_id),
+            org_settings_error: opt.Some(err.message),
+          )
+        }),
+        effect.none(),
+      )
+
+      _ -> #(
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            org_settings_save_in_flight: False,
+            org_settings_error_user_id: opt.Some(user_id),
+            org_settings_error: opt.Some(err.message),
+          )
+        }),
+        effect.none(),
+      )
     }
-
-    409 -> #(
-      update_admin(model, fn(admin) {
-        AdminModel(
-          ..admin,
-          org_settings_save_in_flight: False,
-          org_settings_error_user_id: opt.Some(user_id),
-          org_settings_error: opt.Some(err.message),
-        )
-      }),
-      effect.none(),
-    )
-
-    _ -> #(
-      update_admin(model, fn(admin) {
-        AdminModel(
-          ..admin,
-          org_settings_save_in_flight: False,
-          org_settings_error_user_id: opt.Some(user_id),
-          org_settings_error: opt.Some(err.message),
-        )
-      }),
-      effect.none(),
-    )
-  }
+  })
 }
 
 // Justification: nested case improves clarity for branching logic.

@@ -43,6 +43,7 @@ import scrumbringer_client/client_state.{
   MemberTaskDetailsClosed, NotAsked, pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/error as ui_error
 import scrumbringer_client/ui/icons
 import scrumbringer_client/update_helpers
 
@@ -200,7 +201,7 @@ fn view_notes(model: Model, _task_id: Int) -> Element(Msg) {
         div([attribute.class("empty")], [
           text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
         ])
-      Failed(err) -> div([attribute.class("error")], [text(err.message)])
+      Failed(err) -> ui_error.error(err)
       Loaded(notes) ->
         div(
           [],

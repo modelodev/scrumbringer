@@ -61,6 +61,7 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
+import scrumbringer_client/ui/error as ui_error
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/section_header
 import scrumbringer_client/update_helpers
@@ -1548,7 +1549,7 @@ fn view_rule_metrics_table(
         text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
       ])
 
-    Failed(err) -> div([attribute.class("error")], [text(err.message)])
+    Failed(err) -> ui_error.error(err)
 
     Loaded(workflows) -> view_rule_metrics_table_loaded(model, workflows)
   }
@@ -1675,21 +1676,21 @@ fn view_workflow_rules_expansion(
 
 fn view_workflow_rules_expansion_content(
   model: Model,
-  details: Remote(api_workflows.OrgWorkflowMetricsDetail),
+  details: Remote(api_workflows.WorkflowMetrics),
 ) -> Element(Msg) {
   case details {
     NotAsked | Loading ->
       div([attribute.class("loading")], [
         text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
       ])
-    Failed(err) -> div([attribute.class("error")], [text(err.message)])
+    Failed(err) -> ui_error.error(err)
     Loaded(loaded) -> view_workflow_rules_expansion_loaded(model, loaded)
   }
 }
 
 fn view_workflow_rules_expansion_loaded(
   model: Model,
-  details: api_workflows.OrgWorkflowMetricsDetail,
+  details: api_workflows.WorkflowMetrics,
 ) -> Element(Msg) {
   case details.rules {
     [] ->
@@ -1723,7 +1724,7 @@ fn view_workflow_rules_expansion_loaded(
 
 fn view_workflow_rule_metrics_row(
   model: Model,
-  rule_metrics: api_workflows.RuleMetricsRow,
+  rule_metrics: api_workflows.RuleMetricsSummary,
 ) -> #(String, Element(Msg)) {
   #(
     "rule-" <> int.to_string(rule_metrics.rule_id),
@@ -1792,7 +1793,7 @@ fn view_drilldown_details(model: Model) -> Element(Msg) {
         text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
       ])
 
-    Failed(err) -> div([attribute.class("error")], [text(err.message)])
+    Failed(err) -> ui_error.error(err)
 
     Loaded(details) ->
       div([attribute.class("drilldown-details")], [
@@ -1881,7 +1882,7 @@ fn view_drilldown_executions(model: Model) -> Element(Msg) {
         text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
       ])
 
-    Failed(err) -> div([attribute.class("error")], [text(err.message)])
+    Failed(err) -> ui_error.error(err)
 
     Loaded(response) -> view_drilldown_executions_loaded(model, response)
   }

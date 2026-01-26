@@ -141,9 +141,8 @@ pub fn handle_org_users_search_results_error(
 ) -> #(Model, Effect(Msg)) {
   case model.admin.org_users_search {
     OrgUsersSearchLoading(query, current_token) if token == current_token ->
-      case err.status == 401 {
-        True -> update_helpers.reset_to_login(model)
-        False -> #(
+      update_helpers.handle_401_or(model, err, fn() {
+        #(
           update_admin(model, fn(admin) {
             AdminModel(
               ..admin,
@@ -152,7 +151,7 @@ pub fn handle_org_users_search_results_error(
           }),
           effect.none(),
         )
-      }
+      })
     _ -> #(model, effect.none())
   }
 }

@@ -160,17 +160,18 @@ pub fn handle_member_role_changed_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    422 -> #(
-      model,
-      update_helpers.toast_warning(update_helpers.i18n_t(
+  update_helpers.handle_401_or(model, err, fn() {
+    case err.status {
+      422 -> #(
         model,
-        i18n_text.CannotDemoteLastManager,
-      )),
-    )
-    _ -> #(model, update_helpers.toast_error(err.message))
-  }
+        update_helpers.toast_warning(update_helpers.i18n_t(
+          model,
+          i18n_text.CannotDemoteLastManager,
+        )),
+      )
+      _ -> #(model, update_helpers.toast_error(err.message))
+    }
+  })
 }
 
 // =============================================================================
@@ -302,9 +303,8 @@ pub fn handle_member_capabilities_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(
           ..admin,
@@ -314,7 +314,7 @@ pub fn handle_member_capabilities_fetched_error(
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 /// Handle capabilities save success.
@@ -352,9 +352,8 @@ pub fn handle_member_capabilities_saved_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(
           ..admin,
@@ -364,7 +363,7 @@ pub fn handle_member_capabilities_saved_error(
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 // =============================================================================
@@ -497,9 +496,8 @@ pub fn handle_capability_members_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(
           ..admin,
@@ -509,7 +507,7 @@ pub fn handle_capability_members_fetched_error(
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 /// Handle capability members save success.
@@ -546,9 +544,8 @@ pub fn handle_capability_members_saved_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(
           ..admin,
@@ -558,7 +555,7 @@ pub fn handle_capability_members_saved_error(
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 // =============================================================================
@@ -610,15 +607,14 @@ pub fn handle_members_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status == 401 {
-    True -> update_helpers.reset_to_login(model)
-    False -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(..admin, members: Failed(err))
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 // =============================================================================

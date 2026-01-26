@@ -6,7 +6,7 @@
 import gleam/option
 import gleam/string
 
-import domain/api_error.{type ApiResult}
+import domain/api_error.{type ApiError, type ApiResult}
 
 /// Token validation and password reset state.
 pub type State {
@@ -116,14 +116,14 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Action) {
   }
 }
 
-fn handle_submitted(model: Model) -> #(Model, Effect) {
+fn handle_submitted(model: Model) -> #(Model, Action) {
   case model.state {
     Ready(email) -> handle_ready_submit(model, email)
     _ -> #(model, NoOp)
   }
 }
 
-fn handle_ready_submit(model: Model, email: String) -> #(Model, Effect) {
+fn handle_ready_submit(model: Model, email: String) -> #(Model, Action) {
   case string.length(model.password) < 12 {
     True -> #(
       Model(
@@ -140,7 +140,7 @@ fn handle_ready_submit(model: Model, email: String) -> #(Model, Effect) {
   }
 }
 
-fn handle_consumed_error(model: Model, err: api.Error) -> #(Model, Effect) {
+fn handle_consumed_error(model: Model, err: ApiError) -> #(Model, Action) {
   case model.state {
     Consuming(email) -> apply_consumed_error(model, email, err)
     _ -> #(model, NoOp)
@@ -150,8 +150,8 @@ fn handle_consumed_error(model: Model, err: api.Error) -> #(Model, Effect) {
 fn apply_consumed_error(
   model: Model,
   email: String,
-  err: api.Error,
-) -> #(Model, Effect) {
+  err: ApiError,
+) -> #(Model, Action) {
   let new_state = consumed_error_state(email, err)
 
   #(
@@ -160,7 +160,7 @@ fn apply_consumed_error(
   )
 }
 
-fn consumed_error_state(email: String, err: api.Error) -> State {
+fn consumed_error_state(email: String, err: ApiError) -> State {
   case err.code {
     "RESET_TOKEN_INVALID" | "RESET_TOKEN_USED" ->
       Invalid(code: err.code, message: err.message)

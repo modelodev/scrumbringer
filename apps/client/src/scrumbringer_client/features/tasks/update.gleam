@@ -346,9 +346,8 @@ pub fn handle_task_created_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_member(model, fn(member) {
         MemberModel(
           ..member,
@@ -358,7 +357,7 @@ pub fn handle_task_created_error(
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 // =============================================================================
@@ -651,40 +650,41 @@ pub fn handle_mutation_error(
   // Clear optimistic state
   let model = clear_optimistic_state(model)
 
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    404 -> #(
-      model,
-      update_helpers.toast_warning(update_helpers.i18n_t(
+  update_helpers.handle_401_or(model, err, fn() {
+    case err.status {
+      404 -> #(
         model,
-        i18n_text.TaskNotFound,
-      )),
-    )
-    409 -> {
-      // Conflict - task already claimed
-      let msg = case string.contains(err.code, "CLAIMED") {
-        True -> update_helpers.i18n_t(model, i18n_text.TaskAlreadyClaimed)
-        False -> update_helpers.i18n_t(model, i18n_text.TaskVersionConflict)
+        update_helpers.toast_warning(update_helpers.i18n_t(
+          model,
+          i18n_text.TaskNotFound,
+        )),
+      )
+      409 -> {
+        // Conflict - task already claimed
+        let msg = case string.contains(err.code, "CLAIMED") {
+          True -> update_helpers.i18n_t(model, i18n_text.TaskAlreadyClaimed)
+          False -> update_helpers.i18n_t(model, i18n_text.TaskVersionConflict)
+        }
+        #(model, update_helpers.toast_warning(msg))
       }
-      #(model, update_helpers.toast_warning(msg))
-    }
-    422 -> {
-      // Version conflict or validation error
-      let msg = case string.contains(err.code, "VERSION") {
-        True -> update_helpers.i18n_t(model, i18n_text.TaskVersionConflict)
-        False -> err.message
+      422 -> {
+        // Version conflict or validation error
+        let msg = case string.contains(err.code, "VERSION") {
+          True -> update_helpers.i18n_t(model, i18n_text.TaskVersionConflict)
+          False -> err.message
+        }
+        #(model, update_helpers.toast_warning(msg))
       }
-      #(model, update_helpers.toast_warning(msg))
+      _ -> {
+        // Show rollback notice + original error
+        let msg =
+          update_helpers.i18n_t(model, i18n_text.TaskMutationRolledBack)
+          <> ": "
+          <> err.message
+        #(model, update_helpers.toast_error(msg))
+      }
     }
-    _ -> {
-      // Show rollback notice + original error
-      let msg =
-        update_helpers.i18n_t(model, i18n_text.TaskMutationRolledBack)
-        <> ": "
-        <> err.message
-      #(model, update_helpers.toast_error(msg))
-    }
-  }
+  })
 }
 
 // =============================================================================
@@ -745,15 +745,14 @@ pub fn handle_notes_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_member(model, fn(member) {
         MemberModel(..member, member_notes: Failed(err))
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 /// Handle note content field change.
@@ -860,27 +859,24 @@ pub fn handle_note_added_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> {
-      let model =
-        update_member(model, fn(member) {
-          MemberModel(
-            ..member,
-            member_note_in_flight: False,
-            member_note_error: opt.Some(err.message),
-          )
-        })
-
-      case model.member.member_notes_task_id {
-        opt.Some(task_id) -> #(
-          model,
-          api_tasks.list_task_notes(task_id, fn(result) {
-            pool_msg(MemberNotesFetched(result))
-          }),
+  update_helpers.handle_401_or(model, err, fn() {
+    let model =
+      update_member(model, fn(member) {
+        MemberModel(
+          ..member,
+          member_note_in_flight: False,
+          member_note_error: opt.Some(err.message),
         )
-        opt.None -> #(model, effect.none())
-      }
+      })
+
+    case model.member.member_notes_task_id {
+      opt.Some(task_id) -> #(
+        model,
+        api_tasks.list_task_notes(task_id, fn(result) {
+          pool_msg(MemberNotesFetched(result))
+        }),
+      )
+      opt.None -> #(model, effect.none())
     }
-  }
+  })
 }

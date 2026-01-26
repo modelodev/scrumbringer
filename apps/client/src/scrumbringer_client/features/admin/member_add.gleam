@@ -192,33 +192,34 @@ pub fn handle_member_added_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    403 -> #(
-      update_admin(model, fn(admin) {
-        AdminModel(
-          ..admin,
-          members_add_in_flight: False,
-          members_add_error: opt.Some(update_helpers.i18n_t(
-            model,
-            i18n_text.NotPermitted,
-          )),
-        )
-      }),
-      update_helpers.toast_warning(update_helpers.i18n_t(
-        model,
-        i18n_text.NotPermitted,
-      )),
-    )
-    _ -> #(
-      update_admin(model, fn(admin) {
-        AdminModel(
-          ..admin,
-          members_add_in_flight: False,
-          members_add_error: opt.Some(err.message),
-        )
-      }),
-      effect.none(),
-    )
-  }
+  update_helpers.handle_401_or(model, err, fn() {
+    case err.status {
+      403 -> #(
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            members_add_in_flight: False,
+            members_add_error: opt.Some(update_helpers.i18n_t(
+              model,
+              i18n_text.NotPermitted,
+            )),
+          )
+        }),
+        update_helpers.toast_warning(update_helpers.i18n_t(
+          model,
+          i18n_text.NotPermitted,
+        )),
+      )
+      _ -> #(
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            members_add_in_flight: False,
+            members_add_error: opt.Some(err.message),
+          )
+        }),
+        effect.none(),
+      )
+    }
+  })
 }

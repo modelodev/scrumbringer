@@ -55,11 +55,12 @@ import domain/task.{
   Task, TaskPosition, WorkSessionsPayload,
 }
 import domain/task_type.{type TaskType}
+import domain/user.{type User}
 import scrumbringer_client/client_state.{
   type Model, type Msg, type Remote, CoreModel, Loaded, ToastShow, update_core,
 }
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/permissions
+import scrumbringer_client/permissions.{type AdminSection}
 import scrumbringer_client/shared/i18n_helpers
 import scrumbringer_client/ui/toast
 
@@ -519,6 +520,29 @@ pub fn handle_auth_error(
   err: ApiError,
 ) -> Option(#(Model, Effect(Msg))) {
   auth_helpers.handle_auth_error(model, err)
+}
+
+/// Handle 401 errors with redirect to login, or run fallback for other errors.
+///
+/// Use this when you want to preserve Failed(err) state for non-401 errors
+/// instead of showing a toast (which handle_auth_error does for 403).
+///
+/// ## Example
+///
+/// ```gleam
+/// handle_401_or(model, err, fn() {
+///   #(update_admin(model, fn(a) { AdminModel(..a, field: Failed(err)) }), effect.none())
+/// })
+/// ```
+pub fn handle_401_or(
+  model: Model,
+  err: ApiError,
+  fallback: fn() -> #(Model, Effect(Msg)),
+) -> #(Model, Effect(Msg)) {
+  case err.status {
+    401 -> reset_to_login(model)
+    _ -> fallback()
+  }
 }
 
 // =============================================================================

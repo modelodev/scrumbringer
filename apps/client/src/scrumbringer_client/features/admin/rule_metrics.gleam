@@ -190,15 +190,14 @@ pub fn handle_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(..admin, admin_rule_metrics: Failed(err))
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 /// Initialize the rule metrics tab with default date range (last 30 days).
@@ -285,15 +284,14 @@ pub fn handle_workflow_details_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(..admin, admin_rule_metrics_workflow_details: Failed(err))
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 /// Handle drill-down click on a rule (to see executions).
@@ -363,15 +361,14 @@ pub fn handle_rule_details_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(..admin, admin_rule_metrics_rule_details: Failed(err))
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 /// Handle executions fetch success.
@@ -392,15 +389,14 @@ pub fn handle_executions_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(..admin, admin_rule_metrics_executions: Failed(err))
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 /// Handle executions pagination.

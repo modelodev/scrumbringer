@@ -76,15 +76,14 @@ pub fn handle_capabilities_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status == 401 {
-    True -> update_helpers.reset_to_login(model)
-    False -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(..admin, capabilities: Failed(err))
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 // =============================================================================
@@ -209,35 +208,36 @@ pub fn handle_capability_created_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    403 -> #(
-      update_admin(model, fn(admin) {
-        AdminModel(
-          ..admin,
-          capabilities_create_in_flight: False,
-          capabilities_create_error: opt.Some(update_helpers.i18n_t(
-            model,
-            i18n_text.NotPermitted,
-          )),
-        )
-      }),
-      update_helpers.toast_warning(update_helpers.i18n_t(
-        model,
-        i18n_text.NotPermitted,
-      )),
-    )
-    _ -> #(
-      update_admin(model, fn(admin) {
-        AdminModel(
-          ..admin,
-          capabilities_create_in_flight: False,
-          capabilities_create_error: opt.Some(err.message),
-        )
-      }),
-      effect.none(),
-    )
-  }
+  update_helpers.handle_401_or(model, err, fn() {
+    case err.status {
+      403 -> #(
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            capabilities_create_in_flight: False,
+            capabilities_create_error: opt.Some(update_helpers.i18n_t(
+              model,
+              i18n_text.NotPermitted,
+            )),
+          )
+        }),
+        update_helpers.toast_warning(update_helpers.i18n_t(
+          model,
+          i18n_text.NotPermitted,
+        )),
+      )
+      _ -> #(
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            capabilities_create_in_flight: False,
+            capabilities_create_error: opt.Some(err.message),
+          )
+        }),
+        effect.none(),
+      )
+    }
+  })
 }
 
 // =============================================================================
@@ -342,30 +342,31 @@ pub fn handle_capability_deleted_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    403 -> #(
-      update_admin(model, fn(admin) {
-        AdminModel(
-          ..admin,
-          capability_delete_in_flight: False,
-          capability_delete_error: opt.Some(update_helpers.i18n_t(
-            model,
-            i18n_text.NotPermitted,
-          )),
-        )
-      }),
-      effect.none(),
-    )
-    _ -> #(
-      update_admin(model, fn(admin) {
-        AdminModel(
-          ..admin,
-          capability_delete_in_flight: False,
-          capability_delete_error: opt.Some(err.message),
-        )
-      }),
-      effect.none(),
-    )
-  }
+  update_helpers.handle_401_or(model, err, fn() {
+    case err.status {
+      403 -> #(
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            capability_delete_in_flight: False,
+            capability_delete_error: opt.Some(update_helpers.i18n_t(
+              model,
+              i18n_text.NotPermitted,
+            )),
+          )
+        }),
+        effect.none(),
+      )
+      _ -> #(
+        update_admin(model, fn(admin) {
+          AdminModel(
+            ..admin,
+            capability_delete_in_flight: False,
+            capability_delete_error: opt.Some(err.message),
+          )
+        }),
+        effect.none(),
+      )
+    }
+  })
 }

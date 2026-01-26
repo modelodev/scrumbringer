@@ -708,9 +708,8 @@ pub fn handle_position_saved_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_member(model, fn(member) {
         MemberModel(
           ..member,
@@ -726,7 +725,7 @@ pub fn handle_position_saved_error(
         update_helpers.toast_error(err.message),
       ]),
     )
-  }
+  })
 }
 
 /// Handle positions fetched response (success).
@@ -750,8 +749,5 @@ pub fn handle_positions_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(model, effect.none())
-  }
+  update_helpers.handle_401_or(model, err, fn() { #(model, effect.none()) })
 }

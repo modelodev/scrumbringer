@@ -205,7 +205,7 @@ fn parse_pathname(pathname: String, search: String, query: QueryParams) -> Route
 fn parse_app_route(
   pathname: String,
   project_id: Option(Int),
-  view_mode: ViewMode,
+  view_mode: Option(ViewMode),
 ) -> Route {
   case string.starts_with(pathname, "/config") {
     True -> parse_config_route(pathname, project_id)
@@ -221,7 +221,7 @@ fn parse_config_route(pathname: String, project_id: Option(Int)) -> Route {
 fn parse_org_route(
   pathname: String,
   project_id: Option(Int),
-  view_mode: ViewMode,
+  view_mode: Option(ViewMode),
 ) -> Route {
   case string.starts_with(pathname, "/org") {
     True -> parse_org_section(pathname)
@@ -237,7 +237,7 @@ fn parse_org_section(pathname: String) -> Route {
 fn parse_member_route(
   pathname: String,
   project_id: Option(Int),
-  view_mode: ViewMode,
+  view_mode: Option(ViewMode),
 ) -> Route {
   case string.starts_with(pathname, "/app") {
     True -> parse_member_section(pathname, project_id, view_mode)
@@ -248,7 +248,7 @@ fn parse_member_route(
 fn parse_member_section(
   pathname: String,
   project_id: Option(Int),
-  view_mode: ViewMode,
+  view_mode: Option(ViewMode),
 ) -> Route {
   let slug = path_segment(pathname, "/app")
   Member(member_section.from_slug(slug), project_id, view_mode)

@@ -63,15 +63,14 @@ pub fn handle_my_capability_ids_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_member(model, fn(member) {
         MemberModel(..member, member_my_capability_ids: Failed(err))
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 // =============================================================================
@@ -167,31 +166,25 @@ pub fn handle_save_capabilities_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> {
-      let refetch_effect = case
-        model.core.selected_project_id,
-        model.core.user
-      {
-        opt.Some(project_id), opt.Some(user) ->
-          api_tasks.get_member_capability_ids(
-            project_id,
-            user.id,
-            fn(result) -> Msg { PoolMsg(MemberMyCapabilityIdsFetched(result)) },
-          )
-        _, _ -> effect.none()
-      }
-      let model =
-        update_member(model, fn(member) {
-          MemberModel(
-            ..member,
-            member_my_capabilities_in_flight: False,
-            member_my_capabilities_error: opt.Some(err.message),
-          )
-        })
-      let toast_fx = update_helpers.toast_error(err.message)
-      #(model, effect.batch([refetch_effect, toast_fx]))
+  update_helpers.handle_401_or(model, err, fn() {
+    let refetch_effect = case model.core.selected_project_id, model.core.user {
+      opt.Some(project_id), opt.Some(user) ->
+        api_tasks.get_member_capability_ids(
+          project_id,
+          user.id,
+          fn(result) -> Msg { PoolMsg(MemberMyCapabilityIdsFetched(result)) },
+        )
+      _, _ -> effect.none()
     }
-  }
+    let model =
+      update_member(model, fn(member) {
+        MemberModel(
+          ..member,
+          member_my_capabilities_in_flight: False,
+          member_my_capabilities_error: opt.Some(err.message),
+        )
+      })
+    let toast_fx = update_helpers.toast_error(err.message)
+    #(model, effect.batch([refetch_effect, toast_fx]))
+  })
 }

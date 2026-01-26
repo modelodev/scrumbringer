@@ -63,15 +63,14 @@ pub fn handle_workflows_project_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(..admin, workflows_project: Failed(err))
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 // =============================================================================
@@ -275,13 +274,12 @@ pub fn handle_rules_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) { AdminModel(..admin, rules: Failed(err)) }),
       effect.none(),
     )
-  }
+  })
 }
 
 /// Handle rule metrics fetch success.
@@ -302,15 +300,14 @@ pub fn handle_rule_metrics_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(..admin, rules_metrics: Failed(err))
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 /// Handle rules back clicked (return to workflows view).
@@ -456,15 +453,14 @@ pub fn handle_rule_templates_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(..admin, rules_templates: Failed(err))
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 /// Handle rule attach template selected.
@@ -545,9 +541,8 @@ pub fn handle_rule_template_attached_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(
           ..admin,
@@ -557,7 +552,7 @@ pub fn handle_rule_template_attached_error(
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 /// Handle rule template detach clicked.
@@ -615,9 +610,8 @@ pub fn handle_rule_template_detached_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(
           ..admin,
@@ -627,7 +621,7 @@ pub fn handle_rule_template_detached_error(
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 // =============================================================================
@@ -803,9 +797,8 @@ pub fn handle_attach_template_failed(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(
           ..admin,
@@ -815,7 +808,7 @@ pub fn handle_attach_template_failed(
       }),
       update_helpers.toast_error(err.message),
     )
-  }
+  })
 }
 
 /// Handle template detach click.
@@ -889,9 +882,8 @@ pub fn handle_template_detach_failed(
 ) -> #(Model, Effect(Msg)) {
   let detaching =
     set.delete(model.admin.detaching_templates, #(rule_id, template_id))
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(
           ..admin,
@@ -901,7 +893,7 @@ pub fn handle_template_detach_failed(
       }),
       update_helpers.toast_error(err.message),
     )
-  }
+  })
 }
 
 // =============================================================================
@@ -926,15 +918,14 @@ pub fn handle_task_templates_project_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_admin(model, fn(admin) {
         AdminModel(..admin, task_templates_project: Failed(err))
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 // =============================================================================

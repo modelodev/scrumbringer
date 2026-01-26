@@ -280,15 +280,14 @@ fn apply_sessions_payload(model: Model, payload: WorkSessionsPayload) -> Model {
 }
 
 fn handle_sessions_error(model: Model, err: ApiError) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_member(model, fn(member) {
         MemberModel(..member, member_work_sessions: Failed(err))
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 fn handle_sessions_toast_error(
@@ -300,25 +299,21 @@ fn handle_sessions_toast_error(
       MemberModel(..member, member_now_working_in_flight: False)
     })
 
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       update_member(model, fn(member) {
         MemberModel(..member, member_now_working_error: opt.Some(err.message))
       }),
       update_helpers.toast_error(err.message),
     )
-  }
+  })
 }
 
 fn handle_sessions_noop_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(model, effect.none())
-  }
+  update_helpers.handle_401_or(model, err, fn() { #(model, effect.none()) })
 }
 
 // Justification: nested case improves clarity for branching logic.

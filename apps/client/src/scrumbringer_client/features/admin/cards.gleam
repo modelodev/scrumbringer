@@ -52,15 +52,14 @@ pub fn handle_cards_fetched_error(
   model: client_state.Model,
   err: ApiError,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  case err.status {
-    401 -> update_helpers.reset_to_login(model)
-    _ -> #(
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
       client_state.update_admin(model, fn(admin) {
         client_state.AdminModel(..admin, cards: client_state.Failed(err))
       }),
       effect.none(),
     )
-  }
+  })
 }
 
 // =============================================================================

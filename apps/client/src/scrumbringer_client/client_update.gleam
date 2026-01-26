@@ -22,12 +22,13 @@
 //// to keep this file focused on top-level orchestration.
 
 import domain/org_role
+import domain/project.{type Project}
+import domain/user.{type User}
 import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option as opt
 import lustre/effect.{type Effect}
-import shared
 
 import scrumbringer_client/accept_invite
 import scrumbringer_client/app/effects as app_effects
@@ -41,7 +42,7 @@ import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/api/tasks as api_tasks
 
 // Domain types
-import domain/task.{TaskFilters}
+import domain/task.{type TaskFilters, TaskFilters}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/hydration
 import scrumbringer_client/member_section
@@ -624,7 +625,7 @@ fn hydrate_me_capability_ids_request(
   model: client_state.Model,
   fx: List(Effect(client_state.Msg)),
   project_id: Int,
-  user: shared.User,
+  user: User,
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   let model =
     client_state.update_member(model, fn(member) {
@@ -1411,7 +1412,7 @@ fn refresh_member_tasks(
 
 fn project_ids_for_member_refresh(
   model: client_state.Model,
-  projects: List(shared.Project),
+  projects: List(Project),
 ) -> List(Int) {
   case model.core.selected_project_id {
     opt.Some(project_id) -> [project_id]
@@ -1904,7 +1905,7 @@ pub fn update(
 
 fn handle_accept_invite_authed(
   model: client_state.Model,
-  user: shared.User,
+  user: User,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   let page = page_for_org_role(user.org_role)
 

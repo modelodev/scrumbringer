@@ -139,14 +139,14 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Action) {
   }
 }
 
-fn handle_submitted(model: Model) -> #(Model, Effect) {
+fn handle_submitted(model: Model) -> #(Model, Action) {
   case model.state {
     Ready(email) -> handle_ready_submit(model, email)
     _ -> #(model, NoOp)
   }
 }
 
-fn handle_ready_submit(model: Model, email: String) -> #(Model, Effect) {
+fn handle_ready_submit(model: Model, email: String) -> #(Model, Action) {
   case string.length(model.password) < 12 {
     True -> #(
       Model(
