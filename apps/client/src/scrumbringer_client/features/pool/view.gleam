@@ -23,7 +23,6 @@
 
 import gleam/dict
 import gleam/dynamic/decode
-import gleam/float
 import gleam/int
 import gleam/list
 import gleam/option as opt
@@ -36,31 +35,31 @@ import lustre/element/keyed
 import lustre/event
 
 import domain/task.{type Task, Task}
-import domain/task_status.{Available, Claimed, Taken, task_status_to_string}
+import domain/task_status.{Available, Claimed, Taken}
 import domain/user.{type User}
 
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, Loading, MemberClaimClicked,
   MemberCompleteClicked, MemberCreateDialogOpened, MemberDragEnded,
-  MemberDragMoved, MemberDragStarted, MemberReleaseClicked, NotAsked,
-  PoolDragDragging, PoolDragIdle, PoolDragPendingRect, pool_msg,
+  MemberDragMoved, MemberDragStarted, MemberReleaseClicked,
+  MemberTaskDetailsOpened, NotAsked, PoolDragDragging, PoolDragIdle,
+  PoolDragPendingRect, pool_msg,
 }
-import scrumbringer_client/features/admin/view as admin_view
 import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/panel as now_working_panel
 import scrumbringer_client/features/pool/dialogs as pool_dialogs
 import scrumbringer_client/features/pool/filters as pool_filters
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/member_visuals
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/ui/attrs
-import scrumbringer_client/ui/card_badge
-import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/event_decoders
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/status_block
+import scrumbringer_client/ui/task_color
+import scrumbringer_client/ui/task_hover_popup
+import scrumbringer_client/ui/task_type_icon
 import scrumbringer_client/update_helpers
 
 // =============================================================================
@@ -318,15 +317,12 @@ pub fn view_pool_task_row(model: Model, task: Task) -> Element(Msg) {
     title: title,
     type_id: _type_id,
     task_type: task_type,
-    priority: priority,
-    created_at: created_at,
+    card_color: card_color,
     version: version,
     ..,
   ) = task
 
-  let type_label = task_type.name
-
-  let type_icon = opt.Some(task_type.icon)
+  let type_icon = task_type.icon
 
   let disable_actions = model.member.member_task_mutation_in_flight
 
@@ -348,24 +344,15 @@ pub fn view_pool_task_row(model: Model, task: Task) -> Element(Msg) {
       [icons.nav_icon(icons.HandRaised, icons.Small)],
     )
 
-  div([attribute.class("task-row")], [
+  let border_class = task_color.card_border_class(card_color)
+
+  div([attribute.class("task-row " <> border_class)], [
     div([], [
-      div([attribute.class("task-row-title")], [text(title)]),
-      div([attribute.class("task-row-meta")], [
-        text(update_helpers.i18n_t(model, i18n_text.MetaType)),
-        case type_icon {
-          opt.Some(icon) ->
-            span([attribute.attribute("style", "margin-right:4px;")], [
-              admin_view.view_task_type_icon_inline(icon, 16, model.ui.theme),
-            ])
-        },
-        text(type_label),
-        text(" · "),
-        text(update_helpers.i18n_t(model, i18n_text.MetaPriority)),
-        text(int.to_string(priority)),
-        text(" · "),
-        text(update_helpers.i18n_t(model, i18n_text.MetaCreated)),
-        text(created_at),
+      div([attribute.class("task-row-title")], [
+        span([attribute.class("task-type-icon")], [
+          task_type_icon.view(type_icon, 16, model.ui.theme),
+        ]),
+        text(title),
       ]),
     ]),
     div([attribute.class("task-row-actions")], [claim_action]),
@@ -380,10 +367,11 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     type_id: _type_id,
     task_type: task_type,
     title: title,
-    priority: priority,
+    priority: _priority,
     status: status,
     claimed_by: claimed_by,
     created_at: created_at,
+    description: description,
     version: version,
     card_title: card_title,
     card_color: card_color,
@@ -397,16 +385,9 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
 
   let is_mine = claimed_by == opt.Some(current_user_id)
 
-  let type_label = task_type.name
+  let type_icon = task_type.icon
 
-  let type_icon = opt.Some(task_type.icon)
-
-  // Card color for border styling
-  let card_color_opt = case card_color {
-    opt.None -> opt.None
-    opt.Some(c) -> color_picker.string_to_color(c)
-  }
-  let card_border_class = color_picker.border_class(card_color_opt)
+  let card_border_class = task_color.card_border_class(card_color)
 
   // Get saved position or generate deterministic initial position based on task ID
   let #(x, y) = case dict.get(model.member.member_positions_by_task, id) {
@@ -426,22 +407,26 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     }
   }
 
-  let size = member_visuals.priority_to_px(priority)
+  let size = 110
 
   let age_days = age_in_days(created_at)
 
-  let #(opacity, saturation) = decay_to_visuals(age_days)
+  let shake_class = decay_to_shake_class(age_days)
 
   let prefer_left = x > 760
 
-  // Build CSS classes including card border color
+  // Build CSS classes including card border color and decay shake
   let base_classes = case prefer_left {
     True -> "task-card preview-left"
     False -> "task-card"
   }
-  let card_classes = case card_border_class {
+  let with_border = case card_border_class {
     "" -> base_classes
     c -> base_classes <> " " <> c
+  }
+  let card_classes = case shake_class {
+    "" -> with_border
+    s -> with_border <> " " <> s
   }
 
   let style =
@@ -453,11 +438,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     <> int.to_string(size)
     <> "px; height:"
     <> int.to_string(size)
-    <> "px; opacity:"
-    <> float.to_string(opacity)
-    <> "; filter:saturate("
-    <> float.to_string(saturation)
-    <> ");"
+    <> "px;"
 
   let disable_actions = model.member.member_task_mutation_in_flight
 
@@ -557,43 +538,17 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     ],
     [
       div([attribute.class("task-card-top")], [
-        // Card initials badge if task belongs to a card
-        case card_title {
-          opt.Some(ct) -> card_badge.view(ct, card_color_opt, opt.Some(ct))
-          opt.None -> element.none()
-        },
-        // P02: Decay badge showing age
-        case age_days > 7 {
-          True ->
-            span(
-              [
-                attribute.class("decay-badge"),
-                attribute.attribute(
-                  "title",
-                  update_helpers.i18n_t(
-                    model,
-                    i18n_text.CreatedAgoDays(age_days),
-                  ),
-                ),
-              ],
-              [text(int.to_string(age_days) <> "d")],
-            )
-          False -> element.none()
-        },
-        div([attribute.class("task-card-actions")], [
-          primary_action,
+        div([attribute.class("task-card-actions-left")], [primary_action]),
+        div([attribute.class("task-card-actions-right")], [
           drag_handle,
           complete_action,
         ]),
       ]),
       div([attribute.class("task-card-body")], [
         div([attribute.class("task-card-center")], [
-          case type_icon {
-            opt.Some(icon) ->
-              div([attribute.class("task-card-center-icon")], [
-                admin_view.view_task_type_icon_inline(icon, 22, model.ui.theme),
-              ])
-          },
+          div([attribute.class("task-card-center-icon")], [
+            task_type_icon.view(type_icon, 22, model.ui.theme),
+          ]),
           div(
             [
               attribute.class("task-card-title"),
@@ -605,40 +560,29 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
       ]),
       div(
         [
-          attribute.class("task-card-preview"),
           attribute.attribute("id", "task-preview-" <> int.to_string(id)),
-          attribute.attribute("role", "tooltip"),
+          attribute.attribute(
+            "aria-describedby",
+            "task-preview-" <> int.to_string(id),
+          ),
         ],
         [
-          div([attribute.class("task-preview-grid")], [
-            span([attribute.class("task-preview-label")], [
-              text(update_helpers.i18n_t(model, i18n_text.PopoverType)),
-            ]),
-            span([attribute.class("task-preview-value")], [text(type_label)]),
-            span([attribute.class("task-preview-label")], [
-              text(update_helpers.i18n_t(model, i18n_text.PopoverCreated)),
-            ]),
-            span([attribute.class("task-preview-value")], [
-              text(update_helpers.i18n_t(
-                model,
-                i18n_text.CreatedAgoDays(age_days),
-              )),
-            ]),
-            span([attribute.class("task-preview-label")], [
-              text(update_helpers.i18n_t(model, i18n_text.PopoverStatus)),
-            ]),
-            span([attribute.class("task-preview-value")], [
-              span(
-                [
-                  attribute.class(
-                    "task-preview-badge task-preview-badge-"
-                    <> task_status_to_string(status),
-                  ),
-                ],
-                [text(task_status_to_string(status))],
-              ),
-            ]),
-          ]),
+          task_hover_popup.view(task_hover_popup.TaskHoverConfig(
+            card_label: update_helpers.i18n_t(model, i18n_text.ParentCardLabel),
+            card_title: card_title,
+            age_label: update_helpers.i18n_t(model, i18n_text.AgeLabel),
+            age_value: update_helpers.i18n_t(
+              model,
+              i18n_text.CreatedAgoDays(age_days),
+            ),
+            description_label: update_helpers.i18n_t(
+              model,
+              i18n_text.Description,
+            ),
+            description: opt.unwrap(description, ""),
+            open_label: update_helpers.i18n_t(model, i18n_text.OpenTask),
+            on_open: pool_msg(MemberTaskDetailsOpened(id)),
+          )),
         ],
       ),
     ],
@@ -651,11 +595,13 @@ fn age_in_days(created_at: String) -> Int {
   client_ffi.days_since_iso(created_at)
 }
 
-fn decay_to_visuals(age_days: Int) -> #(Float, Float) {
+/// Returns a CSS class for shake animation based on task age.
+/// Shake intensity increases with age to indicate staleness.
+fn decay_to_shake_class(age_days: Int) -> String {
   case age_days {
-    d if d < 9 -> #(1.0, 1.0)
-    d if d < 18 -> #(0.95, 0.85)
-    d if d < 27 -> #(0.85, 0.65)
-    _ -> #(0.8, 0.55)
+    d if d < 9 -> ""
+    d if d < 18 -> "decay-shake-low"
+    d if d < 27 -> "decay-shake-medium"
+    _ -> "decay-shake-high"
   }
 }

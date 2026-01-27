@@ -19,7 +19,6 @@
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{button, div, h4, label, option, select, span, text}
@@ -31,8 +30,9 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
-import scrumbringer_client/ui/icon_catalog
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/task_color
+import scrumbringer_client/ui/task_type_icon
 
 // =============================================================================
 // Types
@@ -44,6 +44,7 @@ pub type ActiveTaskInfo {
     task_id: Int,
     task_title: String,
     task_type_icon: String,
+    card_color: Option(String),
     elapsed_display: String,
     is_paused: Bool,
   )
@@ -51,7 +52,13 @@ pub type ActiveTaskInfo {
 
 /// Card with progress for my cards section
 pub type MyCardProgress {
-  MyCardProgress(card_id: Int, card_title: String, completed: Int, total: Int)
+  MyCardProgress(
+    card_id: Int,
+    card_title: String,
+    card_color: Option(String),
+    completed: Int,
+    total: Int,
+  )
 }
 
 /// Configuration for the right panel
@@ -150,11 +157,13 @@ fn view_active_task_card(
   config: RightPanelConfig(msg),
   active: ActiveTaskInfo,
 ) -> Element(msg) {
-  div([attribute.class("active-task-card")], [
+  let border_class = task_color.card_border_class(active.card_color)
+
+  div([attribute.class("active-task-card " <> border_class)], [
     div([attribute.class("task-title-row")], [
       // Task type icon
       span([attribute.class("task-type-icon")], [
-        view_task_type_icon(active.task_type_icon, 14, config.current_theme),
+        task_type_icon.view(active.task_type_icon, 14, config.current_theme),
       ]),
       span([attribute.class("task-title")], [text(active.task_title)]),
     ]),
@@ -286,11 +295,13 @@ fn view_my_tasks(config: RightPanelConfig(msg)) -> Element(msg) {
 }
 
 fn view_my_task_item(config: RightPanelConfig(msg), task: Task) -> Element(msg) {
-  div([attribute.class("task-item")], [
+  let border_class = task_color.card_border_class(task.card_color)
+
+  div([attribute.class("task-item " <> border_class)], [
     div([attribute.class("task-title-row")], [
       // Task type icon
       span([attribute.class("task-type-icon")], [
-        view_task_type_icon(task.task_type.icon, 14, config.current_theme),
+        task_type_icon.view(task.task_type.icon, 14, config.current_theme),
       ]),
       span([attribute.class("task-title")], [text(task.title)]),
     ]),
@@ -378,9 +389,11 @@ fn view_my_card_item(
     t -> { card.completed * 100 } / t
   }
 
+  let border_class = task_color.card_border_class(card.card_color)
+
   button(
     [
-      attribute.class("my-card-item"),
+      attribute.class("my-card-item " <> border_class),
       attribute.attribute("data-testid", "my-card-item"),
       event.on_click(config.on_card_click(card.card_id)),
     ],
@@ -525,26 +538,4 @@ fn view_profile(config: RightPanelConfig(msg)) -> Element(msg) {
       ),
     ]),
   ])
-}
-
-// =============================================================================
-// Helpers
-// =============================================================================
-
-/// Render a task type icon with theme awareness (generic version).
-/// Uses the icon catalog for embedded SVG rendering.
-fn view_task_type_icon(icon_name: String, size: Int, theme: Theme) -> Element(a) {
-  case string.is_empty(icon_name) {
-    True -> element.none()
-    False -> {
-      let class = case theme {
-        theme.Dark -> "icon-theme-dark"
-        theme.Default -> ""
-      }
-      case icon_catalog.exists(icon_name) {
-        True -> icon_catalog.render_with_class(icon_name, size, class)
-        False -> element.none()
-      }
-    }
-  }
 }

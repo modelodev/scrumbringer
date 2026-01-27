@@ -5,11 +5,13 @@ import lustre/element
 
 import scrumbringer_client/features/views/grouped_list
 import scrumbringer_client/i18n/locale as i18n_locale
+import scrumbringer_client/theme
 
 pub fn grouped_list_renders_empty_state_test() {
   let config =
     grouped_list.GroupedListConfig(
       locale: i18n_locale.En,
+      theme: theme.Default,
       tasks: [],
       cards: [],
       org_users: [],

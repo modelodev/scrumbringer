@@ -29,7 +29,10 @@ import domain/task_status.{Available, Claimed, Completed, Ongoing, Taken}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/task_color
+import scrumbringer_client/ui/task_type_icon
 
 // =============================================================================
 // Types
@@ -39,6 +42,7 @@ import scrumbringer_client/ui/icons
 pub type GroupedListConfig(msg) {
   GroupedListConfig(
     locale: Locale,
+    theme: Theme,
     tasks: List(Task),
     cards: List(Card),
     org_users: List(OrgUser),
@@ -117,6 +121,11 @@ fn view_card_group(
     None -> i18n.t(config.locale, i18n_text.UngroupedTasks)
   }
 
+  let card_border_class = case group.card {
+    Some(c) -> task_color.card_border_class(c.color)
+    None -> ""
+  }
+
   let progress_text =
     int.to_string(group.completed) <> "/" <> int.to_string(group.total)
 
@@ -182,7 +191,7 @@ fn view_card_group(
       ),
       // Task list (collapsible)
       case is_expanded {
-        True -> view_task_list(config, group.tasks)
+        True -> view_task_list(config, group.tasks, card_border_class)
         False -> element.none()
       },
     ],
@@ -192,21 +201,19 @@ fn view_card_group(
 fn view_task_list(
   config: GroupedListConfig(msg),
   tasks: List(Task),
+  card_border_class: String,
 ) -> Element(msg) {
   ul(
     [attribute.class("card-task-list")],
-    list.map(tasks, fn(task) { view_task_item(config, task) }),
+    list.map(tasks, fn(task) { view_task_item(config, task, card_border_class) }),
   )
 }
 
-fn view_task_item(config: GroupedListConfig(msg), task: Task) -> Element(msg) {
-  let status_class = case task.status {
-    Available -> "status-available"
-    Claimed(Taken) -> "status-taken"
-    Claimed(Ongoing) -> "status-ongoing"
-    Completed -> "status-completed"
-  }
-
+fn view_task_item(
+  config: GroupedListConfig(msg),
+  task: Task,
+  card_border_class: String,
+) -> Element(msg) {
   // AC7: Show claimed by user when task is Claimed (based on status, not claimed_by)
   let status_display = case task.status {
     Claimed(_) -> {
@@ -219,22 +226,35 @@ fn view_task_item(config: GroupedListConfig(msg), task: Task) -> Element(msg) {
           |> option.unwrap(i18n.t(config.locale, i18n_text.UnknownUser))
         None -> i18n.t(config.locale, i18n_text.UnknownUser)
       }
+      let status_icon = case task.status {
+        Claimed(Ongoing) -> icons.Play
+        Claimed(Taken) -> icons.Pause
+        _ -> icons.Pause
+      }
       span([attribute.class("task-claimed-by")], [
         text(i18n.t(config.locale, i18n_text.ClaimedBy) <> " " <> claimed_email),
+        span([attribute.class("task-claimed-icon")], [
+          icons.nav_icon(status_icon, icons.XSmall),
+        ]),
       ])
     }
+    Available ->
+      span([attribute.class("task-status-muted")], [
+        text(i18n.t(config.locale, i18n_text.TaskStateAvailable)),
+      ])
     Completed ->
       // Completed - show status label
       span([attribute.class("task-status")], [
         text(task_status_label(config.locale, task.status)),
       ])
     // Available tasks: no label needed (claim icon is sufficient indicator)
-    _ -> element.none()
   }
+
+  let type_icon = task.task_type.icon
 
   li(
     [
-      attribute.class("task-item " <> status_class),
+      attribute.class("task-item " <> card_border_class),
       attribute.attribute("data-testid", "task-card"),
     ],
     [
@@ -244,8 +264,10 @@ fn view_task_item(config: GroupedListConfig(msg), task: Task) -> Element(msg) {
           event.on_click(config.on_task_click(task.id)),
         ],
         [
+          span([attribute.class("task-type-icon")], [
+            task_type_icon.view(type_icon, 14, config.theme),
+          ]),
           span([attribute.class("task-title")], [text(task.title)]),
-          // AC7: Show claimed by user or status
           status_display,
         ],
       ),

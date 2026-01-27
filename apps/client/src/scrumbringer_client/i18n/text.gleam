@@ -512,6 +512,9 @@ pub type Text {
   RuleMetricsEvaluated
   RuleMetricsNoRules
   ViewDetails
+  OpenTask
+  AgeLabel
+  ParentCardLabel
   RuleMetricsDrilldown
   SuppressionBreakdown
   SuppressionIdempotent

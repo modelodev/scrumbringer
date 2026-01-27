@@ -618,6 +618,7 @@ fn build_center_panel(
   let list_content =
     grouped_list.view(grouped_list.GroupedListConfig(
       locale: model.ui.locale,
+      theme: model.ui.theme,
       tasks: tasks,
       cards: cards,
       org_users: org_users,
@@ -640,6 +641,7 @@ fn build_center_panel(
   let cards_content =
     kanban_board.view(kanban_board.KanbanConfig(
       locale: model.ui.locale,
+      theme: model.ui.theme,
       cards: cards,
       tasks: tasks,
       // Story 4.8 UX: Added org_users for claimed_by display in task items
@@ -676,9 +678,9 @@ fn build_center_panel(
       },
       // Story 4.12 AC8-AC9: Create task pre-assigned to card
       on_create_task_in_card: fn(card_id) {
-        client_state.pool_msg(
-          client_state.MemberCreateDialogOpenedWithCard(card_id),
-        )
+        client_state.pool_msg(client_state.MemberCreateDialogOpenedWithCard(
+          card_id,
+        ))
       },
     ))
 
@@ -754,6 +756,7 @@ fn build_right_panel(
             Ok(right_panel.MyCardProgress(
               card_id: card.id,
               card_title: card.title,
+              card_color: card.color,
               completed: completed,
               total: total,
             ))
@@ -774,13 +777,17 @@ fn build_right_panel(
         accumulated_s: accumulated_s,
       ) = session
       // Find task title and type icon
-      let #(title, type_icon) = case model.member.member_tasks {
+      let #(title, type_icon, card_color) = case model.member.member_tasks {
         client_state.Loaded(tasks) ->
           case list.find(tasks, fn(t) { t.id == id }) {
-            Ok(t) -> #(t.title, t.task_type.icon)
-            Error(_) -> #("Task #" <> int.to_string(id), "clipboard-document")
+            Ok(t) -> #(t.title, t.task_type.icon, t.card_color)
+            Error(_) -> #(
+              "Task #" <> int.to_string(id),
+              "clipboard-document",
+              opt.None,
+            )
           }
-        _ -> #("Task #" <> int.to_string(id), "clipboard-document")
+        _ -> #("Task #" <> int.to_string(id), "clipboard-document", opt.None)
       }
       // Calculate elapsed time
       let started_ms = client_ffi.parse_iso_ms(started_at)
@@ -797,6 +804,7 @@ fn build_right_panel(
         task_id: id,
         task_title: title,
         task_type_icon: type_icon,
+        card_color: card_color,
         elapsed_display: elapsed,
         is_paused: False,
       )

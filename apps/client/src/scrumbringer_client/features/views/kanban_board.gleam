@@ -25,12 +25,15 @@ import lustre/event
 import domain/card.{type Card, type CardState, Cerrada, EnCurso, Pendiente}
 import domain/org.{type OrgUser}
 import domain/task.{type Task}
-import domain/task_status.{Available, Claimed, Completed, Ongoing, Taken}
+import domain/task_status.{Available, Claimed, Completed}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/task_color
+import scrumbringer_client/ui/task_type_icon
 import scrumbringer_client/utils/text as text_utils
 
 // =============================================================================
@@ -41,6 +44,7 @@ import scrumbringer_client/utils/text as text_utils
 pub type KanbanConfig(msg) {
   KanbanConfig(
     locale: Locale,
+    theme: Theme,
     cards: List(Card),
     tasks: List(Task),
     // Story 4.8 UX: Added org_users for task claimed_by display
@@ -262,25 +266,6 @@ fn view_task_list(config: KanbanConfig(msg), tasks: List(Task)) -> Element(msg) 
 /// Renders a single task item with status icon, title, and actions
 /// Story 4.8 UX: Consistent with grouped_list task rendering
 fn view_task_item(config: KanbanConfig(msg), task: Task) -> Element(msg) {
-  let status_class = case task.status {
-    Available -> "status-available"
-    Claimed(Taken) -> "status-taken"
-    Claimed(Ongoing) -> "status-ongoing"
-    Completed -> "status-completed"
-  }
-
-  // Status icon based on task state
-  // Using available icons: small dot for available, UserCircle for taken,
-  // Play for ongoing, Check for completed
-  let status_icon = case task.status {
-    Available ->
-      // Simple dot for available tasks (via CSS styled span)
-      span([attribute.class("status-dot")], [])
-    Claimed(Taken) -> icons.nav_icon(icons.UserCircle, icons.XSmall)
-    Claimed(Ongoing) -> icons.nav_icon(icons.Play, icons.XSmall)
-    Completed -> icons.nav_icon(icons.Check, icons.XSmall)
-  }
-
   // Secondary info: claimed by for taken/ongoing tasks
   let secondary_info = case task.status {
     Claimed(_) -> {
@@ -297,20 +282,24 @@ fn view_task_item(config: KanbanConfig(msg), task: Task) -> Element(msg) {
     _ -> element.none()
   }
 
+  let type_icon = task.task_type.icon
+  let border_class = task_color.card_border_class(task.card_color)
+
   div(
     [
-      attribute.class("kanban-task-item " <> status_class),
+      attribute.class("kanban-task-item " <> border_class),
       attribute.attribute("data-testid", "kanban-task-item"),
     ],
     [
-      // Clickable task content
       button(
         [
           attribute.class("kanban-task-content"),
           event.on_click(config.on_task_click(task.id)),
         ],
         [
-          span([attribute.class("task-status-icon")], [status_icon]),
+          span([attribute.class("task-type-icon")], [
+            task_type_icon.view(type_icon, 14, config.theme),
+          ]),
           span([attribute.class("task-title")], [
             text(text_utils.truncate(task.title, 25)),
           ]),
@@ -376,8 +365,7 @@ fn compute_progress(
 ) -> List(CardWithProgress) {
   list.map(cards, fn(card) {
     let card_tasks = list.filter(tasks, fn(t) { t.card_id == Some(card.id) })
-    let completed =
-      list.count(card_tasks, fn(t) { t.status == task_status.Completed })
+    let completed = list.count(card_tasks, fn(t) { t.status == Completed })
     let total = list.length(card_tasks)
     CardWithProgress(
       card: card,

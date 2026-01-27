@@ -58,13 +58,13 @@ import scrumbringer_client/client_state.{
   MemberReleaseClicked, NotAsked, pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/theme
 import scrumbringer_client/ui/card_badge
 import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_banner
-import scrumbringer_client/ui/icon_catalog
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/task_color
+import scrumbringer_client/ui/task_type_icon
 import scrumbringer_client/update_helpers
 
 // Re-export view_task_type_icon_inline from client_view for internal use
@@ -221,7 +221,7 @@ fn view_card_group(model: Model, user: User, group: CardGroup) -> Element(Msg) {
     opt.Some(c) -> color_picker.string_to_color(c)
   }
 
-  let border_class = color_picker.border_class(card_color_opt)
+  let border_class = task_color.card_border_class(card_color)
 
   let total = list.length(tasks)
   let completed =
@@ -355,7 +355,7 @@ pub fn view_member_bar_task_row(
 
   let type_label = task_type.name
 
-  let type_icon = opt.Some(task_type.icon)
+  let type_icon = task_type.icon
 
   let disable_actions =
     model.member.member_task_mutation_in_flight
@@ -479,12 +479,9 @@ pub fn view_member_bar_task_row(
       div([attribute.class("task-row-meta")], [
         text(update_helpers.i18n_t(model, i18n_text.PriorityShort(priority))),
         text(" · "),
-        case type_icon {
-          opt.Some(icon) ->
-            span([attribute.attribute("style", "margin-right:4px;")], [
-              view_task_type_icon_inline(icon, 16, model.ui.theme),
-            ])
-        },
+        span([attribute.attribute("style", "margin-right:4px;")], [
+          task_type_icon.view(type_icon, 16, model.ui.theme),
+        ]),
         text(type_label),
       ]),
     ]),
@@ -492,73 +489,7 @@ pub fn view_member_bar_task_row(
   ])
 }
 
-fn heroicon_outline_url(name: String) -> String {
-  "https://unpkg.com/heroicons@2.1.0/24/outline/" <> name <> ".svg"
-}
-
-/// Inline heroicon for task type display.
-fn view_heroicon_inline(
-  name: String,
-  size: Int,
-  current_theme: theme.Theme,
-) -> Element(Msg) {
-  let url = heroicon_outline_url(name)
-
-  let style = case current_theme {
-    theme.Dark ->
-      "vertical-align:middle; opacity:0.9; filter: invert(1) brightness(1.2);"
-    theme.Default -> "vertical-align:middle; opacity:0.85;"
-  }
-
-  element.element(
-    "img",
-    [
-      attribute.attribute("src", url),
-      attribute.attribute("alt", name <> " icon"),
-      attribute.attribute("width", int.to_string(size)),
-      attribute.attribute("height", int.to_string(size)),
-      attribute.attribute("style", style),
-    ],
-    [],
-  )
-}
-
-// Justification: nested case improves clarity for branching logic.
-/// Render task type icon using the icon catalog.
-/// Falls back to CDN or text for icons not in catalog.
-fn view_task_type_icon_inline(
-  icon: String,
-  size: Int,
-  current_theme: theme.Theme,
-) -> Element(Msg) {
-  case string.is_empty(icon) {
-    True -> element.none()
-    False ->
-      case icon_catalog.exists(icon) {
-        True -> {
-          let class = case current_theme {
-            theme.Dark -> "icon-theme-dark"
-            theme.Default -> ""
-          }
-          icon_catalog.render_with_class(icon, size, class)
-        }
-        False ->
-          case string.contains(icon, "-") {
-            True -> view_heroicon_inline(icon, size, current_theme)
-            False ->
-              span(
-                [
-                  attribute.attribute(
-                    "style",
-                    "font-size:" <> int.to_string(size) <> "px;",
-                  ),
-                ],
-                [text(icon)],
-              )
-          }
-      }
-  }
-}
+// Inline icon helper removed in favor of ui/task_type_icon.view
 
 /// Status rank for sorting (lower = higher priority).
 pub fn member_bar_status_rank(status: TaskStatus) -> Int {

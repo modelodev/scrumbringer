@@ -4,11 +4,13 @@ import lustre/element
 
 import scrumbringer_client/features/views/kanban_board
 import scrumbringer_client/i18n/locale as i18n_locale
+import scrumbringer_client/theme
 
 pub fn kanban_board_renders_empty_column_texts_test() {
   let config =
     kanban_board.KanbanConfig(
       locale: i18n_locale.En,
+      theme: theme.Default,
       cards: [],
       tasks: [],
       org_users: [],
