@@ -81,6 +81,24 @@ pub fn create_card_rejects_missing_title_test() {
   string.contains(simulate.read_body(res), "VALIDATION_ERROR") |> should.be_true
 }
 
+pub fn create_card_rejects_invalid_content_type_test() {
+  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, session, "Core")
+
+  let res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/projects/" <> int.to_string(project_id) <> "/cards",
+      )
+      |> fixtures.with_auth(session)
+      |> simulate.string_body("not-json"),
+    )
+
+  res.status |> should.equal(415)
+}
+
 pub fn create_card_requires_project_admin_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
@@ -139,6 +157,42 @@ pub fn update_card_not_found_test() {
   string.contains(simulate.read_body(res), "NOT_FOUND") |> should.be_true
 }
 
+pub fn update_card_rejects_invalid_color_test() {
+  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, session, "Core")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let assert Ok(card_id) =
+    fixtures.create_card(handler, session, project_id, "Card")
+
+  let _ =
+    fixtures.create_task_with_card(
+      handler,
+      session,
+      project_id,
+      type_id,
+      card_id,
+      "Task",
+    )
+
+  let res =
+    handler(
+      simulate.request(http.Patch, "/api/v1/cards/" <> int.to_string(card_id))
+      |> fixtures.with_auth(session)
+      |> simulate.json_body(
+        json.object([
+          #("title", json.string("Card")),
+          #("description", json.string("desc")),
+          #("color", json.string("beige")),
+        ]),
+      ),
+    )
+
+  res.status |> should.equal(422)
+  string.contains(simulate.read_body(res), "VALIDATION_ERROR") |> should.be_true
+}
+
 pub fn delete_card_not_found_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
 
@@ -150,4 +204,34 @@ pub fn delete_card_not_found_test() {
 
   res.status |> should.equal(404)
   string.contains(simulate.read_body(res), "NOT_FOUND") |> should.be_true
+}
+
+pub fn delete_card_conflict_when_tasks_exist_test() {
+  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
+  let assert Ok(project_id) =
+    fixtures.create_project(handler, session, "Core")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let assert Ok(card_id) =
+    fixtures.create_card(handler, session, project_id, "Card")
+
+  let _ =
+    fixtures.create_task_with_card(
+      handler,
+      session,
+      project_id,
+      type_id,
+      card_id,
+      "Task",
+    )
+
+  let res =
+    handler(
+      simulate.request(http.Delete, "/api/v1/cards/" <> int.to_string(card_id))
+      |> fixtures.with_auth(session),
+    )
+
+  res.status |> should.equal(409)
+  string.contains(simulate.read_body(res), "CONFLICT_HAS_TASKS")
+  |> should.be_true
 }

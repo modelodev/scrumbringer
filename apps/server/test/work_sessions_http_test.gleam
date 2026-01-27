@@ -93,6 +93,15 @@ pub fn start_rejects_completed_task_test() {
   |> should.be_true
 }
 
+pub fn start_returns_conflict_for_missing_task_test() {
+  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
+
+  let res = handler(start_session_request(999999, session))
+  res.status |> should.equal(409)
+  string.contains(simulate.read_body(res), "CONFLICT_CLAIMED")
+  |> should.be_true
+}
+
 pub fn start_is_idempotent_when_session_exists_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
 
@@ -161,6 +170,20 @@ pub fn heartbeat_requires_task_id_test() {
   res.status |> should.equal(422)
   string.contains(simulate.read_body(res), "VALIDATION_ERROR")
   |> should.be_true
+}
+
+pub fn heartbeat_rejects_invalid_json_test() {
+  let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
+
+  let res =
+    handler(
+      simulate.request(http.Post, "/api/v1/me/work-sessions/heartbeat")
+      |> fixtures.with_auth(session)
+      |> simulate.string_body("{invalid")
+      |> request.set_header("content-type", "application/json"),
+    )
+
+  res.status |> should.equal(400)
 }
 
 pub fn pause_without_session_returns_ok_test() {

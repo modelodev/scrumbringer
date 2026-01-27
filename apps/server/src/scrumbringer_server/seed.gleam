@@ -20,14 +20,11 @@
 //// ```bash
 //// cd apps/server
 //// DATABASE_URL=... gleam run -m scrumbringer_server/seed
-//// DATABASE_URL=... gleam run -m scrumbringer_server/seed -- --realistic
-//// DATABASE_URL=... gleam run -m scrumbringer_server/seed -- --minimal
 //// ```
 
 import gleam/erlang/charlist
 import gleam/int
 import gleam/io
-import gleam/list
 import gleam/result
 import scrumbringer_server
 import scrumbringer_server/seed_builder
@@ -43,48 +40,13 @@ pub fn main() {
   io.println("  SCRUMBRINGER SEED")
   io.println("========================================\n")
 
-  let config = parse_config_from_args()
-  io.println("[OK] Config: " <> config_name(config))
+  let config = seed_builder.realistic_config()
+  io.println("[OK] Config: realistic")
 
   case run_seed(config) {
     Ok(stats) -> print_summary(stats)
     Error(msg) -> io.println("\n[ERROR] " <> msg)
   }
-}
-
-// =============================================================================
-// Configuration Parsing
-// =============================================================================
-
-fn parse_config_from_args() -> seed_builder.SeedConfig {
-  let args = get_args()
-  case list.find(args, fn(arg) { arg == "--realistic" }) {
-    Ok(_) -> seed_builder.realistic_config()
-    Error(_) ->
-      case list.find(args, fn(arg) { arg == "--minimal" }) {
-        Ok(_) -> seed_builder.minimal_config()
-        Error(_) -> seed_builder.default_config()
-      }
-  }
-}
-
-fn config_name(config: seed_builder.SeedConfig) -> String {
-  case config.inactive_user_count > 0 {
-    True -> "realistic"
-    False ->
-      case config.user_count <= 2 {
-        True -> "minimal"
-        False -> "default"
-      }
-  }
-}
-
-@external(erlang, "init", "get_plain_arguments")
-fn get_args_raw() -> List(charlist.Charlist)
-
-fn get_args() -> List(String) {
-  get_args_raw()
-  |> list.map(charlist.to_string)
 }
 
 // =============================================================================

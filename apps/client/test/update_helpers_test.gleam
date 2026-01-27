@@ -2,7 +2,7 @@ import domain/org.{OrgUser}
 import domain/task.{Task}
 import domain/task_status
 import domain/task_type.{TaskTypeInline}
-import gleam/option.{None, Some}
+import gleam/option.{None}
 import gleeunit/should
 import scrumbringer_client/client_state.{Loaded, NotAsked}
 import scrumbringer_client/update_helpers

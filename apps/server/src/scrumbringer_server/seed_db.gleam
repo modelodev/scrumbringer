@@ -123,6 +123,19 @@ pub type TaskEventInsertOptions {
   )
 }
 
+/// Options for inserting a work session.
+pub type WorkSessionInsertOptions {
+  WorkSessionInsertOptions(
+    user_id: Int,
+    task_id: Int,
+    started_at: Option(String),
+    last_heartbeat_at: Option(String),
+    ended_at: Option(String),
+    ended_reason: Option(String),
+    created_at: Option(String),
+  )
+}
+
 // =============================================================================
 // Constants
 // =============================================================================
@@ -327,6 +340,32 @@ pub fn insert_member(
 }
 
 // =============================================================================
+// Capability Operations
+// =============================================================================
+
+/// Insert a capability.
+pub fn insert_capability(
+  db: pog.Connection,
+  project_id: Int,
+  name: String,
+) -> Result(Int, String) {
+  pog.query(
+    "INSERT INTO capabilities (project_id, name) VALUES ($1, $2) RETURNING id",
+  )
+  |> pog.parameter(pog.int(project_id))
+  |> pog.parameter(pog.text(name))
+  |> pog.returning(int_decoder())
+  |> pog.execute(db)
+  |> result.map_error(fn(e) { "insert_capability: " <> string.inspect(e) })
+  |> result.try(fn(r) {
+    case r.rows {
+      [id] -> Ok(id)
+      _ -> Error("No ID")
+    }
+  })
+}
+
+// =============================================================================
 // Task Type Operations
 // =============================================================================
 
@@ -354,6 +393,38 @@ pub fn insert_task_type(
   })
 }
 
+/// Insert a task type with an optional capability.
+pub fn insert_task_type_with_capability(
+  db: pog.Connection,
+  project_id: Int,
+  name: String,
+  icon: String,
+  capability_id: Option(Int),
+) -> Result(Int, String) {
+  let cap_val = case capability_id {
+    Some(id) -> id
+    None -> 0
+  }
+
+  pog.query(
+    "INSERT INTO task_types (project_id, name, icon, capability_id) VALUES ($1, $2, $3, NULLIF($4, 0)) RETURNING id",
+  )
+  |> pog.parameter(pog.int(project_id))
+  |> pog.parameter(pog.text(name))
+  |> pog.parameter(pog.text(icon))
+  |> pog.parameter(pog.int(cap_val))
+  |> pog.returning(int_decoder())
+  |> pog.execute(db)
+  |> result.map_error(fn(e) {
+    "insert_task_type_with_capability: " <> string.inspect(e)
+  })
+  |> result.try(fn(r) {
+    case r.rows {
+      [id] -> Ok(id)
+      _ -> Error("No ID")
+    }
+  })
+}
 // =============================================================================
 // Task Operations
 // =============================================================================
@@ -894,8 +965,127 @@ pub fn insert_task_note(
 }
 
 // =============================================================================
+// Project Member Capabilities
+// =============================================================================
+
+/// Insert a project member capability assignment.
+pub fn insert_project_member_capability(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+  capability_id: Int,
+) -> Result(Nil, String) {
+  pog.query(
+    "INSERT INTO project_member_capabilities (project_id, user_id, capability_id)
+     VALUES ($1, $2, $3)
+     ON CONFLICT DO NOTHING",
+  )
+  |> pog.parameter(pog.int(project_id))
+  |> pog.parameter(pog.int(user_id))
+  |> pog.parameter(pog.int(capability_id))
+  |> pog.execute(db)
+  |> result.map(fn(_) { Nil })
+  |> result.map_error(fn(e) {
+    "insert_project_member_capability: " <> string.inspect(e)
+  })
+}
+
+// =============================================================================
+// Task Position Operations
+// =============================================================================
+
+/// Upsert a task position for a user.
+pub fn insert_task_position(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  x: Int,
+  y: Int,
+) -> Result(Nil, String) {
+  pog.query(
+    "INSERT INTO task_positions (task_id, user_id, x, y, updated_at)
+     VALUES ($1, $2, $3, $4, NOW())
+     ON CONFLICT (task_id, user_id)
+     DO UPDATE SET x = $3, y = $4, updated_at = NOW()",
+  )
+  |> pog.parameter(pog.int(task_id))
+  |> pog.parameter(pog.int(user_id))
+  |> pog.parameter(pog.int(x))
+  |> pog.parameter(pog.int(y))
+  |> pog.execute(db)
+  |> result.map(fn(_) { Nil })
+  |> result.map_error(fn(e) { "insert_task_position: " <> string.inspect(e) })
+}
+
+// =============================================================================
 // Work Session Operations
 // =============================================================================
+
+/// Insert a work session entry.
+pub fn insert_work_session_entry(
+  db: pog.Connection,
+  opts: WorkSessionInsertOptions,
+) -> Result(Nil, String) {
+  let base_cols = "user_id, task_id, ended_reason"
+  let base_vals = "$1, $2, $3"
+  let base_idx = 4
+
+  let #(cols, vals, idx, params) =
+    append_optional_timestamp(
+      base_cols,
+      base_vals,
+      base_idx,
+      "started_at",
+      opts.started_at,
+      [],
+    )
+
+  let #(cols, vals, idx, params) =
+    append_optional_timestamp(
+      cols,
+      vals,
+      idx,
+      "last_heartbeat_at",
+      opts.last_heartbeat_at,
+      params,
+    )
+
+  let #(cols, vals, idx, params) =
+    append_optional_timestamp(
+      cols,
+      vals,
+      idx,
+      "ended_at",
+      opts.ended_at,
+      params,
+    )
+
+  let #(cols, vals, _, params) =
+    append_optional_timestamp(
+      cols,
+      vals,
+      idx,
+      "created_at",
+      opts.created_at,
+      params,
+    )
+
+  let sql =
+    "INSERT INTO user_task_work_session (" <> cols <> ") VALUES (" <> vals <> ")"
+
+  let base_query =
+    pog.query(sql)
+    |> pog.parameter(pog.int(opts.user_id))
+    |> pog.parameter(pog.int(opts.task_id))
+    |> pog.parameter(pog.nullable(pog.text, opts.ended_reason))
+
+  apply_timestamp_params(base_query, params)
+  |> pog.execute(db)
+  |> result.map(fn(_) { Nil })
+  |> result.map_error(fn(e) {
+    "insert_work_session_entry: " <> string.inspect(e)
+  })
+}
 
 /// Insert accumulated work time for a user on a task.
 pub fn insert_work_session(
@@ -939,7 +1129,7 @@ pub fn query_int(db: pog.Connection, sql: String) -> Result(Int, String) {
 pub fn reset_workflow_tables(db: pog.Connection) -> Result(Nil, String) {
   use _ <- result.try(
     pog.query(
-      "TRUNCATE rule_templates, rule_executions, rules, workflows, task_templates, task_events, tasks, task_types, cards, project_members, projects CASCADE",
+      "TRUNCATE rule_templates, rule_executions, rules, workflows, task_templates, task_events, tasks, task_types, cards, task_positions, task_notes, user_task_work_session, user_task_work_total, project_member_capabilities, capabilities, project_members, projects CASCADE",
     )
     |> pog.execute(db)
     |> result.map(fn(_) { Nil })

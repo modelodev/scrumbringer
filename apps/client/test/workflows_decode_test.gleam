@@ -89,6 +89,18 @@ pub fn rule_payload_decoder_decodes_card_resource_type_test() {
   result |> should.be_ok
 }
 
+pub fn rule_payload_decoder_rejects_missing_resource_type_test() {
+  let body =
+    "{\"data\":{\"rule\":{\"id\":4,\"workflow_id\":2,\"name\":\"Missing\",\"goal\":\"Notify\",\"task_type_id\":null,\"to_state\":\"closed\",\"active\":true,\"created_at\":\"2026-01-15T12:00:00Z\"}}}"
+
+  let decoder =
+    decode.field("data", api_workflows.rule_payload_decoder(), decode.success)
+
+  let result = json.parse(from: body, using: decoder)
+
+  result |> should.be_error
+}
+
 pub fn rules_payload_decoder_decodes_list_test() {
   let body =
     "{\"data\":{\"rules\":[{\"id\":1,\"workflow_id\":1,\"name\":\"Rule A\",\"goal\":\"Goal A\",\"resource_type\":\"task\",\"task_type_id\":1,\"to_state\":\"completed\",\"active\":true,\"created_at\":\"2026-01-15T10:00:00Z\"},{\"id\":2,\"workflow_id\":1,\"name\":\"Rule B\",\"goal\":null,\"resource_type\":\"card\",\"task_type_id\":null,\"to_state\":\"closed\",\"active\":false,\"created_at\":\"2026-01-15T11:00:00Z\"}]}}"
