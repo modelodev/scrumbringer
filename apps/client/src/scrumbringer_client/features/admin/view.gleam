@@ -67,10 +67,10 @@ import scrumbringer_client/client_state.{
   UserProjectsAddSubmitted, UserProjectsDialogClosed, UserProjectsDialogOpened,
   admin_msg, pool_msg,
 }
-import scrumbringer_client/utils/card_queries
 import scrumbringer_client/features/admin/views/members as members_view
 import scrumbringer_client/features/admin/views/workflows as workflows_view
 import scrumbringer_client/i18n/locale
+import scrumbringer_client/utils/card_queries
 
 // Story 4.10: Rule template attachment UI
 
@@ -1112,14 +1112,21 @@ fn view_task_types_list(
           update_helpers.i18n_t(model, i18n_text.CapabilityLabel),
           fn(tt: TaskType) {
             case tt.capability_id {
-              opt.Some(id) -> text(int.to_string(id))
-              opt.None -> text("-")
+              opt.Some(id) ->
+                case resolve_capability_name(model, id) {
+                  opt.Some(name) -> text(name)
+                  opt.None -> text("-")
+                }
+              opt.None ->
+                text(update_helpers.i18n_t(model, i18n_text.NoneOption))
             }
           },
         ),
-        data_table.column(
+        data_table.column_with_class(
           update_helpers.i18n_t(model, i18n_text.CardTasks),
           fn(tt: TaskType) { text(int.to_string(tt.tasks_count)) },
+          "col-number",
+          "cell-number",
         ),
         data_table.column_with_class(
           update_helpers.i18n_t(model, i18n_text.Actions),
@@ -1146,6 +1153,20 @@ fn view_task_types_list(
       ])
       |> data_table.with_key(fn(tt) { int.to_string(tt.id) }),
   )
+}
+
+fn resolve_capability_name(
+  model: Model,
+  capability_id: Int,
+) -> opt.Option(String) {
+  case model.admin.capabilities {
+    Loaded(caps) ->
+      list.find(caps, fn(cap: Capability) { cap.id == capability_id })
+      |> opt.from_result
+      |> opt.map(fn(cap) { cap.name })
+
+    _ -> opt.None
+  }
 }
 
 // =============================================================================

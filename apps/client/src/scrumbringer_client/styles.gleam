@@ -688,6 +688,10 @@ pub fn base_css() -> String {
     ".card-add-task-form { padding: 16px; border: 1px dashed var(--sb-border); border-radius: 8px; background: var(--sb-surface); margin-bottom: 16px; }",
     ".form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }",
     ".form-group label { font-size: 13px; font-weight: 500; color: var(--sb-muted); }",
+    ".form-group-optional { border: 1px dashed var(--sb-border); border-radius: 8px; padding: 8px 10px; background: color-mix(in oklab, var(--sb-surface) 85%, var(--sb-bg)); }",
+    ".form-group-optional label { color: var(--sb-muted); }",
+    ".form-group-optional .optional-title { font-weight: 500; font-size: 13px; text-transform: none; letter-spacing: 0; color: var(--sb-muted); }",
+    ".form-group-optional .optional-fields { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }",
     ".form-input { padding: 10px 12px; border: 1px solid var(--sb-border); border-radius: 8px; background: var(--sb-elevated); color: var(--sb-text); font-size: 14px; }",
     ".form-row { display: flex; gap: 16px; }",
     ".form-group-half { flex: 1; }",
@@ -748,6 +752,7 @@ pub fn base_css() -> String {
     ".dialog-sm { width: min(400px, 100%); }",
     ".dialog-md { width: min(520px, 100%); }",
     ".dialog-lg { width: min(680px, 100%); }",
+    ".dialog-lg-tight { width: min(620px, 100%); }",
     ".dialog-xl { width: min(860px, 100%); }",
     // Dialog header
     ".dialog-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--sb-border); }",
@@ -784,8 +789,8 @@ pub fn base_css() -> String {
     ".capabilities-checklist .capability-name, .members-checklist .member-name, .members-checklist .member-email { font-size: 14px; font-weight: 500; }",
     // Story 4.8 UX: Table column alignment
     // Note: Never use display:flex on td elements - it breaks table-cell borders
-    ".col-number, .cell-number { text-align: center; width: 80px; }",
-    "th.col-actions, td.cell-actions { text-align: right; white-space: nowrap; }",
+    ".col-number, .cell-number { text-align: right; width: 80px; }",
+    "th.col-actions, td.cell-actions { text-align: right; white-space: nowrap; padding-right: 12px; }",
     ".cell-actions .btn-icon { margin-left: 8px; }",
     ".cell-actions .btn-icon:first-child { margin-left: 0; }",
     ".count-badge { display: inline-block; min-width: 28px; height: 24px; line-height: 22px; padding: 0 8px; background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--sb-muted); text-align: center; vertical-align: middle; box-sizing: border-box; }",

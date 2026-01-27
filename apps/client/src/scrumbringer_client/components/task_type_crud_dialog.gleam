@@ -134,7 +134,10 @@ fn on_attribute_change() -> List(component.Option(Msg)) {
     component.on_attribute_change("project-id", decode_project_id),
     component.on_attribute_change("mode", decode_mode),
     component.on_property_change("task-type", task_type_property_decoder()),
-    component.on_property_change("capabilities", capabilities_property_decoder()),
+    component.on_property_change(
+      "capabilities",
+      capabilities_property_decoder(),
+    ),
     component.adopt_styles(True),
   ]
 }
@@ -525,7 +528,7 @@ fn view(model: Model) -> Element(Msg) {
 
 fn view_create_dialog(model: Model) -> Element(Msg) {
   div([attribute.class("dialog-overlay")], [
-    div([attribute.class("dialog dialog-medium")], [
+    div([attribute.class("dialog dialog-lg dialog-lg-tight")], [
       div([attribute.class("dialog-header")], [
         h3([], [text(i18n_t(model.locale, i18n_text.CreateTaskType))]),
         button(
@@ -558,23 +561,32 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
               event.on_input(CreateNameChanged),
             ]),
           ]),
-          // Icon picker
-          div([attribute.class("form-group")], [
-            label([], [text(i18n_t(model.locale, i18n_text.Icon))]),
-            view_icon_picker(
-              model.create_icon,
-              model.create_icon_open,
-              CreateIconToggle,
-              CreateIconChanged,
-            ),
+          // Optional fields
+          div([attribute.class("form-group-optional")], [
+            label([attribute.class("optional-title")], [
+              text(i18n_t(model.locale, i18n_text.CapabilityOptional)),
+            ]),
+            div([attribute.class("optional-fields")], [
+              // Icon picker
+              div([attribute.class("form-group")], [
+                label([], [text(i18n_t(model.locale, i18n_text.Icon))]),
+                view_icon_picker(
+                  model.locale,
+                  model.create_icon,
+                  model.create_icon_open,
+                  CreateIconToggle,
+                  CreateIconChanged,
+                ),
+              ]),
+              // Capability selector
+              view_capability_selector(
+                model,
+                "create-capability",
+                model.create_capability_id,
+                CreateCapabilityChanged,
+              ),
+            ]),
           ]),
-          // Capability selector
-          view_capability_selector(
-            model,
-            "create-capability",
-            model.create_capability_id,
-            CreateCapabilityChanged,
-          ),
           // Error
           case model.create_error {
             Some(err) -> div([attribute.class("form-error")], [text(err)])
@@ -601,7 +613,7 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
           [
             case model.create_in_flight {
               True -> text(i18n_t(model.locale, i18n_text.Creating))
-              False -> text(i18n_t(model.locale, i18n_text.Create))
+              False -> text(i18n_t(model.locale, i18n_text.CreateTaskType))
             },
           ],
         ),
@@ -612,7 +624,7 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
 
 fn view_edit_dialog(model: Model) -> Element(Msg) {
   div([attribute.class("dialog-overlay")], [
-    div([attribute.class("dialog dialog-medium")], [
+    div([attribute.class("dialog dialog-lg dialog-lg-tight")], [
       div([attribute.class("dialog-header")], [
         h3([], [text(i18n_t(model.locale, i18n_text.EditTaskType))]),
         button(
@@ -644,23 +656,32 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
               event.on_input(EditNameChanged),
             ]),
           ]),
-          // Icon picker
-          div([attribute.class("form-group")], [
-            label([], [text(i18n_t(model.locale, i18n_text.Icon))]),
-            view_icon_picker(
-              model.edit_icon,
-              model.edit_icon_open,
-              EditIconToggle,
-              EditIconChanged,
-            ),
+          // Optional fields
+          div([attribute.class("form-group-optional")], [
+            label([attribute.class("optional-title")], [
+              text(i18n_t(model.locale, i18n_text.CapabilityOptional)),
+            ]),
+            div([attribute.class("optional-fields")], [
+              // Icon picker
+              div([attribute.class("form-group")], [
+                label([], [text(i18n_t(model.locale, i18n_text.Icon))]),
+                view_icon_picker(
+                  model.locale,
+                  model.edit_icon,
+                  model.edit_icon_open,
+                  EditIconToggle,
+                  EditIconChanged,
+                ),
+              ]),
+              // Capability selector
+              view_capability_selector(
+                model,
+                "edit-capability",
+                model.edit_capability_id,
+                EditCapabilityChanged,
+              ),
+            ]),
           ]),
-          // Capability selector
-          view_capability_selector(
-            model,
-            "edit-capability",
-            model.edit_capability_id,
-            EditCapabilityChanged,
-          ),
           // Error
           case model.edit_error {
             Some(err) -> div([attribute.class("form-error")], [text(err)])
@@ -778,22 +799,40 @@ const task_type_icons = [
   "puzzle-piece",
 ]
 
+/// Minimal icon picker view for tests (no dropdown open).
+pub fn view_icon_picker_trigger_for_test(
+  locale: Locale,
+  current_icon: String,
+) -> Element(Msg) {
+  view_icon_picker(
+    locale,
+    current_icon,
+    False,
+    CreateIconToggle,
+    CreateIconChanged,
+  )
+}
+
 fn view_icon_picker(
+  locale: Locale,
   current_icon: String,
   is_open: Bool,
   on_toggle: Msg,
   on_select: fn(String) -> Msg,
 ) -> Element(Msg) {
+  let icon_label = resolve_icon_label(locale, current_icon)
   div([attribute.class("icon-picker")], [
     button(
       [
         attribute.class("icon-picker-trigger"),
         attribute.type_("button"),
+        attribute.attribute("title", icon_label),
+        attribute.attribute("aria-label", icon_label),
         event.on_click(on_toggle),
       ],
       [
         icon_catalog.render(current_icon, 20),
-        span([attribute.class("icon-picker-label")], [text(current_icon)]),
+        span([attribute.class("sr-only")], [text(icon_label)]),
         text(" \u{25BC}"),
       ],
     ),
@@ -823,6 +862,13 @@ fn view_icon_picker(
   ])
 }
 
+fn resolve_icon_label(locale: Locale, icon_id: String) -> String {
+  case icon_catalog.get(icon_id) {
+    Some(icon) -> icon.label
+    None -> i18n_t(locale, i18n_text.UnknownIcon)
+  }
+}
+
 // =============================================================================
 // Capability Selector
 // =============================================================================
@@ -834,7 +880,7 @@ fn view_capability_selector(
   current_value: Option(Int),
   on_change: fn(Option(Int)) -> Msg,
 ) -> Element(Msg) {
-  div([attribute.class("form-group")], [
+  div([attribute.class("form-group form-group-optional")], [
     label([attribute.for(id)], [
       text(i18n_t(model.locale, i18n_text.CapabilityOptional)),
     ]),

@@ -370,7 +370,7 @@ pub fn translate(text: Text) -> String {
     text.SelectProjectToManageTaskTypes ->
       "Select a project to manage task types."
     text.TaskTypesTitle(project_name) -> "Task Types - " <> project_name
-    text.CreateTaskType -> "Create Task Type"
+    text.CreateTaskType -> "Create type"
     text.EditTaskType -> "Edit Task Type"
     text.DeleteTaskType -> "Delete Task Type"
     text.ConfirmDeleteTaskType(name) -> "Delete task type \"" <> name <> "\"?"
