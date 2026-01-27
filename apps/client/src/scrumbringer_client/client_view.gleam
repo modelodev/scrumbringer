@@ -459,9 +459,8 @@ fn view_member_three_panel(
   )
 }
 
-/// Builds the left panel with project selector and navigation
 // Justification: large function kept intact to preserve cohesive UI logic.
-
+/// Builds the left panel with project selector and navigation
 fn build_left_panel(
   model: client_state.Model,
   user: User,
@@ -585,9 +584,8 @@ fn build_left_panel(
   ))
 }
 
-/// Builds the center panel with view mode toggle and content
 // Justification: large function kept intact to preserve cohesive UI logic.
-
+/// Builds the center panel with view mode toggle and content
 fn build_center_panel(
   model: client_state.Model,
   user: User,
@@ -676,6 +674,12 @@ fn build_center_panel(
       on_task_claim: fn(task_id, version) {
         client_state.pool_msg(client_state.MemberClaimClicked(task_id, version))
       },
+      // Story 4.12 AC8-AC9: Create task pre-assigned to card
+      on_create_task_in_card: fn(card_id) {
+        client_state.pool_msg(
+          client_state.MemberCreateDialogOpenedWithCard(card_id),
+        )
+      },
     ))
 
   center_panel.view(center_panel.CenterPanelConfig(
@@ -711,9 +715,8 @@ fn build_center_panel(
   ))
 }
 
-/// Builds the right panel with activity and profile
 // Justification: large function kept intact to preserve cohesive UI logic.
-
+/// Builds the right panel with activity and profile
 fn build_right_panel(
   model: client_state.Model,
   user: User,

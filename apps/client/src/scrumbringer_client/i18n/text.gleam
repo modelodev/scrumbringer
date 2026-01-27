@@ -555,6 +555,11 @@ pub type Text {
   TaskType
   TaskTitlePlaceholder
 
+  // Story 4.12 - Card selector for new task
+  CardOptional
+  NoCard
+  NewTaskInCard(card_title: String)
+
   // Story 4.4 - Three-panel layout
   // Accessibility labels
   MainNavigation

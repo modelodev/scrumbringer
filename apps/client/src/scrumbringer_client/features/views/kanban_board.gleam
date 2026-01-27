@@ -29,6 +29,7 @@ import domain/task_status.{Available, Claimed, Completed, Ongoing, Taken}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/icons
 import scrumbringer_client/utils/text as text_utils
 
@@ -52,6 +53,8 @@ pub type KanbanConfig(msg) {
     // Story 4.8 UX: Task interaction handlers for consistency with Lista view
     on_task_click: fn(Int) -> msg,
     on_task_claim: fn(Int, Int) -> msg,
+    // Story 4.12 AC8-AC9: Create task in card
+    on_create_task_in_card: fn(Int) -> msg,
   )
 }
 
@@ -229,6 +232,13 @@ fn view_card(config: KanbanConfig(msg), cwp: CardWithProgress) -> Element(msg) {
       ]),
       // Task list (Story 4.5 AC29, Story 4.8 UX: improved styling)
       view_task_list(config, cwp.tasks),
+      // Story 4.12 AC8-AC9: [+] Nueva tarea button
+      div([attribute.class("kanban-card-footer")], [
+        action_buttons.create_task_in_card_button(
+          i18n.t(config.locale, i18n_text.NewTaskInCard(cwp.card.title)),
+          config.on_create_task_in_card(cwp.card.id),
+        ),
+      ]),
     ],
   )
 }

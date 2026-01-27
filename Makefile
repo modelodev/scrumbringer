@@ -2,7 +2,11 @@
 
 # Default local DB URL. CI should override `DATABASE_URL`.
 # Note: `dbmate migrate` does NOT create the database.
-DATABASE_URL ?= postgres://scrumbringer:scrumbringer@localhost:5433/scrumbringer_dev?sslmode=disable
+DATABASE_URL ?= postgres://scrumbringer:scrumbringer@localhost:5432/scrumbringer_test?sslmode=disable
+SB_DB_POOL_SIZE ?= 2
+SB_DB_WAIT_ATTEMPTS ?= 120
+SB_DB_WAIT_MS ?= 100
+SB_DB_WAIT_QUERY_TIMEOUT_MS ?= 15000
 
 ROOT := $(abspath $(CURDIR))
 GLEAN_BIN := $(shell if [ -x "$(ROOT)/.tools/gleam-1.14.0/gleam" ]; then echo "$(ROOT)/.tools/gleam-1.14.0/gleam"; else echo gleam; fi)
@@ -42,7 +46,12 @@ squirrel:
 
 test:
 	@echo "Running server tests with DATABASE_URL=$(DATABASE_URL)"
-	@cd apps/server && DATABASE_URL="$(DATABASE_URL)" $(GLEAN_BIN) test
+	@cd apps/server && DATABASE_URL="$(DATABASE_URL)" \
+		SB_DB_POOL_SIZE="$(SB_DB_POOL_SIZE)" \
+		SB_DB_WAIT_ATTEMPTS="$(SB_DB_WAIT_ATTEMPTS)" \
+		SB_DB_WAIT_MS="$(SB_DB_WAIT_MS)" \
+		SB_DB_WAIT_QUERY_TIMEOUT_MS="$(SB_DB_WAIT_QUERY_TIMEOUT_MS)" \
+		$(GLEAN_BIN) test
 	@echo "Running client tests"
 	@cd apps/client && $(GLEAN_BIN) test
 	@cd shared && $(GLEAN_BIN) test

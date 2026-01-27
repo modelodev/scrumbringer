@@ -744,6 +744,8 @@ pub fn handle_pool(
 
     client_state.MemberCreateDialogOpened ->
       tasks_workflow.handle_create_dialog_opened(model)
+    client_state.MemberCreateDialogOpenedWithCard(card_id) ->
+      tasks_workflow.handle_create_dialog_opened_with_card(model, card_id)
     client_state.MemberCreateDialogClosed ->
       tasks_workflow.handle_create_dialog_closed(model)
     client_state.MemberCreateTitleChanged(v) ->
@@ -754,6 +756,8 @@ pub fn handle_pool(
       tasks_workflow.handle_create_priority_changed(model, v)
     client_state.MemberCreateTypeIdChanged(v) ->
       tasks_workflow.handle_create_type_id_changed(model, v)
+    client_state.MemberCreateCardIdChanged(v) ->
+      tasks_workflow.handle_create_card_id_changed(model, v)
 
     client_state.MemberCreateSubmitted ->
       tasks_workflow.handle_create_submitted(model, member_refresh)

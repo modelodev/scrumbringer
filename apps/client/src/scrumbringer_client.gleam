@@ -149,6 +149,7 @@ pub fn main() {
 // Initialization
 // =============================================================================
 
+// Justification: large function kept intact to preserve cohesive UI logic.
 /// Initialize the application state from browser context.
 ///
 /// ## Size Justification (~200 lines)
@@ -169,8 +170,6 @@ pub fn main() {
 /// route context, localStorage, and sub-modules. Splitting would require
 /// either partial Model construction (not type-safe) or complex builder
 /// patterns that add indirection without clarity.
-// Justification: large function kept intact to preserve cohesive UI logic.
-
 fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
   let pathname = client_ffi.location_pathname()
   let search = client_ffi.location_search()

@@ -230,3 +230,53 @@ pub fn edit_delete_row_with_testid(
     delete_button_with_testid(delete_title, delete_click, delete_testid),
   ])
 }
+
+// =============================================================================
+// Create Task in Card Button (Story 4.12 AC8-AC9-AC16)
+// =============================================================================
+
+/// Creates a button to add a new task to a specific card.
+///
+/// Used in card views (config/cards table, kanban) to quickly create
+/// a task pre-assigned to that card.
+///
+/// ## Example
+/// ```gleam
+/// action_buttons.create_task_in_card_button(
+///   "Nueva tarea en Release",
+///   OpenCreateDialogWithCard(card_id),
+/// )
+/// ```
+pub fn create_task_in_card_button(title: String, on_click: msg) -> Element(msg) {
+  button(
+    [
+      attribute.class("btn-icon btn-xs btn-add-task"),
+      attribute.attribute("title", title),
+      attribute.attribute("aria-label", title),
+      event.on_click(on_click),
+    ],
+    [icons.nav_icon(icons.Plus, icons.Small)],
+  )
+}
+
+/// Creates a create-task-in-card button with custom size.
+pub fn create_task_in_card_button_with_size(
+  title: String,
+  on_click: msg,
+  size: ButtonSize,
+) -> Element(msg) {
+  let size_class = case size {
+    SizeXs -> "btn-xs"
+    SizeSm -> "btn-sm"
+  }
+
+  button(
+    [
+      attribute.class("btn-icon " <> size_class <> " btn-add-task"),
+      attribute.attribute("title", title),
+      attribute.attribute("aria-label", title),
+      event.on_click(on_click),
+    ],
+    [icons.nav_icon(icons.Plus, icons.Small)],
+  )
+}

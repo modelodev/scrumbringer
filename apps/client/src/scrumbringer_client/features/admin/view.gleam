@@ -58,16 +58,16 @@ import scrumbringer_client/client_state.{
   CardCrudDeleted, CardCrudUpdated, CardDialogCreate, CardDialogDelete,
   CardDialogEdit, CardsSearchChanged, CardsShowCompletedToggled,
   CardsShowEmptyToggled, CardsStateFilterChanged, CloseCardDialog,
-  CloseTaskTypeDialog, Failed, Loaded, Loading, NotAsked, OpenCardDialog,
-  OpenTaskTypeDialog, OrgSettingsRoleChanged, OrgSettingsSaveAllClicked,
-  TaskTypeCrudCreated, TaskTypeCrudDeleted, TaskTypeCrudUpdated,
-  TaskTypeDialogCreate, TaskTypeDialogDelete, TaskTypeDialogEdit,
-  UserProjectRemoveClicked, UserProjectRoleChangeRequested,
+  CloseTaskTypeDialog, Failed, Loaded, Loading, MemberCreateDialogOpenedWithCard,
+  NotAsked, OpenCardDialog, OpenTaskTypeDialog, OrgSettingsRoleChanged,
+  OrgSettingsSaveAllClicked, TaskTypeCrudCreated, TaskTypeCrudDeleted,
+  TaskTypeCrudUpdated, TaskTypeDialogCreate, TaskTypeDialogDelete,
+  TaskTypeDialogEdit, UserProjectRemoveClicked, UserProjectRoleChangeRequested,
   UserProjectsAddProjectChanged, UserProjectsAddRoleChanged,
   UserProjectsAddSubmitted, UserProjectsDialogClosed, UserProjectsDialogOpened,
   admin_msg, pool_msg,
 }
-import scrumbringer_client/features/admin/cards as admin_cards
+import scrumbringer_client/utils/card_queries
 import scrumbringer_client/features/admin/views/members as members_view
 import scrumbringer_client/features/admin/views/workflows as workflows_view
 import scrumbringer_client/i18n/locale
@@ -713,6 +713,16 @@ fn view_task_type_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
         )
       }
 
+      // Convert capabilities to JSON for property passing
+      let capabilities_json = case model.admin.capabilities {
+        Loaded(caps) ->
+          attribute.property(
+            "capabilities",
+            json.array(caps, capability_to_json),
+          )
+        _ -> attribute.none()
+      }
+
       element.element(
         "task-type-crud-dialog",
         [
@@ -722,6 +732,8 @@ fn view_task_type_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
           attribute.attribute("mode", mode_str),
           // Property for task type data (edit/delete modes)
           type_json,
+          // Property for capabilities list
+          capabilities_json,
           // Event listeners for component events
           event.on("type-created", decode_task_type_created_event()),
           event.on("type-updated", decode_task_type_updated_event()),
@@ -793,6 +805,11 @@ fn task_type_decoder() -> decode.Decoder(TaskType) {
     capability_id: capability_id,
     tasks_count: tasks_count,
   ))
+}
+
+/// Convert Capability to JSON for property passing to task-type-crud-dialog.
+fn capability_to_json(cap: Capability) -> json.Json {
+  json.object([#("id", json.int(cap.id)), #("name", json.string(cap.name))])
 }
 
 // =============================================================================
@@ -1178,7 +1195,7 @@ pub fn view_card_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
       let #(mode_str, card_json) = case mode {
         CardDialogCreate -> #("create", attribute.none())
         CardDialogEdit(card_id) ->
-          case admin_cards.find_card(model, card_id) {
+          case card_queries.find_card(model, card_id) {
             opt.Some(card) -> #(
               "edit",
               attribute.property("card", card_to_property_json(card, "edit")),
@@ -1186,7 +1203,7 @@ pub fn view_card_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
             opt.None -> #("edit", attribute.none())
           }
         CardDialogDelete(card_id) ->
-          case admin_cards.find_card(model, card_id) {
+          case card_queries.find_card(model, card_id) {
             opt.Some(card) -> #(
               "delete",
               attribute.property("card", card_to_property_json(card, "delete")),
@@ -1497,17 +1514,27 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
           fn(c: Card) { view_card_progress(c.completed_count, c.task_count) },
         ),
         // UX: Acciones con iconos (como Task Types)
+        // Story 4.12: Añadido botón [+] para crear tarea en tarjeta
         data_table.column_with_class(
           update_helpers.i18n_t(model, i18n_text.Actions),
           fn(c: Card) {
-            action_buttons.edit_delete_row_with_testid(
-              edit_title: update_helpers.i18n_t(model, i18n_text.EditCard),
-              edit_click: pool_msg(OpenCardDialog(CardDialogEdit(c.id))),
-              edit_testid: "card-edit-btn",
-              delete_title: update_helpers.i18n_t(model, i18n_text.DeleteCard),
-              delete_click: pool_msg(OpenCardDialog(CardDialogDelete(c.id))),
-              delete_testid: "card-delete-btn",
-            )
+            div([], [
+              // [+] Nueva tarea
+              action_buttons.create_task_in_card_button(
+                update_helpers.i18n_t(model, i18n_text.NewTaskInCard(c.title)),
+                pool_msg(MemberCreateDialogOpenedWithCard(c.id)),
+              ),
+              action_buttons.edit_button_with_testid(
+                update_helpers.i18n_t(model, i18n_text.EditCard),
+                pool_msg(OpenCardDialog(CardDialogEdit(c.id))),
+                "card-edit-btn",
+              ),
+              action_buttons.delete_button_with_testid(
+                update_helpers.i18n_t(model, i18n_text.DeleteCard),
+                pool_msg(OpenCardDialog(CardDialogDelete(c.id))),
+                "card-delete-btn",
+              ),
+            ])
           },
           "col-actions",
           "cell-actions",

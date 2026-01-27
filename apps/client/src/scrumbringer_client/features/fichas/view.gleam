@@ -43,6 +43,7 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/icons
+import scrumbringer_client/utils/card_queries
 import scrumbringer_client/update_helpers
 
 // =============================================================================
@@ -192,7 +193,7 @@ fn view_card_detail_modal(model: Model) -> Element(Msg) {
     option.None -> element.none()
     option.Some(card_id) -> {
       // Find the card data
-      let card_opt = find_card(model, card_id)
+      let card_opt = card_queries.find_card(model, card_id)
 
       case card_opt {
         option.None -> element.none()
@@ -233,15 +234,6 @@ fn view_card_detail_modal(model: Model) -> Element(Msg) {
 /// When task-created fires, we close the modal and let normal refresh handle data.
 fn decode_close_detail_event() -> decode.Decoder(Msg) {
   decode.success(pool_msg(CloseCardDetail))
-}
-
-fn find_card(model: Model, card_id: Int) -> option.Option(Card) {
-  case model.admin.cards {
-    Loaded(cards) ->
-      list.find(cards, fn(c) { c.id == card_id })
-      |> option.from_result
-    _ -> option.None
-  }
 }
 
 // Justification: nested case improves clarity for branching logic.

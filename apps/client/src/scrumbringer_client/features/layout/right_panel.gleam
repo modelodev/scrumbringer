@@ -214,7 +214,7 @@ fn view_active_task_card(
 }
 
 // =============================================================================
-// My Tasks Section
+// My Tasks Section (Story 4.12: Grouped by card with [+] buttons)
 // =============================================================================
 
 fn view_my_tasks(config: RightPanelConfig(msg)) -> Element(msg) {
@@ -272,7 +272,7 @@ fn view_my_tasks(config: RightPanelConfig(msg)) -> Element(msg) {
             ])
         },
       ]),
-      // Hide empty state content when collapsed
+      // Simple flat task list
       case filtered_tasks {
         [] -> element.none()
         tasks ->

@@ -72,6 +72,25 @@ pub fn handle_create_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
         ..member,
         member_create_dialog_open: True,
         member_create_error: opt.None,
+        member_create_card_id: opt.None,
+      )
+    }),
+    effect.none(),
+  )
+}
+
+/// Open the create task dialog with a pre-selected card (Story 4.12 AC7, AC9).
+pub fn handle_create_dialog_opened_with_card(
+  model: Model,
+  card_id: Int,
+) -> #(Model, Effect(Msg)) {
+  #(
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_create_dialog_open: True,
+        member_create_error: opt.None,
+        member_create_card_id: opt.Some(card_id),
       )
     }),
     effect.none(),
@@ -86,6 +105,7 @@ pub fn handle_create_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
         ..member,
         member_create_dialog_open: False,
         member_create_error: opt.None,
+        member_create_card_id: opt.None,
       )
     }),
     effect.none(),
@@ -139,6 +159,23 @@ pub fn handle_create_type_id_changed(
   #(
     update_member(model, fn(member) {
       MemberModel(..member, member_create_type_id: value)
+    }),
+    effect.none(),
+  )
+}
+
+/// Handle card_id field change (Story 4.12).
+pub fn handle_create_card_id_changed(
+  model: Model,
+  value: String,
+) -> #(Model, Effect(Msg)) {
+  let card_id = case int.parse(value) {
+    Ok(id) if id > 0 -> opt.Some(id)
+    _ -> opt.None
+  }
+  #(
+    update_member(model, fn(member) {
+      MemberModel(..member, member_create_card_id: card_id)
     }),
     effect.none(),
   )
@@ -289,6 +326,9 @@ fn submit_create(
     False -> opt.Some(desc)
   }
 
+  // Story 4.12: Include card_id in task creation
+  let card_id = model.member.member_create_card_id
+
   let model =
     update_member(model, fn(member) {
       MemberModel(
@@ -300,12 +340,13 @@ fn submit_create(
 
   #(
     model,
-    api_tasks.create_task(
+    api_tasks.create_task_with_card(
       project_id,
       title,
       description,
       priority,
       type_id,
+      card_id,
       fn(result) { pool_msg(MemberTaskCreated(result)) },
     ),
   )
@@ -330,6 +371,7 @@ pub fn handle_task_created_ok(
         member_create_description: "",
         member_create_priority: "3",
         member_create_type_id: "",
+        member_create_card_id: opt.None,
       )
     })
   let #(model, refresh_fx) = member_refresh(model)

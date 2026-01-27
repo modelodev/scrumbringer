@@ -32,16 +32,20 @@ import lustre/element/html.{
 }
 import lustre/event
 
+import domain/card.{type Card}
 import domain/task
 
+import scrumbringer_client/utils/card_queries
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, Loading, MemberCreateDescriptionChanged,
-  MemberCreateDialogClosed, MemberCreatePriorityChanged, MemberCreateSubmitted,
-  MemberCreateTitleChanged, MemberCreateTypeIdChanged, MemberNoteContentChanged,
-  MemberNoteSubmitted, MemberPositionEditClosed, MemberPositionEditSubmitted,
+  type Model, type Msg, Failed, Loaded, Loading, MemberCreateCardIdChanged,
+  MemberCreateDescriptionChanged, MemberCreateDialogClosed,
+  MemberCreatePriorityChanged, MemberCreateSubmitted, MemberCreateTitleChanged,
+  MemberCreateTypeIdChanged, MemberNoteContentChanged, MemberNoteSubmitted,
+  MemberPositionEditClosed, MemberPositionEditSubmitted,
   MemberPositionEditXChanged, MemberPositionEditYChanged,
   MemberTaskDetailsClosed, NotAsked, pool_msg,
 }
+import scrumbringer_client/ui/color_picker
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/error as ui_error
 import scrumbringer_client/ui/icons
@@ -143,6 +147,8 @@ pub fn view_create_dialog(model: Model) -> Element(Msg) {
             },
           ),
         ]),
+        // Card selector (AC1-AC3, Story 4.12)
+        view_card_selector(model),
       ]),
       // Footer with actions
       div([attribute.class("dialog-footer")], [
@@ -169,6 +175,65 @@ pub fn view_create_dialog(model: Model) -> Element(Msg) {
       ]),
     ]),
   ])
+}
+
+// =============================================================================
+// Card Selector (Story 4.12)
+// =============================================================================
+
+/// Renders the card selector for task creation.
+/// Shows all project cards with color indicators.
+fn view_card_selector(model: Model) -> Element(Msg) {
+  let cards = card_queries.get_project_cards(model)
+
+  div([attribute.class("field")], [
+    label([], [text(update_helpers.i18n_t(model, i18n_text.CardOptional))]),
+    select(
+      [
+        attribute.value(card_id_to_string(model.member.member_create_card_id)),
+        event.on_input(fn(value) { pool_msg(MemberCreateCardIdChanged(value)) }),
+      ],
+      [
+        // "No card" option (AC2)
+        option(
+          [
+            attribute.value(""),
+            attribute.selected(opt.is_none(model.member.member_create_card_id)),
+          ],
+          update_helpers.i18n_t(model, i18n_text.NoCard),
+        ),
+        // Cards with color indicators (AC3, AC15)
+        ..list.map(cards, fn(c) { view_card_option(model, c) })
+      ],
+    ),
+  ])
+}
+
+/// Render a card as a select option with color indicator prefix.
+fn view_card_option(model: Model, c: Card) -> Element(Msg) {
+  let color_indicator = case c.color {
+    opt.Some(color_str) ->
+      case color_picker.string_to_color(color_str) {
+        opt.Some(color) -> color_picker.color_emoji(color) <> " "
+        opt.None -> ""
+      }
+    opt.None -> ""
+  }
+
+  let is_selected = model.member.member_create_card_id == opt.Some(c.id)
+
+  option(
+    [attribute.value(int.to_string(c.id)), attribute.selected(is_selected)],
+    color_indicator <> c.title,
+  )
+}
+
+/// Convert Option(Int) card_id to string for select value.
+fn card_id_to_string(card_id: opt.Option(Int)) -> String {
+  case card_id {
+    opt.Some(id) -> int.to_string(id)
+    opt.None -> ""
+  }
 }
 
 // =============================================================================

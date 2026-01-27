@@ -211,16 +211,3 @@ pub fn fetch_cards_for_project(
   }
 }
 
-// =============================================================================
-// Helpers for View
-// =============================================================================
-
-/// Find a card by ID in the loaded cards list.
-pub fn find_card(model: client_state.Model, card_id: Int) -> opt.Option(Card) {
-  case model.admin.cards {
-    client_state.Loaded(cards) ->
-      list.find(cards, fn(c) { c.id == card_id })
-      |> opt.from_result
-    _ -> opt.None
-  }
-}

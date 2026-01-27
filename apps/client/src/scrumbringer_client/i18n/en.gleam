@@ -621,6 +621,11 @@ pub fn translate(text: Text) -> String {
     text.TaskType -> "Task type"
     text.TaskTitlePlaceholder -> "Task title..."
 
+    // Story 4.12 - Card selector for new task
+    text.CardOptional -> "Card (optional)"
+    text.NoCard -> "No card"
+    text.NewTaskInCard(card_title) -> "New task in " <> card_title
+
     // Story 4.4 - Three-panel layout
     // Accessibility labels
     text.MainNavigation -> "Main navigation"

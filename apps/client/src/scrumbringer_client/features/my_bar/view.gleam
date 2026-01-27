@@ -53,8 +53,9 @@ import domain/user.{type User}
 
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, Loading, MemberClaimClicked,
-  MemberCompleteClicked, MemberNowWorkingPauseClicked,
-  MemberNowWorkingStartClicked, MemberReleaseClicked, NotAsked, pool_msg,
+  MemberCompleteClicked, MemberCreateDialogOpenedWithCard,
+  MemberNowWorkingPauseClicked, MemberNowWorkingStartClicked,
+  MemberReleaseClicked, NotAsked, pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme
@@ -209,7 +210,7 @@ fn group_tasks_by_card(tasks: List(Task)) -> List(CardGroup) {
 /// Render a single card group with header and task list.
 fn view_card_group(model: Model, user: User, group: CardGroup) -> Element(Msg) {
   let CardGroup(
-    card_id: _card_id,
+    card_id: card_id,
     card_title: card_title,
     card_color: card_color,
     tasks: tasks,
@@ -251,6 +252,22 @@ fn view_card_group(model: Model, user: User, group: CardGroup) -> Element(Msg) {
           i18n_text.CardProgressCount(completed, total),
         )),
       ]),
+      // [+] button to create task in this card (Story 4.12 AC8-9, AC16)
+      case card_id, card_title {
+        opt.Some(id), opt.Some(title) ->
+          button(
+            [
+              attribute.class("btn-icon btn-sm my-bar-add-task"),
+              attribute.attribute(
+                "title",
+                update_helpers.i18n_t(model, i18n_text.NewTaskInCard(title)),
+              ),
+              event.on_click(pool_msg(MemberCreateDialogOpenedWithCard(id))),
+            ],
+            [text("+")],
+          )
+        _, _ -> element.none()
+      },
     ]),
     // Task list
     keyed.div(

@@ -639,6 +639,11 @@ pub fn translate(text: Text) -> String {
     text.TaskType -> "Tipo de tarea"
     text.TaskTitlePlaceholder -> "Título de la tarea..."
 
+    // Story 4.12 - Selector de tarjeta para nueva tarea
+    text.CardOptional -> "Tarjeta (opcional)"
+    text.NoCard -> "Sin tarjeta"
+    text.NewTaskInCard(card_title) -> "Nueva tarea en " <> card_title
+
     // Story 4.4 - Layout de 3 paneles
     // Etiquetas de accesibilidad
     text.MainNavigation -> "Navegación principal"

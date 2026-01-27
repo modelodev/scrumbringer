@@ -501,6 +501,7 @@ pub type MemberModel {
     member_create_description: String,
     member_create_priority: String,
     member_create_type_id: String,
+    member_create_card_id: Option(Int),
     member_create_in_flight: Bool,
     member_create_error: Option(String),
     member_my_capability_ids: Remote(List(Int)),
@@ -690,11 +691,13 @@ pub type PoolMsg {
   MemberDragMoved(Int, Int)
   MemberDragEnded
   MemberCreateDialogOpened
+  MemberCreateDialogOpenedWithCard(Int)
   MemberCreateDialogClosed
   MemberCreateTitleChanged(String)
   MemberCreateDescriptionChanged(String)
   MemberCreatePriorityChanged(String)
   MemberCreateTypeIdChanged(String)
+  MemberCreateCardIdChanged(String)
   MemberCreateSubmitted
   MemberTaskCreated(ApiResult(Task))
   MemberClaimClicked(Int, Int)
@@ -1243,6 +1246,7 @@ pub fn default_model() -> Model {
       member_create_description: "",
       member_create_priority: "3",
       member_create_type_id: "",
+      member_create_card_id: option.None,
       member_create_in_flight: False,
       member_create_error: option.None,
       member_my_capability_ids: NotAsked,

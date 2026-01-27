@@ -17,6 +17,7 @@ import gleam/result
 import gleam/string
 import pog
 import scrumbringer_server
+import scrumbringer_server/seed_db
 import scrumbringer_server/services/rules_engine
 import wisp
 import wisp/simulate
@@ -1056,6 +1057,119 @@ pub fn delete_workflow(
     204 -> Ok(Nil)
     _ -> Error("delete_workflow failed: " <> int.to_string(res.status))
   }
+}
+
+// =============================================================================
+// Direct DB Operations (fast bulk setup, bypasses API)
+// =============================================================================
+
+/// Insert a task directly to DB with full options.
+pub fn insert_task_db(
+  db: pog.Connection,
+  opts: seed_db.TaskInsertOptions,
+) -> Result(Int, String) {
+  seed_db.insert_task(db, opts)
+}
+
+/// Insert a task with simple defaults directly to DB.
+pub fn insert_task_db_simple(
+  db: pog.Connection,
+  project_id: Int,
+  type_id: Int,
+  title: String,
+  created_by: Int,
+  card_id: Option(Int),
+) -> Result(Int, String) {
+  seed_db.insert_task_simple(db, project_id, type_id, title, created_by, card_id)
+}
+
+/// Insert accumulated work time for a user on a task.
+pub fn insert_work_session_db(
+  db: pog.Connection,
+  user_id: Int,
+  task_id: Int,
+  accumulated_s: Int,
+) -> Result(Nil, String) {
+  seed_db.insert_work_session(db, user_id, task_id, accumulated_s)
+}
+
+/// Insert a task note directly to DB.
+pub fn insert_note_db(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+  content: String,
+) -> Result(Int, String) {
+  seed_db.insert_task_note(db, task_id, user_id, content, None)
+}
+
+/// Insert a card directly to DB.
+pub fn insert_card_db(
+  db: pog.Connection,
+  project_id: Int,
+  title: String,
+  color: Option(String),
+  created_by: Int,
+) -> Result(Int, String) {
+  seed_db.insert_card_simple(db, project_id, title, color, created_by)
+}
+
+/// Insert a user directly to DB.
+pub fn insert_user_db(
+  db: pog.Connection,
+  org_id: Int,
+  email: String,
+  org_role: String,
+) -> Result(Int, String) {
+  seed_db.insert_user_simple(db, org_id, email, org_role)
+}
+
+/// Insert a task type directly to DB.
+pub fn insert_task_type_db(
+  db: pog.Connection,
+  project_id: Int,
+  name: String,
+  icon: String,
+) -> Result(Int, String) {
+  seed_db.insert_task_type(db, project_id, name, icon)
+}
+
+/// Insert a project directly to DB.
+pub fn insert_project_db(
+  db: pog.Connection,
+  org_id: Int,
+  name: String,
+) -> Result(Int, String) {
+  seed_db.insert_project(db, org_id, name, None)
+}
+
+/// Insert a project member directly to DB.
+pub fn insert_member_db(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+  role: String,
+) -> Result(Nil, String) {
+  seed_db.insert_member(db, project_id, user_id, role)
+}
+
+/// Insert a task event directly to DB.
+pub fn insert_task_event_db(
+  db: pog.Connection,
+  org_id: Int,
+  project_id: Int,
+  task_id: Int,
+  user_id: Int,
+  event_type: String,
+) -> Result(Nil, String) {
+  seed_db.insert_task_event_simple(
+    db,
+    org_id,
+    project_id,
+    task_id,
+    user_id,
+    event_type,
+  )
 }
 
 // =============================================================================

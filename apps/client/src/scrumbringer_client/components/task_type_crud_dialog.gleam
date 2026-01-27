@@ -18,6 +18,7 @@
 //// - API: api/tasks/task_types.gleam for CRUD operations
 
 import gleam/dynamic/decode.{type Decoder}
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -28,10 +29,14 @@ import lustre/attribute
 import lustre/component
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, form, h3, input, label, p, span, text}
+import lustre/element/html.{
+  button, div, form, h3, input, label, option as html_option, p, select, span,
+  text,
+}
 import lustre/event
 
 import domain/api_error.{type ApiError}
+import domain/capability.{type Capability, Capability}
 import domain/task_type.{type TaskType, TaskType}
 
 import scrumbringer_client/api/core.{type ApiResult}
@@ -61,16 +66,19 @@ pub type Model {
     locale: Locale,
     project_id: Option(Int),
     mode: Option(DialogMode),
+    capabilities: List(Capability),
     // Create dialog fields
     create_name: String,
     create_icon: String,
     create_icon_open: Bool,
+    create_capability_id: Option(Int),
     create_in_flight: Bool,
     create_error: Option(String),
     // Edit dialog fields
     edit_name: String,
     edit_icon: String,
     edit_icon_open: Bool,
+    edit_capability_id: Option(Int),
     edit_in_flight: Bool,
     edit_error: Option(String),
     // Delete dialog fields
@@ -85,16 +93,19 @@ pub type Msg {
   LocaleReceived(Locale)
   ProjectIdReceived(Int)
   ModeReceived(DialogMode)
+  CapabilitiesReceived(List(Capability))
   // Create form
   CreateNameChanged(String)
   CreateIconToggle
   CreateIconChanged(String)
+  CreateCapabilityChanged(Option(Int))
   CreateSubmitted
   CreateResult(ApiResult(TaskType))
   // Edit form
   EditNameChanged(String)
   EditIconToggle
   EditIconChanged(String)
+  EditCapabilityChanged(Option(Int))
   EditSubmitted
   EditResult(ApiResult(TaskType))
   EditCancelled
@@ -123,6 +134,7 @@ fn on_attribute_change() -> List(component.Option(Msg)) {
     component.on_attribute_change("project-id", decode_project_id),
     component.on_attribute_change("mode", decode_mode),
     component.on_property_change("task-type", task_type_property_decoder()),
+    component.on_property_change("capabilities", capabilities_property_decoder()),
     component.adopt_styles(True),
   ]
 }
@@ -165,6 +177,17 @@ fn task_type_property_decoder() -> Decoder(Msg) {
   }
 }
 
+fn capabilities_property_decoder() -> Decoder(Msg) {
+  decode.list(capability_decoder())
+  |> decode.map(CapabilitiesReceived)
+}
+
+fn capability_decoder() -> Decoder(Capability) {
+  use id <- decode.field("id", decode.int)
+  use name <- decode.field("name", decode.string)
+  decode.success(Capability(id: id, name: name))
+}
+
 // =============================================================================
 // Init
 // =============================================================================
@@ -178,14 +201,17 @@ fn default_model() -> Model {
     locale: En,
     project_id: None,
     mode: None,
+    capabilities: [],
     create_name: "",
     create_icon: "clipboard-document-list",
     create_icon_open: False,
+    create_capability_id: None,
     create_in_flight: False,
     create_error: None,
     edit_name: "",
     edit_icon: "clipboard-document-list",
     edit_icon_open: False,
+    edit_capability_id: None,
     edit_in_flight: False,
     edit_error: None,
     delete_in_flight: False,
@@ -208,6 +234,11 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     ModeReceived(mode) -> handle_mode_received(model, mode)
 
+    CapabilitiesReceived(caps) -> #(
+      Model(..model, capabilities: caps),
+      effect.none(),
+    )
+
     // Create form handlers
     CreateNameChanged(name) -> #(
       Model(..model, create_name: name),
@@ -221,6 +252,11 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     CreateIconChanged(icon) -> #(
       Model(..model, create_icon: icon, create_icon_open: False),
+      effect.none(),
+    )
+
+    CreateCapabilityChanged(cap_id) -> #(
+      Model(..model, create_capability_id: cap_id),
       effect.none(),
     )
 
@@ -243,6 +279,11 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     EditIconChanged(icon) -> #(
       Model(..model, edit_icon: icon, edit_icon_open: False),
+      effect.none(),
+    )
+
+    EditCapabilityChanged(cap_id) -> #(
+      Model(..model, edit_capability_id: cap_id),
       effect.none(),
     )
 
@@ -279,6 +320,7 @@ fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg))
         create_name: "",
         create_icon: "clipboard-document-list",
         create_icon_open: False,
+        create_capability_id: None,
         create_in_flight: False,
         create_error: None,
       ),
@@ -292,6 +334,7 @@ fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg))
         edit_name: task_type.name,
         edit_icon: task_type.icon,
         edit_icon_open: False,
+        edit_capability_id: task_type.capability_id,
         edit_in_flight: False,
         edit_error: None,
       ),
@@ -327,7 +370,7 @@ fn handle_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
             project_id,
             name,
             model.create_icon,
-            None,
+            model.create_capability_id,
             CreateResult,
           ),
         )
@@ -346,6 +389,7 @@ fn handle_create_success(
       create_in_flight: False,
       create_name: "",
       create_icon: "clipboard-document-list",
+      create_capability_id: None,
       create_error: None,
     ),
     emit_type_created(task_type),
@@ -368,7 +412,7 @@ fn handle_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
             task_type.id,
             name,
             model.edit_icon,
-            task_type.capability_id,
+            model.edit_capability_id,
             EditResult,
           ),
         )
@@ -423,6 +467,7 @@ fn reset_edit_fields(model: Model) -> Model {
     edit_name: "",
     edit_icon: "clipboard-document-list",
     edit_icon_open: False,
+    edit_capability_id: None,
     edit_in_flight: False,
     edit_error: None,
   )
@@ -523,6 +568,13 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
               CreateIconChanged,
             ),
           ]),
+          // Capability selector
+          view_capability_selector(
+            model,
+            "create-capability",
+            model.create_capability_id,
+            CreateCapabilityChanged,
+          ),
           // Error
           case model.create_error {
             Some(err) -> div([attribute.class("form-error")], [text(err)])
@@ -602,6 +654,13 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
               EditIconChanged,
             ),
           ]),
+          // Capability selector
+          view_capability_selector(
+            model,
+            "edit-capability",
+            model.edit_capability_id,
+            EditCapabilityChanged,
+          ),
           // Error
           case model.edit_error {
             Some(err) -> div([attribute.class("form-error")], [text(err)])
@@ -761,6 +820,53 @@ fn view_icon_picker(
         ])
       False -> element.none()
     },
+  ])
+}
+
+// =============================================================================
+// Capability Selector
+// =============================================================================
+
+/// Render capability selector dropdown.
+fn view_capability_selector(
+  model: Model,
+  id: String,
+  current_value: Option(Int),
+  on_change: fn(Option(Int)) -> Msg,
+) -> Element(Msg) {
+  div([attribute.class("form-group")], [
+    label([attribute.for(id)], [
+      text(i18n_t(model.locale, i18n_text.CapabilityOptional)),
+    ]),
+    select(
+      [
+        attribute.id(id),
+        attribute.name("capability_id"),
+        attribute.class("form-select"),
+        event.on_input(fn(value) {
+          case int.parse(value) {
+            Ok(0) -> on_change(None)
+            Ok(cap_id) -> on_change(Some(cap_id))
+            Error(_) -> on_change(None)
+          }
+        }),
+      ],
+      [
+        html_option(
+          [attribute.value("0"), attribute.selected(current_value == None)],
+          i18n_t(model.locale, i18n_text.NoneOption),
+        ),
+        ..list.map(model.capabilities, fn(cap) {
+          html_option(
+            [
+              attribute.value(int.to_string(cap.id)),
+              attribute.selected(current_value == Some(cap.id)),
+            ],
+            cap.name,
+          )
+        })
+      ],
+    ),
   ])
 }
 
