@@ -298,6 +298,25 @@ pub fn login_sets_session_and_csrf_cookies_test() {
   has_csrf_cookie |> should.be_true
 }
 
+pub fn login_rejects_invalid_credentials_test() {
+  let app = bootstrap_app()
+  let handler = scrumbringer_server.handler(app)
+
+  let res =
+    handler(
+      simulate.request(http.Post, "/api/v1/auth/login")
+      |> simulate.json_body(
+        json.object([
+          #("email", json.string("admin@example.com")),
+          #("password", json.string("wrong-password")),
+        ]),
+      ),
+    )
+
+  res.status |> should.equal(403)
+  string.contains(simulate.read_body(res), "FORBIDDEN") |> should.be_true
+}
+
 pub fn me_requires_auth_and_returns_user_when_authenticated_test() {
   let app = bootstrap_app()
   let handler = scrumbringer_server.handler(app)

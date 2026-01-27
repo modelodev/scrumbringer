@@ -62,6 +62,20 @@ pub fn parse_query_string_directly_test() {
   state |> url_state.view |> should.equal(view_mode.Cards)
 }
 
+pub fn parse_invalid_view_defaults_to_pool_test() {
+  let assert Ok(uri) = uri.parse("/app?view=unknown")
+  let state = url_state.parse(uri)
+
+  state |> url_state.view |> should.equal(view_mode.Pool)
+}
+
+pub fn parse_invalid_project_drops_project_test() {
+  let assert Ok(uri) = uri.parse("/app?project=nope")
+  let state = url_state.parse(uri)
+
+  state |> url_state.project |> should.be_none
+}
+
 // =============================================================================
 // builder tests
 // =============================================================================

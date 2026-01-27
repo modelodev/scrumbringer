@@ -1,6 +1,6 @@
 # Testing Architecture: Typed BDD
 
-> **Version:** 1.1
+> **Version:** 1.2
 > **Status:** ADR Accepted (Revised)
 > **Parent:** [Architecture](../architecture.md)
 
@@ -36,8 +36,9 @@ This document defines a **type-safe BDD testing architecture** for Gleam/Lustre 
 7. [Layer 5: Results and Reporting](#7-layer-5-results-and-reporting)
 8. [Living Documentation](#8-living-documentation)
 9. [Security Considerations](#9-security-considerations)
-10. [Implementation Roadmap](#10-implementation-roadmap)
-11. [Appendix: Full Type Definitions](#11-appendix-full-type-definitions)
+10. [Project Structure](#10-project-structure)
+11. [Implementation Roadmap](#11-implementation-roadmap)
+12. [Appendix: Full Type Definitions](#12-appendix-full-type-definitions)
 
 ---
 
@@ -1919,9 +1920,106 @@ TEST_FIXTURE_TOKEN=${{ secrets.TEST_FIXTURE_TOKEN }}
 
 ---
 
-## 10. Implementation Roadmap
+## 10. Project Structure
 
-### Phase 1: Core DSL (Week 1)
+The testing framework separates the **reusable engine** from **project-specific implementations** and **test specifications**.
+
+```
+apps/client/test/
+├── framework/                    # Reusable BDD engine (could become Hex package)
+│   ├── core/
+│   │   ├── refs.gleam           # Ref(phantom), key(), TestContext, materialize()
+│   │   ├── locator.gleam        # Target, Locator (One, Child, Descendant, Nth)
+│   │   └── spec.gleam           # Step, Spec, Capability inference
+│   ├── backends/
+│   │   ├── simulate.gleam       # run_simulate(), query composition, threading
+│   │   └── playwright.gleam     # run_playwright(), protocol encoding
+│   ├── protocol.gleam           # Command ADT, Response, JSON codecs
+│   ├── router.gleam             # infer_capabilities(), select_backend()
+│   └── reporting.gleam          # StepResult, SpecResult, formatters
+│
+├── domain/                       # Project-specific (scrumbringer)
+│   ├── refs.gleam               # TaskRef, UserRef, SprintRef, ProjectRef
+│   ├── routes.gleam             # Route type (Login, Pool, TaskDetails...)
+│   ├── targets.gleam            # Target type (TaskCard, ClaimButton...)
+│   ├── actions.gleam            # Action type (Click, Type, DragTo...)
+│   ├── expectations.gleam       # Expect type (Visible, HasText, Count...)
+│   ├── fixtures.gleam           # Fixture definitions, SeedScenario
+│   └── resolvers.gleam          # resolve_target() → test_id mapping
+│
+├── specs/                        # Test specifications organized by feature
+│   ├── auth/
+│   │   ├── login_spec.gleam
+│   │   └── forgot_password_spec.gleam
+│   ├── pool/
+│   │   ├── claim_task_spec.gleam
+│   │   ├── release_task_spec.gleam
+│   │   └── drag_task_spec.gleam
+│   ├── admin/
+│   │   └── manage_projects_spec.gleam
+│   └── catalog.gleam            # Exports all_specs() for runner
+│
+└── support/
+    ├── runner.js                 # Node.js Playwright bridge (stdio JSON)
+    └── test_main.gleam          # Entry point, CLI argument parsing
+```
+
+### 10.1 Directory Responsibilities
+
+| Directory | Purpose | Depends On |
+|-----------|---------|------------|
+| `framework/core/` | Base types and abstractions | Nothing (pure Gleam) |
+| `framework/backends/` | Backend implementations | `framework/core/`, `lustre/dev/*` |
+| `framework/` (root) | Protocol, router, reporting | `framework/core/`, `framework/backends/` |
+| `domain/` | Project-specific types | `framework/core/` |
+| `specs/` | Actual test specifications | `domain/`, `framework/` |
+| `support/` | Non-Gleam helpers | None |
+
+### 10.2 Module Import Structure
+
+```gleam
+// specs/pool/claim_task_spec.gleam
+
+import test/framework/core/spec.{spec, given, when_, then_, build}
+import test/framework/core/locator.{the, within}
+import test/domain/refs.{task, user}
+import test/domain/routes.{Pool}
+import test/domain/targets.{Pool as P, Auth}
+import test/domain/actions.{Click, Navigate}
+import test/domain/expectations.{Visible, TextContains}
+import test/domain/fixtures.{CreateUser, CreateTask, Seed}
+
+pub fn claim_task_spec() {
+  spec("pool-claim-001", "Member can claim available task")
+  |> feature("Pool")
+  |> tagged(["smoke", "pool"])
+  |> arrange([
+    CreateUser(user("alice"), "alice@test.com", Member),
+    Seed(PoolWithVariedTasks),
+  ])
+  |> given(LoggedInAs(user("alice")))
+  |> given(On(Pool))
+  |> when_(Click(the(P(ClaimButton(task("task-1"))))))
+  |> then_(Visible(the(P(ReleaseButton(task("task-1"))))))
+  |> then_(TextContains(the(P(MyTasksSection)), "task-1"))
+  |> build
+}
+```
+
+### 10.3 Framework Extraction
+
+The `framework/` directory is designed to be extractable as a standalone Hex package (`gleam_bdd` or similar). To extract:
+
+1. Move `framework/` to a new package
+2. Make `core/refs.gleam` generic (remove `TaskRef`, `UserRef` etc.)
+3. Expose traits/behaviors for `Target`, `Action`, `Expectation`
+4. Projects implement their own domain types conforming to these traits
+
+---
+
+## 11. Implementation Roadmap
+
+### 11.1 Phase 1: Core DSL
 
 - [ ] Define all domain types (`refs.gleam`, `routes.gleam`, `targets.gleam`, etc.)
 - [ ] Implement `TestContext` with `materialize()`
@@ -1930,7 +2028,7 @@ TEST_FIXTURE_TOKEN=${{ secrets.TEST_FIXTURE_TOKEN }}
 - [ ] Write 3-5 example specs for auth and pool features
 - [ ] Add `data-test-id` attributes to existing Lustre views
 
-### Phase 2: Simulate Backend (Week 2)
+### 11.2 Phase 2: Simulate Backend
 
 - [ ] Implement test_id resolution (NOT CSS)
 - [ ] Implement `simulate_backend.run()` with threaded Simulation
@@ -1939,7 +2037,7 @@ TEST_FIXTURE_TOKEN=${{ secrets.TEST_FIXTURE_TOKEN }}
 - [ ] Document effects limitation and `InjectMsg` pattern
 - [ ] Make the example specs pass in simulate
 
-### Phase 3: Playwright Backend (Week 3)
+### 11.3 Phase 3: Playwright Backend
 
 - [ ] Implement Command ADT encoder (typed, not strings)
 - [ ] Write Node.js runner with `getByTestId()`
@@ -1948,7 +2046,7 @@ TEST_FIXTURE_TOKEN=${{ secrets.TEST_FIXTURE_TOKEN }}
 - [ ] Test protocol communication Gleam ↔ Node
 - [ ] Make drag-drop spec pass in Playwright
 
-### Phase 4: Integration (Week 4)
+### 11.4 Phase 4: Integration
 
 - [ ] Implement execution router with auto-backend selection
 - [ ] Implement console and JSON reporters
@@ -1956,7 +2054,7 @@ TEST_FIXTURE_TOKEN=${{ secrets.TEST_FIXTURE_TOKEN }}
 - [ ] Add CLI commands (`gleam test -- --tags smoke`, `gleam test -- --e2e`)
 - [ ] CI integration with parallel execution
 
-### Phase 5: Polish (Week 5)
+### 11.5 Phase 5: Polish
 
 - [ ] Add more specs to catalog (target: 20-30 specs)
 - [ ] Add multi-actor support for Playwright
@@ -1966,21 +2064,36 @@ TEST_FIXTURE_TOKEN=${{ secrets.TEST_FIXTURE_TOKEN }}
 
 ---
 
-## 11. Appendix: Full Type Definitions
+## 12. Appendix: Full Type Definitions
 
-See individual module files in `specs/domain/`:
+See individual module files:
 
-- `specs/domain/refs.gleam` - Phantom-typed references + `key()`
-- `specs/domain/context.gleam` - TestContext + `materialize()`
-- `specs/domain/routes.gleam` - Typed routes
-- `specs/domain/targets.gleam` - Semantic UI targets by domain
-- `specs/domain/locators.gleam` - Locator composition (Child/Descendant/Nth)
-- `specs/domain/actions.gleam` - User actions + Actor
-- `specs/domain/expectations.gleam` - Assertions (ADT only)
-- `specs/domain/preconditions.gleam` - Given clauses
-- `specs/domain/fixtures.gleam` - Test data setup (channel-agnostic)
-- `specs/domain/capabilities.gleam` - Backend requirements + inference
-- `specs/domain/spec.gleam` - Spec structure
+**Framework (reusable engine):**
+- `test/framework/core/refs.gleam` - Phantom-typed references + `key()`
+- `test/framework/core/locator.gleam` - Locator composition (Child/Descendant/Nth)
+- `test/framework/core/spec.gleam` - Step, Spec, Capability inference, DSL builder
+- `test/framework/backends/simulate.gleam` - Simulate backend implementation
+- `test/framework/backends/playwright.gleam` - Playwright backend + encoder
+- `test/framework/protocol.gleam` - Command ADT, RunConfig, JSON codecs
+- `test/framework/router.gleam` - Backend selection logic
+- `test/framework/reporting.gleam` - Result types + formatters
+
+**Domain (project-specific):**
+- `test/domain/refs.gleam` - TaskRef, UserRef, ProjectRef, etc.
+- `test/domain/routes.gleam` - Typed routes (Login, Pool, Admin...)
+- `test/domain/targets.gleam` - Semantic UI targets by domain
+- `test/domain/actions.gleam` - User actions + Actor
+- `test/domain/expectations.gleam` - Assertions (ADT only)
+- `test/domain/fixtures.gleam` - Test data setup (channel-agnostic)
+- `test/domain/resolvers.gleam` - Target → test_id mapping
+
+**Specs:**
+- `test/specs/*/` - Test specifications organized by feature
+- `test/specs/catalog.gleam` - Exports `all_specs()` for runner
+
+**Support:**
+- `test/support/runner.js` - Node.js Playwright bridge
+- `test/support/test_main.gleam` - CLI entry point
 
 ---
 

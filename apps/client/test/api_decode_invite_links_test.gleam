@@ -28,3 +28,16 @@ pub fn invite_link_payload_decoder_decodes_enveloped_resource_test() {
   result
   |> should.be_ok
 }
+
+pub fn invite_link_payload_decoder_rejects_missing_token_test() {
+  let body =
+    "{\"data\":{\"invite_link\":{\"email\":\"a@example.com\",\"url_path\":\"/accept-invite?token=il_abc\",\"state\":\"active\",\"created_at\":\"2026-01-13T00:00:00Z\",\"used_at\":null,\"invalidated_at\":null}}}"
+
+  let decoder =
+    decode.field("data", api_org.invite_link_payload_decoder(), decode.success)
+
+  let result = json.parse(from: body, using: decoder)
+
+  result
+  |> should.be_error
+}

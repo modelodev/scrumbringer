@@ -18,6 +18,7 @@ import gleam/string
 import pog
 import scrumbringer_server
 import scrumbringer_server/seed_db
+import scrumbringer_server/services/rate_limit
 import scrumbringer_server/services/rules_engine
 import wisp
 import wisp/simulate
@@ -78,6 +79,7 @@ pub fn bootstrap() -> Result(
   let handler = scrumbringer_server.handler(app)
   let scrumbringer_server.App(db: db, ..) = app
 
+  let _ = rate_limit.reset_for_tests()
   use _ <- result.try(reset_db(db))
   use _ <- result.try(reset_workflow_tables(db))
 

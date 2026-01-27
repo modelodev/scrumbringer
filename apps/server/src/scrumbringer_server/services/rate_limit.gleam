@@ -25,6 +25,11 @@ pub fn allow(
   rate_limit_allow_ffi(key, limit, window_seconds, now_unix)
 }
 
+/// Reset in-memory rate limit state (test helper).
+pub fn reset_for_tests() -> Bool {
+  rate_limit_reset_ffi()
+}
+
 @external(erlang, "scrumbringer_server_ffi", "rate_limit_allow")
 fn rate_limit_allow_ffi(
   _key: String,
@@ -32,5 +37,10 @@ fn rate_limit_allow_ffi(
   _window_seconds: Int,
   _now_unix: Int,
 ) -> Bool {
+  True
+}
+
+@external(erlang, "scrumbringer_server_ffi", "rate_limit_reset")
+fn rate_limit_reset_ffi() -> Bool {
   True
 }
