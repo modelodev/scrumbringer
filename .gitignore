@@ -2,6 +2,7 @@ AGENTS.md
 opencode.jsonc
 web-bundles/
 .claude
+.gemini
 
 # BMAD (local only)
 .bmad-core/
