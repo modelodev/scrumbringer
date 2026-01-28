@@ -43,6 +43,8 @@ import domain/capability.{type Capability}
 import domain/card.{type Card}
 import domain/org.{type OrgUser}
 import domain/project.{type Project}
+import domain/task.{type Task}
+import domain/task_status as domain_task_status
 import domain/task_type.{type TaskType}
 
 import scrumbringer_client/client_state.{
@@ -54,13 +56,13 @@ import scrumbringer_client/client_state.{
   CapabilityMembersSaveClicked, CapabilityMembersToggled, CardCrudCreated,
   CardCrudDeleted, CardCrudUpdated, CardDialogCreate, CardDialogDelete,
   CardDialogEdit, CardsSearchChanged, CardsShowCompletedToggled,
-  CardsShowEmptyToggled, CardsStateFilterChanged, CloseCardDialog,
-  CloseTaskTypeDialog, Failed, Loaded, Loading, MemberCreateDialogOpenedWithCard,
-  NotAsked, OpenCardDialog, OpenTaskTypeDialog, OrgSettingsDeleteCancelled,
-  OrgSettingsDeleteClicked, OrgSettingsDeleteConfirmed, OrgSettingsRoleChanged,
-  TaskTypeCrudCreated, TaskTypeCrudDeleted, TaskTypeCrudUpdated,
-  TaskTypeDialogCreate, TaskTypeDialogDelete, TaskTypeDialogEdit, admin_msg,
-  pool_msg,
+  CardsShowEmptyToggled, CardsStateFilterChanged, CloseCardDetail,
+  CloseCardDialog, CloseTaskTypeDialog, Failed, Loaded, Loading,
+  MemberCreateDialogOpenedWithCard, NotAsked, OpenCardDetail, OpenCardDialog,
+  OpenTaskTypeDialog, OrgSettingsDeleteCancelled, OrgSettingsDeleteClicked,
+  OrgSettingsDeleteConfirmed, OrgSettingsRoleChanged, TaskTypeCrudCreated,
+  TaskTypeCrudDeleted, TaskTypeCrudUpdated, TaskTypeDialogCreate,
+  TaskTypeDialogDelete, TaskTypeDialogEdit, admin_msg, pool_msg,
 }
 import scrumbringer_client/features/admin/views/members as members_view
 import scrumbringer_client/features/admin/views/workflows as workflows_view
@@ -73,6 +75,7 @@ import scrumbringer_client/utils/card_queries
 // Task Templates
 // Rule Metrics Tab
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/permissions
 import scrumbringer_client/theme
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/attrs
@@ -957,6 +960,7 @@ pub fn view_cards(
         view_cards_list(model, filter_cards(model)),
         // Card CRUD dialog component (handles create, edit, delete)
         view_card_crud_dialog(model, project.id),
+        view_card_detail_modal(model, project),
       ])
   }
 }
@@ -1047,6 +1051,11 @@ fn card_decoder() -> decode.Decoder(Card) {
   use completed_count <- decode.field("completed_count", decode.int)
   use created_by <- decode.field("created_by", decode.int)
   use created_at <- decode.field("created_at", decode.string)
+  use has_new_notes <- decode.optional_field(
+    "has_new_notes",
+    False,
+    decode.bool,
+  )
   decode.success(card.Card(
     id: id,
     project_id: project_id,
@@ -1058,6 +1067,7 @@ fn card_decoder() -> decode.Decoder(Card) {
     completed_count: completed_count,
     created_by: created_by,
     created_at: created_at,
+    has_new_notes: has_new_notes,
   ))
 }
 
@@ -1257,7 +1267,7 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
     config: data_table.new()
       |> data_table.with_empty_state(empty_state)
       |> data_table.with_columns([
-        // UX: Título con indicador de color (círculo)
+        // UX: Título con indicador de color (círculo) y [!] para notas nuevas
         data_table.column_with_class(
           update_helpers.i18n_t(model, i18n_text.CardTitle),
           fn(c: Card) {
@@ -1273,7 +1283,30 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
                 ],
                 [],
               ),
-              text(c.title),
+              button(
+                [
+                  attribute.class("card-title-button"),
+                  attribute.attribute("data-testid", "card-detail-open"),
+                  event.on_click(pool_msg(OpenCardDetail(c.id))),
+                ],
+                [text(c.title)],
+              ),
+              // AC16: Notes indicator with styled tooltip
+              case c.has_new_notes {
+                True ->
+                  span(
+                    [
+                      attribute.class("card-notes-indicator tooltip-trigger"),
+                      attribute.attribute("data-testid", "card-notes-indicator"),
+                      attribute.attribute(
+                        "data-tooltip",
+                        update_helpers.i18n_t(model, i18n_text.NewNotesTooltip),
+                      ),
+                    ],
+                    [text("[!]")],
+                  )
+                False -> element.none()
+              },
             ])
           },
           "",
@@ -1318,6 +1351,192 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
       ])
       |> data_table.with_key(fn(c) { int.to_string(c.id) }),
   )
+}
+
+// =============================================================================
+// Card Detail Modal (Config Cards)
+// =============================================================================
+
+fn view_card_detail_modal(model: Model, project: Project) -> Element(Msg) {
+  case model.member.card_detail_open {
+    opt.None -> element.none()
+    opt.Some(card_id) -> {
+      let card_opt = card_queries.find_card(model, card_id)
+
+      case card_opt {
+        opt.None -> element.none()
+        opt.Some(card) -> {
+          let tasks = admin_get_card_tasks(model, card_id)
+
+          let current_user_id = case model.core.user {
+            opt.Some(user) -> user.id
+            opt.None -> 0
+          }
+
+          let is_org_admin = case model.core.user {
+            opt.Some(user) -> permissions.is_org_admin(user.org_role)
+            opt.None -> False
+          }
+
+          let can_manage_notes =
+            is_org_admin || permissions.is_project_manager(project)
+
+          element.element(
+            "card-detail-modal",
+            [
+              attribute.attribute("card-id", int.to_string(card_id)),
+              attribute.attribute("locale", locale.serialize(model.ui.locale)),
+              attribute.attribute(
+                "current-user-id",
+                int.to_string(current_user_id),
+              ),
+              attribute.attribute("project-id", int.to_string(card.project_id)),
+              attribute.attribute(
+                "can-manage-notes",
+                bool_to_string(can_manage_notes),
+              ),
+              attribute.property("card", card_to_modal_json(card)),
+              attribute.property("tasks", tasks_to_json(tasks)),
+              event.on(
+                "create-task-requested",
+                decode_create_task_event(card_id),
+              ),
+              event.on("close-requested", decode_card_detail_close_event()),
+            ],
+            [],
+          )
+        }
+      }
+    }
+  }
+}
+
+/// Decoder for create-task-requested event.
+fn decode_create_task_event(card_id: Int) -> decode.Decoder(Msg) {
+  decode.success(pool_msg(MemberCreateDialogOpenedWithCard(card_id)))
+}
+
+/// Decoder for close-requested event.
+fn decode_card_detail_close_event() -> decode.Decoder(Msg) {
+  decode.success(pool_msg(CloseCardDetail))
+}
+
+fn admin_get_card_tasks(model: Model, card_id: Int) -> List(Task) {
+  case model.member.member_tasks {
+    Loaded(tasks) ->
+      list.filter(tasks, fn(t) {
+        case t.card_id {
+          opt.Some(cid) -> cid == card_id
+          opt.None -> False
+        }
+      })
+    _ -> []
+  }
+}
+
+fn card_to_modal_json(card: Card) -> json.Json {
+  let state_str = case card.state {
+    card.Pendiente -> "pendiente"
+    card.EnCurso -> "en_curso"
+    card.Cerrada -> "cerrada"
+  }
+
+  let color_field = case card.color {
+    opt.Some(color) -> json.string(color)
+    opt.None -> json.null()
+  }
+
+  json.object([
+    #("id", json.int(card.id)),
+    #("project_id", json.int(card.project_id)),
+    #("title", json.string(card.title)),
+    #("description", json.string(card.description)),
+    #("color", color_field),
+    #("state", json.string(state_str)),
+    #("task_count", json.int(card.task_count)),
+    #("completed_count", json.int(card.completed_count)),
+    #("created_by", json.int(card.created_by)),
+    #("created_at", json.string(card.created_at)),
+    #("has_new_notes", json.bool(card.has_new_notes)),
+  ])
+}
+
+fn tasks_to_json(tasks: List(Task)) -> json.Json {
+  json.array(tasks, task_to_json)
+}
+
+fn task_to_json(task: Task) -> json.Json {
+  json.object([
+    #("id", json.int(task.id)),
+    #("project_id", json.int(task.project_id)),
+    #("type_id", json.int(task.type_id)),
+    #(
+      "task_type",
+      json.object([
+        #("id", json.int(task.task_type.id)),
+        #("name", json.string(task.task_type.name)),
+        #("icon", json.string(task.task_type.icon)),
+      ]),
+    ),
+    #("ongoing_by", case task.ongoing_by {
+      opt.Some(ob) -> json.object([#("user_id", json.int(ob.user_id))])
+      opt.None -> json.null()
+    }),
+    #("title", json.string(task.title)),
+    #("description", case task.description {
+      opt.Some(d) -> json.string(d)
+      opt.None -> json.null()
+    }),
+    #("priority", json.int(task.priority)),
+    #(
+      "status",
+      json.string(domain_task_status.task_status_to_string(task.status)),
+    ),
+    #("work_state", json.string(work_state_to_string(task.work_state))),
+    #("created_by", json.int(task.created_by)),
+    #("claimed_by", case task.claimed_by {
+      opt.Some(id) -> json.int(id)
+      opt.None -> json.null()
+    }),
+    #("claimed_at", case task.claimed_at {
+      opt.Some(at) -> json.string(at)
+      opt.None -> json.null()
+    }),
+    #("completed_at", case task.completed_at {
+      opt.Some(at) -> json.string(at)
+      opt.None -> json.null()
+    }),
+    #("created_at", json.string(task.created_at)),
+    #("version", json.int(task.version)),
+    #("card_id", case task.card_id {
+      opt.Some(id) -> json.int(id)
+      opt.None -> json.null()
+    }),
+    #("card_title", case task.card_title {
+      opt.Some(t) -> json.string(t)
+      opt.None -> json.null()
+    }),
+    #("card_color", case task.card_color {
+      opt.Some(c) -> json.string(c)
+      opt.None -> json.null()
+    }),
+  ])
+}
+
+fn work_state_to_string(state: domain_task_status.WorkState) -> String {
+  case state {
+    domain_task_status.WorkAvailable -> "available"
+    domain_task_status.WorkClaimed -> "claimed"
+    domain_task_status.WorkOngoing -> "ongoing"
+    domain_task_status.WorkCompleted -> "completed"
+  }
+}
+
+fn bool_to_string(value: Bool) -> String {
+  case value {
+    True -> "true"
+    False -> "false"
+  }
 }
 
 /// UX: State badge with semantic color

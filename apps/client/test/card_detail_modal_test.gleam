@@ -1,19 +1,18 @@
 //// Tests for card detail modal component logic.
 ////
-//// These tests validate the update function and model state transitions
-//// for the encapsulated card detail modal component.
+//// These tests validate the Model and Msg types for the encapsulated
+//// card detail modal component.
 
 import gleam/option
 import gleeunit/should
 
 import domain/card.{type Card, Card, EnCurso, Pendiente}
-import domain/task_type.{type TaskType, TaskType}
 import scrumbringer_client/components/card_detail_modal.{
-  type Model, type Msg, CancelAddTask, CardIdReceived, CardReceived, Loaded,
-  LocaleReceived, Model, NotAsked, PrioritySelect, TaskTypesReceived,
-  TasksReceived, TitleInput, ToggleAddTaskForm,
+  type Model, CardIdReceived, CardReceived, Loaded, LocaleReceived, Model,
+  NotAsked, TasksReceived,
 }
 import scrumbringer_client/i18n/locale.{En, Es}
+import scrumbringer_client/ui/card_tabs
 
 // =============================================================================
 // Test Helpers
@@ -24,14 +23,17 @@ fn make_model() -> Model {
     card_id: option.None,
     card: option.None,
     locale: En,
+    current_user_id: option.None,
     project_id: option.None,
+    can_manage_notes: False,
+    // AC21: Default tab
+    active_tab: card_tabs.TasksTab,
+    notes: NotAsked,
+    note_dialog_open: False,
+    note_content: "",
+    note_in_flight: False,
+    note_error: option.None,
     tasks: NotAsked,
-    task_types: [],
-    add_task_open: False,
-    add_task_title: "",
-    add_task_priority: 3,
-    add_task_in_flight: False,
-    add_task_error: option.None,
   )
 }
 
@@ -47,16 +49,7 @@ fn make_card(id: Int) -> Card {
     completed_count: 1,
     created_by: 1,
     created_at: "2026-01-20T00:00:00Z",
-  )
-}
-
-fn make_task_type(id: Int, name: String) -> TaskType {
-  TaskType(
-    id: id,
-    name: name,
-    icon: "📋",
-    capability_id: option.None,
-    tasks_count: 0,
+    has_new_notes: False,
   )
 }
 
@@ -74,13 +67,15 @@ pub fn initial_model_has_correct_defaults_test() {
   model.card_id |> should.equal(option.None)
   model.card |> should.equal(option.None)
   model.locale |> should.equal(En)
+  model.current_user_id |> should.equal(option.None)
+  model.can_manage_notes |> should.equal(False)
+  model.notes |> should.equal(NotAsked)
+  model.note_content |> should.equal("")
+  model.note_in_flight |> should.equal(False)
+  model.note_error |> should.equal(option.None)
   model.tasks |> should.equal(NotAsked)
-  model.task_types |> should.equal([])
-  model.add_task_open |> should.equal(False)
-  model.add_task_title |> should.equal("")
-  model.add_task_priority |> should.equal(3)
-  model.add_task_in_flight |> should.equal(False)
-  model.add_task_error |> should.equal(option.None)
+  // AC21: Default tab is Tasks
+  model.active_tab |> should.equal(card_tabs.TasksTab)
 }
 
 pub fn model_with_card_retains_data_test() {
@@ -95,16 +90,6 @@ pub fn model_with_card_retains_data_test() {
     }
     option.None -> should.fail()
   }
-}
-
-pub fn model_with_task_types_stores_list_test() {
-  let types = [
-    make_task_type(1, "Bug"),
-    make_task_type(2, "Feature"),
-  ]
-  let model = Model(..make_model(), task_types: types)
-
-  model.task_types |> should.equal(types)
 }
 
 pub fn model_with_loaded_tasks_has_correct_remote_state_test() {
@@ -136,37 +121,9 @@ pub fn locale_received_msg_carries_locale_test() {
   loc |> should.equal(Es)
 }
 
-pub fn task_types_received_msg_carries_types_test() {
-  let types = [make_task_type(1, "Task")]
-  let TaskTypesReceived(t) = TaskTypesReceived(types)
-  t |> should.equal(types)
-}
-
 pub fn tasks_received_msg_carries_tasks_test() {
   let TasksReceived(tasks) = TasksReceived([])
   tasks |> should.equal([])
-}
-
-pub fn toggle_add_task_form_msg_test() {
-  // ToggleAddTaskForm is a no-argument variant, just verify it constructs
-  let _msg: Msg = ToggleAddTaskForm
-  should.be_true(True)
-}
-
-pub fn title_input_msg_carries_text_test() {
-  let TitleInput(t) = TitleInput("New task title")
-  t |> should.equal("New task title")
-}
-
-pub fn priority_select_msg_carries_priority_test() {
-  let PrioritySelect(p) = PrioritySelect(5)
-  p |> should.equal(5)
-}
-
-pub fn cancel_add_task_msg_test() {
-  // CancelAddTask is a no-argument variant, just verify it constructs
-  let _msg: Msg = CancelAddTask
-  should.be_true(True)
 }
 
 // =============================================================================

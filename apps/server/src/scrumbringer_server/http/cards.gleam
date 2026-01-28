@@ -73,12 +73,16 @@ fn list_cards_for_user(
 
   case authorization.is_project_member(db, user_id, project_id) {
     False -> api.error(403, "FORBIDDEN", "Not a member of this project")
-    True -> list_cards_in_project(db, project_id)
+    True -> list_cards_in_project(db, project_id, user_id)
   }
 }
 
-fn list_cards_in_project(db: pog.Connection, project_id: Int) -> wisp.Response {
-  case cards_db.list_cards(db, project_id) {
+fn list_cards_in_project(
+  db: pog.Connection,
+  project_id: Int,
+  user_id: Int,
+) -> wisp.Response {
+  case cards_db.list_cards(db, project_id, user_id) {
     Ok(cards) -> api.ok(json.object([#("cards", cards_to_json(cards))]))
     Error(_) -> api.error(500, "INTERNAL", "Database error")
   }
@@ -258,7 +262,7 @@ fn handle_get(req: wisp.Request, ctx: auth.Ctx, card_id: Int) -> wisp.Response {
 fn get_card_for_user(ctx: auth.Ctx, card_id: Int, user_id: Int) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
-  case cards_db.get_card(db, card_id) {
+  case cards_db.get_card(db, card_id, user_id) {
     Error(cards_db.CardNotFound) ->
       api.error(404, "NOT_FOUND", "Card not found")
     Error(cards_db.DbError(_)) -> api.error(500, "INTERNAL", "Database error")
@@ -309,7 +313,7 @@ fn update_card_with_auth(
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
-  case cards_db.get_card(db, card_id) {
+  case cards_db.get_card(db, card_id, user_id) {
     Error(cards_db.CardNotFound) ->
       api.error(404, "NOT_FOUND", "Card not found")
     Error(_) -> api.error(500, "INTERNAL", "Database error")
@@ -327,7 +331,7 @@ fn update_card_in_project(
 
   case require_project_admin(db, user_id, card.project_id) {
     Error(resp) -> resp
-    Ok(Nil) -> update_card_with_payload(req, ctx, card.id)
+    Ok(Nil) -> update_card_with_payload(req, ctx, card.id, user_id)
   }
 }
 
@@ -335,13 +339,14 @@ fn update_card_with_payload(
   req: wisp.Request,
   ctx: auth.Ctx,
   card_id: Int,
+  user_id: Int,
 ) -> wisp.Response {
   use data <- wisp.require_json(req)
 
   case decode_card_payload_data(data) {
     Error(resp) -> resp
     Ok(#(title, description, color)) ->
-      update_card_in_db(ctx, card_id, title, description, color)
+      update_card_in_db(ctx, card_id, title, description, color, user_id)
   }
 }
 
@@ -351,10 +356,11 @@ fn update_card_in_db(
   title: String,
   description: Option(String),
   color: Option(String),
+  user_id: Int,
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
-  case cards_db.update_card(db, card_id, title, description, color) {
+  case cards_db.update_card(db, card_id, title, description, color, user_id) {
     Ok(updated) -> api.ok(json.object([#("card", card_to_json(updated))]))
     Error(cards_db.CardNotFound) ->
       api.error(404, "NOT_FOUND", "Card not found")
@@ -392,7 +398,7 @@ fn delete_card_with_auth(
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
-  case cards_db.get_card(db, card_id) {
+  case cards_db.get_card(db, card_id, user_id) {
     Error(cards_db.CardNotFound) ->
       api.error(404, "NOT_FOUND", "Card not found")
     Error(_) -> api.error(500, "INTERNAL", "Database error")
@@ -444,6 +450,7 @@ fn card_to_json(card: cards_db.Card) -> json.Json {
     #("completed_count", json.int(card.completed_count)),
     #("created_by", json.int(card.created_by)),
     #("created_at", json.string(card.created_at)),
+    #("has_new_notes", json.bool(card.has_new_notes)),
   ])
 }
 

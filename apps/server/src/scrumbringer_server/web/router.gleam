@@ -26,6 +26,8 @@ import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/capabilities
+import scrumbringer_server/http/card_notes
+import scrumbringer_server/http/card_views
 import scrumbringer_server/http/cards
 import scrumbringer_server/http/me_metrics
 import scrumbringer_server/http/org_invite_links
@@ -265,6 +267,15 @@ fn route_cards(
         Some(pid) -> Some(cards.handle_project_cards(req, auth_ctx(ctx), pid))
         None -> Some(wisp.not_found())
       }
+
+    ["api", "v1", "cards", card_id, "notes", note_id] ->
+      Some(card_notes.handle_card_note(req, auth_ctx(ctx), card_id, note_id))
+
+    ["api", "v1", "cards", card_id, "notes"] ->
+      Some(card_notes.handle_card_notes(req, auth_ctx(ctx), card_id))
+
+    ["api", "v1", "views", "cards", card_id] ->
+      Some(card_views.handle_card_view(req, auth_ctx(ctx), card_id))
 
     ["api", "v1", "cards", card_id] ->
       case parse_int_segment(card_id) {

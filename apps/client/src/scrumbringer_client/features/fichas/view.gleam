@@ -18,7 +18,6 @@
 //// - **api/cards.gleam**: Handles card data fetching
 //// - **components/card_detail_modal.gleam**: Card detail component
 
-import gleam/dict
 import gleam/dynamic/decode
 import gleam/int
 import gleam/json
@@ -33,18 +32,18 @@ import lustre/event
 import domain/card.{type Card, type CardState, Cerrada, EnCurso, Pendiente}
 import domain/task as domain_task
 import domain/task_status as domain_task_status
-import domain/task_type as domain_task_type
 import scrumbringer_client/client_state.{
-  type Model, type Msg, CloseCardDetail, Loaded, Loading, OpenCardDetail,
-  pool_msg,
+  type Model, type Msg, CloseCardDetail, Loaded, Loading,
+  MemberCreateDialogOpenedWithCard, OpenCardDetail, pool_msg,
 }
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/permissions
 import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/icons
-import scrumbringer_client/utils/card_queries
 import scrumbringer_client/update_helpers
+import scrumbringer_client/utils/card_queries
 
 // =============================================================================
 // View Functions
@@ -141,6 +140,22 @@ fn view_card_item(model: Model, card: Card) -> Element(Msg) {
     [
       div([attribute.class("ficha-header")], [
         span([attribute.class("ficha-title")], [text(card.title)]),
+        // AC16: Notes indicator with styled tooltip
+        case card.has_new_notes {
+          True ->
+            span(
+              [
+                attribute.class("card-notes-indicator tooltip-trigger"),
+                attribute.attribute("data-testid", "card-notes-indicator"),
+                attribute.attribute(
+                  "data-tooltip",
+                  update_helpers.i18n_t(model, i18n_text.NewNotesTooltip),
+                ),
+              ],
+              [text("[!]")],
+            )
+          False -> element.none()
+        },
         span([attribute.class("ficha-state-badge " <> state_class)], [
           text(state_label),
         ]),
@@ -188,7 +203,8 @@ fn color_from_string(
 
 // Justification: nested case improves clarity for branching logic.
 /// Render the card-detail-modal custom element when a card is open.
-fn view_card_detail_modal(model: Model) -> Element(Msg) {
+/// Made public for use in client_view.gleam (Story 5.3: Pool/Kanban card detail)
+pub fn view_card_detail_modal(model: Model) -> Element(Msg) {
   case model.member.card_detail_open {
     option.None -> element.none()
     option.Some(card_id) -> {
@@ -198,14 +214,21 @@ fn view_card_detail_modal(model: Model) -> Element(Msg) {
       case card_opt {
         option.None -> element.none()
         option.Some(card) -> {
-          // Get task types for this project
-          let task_types =
-            dict.get(model.member.member_task_types_by_project, card.project_id)
-            |> option.from_result
-            |> option.unwrap([])
-
           // Get tasks for this card (filter from member_tasks if available)
           let tasks = get_card_tasks(model, card_id)
+          let current_user_id = case model.core.user {
+            option.Some(user) -> user.id
+            option.None -> 0
+          }
+          let is_org_admin = case model.core.user {
+            option.Some(user) -> permissions.is_org_admin(user.org_role)
+            option.None -> False
+          }
+          let is_manager = case update_helpers.selected_project(model) {
+            option.Some(project) -> permissions.is_project_manager(project)
+            option.None -> False
+          }
+          let can_manage_notes = is_org_admin || is_manager
 
           element.element(
             "card-detail-modal",
@@ -213,13 +236,23 @@ fn view_card_detail_modal(model: Model) -> Element(Msg) {
               // Attributes (strings)
               attribute.attribute("card-id", int.to_string(card_id)),
               attribute.attribute("locale", locale.serialize(model.ui.locale)),
+              attribute.attribute(
+                "current-user-id",
+                int.to_string(current_user_id),
+              ),
               attribute.attribute("project-id", int.to_string(card.project_id)),
+              attribute.attribute(
+                "can-manage-notes",
+                bool_to_string(can_manage_notes),
+              ),
               // Properties (JSON)
               attribute.property("card", card_to_json(card)),
-              attribute.property("task-types", task_types_to_json(task_types)),
               attribute.property("tasks", tasks_to_json(tasks)),
-              // Event listeners - use decoder for custom events
-              event.on("task-created", decode_close_detail_event()),
+              // Event listeners
+              event.on(
+                "create-task-requested",
+                decode_create_task_event(card_id),
+              ),
               event.on("close-requested", decode_close_detail_event()),
             ],
             [],
@@ -230,8 +263,13 @@ fn view_card_detail_modal(model: Model) -> Element(Msg) {
   }
 }
 
-/// Decoder for custom events that just returns CloseCardDetail.
-/// When task-created fires, we close the modal and let normal refresh handle data.
+/// Decoder for create-task-requested event.
+/// Opens the main task creation dialog with card_id pre-filled.
+fn decode_create_task_event(card_id: Int) -> decode.Decoder(Msg) {
+  decode.success(pool_msg(MemberCreateDialogOpenedWithCard(card_id)))
+}
+
+/// Decoder for close-requested event.
 fn decode_close_detail_event() -> decode.Decoder(Msg) {
   decode.success(pool_msg(CloseCardDetail))
 }
@@ -266,6 +304,7 @@ fn card_to_json(card: Card) -> json.Json {
     #("completed_count", json.int(card.completed_count)),
     #("created_by", json.int(card.created_by)),
     #("created_at", json.string(card.created_at)),
+    #("has_new_notes", json.bool(card.has_new_notes)),
   ])
 }
 
@@ -277,18 +316,11 @@ fn card_state_to_string(state: CardState) -> String {
   }
 }
 
-fn task_types_to_json(task_types: List(domain_task_type.TaskType)) -> json.Json {
-  json.array(task_types, fn(tt) {
-    json.object([
-      #("id", json.int(tt.id)),
-      #("name", json.string(tt.name)),
-      #("icon", json.string(tt.icon)),
-      #("capability_id", case tt.capability_id {
-        option.Some(id) -> json.int(id)
-        option.None -> json.null()
-      }),
-    ])
-  })
+fn bool_to_string(value: Bool) -> String {
+  case value {
+    True -> "true"
+    False -> "false"
+  }
 }
 
 fn tasks_to_json(tasks: List(domain_task.Task)) -> json.Json {

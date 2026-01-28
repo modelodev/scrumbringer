@@ -3,6 +3,7 @@
 //// Extracted to keep client_update.gleam focused on top-level routing.
 
 import gleam/dict
+import gleam/list
 import gleam/option as opt
 
 import lustre/effect.{type Effect}
@@ -10,6 +11,7 @@ import lustre/effect.{type Effect}
 import domain/card
 import domain/project_role.{Member as MemberRole}
 
+import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
 import scrumbringer_client/features/admin/update as admin_workflow
@@ -538,6 +540,29 @@ pub fn handle_admin(
     client_state.TaskTypeCrudDeleted(type_id) ->
       task_types_workflow.handle_task_type_crud_deleted(model, type_id)
   }
+}
+
+fn clear_card_new_notes(
+  model: client_state.Model,
+  card_id: Int,
+) -> client_state.Model {
+  client_state.update_admin(model, fn(admin) {
+    case admin.cards {
+      client_state.Loaded(cards) ->
+        client_state.AdminModel(
+          ..admin,
+          cards: client_state.Loaded(
+            list.map(cards, fn(card_item) {
+              case card_item.id == card_id {
+                True -> card.Card(..card_item, has_new_notes: False)
+                False -> card_item
+              }
+            }),
+          ),
+        )
+      _ -> admin
+    }
+  })
 }
 
 /// Handles pool.
@@ -1089,12 +1114,20 @@ pub fn handle_pool(
     )
 
     // Card detail (member view) handlers - component manages internal state
-    client_state.OpenCardDetail(card_id) -> #(
-      client_state.update_member(model, fn(member) {
-        client_state.MemberModel(..member, card_detail_open: opt.Some(card_id))
-      }),
-      effect.none(),
-    )
+    client_state.OpenCardDetail(card_id) -> {
+      let model =
+        client_state.update_member(model, fn(member) {
+          client_state.MemberModel(
+            ..member,
+            card_detail_open: opt.Some(card_id),
+          )
+        })
+        |> clear_card_new_notes(card_id)
+
+      let fx = api_cards.mark_card_view(card_id, fn(_res) { client_state.NoOp })
+
+      #(model, fx)
+    }
     client_state.CloseCardDetail -> #(
       client_state.update_member(model, fn(member) {
         client_state.MemberModel(..member, card_detail_open: opt.None)

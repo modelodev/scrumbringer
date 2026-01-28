@@ -112,6 +112,7 @@ pub fn translate(text: Text) -> String {
     text.Adding -> "Añadiendo…"
     text.Removing -> "Quitando…"
     text.Delete -> "Eliminar"
+    text.DeleteAsAdmin -> "Eliminar (como admin)"
     text.Deleting -> "Eliminando…"
     text.Deleted -> "Eliminado"
     text.NoneOption -> "Ninguna"
@@ -142,6 +143,7 @@ pub fn translate(text: Text) -> String {
     text.You -> "Tú"
     text.Notes -> "Notas"
     text.AddNote -> "Añadir nota"
+    text.NotePlaceholder -> "Escribe una nota..."
     text.EditPosition -> "Editar posición"
     text.XLabel -> "x"
     text.YLabel -> "y"
@@ -714,5 +716,27 @@ pub fn translate(text: Text) -> String {
     // AC32: Empty state hints
     text.NoTasksClaimedHint -> "Explora Pool para reclamar una tarea"
     text.NoCardsAssignedHint -> "Ver Tarjetas para ver las disponibles"
+
+    // Story 5.3: Card notes hovers (AC16-AC22)
+    text.NewNotesTooltip -> "Hay notas nuevas"
+    text.EditCardTooltip -> "Editar tarjeta"
+    text.DeleteCardTooltip -> "Eliminar tarjeta"
+    text.ProgressTooltip(completed, in_progress, pending) ->
+      int.to_string(completed)
+      <> " completadas, "
+      <> int.to_string(in_progress)
+      <> " en curso, "
+      <> int.to_string(pending)
+      <> " pendientes"
+    // AC16: Rich tooltip on [!] indicator
+    text.NotesPreviewNewNotes -> "notas nuevas"
+    text.NotesPreviewTimeAgo -> "desde hace"
+    text.NotesPreviewLatest -> "Última:"
+    // AC21: Tab badge tooltip
+    text.TabBadgeTotalNotes -> "notas en total"
+    text.TabBadgeNewNotes -> "nuevas para ti"
+    // AC21: Tab labels
+    text.TabTasks -> "Tareas"
+    text.TabNotes -> "Notas"
   }
 }

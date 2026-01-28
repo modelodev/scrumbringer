@@ -452,13 +452,17 @@ fn view_member_three_panel(
   let center_content = build_center_panel(model, user)
   let right_content = build_right_panel(model, user)
 
-  three_panel_layout.view_i18n(
-    left_content,
-    center_content,
-    right_content,
-    update_helpers.i18n_t(model, i18n_text.MainNavigation),
-    update_helpers.i18n_t(model, i18n_text.MyActivity),
-  )
+  element.fragment([
+    three_panel_layout.view_i18n(
+      left_content,
+      center_content,
+      right_content,
+      update_helpers.i18n_t(model, i18n_text.MainNavigation),
+      update_helpers.i18n_t(model, i18n_text.MyActivity),
+    ),
+    // Story 5.3: Card detail modal for Pool/Lista/Kanban views
+    view_member_card_detail_modal(model, user),
+  ])
 }
 
 // Justification: large function kept intact to preserve cohesive UI logic.
@@ -1091,4 +1095,17 @@ fn view_claimed_task_row(
       ),
     ]),
   ])
+}
+
+// =============================================================================
+// Card Detail Modal for Member Views
+// =============================================================================
+
+/// Renders the card detail modal for Pool/Lista/Kanban views.
+/// Story 5.3: Delegates to fichas_view.view_card_detail_modal.
+fn view_member_card_detail_modal(
+  model: client_state.Model,
+  _user: User,
+) -> Element(client_state.Msg) {
+  fichas_view.view_card_detail_modal(model)
 }

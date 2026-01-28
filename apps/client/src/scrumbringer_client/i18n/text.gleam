@@ -99,6 +99,7 @@ pub type Text {
   Adding
   Removing
   Delete
+  DeleteAsAdmin
   Deleting
   Deleted
   NoneOption
@@ -128,6 +129,7 @@ pub type Text {
   You
   Notes
   AddNote
+  NotePlaceholder
   EditPosition
   XLabel
   YLabel
@@ -615,4 +617,20 @@ pub type Text {
   // AC32: Empty state hints with CTAs
   NoTasksClaimedHint
   NoCardsAssignedHint
+
+  // Story 5.3: Card notes hovers (AC16-AC22)
+  NewNotesTooltip
+  EditCardTooltip
+  DeleteCardTooltip
+  ProgressTooltip(completed: Int, in_progress: Int, pending: Int)
+  // AC16: Rich tooltip on [!] indicator
+  NotesPreviewNewNotes
+  NotesPreviewTimeAgo
+  NotesPreviewLatest
+  // AC21: Tab badge tooltip
+  TabBadgeTotalNotes
+  TabBadgeNewNotes
+  // AC21: Tab labels
+  TabTasks
+  TabNotes
 }

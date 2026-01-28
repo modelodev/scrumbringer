@@ -175,6 +175,11 @@ fn card_property_decoder() -> Decoder(Msg) {
   use completed_count <- decode.field("completed_count", decode.int)
   use created_by <- decode.field("created_by", decode.int)
   use created_at <- decode.field("created_at", decode.string)
+  use has_new_notes <- decode.optional_field(
+    "has_new_notes",
+    False,
+    decode.bool,
+  )
   use mode <- decode.field("_mode", decode.string)
   let card =
     Card(
@@ -188,6 +193,7 @@ fn card_property_decoder() -> Decoder(Msg) {
       completed_count: completed_count,
       created_by: created_by,
       created_at: created_at,
+      has_new_notes: has_new_notes,
     )
   case mode {
     "edit" -> decode.success(ModeReceived(ModeEdit(card)))

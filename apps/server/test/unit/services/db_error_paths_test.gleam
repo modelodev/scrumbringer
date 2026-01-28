@@ -10,7 +10,7 @@ pub fn cards_db_returns_not_found_for_missing_card_test() {
   let assert Ok(#(app, _handler, _session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
-  case cards_db.get_card(db, 999999) {
+  case cards_db.get_card(db, 999_999, 1) {
     Ok(_) -> should.fail()
     Error(cards_db.CardNotFound) -> should.be_true(True)
     Error(_) -> should.fail()
@@ -21,7 +21,7 @@ pub fn cards_db_update_returns_not_found_test() {
   let assert Ok(#(app, _handler, _session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
-  case cards_db.update_card(db, 999999, "Title", None, None) {
+  case cards_db.update_card(db, 999_999, "Title", None, None, 1) {
     Ok(_) -> should.fail()
     Error(cards_db.CardNotFound) -> should.be_true(True)
     Error(_) -> should.fail()
@@ -32,7 +32,7 @@ pub fn cards_db_delete_returns_not_found_test() {
   let assert Ok(#(app, _handler, _session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
-  case cards_db.delete_card(db, 999999) {
+  case cards_db.delete_card(db, 999_999) {
     Ok(_) -> should.be_true(True)
     Error(_) -> should.fail()
   }
@@ -43,16 +43,7 @@ pub fn task_templates_update_returns_not_found_test() {
   let scrumbringer_server.App(db: db, ..) = app
 
   case
-    task_templates_db.update_template(
-      db,
-      999999,
-      1,
-      1,
-      None,
-      None,
-      None,
-      None,
-    )
+    task_templates_db.update_template(db, 999_999, 1, 1, None, None, None, None)
   {
     Ok(_) -> should.fail()
     Error(task_templates_db.UpdateNotFound) -> should.be_true(True)
@@ -64,7 +55,7 @@ pub fn task_templates_delete_returns_not_found_test() {
   let assert Ok(#(app, _handler, _session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
-  case task_templates_db.delete_template(db, 999999, 1) {
+  case task_templates_db.delete_template(db, 999_999, 1) {
     Ok(_) -> should.fail()
     Error(task_templates_db.DeleteNotFound) -> should.be_true(True)
     Error(_) -> should.fail()

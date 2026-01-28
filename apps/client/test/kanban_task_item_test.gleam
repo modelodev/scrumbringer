@@ -26,6 +26,7 @@ fn base_config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
       completed_count: 0,
       created_by: 1,
       created_at: "2026-01-01T00:00:00Z",
+      has_new_notes: False,
     )
 
   kanban_board.KanbanConfig(
@@ -119,4 +120,19 @@ pub fn kanban_task_item_renders_claim_button_for_available_test() {
     |> element.to_document_string
 
   string.contains(html, "btn-claim-mini") |> should.be_true
+}
+
+pub fn kanban_card_shows_notes_indicator_test() {
+  let config = base_config([available_task()])
+  let card = case config.cards {
+    [first, ..] -> card.Card(..first, has_new_notes: True)
+    [] -> panic
+  }
+
+  let html =
+    kanban_board.KanbanConfig(..config, cards: [card])
+    |> kanban_board.view
+    |> element.to_document_string
+
+  string.contains(html, "card-notes-indicator") |> should.be_true
 }

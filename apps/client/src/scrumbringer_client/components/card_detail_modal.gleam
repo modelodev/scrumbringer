@@ -2,21 +2,21 @@
 ////
 //// ## Mission
 ////
-//// Encapsulated Lustre Component for displaying card details and managing
-//// task creation within a card context.
+//// Encapsulated Lustre Component for displaying card details with tabs
+//// for Tasks, Notes, and Activity.
 ////
 //// ## Responsibilities
 ////
 //// - Display card header with title, state, progress, description
-//// - Fetch and display tasks belonging to a card
-//// - Handle "Add Task" form with local state
-//// - Emit events to parent for close and task creation
+//// - Tab navigation (Tasks/Notes/Activity)
+//// - Display task list and emit event to open main task dialog
+//// - Manage notes: view, add, delete
+//// - Emit events to parent for actions (close, create-task)
 ////
 //// ## Relations
 ////
 //// - Parent: features/fichas/view.gleam renders this component
-//// - API: api/tasks.gleam for creating tasks
-//// - API: api/cards.gleam for getting card tasks
+//// - API: api/cards.gleam for getting card notes
 
 import gleam/dynamic/decode.{type Decoder}
 import gleam/int
@@ -31,22 +31,30 @@ import lustre/attribute
 import lustre/component
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, input, label, span, text}
+import lustre/element/html.{button, div, span, text}
 import lustre/event
 
 import domain/api_error.{type ApiError}
-import domain/card.{type Card, type CardState, Cerrada, EnCurso, Pendiente}
+import domain/card.{
+  type Card, type CardNote, type CardState, CardNote, Cerrada, EnCurso,
+  Pendiente,
+}
 import domain/task.{type Task}
 import domain/task_status.{Available, Completed}
-import domain/task_type.{type TaskType}
+import domain/task_type
 
+import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/api/core.{type ApiResult}
-import scrumbringer_client/api/tasks as api_tasks
 import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/card_section_header
+import scrumbringer_client/ui/card_tabs
 import scrumbringer_client/ui/color_picker
+import scrumbringer_client/ui/notes_composer
+import scrumbringer_client/ui/notes_list
+import scrumbringer_client/ui/tooltips/types as notes_list_types
 
 // =============================================================================
 // Internal Types
@@ -66,14 +74,18 @@ pub type Model {
     card_id: Option(Int),
     card: Option(Card),
     locale: Locale,
+    current_user_id: Option(Int),
     project_id: Option(Int),
+    can_manage_notes: Bool,
+    // AC21: Tab system
+    active_tab: card_tabs.Tab,
+    notes: Remote(List(CardNote)),
+    // Note dialog state
+    note_dialog_open: Bool,
+    note_content: String,
+    note_in_flight: Bool,
+    note_error: Option(String),
     tasks: Remote(List(Task)),
-    task_types: List(TaskType),
-    add_task_open: Bool,
-    add_task_title: String,
-    add_task_priority: Int,
-    add_task_in_flight: Bool,
-    add_task_error: Option(String),
   )
 }
 
@@ -83,16 +95,23 @@ pub type Msg {
   CardIdReceived(Int)
   CardReceived(Card)
   LocaleReceived(Locale)
+  CurrentUserIdReceived(Int)
   ProjectIdReceived(Int)
-  TaskTypesReceived(List(TaskType))
+  CanManageNotesReceived(Bool)
+  NotesReceived(ApiResult(List(CardNote)))
   TasksReceived(List(Task))
-  // Internal state
-  ToggleAddTaskForm
-  TitleInput(String)
-  PrioritySelect(Int)
-  CancelAddTask
-  SubmitAddTask
-  TaskCreated(ApiResult(Task))
+  // AC21: Tab navigation
+  TabClicked(card_tabs.Tab)
+  // Note dialog
+  NoteDialogOpened
+  NoteDialogClosed
+  NoteContentChanged(String)
+  NoteSubmitted
+  NoteCreated(ApiResult(CardNote))
+  NoteDeleteClicked(Int)
+  NoteDeleted(Int, ApiResult(Nil))
+  // Actions that emit events to parent
+  CreateTaskClicked
   CloseClicked
 }
 
@@ -112,9 +131,10 @@ fn on_attribute_change() -> List(component.Option(Msg)) {
   [
     component.on_attribute_change("card-id", decode_card_id),
     component.on_attribute_change("locale", decode_locale),
+    component.on_attribute_change("current-user-id", decode_current_user_id),
     component.on_attribute_change("project-id", decode_project_id),
+    component.on_attribute_change("can-manage-notes", decode_can_manage_notes),
     component.on_property_change("card", card_property_decoder()),
-    component.on_property_change("task-types", task_types_property_decoder()),
     component.on_property_change("tasks", tasks_property_decoder()),
     component.adopt_styles(True),
   ]
@@ -136,6 +156,17 @@ fn decode_project_id(value: String) -> Result(Msg, Nil) {
   |> result.replace_error(Nil)
 }
 
+fn decode_current_user_id(value: String) -> Result(Msg, Nil) {
+  int.parse(value)
+  |> result.map(CurrentUserIdReceived)
+  |> result.replace_error(Nil)
+}
+
+fn decode_can_manage_notes(value: String) -> Result(Msg, Nil) {
+  let enabled = value == "true"
+  Ok(CanManageNotesReceived(enabled))
+}
+
 fn card_property_decoder() -> Decoder(Msg) {
   use id <- decode.field("id", decode.int)
   use project_id <- decode.field("project_id", decode.int)
@@ -147,6 +178,11 @@ fn card_property_decoder() -> Decoder(Msg) {
   use completed_count <- decode.field("completed_count", decode.int)
   use created_by <- decode.field("created_by", decode.int)
   use created_at <- decode.field("created_at", decode.string)
+  use has_new_notes <- decode.optional_field(
+    "has_new_notes",
+    False,
+    decode.bool,
+  )
   decode.success(
     CardReceived(card.Card(
       id: id,
@@ -159,6 +195,7 @@ fn card_property_decoder() -> Decoder(Msg) {
       completed_count: completed_count,
       created_by: created_by,
       created_at: created_at,
+      has_new_notes: has_new_notes,
     )),
   )
 }
@@ -170,11 +207,6 @@ fn card_state_decoder() -> Decoder(CardState) {
     "cerrada" -> decode.success(Cerrada)
     _ -> decode.success(Pendiente)
   }
-}
-
-fn task_types_property_decoder() -> Decoder(Msg) {
-  decode.list(task_type_decoder())
-  |> decode.map(TaskTypesReceived)
 }
 
 fn tasks_property_decoder() -> Decoder(Msg) {
@@ -288,25 +320,6 @@ fn work_state_from_string(s: String) -> task_status.WorkState {
   }
 }
 
-fn task_type_decoder() -> Decoder(TaskType) {
-  use id <- decode.field("id", decode.int)
-  use name <- decode.field("name", decode.string)
-  use icon <- decode.field("icon", decode.string)
-  use capability_id <- decode.optional_field(
-    "capability_id",
-    option.None,
-    decode.optional(decode.int),
-  )
-  use tasks_count <- decode.optional_field("tasks_count", 0, decode.int)
-  decode.success(task_type.TaskType(
-    id: id,
-    name: name,
-    icon: icon,
-    capability_id: capability_id,
-    tasks_count: tasks_count,
-  ))
-}
-
 // =============================================================================
 // Init
 // =============================================================================
@@ -317,14 +330,17 @@ fn init(_: Nil) -> #(Model, Effect(Msg)) {
       card_id: option.None,
       card: option.None,
       locale: En,
+      current_user_id: option.None,
       project_id: option.None,
+      can_manage_notes: False,
+      // AC21: Default to Tasks tab
+      active_tab: card_tabs.TasksTab,
+      notes: NotAsked,
+      note_dialog_open: False,
+      note_content: "",
+      note_in_flight: False,
+      note_error: option.None,
       tasks: NotAsked,
-      task_types: [],
-      add_task_open: False,
-      add_task_title: "",
-      add_task_priority: 3,
-      add_task_in_flight: False,
-      add_task_error: option.None,
     ),
     effect.none(),
   )
@@ -337,8 +353,8 @@ fn init(_: Nil) -> #(Model, Effect(Msg)) {
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     CardIdReceived(id) -> #(
-      Model(..model, card_id: option.Some(id)),
-      effect.none(),
+      Model(..model, card_id: option.Some(id), notes: Loading),
+      fetch_notes(id),
     )
 
     CardReceived(card) -> #(
@@ -348,13 +364,28 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     LocaleReceived(loc) -> #(Model(..model, locale: loc), effect.none())
 
+    CurrentUserIdReceived(id) -> #(
+      Model(..model, current_user_id: option.Some(id)),
+      effect.none(),
+    )
+
     ProjectIdReceived(id) -> #(
       Model(..model, project_id: option.Some(id)),
       effect.none(),
     )
 
-    TaskTypesReceived(types) -> #(
-      Model(..model, task_types: types),
+    CanManageNotesReceived(can_manage) -> #(
+      Model(..model, can_manage_notes: can_manage),
+      effect.none(),
+    )
+
+    NotesReceived(Ok(notes)) -> #(
+      Model(..model, notes: Loaded(notes), note_error: option.None),
+      effect.none(),
+    )
+
+    NotesReceived(Error(err)) -> #(
+      Model(..model, notes: Failed(err), note_error: option.Some(err.message)),
       effect.none(),
     )
 
@@ -363,142 +394,135 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       effect.none(),
     )
 
-    ToggleAddTaskForm -> #(
-      Model(..model, add_task_open: !model.add_task_open),
+    // AC21: Tab navigation
+    TabClicked(tab) -> #(Model(..model, active_tab: tab), effect.none())
+
+    // Note dialog
+    NoteDialogOpened -> #(
+      Model(..model, note_dialog_open: True, note_error: option.None),
       effect.none(),
     )
 
-    TitleInput(title) -> #(Model(..model, add_task_title: title), effect.none())
-
-    PrioritySelect(priority) -> #(
-      Model(..model, add_task_priority: priority),
-      effect.none(),
-    )
-
-    CancelAddTask -> #(
+    NoteDialogClosed -> #(
       Model(
         ..model,
-        add_task_open: False,
-        add_task_title: "",
-        add_task_priority: 3,
-        add_task_error: option.None,
+        note_dialog_open: False,
+        note_content: "",
+        note_error: option.None,
       ),
       effect.none(),
     )
 
-    SubmitAddTask -> handle_submit_add_task(model)
-
-    TaskCreated(Ok(_task)) -> #(
-      Model(
-        ..model,
-        add_task_in_flight: False,
-        add_task_open: False,
-        add_task_title: "",
-        add_task_priority: 3,
-        add_task_error: option.None,
-      ),
-      emit_task_created(),
+    NoteContentChanged(content) -> #(
+      Model(..model, note_content: content, note_error: option.None),
+      effect.none(),
     )
 
-    TaskCreated(Error(err)) -> #(
+    NoteSubmitted -> handle_submit_note(model)
+
+    NoteCreated(Ok(note)) -> #(
       Model(
         ..model,
-        add_task_in_flight: False,
-        add_task_error: option.Some(err.message),
+        note_dialog_open: False,
+        note_in_flight: False,
+        note_content: "",
+        note_error: option.None,
+        notes: Loaded(append_note(model.notes, note)),
       ),
       effect.none(),
     )
+
+    NoteCreated(Error(err)) -> #(
+      Model(
+        ..model,
+        note_in_flight: False,
+        note_error: option.Some(err.message),
+      ),
+      effect.none(),
+    )
+
+    NoteDeleteClicked(note_id) -> handle_delete_note(model, note_id)
+
+    NoteDeleted(note_id, Ok(_)) -> #(
+      Model(
+        ..model,
+        note_error: option.None,
+        notes: Loaded(remove_note(model.notes, note_id)),
+      ),
+      effect.none(),
+    )
+
+    NoteDeleted(_note_id, Error(err)) -> #(
+      Model(..model, note_error: option.Some(err.message)),
+      effect.none(),
+    )
+
+    // Actions that emit events to parent
+    CreateTaskClicked -> #(model, emit_create_task_requested())
 
     CloseClicked -> #(model, emit_close_requested())
   }
 }
 
-fn handle_submit_add_task(model: Model) -> #(Model, Effect(Msg)) {
-  // Guard: already in flight
-  case model.add_task_in_flight {
+fn fetch_notes(card_id: Int) -> Effect(Msg) {
+  api_cards.get_card_notes(card_id, NotesReceived)
+}
+
+fn handle_submit_note(model: Model) -> #(Model, Effect(Msg)) {
+  case model.note_in_flight {
     True -> #(model, effect.none())
-    False -> validate_and_submit(model)
+    False -> validate_and_submit_note(model)
   }
 }
 
-fn validate_and_submit(model: Model) -> #(Model, Effect(Msg)) {
-  let title = string.trim(model.add_task_title)
+fn validate_and_submit_note(model: Model) -> #(Model, Effect(Msg)) {
+  let content = string.trim(model.note_content)
 
-  // Validate title
-  case title == "" {
+  case content == "" {
     True -> #(
       Model(
         ..model,
-        add_task_error: option.Some(t(model.locale, i18n_text.TitleRequired)),
+        note_error: option.Some(t(model.locale, i18n_text.ContentRequired)),
       ),
       effect.none(),
     )
-    False -> validate_and_submit_with_type(model, title)
+    False -> submit_note(model, content)
   }
 }
 
-fn validate_and_submit_with_type(
-  model: Model,
-  title: String,
-) -> #(Model, Effect(Msg)) {
-  // Get project_id from card or attribute
-  let project_id_opt = case model.card {
-    option.Some(c) -> option.Some(c.project_id)
-    option.None -> model.project_id
-  }
-
-  case project_id_opt {
-    option.None -> #(
-      Model(
-        ..model,
-        add_task_error: option.Some(t(
-          model.locale,
-          i18n_text.SelectProjectFirst,
-        )),
-      ),
-      effect.none(),
+fn submit_note(model: Model, content: String) -> #(Model, Effect(Msg)) {
+  case model.card_id {
+    option.None -> #(model, effect.none())
+    option.Some(card_id) -> #(
+      Model(..model, note_in_flight: True, note_error: option.None),
+      api_cards.create_card_note(card_id, content, NoteCreated),
     )
-    option.Some(project_id) ->
-      validate_task_type_and_submit(model, title, project_id)
   }
 }
 
-fn validate_task_type_and_submit(
-  model: Model,
-  title: String,
-  project_id: Int,
-) -> #(Model, Effect(Msg)) {
-  // Get first task type as default
-  case list.first(model.task_types) {
-    Error(_) -> #(
-      Model(
-        ..model,
-        add_task_error: option.Some(t(model.locale, i18n_text.TypeRequired)),
-      ),
-      effect.none(),
+fn handle_delete_note(model: Model, note_id: Int) -> #(Model, Effect(Msg)) {
+  case model.card_id {
+    option.None -> #(model, effect.none())
+    option.Some(card_id) -> #(
+      model,
+      api_cards.delete_card_note(card_id, note_id, fn(result) {
+        NoteDeleted(note_id, result)
+      }),
     )
-    Ok(first_type) -> {
-      let card_id = case model.card {
-        option.Some(c) -> option.Some(c.id)
-        option.None -> model.card_id
-      }
+  }
+}
 
-      let model =
-        Model(..model, add_task_in_flight: True, add_task_error: option.None)
+fn append_note(notes: Remote(List(CardNote)), note: CardNote) -> List(CardNote) {
+  case notes {
+    Loaded(existing) -> list.append(existing, [note])
+    _ -> [note]
+  }
+}
 
-      #(
-        model,
-        api_tasks.create_task_with_card(
-          project_id,
-          title,
-          option.None,
-          model.add_task_priority,
-          first_type.id,
-          card_id,
-          TaskCreated,
-        ),
-      )
-    }
+fn remove_note(notes: Remote(List(CardNote)), note_id: Int) -> List(CardNote) {
+  case notes {
+    Loaded(existing) -> list.filter(existing, fn(note) { note.id != note_id })
+    _ -> []
   }
 }
 
@@ -506,9 +530,12 @@ fn validate_task_type_and_submit(
 // Effects
 // =============================================================================
 
-/// Emit task-created custom event to parent.
-fn emit_task_created() -> Effect(Msg) {
-  effect.from(fn(_dispatch) { emit_custom_event("task-created", json.null()) })
+/// Emit create-task-requested custom event to parent.
+/// The parent will open the main task creation dialog pre-filled with card_id.
+fn emit_create_task_requested() -> Effect(Msg) {
+  effect.from(fn(_dispatch) {
+    emit_custom_event("create-task-requested", json.null())
+  })
 }
 
 /// Emit close-requested custom event to parent.
@@ -538,6 +565,12 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
   let color_opt = color_from_string(card.color)
   let border_class = color_picker.border_class(color_opt)
 
+  // AC21: Calculate notes count for tab display
+  let notes_count = case model.notes {
+    Loaded(notes_list) -> list.length(notes_list)
+    _ -> 0
+  }
+
   div([attribute.class("card-detail-modal")], [
     // Backdrop (clicking closes modal)
     div(
@@ -550,8 +583,28 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
     // Modal content
     div([attribute.class("modal-content card-detail " <> border_class)], [
       view_card_header(model, card),
-      view_card_tasks_section(model),
+      // AC21: Tab navigation
+      card_tabs.view(card_tabs.Config(
+        active_tab: model.active_tab,
+        notes_count: notes_count,
+        has_new_notes: card.has_new_notes,
+        labels: card_tabs.Labels(
+          tasks: t(model.locale, i18n_text.TabTasks),
+          notes: t(model.locale, i18n_text.TabNotes),
+        ),
+        on_tab_click: TabClicked,
+      )),
+      // AC21: Conditional section rendering based on active tab
+      case model.active_tab {
+        card_tabs.TasksTab -> view_card_tasks_section(model)
+        card_tabs.NotesTab -> view_card_notes_section(model)
+      },
     ]),
+    // Note creation dialog (modal within modal)
+    case model.note_dialog_open {
+      True -> view_note_dialog(model)
+      False -> element.none()
+    },
   ])
 }
 
@@ -591,19 +644,37 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
         ),
       ]),
     ]),
-    // Progress bar
-    div([attribute.class("card-detail-progress-bar")], [
-      div(
-        [
-          attribute.class("card-detail-progress-fill"),
-          attribute.attribute(
-            "style",
-            "width: " <> int.to_string(progress_pct) <> "%",
+    // Progress bar with tooltip (AC18)
+    // Note: in_progress is approximated as (task_count - completed_count) for now
+    // Full breakdown requires task status counts from model.tasks
+    div(
+      [
+        attribute.class("card-detail-progress-bar"),
+        attribute.attribute(
+          "title",
+          t(
+            model.locale,
+            i18n_text.ProgressTooltip(
+              card.completed_count,
+              0,
+              card.task_count - card.completed_count,
+            ),
           ),
-        ],
-        [],
-      ),
-    ]),
+        ),
+      ],
+      [
+        div(
+          [
+            attribute.class("card-detail-progress-fill"),
+            attribute.attribute(
+              "style",
+              "width: " <> int.to_string(progress_pct) <> "%",
+            ),
+          ],
+          [],
+        ),
+      ],
+    ),
     // Description
     case card.description {
       "" -> element.none()
@@ -612,33 +683,134 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
   ])
 }
 
-// Justification: nested case improves clarity for branching logic.
+fn view_card_notes_section(model: Model) -> Element(Msg) {
+  let notes = case model.notes {
+    Loaded(list) -> list
+    _ -> []
+  }
+  let count_label =
+    t(model.locale, i18n_text.Notes)
+    <> " ("
+    <> int.to_string(list.length(notes))
+    <> ")"
+
+  div([attribute.class("card-detail-notes-section")], [
+    // Shared section header component (consistent with Tasks tab)
+    // Button opens dialog instead of submitting directly
+    card_section_header.view(card_section_header.Config(
+      title: count_label,
+      button_label: "+ " <> t(model.locale, i18n_text.AddNote),
+      button_disabled: False,
+      on_button_click: NoteDialogOpened,
+    )),
+    case model.notes {
+      Loading ->
+        div([attribute.class("card-notes-loading")], [
+          text(t(model.locale, i18n_text.LoadingEllipsis)),
+        ])
+      Failed(err) ->
+        div([attribute.class("card-notes-error")], [text(err.message)])
+      _ ->
+        notes_list.view(
+          // Reverse to show newest first (descending chronological order)
+          list.map(list.reverse(notes), fn(note) { note_to_view(model, note) }),
+          t(model.locale, i18n_text.Delete),
+          t(model.locale, i18n_text.DeleteAsAdmin),
+          NoteDeleteClicked,
+        )
+    },
+  ])
+}
+
+/// Note creation dialog - modal overlay within the card detail modal.
+fn view_note_dialog(model: Model) -> Element(Msg) {
+  div([attribute.class("note-dialog-overlay")], [
+    div([attribute.class("note-dialog")], [
+      // Header
+      div([attribute.class("note-dialog-header")], [
+        span([attribute.class("note-dialog-title")], [
+          text(t(model.locale, i18n_text.AddNote)),
+        ]),
+        button(
+          [
+            attribute.class("btn-icon"),
+            event.on_click(NoteDialogClosed),
+            attribute.attribute("aria-label", "Close"),
+          ],
+          [text("\u{2715}")],
+        ),
+      ]),
+      // Content - textarea
+      div([attribute.class("note-dialog-body")], [
+        notes_composer.view(notes_composer.Config(
+          content: model.note_content,
+          placeholder: t(model.locale, i18n_text.NotePlaceholder),
+          submit_label: t(model.locale, i18n_text.AddNote),
+          submit_disabled: model.note_in_flight || model.note_content == "",
+          error: model.note_error,
+          on_content_change: NoteContentChanged,
+          on_submit: NoteSubmitted,
+          show_button: True,
+        )),
+      ]),
+      // Footer with actions
+      div([attribute.class("note-dialog-footer")], [
+        button(
+          [attribute.class("btn btn-secondary"), event.on_click(NoteDialogClosed)],
+          [text(t(model.locale, i18n_text.Cancel))],
+        ),
+      ]),
+    ]),
+  ])
+}
+
+fn note_to_view(model: Model, note: CardNote) -> notes_list.NoteView {
+  let CardNote(
+    id: id,
+    user_id: user_id,
+    content: content,
+    created_at: created_at,
+    ..,
+  ) = note
+  let current_user_id = option.unwrap(model.current_user_id, 0)
+  let is_own_note = user_id == current_user_id
+  let author_label = case is_own_note {
+    True -> t(model.locale, i18n_text.You)
+    False -> t(model.locale, i18n_text.UserNumber(user_id))
+  }
+  let can_delete = model.can_manage_notes || is_own_note
+  let delete_context = case is_own_note {
+    True -> notes_list_types.DeleteOwnNote
+    False -> notes_list_types.DeleteAsAdmin
+  }
+
+  notes_list.NoteView(
+    id: id,
+    author: author_label,
+    created_at: created_at,
+    content: content,
+    can_delete: can_delete,
+    delete_context: delete_context,
+    author_email: "",
+    author_role: "",
+  )
+}
+
 fn view_card_tasks_section(model: Model) -> Element(Msg) {
   let tasks = case model.tasks {
-    Loaded(t) -> t
+    Loaded(task_list) -> task_list
     _ -> []
   }
 
   div([attribute.class("card-detail-tasks-section")], [
-    // Section header with Add button
-    div([attribute.class("card-detail-tasks-header")], [
-      span([attribute.class("card-detail-tasks-title")], [
-        text(t(model.locale, i18n_text.CardTasks)),
-      ]),
-      button(
-        [
-          attribute.class("btn btn-sm btn-primary"),
-          event.on_click(ToggleAddTaskForm),
-        ],
-        [text("+ " <> t(model.locale, i18n_text.CardAddTask))],
-      ),
-    ]),
-    // Add task form (if open)
-    case model.add_task_open {
-      True -> view_add_task_form(model)
-      False -> element.none()
-    },
-    // Loading state
+    // Shared section header component (same as Notes tab)
+    card_section_header.view(card_section_header.Config(
+      title: t(model.locale, i18n_text.CardTasks),
+      button_label: "+ " <> t(model.locale, i18n_text.CardAddTask),
+      button_disabled: False,
+      on_button_click: CreateTaskClicked,
+    )),
+    // Task list content
     case model.tasks {
       Loading ->
         div([attribute.class("card-tasks-loading")], [
@@ -655,82 +827,6 @@ fn view_card_tasks_section(model: Model) -> Element(Msg) {
         }
     },
   ])
-}
-
-fn view_add_task_form(model: Model) -> Element(Msg) {
-  div([attribute.class("card-add-task-form")], [
-    div([attribute.class("form-group")], [
-      label([attribute.for("task-title")], [
-        text(t(model.locale, i18n_text.Title)),
-      ]),
-      input([
-        attribute.type_("text"),
-        attribute.id("task-title"),
-        attribute.class("form-input"),
-        attribute.placeholder(t(model.locale, i18n_text.TaskTitlePlaceholder)),
-        attribute.value(model.add_task_title),
-        event.on_input(TitleInput),
-      ]),
-    ]),
-    div([attribute.class("form-row")], [
-      // Task type selector (placeholder)
-      div([attribute.class("form-group form-group-half")], [
-        label([], [text(t(model.locale, i18n_text.TaskType))]),
-        // For now, use a simple text showing default type
-        span([attribute.class("form-static")], [text("Feature")]),
-      ]),
-      // Priority selector
-      div([attribute.class("form-group form-group-half")], [
-        label([], [text(t(model.locale, i18n_text.Priority))]),
-        view_priority_dots(model.add_task_priority),
-      ]),
-    ]),
-    // Error display
-    case model.add_task_error {
-      option.Some(err) -> div([attribute.class("form-error")], [text(err)])
-      option.None -> element.none()
-    },
-    div([attribute.class("form-actions")], [
-      button(
-        [
-          attribute.class("btn btn-secondary"),
-          event.on_click(CancelAddTask),
-        ],
-        [text(t(model.locale, i18n_text.Cancel))],
-      ),
-      button(
-        [
-          attribute.class("btn btn-primary"),
-          event.on_click(SubmitAddTask),
-          attribute.disabled(
-            model.add_task_title == "" || model.add_task_in_flight,
-          ),
-        ],
-        [text(t(model.locale, i18n_text.Create))],
-      ),
-    ]),
-  ])
-}
-
-fn view_priority_dots(priority: Int) -> Element(Msg) {
-  div(
-    [attribute.class("priority-dots")],
-    list.range(1, 5)
-      |> list.map(fn(p) {
-        let active_class = case p <= priority {
-          True -> " active"
-          False -> ""
-        }
-        button(
-          [
-            attribute.class("priority-dot" <> active_class),
-            event.on_click(PrioritySelect(p)),
-            attribute.attribute("aria-label", "Priority " <> int.to_string(p)),
-          ],
-          [],
-        )
-      }),
-  )
 }
 
 fn view_empty_tasks(model: Model) -> Element(Msg) {

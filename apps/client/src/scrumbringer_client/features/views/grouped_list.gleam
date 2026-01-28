@@ -155,6 +155,26 @@ fn view_card_group(
             }),
           ]),
           span([attribute.class("card-title")], [text(title)]),
+          case group.card {
+            // AC16: Notes indicator with styled tooltip
+            Some(c) ->
+              case c.has_new_notes {
+                True ->
+                  span(
+                    [
+                      attribute.class("card-notes-indicator tooltip-trigger"),
+                      attribute.attribute("data-testid", "card-notes-indicator"),
+                      attribute.attribute(
+                        "data-tooltip",
+                        i18n.t(config.locale, i18n_text.NewNotesTooltip),
+                      ),
+                    ],
+                    [text("[!]")],
+                  )
+                False -> element.none()
+              }
+            None -> element.none()
+          },
           // Color indicator if card has color
           case group.card {
             Some(c) ->

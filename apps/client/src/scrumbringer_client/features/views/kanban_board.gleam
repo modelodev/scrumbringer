@@ -205,6 +205,24 @@ fn view_card(config: KanbanConfig(msg), cwp: CardWithProgress) -> Element(msg) {
               None -> element.none()
             },
             text(cwp.card.title),
+            // AC16: Notes indicator with styled tooltip
+            case cwp.card.has_new_notes {
+              True ->
+                span(
+                  [
+                    attribute.class(
+                      "card-notes-indicator tooltip-trigger",
+                    ),
+                    attribute.attribute("data-testid", "card-notes-indicator"),
+                    attribute.attribute(
+                      "data-tooltip",
+                      i18n.t(config.locale, i18n_text.NewNotesTooltip),
+                    ),
+                  ],
+                  [text("[!]")],
+                )
+              False -> element.none()
+            },
           ],
         ),
         // Context menu for PM/Admin

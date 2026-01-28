@@ -406,6 +406,315 @@ pub fn task_notes_create_requires_csrf_test() {
   note_res.status |> should.equal(403)
 }
 
+// Justification: large function kept intact to preserve cohesive logic.
+pub fn card_notes_list_requires_card_membership_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_member_user(handler, db, "member@example.com", "inv_member")
+  create_member_user(handler, db, "outsider@example.com", "inv_out")
+
+  let member_id =
+    single_int(
+      db,
+      "select id from users where email = 'member@example.com'",
+      [],
+    )
+
+  add_member(handler, admin_session, admin_csrf, project_id, member_id)
+
+  let member_login_res =
+    login_as(handler, "member@example.com", "passwordpassword")
+  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
+  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
+
+  let outsider_login_res =
+    login_as(handler, "outsider@example.com", "passwordpassword")
+  let outsider_session =
+    find_cookie_value(outsider_login_res.headers, "sb_session")
+  let outsider_csrf = find_cookie_value(outsider_login_res.headers, "sb_csrf")
+
+  let card_id =
+    create_card(handler, admin_session, admin_csrf, project_id, "Card")
+
+  let _ =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/cards/" <> int_to_string(card_id) <> "/notes",
+      )
+      |> request.set_cookie("sb_session", member_session)
+      |> request.set_cookie("sb_csrf", member_csrf)
+      |> request.set_header("X-CSRF", member_csrf)
+      |> simulate.json_body(json.object([#("content", json.string("One"))])),
+    )
+
+  let member_list_res =
+    handler(
+      simulate.request(
+        http.Get,
+        "/api/v1/cards/" <> int_to_string(card_id) <> "/notes",
+      )
+      |> request.set_cookie("sb_session", member_session)
+      |> request.set_cookie("sb_csrf", member_csrf),
+    )
+
+  member_list_res.status |> should.equal(200)
+  decode_note_list_contents(simulate.read_body(member_list_res))
+  |> should.equal(["One"])
+
+  let outsider_req =
+    simulate.request(
+      http.Get,
+      "/api/v1/cards/" <> int_to_string(card_id) <> "/notes",
+    )
+    |> request.set_cookie("sb_session", outsider_session)
+    |> request.set_cookie("sb_csrf", outsider_csrf)
+
+  let outsider_res = handler(outsider_req)
+  outsider_res.status |> should.equal(404)
+  string.contains(simulate.read_body(outsider_res), "NOT_FOUND")
+  |> should.be_true
+}
+
+// Justification: large function kept intact to preserve cohesive logic.
+pub fn card_notes_create_and_delete_permissions_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_member_user(handler, db, "member1@example.com", "inv_member1")
+  create_member_user(handler, db, "member2@example.com", "inv_member2")
+
+  let member1_id =
+    single_int(
+      db,
+      "select id from users where email = 'member1@example.com'",
+      [],
+    )
+  let member2_id =
+    single_int(
+      db,
+      "select id from users where email = 'member2@example.com'",
+      [],
+    )
+
+  add_member(handler, admin_session, admin_csrf, project_id, member1_id)
+  add_member(handler, admin_session, admin_csrf, project_id, member2_id)
+
+  let member1_login_res =
+    login_as(handler, "member1@example.com", "passwordpassword")
+  let member1_session =
+    find_cookie_value(member1_login_res.headers, "sb_session")
+  let member1_csrf = find_cookie_value(member1_login_res.headers, "sb_csrf")
+
+  let member2_login_res =
+    login_as(handler, "member2@example.com", "passwordpassword")
+  let member2_session =
+    find_cookie_value(member2_login_res.headers, "sb_session")
+  let member2_csrf = find_cookie_value(member2_login_res.headers, "sb_csrf")
+
+  let card_id =
+    create_card(handler, admin_session, admin_csrf, project_id, "Card")
+
+  let note_req =
+    simulate.request(
+      http.Post,
+      "/api/v1/cards/" <> int_to_string(card_id) <> "/notes",
+    )
+    |> request.set_cookie("sb_session", member1_session)
+    |> request.set_cookie("sb_csrf", member1_csrf)
+    |> request.set_header("X-CSRF", member1_csrf)
+    |> simulate.json_body(json.object([#("content", json.string("Note"))]))
+
+  let note_res = handler(note_req)
+  note_res.status |> should.equal(200)
+  let note_id = decode_note_id(simulate.read_body(note_res))
+
+  let delete_forbidden =
+    simulate.request(
+      http.Delete,
+      "/api/v1/cards/"
+        <> int_to_string(card_id)
+        <> "/notes/"
+        <> int_to_string(note_id),
+    )
+    |> request.set_cookie("sb_session", member2_session)
+    |> request.set_cookie("sb_csrf", member2_csrf)
+    |> request.set_header("X-CSRF", member2_csrf)
+
+  handler(delete_forbidden).status |> should.equal(403)
+
+  let delete_author =
+    simulate.request(
+      http.Delete,
+      "/api/v1/cards/"
+        <> int_to_string(card_id)
+        <> "/notes/"
+        <> int_to_string(note_id),
+    )
+    |> request.set_cookie("sb_session", member1_session)
+    |> request.set_cookie("sb_csrf", member1_csrf)
+    |> request.set_header("X-CSRF", member1_csrf)
+
+  handler(delete_author).status |> should.equal(204)
+
+  let note_res_2 = handler(note_req)
+  note_res_2.status |> should.equal(200)
+  let note_id_2 = decode_note_id(simulate.read_body(note_res_2))
+
+  let delete_admin =
+    simulate.request(
+      http.Delete,
+      "/api/v1/cards/"
+        <> int_to_string(card_id)
+        <> "/notes/"
+        <> int_to_string(note_id_2),
+    )
+    |> request.set_cookie("sb_session", admin_session)
+    |> request.set_cookie("sb_csrf", admin_csrf)
+    |> request.set_header("X-CSRF", admin_csrf)
+
+  handler(delete_admin).status |> should.equal(204)
+}
+
+pub fn card_notes_create_requires_csrf_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_member_user(handler, db, "member@example.com", "inv_member")
+
+  let member_id =
+    single_int(
+      db,
+      "select id from users where email = 'member@example.com'",
+      [],
+    )
+
+  add_member(handler, admin_session, admin_csrf, project_id, member_id)
+
+  let member_login_res =
+    login_as(handler, "member@example.com", "passwordpassword")
+  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
+  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
+
+  let card_id =
+    create_card(handler, admin_session, admin_csrf, project_id, "Card")
+
+  let note_req =
+    simulate.request(
+      http.Post,
+      "/api/v1/cards/" <> int_to_string(card_id) <> "/notes",
+    )
+    |> request.set_cookie("sb_session", member_session)
+    |> request.set_cookie("sb_csrf", member_csrf)
+    |> simulate.json_body(json.object([#("content", json.string("One"))]))
+
+  let note_res = handler(note_req)
+  note_res.status |> should.equal(403)
+}
+
+// Justification: large function kept intact to preserve cohesive logic.
+pub fn card_notes_indicator_updates_after_view_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_member_user(handler, db, "member@example.com", "inv_member")
+  let member_id =
+    single_int(
+      db,
+      "select id from users where email = 'member@example.com'",
+      [],
+    )
+
+  add_member(handler, admin_session, admin_csrf, project_id, member_id)
+
+  let member_login_res =
+    login_as(handler, "member@example.com", "passwordpassword")
+  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
+  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
+
+  let card_id =
+    create_card(handler, admin_session, admin_csrf, project_id, "Card")
+
+  let note_req =
+    simulate.request(
+      http.Post,
+      "/api/v1/cards/" <> int_to_string(card_id) <> "/notes",
+    )
+    |> request.set_cookie("sb_session", member_session)
+    |> request.set_cookie("sb_csrf", member_csrf)
+    |> request.set_header("X-CSRF", member_csrf)
+    |> simulate.json_body(json.object([#("content", json.string("Note"))]))
+
+  handler(note_req).status |> should.equal(200)
+
+  let list_req =
+    simulate.request(
+      http.Get,
+      "/api/v1/projects/" <> int_to_string(project_id) <> "/cards",
+    )
+    |> request.set_cookie("sb_session", member_session)
+    |> request.set_cookie("sb_csrf", member_csrf)
+
+  let list_res = handler(list_req)
+  list_res.status |> should.equal(200)
+  decode_card_has_new_notes(simulate.read_body(list_res), card_id)
+  |> should.equal(True)
+
+  let view_req =
+    simulate.request(http.Put, "/api/v1/views/cards/" <> int_to_string(card_id))
+    |> request.set_cookie("sb_session", member_session)
+    |> request.set_cookie("sb_csrf", member_csrf)
+    |> request.set_header("X-CSRF", member_csrf)
+
+  handler(view_req).status |> should.equal(204)
+
+  let list_res_2 = handler(list_req)
+  list_res_2.status |> should.equal(200)
+  decode_card_has_new_notes(simulate.read_body(list_res_2), card_id)
+  |> should.equal(False)
+}
+
 pub fn task_positions_upsert_requires_csrf_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -765,6 +1074,76 @@ fn decode_note_list_contents(body: String) -> List(String) {
   notes
 }
 
+fn decode_note_id(body: String) -> Int {
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+
+  let note_decoder = {
+    use id <- decode.field("id", decode.int)
+    decode.success(id)
+  }
+
+  let data_decoder = {
+    use note <- decode.field("note", note_decoder)
+    decode.success(note)
+  }
+
+  let response_decoder = {
+    use note_id <- decode.field("data", data_decoder)
+    decode.success(note_id)
+  }
+
+  let assert Ok(note_id) = decode.run(dynamic, response_decoder)
+  note_id
+}
+
+fn decode_card_id(body: String) -> Int {
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+
+  let card_decoder = {
+    use id <- decode.field("id", decode.int)
+    decode.success(id)
+  }
+
+  let data_decoder = {
+    use card <- decode.field("card", card_decoder)
+    decode.success(card)
+  }
+
+  let response_decoder = {
+    use id <- decode.field("data", data_decoder)
+    decode.success(id)
+  }
+
+  let assert Ok(id) = decode.run(dynamic, response_decoder)
+  id
+}
+
+fn decode_card_has_new_notes(body: String, card_id: Int) -> Bool {
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+
+  let card_decoder = {
+    use id <- decode.field("id", decode.int)
+    use has_new_notes <- decode.field("has_new_notes", decode.bool)
+    decode.success(#(id, has_new_notes))
+  }
+
+  let data_decoder = {
+    use cards <- decode.field("cards", decode.list(card_decoder))
+    decode.success(cards)
+  }
+
+  let response_decoder = {
+    use cards <- decode.field("data", data_decoder)
+    decode.success(cards)
+  }
+
+  let assert Ok(cards) = decode.run(dynamic, response_decoder)
+  let assert Ok(#(_, has_new_notes)) =
+    list.find(cards, fn(card) { card.0 == card_id })
+
+  has_new_notes
+}
+
 fn decode_position_task_ids(body: String) -> List(Int) {
   let assert Ok(dynamic) = json.parse(body, decode.dynamic)
 
@@ -928,6 +1307,34 @@ fn create_task(
 
   let assert Ok(id) = decode.run(dynamic, response_decoder)
   id
+}
+
+fn create_card(
+  handler: fn(wisp.Request) -> wisp.Response,
+  session: String,
+  csrf: String,
+  project_id: Int,
+  title: String,
+) -> Int {
+  let req =
+    simulate.request(
+      http.Post,
+      "/api/v1/projects/" <> int_to_string(project_id) <> "/cards",
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+    |> simulate.json_body(
+      json.object([
+        #("title", json.string(title)),
+        #("description", json.string("")),
+      ]),
+    )
+
+  let res = handler(req)
+  res.status |> should.equal(200)
+
+  decode_card_id(simulate.read_body(res))
 }
 
 fn add_member(

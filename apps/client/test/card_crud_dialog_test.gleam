@@ -217,5 +217,6 @@ fn make_test_card() -> Card {
     completed_count: 2,
     created_by: 1,
     created_at: "2026-01-20T00:00:00Z",
+    has_new_notes: False,
   )
 }

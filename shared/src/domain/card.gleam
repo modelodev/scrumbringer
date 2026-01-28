@@ -44,6 +44,7 @@ pub type CardState {
 ///   completed_count: 1,
 ///   created_by: 42,
 ///   created_at: "2026-01-18T10:00:00Z",
+///   has_new_notes: True,
 /// )
 /// ```
 pub type Card {
@@ -57,6 +58,30 @@ pub type Card {
     task_count: Int,
     completed_count: Int,
     created_by: Int,
+    created_at: String,
+    has_new_notes: Bool,
+  )
+}
+
+/// A note attached to a card.
+///
+/// ## Example
+///
+/// ```gleam
+/// CardNote(
+///   id: 1,
+///   card_id: 10,
+///   user_id: 42,
+///   content: "Scope agreed with PM",
+///   created_at: "2026-01-28T12:00:00Z",
+/// )
+/// ```
+pub type CardNote {
+  CardNote(
+    id: Int,
+    card_id: Int,
+    user_id: Int,
+    content: String,
     created_at: String,
   )
 }

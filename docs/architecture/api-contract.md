@@ -271,8 +271,10 @@ Legend:
 | `/api/v1/tasks/:task_id/complete` | POST | M | Must be claimed by caller |
 | `/api/v1/tasks/:task_id/notes` | GET | M | Notes are append-only |
 | `/api/v1/tasks/:task_id/notes` | POST | M | Append-only |
+| `/api/v1/views/tasks/:task_id` | PUT | M | Mark task notes as read (per-user) |
 | `/api/v1/me/task-positions` | GET | M | Per-user positions |
 | `/api/v1/me/task-positions/:task_id` | PUT | M | Per-user positions |
+| `/api/v1/views/cards/:card_id` | PUT | M | Mark card notes as read (per-user) |
 
 ### Health
 
@@ -533,6 +535,13 @@ Invalid transitions return `422 VALIDATION_ERROR`.
   - body: `{ content }`
   - 200: `{ data: { note } }`
 
+### Task Views (per-user)
+
+- `PUT /api/v1/views/tasks/:task_id`
+  - auth: project member (task must belong to a project the user is in)
+  - body: `{}`
+  - 204
+
 ### Task Positions (per-user)
 
 - `GET /api/v1/me/task-positions`
@@ -543,6 +552,13 @@ Invalid transitions return `422 VALIDATION_ERROR`.
   - auth: project member (task must belong to a project the user is in)
   - body: `{ x, y }`
   - 200: `{ data: { position } }`
+
+### Card Views (per-user)
+
+- `PUT /api/v1/views/cards/:card_id`
+  - auth: project member (card must belong to a project the user is in)
+  - body: `{}`
+  - 204
 
 ---
 

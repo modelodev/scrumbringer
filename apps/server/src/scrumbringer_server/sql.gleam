@@ -257,6 +257,263 @@ order by pmc.user_id asc;
   |> pog.execute(db)
 }
 
+/// A row you get from running the `card_notes_create` query
+/// defined in `./src/scrumbringer_server/sql/card_notes_create.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type CardNotesCreateRow {
+  CardNotesCreateRow(
+    id: Int,
+    card_id: Int,
+    user_id: Int,
+    content: String,
+    created_at: String,
+    author_email: String,
+    author_role: String,
+  )
+}
+
+/// name: card_notes_create
+/// AC20: Include author email and role for tooltip
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn card_notes_create(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: String,
+) -> Result(pog.Returned(CardNotesCreateRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use card_id <- decode.field(1, decode.int)
+    use user_id <- decode.field(2, decode.int)
+    use content <- decode.field(3, decode.string)
+    use created_at <- decode.field(4, decode.string)
+    use author_email <- decode.field(5, decode.string)
+    use author_role <- decode.field(6, decode.string)
+    decode.success(CardNotesCreateRow(
+      id:,
+      card_id:,
+      user_id:,
+      content:,
+      created_at:,
+      author_email:,
+      author_role:,
+    ))
+  }
+
+  "-- name: card_notes_create
+-- AC20: Include author email and role for tooltip
+with inserted as (
+  insert into card_notes (card_id, user_id, content)
+  values ($1, $2, $3)
+  returning id, card_id, user_id, content, created_at
+)
+select
+  i.id,
+  i.card_id,
+  i.user_id,
+  i.content,
+  to_char(i.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  u.email as author_email,
+  coalesce(pm.role, u.org_role) as author_role
+from inserted i
+join users u on u.id = i.user_id
+left join cards c on c.id = i.card_id
+left join project_members pm on pm.user_id = i.user_id and pm.project_id = c.project_id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.text(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `card_notes_delete` query
+/// defined in `./src/scrumbringer_server/sql/card_notes_delete.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type CardNotesDeleteRow {
+  CardNotesDeleteRow(id: Int)
+}
+
+/// name: card_notes_delete
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn card_notes_delete(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(CardNotesDeleteRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(CardNotesDeleteRow(id:))
+  }
+
+  "-- name: card_notes_delete
+delete from card_notes
+where card_id = $1
+  and id = $2
+returning id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `card_notes_get` query
+/// defined in `./src/scrumbringer_server/sql/card_notes_get.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type CardNotesGetRow {
+  CardNotesGetRow(
+    id: Int,
+    card_id: Int,
+    user_id: Int,
+    content: String,
+    created_at: String,
+    author_email: String,
+    author_role: String,
+  )
+}
+
+/// name: card_notes_get
+/// AC20: Include author email and role for tooltip
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn card_notes_get(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(CardNotesGetRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use card_id <- decode.field(1, decode.int)
+    use user_id <- decode.field(2, decode.int)
+    use content <- decode.field(3, decode.string)
+    use created_at <- decode.field(4, decode.string)
+    use author_email <- decode.field(5, decode.string)
+    use author_role <- decode.field(6, decode.string)
+    decode.success(CardNotesGetRow(
+      id:,
+      card_id:,
+      user_id:,
+      content:,
+      created_at:,
+      author_email:,
+      author_role:,
+    ))
+  }
+
+  "-- name: card_notes_get
+-- AC20: Include author email and role for tooltip
+select
+  n.id,
+  n.card_id,
+  n.user_id,
+  n.content,
+  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  u.email as author_email,
+  coalesce(pm.role, u.org_role) as author_role
+from card_notes n
+join users u on u.id = n.user_id
+left join cards c on c.id = n.card_id
+left join project_members pm on pm.user_id = n.user_id and pm.project_id = c.project_id
+where n.card_id = $1
+  and n.id = $2;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `card_notes_list` query
+/// defined in `./src/scrumbringer_server/sql/card_notes_list.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type CardNotesListRow {
+  CardNotesListRow(
+    id: Int,
+    card_id: Int,
+    user_id: Int,
+    content: String,
+    created_at: String,
+    author_email: String,
+    author_role: String,
+  )
+}
+
+/// name: card_notes_list
+/// AC20: Include author email and role for tooltip
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn card_notes_list(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(CardNotesListRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use card_id <- decode.field(1, decode.int)
+    use user_id <- decode.field(2, decode.int)
+    use content <- decode.field(3, decode.string)
+    use created_at <- decode.field(4, decode.string)
+    use author_email <- decode.field(5, decode.string)
+    use author_role <- decode.field(6, decode.string)
+    decode.success(CardNotesListRow(
+      id:,
+      card_id:,
+      user_id:,
+      content:,
+      created_at:,
+      author_email:,
+      author_role:,
+    ))
+  }
+
+  "-- name: card_notes_list
+-- AC20: Include author email and role for tooltip
+select
+  n.id,
+  n.card_id,
+  n.user_id,
+  n.content,
+  to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  u.email as author_email,
+  coalesce(pm.role, u.org_role) as author_role
+from card_notes n
+join users u on u.id = n.user_id
+left join cards c on c.id = n.card_id
+left join project_members pm on pm.user_id = n.user_id and pm.project_id = c.project_id
+where n.card_id = $1
+order by n.created_at asc, n.id asc;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `cards_create` query
 /// defined in `./src/scrumbringer_server/sql/cards_create.sql`.
 ///
@@ -367,6 +624,7 @@ pub type CardsGetRow {
     task_count: Int,
     completed_count: Int,
     available_count: Int,
+    has_new_notes: Bool,
   )
 }
 
@@ -378,6 +636,7 @@ pub type CardsGetRow {
 pub fn cards_get(
   db: pog.Connection,
   arg_1: Int,
+  arg_2: Int,
 ) -> Result(pog.Returned(CardsGetRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -390,6 +649,7 @@ pub fn cards_get(
     use task_count <- decode.field(7, decode.int)
     use completed_count <- decode.field(8, decode.int)
     use available_count <- decode.field(9, decode.int)
+    use has_new_notes <- decode.field(10, decode.bool)
     decode.success(CardsGetRow(
       id:,
       project_id:,
@@ -401,6 +661,7 @@ pub fn cards_get(
       task_count:,
       completed_count:,
       available_count:,
+      has_new_notes:,
     ))
   }
 
@@ -415,14 +676,23 @@ SELECT
     to_char(c.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     COUNT(t.id)::int AS task_count,
     COUNT(t.id) FILTER (WHERE t.status = 'completed')::int AS completed_count,
-    COUNT(t.id) FILTER (WHERE t.status = 'available')::int AS available_count
+    COUNT(t.id) FILTER (WHERE t.status = 'available')::int AS available_count,
+    case
+      when max(n.created_at) is null then false
+      when v.last_viewed_at is null then true
+      when max(n.created_at) > v.last_viewed_at then true
+      else false
+    end as has_new_notes
 FROM cards c
 LEFT JOIN tasks t ON t.card_id = c.id
+LEFT JOIN card_notes n ON n.card_id = c.id
+LEFT JOIN user_card_views v ON v.card_id = c.id and v.user_id = $2
 WHERE c.id = $1
-GROUP BY c.id;
+GROUP BY c.id, v.last_viewed_at;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -445,6 +715,7 @@ pub type CardsListRow {
     task_count: Int,
     completed_count: Int,
     available_count: Int,
+    has_new_notes: Bool,
   )
 }
 
@@ -456,6 +727,7 @@ pub type CardsListRow {
 pub fn cards_list(
   db: pog.Connection,
   arg_1: Int,
+  arg_2: Int,
 ) -> Result(pog.Returned(CardsListRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -468,6 +740,7 @@ pub fn cards_list(
     use task_count <- decode.field(7, decode.int)
     use completed_count <- decode.field(8, decode.int)
     use available_count <- decode.field(9, decode.int)
+    use has_new_notes <- decode.field(10, decode.bool)
     decode.success(CardsListRow(
       id:,
       project_id:,
@@ -479,6 +752,7 @@ pub fn cards_list(
       task_count:,
       completed_count:,
       available_count:,
+      has_new_notes:,
     ))
   }
 
@@ -493,15 +767,24 @@ SELECT
     to_char(c.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
     COUNT(t.id)::int AS task_count,
     COUNT(t.id) FILTER (WHERE t.status = 'completed')::int AS completed_count,
-    COUNT(t.id) FILTER (WHERE t.status = 'available')::int AS available_count
+    COUNT(t.id) FILTER (WHERE t.status = 'available')::int AS available_count,
+    case
+      when max(n.created_at) is null then false
+      when v.last_viewed_at is null then true
+      when max(n.created_at) > v.last_viewed_at then true
+      else false
+    end as has_new_notes
 FROM cards c
 LEFT JOIN tasks t ON t.card_id = c.id
+LEFT JOIN card_notes n ON n.card_id = c.id
+LEFT JOIN user_card_views v ON v.card_id = c.id and v.user_id = $2
 WHERE c.project_id = $1
-GROUP BY c.id
+GROUP BY c.id, v.last_viewed_at
 ORDER BY c.created_at DESC;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -5915,6 +6198,47 @@ left join cards c on c.id = updated.card_id;
   |> pog.parameter(pog.int(arg_5))
   |> pog.parameter(pog.int(arg_6))
   |> pog.parameter(pog.int(arg_7))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `user_card_views_upsert` query
+/// defined in `./src/scrumbringer_server/sql/user_card_views_upsert.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type UserCardViewsUpsertRow {
+  UserCardViewsUpsertRow(user_id: Int, card_id: Int, last_viewed_at: String)
+}
+
+/// name: user_card_views_upsert
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn user_card_views_upsert(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(UserCardViewsUpsertRow), pog.QueryError) {
+  let decoder = {
+    use user_id <- decode.field(0, decode.int)
+    use card_id <- decode.field(1, decode.int)
+    use last_viewed_at <- decode.field(2, decode.string)
+    decode.success(UserCardViewsUpsertRow(user_id:, card_id:, last_viewed_at:))
+  }
+
+  "-- name: user_card_views_upsert
+insert into user_card_views (user_id, card_id, last_viewed_at)
+values ($1, $2, now())
+on conflict (user_id, card_id)
+do update set last_viewed_at = excluded.last_viewed_at
+returning user_id, card_id, to_char(last_viewed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as last_viewed_at;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

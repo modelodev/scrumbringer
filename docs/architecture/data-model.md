@@ -58,15 +58,32 @@
 └───────────────────────────────────────────────────────────┘
        │                              │
        ▼                              ▼
-┌──────────────┐              ┌──────────────┐
-│   TaskNote   │              │ TaskPosition │
-│──────────────│              │──────────────│
-│ id           │              │ task_id (FK) │
-│ task_id (FK) │              │ user_id (FK) │
-│ user_id (FK) │              │ x            │
-│ content      │              │ y            │
+┌──────────────┐              ┌──────────────┐          ┌────────────────┐
+│   TaskNote   │              │ TaskPosition │          │  UserTaskView  │
+│──────────────│              │──────────────│          │────────────────│
+│ id           │              │ task_id (FK) │          │ user_id (FK)   │
+│ task_id (FK) │              │ user_id (FK) │          │ task_id (FK)   │
+│ user_id (FK) │              │ x            │          │ last_viewed_at │
+│ content      │              │ y            │          └────────────────┘
 │ created_at   │              │ updated_at   │
 └──────────────┘              └──────────────┘
+
+┌──────────────┐
+│  CardNote    │
+│──────────────│
+│ id           │
+│ card_id (FK) │
+│ user_id (FK) │
+│ content      │
+│ created_at   │
+└──────────────┘
+┌────────────────┐
+│  UserCardView  │
+│────────────────│
+│ user_id (FK)   │
+│ card_id (FK)   │
+│ last_viewed_at │
+└────────────────┘
 ```
 
 ---
@@ -219,6 +236,43 @@ CREATE TABLE task_positions (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (task_id, user_id)
 );
+
+### CardNote
+```sql
+CREATE TABLE card_notes (
+    id BIGSERIAL PRIMARY KEY,
+    card_id BIGINT NOT NULL REFERENCES cards(id),
+    user_id BIGINT NOT NULL REFERENCES users(id),
+    content TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_card_notes_card ON card_notes(card_id);
+```
+
+### UserCardView
+```sql
+CREATE TABLE user_card_views (
+    user_id BIGINT NOT NULL REFERENCES users(id),
+    card_id BIGINT NOT NULL REFERENCES cards(id),
+    last_viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, card_id)
+);
+
+CREATE INDEX idx_user_card_views_card ON user_card_views(card_id);
+```
+
+### UserTaskView
+```sql
+CREATE TABLE user_task_views (
+    user_id BIGINT NOT NULL REFERENCES users(id),
+    task_id BIGINT NOT NULL REFERENCES tasks(id),
+    last_viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, task_id)
+);
+
+CREATE INDEX idx_user_task_views_task ON user_task_views(task_id);
+```
 ```
 
 ---

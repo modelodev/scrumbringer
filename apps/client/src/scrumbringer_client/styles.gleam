@@ -700,8 +700,8 @@ pub fn base_css() -> String {
     ".ficha-add-task-actions { display: flex; gap: 8px; justify-content: flex-end; }",
     // Card detail modal
     ".card-detail-modal { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 16px; }",
-    ".modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); }",
-    ".modal-content.card-detail { border-left-width: 4px; }",
+    ".card-detail-modal .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); z-index: 1; }",
+    ".modal-content.card-detail { border-left-width: 4px; z-index: 2; position: relative; }",
     ".card-detail-header { padding-bottom: 16px; border-bottom: 1px solid var(--sb-border); margin-bottom: 16px; }",
     ".card-detail-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }",
     ".card-detail-title { font-size: 20px; font-weight: 700; }",
@@ -714,9 +714,27 @@ pub fn base_css() -> String {
     ".card-detail-progress-bar { width: 100%; height: 8px; background: var(--sb-border); border-radius: 4px; overflow: hidden; margin-bottom: 12px; }",
     ".card-detail-progress-fill { height: 100%; background: var(--sb-primary); border-radius: 4px; transition: width 0.3s ease; }",
     ".card-detail-description { color: var(--sb-muted); line-height: 1.5; }",
+    // AC21: Card modal tabs
+    ".card-tabs { display: flex; border-bottom: 2px solid var(--sb-border); margin-bottom: 16px; gap: 4px; }",
+    ".card-tab { padding: 10px 16px; background: transparent; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--sb-muted); transition: all 0.15s; display: flex; align-items: center; gap: 6px; }",
+    ".card-tab:hover { color: var(--sb-text); border-bottom-color: var(--sb-border); }",
+    ".card-tab.tab-active { color: var(--sb-primary); border-bottom-color: var(--sb-primary); }",
+    ".tab-count { font-size: 12px; color: var(--sb-muted); }",
+    ".tab-active .tab-count { color: var(--sb-primary); }",
+    ".new-notes-indicator { color: var(--sb-warning); font-size: 10px; margin-left: 2px; }",
+    ".card-detail-activity-section { padding: 24px; text-align: center; color: var(--sb-muted); }",
+    // Shared section header for card detail tabs (Tasks, Notes)
+    ".card-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }",
+    ".card-section-title { font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--sb-muted); }",
     ".card-detail-tasks-section { }",
-    ".card-detail-tasks-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }",
-    ".card-detail-tasks-title { font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--sb-muted); }",
+    ".card-detail-notes-section { }",
+    // Note dialog (modal within card detail modal)
+    ".note-dialog-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 10; border-radius: 8px; }",
+    ".note-dialog { background: var(--sb-elevated); border-radius: 8px; padding: 16px; min-width: 320px; max-width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }",
+    ".note-dialog-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }",
+    ".note-dialog-title { font-size: 16px; font-weight: 600; color: var(--sb-text); }",
+    ".note-dialog-body { margin-bottom: 12px; }",
+    ".note-dialog-footer { display: flex; justify-content: flex-end; gap: 8px; }",
     ".card-add-task-form { padding: 16px; border: 1px dashed var(--sb-border); border-radius: 8px; background: var(--sb-surface); margin-bottom: 16px; }",
     ".form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }",
     ".form-group label { font-size: 13px; font-weight: 500; color: var(--sb-muted); }",
@@ -837,6 +855,8 @@ pub fn base_css() -> String {
     ".filters-inline .filter-search { flex: 1; min-width: 150px; max-width: 250px; }",
     // Card title with color dot
     ".card-title-with-color { display: flex; align-items: center; gap: 10px; }",
+    ".card-title-button { background: none; border: none; padding: 0; color: inherit; font: inherit; cursor: pointer; text-align: left; }",
+    ".card-title-button:hover { color: var(--sb-primary); text-decoration: underline; }",
     ".card-color-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; border: 1px solid color-mix(in oklab, currentColor 20%, transparent); }",
     // State badges with semantic colors
     ".state-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }",
@@ -1040,6 +1060,7 @@ pub fn base_css() -> String {
     ".kanban-card-header { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }",
     ".kanban-card-title { flex: 1; background: transparent; border: none; cursor: pointer; text-align: left; font-weight: 500; padding: 0; display: flex; align-items: center; gap: 6px; }",
     ".kanban-card-title:hover { color: var(--sb-primary); }",
+    ".card-notes-indicator { font-weight: 600; color: var(--sb-warning); }",
     ".kanban-card-menu { display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; }",
     ".kanban-card:hover .kanban-card-menu { opacity: 1; }",
     ".kanban-card-desc { font-size: 13px; color: var(--sb-muted); margin-bottom: 8px; line-height: 1.4; }",
@@ -1100,6 +1121,21 @@ pub fn base_css() -> String {
     ".mobile-header { display: none; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--sb-surface); border-bottom: 1px solid var(--sb-border); }",
     "@media (max-width: 768px) { .mobile-header { display: flex; } }",
     ".menu-hamburger, .menu-user { background: transparent; border: none; font-size: 24px; cursor: pointer; padding: 8px; }",
+    // =============================================================================
+    // Notes List (Story 5.3 - Card Notes)
+    // =============================================================================
+    ".notes-list { display: flex; flex-direction: column; gap: 12px; }",
+    ".note-item { padding: 12px; background: var(--sb-bg); border: 1px solid var(--sb-border); border-radius: 8px; }",
+    ".note-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12px; }",
+    ".note-author { font-weight: 500; color: var(--sb-text); }",
+    ".note-date { color: var(--sb-muted); }",
+    ".note-header .btn-xs { margin-left: auto; opacity: 0; transition: opacity 0.15s; }",
+    ".note-item:hover .note-header .btn-xs { opacity: 1; }",
+    ".note-content { margin: 0; font-size: 14px; line-height: 1.5; color: var(--sb-text); white-space: pre-wrap; }",
+    // AC20: CSS-only tooltip for author info
+    ".tooltip-trigger { position: relative; cursor: help; }",
+    ".tooltip-trigger[data-tooltip]::after { content: attr(data-tooltip); display: none; position: absolute; left: 0; top: calc(100% + 4px); background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 6px; padding: 4px 8px; font-size: 11px; color: var(--sb-text); white-space: nowrap; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }",
+    ".tooltip-trigger[data-tooltip]:hover::after { display: block; }",
   ]
   |> string.join("\n")
 }

@@ -26,7 +26,10 @@ import lustre/effect.{type Effect}
 import scrumbringer_client/api/core.{type ApiResult}
 import scrumbringer_client/api/tasks/decoders as task_decoders
 
-import domain/card.{type Card, type CardState, Card, Cerrada, EnCurso, Pendiente}
+import domain/card.{
+  type Card, type CardNote, type CardState, Card, CardNote, Cerrada, EnCurso,
+  Pendiente,
+}
 import domain/task.{type Task}
 
 // =============================================================================
@@ -61,6 +64,11 @@ fn card_decoder() -> decode.Decoder(Card) {
   use completed_count <- decode.field("completed_count", decode.int)
   use created_by <- decode.field("created_by", decode.int)
   use created_at <- decode.field("created_at", decode.string)
+  use has_new_notes <- decode.optional_field(
+    "has_new_notes",
+    False,
+    decode.bool,
+  )
   decode.success(Card(
     id: id,
     project_id: project_id,
@@ -71,6 +79,22 @@ fn card_decoder() -> decode.Decoder(Card) {
     task_count: task_count,
     completed_count: completed_count,
     created_by: created_by,
+    created_at: created_at,
+    has_new_notes: has_new_notes,
+  ))
+}
+
+fn card_note_decoder() -> decode.Decoder(CardNote) {
+  use id <- decode.field("id", decode.int)
+  use card_id <- decode.field("card_id", decode.int)
+  use user_id <- decode.field("user_id", decode.int)
+  use content <- decode.field("content", decode.string)
+  use created_at <- decode.field("created_at", decode.string)
+  decode.success(CardNote(
+    id: id,
+    card_id: card_id,
+    user_id: user_id,
+    content: content,
     created_at: created_at,
   ))
 }
@@ -134,6 +158,19 @@ pub fn get_card(card_id: Int, to_msg: fn(ApiResult(Card)) -> msg) -> Effect(msg)
   )
 }
 
+/// Mark a card as viewed for the current user.
+pub fn mark_card_view(
+  card_id: Int,
+  to_msg: fn(ApiResult(Nil)) -> msg,
+) -> Effect(msg) {
+  core.request_nil(
+    "PUT",
+    "/api/v1/views/cards/" <> int.to_string(card_id),
+    option.None,
+    to_msg,
+  )
+}
+
 /// Update a card's title, description, and color.
 pub fn update_card(
   card_id: Int,
@@ -190,6 +227,56 @@ pub fn list_card_tasks(
     "/api/v1/cards/" <> int.to_string(card_id) <> "/tasks",
     option.None,
     decoder,
+    to_msg,
+  )
+}
+
+/// List all notes belonging to a card.
+pub fn get_card_notes(
+  card_id: Int,
+  to_msg: fn(ApiResult(List(CardNote))) -> msg,
+) -> Effect(msg) {
+  let decoder =
+    decode.field("notes", decode.list(card_note_decoder()), decode.success)
+  core.request(
+    "GET",
+    "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
+    option.None,
+    decoder,
+    to_msg,
+  )
+}
+
+/// Create a note for a card.
+pub fn create_card_note(
+  card_id: Int,
+  content: String,
+  to_msg: fn(ApiResult(CardNote)) -> msg,
+) -> Effect(msg) {
+  let body = json.object([#("content", json.string(content))])
+  let decoder = decode.field("note", card_note_decoder(), decode.success)
+  core.request(
+    "POST",
+    "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
+    option.Some(body),
+    decoder,
+    to_msg,
+  )
+}
+
+/// Delete a note from a card.
+pub fn delete_card_note(
+  card_id: Int,
+  note_id: Int,
+  to_msg: fn(ApiResult(Nil)) -> msg,
+) -> Effect(msg) {
+  core.request_nil(
+    "DELETE",
+    "/api/v1/cards/"
+      <> int.to_string(card_id)
+      <> "/notes/"
+      <> int.to_string(note_id),
+    option.None,
     to_msg,
   )
 }

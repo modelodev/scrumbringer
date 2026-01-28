@@ -38,6 +38,7 @@ pub type Card {
     completed_count: Int,
     created_by: Int,
     created_at: String,
+    has_new_notes: Bool,
   )
 }
 
@@ -56,8 +57,9 @@ pub type CardError {
 pub fn list_cards(
   db: pog.Connection,
   project_id: Int,
+  user_id: Int,
 ) -> Result(List(Card), pog.QueryError) {
-  use returned <- result.try(sql.cards_list(db, project_id))
+  use returned <- result.try(sql.cards_list(db, project_id, user_id))
 
   let cards =
     returned.rows
@@ -73,6 +75,7 @@ pub fn list_cards(
         row.task_count,
         row.completed_count,
         row.available_count,
+        row.has_new_notes,
       )
     })
 
@@ -80,8 +83,12 @@ pub fn list_cards(
 }
 
 /// Get a single card by ID with derived state.
-pub fn get_card(db: pog.Connection, card_id: Int) -> Result(Card, CardError) {
-  case sql.cards_get(db, card_id) {
+pub fn get_card(
+  db: pog.Connection,
+  card_id: Int,
+  user_id: Int,
+) -> Result(Card, CardError) {
+  case sql.cards_get(db, card_id, user_id) {
     Error(e) -> Error(DbError(e))
     Ok(pog.Returned(rows: [], ..)) -> Error(CardNotFound)
     Ok(pog.Returned(rows: [row, ..], ..)) ->
@@ -96,6 +103,7 @@ pub fn get_card(db: pog.Connection, card_id: Int) -> Result(Card, CardError) {
         row.task_count,
         row.completed_count,
         row.available_count,
+        row.has_new_notes,
       ))
   }
 }
@@ -111,6 +119,7 @@ fn card_from_counts(
   task_count: Int,
   completed_count: Int,
   available_count: Int,
+  has_new_notes: Bool,
 ) -> Card {
   let state = derive_card_state(task_count, completed_count, available_count)
 
@@ -125,6 +134,7 @@ fn card_from_counts(
     completed_count: completed_count,
     created_by: created_by,
     created_at: created_at,
+    has_new_notes: has_new_notes,
   )
 }
 
@@ -162,6 +172,7 @@ pub fn create_card(
         completed_count: 0,
         created_by: row.created_by,
         created_at: row.created_at,
+        has_new_notes: False,
       ))
     }
     _ -> {
@@ -179,6 +190,7 @@ pub fn update_card(
   title: String,
   description: Option(String),
   color: Option(String),
+  user_id: Int,
 ) -> Result(Card, CardError) {
   let desc = option.unwrap(description, "")
   let col = option.unwrap(color, "")
@@ -188,7 +200,7 @@ pub fn update_card(
     Ok(pog.Returned(rows: [], ..)) -> Error(CardNotFound)
     Ok(pog.Returned(rows: [row, ..], ..)) -> {
       // After update, we need to get current task counts
-      case sql.cards_get(db, card_id) {
+      case sql.cards_get(db, card_id, user_id) {
         Error(e) -> Error(DbError(e))
         Ok(pog.Returned(rows: [], ..)) -> Error(CardNotFound)
         Ok(pog.Returned(rows: [full_row, ..], ..)) -> {
@@ -209,6 +221,7 @@ pub fn update_card(
             completed_count: full_row.completed_count,
             created_by: row.created_by,
             created_at: row.created_at,
+            has_new_notes: full_row.has_new_notes,
           ))
         }
       }

@@ -748,7 +748,7 @@ fn evaluate_card_rules_for_task(
   org_id: Int,
   user_id: Int,
 ) -> Nil {
-  case cards_db.get_card(db, card_id) {
+  case cards_db.get_card(db, card_id, user_id) {
     Error(_) -> Nil
     Ok(card) -> {
       let state = cards_db.state_to_string(card.state)

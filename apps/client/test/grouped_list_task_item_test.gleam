@@ -51,6 +51,7 @@ fn sample_card() -> Card {
     completed_count: 0,
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
+    has_new_notes: False,
   )
 }
 
@@ -122,4 +123,15 @@ pub fn grouped_list_renders_available_label_and_claim_button_test() {
 
   string.contains(html, "Available") |> should.be_true
   string.contains(html, "task-claim-btn") |> should.be_true
+}
+
+pub fn grouped_list_shows_notes_indicator_test() {
+  let card = Card(..sample_card(), has_new_notes: True)
+
+  let html =
+    base_config([available_task()], [card])
+    |> grouped_list.view
+    |> element.to_document_string
+
+  string.contains(html, "card-notes-indicator") |> should.be_true
 }
