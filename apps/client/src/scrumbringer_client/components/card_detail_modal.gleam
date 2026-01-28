@@ -770,6 +770,8 @@ fn note_to_view(model: Model, note: CardNote) -> notes_list.NoteView {
     user_id: user_id,
     content: content,
     created_at: created_at,
+    author_email: author_email,
+    author_role: author_role,
     ..,
   ) = note
   let current_user_id = option.unwrap(model.current_user_id, 0)
@@ -791,8 +793,8 @@ fn note_to_view(model: Model, note: CardNote) -> notes_list.NoteView {
     content: content,
     can_delete: can_delete,
     delete_context: delete_context,
-    author_email: "",
-    author_role: "",
+    author_email: author_email,
+    author_role: author_role,
   )
 }
 

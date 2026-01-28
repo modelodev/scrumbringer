@@ -90,12 +90,16 @@ fn card_note_decoder() -> decode.Decoder(CardNote) {
   use user_id <- decode.field("user_id", decode.int)
   use content <- decode.field("content", decode.string)
   use created_at <- decode.field("created_at", decode.string)
+  use author_email <- decode.field("author_email", decode.string)
+  use author_role <- decode.field("author_role", decode.string)
   decode.success(CardNote(
     id: id,
     card_id: card_id,
     user_id: user_id,
     content: content,
     created_at: created_at,
+    author_email: author_email,
+    author_role: author_role,
   ))
 }
 

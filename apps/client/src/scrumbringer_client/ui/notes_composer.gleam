@@ -36,7 +36,6 @@ pub fn view(config: Config(msg)) -> Element(msg) {
   div([attribute.class("notes-composer")], [
     textarea(
       [
-        attribute.class("form-input"),
         attribute.placeholder(placeholder),
         attribute.rows(3),
         attribute.value(content),

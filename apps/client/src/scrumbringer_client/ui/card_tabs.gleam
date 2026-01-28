@@ -51,11 +51,6 @@ pub fn view(config: Config(msg)) -> Element(msg) {
   ])
 }
 
-type Option(a) {
-  Some(a)
-  None
-}
-
 fn tab_button(
   tab: Tab,
   label: String,

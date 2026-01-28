@@ -74,6 +74,8 @@ pub type Card {
 ///   user_id: 42,
 ///   content: "Scope agreed with PM",
 ///   created_at: "2026-01-28T12:00:00Z",
+///   author_email: "user@example.com",
+///   author_role: "Developer",
 /// )
 /// ```
 pub type CardNote {
@@ -83,6 +85,8 @@ pub type CardNote {
     user_id: Int,
     content: String,
     created_at: String,
+    author_email: String,
+    author_role: String,
   )
 }
 
