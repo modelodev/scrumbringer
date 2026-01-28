@@ -291,6 +291,7 @@ fn plan_org_for_admin(snap: Snapshot, section: AdminSection) -> List(Command) {
       #(needs_fetch(snap.capabilities), FetchCapabilities),
       #(needs_fetch(snap.me_metrics), FetchMeMetrics),
       #(needs_fetch(snap.work_sessions), FetchWorkSessions),
+      #(needs_fetch(snap.org_users_cache), FetchOrgUsersCache),
     ])
 
   let section_cmds = case section {
@@ -298,6 +299,8 @@ fn plan_org_for_admin(snap: Snapshot, section: AdminSection) -> List(Command) {
       collect([
         #(needs_fetch(snap.org_settings_users), FetchOrgSettingsUsers),
       ])
+    permissions.Assignments ->
+      collect([#(needs_fetch(snap.org_users_cache), FetchOrgUsersCache)])
     permissions.Metrics ->
       collect([
         #(needs_fetch(snap.org_metrics_overview), FetchOrgMetricsOverview),

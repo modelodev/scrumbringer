@@ -32,6 +32,13 @@ pub fn parse_accept_invite_token_test() {
   |> should.equal(router.Parsed(router.AcceptInvite("il_token")))
 }
 
+pub fn parse_org_assignments_test() {
+  let parsed = router.parse("/org/assignments", "", "")
+
+  parsed
+  |> should.equal(router.Parsed(router.Org(permissions.Assignments)))
+}
+
 // Story 4.5: Invalid project redirects to Config with None
 pub fn parse_invalid_project_redirects_and_drops_project_test() {
   let parsed = router.parse("/config/members", "?project=nope", "")
@@ -85,6 +92,11 @@ pub fn format_org_invites_test() {
   |> should.equal("/org/invites")
 }
 
+pub fn format_org_assignments_test() {
+  router.format(router.Org(permissions.Assignments))
+  |> should.equal("/org/assignments")
+}
+
 pub fn format_member_pool_with_project_test() {
   router.format(router.Member(member_section.Pool, Some(2), None))
   |> should.equal("/app/pool?project=2")
@@ -99,6 +111,11 @@ pub fn roundtrip_config_members_test() {
 // Story 4.5: Org routes roundtrip correctly
 pub fn roundtrip_org_invites_test() {
   let route = router.Org(permissions.Invites)
+  router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
+}
+
+pub fn roundtrip_org_assignments_test() {
+  let route = router.Org(permissions.Assignments)
   router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
 }
 

@@ -216,6 +216,34 @@ pub fn translate(text: Text) -> String {
     text.AdminMembers -> "Members"
     text.AdminCapabilities -> "Capabilities"
     text.AdminTaskTypes -> "Task Types"
+    text.Assignments -> "Assignments"
+    text.AssignmentsByProject -> "By Project"
+    text.AssignmentsByUser -> "By User"
+    text.AssignmentsSearchPlaceholder -> "Search projects or users"
+    text.AssignmentsNoProjectsTitle -> "No projects yet"
+    text.AssignmentsNoProjectsBody ->
+      "Create a project to start assigning members."
+    text.AssignmentsNoUsersTitle -> "No users yet"
+    text.AssignmentsNoUsersBody ->
+      "Invite a user to start assigning them to projects."
+    text.AssignmentsNoMembersBadge -> "NO MEMBERS"
+    text.AssignmentsNoProjectsBadge -> "NO PROJECTS"
+    text.AssignmentsUsersCount(count) ->
+      int.to_string(count)
+      <> " user"
+      <> case count {
+        1 -> ""
+        _ -> "s"
+      }
+    text.AssignmentsProjectsCount(count) ->
+      int.to_string(count)
+      <> " project"
+      <> case count {
+        1 -> ""
+        _ -> "s"
+      }
+    text.AssignmentsLoadingMembers -> "Loading members…"
+    text.AssignmentsLoadingProjects -> "Loading projects…"
     text.NoAdminPermissions -> "No admin permissions"
     text.NotPermitted -> "Not permitted"
     text.NotPermittedBody -> "You don't have permission to access this section."
@@ -365,6 +393,10 @@ pub fn translate(text: Text) -> String {
         0 -> "No projects"
         _ -> int.to_string(count) <> ": " <> summary
       }
+    text.DeleteUser -> "Delete user"
+    text.ConfirmDeleteUser(user_email) ->
+      "Delete user \"" <> user_email <> "\"?"
+    text.UserDeleted -> "User deleted"
 
     // Task types
     text.SelectProjectToManageTaskTypes ->
@@ -398,8 +430,11 @@ pub fn translate(text: Text) -> String {
     text.AppearanceSection -> "Appearance"
     text.ConfigurationSection -> "Configuration"
     text.Icon -> "Icon"
+    text.OptionalFields -> "Optional"
+    text.SelectIcon -> "Select icon"
     text.UnknownIcon -> "Unknown icon"
     text.CapabilityOptional -> "Capability (optional)"
+    text.TaskTypeNameHint -> "e.g. Bug, Feature, Docs"
     text.LoadingCapabilities -> "Loading capabilities…"
     text.NoTaskTypesYet -> "No task types yet"
     text.CreateFirstTaskTypeHint ->

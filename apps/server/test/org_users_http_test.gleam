@@ -211,6 +211,112 @@ pub fn patch_org_user_role_rejects_demoting_last_org_admin_test() {
   |> should.be_true
 }
 
+pub fn delete_org_user_requires_admin_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  let member_email = "member_delete@example.com"
+  create_user_via_invite(handler, db, member_email, "il_member_delete", 1)
+  let member_id =
+    single_int(db, "select id from users where email = $1", [
+      pog.text(member_email),
+    ])
+
+  let member_login_res = login_as(handler, member_email, "passwordpassword")
+  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
+  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
+
+  let member_req =
+    simulate.request(
+      http.Delete,
+      "/api/v1/org/users/" <> int.to_string(member_id),
+    )
+    |> request.set_cookie("sb_session", member_session)
+    |> request.set_cookie("sb_csrf", member_csrf)
+    |> request.set_header("X-CSRF", member_csrf)
+
+  let member_res = handler(member_req)
+  member_res.status |> should.equal(403)
+
+  let admin_req =
+    simulate.request(
+      http.Delete,
+      "/api/v1/org/users/" <> int.to_string(member_id),
+    )
+    |> request.set_cookie("sb_session", admin_session)
+    |> request.set_cookie("sb_csrf", admin_csrf)
+    |> request.set_header("X-CSRF", admin_csrf)
+
+  let admin_res = handler(admin_req)
+  admin_res.status |> should.equal(204)
+}
+
+pub fn delete_org_user_removes_from_listing_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  let member_email = "member_delete_list@example.com"
+  create_user_via_invite(handler, db, member_email, "il_member_delete_list", 1)
+  let member_id =
+    single_int(db, "select id from users where email = $1", [
+      pog.text(member_email),
+    ])
+
+  let delete_req =
+    simulate.request(
+      http.Delete,
+      "/api/v1/org/users/" <> int.to_string(member_id),
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+
+  let delete_res = handler(delete_req)
+  delete_res.status |> should.equal(204)
+
+  let list_res =
+    handler(
+      simulate.request(http.Get, "/api/v1/org/users")
+      |> request.set_cookie("sb_session", session),
+    )
+
+  list_res.status |> should.equal(200)
+  decode_user_emails(simulate.read_body(list_res))
+  |> list.contains(member_email)
+  |> should.be_false
+}
+
+pub fn delete_org_user_rejects_self_delete_test() {
+  let app = bootstrap_app()
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  let req =
+    simulate.request(http.Delete, "/api/v1/org/users/1")
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+
+  let res = handler(req)
+  res.status |> should.equal(409)
+  string.contains(simulate.read_body(res), "CONFLICT_SELF_DELETE")
+  |> should.be_true
+}
+
 // =============================================================================
 // Story 4.3 Tests: User Project Role Management
 // =============================================================================

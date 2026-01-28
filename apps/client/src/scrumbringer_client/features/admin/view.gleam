@@ -33,10 +33,8 @@ import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{
-  button, div, form, h2, h3, hr, img, input, label, option, p, select, span,
-  table, td, text, th, thead, tr,
+  button, div, form, h2, h3, img, input, label, option, p, select, span, text,
 }
-import lustre/element/keyed
 import lustre/event
 
 import gleam/dynamic/decode
@@ -45,7 +43,6 @@ import domain/capability.{type Capability}
 import domain/card.{type Card}
 import domain/org.{type OrgUser}
 import domain/project.{type Project}
-import domain/project_role.{Manager, Member}
 import domain/task_type.{type TaskType}
 
 import scrumbringer_client/client_state.{
@@ -59,13 +56,11 @@ import scrumbringer_client/client_state.{
   CardDialogEdit, CardsSearchChanged, CardsShowCompletedToggled,
   CardsShowEmptyToggled, CardsStateFilterChanged, CloseCardDialog,
   CloseTaskTypeDialog, Failed, Loaded, Loading, MemberCreateDialogOpenedWithCard,
-  NotAsked, OpenCardDialog, OpenTaskTypeDialog, OrgSettingsRoleChanged,
-  OrgSettingsSaveAllClicked, TaskTypeCrudCreated, TaskTypeCrudDeleted,
-  TaskTypeCrudUpdated, TaskTypeDialogCreate, TaskTypeDialogDelete,
-  TaskTypeDialogEdit, UserProjectRemoveClicked, UserProjectRoleChangeRequested,
-  UserProjectsAddProjectChanged, UserProjectsAddRoleChanged,
-  UserProjectsAddSubmitted, UserProjectsDialogClosed, UserProjectsDialogOpened,
-  admin_msg, pool_msg,
+  NotAsked, OpenCardDialog, OpenTaskTypeDialog, OrgSettingsDeleteCancelled,
+  OrgSettingsDeleteClicked, OrgSettingsDeleteConfirmed, OrgSettingsRoleChanged,
+  TaskTypeCrudCreated, TaskTypeCrudDeleted, TaskTypeCrudUpdated,
+  TaskTypeDialogCreate, TaskTypeDialogDelete, TaskTypeDialogEdit, admin_msg,
+  pool_msg,
 }
 import scrumbringer_client/features/admin/views/members as members_view
 import scrumbringer_client/features/admin/views/workflows as workflows_view
@@ -83,7 +78,6 @@ import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
-import scrumbringer_client/ui/error as ui_error
 import scrumbringer_client/ui/icon_catalog
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/section_header
@@ -108,8 +102,7 @@ pub fn view_org_settings(model: Model) -> Element(Msg) {
     ),
     // Users table
     view_org_settings_table(model),
-    // User projects dialog
-    view_user_projects_dialog(model),
+    view_org_settings_delete_dialog(model),
   ])
 }
 
@@ -124,82 +117,98 @@ fn view_org_settings_table(model: Model) -> Element(Msg) {
     Failed(err) -> status_block.error_text(err.message)
 
     Loaded(users) -> {
-      let pending_count = dict.size(model.admin.org_settings_role_drafts)
-      let has_pending = pending_count > 0
-
       element.fragment([
         // Table using data_table
         data_table.new()
-          |> data_table.with_columns([
-            // Email
-            data_table.column(t(i18n_text.EmailLabel), fn(u: OrgUser) {
-              text(u.email)
-            }),
-            // Org Role (dropdown with change indicator)
-            data_table.column(t(i18n_text.OrgRole), fn(u: OrgUser) {
-              view_org_role_cell(model, u)
-            }),
-            // Projects summary
-            data_table.column(t(i18n_text.AdminProjects), fn(u: OrgUser) {
-              text(format_projects_summary(model, u.id))
-            }),
-            // Actions
-            data_table.column_with_class(
-              t(i18n_text.Actions),
-              fn(u: OrgUser) {
-                button(
-                  [
-                    attribute.class("btn-xs btn-icon"),
-                    attribute.attribute("title", t(i18n_text.Manage)),
-                    attribute.attribute("aria-label", t(i18n_text.Manage)),
-                    event.on_click(admin_msg(UserProjectsDialogOpened(u))),
-                  ],
-                  [icons.nav_icon(icons.Cog, icons.Small)],
-                )
-              },
-              "col-actions",
-              "cell-actions",
-            ),
-          ])
-          |> data_table.with_rows(users, fn(u: OrgUser) { int.to_string(u.id) })
-          |> data_table.view(),
-        // Save all button at bottom
-        div([attribute.class("save-all-row")], [
-          case has_pending {
-            True ->
-              span([attribute.class("pending-count")], [
-                text(
-                  int.to_string(pending_count)
-                  <> " "
-                  <> t(i18n_text.PendingChanges),
-                ),
-              ])
-            False -> element.none()
-          },
-          button(
-            [
-              attribute.disabled(
-                !has_pending || model.admin.org_settings_save_in_flight,
-              ),
-              event.on_click(admin_msg(OrgSettingsSaveAllClicked)),
-            ],
-            [text(t(i18n_text.SaveOrgRoleChanges))],
+        |> data_table.with_columns([
+          // Email
+          data_table.column(t(i18n_text.EmailLabel), fn(u: OrgUser) {
+            text(u.email)
+          }),
+          // Org Role (dropdown with change indicator)
+          data_table.column(t(i18n_text.OrgRole), fn(u: OrgUser) {
+            view_org_role_cell(model, u)
+          }),
+          // Actions
+          data_table.column_with_class(
+            t(i18n_text.Actions),
+            fn(u: OrgUser) {
+              let is_self = case model.core.user {
+                opt.Some(user) -> user.id == u.id
+                opt.None -> False
+              }
+              button(
+                [
+                  attribute.class("btn-icon btn-xs btn-danger-icon"),
+                  attribute.attribute("title", t(i18n_text.DeleteUser)),
+                  attribute.attribute("aria-label", t(i18n_text.DeleteUser)),
+                  attribute.attribute("data-testid", "org-user-delete-btn"),
+                  attribute.disabled(
+                    is_self || model.admin.org_settings_delete_in_flight,
+                  ),
+                  event.on_click(admin_msg(OrgSettingsDeleteClicked(u.id))),
+                ],
+                [icons.nav_icon(icons.Trash, icons.Small)],
+              )
+            },
+            "col-actions",
+            "cell-actions",
           ),
-        ]),
+        ])
+        |> data_table.with_rows(users, fn(u: OrgUser) { int.to_string(u.id) })
+        |> data_table.view(),
       ])
     }
+  }
+}
+
+/// Dialog for deleting an org user.
+fn view_org_settings_delete_dialog(model: Model) -> Element(Msg) {
+  case model.admin.org_settings_delete_confirm {
+    opt.None -> element.none()
+    opt.Some(user) ->
+      dialog.view(
+        dialog.DialogConfig(
+          title: update_helpers.i18n_t(model, i18n_text.DeleteUser),
+          icon: opt.None,
+          size: dialog.DialogSm,
+          on_close: admin_msg(OrgSettingsDeleteCancelled),
+        ),
+        True,
+        model.admin.org_settings_delete_error,
+        [
+          p([], [
+            text(update_helpers.i18n_t(
+              model,
+              i18n_text.ConfirmDeleteUser(user.email),
+            )),
+          ]),
+        ],
+        [
+          dialog.cancel_button(model, admin_msg(OrgSettingsDeleteCancelled)),
+          button(
+            [
+              attribute.type_("button"),
+              attribute.class("btn btn-danger"),
+              attribute.disabled(model.admin.org_settings_delete_in_flight),
+              event.on_click(admin_msg(OrgSettingsDeleteConfirmed)),
+            ],
+            [
+              text(case model.admin.org_settings_delete_in_flight {
+                True -> update_helpers.i18n_t(model, i18n_text.Deleting)
+                False -> update_helpers.i18n_t(model, i18n_text.Delete)
+              }),
+            ],
+          ),
+        ],
+      )
   }
 }
 
 fn view_org_role_cell(model: Model, u: OrgUser) -> Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
 
-  let draft = case dict.get(model.admin.org_settings_role_drafts, u.id) {
-    Ok(role) -> role
-    Error(_) -> u.org_role
-  }
-
-  let has_change = dict.has_key(model.admin.org_settings_role_drafts, u.id)
+  let current_role = u.org_role
 
   let inline_error = case
     model.admin.org_settings_error_user_id,
@@ -212,289 +221,35 @@ fn view_org_role_cell(model: Model, u: OrgUser) -> Element(Msg) {
   element.fragment([
     select(
       [
-        attribute.value(draft),
+        attribute.value(current_role),
         attribute.disabled(model.admin.org_settings_save_in_flight),
         event.on_input(fn(value) {
           admin_msg(OrgSettingsRoleChanged(u.id, value))
         }),
       ],
       [
-        option([attribute.value("admin")], t(i18n_text.RoleAdmin)),
-        option([attribute.value("member")], t(i18n_text.RoleMember)),
+        option(
+          [
+            attribute.value("admin"),
+            attribute.selected(current_role == "admin"),
+          ],
+          t(i18n_text.RoleAdmin),
+        ),
+        option(
+          [
+            attribute.value("member"),
+            attribute.selected(current_role == "member"),
+          ],
+          t(i18n_text.RoleMember),
+        ),
       ],
     ),
-    // Pending change indicator
-    case has_change {
-      True -> span([attribute.class("pending-indicator")], [text(" *")])
-      False -> element.none()
-    },
     // Inline error
     case inline_error == "" {
       True -> element.none()
       False -> div([attribute.class("error")], [text(inline_error)])
     },
   ])
-}
-
-/// Dialog for viewing/managing user's project memberships.
-fn view_user_projects_dialog(model: Model) -> Element(Msg) {
-  case
-    model.admin.user_projects_dialog_open,
-    model.admin.user_projects_dialog_user
-  {
-    True, opt.Some(user) -> view_user_projects_dialog_open(model, user)
-
-    _, _ -> element.none()
-  }
-}
-
-fn view_user_projects_dialog_open(model: Model, user: OrgUser) -> Element(Msg) {
-  dialog.view(
-    dialog.DialogConfig(
-      title: update_helpers.i18n_t(
-        model,
-        i18n_text.UserProjectsTitle(user.email),
-      ),
-      icon: opt.None,
-      size: dialog.DialogMd,
-      on_close: admin_msg(UserProjectsDialogClosed),
-    ),
-    True,
-    model.admin.user_projects_error,
-    // Content: project list and add form
-    [
-      view_user_projects_list(model),
-      // Add to project form
-      hr([]),
-      view_user_projects_add_form(model),
-    ],
-    // Footer: close button
-    [
-      button([event.on_click(admin_msg(UserProjectsDialogClosed))], [
-        text(update_helpers.i18n_t(model, i18n_text.Close)),
-      ]),
-    ],
-  )
-}
-
-fn view_user_projects_list(model: Model) -> Element(Msg) {
-  case model.admin.user_projects_list {
-    NotAsked | Loading ->
-      p([attribute.class("loading")], [
-        text(update_helpers.i18n_t(model, i18n_text.Loading)),
-      ])
-    Failed(err) -> ui_error.error(err)
-    Loaded(projects) -> view_user_projects_list_loaded(model, projects)
-  }
-}
-
-fn view_user_projects_list_loaded(
-  model: Model,
-  projects: List(Project),
-) -> Element(Msg) {
-  case list.is_empty(projects) {
-    True ->
-      p([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.UserProjectsEmpty)),
-      ])
-    False -> view_user_projects_table(model, projects)
-  }
-}
-
-fn view_user_projects_table(
-  model: Model,
-  projects: List(Project),
-) -> Element(Msg) {
-  div([attribute.class("user-projects-list")], [
-    table([attribute.class("table")], [
-      thead([], [
-        tr([], [
-          th([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
-          th([], [
-            text(update_helpers.i18n_t(model, i18n_text.RoleInProject)),
-          ]),
-          th([], [text(update_helpers.i18n_t(model, i18n_text.Actions))]),
-        ]),
-      ]),
-      keyed.tbody(
-        [],
-        list.map(projects, fn(p) {
-          #(
-            int.to_string(p.id),
-            tr([], [
-              td([], [text(p.name)]),
-              td([], [
-                // Editable role dropdown
-                select(
-                  [
-                    attribute.value(project_role.to_string(p.my_role)),
-                    attribute.disabled(model.admin.user_projects_in_flight),
-                    event.on_input(fn(value) {
-                      admin_msg(UserProjectRoleChangeRequested(p.id, value))
-                    }),
-                  ],
-                  [
-                    option(
-                      [attribute.value("manager")],
-                      update_helpers.i18n_t(model, i18n_text.RoleManager),
-                    ),
-                    option(
-                      [attribute.value("member")],
-                      update_helpers.i18n_t(model, i18n_text.RoleMember),
-                    ),
-                  ],
-                ),
-              ]),
-              td([], [
-                button(
-                  [
-                    attribute.class("btn-danger btn-sm"),
-                    attribute.disabled(model.admin.user_projects_in_flight),
-                    event.on_click(admin_msg(UserProjectRemoveClicked(p.id))),
-                  ],
-                  [
-                    text(update_helpers.i18n_t(
-                      model,
-                      i18n_text.UserProjectRemove,
-                    )),
-                  ],
-                ),
-              ]),
-            ]),
-          )
-        }),
-      ),
-    ]),
-  ])
-}
-
-fn view_user_projects_add_form(model: Model) -> Element(Msg) {
-  div([attribute.class("add-project-form")], [
-    h3([], [text(update_helpers.i18n_t(model, i18n_text.UserProjectsAdd))]),
-    div([attribute.class("field-row")], [
-      // Project selector
-      select(
-        [
-          attribute.value(case model.admin.user_projects_add_project_id {
-            opt.Some(id) -> int.to_string(id)
-            opt.None -> ""
-          }),
-          attribute.disabled(model.admin.user_projects_in_flight),
-          event.on_input(fn(value) {
-            admin_msg(UserProjectsAddProjectChanged(value))
-          }),
-        ],
-        [
-          option(
-            [attribute.value("")],
-            update_helpers.i18n_t(model, i18n_text.SelectProject),
-          ),
-          ..view_available_projects_options(model)
-        ],
-      ),
-      // Role selector
-      select(
-        [
-          attribute.value(model.admin.user_projects_add_role),
-          attribute.disabled(model.admin.user_projects_in_flight),
-          event.on_input(fn(value) {
-            admin_msg(UserProjectsAddRoleChanged(value))
-          }),
-        ],
-        [
-          option(
-            [attribute.value("member")],
-            update_helpers.i18n_t(model, i18n_text.RoleMember),
-          ),
-          option(
-            [attribute.value("manager")],
-            update_helpers.i18n_t(model, i18n_text.RoleManager),
-          ),
-        ],
-      ),
-      button(
-        [
-          attribute.disabled(
-            model.admin.user_projects_in_flight
-            || opt.is_none(model.admin.user_projects_add_project_id),
-          ),
-          event.on_click(admin_msg(UserProjectsAddSubmitted)),
-        ],
-        [text(update_helpers.i18n_t(model, i18n_text.Add))],
-      ),
-    ]),
-  ])
-}
-
-/// Get available projects to add user to (exclude projects user is already in).
-fn view_available_projects_options(model: Model) -> List(Element(Msg)) {
-  // Get all org projects
-  let all_projects = case model.core.projects {
-    Loaded(projects) -> projects
-    _ -> []
-  }
-
-  // Get user's current projects
-  let user_project_ids = case model.admin.user_projects_list {
-    Loaded(user_projects) -> list.map(user_projects, fn(p) { p.id })
-    _ -> []
-  }
-
-  // Filter to projects user is not already in
-  all_projects
-  |> list.filter(fn(p) { !list.contains(user_project_ids, p.id) })
-  |> list.map(fn(p) { option([attribute.value(int.to_string(p.id))], p.name) })
-}
-
-/// Format projects summary for a user (lazy loaded).
-/// Shows "..." if not yet loaded, otherwise "count: name1, name2 (mgr), ..."
-fn format_projects_summary(model: Model, user_id: Int) -> String {
-  // Check if this is the user whose dialog is open and projects are loaded
-  case model.admin.user_projects_dialog_user, model.admin.user_projects_list {
-    opt.Some(dialog_user), Loaded(projects) if dialog_user.id == user_id ->
-      format_projects_summary_loaded(model, projects)
-    _, _ -> "..."
-  }
-}
-
-fn format_projects_summary_loaded(
-  model: Model,
-  projects: List(Project),
-) -> String {
-  let count = list.length(projects)
-  case count {
-    0 -> update_helpers.i18n_t(model, i18n_text.ProjectsSummary(0, ""))
-    _ -> format_projects_summary_named(model, projects, count)
-  }
-}
-
-fn format_projects_summary_named(
-  model: Model,
-  projects: List(Project),
-  count: Int,
-) -> String {
-  let names =
-    projects
-    |> list.take(3)
-    |> list.map(project_label_for_summary)
-    |> string.join(", ")
-
-  let suffix = case list.length(projects) > 3 {
-    True -> ", +" <> int.to_string(list.length(projects) - 3)
-    False -> ""
-  }
-
-  update_helpers.i18n_t(
-    model,
-    i18n_text.ProjectsSummary(count, names <> suffix),
-  )
-}
-
-fn project_label_for_summary(project: Project) -> String {
-  case project.my_role {
-    Manager -> project.name <> " (mgr)"
-    Member -> project.name
-  }
 }
 
 /// Capabilities management view.

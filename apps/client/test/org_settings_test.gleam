@@ -244,169 +244,61 @@ pub fn saved_ok_returns_no_effect_test() {
 }
 
 // =============================================================================
-// Story 4.3: Pending Org Role Changes Tests
+// Auto-save Org Role Changes Tests
 // =============================================================================
 
-import gleam/dict
-
-pub fn has_pending_changes_empty_test() {
-  let model = base_model()
-
-  dict.size(model.admin.org_settings_role_drafts)
-  |> should.equal(0)
-}
-
-pub fn has_pending_changes_after_role_change_test() {
-  let model = base_model()
-
-  // Change user 1's role to admin
-  let #(updated_model, _effect) =
-    org_settings.handle_org_settings_role_changed(model, 1, "admin")
-
-  dict.size(updated_model.admin.org_settings_role_drafts)
-  |> should.equal(1)
-
-  dict.get(updated_model.admin.org_settings_role_drafts, 1)
-  |> should.equal(Ok("admin"))
-}
-
-pub fn has_pending_changes_multiple_users_test() {
-  let model = base_model()
-
-  // Change multiple users' roles
-  let #(model1, _) =
-    org_settings.handle_org_settings_role_changed(model, 1, "admin")
-  let #(model2, _) =
-    org_settings.handle_org_settings_role_changed(model1, 2, "member")
-  let #(model3, _) =
-    org_settings.handle_org_settings_role_changed(model2, 3, "admin")
-
-  dict.size(model3.admin.org_settings_role_drafts)
-  |> should.equal(3)
-}
-
-pub fn role_change_overwrites_previous_test() {
-  let model = base_model()
-
-  // Change user 1's role to admin
-  let #(model1, _) =
-    org_settings.handle_org_settings_role_changed(model, 1, "admin")
-
-  // Change user 1's role again to member
-  let #(model2, _) =
-    org_settings.handle_org_settings_role_changed(model1, 1, "member")
-
-  // Should still have only 1 pending change
-  dict.size(model2.admin.org_settings_role_drafts)
-  |> should.equal(1)
-
-  // And it should be the latest value
-  dict.get(model2.admin.org_settings_role_drafts, 1)
-  |> should.equal(Ok("member"))
-}
-
-// =============================================================================
-// Story 4.3: Save All Org Role Changes Tests
-// =============================================================================
-
-pub fn save_all_when_no_pending_changes_test() {
-  let model = base_model()
-
-  let #(updated_model, _effect) =
-    org_settings.handle_org_settings_save_all_clicked(model)
-
-  // Should not start in-flight when no pending changes
-  updated_model.admin.org_settings_save_in_flight
-  |> should.equal(False)
-}
-
-pub fn save_all_with_pending_changes_starts_in_flight_test() {
-  let model = base_model()
-
-  // Add a pending change
-  let #(model_with_change, _) =
-    org_settings.handle_org_settings_role_changed(model, 1, "admin")
-
-  let #(updated_model, _effect) =
-    org_settings.handle_org_settings_save_all_clicked(model_with_change)
-
-  // Should start in-flight
-  updated_model.admin.org_settings_save_in_flight
-  |> should.equal(True)
-}
-
-pub fn save_all_already_in_flight_does_nothing_test() {
+pub fn role_changed_triggers_save_when_role_diff_test() {
+  let user = make_org_user(1, "member")
   let model =
     update_admin(base_model(), fn(admin) {
-      AdminModel(
-        ..admin,
-        org_settings_save_in_flight: True,
-        org_settings_role_drafts: dict.from_list([#(1, "admin")]),
-      )
+      AdminModel(..admin, org_settings_users: Loaded([user]))
     })
 
-  let #(updated_model, _effect) =
-    org_settings.handle_org_settings_save_all_clicked(model)
+  let #(updated_model, fx) =
+    org_settings.handle_org_settings_role_changed(model, 1, "admin")
 
-  // Should remain unchanged
   updated_model.admin.org_settings_save_in_flight
   |> should.equal(True)
+  updated_model.admin.org_settings_error |> should.equal(opt.None)
+  updated_model.admin.org_settings_error_user_id |> should.equal(opt.None)
+  should.be_false(fx == effect.none())
 }
 
-pub fn saved_ok_removes_from_drafts_test() {
-  let user = make_org_user(1, "admin")
+pub fn role_changed_noop_when_role_is_same_test() {
+  let user = make_org_user(1, "member")
+  let model =
+    update_admin(base_model(), fn(admin) {
+      AdminModel(..admin, org_settings_users: Loaded([user]))
+    })
+
+  let #(updated_model, fx) =
+    org_settings.handle_org_settings_role_changed(model, 1, "member")
+
+  updated_model.admin.org_settings_save_in_flight
+  |> should.equal(False)
+  fx |> should.equal(effect.none())
+}
+
+pub fn role_changed_ignored_when_in_flight_test() {
+  let user = make_org_user(1, "member")
   let model =
     update_admin(base_model(), fn(admin) {
       AdminModel(
         ..admin,
         org_settings_users: Loaded([user]),
-        org_settings_role_drafts: dict.from_list([#(1, "admin")]),
         org_settings_save_in_flight: True,
       )
     })
 
-  let #(updated_model, _effect) =
-    org_settings.handle_org_settings_saved_ok(model, user)
+  let #(updated_model, fx) =
+    org_settings.handle_org_settings_role_changed(model, 1, "admin")
 
-  // Pending change should be removed
-  dict.size(updated_model.admin.org_settings_role_drafts)
-  |> should.equal(0)
-
-  // In-flight should be cleared
-  updated_model.admin.org_settings_save_in_flight
-  |> should.equal(False)
-}
-
-pub fn saved_ok_continues_with_remaining_changes_test() {
-  let user1 = make_org_user(1, "admin")
-  let user2 = make_org_user(2, "member")
-  let model =
-    update_admin(base_model(), fn(admin) {
-      AdminModel(
-        ..admin,
-        org_settings_users: Loaded([user1, user2]),
-        org_settings_role_drafts: dict.from_list([#(1, "admin"), #(2, "admin")]),
-        org_settings_save_in_flight: True,
-      )
-    })
-
-  // Save user 1 successfully
-  let #(updated_model, _effect) =
-    org_settings.handle_org_settings_saved_ok(model, user1)
-
-  // User 1's change removed, user 2's change remains
-  dict.size(updated_model.admin.org_settings_role_drafts)
-  |> should.equal(1)
-
-  dict.get(updated_model.admin.org_settings_role_drafts, 2)
-  |> should.equal(Ok("admin"))
-
-  // Still in-flight for next save
   updated_model.admin.org_settings_save_in_flight
   |> should.equal(True)
+  fx |> should.equal(effect.none())
 }
 
-pub fn saved_ok_shows_toast_when_done_test() {
+pub fn saved_ok_shows_toast_test() {
   let user = make_org_user(1, "admin")
   let model =
     update_ui(
@@ -414,7 +306,6 @@ pub fn saved_ok_shows_toast_when_done_test() {
         AdminModel(
           ..admin,
           org_settings_users: Loaded([user]),
-          org_settings_role_drafts: dict.from_list([#(1, "admin")]),
           org_settings_save_in_flight: True,
         )
       }),
@@ -424,6 +315,5 @@ pub fn saved_ok_shows_toast_when_done_test() {
   let #(_updated_model, fx) =
     org_settings.handle_org_settings_saved_ok(model, user)
 
-  // Toast should be queued via effect (not immediately in state)
   should.be_false(fx == effect.none())
 }

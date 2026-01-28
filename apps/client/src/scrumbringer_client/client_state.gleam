@@ -64,6 +64,7 @@ import gleam/set
 import domain/user.{type User}
 
 import scrumbringer_client/accept_invite
+import scrumbringer_client/assignments_view_mode
 
 // API types from domain modules
 import domain/api_error.{type ApiError, type ApiResult}
@@ -357,6 +358,33 @@ pub type ProjectDialogState {
   ProjectDialogDelete(id: Int, name: String, in_flight: Bool)
 }
 
+/// Inline add context for assignments.
+pub type AssignmentsAddContext {
+  AddUserToProject(project_id: Int)
+  AddProjectToUser(user_id: Int)
+}
+
+/// Assignments UI state.
+pub type AssignmentsModel {
+  AssignmentsModel(
+    view_mode: assignments_view_mode.AssignmentsViewMode,
+    search_input: String,
+    search_query: String,
+    project_members: Dict(Int, Remote(List(ProjectMember))),
+    user_projects: Dict(Int, Remote(List(Project))),
+    expanded_projects: set.Set(Int),
+    expanded_users: set.Set(Int),
+    inline_add_context: Option(AssignmentsAddContext),
+    inline_add_selection: Option(Int),
+    inline_add_search: String,
+    inline_add_role: ProjectRole,
+    inline_add_in_flight: Bool,
+    inline_remove_confirm: Option(#(Int, Int)),
+    role_change_in_flight: Option(#(Int, Int)),
+    role_change_previous: Option(#(Int, Int, ProjectRole)),
+  )
+}
+
 /// Represents AdminModel.
 pub type AdminModel {
   AdminModel(
@@ -392,17 +420,12 @@ pub type AdminModel {
     admin_rule_metrics_rule_details: Remote(api_workflows.RuleMetricsDetailed),
     admin_rule_metrics_executions: Remote(api_workflows.RuleExecutionsResponse),
     admin_rule_metrics_exec_offset: Int,
-    org_settings_role_drafts: Dict(Int, String),
     org_settings_save_in_flight: Bool,
     org_settings_error: Option(String),
     org_settings_error_user_id: Option(Int),
-    user_projects_dialog_open: Bool,
-    user_projects_dialog_user: Option(OrgUser),
-    user_projects_list: Remote(List(Project)),
-    user_projects_add_project_id: Option(Int),
-    user_projects_add_role: String,
-    user_projects_in_flight: Bool,
-    user_projects_error: Option(String),
+    org_settings_delete_confirm: Option(OrgUser),
+    org_settings_delete_in_flight: Bool,
+    org_settings_delete_error: Option(String),
     members_add_dialog_open: Bool,
     members_add_selected_user: Option(OrgUser),
     members_add_role: ProjectRole,
@@ -462,6 +485,7 @@ pub type AdminModel {
     task_templates_org: Remote(List(TaskTemplate)),
     task_templates_project: Remote(List(TaskTemplate)),
     task_templates_dialog_mode: Option(TaskTemplateDialogMode),
+    assignments: AssignmentsModel,
   )
 }
 
@@ -600,20 +624,11 @@ pub type AdminMsg {
   OrgUsersCacheFetched(ApiResult(List(OrgUser)))
   OrgSettingsUsersFetched(ApiResult(List(OrgUser)))
   OrgSettingsRoleChanged(Int, String)
-  OrgSettingsSaveClicked(Int)
   OrgSettingsSaved(Int, ApiResult(OrgUser))
-  OrgSettingsSaveAllClicked
-  UserProjectsDialogOpened(OrgUser)
-  UserProjectsDialogClosed
-  UserProjectsFetched(ApiResult(List(Project)))
-  UserProjectsAddProjectChanged(String)
-  UserProjectsAddRoleChanged(String)
-  UserProjectsAddSubmitted
-  UserProjectAdded(ApiResult(Project))
-  UserProjectRemoveClicked(Int)
-  UserProjectRemoved(ApiResult(Nil))
-  UserProjectRoleChangeRequested(Int, String)
-  UserProjectRoleChanged(Int, ApiResult(Project))
+  OrgSettingsDeleteClicked(Int)
+  OrgSettingsDeleteCancelled
+  OrgSettingsDeleteConfirmed
+  OrgSettingsDeleted(ApiResult(Nil))
   MemberAddDialogOpened
   MemberAddDialogClosed
   MemberAddRoleChanged(String)
@@ -641,6 +656,31 @@ pub type AdminMsg {
   OrgUsersSearchChanged(String)
   OrgUsersSearchDebounced(String)
   OrgUsersSearchResults(Int, ApiResult(List(OrgUser)))
+  AssignmentsViewModeChanged(assignments_view_mode.AssignmentsViewMode)
+  AssignmentsSearchChanged(String)
+  AssignmentsSearchDebounced(String)
+  AssignmentsProjectMembersFetched(Int, ApiResult(List(ProjectMember)))
+  AssignmentsUserProjectsFetched(Int, ApiResult(List(Project)))
+  AssignmentsInlineAddStarted(AssignmentsAddContext)
+  AssignmentsInlineAddSearchChanged(String)
+  AssignmentsInlineAddSelectionChanged(String)
+  AssignmentsInlineAddRoleChanged(String)
+  AssignmentsInlineAddSubmitted
+  AssignmentsInlineAddCancelled
+  AssignmentsProjectMemberAdded(Int, ApiResult(ProjectMember))
+  AssignmentsUserProjectAdded(Int, ApiResult(Project))
+  AssignmentsRemoveClicked(Int, Int)
+  AssignmentsRemoveCancelled
+  AssignmentsRemoveConfirmed
+  AssignmentsRemoveCompleted(Int, Int, ApiResult(Nil))
+  AssignmentsRoleChanged(Int, Int, ProjectRole)
+  AssignmentsRoleChangeCompleted(
+    Int,
+    Int,
+    ApiResult(api_projects.RoleChangeResult),
+  )
+  AssignmentsProjectToggled(Int)
+  AssignmentsUserToggled(Int)
   TaskTypesFetched(ApiResult(List(TaskType)))
   TaskTypeCreateDialogOpened
   TaskTypeCreateDialogClosed
@@ -1141,17 +1181,12 @@ pub fn default_model() -> Model {
       admin_rule_metrics_rule_details: NotAsked,
       admin_rule_metrics_executions: NotAsked,
       admin_rule_metrics_exec_offset: 0,
-      org_settings_role_drafts: dict.new(),
       org_settings_save_in_flight: False,
       org_settings_error: option.None,
       org_settings_error_user_id: option.None,
-      user_projects_dialog_open: False,
-      user_projects_dialog_user: option.None,
-      user_projects_list: NotAsked,
-      user_projects_add_project_id: option.None,
-      user_projects_add_role: "member",
-      user_projects_in_flight: False,
-      user_projects_error: option.None,
+      org_settings_delete_confirm: option.None,
+      org_settings_delete_in_flight: False,
+      org_settings_delete_error: option.None,
       members_add_dialog_open: False,
       members_add_selected_user: option.None,
       members_add_role: MemberRole,
@@ -1211,6 +1246,23 @@ pub fn default_model() -> Model {
       task_templates_org: NotAsked,
       task_templates_project: NotAsked,
       task_templates_dialog_mode: option.None,
+      assignments: AssignmentsModel(
+        view_mode: assignments_view_mode.ByProject,
+        search_input: "",
+        search_query: "",
+        project_members: dict.new(),
+        user_projects: dict.new(),
+        expanded_projects: set.new(),
+        expanded_users: set.new(),
+        inline_add_context: option.None,
+        inline_add_selection: option.None,
+        inline_add_search: "",
+        inline_add_role: MemberRole,
+        inline_add_in_flight: False,
+        inline_remove_confirm: option.None,
+        role_change_in_flight: option.None,
+        role_change_previous: option.None,
+      ),
     ),
     member: MemberModel(
       member_section: member_section.Pool,

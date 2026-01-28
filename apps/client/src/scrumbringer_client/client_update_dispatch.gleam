@@ -13,6 +13,7 @@ import domain/project_role.{Member as MemberRole}
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
 import scrumbringer_client/features/admin/update as admin_workflow
+import scrumbringer_client/features/assignments/update as assignments_workflow
 import scrumbringer_client/features/capabilities/update as capabilities_workflow
 import scrumbringer_client/features/invites/update as invite_links_workflow
 import scrumbringer_client/features/metrics/update as metrics_workflow
@@ -238,8 +239,13 @@ pub fn handle_admin(
     client_state.MembersFetched(Error(err)) ->
       admin_workflow.handle_members_fetched_error(model, err)
 
-    client_state.OrgUsersCacheFetched(Ok(users)) ->
-      admin_workflow.handle_org_users_cache_fetched_ok(model, users)
+    client_state.OrgUsersCacheFetched(Ok(users)) -> {
+      let #(model, fx) =
+        admin_workflow.handle_org_users_cache_fetched_ok(model, users)
+      let #(model, assignments_fx) =
+        assignments_workflow.start_user_projects_fetch(model, users)
+      #(model, effect.batch([fx, assignments_fx]))
+    }
     client_state.OrgUsersCacheFetched(Error(err)) ->
       admin_workflow.handle_org_users_cache_fetched_error(model, err)
     client_state.OrgSettingsUsersFetched(Ok(users)) ->
@@ -249,54 +255,20 @@ pub fn handle_admin(
       admin_workflow.handle_org_settings_users_fetched_error(model, err)
     client_state.OrgSettingsRoleChanged(user_id, org_role) ->
       admin_workflow.handle_org_settings_role_changed(model, user_id, org_role)
-    client_state.OrgSettingsSaveClicked(user_id) ->
-      admin_workflow.handle_org_settings_save_clicked(model, user_id)
     client_state.OrgSettingsSaved(_user_id, Ok(updated)) ->
       admin_workflow.handle_org_settings_saved_ok(model, updated)
     client_state.OrgSettingsSaved(user_id, Error(err)) ->
       admin_workflow.handle_org_settings_saved_error(model, user_id, err)
-    client_state.OrgSettingsSaveAllClicked ->
-      admin_workflow.handle_org_settings_save_all_clicked(model)
-
-    // User projects dialog handlers
-    client_state.UserProjectsDialogOpened(user) ->
-      admin_workflow.handle_user_projects_dialog_opened(model, user)
-    client_state.UserProjectsDialogClosed ->
-      admin_workflow.handle_user_projects_dialog_closed(model)
-    client_state.UserProjectsFetched(Ok(projects)) ->
-      admin_workflow.handle_user_projects_fetched_ok(model, projects)
-    client_state.UserProjectsFetched(Error(err)) ->
-      admin_workflow.handle_user_projects_fetched_error(model, err)
-    client_state.UserProjectsAddProjectChanged(project_id) ->
-      admin_workflow.handle_user_projects_add_project_changed(model, project_id)
-    client_state.UserProjectsAddRoleChanged(role) ->
-      admin_workflow.handle_user_projects_add_role_changed(model, role)
-    client_state.UserProjectsAddSubmitted ->
-      admin_workflow.handle_user_projects_add_submitted(model)
-    client_state.UserProjectAdded(Ok(project)) ->
-      admin_workflow.handle_user_project_added_ok(model, project)
-    client_state.UserProjectAdded(Error(err)) ->
-      admin_workflow.handle_user_project_added_error(model, err)
-    client_state.UserProjectRemoveClicked(project_id) ->
-      admin_workflow.handle_user_project_remove_clicked(model, project_id)
-    client_state.UserProjectRemoved(Ok(_)) ->
-      admin_workflow.handle_user_project_removed_ok(model)
-    client_state.UserProjectRemoved(Error(err)) ->
-      admin_workflow.handle_user_project_removed_error(model, err)
-    client_state.UserProjectRoleChangeRequested(project_id, new_role) ->
-      admin_workflow.handle_user_project_role_change_requested(
-        model,
-        project_id,
-        new_role,
-      )
-    client_state.UserProjectRoleChanged(project_id, Ok(updated)) ->
-      admin_workflow.handle_user_project_role_changed_ok(
-        model,
-        project_id,
-        updated,
-      )
-    client_state.UserProjectRoleChanged(_project_id, Error(err)) ->
-      admin_workflow.handle_user_project_role_changed_error(model, err)
+    client_state.OrgSettingsDeleteClicked(user_id) ->
+      admin_workflow.handle_org_settings_delete_clicked(model, user_id)
+    client_state.OrgSettingsDeleteCancelled ->
+      admin_workflow.handle_org_settings_delete_cancelled(model)
+    client_state.OrgSettingsDeleteConfirmed ->
+      admin_workflow.handle_org_settings_delete_confirmed(model)
+    client_state.OrgSettingsDeleted(Ok(_)) ->
+      admin_workflow.handle_org_settings_deleted_ok(model)
+    client_state.OrgSettingsDeleted(Error(err)) ->
+      admin_workflow.handle_org_settings_deleted_error(model, err)
 
     client_state.MemberAddDialogOpened ->
       admin_workflow.handle_member_add_dialog_opened(model)
@@ -388,6 +360,126 @@ pub fn handle_admin(
       admin_workflow.handle_org_users_search_results_ok(model, token, users)
     client_state.OrgUsersSearchResults(token, Error(err)) ->
       admin_workflow.handle_org_users_search_results_error(model, token, err)
+
+    client_state.AssignmentsViewModeChanged(view_mode) ->
+      assignments_workflow.handle_assignments_view_mode_changed(
+        model,
+        view_mode,
+      )
+    client_state.AssignmentsSearchChanged(value) ->
+      assignments_workflow.handle_assignments_search_changed(model, value)
+    client_state.AssignmentsSearchDebounced(value) ->
+      assignments_workflow.handle_assignments_search_debounced(model, value)
+    client_state.AssignmentsProjectToggled(project_id) ->
+      assignments_workflow.handle_assignments_project_toggled(model, project_id)
+    client_state.AssignmentsUserToggled(user_id) ->
+      assignments_workflow.handle_assignments_user_toggled(model, user_id)
+    client_state.AssignmentsProjectMembersFetched(project_id, Ok(members)) ->
+      assignments_workflow.handle_assignments_project_members_fetched(
+        model,
+        project_id,
+        Ok(members),
+      )
+    client_state.AssignmentsProjectMembersFetched(project_id, Error(err)) ->
+      assignments_workflow.handle_assignments_project_members_fetched(
+        model,
+        project_id,
+        Error(err),
+      )
+    client_state.AssignmentsUserProjectsFetched(user_id, Ok(projects)) ->
+      assignments_workflow.handle_assignments_user_projects_fetched(
+        model,
+        user_id,
+        Ok(projects),
+      )
+    client_state.AssignmentsUserProjectsFetched(user_id, Error(err)) ->
+      assignments_workflow.handle_assignments_user_projects_fetched(
+        model,
+        user_id,
+        Error(err),
+      )
+    client_state.AssignmentsInlineAddStarted(context) ->
+      assignments_workflow.handle_assignments_inline_add_started(model, context)
+    client_state.AssignmentsInlineAddSearchChanged(value) ->
+      assignments_workflow.handle_assignments_inline_add_search_changed(
+        model,
+        value,
+      )
+    client_state.AssignmentsInlineAddSelectionChanged(value) ->
+      assignments_workflow.handle_assignments_inline_add_selection_changed(
+        model,
+        value,
+      )
+    client_state.AssignmentsInlineAddRoleChanged(value) ->
+      assignments_workflow.handle_assignments_inline_add_role_changed(
+        model,
+        value,
+      )
+    client_state.AssignmentsInlineAddSubmitted ->
+      assignments_workflow.handle_assignments_inline_add_submitted(model)
+    client_state.AssignmentsInlineAddCancelled ->
+      assignments_workflow.handle_assignments_inline_add_cancelled(model)
+    client_state.AssignmentsProjectMemberAdded(project_id, Ok(member)) ->
+      assignments_workflow.handle_assignments_project_member_added_ok(
+        model,
+        project_id,
+        member,
+      )
+    client_state.AssignmentsProjectMemberAdded(_project_id, Error(err)) ->
+      assignments_workflow.handle_assignments_project_member_added_error(
+        model,
+        err,
+      )
+    client_state.AssignmentsUserProjectAdded(user_id, Ok(project)) ->
+      assignments_workflow.handle_assignments_user_project_added_ok(
+        model,
+        user_id,
+        project,
+      )
+    client_state.AssignmentsUserProjectAdded(_user_id, Error(err)) ->
+      assignments_workflow.handle_assignments_user_project_added_error(
+        model,
+        err,
+      )
+    client_state.AssignmentsRemoveClicked(project_id, user_id) ->
+      assignments_workflow.handle_assignments_remove_clicked(
+        model,
+        project_id,
+        user_id,
+      )
+    client_state.AssignmentsRemoveCancelled ->
+      assignments_workflow.handle_assignments_remove_cancelled(model)
+    client_state.AssignmentsRemoveConfirmed ->
+      assignments_workflow.handle_assignments_remove_confirmed(model)
+    client_state.AssignmentsRemoveCompleted(project_id, user_id, Ok(_)) ->
+      assignments_workflow.handle_assignments_remove_completed_ok(
+        model,
+        project_id,
+        user_id,
+      )
+    client_state.AssignmentsRemoveCompleted(_project_id, _user_id, Error(err)) ->
+      assignments_workflow.handle_assignments_remove_completed_error(model, err)
+    client_state.AssignmentsRoleChanged(project_id, user_id, new_role) ->
+      assignments_workflow.handle_assignments_role_changed(
+        model,
+        project_id,
+        user_id,
+        new_role,
+      )
+    client_state.AssignmentsRoleChangeCompleted(project_id, user_id, Ok(result)) ->
+      assignments_workflow.handle_assignments_role_change_completed_ok(
+        model,
+        project_id,
+        user_id,
+        result,
+      )
+    client_state.AssignmentsRoleChangeCompleted(project_id, user_id, Error(err)) ->
+      assignments_workflow.handle_assignments_role_change_completed_error(
+        model,
+        project_id,
+        user_id,
+        err,
+      )
 
     client_state.TaskTypesFetched(Ok(task_types)) ->
       task_types_workflow.handle_task_types_fetched_ok(model, task_types)

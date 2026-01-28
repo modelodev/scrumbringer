@@ -141,7 +141,7 @@ pub type WorkSessionInsertOptions {
 // =============================================================================
 
 /// Fixed password hash for "passwordpassword" (argon2).
-pub const default_password_hash = "$argon2id$v=19$m=19456,t=2,p=1$Dqfb9+7qAiJzB5ghwAjP8A$3agIFIqxEfklBQ4Y+kbetHBD2hyyPZyEfqC8GPwkhDY"
+pub const default_password_hash = "$argon2id$v=19$m=19456,t=2,p=1$WFdS11YsLLialYVbuHIxhg$N3DNEU4tlErd/6a8eP5VZEwvpN2UgLWgET+mS41iAYI"
 
 // =============================================================================
 // Timestamp Helpers
@@ -231,9 +231,11 @@ pub fn insert_user(
       params,
     )
 
-  let sql =
-    "INSERT INTO users (" <> cols <> ") VALUES (" <> vals <> ")
-     ON CONFLICT (email) DO UPDATE SET org_role = $4
+  let sql = "INSERT INTO users (" <> cols <> ") VALUES (" <> vals <> ")
+     ON CONFLICT (email) DO UPDATE
+     SET password_hash = EXCLUDED.password_hash,
+         org_id = EXCLUDED.org_id,
+         org_role = EXCLUDED.org_role
      RETURNING id"
 
   let base_query =
@@ -279,6 +281,24 @@ pub fn insert_user_simple(
 // =============================================================================
 // Project Operations
 // =============================================================================
+
+/// Insert an organization.
+pub fn insert_organization(
+  db: pog.Connection,
+  name: String,
+) -> Result(Int, String) {
+  pog.query("INSERT INTO organizations (name) VALUES ($1) RETURNING id")
+  |> pog.parameter(pog.text(name))
+  |> pog.returning(int_decoder())
+  |> pog.execute(db)
+  |> result.map_error(fn(e) { "insert_organization: " <> string.inspect(e) })
+  |> result.try(fn(r) {
+    case r.rows {
+      [id] -> Ok(id)
+      _ -> Error("No ID")
+    }
+  })
+}
 
 /// Insert a project with optional timestamp.
 pub fn insert_project(
@@ -425,6 +445,7 @@ pub fn insert_task_type_with_capability(
     }
   })
 }
+
 // =============================================================================
 // Task Operations
 // =============================================================================
@@ -544,7 +565,9 @@ pub fn update_task_status(
       |> result.map_error(fn(e) { "update_task_status: " <> string.inspect(e) })
     }
     None -> {
-      pog.query("UPDATE tasks SET status = $1, completed_at = NOW() WHERE id = $2")
+      pog.query(
+        "UPDATE tasks SET status = $1, completed_at = NOW() WHERE id = $2",
+      )
       |> pog.parameter(pog.text(status))
       |> pog.parameter(pog.int(task_id))
       |> pog.execute(db)
@@ -630,8 +653,7 @@ pub fn insert_workflow(
   db: pog.Connection,
   opts: WorkflowInsertOptions,
 ) -> Result(Int, String) {
-  let base_cols =
-    "org_id, project_id, name, description, active, created_by"
+  let base_cols = "org_id, project_id, name, description, active, created_by"
   let base_vals = "$1, $2, $3, $4, $5, $6"
   let base_idx = 7
 
@@ -646,7 +668,11 @@ pub fn insert_workflow(
     )
 
   let sql =
-    "INSERT INTO workflows (" <> cols <> ") VALUES (" <> vals <> ") RETURNING id"
+    "INSERT INTO workflows ("
+    <> cols
+    <> ") VALUES ("
+    <> vals
+    <> ") RETURNING id"
 
   let base_query =
     pog.query(sql)
@@ -807,7 +833,11 @@ pub fn insert_template(
     )
 
   let sql =
-    "INSERT INTO task_templates (" <> cols <> ") VALUES (" <> vals <> ") RETURNING id"
+    "INSERT INTO task_templates ("
+    <> cols
+    <> ") VALUES ("
+    <> vals
+    <> ") RETURNING id"
 
   let base_query =
     pog.query(sql)
@@ -878,8 +908,7 @@ pub fn insert_task_event(
       [],
     )
 
-  let sql =
-    "INSERT INTO task_events (" <> cols <> ") VALUES (" <> vals <> ")"
+  let sql = "INSERT INTO task_events (" <> cols <> ") VALUES (" <> vals <> ")"
 
   let base_query =
     pog.query(sql)
@@ -944,7 +973,11 @@ pub fn insert_task_note(
     )
 
   let sql =
-    "INSERT INTO task_notes (" <> cols <> ") VALUES (" <> vals <> ") RETURNING id"
+    "INSERT INTO task_notes ("
+    <> cols
+    <> ") VALUES ("
+    <> vals
+    <> ") RETURNING id"
 
   let base_query =
     pog.query(sql)
@@ -1071,7 +1104,11 @@ pub fn insert_work_session_entry(
     )
 
   let sql =
-    "INSERT INTO user_task_work_session (" <> cols <> ") VALUES (" <> vals <> ")"
+    "INSERT INTO user_task_work_session ("
+    <> cols
+    <> ") VALUES ("
+    <> vals
+    <> ")"
 
   let base_query =
     pog.query(sql)

@@ -49,6 +49,7 @@ import scrumbringer_client/client_state
 // Story 4.8 UX: Collapse/expand card groups in Lista view
 // Story 4.8 UX: Preferences popup toggle and theme/locale
 import scrumbringer_client/features/admin/view as admin_view
+import scrumbringer_client/features/assignments/view as assignments_view
 import scrumbringer_client/features/auth/view as auth_view
 import scrumbringer_client/features/fichas/view as fichas_view
 import scrumbringer_client/features/invites/view as invites_view
@@ -272,6 +273,7 @@ fn view_section(
         permissions.Invites -> invites_view.view_invites(model)
         permissions.OrgSettings -> admin_view.view_org_settings(model)
         permissions.Projects -> projects_view.view_projects(model)
+        permissions.Assignments -> assignments_view.view_assignments(model)
         permissions.Metrics -> metrics_view.view_metrics(model, selected)
         permissions.RuleMetrics -> admin_view.view_rule_metrics(model)
         permissions.Capabilities -> admin_view.view_capabilities(model)
@@ -475,6 +477,11 @@ fn build_left_panel(
     _ -> 0
   }
 
+  let users_count = case model.admin.org_users_cache {
+    client_state.Loaded(users) -> list.length(users)
+    _ -> 0
+  }
+
   // Story 4.5: Use Config and Org routes instead of client_state.Admin
   // Story 4.7: TRABAJO section visible for all roles (AC1, AC7-9)
   // Only show active view indicator when on client_state.Member page (AC3)
@@ -500,6 +507,7 @@ fn build_left_panel(
     // Badge counts
     pending_invites_count: pending_invites_count,
     projects_count: list.length(projects),
+    users_count: users_count,
     // Event handlers
     on_project_change: client_state.ProjectSelected,
     on_new_task: client_state.pool_msg(client_state.MemberCreateDialogOpened),
@@ -572,6 +580,10 @@ fn build_left_panel(
     ),
     on_navigate_org_projects: client_state.NavigateTo(
       router.Org(permissions.Projects),
+      client_state.Push,
+    ),
+    on_navigate_org_assignments: client_state.NavigateTo(
+      router.Org(permissions.Assignments),
       client_state.Push,
     ),
     // AC32: Org Metrics link for Org client_state.Admin

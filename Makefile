@@ -45,6 +45,7 @@ squirrel:
 # ---- Tests ----
 
 test:
+	@$(MAKE) migrate
 	@echo "Running server tests with DATABASE_URL=$(DATABASE_URL)"
 	@cd apps/server && DATABASE_URL="$(DATABASE_URL)" \
 		SB_DB_POOL_SIZE="$(SB_DB_POOL_SIZE)" \

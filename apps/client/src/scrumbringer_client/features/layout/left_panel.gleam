@@ -53,6 +53,7 @@ pub type LeftPanelConfig(msg) {
     // Badge counts
     pending_invites_count: Int,
     projects_count: Int,
+    users_count: Int,
     // Event handlers
     on_project_change: fn(String) -> msg,
     on_new_task: msg,
@@ -73,6 +74,7 @@ pub type LeftPanelConfig(msg) {
     on_navigate_org_invites: msg,
     on_navigate_org_users: msg,
     on_navigate_org_projects: msg,
+    on_navigate_org_assignments: msg,
     on_navigate_org_metrics: msg,
     on_toggle_config: msg,
     on_toggle_org: msg,
@@ -492,6 +494,7 @@ fn view_org_section(config: LeftPanelConfig(msg)) -> Element(msg) {
                 span([attribute.class("nav-label")], [
                   text(i18n.t(config.locale, i18n_text.OrgUsers)),
                 ]),
+                view_badge(config.users_count),
               ],
             ),
             button(
@@ -506,6 +509,19 @@ fn view_org_section(config: LeftPanelConfig(msg)) -> Element(msg) {
                   text(i18n.t(config.locale, i18n_text.Projects)),
                 ]),
                 view_badge(config.projects_count),
+              ],
+            ),
+            button(
+              [
+                attribute.class("nav-link"),
+                attribute.attribute("data-testid", "nav-assignments"),
+                event.on_click(config.on_navigate_org_assignments),
+              ],
+              [
+                icons.nav_icon(icons.Team, icons.Small),
+                span([attribute.class("nav-label")], [
+                  text(i18n.t(config.locale, i18n_text.Assignments)),
+                ]),
               ],
             ),
             // AC32: Org Metrics link for Org Admin

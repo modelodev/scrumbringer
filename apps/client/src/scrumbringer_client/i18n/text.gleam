@@ -196,6 +196,20 @@ pub type Text {
   AdminMembers
   AdminCapabilities
   AdminTaskTypes
+  Assignments
+  AssignmentsByProject
+  AssignmentsByUser
+  AssignmentsSearchPlaceholder
+  AssignmentsNoProjectsTitle
+  AssignmentsNoProjectsBody
+  AssignmentsNoUsersTitle
+  AssignmentsNoUsersBody
+  AssignmentsNoMembersBadge
+  AssignmentsNoProjectsBadge
+  AssignmentsUsersCount(count: Int)
+  AssignmentsProjectsCount(count: Int)
+  AssignmentsLoadingMembers
+  AssignmentsLoadingProjects
   NoAdminPermissions
   NotPermitted
   NotPermittedBody
@@ -332,6 +346,9 @@ pub type Text {
   SaveOrgRoleChanges
   PendingChanges
   ProjectsSummary(count: Int, summary: String)
+  DeleteUser
+  ConfirmDeleteUser(user_email: String)
+  UserDeleted
 
   // Task types
   SelectProjectToManageTaskTypes
@@ -355,8 +372,11 @@ pub type Text {
   AppearanceSection
   ConfigurationSection
   Icon
+  OptionalFields
+  SelectIcon
   UnknownIcon
   CapabilityOptional
+  TaskTypeNameHint
   LoadingCapabilities
   NoTaskTypesYet
   CreateFirstTaskTypeHint

@@ -150,6 +150,19 @@ pub fn update_org_user_role(
   )
 }
 
+/// Delete an organization user.
+pub fn delete_org_user(
+  user_id: Int,
+  to_msg: fn(ApiResult(Nil)) -> msg,
+) -> Effect(msg) {
+  core.request_nil(
+    "DELETE",
+    "/api/v1/org/users/" <> int.to_string(user_id),
+    option.None,
+    to_msg,
+  )
+}
+
 // =============================================================================
 // User Projects API Functions
 // =============================================================================

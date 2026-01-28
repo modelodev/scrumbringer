@@ -52,6 +52,7 @@ import gleam/string
 import lustre/effect.{type Effect}
 
 import domain/view_mode.{type ViewMode}
+import scrumbringer_client/assignments_view_mode
 import scrumbringer_client/client_ffi
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale as i18n_locale
@@ -175,7 +176,11 @@ fn parse_optional_view_param(
     Some(raw) ->
       case view_mode_from_param(raw) {
         Some(mode) -> #(Some(mode), None)
-        None -> #(None, Some(InvalidView(raw)))
+        None ->
+          case assignments_view_mode.from_param(raw) {
+            Some(_) -> #(None, None)
+            None -> #(None, Some(InvalidView(raw)))
+          }
       }
   }
 }
@@ -325,6 +330,43 @@ fn with_query_params(
   }
 }
 
+// =============================================================================
+// Assignments view helpers
+// =============================================================================
+
+pub fn assignments_view_from_search(
+  search: String,
+) -> Option(assignments_view_mode.AssignmentsViewMode) {
+  case query_param(search, "view") {
+    Some(raw) -> assignments_view_mode.from_param(raw)
+    None -> None
+  }
+}
+
+pub fn format_assignments(
+  view: Option(assignments_view_mode.AssignmentsViewMode),
+) -> String {
+  let base = "/org/assignments"
+  case view {
+    None -> base
+    Some(mode) -> base <> "?view=" <> assignments_view_mode.to_param(mode)
+  }
+}
+
+pub fn replace_assignments_view(
+  view: assignments_view_mode.AssignmentsViewMode,
+) -> Effect(msg) {
+  let url = format_assignments(Some(view))
+  effect.from(fn(_dispatch) { client_ffi.history_replace_state(url) })
+}
+
+pub fn push_assignments_view(
+  view: assignments_view_mode.AssignmentsViewMode,
+) -> Effect(msg) {
+  let url = format_assignments(Some(view))
+  effect.from(fn(_dispatch) { client_ffi.history_push_state(url) })
+}
+
 fn token_from_search(search: String) -> String {
   case query_param(search, "token") {
     Some(token) -> token
@@ -402,6 +444,7 @@ fn org_section_from_slug(slug: String) -> permissions.AdminSection {
     "settings" -> permissions.OrgSettings
     "users" -> permissions.OrgSettings
     "projects" -> permissions.Projects
+    "assignments" -> permissions.Assignments
     "metrics" -> permissions.Metrics
     "rule-metrics" -> permissions.RuleMetrics
     _ -> permissions.Invites
@@ -414,6 +457,7 @@ fn org_section_slug(section: permissions.AdminSection) -> String {
     permissions.Invites -> "invites"
     permissions.OrgSettings -> "settings"
     permissions.Projects -> "projects"
+    permissions.Assignments -> "assignments"
     permissions.Metrics -> "metrics"
     permissions.RuleMetrics -> "rule-metrics"
     // Config sections should not use this, but provide fallback
@@ -521,6 +565,7 @@ fn admin_section_title(
     permissions.Invites -> i18n_text.AdminInvites
     permissions.OrgSettings -> i18n_text.AdminOrgSettings
     permissions.Projects -> i18n_text.AdminProjects
+    permissions.Assignments -> i18n_text.Assignments
     permissions.Metrics -> i18n_text.AdminMetrics
     permissions.RuleMetrics -> i18n_text.AdminRuleMetrics
     permissions.Members -> i18n_text.AdminMembers

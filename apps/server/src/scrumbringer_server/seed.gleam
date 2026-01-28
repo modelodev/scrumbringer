@@ -84,7 +84,18 @@ fn run_seed(
   use _ <- result.try(seed_db.reset_workflow_tables(db))
   io.println("[OK] Reset workflow tables")
 
-  seed_builder.build_seed(db, org_id, admin_id, config)
+  use stats <- result.try(seed_builder.build_seed(db, org_id, admin_id, config))
+
+  use empty_org_id <- result.try(seed_db.insert_organization(db, "Empty Org"))
+  use _ <- result.try(seed_db.insert_user_simple(
+    db,
+    empty_org_id,
+    "empty-admin@example.com",
+    "admin",
+  ))
+  io.println("[OK] Empty org created (no projects): empty-admin@example.com")
+
+  Ok(stats)
 }
 
 // =============================================================================
@@ -111,6 +122,7 @@ fn print_summary(stats: seed_builder.SeedResult) {
   io.println("  pm@example.com       - Org Member")
   io.println("  member@example.com   - Org Member")
   io.println("  beta@example.com     - Org Member")
+  io.println("  empty-admin@example.com - Org Admin (Empty Org)")
   io.println("")
 }
 

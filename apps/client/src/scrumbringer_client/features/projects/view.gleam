@@ -20,7 +20,7 @@ import gleam/int
 import gleam/option as opt
 
 import lustre/attribute
-import lustre/element.{type Element}
+import lustre/element
 import lustre/element/html.{button, div, form, input, label, p, text}
 import lustre/event
 
@@ -49,7 +49,7 @@ import scrumbringer_client/utils/format_date
 // =============================================================================
 
 /// Main projects section view.
-pub fn view_projects(model: Model) -> Element(Msg) {
+pub fn view_projects(model: Model) -> element.Element(Msg) {
   div([attrs.section()], [
     // Section header with add button (Story 4.8: consistent icons)
     section_header.view_with_action(
@@ -64,6 +64,13 @@ pub fn view_projects(model: Model) -> Element(Msg) {
     // Projects list
     view_projects_list(model),
     // Dialogs
+    view_project_dialogs(model),
+  ])
+}
+
+/// Project dialogs (create/edit/delete) for reuse in other views.
+pub fn view_project_dialogs(model: Model) -> element.Element(Msg) {
+  element.fragment([
     view_projects_create_dialog(model),
     view_projects_edit_dialog(model),
     view_projects_delete_confirm(model),
@@ -75,7 +82,7 @@ pub fn view_projects(model: Model) -> Element(Msg) {
 // =============================================================================
 
 /// Dialog for creating a new project.
-fn view_projects_create_dialog(model: Model) -> Element(Msg) {
+fn view_projects_create_dialog(model: Model) -> element.Element(Msg) {
   let #(is_open, name, in_flight, error) = case model.admin.projects_dialog {
     ProjectDialogCreate(name, in_flight, error) -> #(
       True,
@@ -143,7 +150,7 @@ fn view_projects_create_dialog(model: Model) -> Element(Msg) {
 }
 
 /// Dialog for editing a project (Story 4.8 AC39).
-fn view_projects_edit_dialog(model: Model) -> Element(Msg) {
+fn view_projects_edit_dialog(model: Model) -> element.Element(Msg) {
   let #(is_open, name, in_flight, error) = case model.admin.projects_dialog {
     ProjectDialogEdit(_id, name, in_flight, error) -> #(
       True,
@@ -211,7 +218,7 @@ fn view_projects_edit_dialog(model: Model) -> Element(Msg) {
 }
 
 /// Delete confirmation dialog (Story 4.8 AC39).
-fn view_projects_delete_confirm(model: Model) -> Element(Msg) {
+fn view_projects_delete_confirm(model: Model) -> element.Element(Msg) {
   let #(is_open, name, in_flight) = case model.admin.projects_dialog {
     ProjectDialogDelete(_id, name, in_flight) -> #(True, name, in_flight)
     _ -> #(False, "", False)
@@ -255,7 +262,7 @@ fn view_projects_delete_confirm(model: Model) -> Element(Msg) {
   )
 }
 
-fn view_projects_list(model: Model) -> Element(Msg) {
+fn view_projects_list(model: Model) -> element.Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
 
   data_table.view_remote_with_forbidden(
@@ -300,7 +307,7 @@ fn view_projects_list(model: Model) -> Element(Msg) {
   )
 }
 
-fn view_project_actions(model: Model, p: Project) -> Element(Msg) {
+fn view_project_actions(model: Model, p: Project) -> element.Element(Msg) {
   action_buttons.edit_delete_row(
     edit_title: update_helpers.i18n_t(model, i18n_text.EditProject),
     edit_click: admin_msg(ProjectEditDialogOpened(p.id, p.name)),

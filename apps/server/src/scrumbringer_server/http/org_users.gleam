@@ -58,7 +58,8 @@ pub fn handle_org_user(
 ) -> wisp.Response {
   case req.method {
     http.Patch -> handle_update(req, ctx, user_id)
-    _ -> wisp.method_not_allowed([http.Patch])
+    http.Delete -> handle_delete(req, ctx, user_id)
+    _ -> wisp.method_not_allowed([http.Patch, http.Delete])
   }
 }
 
@@ -72,6 +73,19 @@ fn handle_update(
 
   case update_org_user_role(req, ctx, user_id, data) {
     Ok(updated) -> api.ok(json.object([#("user", user_json(updated))]))
+    Error(resp) -> resp
+  }
+}
+
+fn handle_delete(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  user_id: String,
+) -> wisp.Response {
+  use <- wisp.require_method(req, http.Delete)
+
+  case delete_org_user(req, ctx, user_id) {
+    Ok(_) -> api.no_content()
     Error(resp) -> resp
   }
 }
@@ -223,18 +237,49 @@ fn update_org_role(
 ) -> Result(org_users_db.OrgUser, wisp.Response) {
   case org_users_db.update_org_role(db, org_id, target_user_id, new_role) {
     Ok(updated) -> Ok(updated)
-    Error(org_users_db.InvalidRole) ->
+    Error(org_users_db.UpdateInvalidRole) ->
       Error(api.error(422, "VALIDATION_ERROR", "Invalid org_role"))
-    Error(org_users_db.UserNotFound) ->
+    Error(org_users_db.UpdateUserNotFound) ->
       Error(api.error(404, "NOT_FOUND", "User not found"))
-    Error(org_users_db.CannotDemoteLastAdmin) ->
+    Error(org_users_db.UpdateCannotDemoteLastAdmin) ->
       Error(api.error(
         409,
         "CONFLICT_LAST_ORG_ADMIN",
         "Cannot demote last org admin",
       ))
-    Error(org_users_db.DbError(_)) ->
+    Error(org_users_db.UpdateDbError(_)) ->
       Error(api.error(500, "INTERNAL", "Database error"))
+  }
+}
+
+fn delete_org_user(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  user_id: String,
+) -> Result(Nil, wisp.Response) {
+  use target_user_id <- result.try(parse_user_id(user_id))
+  use user <- result.try(require_current_user(req, ctx))
+  use _ <- result.try(require_org_admin(user))
+  use _ <- result.try(require_csrf(req))
+
+  case user.id == target_user_id {
+    True -> Error(api.error(409, "CONFLICT_SELF_DELETE", "Cannot delete self"))
+    False -> {
+      let auth.Ctx(db: db, ..) = ctx
+      case org_users_db.delete_org_user(db, user.org_id, target_user_id) {
+        Ok(_) -> Ok(Nil)
+        Error(org_users_db.DeleteUserNotFound) ->
+          Error(api.error(404, "NOT_FOUND", "User not found"))
+        Error(org_users_db.DeleteLastAdmin) ->
+          Error(api.error(
+            409,
+            "CONFLICT_LAST_ORG_ADMIN",
+            "Cannot delete last org admin",
+          ))
+        Error(org_users_db.DeleteDbError(_)) ->
+          Error(api.error(500, "INTERNAL", "Database error"))
+      }
+    }
   }
 }
 

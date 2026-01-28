@@ -155,17 +155,18 @@ pub fn card_color_pool() -> List(String) {
 /// Pool of user emails for generated users.
 fn user_email_pool() -> List(String) {
   [
-    "pm@example.com", "member@example.com", "beta@example.com", "dev@example.com",
-    "qa@example.com", "lead@example.com", "intern@example.com",
-    "contractor@example.com",
+    "pm@example.com", "member@example.com", "beta@example.com",
+    "dev@example.com", "qa@example.com", "lead@example.com",
+    "intern@example.com", "contractor@example.com",
   ]
 }
 
 /// Pool of workflow names.
 fn workflow_name_pool() -> List(String) {
   [
-    "Bug Resolution", "Feature Development", "Card Automation", "Simple Bug Flow",
-    "Code Review", "QA Process", "Release Pipeline", "Hotfix Flow",
+    "Bug Resolution", "Feature Development", "Card Automation",
+    "Simple Bug Flow", "Code Review", "QA Process", "Release Pipeline",
+    "Hotfix Flow",
   ]
 }
 
@@ -289,18 +290,22 @@ fn build_projects(
 
       // Add members to non-empty projects
       let is_empty = idx >= config.project_count - config.empty_project_count
+      // Add admin as manager for visibility in admin views
+      use _ <- result.try(seed_db.insert_member(
+        db,
+        project_id,
+        state.admin_id,
+        "manager",
+      ))
+
       case is_empty {
         True -> Ok(project_id)
         False -> {
-          // Add admin as manager
-          use _ <- result.try(seed_db.insert_member(
-            db,
-            project_id,
-            state.admin_id,
-            "manager",
-          ))
-          // Add other users as members
-          let other_users = list.drop(state.user_ids, 1)
+          // Add other users as members (leave one user unassigned for edge cases)
+          let assignable_count = int.max(0, list.length(state.user_ids) - 2)
+          let other_users =
+            list.drop(state.user_ids, 1)
+            |> list.take(assignable_count)
           use _ <- result.try(
             list.try_map(other_users, fn(user_id) {
               seed_db.insert_member(db, project_id, user_id, "member")
@@ -334,11 +339,21 @@ fn build_capabilities(
       let feature_name = list_at(names, proj_idx + 1, "Product")
       let task_name = list_at(names, proj_idx + 2, "Operations")
 
-      use bug_cap <- result.try(seed_db.insert_capability(db, project_id, bug_name))
-      use feature_cap <- result.try(
-        seed_db.insert_capability(db, project_id, feature_name),
-      )
-      use task_cap <- result.try(seed_db.insert_capability(db, project_id, task_name))
+      use bug_cap <- result.try(seed_db.insert_capability(
+        db,
+        project_id,
+        bug_name,
+      ))
+      use feature_cap <- result.try(seed_db.insert_capability(
+        db,
+        project_id,
+        feature_name,
+      ))
+      use task_cap <- result.try(seed_db.insert_capability(
+        db,
+        project_id,
+        task_name,
+      ))
       Ok(#(project_id, bug_cap, feature_cap, task_cap))
     })
     |> result.all,
@@ -362,24 +377,20 @@ fn build_task_types(
         "bug-ant",
         Some(bug_cap),
       ))
-      use feature_id <- result.try(
-        seed_db.insert_task_type_with_capability(
-          db,
-          project_id,
-          "Feature",
-          "sparkles",
-          Some(feature_cap),
-        ),
-      )
-      use task_id <- result.try(
-        seed_db.insert_task_type_with_capability(
-          db,
-          project_id,
-          "Task",
-          "clipboard-document-check",
-          Some(task_cap),
-        ),
-      )
+      use feature_id <- result.try(seed_db.insert_task_type_with_capability(
+        db,
+        project_id,
+        "Feature",
+        "sparkles",
+        Some(feature_cap),
+      ))
+      use task_id <- result.try(seed_db.insert_task_type_with_capability(
+        db,
+        project_id,
+        "Task",
+        "clipboard-document-check",
+        Some(task_cap),
+      ))
       Ok(#(project_id, bug_id, feature_id, task_id))
     }),
   )
@@ -395,32 +406,29 @@ fn build_member_capabilities(
   use _ <- result.try(
     list.try_map(state.capability_ids, fn(caps) {
       let #(project_id, bug_cap, feature_cap, task_cap) = caps
-      let other_users = list.drop(state.user_ids, 1)
+      let assignable_count = int.max(0, list.length(state.user_ids) - 2)
+      let other_users =
+        list.drop(state.user_ids, 1)
+        |> list.take(assignable_count)
 
-      use _ <- result.try(
-        seed_db.insert_project_member_capability(
-          db,
-          project_id,
-          state.admin_id,
-          bug_cap,
-        ),
-      )
-      use _ <- result.try(
-        seed_db.insert_project_member_capability(
-          db,
-          project_id,
-          state.admin_id,
-          feature_cap,
-        ),
-      )
-      use _ <- result.try(
-        seed_db.insert_project_member_capability(
-          db,
-          project_id,
-          state.admin_id,
-          task_cap,
-        ),
-      )
+      use _ <- result.try(seed_db.insert_project_member_capability(
+        db,
+        project_id,
+        state.admin_id,
+        bug_cap,
+      ))
+      use _ <- result.try(seed_db.insert_project_member_capability(
+        db,
+        project_id,
+        state.admin_id,
+        feature_cap,
+      ))
+      use _ <- result.try(seed_db.insert_project_member_capability(
+        db,
+        project_id,
+        state.admin_id,
+        task_cap,
+      ))
 
       list.index_map(other_users, fn(user_id, idx) {
         let cap_id = case idx % 3 {
@@ -428,7 +436,12 @@ fn build_member_capabilities(
           1 -> feature_cap
           _ -> task_cap
         }
-        seed_db.insert_project_member_capability(db, project_id, user_id, cap_id)
+        seed_db.insert_project_member_capability(
+          db,
+          project_id,
+          user_id,
+          cap_id,
+        )
       })
       |> result.all
     }),
@@ -458,7 +471,8 @@ fn build_cards(
         let title = list_at(titles, idx, "Card " <> int.to_string(idx + 1))
         let color = Some(list_at(colors, idx, "gray"))
         let creator_idx = idx % list.length(state.user_ids)
-        let creator_id = list_at_int(state.user_ids, creator_idx, state.admin_id)
+        let creator_id =
+          list_at_int(state.user_ids, creator_idx, state.admin_id)
 
         seed_db.insert_card(
           db,
@@ -589,12 +603,7 @@ fn build_rules(
         }),
       )
 
-      Ok(
-        BuildState(
-          ..state,
-          rule_ids: list.append(rule_ids, more_rules),
-        ),
-      )
+      Ok(BuildState(..state, rule_ids: list.append(rule_ids, more_rules)))
     }
   }
 }
@@ -690,8 +699,12 @@ fn build_tasks(
 
         // Assign to card based on empty_card_count
         let card_count = list.length(cards_for_project)
-        let card_id = case idx < card_count - config.empty_card_count, card_count > 0 {
-          True, True -> Some(list_at_int(cards_for_project, idx % card_count, 0))
+        let card_id = case
+          idx < card_count - config.empty_card_count,
+          card_count > 0
+        {
+          True, True ->
+            Some(list_at_int(cards_for_project, idx % card_count, 0))
           _, _ -> None
         }
 
@@ -700,7 +713,8 @@ fn build_tasks(
           determine_task_status(state, idx, config)
 
         let creator_idx = idx % list.length(state.user_ids)
-        let creator_id = list_at_int(state.user_ids, creator_idx, state.admin_id)
+        let creator_id =
+          list_at_int(state.user_ids, creator_idx, state.admin_id)
 
         seed_db.insert_task(
           db,
@@ -774,11 +788,8 @@ fn build_task_positions(
     _, _ -> {
       use _ <- result.try(
         list.index_map(tasks, fn(task_id, idx) {
-          let user_id = list_at_int(
-            users,
-            idx % list.length(users),
-            state.admin_id,
-          )
+          let user_id =
+            list_at_int(users, idx % list.length(users), state.admin_id)
           let x = { idx % 3 } * 120
           let y = { idx / 3 } * 80
           seed_db.insert_task_position(db, task_id, user_id, x, y)
@@ -808,47 +819,49 @@ fn build_work_sessions(
       use _ <- result.try(
         list.index_map(active_tasks, fn(task_id, idx) {
           let user_id = list_at_int(users, idx, state.admin_id)
-          use _ <- result.try(
-            seed_db.insert_work_session_entry(
-              db,
-              seed_db.WorkSessionInsertOptions(
-                user_id: user_id,
-                task_id: task_id,
-                started_at: Some("NOW() - INTERVAL '2 hours'"),
-                last_heartbeat_at: Some("NOW() - INTERVAL '5 minutes'"),
-                ended_at: None,
-                ended_reason: None,
-                created_at: None,
-              ),
+          use _ <- result.try(seed_db.insert_work_session_entry(
+            db,
+            seed_db.WorkSessionInsertOptions(
+              user_id: user_id,
+              task_id: task_id,
+              started_at: Some("NOW() - INTERVAL '2 hours'"),
+              last_heartbeat_at: Some("NOW() - INTERVAL '5 minutes'"),
+              ended_at: None,
+              ended_reason: None,
+              created_at: None,
             ),
+          ))
+          seed_db.insert_work_session(
+            db,
+            user_id,
+            task_id,
+            1200 + { idx * 300 },
           )
-          seed_db.insert_work_session(db, user_id, task_id, 1200 + { idx * 300 })
         })
         |> result.all,
       )
 
       use _ <- result.try(
         list.index_map(ended_tasks, fn(task_id, idx) {
-          let user_id = list_at_int(
-            users,
-            idx + 1,
-            state.admin_id,
-          )
-          use _ <- result.try(
-            seed_db.insert_work_session_entry(
-              db,
-              seed_db.WorkSessionInsertOptions(
-                user_id: user_id,
-                task_id: task_id,
-                started_at: Some("NOW() - INTERVAL '2 days'"),
-                last_heartbeat_at: Some("NOW() - INTERVAL '1 day'"),
-                ended_at: Some("NOW() - INTERVAL '1 day'"),
-                ended_reason: Some("task_completed"),
-                created_at: None,
-              ),
+          let user_id = list_at_int(users, idx + 1, state.admin_id)
+          use _ <- result.try(seed_db.insert_work_session_entry(
+            db,
+            seed_db.WorkSessionInsertOptions(
+              user_id: user_id,
+              task_id: task_id,
+              started_at: Some("NOW() - INTERVAL '2 days'"),
+              last_heartbeat_at: Some("NOW() - INTERVAL '1 day'"),
+              ended_at: Some("NOW() - INTERVAL '1 day'"),
+              ended_reason: Some("task_completed"),
+              created_at: None,
             ),
+          ))
+          seed_db.insert_work_session(
+            db,
+            user_id,
+            task_id,
+            7200 + { idx * 600 },
           )
-          seed_db.insert_work_session(db, user_id, task_id, 7200 + { idx * 600 })
         })
         |> result.all,
       )
@@ -913,14 +926,17 @@ fn determine_task_status(
   idx: Int,
   config: SeedConfig,
 ) -> #(String, Option(Int), Option(String), Option(String)) {
-  let total = config.status_distribution.available
+  let total =
+    config.status_distribution.available
     + config.status_distribution.claimed
     + config.status_distribution.completed
   let pct = { idx * 100 } / config.tasks_per_project
 
-  let available_threshold = { config.status_distribution.available * 100 } / total
+  let available_threshold =
+    { config.status_distribution.available * 100 } / total
   let claimed_threshold =
-    available_threshold + { { config.status_distribution.claimed * 100 } / total }
+    available_threshold
+    + { { config.status_distribution.claimed * 100 } / total }
 
   case pct < available_threshold {
     True -> #("available", None, None, None)

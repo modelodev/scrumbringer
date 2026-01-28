@@ -48,7 +48,6 @@ import scrumbringer_client/features/admin/member_remove
 import scrumbringer_client/features/admin/org_settings
 import scrumbringer_client/features/admin/rule_metrics
 import scrumbringer_client/features/admin/search
-import scrumbringer_client/features/admin/user_projects
 import scrumbringer_client/features/admin/workflows
 
 // =============================================================================
@@ -65,13 +64,19 @@ pub const handle_org_settings_users_fetched_error = org_settings.handle_org_sett
 
 pub const handle_org_settings_role_changed = org_settings.handle_org_settings_role_changed
 
-pub const handle_org_settings_save_clicked = org_settings.handle_org_settings_save_clicked
-
 pub const handle_org_settings_saved_ok = org_settings.handle_org_settings_saved_ok
 
 pub const handle_org_settings_saved_error = org_settings.handle_org_settings_saved_error
 
-pub const handle_org_settings_save_all_clicked = org_settings.handle_org_settings_save_all_clicked
+pub const handle_org_settings_delete_clicked = org_settings.handle_org_settings_delete_clicked
+
+pub const handle_org_settings_delete_cancelled = org_settings.handle_org_settings_delete_cancelled
+
+pub const handle_org_settings_delete_confirmed = org_settings.handle_org_settings_delete_confirmed
+
+pub const handle_org_settings_deleted_ok = org_settings.handle_org_settings_deleted_ok
+
+pub const handle_org_settings_deleted_error = org_settings.handle_org_settings_deleted_error
 
 // =============================================================================
 // Re-exports: Member Add
@@ -796,37 +801,3 @@ pub const handle_rule_metrics_executions_fetched_ok = rule_metrics.handle_execut
 pub const handle_rule_metrics_executions_fetched_error = rule_metrics.handle_executions_fetched_error
 
 pub const handle_rule_metrics_exec_page_changed = rule_metrics.handle_exec_page_changed
-
-// =============================================================================
-// Re-exports: User Projects
-// =============================================================================
-
-pub const handle_user_projects_dialog_opened = user_projects.handle_user_projects_dialog_opened
-
-pub const handle_user_projects_dialog_closed = user_projects.handle_user_projects_dialog_closed
-
-pub const handle_user_projects_fetched_ok = user_projects.handle_user_projects_fetched_ok
-
-pub const handle_user_projects_fetched_error = user_projects.handle_user_projects_fetched_error
-
-pub const handle_user_projects_add_project_changed = user_projects.handle_user_projects_add_project_changed
-
-pub const handle_user_projects_add_role_changed = user_projects.handle_user_projects_add_role_changed
-
-pub const handle_user_projects_add_submitted = user_projects.handle_user_projects_add_submitted
-
-pub const handle_user_project_added_ok = user_projects.handle_user_project_added_ok
-
-pub const handle_user_project_added_error = user_projects.handle_user_project_added_error
-
-pub const handle_user_project_remove_clicked = user_projects.handle_user_project_remove_clicked
-
-pub const handle_user_project_removed_ok = user_projects.handle_user_project_removed_ok
-
-pub const handle_user_project_removed_error = user_projects.handle_user_project_removed_error
-
-pub const handle_user_project_role_change_requested = user_projects.handle_user_project_role_change_requested
-
-pub const handle_user_project_role_changed_ok = user_projects.handle_user_project_role_changed_ok
-
-pub const handle_user_project_role_changed_error = user_projects.handle_user_project_role_changed_error

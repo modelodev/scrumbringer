@@ -52,7 +52,9 @@ pub fn find_user_by_email(
   db: pog.Connection,
   email: String,
 ) -> Result(Option(UserRow), pog.QueryError) {
-  query_user_row(db, "where email = $1", [pog.text(email)])
+  query_user_row(db, "where deleted_at is null and email = $1", [
+    pog.text(email),
+  ])
 }
 
 /// Find user by ID.
@@ -60,7 +62,7 @@ pub fn find_user_by_id(
   db: pog.Connection,
   user_id: Int,
 ) -> Result(Option(UserRow), pog.QueryError) {
-  query_user_row(db, "where id = $1", [pog.int(user_id)])
+  query_user_row(db, "where deleted_at is null and id = $1", [pog.int(user_id)])
 }
 
 /// Convert UserRow to StoredUser.

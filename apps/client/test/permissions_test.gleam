@@ -21,6 +21,7 @@ pub fn visible_sections_org_admin_test() {
     permissions.Invites,
     permissions.OrgSettings,
     permissions.Projects,
+    permissions.Assignments,
     permissions.Metrics,
     permissions.RuleMetrics,
     permissions.Capabilities,
@@ -45,6 +46,7 @@ pub fn visible_sections_org_admin_and_project_admin_test() {
     permissions.Invites,
     permissions.OrgSettings,
     permissions.Projects,
+    permissions.Assignments,
     permissions.Metrics,
     permissions.RuleMetrics,
     permissions.Members,
@@ -110,6 +112,34 @@ pub fn can_access_members_requires_selected_project_or_any_admin_test() {
       created_at: "",
       members_count: 0,
     )),
+  )
+  |> should.equal(False)
+}
+
+pub fn can_access_assignments_admin_only_test() {
+  let projects = [
+    Project(
+      id: 1,
+      name: "P1",
+      my_role: Manager,
+      created_at: "",
+      members_count: 0,
+    ),
+  ]
+
+  permissions.can_access_section(
+    permissions.Assignments,
+    org_role.Admin,
+    projects,
+    option.None,
+  )
+  |> should.equal(True)
+
+  permissions.can_access_section(
+    permissions.Assignments,
+    org_role.Member,
+    projects,
+    option.None,
   )
   |> should.equal(False)
 }

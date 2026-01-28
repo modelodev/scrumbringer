@@ -32,6 +32,7 @@ import lustre/effect.{type Effect}
 
 import scrumbringer_client/accept_invite
 import scrumbringer_client/app/effects as app_effects
+import scrumbringer_client/assignments_view_mode
 
 // API modules
 import scrumbringer_client/api/auth as api_auth
@@ -94,6 +95,7 @@ fn current_route(model: client_state.Model) -> router.Route {
         permissions.Invites
         | permissions.OrgSettings
         | permissions.Projects
+        | permissions.Assignments
         | permissions.Metrics -> router.Org(model.core.active_section)
         _ ->
           router.Config(
@@ -323,6 +325,50 @@ fn apply_route_fields(
             )
           },
         )
+
+      let model = case section {
+        permissions.Assignments ->
+          client_state.update_admin(model, fn(admin) {
+            let client_state.AssignmentsModel(
+              view_mode: _,
+              search_input: search_input,
+              search_query: search_query,
+              project_members: project_members,
+              user_projects: user_projects,
+              expanded_projects: expanded_projects,
+              expanded_users: expanded_users,
+              inline_add_context: _,
+              inline_add_selection: _,
+              inline_add_search: _,
+              inline_add_role: inline_add_role,
+              inline_add_in_flight: _,
+              inline_remove_confirm: _,
+              role_change_in_flight: _,
+              role_change_previous: _,
+            ) = admin.assignments
+            client_state.AdminModel(
+              ..admin,
+              assignments: client_state.AssignmentsModel(
+                view_mode: assignments_view_mode.ByProject,
+                search_input: search_input,
+                search_query: search_query,
+                project_members: project_members,
+                user_projects: user_projects,
+                expanded_projects: expanded_projects,
+                expanded_users: expanded_users,
+                inline_add_context: opt.None,
+                inline_add_selection: opt.None,
+                inline_add_search: "",
+                inline_add_role: inline_add_role,
+                inline_add_in_flight: False,
+                inline_remove_confirm: opt.None,
+                role_change_in_flight: opt.None,
+                role_change_previous: opt.None,
+              ),
+            )
+          })
+        _ -> model
+      }
       let #(model, fx) = refresh_section_for_test(model)
       #(model, fx)
     }
@@ -797,7 +843,6 @@ fn hydrate_org_settings_users_request(
       client_state.AdminModel(
         ..admin,
         org_settings_users: client_state.Loading,
-        org_settings_role_drafts: dict.new(),
         org_settings_save_in_flight: False,
         org_settings_error: opt.None,
         org_settings_error_user_id: opt.None,
@@ -986,6 +1031,7 @@ fn handle_url_changed(
 
         False -> {
           let #(model, route_fx) = apply_route_fields(model, route)
+          let model = apply_assignments_view_from_url(model, route, search)
           let #(model, hyd_fx) = hydrate_model(model)
           #(model, effect.batch([route_fx, hyd_fx, title_fx]))
         }
@@ -993,6 +1039,7 @@ fn handle_url_changed(
 
     router.Redirect(_) -> {
       let #(model, route_fx) = apply_route_fields(model, route)
+      let model = apply_assignments_view_from_url(model, route, search)
       let #(model, hyd_fx) = hydrate_model(model)
       #(
         model,
@@ -1004,6 +1051,60 @@ fn handle_url_changed(
         ]),
       )
     }
+  }
+}
+
+fn apply_assignments_view_from_url(
+  model: client_state.Model,
+  route: router.Route,
+  search: String,
+) -> client_state.Model {
+  case route {
+    router.Org(permissions.Assignments) ->
+      case router.assignments_view_from_search(search) {
+        opt.Some(view_mode) ->
+          client_state.update_admin(model, fn(admin) {
+            let client_state.AssignmentsModel(
+              view_mode: _,
+              search_input: search_input,
+              search_query: search_query,
+              project_members: project_members,
+              user_projects: user_projects,
+              expanded_projects: expanded_projects,
+              expanded_users: expanded_users,
+              inline_add_context: inline_add_context,
+              inline_add_selection: inline_add_selection,
+              inline_add_search: inline_add_search,
+              inline_add_role: inline_add_role,
+              inline_add_in_flight: inline_add_in_flight,
+              inline_remove_confirm: inline_remove_confirm,
+              role_change_in_flight: role_change_in_flight,
+              role_change_previous: role_change_previous,
+            ) = admin.assignments
+            client_state.AdminModel(
+              ..admin,
+              assignments: client_state.AssignmentsModel(
+                view_mode: view_mode,
+                search_input: search_input,
+                search_query: search_query,
+                project_members: project_members,
+                user_projects: user_projects,
+                expanded_projects: expanded_projects,
+                expanded_users: expanded_users,
+                inline_add_context: inline_add_context,
+                inline_add_selection: inline_add_selection,
+                inline_add_search: inline_add_search,
+                inline_add_role: inline_add_role,
+                inline_add_in_flight: inline_add_in_flight,
+                inline_remove_confirm: inline_remove_confirm,
+                role_change_in_flight: role_change_in_flight,
+                role_change_previous: role_change_previous,
+              ),
+            )
+          })
+        opt.None -> model
+      }
+    _ -> model
   }
 }
 
@@ -1137,7 +1238,6 @@ pub fn refresh_section_for_test(
           client_state.AdminModel(
             ..admin,
             org_settings_users: client_state.Loading,
-            org_settings_role_drafts: dict.new(),
             org_settings_save_in_flight: False,
             org_settings_error: opt.None,
             org_settings_error_user_id: opt.None,
@@ -1158,6 +1258,11 @@ pub fn refresh_section_for_test(
         client_state.admin_msg(client_state.ProjectsFetched(result))
       }),
     )
+
+    permissions.Assignments -> {
+      let #(model, fx) = refresh_assignments(model)
+      #(model, fx)
+    }
 
     permissions.Metrics -> {
       let model =
@@ -1313,6 +1418,165 @@ pub fn refresh_section_for_test(
       }
       #(model, effect.batch([fx, task_types_fx, ..right_panel_fx]))
     }
+  }
+}
+
+fn refresh_assignments(
+  model: client_state.Model,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  let #(model, projects_fx) = refresh_assignments_projects(model)
+  let #(model, users_fx) = refresh_assignments_org_users(model)
+  let #(model, members_fx) = refresh_assignments_project_members(model)
+  let #(model, user_projects_fx) = refresh_assignments_user_projects(model)
+  #(model, effect.batch([projects_fx, users_fx, members_fx, user_projects_fx]))
+}
+
+fn refresh_assignments_projects(
+  model: client_state.Model,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  case model.core.projects {
+    client_state.Loading | client_state.Loaded(_) -> #(model, effect.none())
+    _ -> {
+      let model =
+        client_state.update_core(model, fn(core) {
+          client_state.CoreModel(..core, projects: client_state.Loading)
+        })
+      let fx =
+        api_projects.list_projects(fn(result) {
+          client_state.admin_msg(client_state.ProjectsFetched(result))
+        })
+      #(model, fx)
+    }
+  }
+}
+
+fn refresh_assignments_org_users(
+  model: client_state.Model,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  case model.admin.org_users_cache {
+    client_state.Loading | client_state.Loaded(_) -> #(model, effect.none())
+    _ -> {
+      let model =
+        client_state.update_admin(model, fn(admin) {
+          client_state.AdminModel(
+            ..admin,
+            org_users_cache: client_state.Loading,
+          )
+        })
+      let fx =
+        api_org.list_org_users("", fn(result) {
+          client_state.admin_msg(client_state.OrgUsersCacheFetched(result))
+        })
+      #(model, fx)
+    }
+  }
+}
+
+fn refresh_assignments_project_members(
+  model: client_state.Model,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  let projects = update_helpers.active_projects(model)
+  case projects {
+    [] -> #(model, effect.none())
+    _ -> {
+      let assignments = model.admin.assignments
+
+      let #(next_assignments, effects) =
+        list.fold(projects, #(assignments, []), fn(state, project) {
+          let #(current, fx) = state
+          let client_state.AssignmentsModel(project_members: members, ..) =
+            current
+          let should_fetch = case dict.get(members, project.id) {
+            Ok(client_state.Loading) -> False
+            Ok(client_state.Loaded(_)) -> False
+            Ok(client_state.NotAsked) -> True
+            Ok(client_state.Failed(_)) -> True
+            Error(_) -> True
+          }
+          case should_fetch {
+            False -> #(current, fx)
+            True -> {
+              let updated =
+                client_state.AssignmentsModel(
+                  ..current,
+                  project_members: dict.insert(
+                    members,
+                    project.id,
+                    client_state.Loading,
+                  ),
+                )
+              let effect =
+                api_projects.list_project_members(project.id, fn(result) {
+                  client_state.admin_msg(
+                    client_state.AssignmentsProjectMembersFetched(
+                      project.id,
+                      result,
+                    ),
+                  )
+                })
+              #(updated, [effect, ..fx])
+            }
+          }
+        })
+
+      let model =
+        client_state.update_admin(model, fn(admin) {
+          client_state.AdminModel(..admin, assignments: next_assignments)
+        })
+      #(model, effect.batch(list.reverse(effects)))
+    }
+  }
+}
+
+fn refresh_assignments_user_projects(
+  model: client_state.Model,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  case model.admin.org_users_cache {
+    client_state.Loaded(users) -> {
+      let assignments = model.admin.assignments
+
+      let #(next_assignments, effects) =
+        list.fold(users, #(assignments, []), fn(state, user) {
+          let #(current, fx) = state
+          let client_state.AssignmentsModel(user_projects: projects, ..) =
+            current
+          let should_fetch = case dict.get(projects, user.id) {
+            Ok(client_state.Loading) -> False
+            Ok(client_state.Loaded(_)) -> False
+            Ok(client_state.NotAsked) -> True
+            Ok(client_state.Failed(_)) -> True
+            Error(_) -> True
+          }
+          case should_fetch {
+            False -> #(current, fx)
+            True -> {
+              let updated =
+                client_state.AssignmentsModel(
+                  ..current,
+                  user_projects: dict.insert(
+                    projects,
+                    user.id,
+                    client_state.Loading,
+                  ),
+                )
+              let effect =
+                api_org.list_user_projects(user.id, fn(result) {
+                  client_state.admin_msg(
+                    client_state.AssignmentsUserProjectsFetched(user.id, result),
+                  )
+                })
+              #(updated, [effect, ..fx])
+            }
+          }
+        })
+
+      let model =
+        client_state.update_admin(model, fn(admin) {
+          client_state.AdminModel(..admin, assignments: next_assignments)
+        })
+      #(model, effect.batch(list.reverse(effects)))
+    }
+    _ -> #(model, effect.none())
   }
 }
 

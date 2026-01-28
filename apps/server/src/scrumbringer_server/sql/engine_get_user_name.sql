@@ -1,3 +1,3 @@
 -- name: engine_get_user_name
 -- Get user email for variable substitution.
-select email as display_name from users where id = $1;
+select email as display_name from users where id = $1 and deleted_at is null;

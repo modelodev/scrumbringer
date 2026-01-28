@@ -560,11 +560,14 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
               attribute.autofocus(True),
               event.on_input(CreateNameChanged),
             ]),
+            div([attribute.class("form-hint")], [
+              text(i18n_t(model.locale, i18n_text.TaskTypeNameHint)),
+            ]),
           ]),
           // Optional fields
           div([attribute.class("form-group-optional")], [
             label([attribute.class("optional-title")], [
-              text(i18n_t(model.locale, i18n_text.CapabilityOptional)),
+              text(i18n_t(model.locale, i18n_text.OptionalFields)),
             ]),
             div([attribute.class("optional-fields")], [
               // Icon picker
@@ -597,7 +600,7 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
       div([attribute.class("dialog-footer")], [
         button(
           [
-            attribute.class("btn btn-secondary"),
+            attribute.class("btn btn-secondary btn-sm"),
             attribute.type_("button"),
             event.on_click(CloseRequested),
           ],
@@ -605,7 +608,7 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
         ),
         button(
           [
-            attribute.class("btn btn-primary"),
+            attribute.class("btn btn-primary btn-compact"),
             attribute.type_("button"),
             attribute.disabled(model.create_in_flight),
             event.on_click(CreateSubmitted),
@@ -659,7 +662,7 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
           // Optional fields
           div([attribute.class("form-group-optional")], [
             label([attribute.class("optional-title")], [
-              text(i18n_t(model.locale, i18n_text.CapabilityOptional)),
+              text(i18n_t(model.locale, i18n_text.OptionalFields)),
             ]),
             div([attribute.class("optional-fields")], [
               // Icon picker
@@ -692,7 +695,7 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
       div([attribute.class("dialog-footer")], [
         button(
           [
-            attribute.class("btn btn-secondary"),
+            attribute.class("btn btn-secondary btn-sm"),
             attribute.type_("button"),
             event.on_click(EditCancelled),
           ],
@@ -700,7 +703,7 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
         ),
         button(
           [
-            attribute.class("btn btn-primary"),
+            attribute.class("btn btn-primary btn-compact"),
             attribute.type_("button"),
             attribute.disabled(model.edit_in_flight),
             event.on_click(EditSubmitted),
@@ -824,16 +827,21 @@ fn view_icon_picker(
   div([attribute.class("icon-picker")], [
     button(
       [
-        attribute.class("icon-picker-trigger"),
+        attribute.class("icon-picker-trigger form-control"),
         attribute.type_("button"),
         attribute.attribute("title", icon_label),
         attribute.attribute("aria-label", icon_label),
         event.on_click(on_toggle),
       ],
       [
-        icon_catalog.render(current_icon, 20),
+        span([attribute.class("icon-picker-trigger-left")], [
+          icon_catalog.render(current_icon, 20),
+          span([attribute.class("icon-picker-placeholder")], [
+            text(i18n_t(locale, i18n_text.SelectIcon)),
+          ]),
+        ]),
+        span([attribute.class("icon-picker-caret")], [text("\u{25BC}")]),
         span([attribute.class("sr-only")], [text(icon_label)]),
-        text(" \u{25BC}"),
       ],
     ),
     case is_open {
@@ -880,15 +888,15 @@ fn view_capability_selector(
   current_value: Option(Int),
   on_change: fn(Option(Int)) -> Msg,
 ) -> Element(Msg) {
-  div([attribute.class("form-group form-group-optional")], [
+  div([attribute.class("form-group")], [
     label([attribute.for(id)], [
-      text(i18n_t(model.locale, i18n_text.CapabilityOptional)),
+      text(i18n_t(model.locale, i18n_text.CapabilityLabel)),
     ]),
     select(
       [
         attribute.id(id),
         attribute.name("capability_id"),
-        attribute.class("form-select"),
+        attribute.class("form-select form-control"),
         event.on_input(fn(value) {
           case int.parse(value) {
             Ok(0) -> on_change(None)

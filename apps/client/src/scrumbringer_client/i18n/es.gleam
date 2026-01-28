@@ -219,6 +219,34 @@ pub fn translate(text: Text) -> String {
     text.AdminMembers -> "Miembros"
     text.AdminCapabilities -> "Capacidades"
     text.AdminTaskTypes -> "Tipos de tarea"
+    text.Assignments -> "Asignaciones"
+    text.AssignmentsByProject -> "Por proyecto"
+    text.AssignmentsByUser -> "Por usuario"
+    text.AssignmentsSearchPlaceholder -> "Buscar proyectos o usuarios"
+    text.AssignmentsNoProjectsTitle -> "Aún no hay proyectos"
+    text.AssignmentsNoProjectsBody ->
+      "Crea un proyecto para empezar a asignar miembros."
+    text.AssignmentsNoUsersTitle -> "Aún no hay usuarios"
+    text.AssignmentsNoUsersBody ->
+      "Invita a un usuario para empezar a asignarlo a proyectos."
+    text.AssignmentsNoMembersBadge -> "SIN MIEMBROS"
+    text.AssignmentsNoProjectsBadge -> "SIN PROYECTOS"
+    text.AssignmentsUsersCount(count) ->
+      int.to_string(count)
+      <> " usuario"
+      <> case count {
+        1 -> ""
+        _ -> "s"
+      }
+    text.AssignmentsProjectsCount(count) ->
+      int.to_string(count)
+      <> " proyecto"
+      <> case count {
+        1 -> ""
+        _ -> "s"
+      }
+    text.AssignmentsLoadingMembers -> "Cargando miembros…"
+    text.AssignmentsLoadingProjects -> "Cargando proyectos…"
     text.NoAdminPermissions -> "Sin permisos de admin"
     text.NotPermitted -> "No permitido"
     text.NotPermittedBody -> "No tienes permiso para acceder a esta sección."
@@ -376,6 +404,10 @@ pub fn translate(text: Text) -> String {
         0 -> "Sin proyectos"
         _ -> int.to_string(count) <> ": " <> summary
       }
+    text.DeleteUser -> "Eliminar usuario"
+    text.ConfirmDeleteUser(user_email) ->
+      "¿Eliminar al usuario \"" <> user_email <> "\"?"
+    text.UserDeleted -> "Usuario eliminado"
 
     // Task types
     text.SelectProjectToManageTaskTypes ->
@@ -410,8 +442,11 @@ pub fn translate(text: Text) -> String {
     text.AppearanceSection -> "Apariencia"
     text.ConfigurationSection -> "Configuración"
     text.Icon -> "Icono"
+    text.OptionalFields -> "Opcionales"
+    text.SelectIcon -> "Seleccionar icono"
     text.UnknownIcon -> "Icono desconocido"
     text.CapabilityOptional -> "Capacidad (opcional)"
+    text.TaskTypeNameHint -> "Ej: Bug, Mejora, Documentacion"
     text.LoadingCapabilities -> "Cargando capacidades…"
     text.NoTaskTypesYet -> "Aún no hay tipos de tarea"
     text.CreateFirstTaskTypeHint ->
