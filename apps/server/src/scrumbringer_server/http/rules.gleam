@@ -231,7 +231,7 @@ fn create_rule_flow(
     ctx,
     workflow_id_str,
   ))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
   use payload <- result.try(decode_create_payload(data))
   use task_type_param <- result.try(normalize_task_type_create(
     payload.task_type_id,
@@ -272,7 +272,7 @@ fn update_rule_flow(
     ctx,
     rule_id_str,
   ))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
   use payload <- result.try(decode_update_payload(data))
   use active_value <- result.try(normalize_active(payload.active))
   use task_type_value <- result.try(normalize_task_type_update(
@@ -313,7 +313,7 @@ fn delete_rule_flow(
     ctx,
     rule_id_str,
   ))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
   use _ <- result.try(delete_rule_db(db, rule.id))
   Ok(api.no_content())
 }
@@ -331,7 +331,7 @@ fn attach_template_flow(
     rule_id_str,
   ))
   use template_id <- result.try(parse_id(template_id_str))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
   use _ <- result.try(validate_template_scope(db, workflow, template_id))
   use execution_order <- result.try(decode_execution_order(data))
   use templates <- result.try(attach_rule_template_db(
@@ -362,7 +362,7 @@ fn detach_template_flow(
     rule_id_str,
   ))
   use template_id <- result.try(parse_id(template_id_str))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
   use _ <- result.try(detach_rule_template_db(db, rule.id, template_id))
   Ok(api.no_content())
 }
@@ -423,14 +423,6 @@ fn require_project_manager(
   {
     Ok(Nil) -> Ok(Nil)
     Error(resp) -> Error(resp)
-  }
-}
-
-fn require_csrf(req: wisp.Request) -> Result(Nil, wisp.Response) {
-  case csrf.require_double_submit(req) {
-    Ok(Nil) -> Ok(Nil)
-    Error(_) ->
-      Error(api.error(403, "FORBIDDEN", "CSRF token missing or invalid"))
   }
 }
 

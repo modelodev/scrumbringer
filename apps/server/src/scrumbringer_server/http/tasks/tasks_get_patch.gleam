@@ -89,7 +89,7 @@ fn update_task(
   data: dynamic.Dynamic,
 ) -> Result(wisp.Response, wisp.Response) {
   use user <- result.try(require_current_user(req, ctx))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
   use task_id <- result.try(parse_task_id(task_id_str))
   use #(version, updates) <- result.try(decode_update_payload(data))
   let auth.Ctx(db: db, ..) = ctx
@@ -216,13 +216,6 @@ fn require_current_user(
   }
 }
 
-fn require_csrf(req: wisp.Request) -> Result(Nil, wisp.Response) {
-  case csrf.require_double_submit(req) {
-    Ok(Nil) -> Ok(Nil)
-    Error(_) ->
-      Error(api.error(403, "FORBIDDEN", "CSRF token missing or invalid"))
-  }
-}
 
 fn parse_task_id(value: String) -> Result(Int, wisp.Response) {
   case int.parse(value) {

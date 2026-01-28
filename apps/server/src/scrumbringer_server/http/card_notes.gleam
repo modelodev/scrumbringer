@@ -135,7 +135,7 @@ fn create_note_for_user(
   user: StoredUser,
   card_id: String,
 ) -> wisp.Response {
-  case require_csrf(req) {
+  case csrf.require_csrf(req) {
     Error(resp) -> resp
     Ok(Nil) -> create_note_with_csrf(req, ctx, user, card_id)
   }
@@ -192,7 +192,7 @@ fn delete_note_for_user(
   card_id: String,
   note_id: String,
 ) -> wisp.Response {
-  case require_csrf(req) {
+  case csrf.require_csrf(req) {
     Error(resp) -> resp
     Ok(Nil) -> delete_note_with_csrf(ctx, user, card_id, note_id)
   }
@@ -281,13 +281,6 @@ fn decode_note_payload(data: dynamic.Dynamic) -> Result(String, wisp.Response) {
   }
 }
 
-fn require_csrf(req: wisp.Request) -> Result(Nil, wisp.Response) {
-  case csrf.require_double_submit(req) {
-    Ok(Nil) -> Ok(Nil)
-    Error(_) ->
-      Error(api.error(403, "FORBIDDEN", "CSRF token missing or invalid"))
-  }
-}
 
 fn parse_card_id(card_id: String) -> Result(Int, wisp.Response) {
   case int.parse(card_id) {

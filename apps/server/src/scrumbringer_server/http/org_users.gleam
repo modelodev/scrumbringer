@@ -161,7 +161,7 @@ fn update_org_user_role(
   use new_role_value <- result.try(decode_org_role(data))
   use user <- result.try(require_current_user(req, ctx))
   use _ <- result.try(require_org_admin(user))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
   use new_role <- result.try(parse_org_role(new_role_value))
   let auth.Ctx(db: db, ..) = ctx
   update_org_role(db, user.org_id, target_user_id, new_role)
@@ -214,13 +214,6 @@ fn require_org_admin_with_message(
   }
 }
 
-fn require_csrf(req: wisp.Request) -> Result(Nil, wisp.Response) {
-  case csrf.require_double_submit(req) {
-    Ok(Nil) -> Ok(Nil)
-    Error(_) ->
-      Error(api.error(403, "FORBIDDEN", "CSRF token missing or invalid"))
-  }
-}
 
 fn parse_org_role(value: String) -> Result(org_role.OrgRole, wisp.Response) {
   case org_role.parse(value) {
@@ -260,7 +253,7 @@ fn delete_org_user(
   use target_user_id <- result.try(parse_user_id(user_id))
   use user <- result.try(require_current_user(req, ctx))
   use _ <- result.try(require_org_admin(user))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
 
   case user.id == target_user_id {
     True -> Error(api.error(409, "CONFLICT_SELF_DELETE", "Cannot delete self"))
@@ -418,7 +411,7 @@ fn add_user_to_project(
     user,
     "Only org admins can add users to projects",
   ))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
   let auth.Ctx(db: db, ..) = ctx
   use role <- result.try(parse_project_role(role_value))
   use member <- result.try(add_project_member(
@@ -514,7 +507,7 @@ fn remove_user_from_project(
     user,
     "Only org admins can remove users from projects",
   ))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
   let auth.Ctx(db: db, ..) = ctx
   use _ <- result.try(remove_project_member(db, project_id, target_user_id))
 
@@ -568,7 +561,7 @@ fn update_user_project_role(
     user,
     "Only org admins can change user project roles",
   ))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
   let auth.Ctx(db: db, ..) = ctx
   use new_role <- result.try(parse_project_role(role_value))
   use update_result <- result.try(update_project_member_role(

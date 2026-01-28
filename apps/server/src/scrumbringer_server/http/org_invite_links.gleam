@@ -99,7 +99,7 @@ fn upsert_as_admin(
   user_id: Int,
   org_id: Int,
 ) -> wisp.Response {
-  case require_csrf(req) {
+  case csrf.require_csrf(req) {
     Error(resp) -> resp
     Ok(Nil) -> upsert_with_csrf(req, ctx, user_id, org_id)
   }
@@ -194,13 +194,6 @@ fn decode_email_payload(data: dynamic.Dynamic) -> Result(String, wisp.Response) 
   }
 }
 
-fn require_csrf(req: wisp.Request) -> Result(Nil, wisp.Response) {
-  case csrf.require_double_submit(req) {
-    Ok(Nil) -> Ok(Nil)
-    Error(_) ->
-      Error(api.error(403, "FORBIDDEN", "CSRF token missing or invalid"))
-  }
-}
 
 fn invite_link_json(link: org_invite_links_db.OrgInviteLink) -> json.Json {
   let org_invite_links_db.OrgInviteLink(

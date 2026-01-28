@@ -142,7 +142,7 @@ fn create_task_type_for_user(
   user: StoredUser,
   project_id: String,
 ) -> wisp.Response {
-  case require_csrf(req) {
+  case csrf.require_csrf(req) {
     Error(resp) -> resp
     Ok(Nil) -> create_task_type_with_csrf(req, ctx, user, project_id)
   }
@@ -221,7 +221,7 @@ fn update_task_type_for_user(
   user: StoredUser,
   type_id: String,
 ) -> wisp.Response {
-  case require_csrf(req) {
+  case csrf.require_csrf(req) {
     Error(resp) -> resp
     Ok(Nil) -> update_task_type_with_csrf(req, ctx, user, type_id)
   }
@@ -294,7 +294,7 @@ fn delete_task_type_for_user(
   user: StoredUser,
   type_id: String,
 ) -> wisp.Response {
-  case require_csrf(req) {
+  case csrf.require_csrf(req) {
     Error(resp) -> resp
     Ok(Nil) -> delete_task_type_with_csrf(ctx, user, type_id)
   }
@@ -359,13 +359,6 @@ fn decode_task_type_payload(
   }
 }
 
-fn require_csrf(req: wisp.Request) -> Result(Nil, wisp.Response) {
-  case csrf.require_double_submit(req) {
-    Ok(Nil) -> Ok(Nil)
-    Error(_) ->
-      Error(api.error(403, "FORBIDDEN", "CSRF token missing or invalid"))
-  }
-}
 
 fn parse_project_id(project_id: String) -> Result(Int, wisp.Response) {
   case int.parse(project_id) {

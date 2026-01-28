@@ -133,7 +133,7 @@ fn update_position_for_user(
   user: StoredUser,
   task_id: String,
 ) -> wisp.Response {
-  case require_csrf(req) {
+  case csrf.require_csrf(req) {
     Error(resp) -> resp
     Ok(Nil) -> update_position_with_task(req, ctx, user, task_id)
   }
@@ -218,13 +218,6 @@ fn upsert_position(
   }
 }
 
-fn require_csrf(req: wisp.Request) -> Result(Nil, wisp.Response) {
-  case csrf.require_double_submit(req) {
-    Ok(Nil) -> Ok(Nil)
-    Error(_) ->
-      Error(api.error(403, "FORBIDDEN", "CSRF token missing or invalid"))
-  }
-}
 
 fn parse_task_id(task_id: String) -> Result(Int, wisp.Response) {
   case int.parse(task_id) {

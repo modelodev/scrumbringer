@@ -58,7 +58,7 @@ fn create_invite(
 ) -> Result(wisp.Response, wisp.Response) {
   use user <- result.try(require_current_user(req, ctx))
   use _ <- result.try(require_org_admin(user))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
   use expires_in_hours <- result.try(decode_expires_in_hours(data))
   let auth.Ctx(db: db, ..) = ctx
   use invite <- result.try(create_invite_db(
@@ -89,13 +89,6 @@ fn require_org_admin(user: StoredUser) -> Result(Nil, wisp.Response) {
   }
 }
 
-fn require_csrf(req: wisp.Request) -> Result(Nil, wisp.Response) {
-  case csrf.require_double_submit(req) {
-    Ok(Nil) -> Ok(Nil)
-    Error(_) ->
-      Error(api.error(403, "FORBIDDEN", "CSRF token missing or invalid"))
-  }
-}
 
 fn decode_expires_in_hours(data: dynamic.Dynamic) -> Result(Int, wisp.Response) {
   let decoder = {

@@ -7,19 +7,21 @@ import envoy
 import gleam/http
 import gleam/http/cookie
 import gleam/http/response
+import gleam/int
 import gleam/json
 import gleam/option
 import gleam/result
+import scrumbringer_server/http/csrf
 import wisp
 
 /// Cookie name for session JWT.
 pub const cookie_session_name = "sb_session"
 
-/// Cookie name for CSRF token.
-pub const cookie_csrf_name = "sb_csrf"
+/// Cookie name for CSRF token. Re-exported from csrf module.
+pub const cookie_csrf_name = csrf.cookie_csrf_name
 
-/// Header name for CSRF token in requests.
-pub const csrf_header_name = "x-csrf"
+/// Header name for CSRF token in requests. Re-exported from csrf module.
+pub const csrf_header_name = csrf.csrf_header_name
 
 /// Returns a 200 OK response with data wrapped in an envelope.
 pub fn ok(data: json.Json) -> wisp.Response {
@@ -112,4 +114,25 @@ pub fn csrf_cookie_attributes() -> cookie.Attributes {
     http_only: False,
     same_site: option.Some(cookie.Lax),
   )
+}
+
+// =============================================================================
+// Request Validation Helpers
+// =============================================================================
+
+/// Parses a string ID into an integer.
+///
+/// Returns `Ok(id)` on success, or a 404 error response if parsing fails.
+/// Useful for parsing URL path parameters.
+///
+/// ## Example
+/// ```gleam
+/// use id <- result.try(api.parse_id(id_str))
+/// // Continue with the parsed id...
+/// ```
+pub fn parse_id(value: String) -> Result(Int, wisp.Response) {
+  case int.parse(value) {
+    Ok(id) -> Ok(id)
+    Error(_) -> Error(error(404, "NOT_FOUND", "Not found"))
+  }
 }

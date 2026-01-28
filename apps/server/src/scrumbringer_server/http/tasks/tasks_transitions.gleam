@@ -85,7 +85,7 @@ fn claim_for_user(
   user: StoredUser,
   task_id: String,
 ) -> wisp.Response {
-  case require_csrf(req) {
+  case csrf.require_csrf(req) {
     Error(resp) -> resp
     Ok(Nil) -> claim_with_task_id(req, ctx, user, task_id)
   }
@@ -152,7 +152,7 @@ fn release_for_user(
   user: StoredUser,
   task_id: String,
 ) -> wisp.Response {
-  case require_csrf(req) {
+  case csrf.require_csrf(req) {
     Error(resp) -> resp
     Ok(Nil) -> release_with_task_id(req, ctx, user, task_id)
   }
@@ -217,7 +217,7 @@ fn complete_for_user(
   user: StoredUser,
   task_id: String,
 ) -> wisp.Response {
-  case require_csrf(req) {
+  case csrf.require_csrf(req) {
     Error(resp) -> resp
     Ok(Nil) -> complete_with_task_id(req, ctx, user, task_id)
   }
@@ -288,13 +288,6 @@ fn decode_version(data: dynamic.Dynamic) -> Result(Int, wisp.Response) {
   }
 }
 
-fn require_csrf(req: wisp.Request) -> Result(Nil, wisp.Response) {
-  case csrf.require_double_submit(req) {
-    Ok(Nil) -> Ok(Nil)
-    Error(_) ->
-      Error(api.error(403, "FORBIDDEN", "CSRF token missing or invalid"))
-  }
-}
 
 fn parse_task_id(task_id: String) -> Result(Int, wisp.Response) {
   case int.parse(task_id) {

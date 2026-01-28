@@ -168,7 +168,7 @@ fn create_project_workflow(
   use project_id <- result.try(parse_id(project_id_str))
   let auth.Ctx(db: db, ..) = ctx
   use _ <- result.try(require_project_manager(db, project_id, user.id))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
   use payload <- result.try(decode_create_payload(data))
 
   case
@@ -202,7 +202,7 @@ fn update_project_workflow(
   let auth.Ctx(db: db, ..) = ctx
   use workflow <- result.try(get_workflow(db, workflow_id))
   use _ <- result.try(require_workflow_manager(db, user, workflow))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
   use payload <- result.try(decode_update_payload(data))
   use active_value <- result.try(normalize_active(payload.active))
   use _ <- result.try(update_metadata_if_needed(
@@ -233,7 +233,7 @@ fn delete_project_workflow(
   let auth.Ctx(db: db, ..) = ctx
   use workflow <- result.try(get_workflow(db, workflow_id))
   use _ <- result.try(require_workflow_manager(db, user, workflow))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
   use _ <- result.try(delete_workflow_db(
     db,
     workflow_id,
@@ -285,13 +285,6 @@ fn require_workflow_manager(
   }
 }
 
-fn require_csrf(req: wisp.Request) -> Result(Nil, wisp.Response) {
-  case csrf.require_double_submit(req) {
-    Ok(Nil) -> Ok(Nil)
-    Error(_) ->
-      Error(api.error(403, "FORBIDDEN", "CSRF token missing or invalid"))
-  }
-}
 
 fn parse_id(value: String) -> Result(Int, wisp.Response) {
   case int.parse(value) {

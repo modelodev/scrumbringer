@@ -153,7 +153,7 @@ fn create_project(
 ) -> Result(projects_db.Project, wisp.Response) {
   use user <- result.try(require_current_user(req, ctx))
   use _ <- result.try(require_org_admin(user))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
   use name <- result.try(decode_project_name(data))
   let auth.Ctx(db: db, ..) = ctx
   case projects_db.create_project(db, user.org_id, user.id, name) {
@@ -204,7 +204,7 @@ fn update_project(
 ) -> Result(projects_db.Project, wisp.Response) {
   use user <- result.try(require_current_user(req, ctx))
   use _ <- result.try(require_org_admin(user))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
   use project_id <- result.try(parse_project_id(project_id))
   use name <- result.try(decode_project_name(data))
   let auth.Ctx(db: db, ..) = ctx
@@ -224,7 +224,7 @@ fn delete_project(
 ) -> Result(Nil, wisp.Response) {
   use user <- result.try(require_current_user(req, ctx))
   use _ <- result.try(require_org_admin(user))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
   use project_id <- result.try(parse_project_id(project_id))
   let auth.Ctx(db: db, ..) = ctx
   case projects_db.delete_project(db, project_id) {
@@ -243,7 +243,7 @@ fn remove_member(
   user_id: String,
 ) -> Result(Nil, wisp.Response) {
   use user <- result.try(require_current_user(req, ctx))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
   use project_id <- result.try(parse_project_id(project_id))
   use target_user_id <- result.try(parse_user_id(user_id))
   let auth.Ctx(db: db, ..) = ctx
@@ -272,7 +272,7 @@ fn update_member_role(
 ) -> Result(projects_db.UpdateMemberRoleResult, wisp.Response) {
   use user <- result.try(require_current_user(req, ctx))
   use _ <- result.try(require_org_admin(user))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
   use project_id <- result.try(parse_project_id(project_id))
   use target_user_id <- result.try(parse_user_id(user_id))
   use role_value <- result.try(decode_role_value(data))
@@ -341,7 +341,7 @@ fn add_member(
   data: dynamic.Dynamic,
 ) -> Result(projects_db.ProjectMember, wisp.Response) {
   use user <- result.try(require_current_user(req, ctx))
-  use _ <- result.try(require_csrf(req))
+  use _ <- result.try(csrf.require_csrf(req))
   use project_id <- result.try(parse_project_id(project_id))
   let auth.Ctx(db: db, ..) = ctx
   use _ <- result.try(require_project_admin(db, project_id, user.id))
@@ -387,13 +387,6 @@ fn require_org_admin(user: StoredUser) -> Result(Nil, wisp.Response) {
   }
 }
 
-fn require_csrf(req: wisp.Request) -> Result(Nil, wisp.Response) {
-  case csrf.require_double_submit(req) {
-    Ok(Nil) -> Ok(Nil)
-    Error(_) ->
-      Error(api.error(403, "FORBIDDEN", "CSRF token missing or invalid"))
-  }
-}
 
 fn parse_project_id(value: String) -> Result(Int, wisp.Response) {
   case int.parse(value) {

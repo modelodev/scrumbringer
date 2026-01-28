@@ -330,7 +330,7 @@ fn create_template(
   project_id: Int,
   user_id: Int,
 ) -> wisp.Response {
-  case require_csrf(req) {
+  case csrf.require_csrf(req) {
     Error(resp) -> resp
 
     Ok(Nil) -> {
@@ -398,7 +398,7 @@ fn update_template(
   org_id: Int,
   project_id: Int,
 ) -> wisp.Response {
-  case require_csrf(req) {
+  case csrf.require_csrf(req) {
     Error(resp) -> resp
 
     Ok(Nil) -> {
@@ -466,7 +466,7 @@ fn delete_template(
   template_id: Int,
   org_id: Int,
 ) -> wisp.Response {
-  case require_csrf(req) {
+  case csrf.require_csrf(req) {
     Error(resp) -> resp
 
     Ok(Nil) -> delete_template_db(ctx, template_id, org_id)
@@ -542,13 +542,6 @@ fn decode_update_payload(
   }
 }
 
-fn require_csrf(req: wisp.Request) -> Result(Nil, wisp.Response) {
-  case csrf.require_double_submit(req) {
-    Ok(Nil) -> Ok(Nil)
-    Error(_) ->
-      Error(api.error(403, "FORBIDDEN", "CSRF token missing or invalid"))
-  }
-}
 
 /// Story 4.9 AC20: Added rules_count field.
 fn template_json(template: task_templates_db.TaskTemplate) -> json.Json {
