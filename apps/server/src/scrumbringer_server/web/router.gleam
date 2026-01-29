@@ -41,6 +41,7 @@ import scrumbringer_server/http/rules
 import scrumbringer_server/http/task_notes
 import scrumbringer_server/http/task_positions
 import scrumbringer_server/http/task_templates
+import scrumbringer_server/http/task_views
 import scrumbringer_server/http/tasks
 import scrumbringer_server/http/work_sessions
 import scrumbringer_server/http/workflows
@@ -303,6 +304,8 @@ fn route_tasks(
       Some(tasks.handle_complete(req, auth_ctx, task_id))
     ["api", "v1", "tasks", task_id, "notes"] ->
       Some(task_notes.handle_task_notes(req, auth_ctx, task_id))
+    ["api", "v1", "views", "tasks", task_id] ->
+      Some(task_views.handle_task_view(req, auth_ctx, task_id))
     ["api", "v1", "tasks", task_id] ->
       Some(tasks.handle_task(req, auth_ctx, task_id))
     _ -> None

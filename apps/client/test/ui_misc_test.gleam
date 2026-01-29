@@ -5,9 +5,9 @@ import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_banner
+import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/layout
 import scrumbringer_client/ui/status_block
-import scrumbringer_client/ui/icons
 
 pub fn empty_state_view_renders_title_description_and_action_test() {
   let state =

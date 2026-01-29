@@ -1,9 +1,17 @@
 //// Notes list UI view.
+////
+//// AC1: Detect URLs in text, make clickable
+//// AC2: GitHub links (PR, Issue, Commit) show icon and short path
+//// AC3: Notes with PR links are highlighted (green border)
 
+import domain/link_detection.{
+  type DetectedLink, type TextSegment, DetectedLink, GenericUrl, GitHubCommit,
+  GitHubIssue, GitHubPR, Link, PlainText,
+}
 import gleam/list
-import lustre/attribute
+import lustre/attribute.{type Attribute}
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, p, span, text}
+import lustre/element/html.{a, button, div, p, span, text}
 import lustre/event
 
 import scrumbringer_client/ui/icons
@@ -63,7 +71,17 @@ fn view_note(
   // AC20: Tooltip text shows full email and role
   let tooltip_text = author_email <> " (" <> author_role <> ")"
 
-  div([attribute.class("note-item")], [
+  // AC1, AC2, AC3: Detect links and check for PR
+  let segments = link_detection.detect_links(content)
+  let has_pr = link_detection.has_pr_link(segments)
+
+  // AC3: PR notes get green border highlight
+  let note_class = case has_pr {
+    True -> "note-item note-delivery"
+    False -> "note-item"
+  }
+
+  div([attribute.class(note_class)], [
     div([attribute.class("note-header")], [
       // AC20: Author with CSS tooltip showing full email + role
       span(
@@ -88,6 +106,53 @@ fn view_note(
         False -> element.none()
       },
     ]),
-    p([attribute.class("note-content")], [text(content)]),
+    p([attribute.class("note-content")], render_segments(segments)),
   ])
+}
+
+// =============================================================================
+// Link Rendering (AC1, AC2)
+// =============================================================================
+
+fn render_segments(segments: List(TextSegment)) -> List(Element(msg)) {
+  list.map(segments, render_segment)
+}
+
+fn render_segment(segment: TextSegment) -> Element(msg) {
+  case segment {
+    PlainText(content) -> text(content)
+    Link(link) -> render_link(link)
+  }
+}
+
+fn render_link(link: DetectedLink) -> Element(msg) {
+  let DetectedLink(
+    url: url,
+    link_type: link_type,
+    display_text: display_text,
+    ..,
+  ) = link
+
+  let attrs = link_attrs(url)
+
+  case link_type {
+    GitHubPR(..) | GitHubIssue(..) | GitHubCommit(..) ->
+      // AC2: GitHub links with icon
+      span([attribute.class("github-link")], [
+        icons.nav_icon(icons.GitHub, icons.XSmall),
+        a(attrs, [text(display_text)]),
+      ])
+    GenericUrl ->
+      // AC1: Generic clickable link
+      a(attrs, [text(display_text)])
+  }
+}
+
+fn link_attrs(url: String) -> List(Attribute(msg)) {
+  [
+    attribute.href(url),
+    attribute.target("_blank"),
+    attribute.rel("noopener noreferrer"),
+    attribute.class("note-link"),
+  ]
 }

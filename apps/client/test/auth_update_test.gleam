@@ -1,6 +1,6 @@
 import gleam/option.{None, Some}
 import gleeunit/should
-import scrumbringer_client/client_state as client_state
+import scrumbringer_client/client_state
 import scrumbringer_client/features/auth/update as auth_update
 
 pub fn handle_login_submitted_ignores_when_in_flight_test() {
@@ -19,7 +19,7 @@ pub fn handle_login_submitted_ignores_when_in_flight_test() {
   let client_state.AuthModel(
     login_in_flight: login_in_flight,
     login_error: login_error,
-    ..
+    ..,
   ) = auth
 
   login_in_flight |> should.equal(True)
@@ -42,7 +42,7 @@ pub fn handle_login_submitted_sets_in_flight_and_clears_error_test() {
   let client_state.AuthModel(
     login_in_flight: login_in_flight,
     login_error: login_error,
-    ..
+    ..,
   ) = auth
 
   login_in_flight |> should.equal(True)

@@ -8,8 +8,8 @@ import domain/user.{User}
 import scrumbringer_client/client_state.{
   type Model, Admin, CoreModel, default_model, update_core,
 }
-import scrumbringer_client/permissions
 import scrumbringer_client/client_view
+import scrumbringer_client/permissions
 
 fn base_model() -> Model {
   default_model()

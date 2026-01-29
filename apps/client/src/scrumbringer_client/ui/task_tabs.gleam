@@ -1,6 +1,7 @@
-//// Card detail modal tabs component.
+//// Task detail modal tabs component.
 ////
-//// Thin wrapper over generic tabs.gleam for card detail modal context.
+//// Thin wrapper over generic tabs.gleam for task detail modal context.
+//// Provides DETALLES | NOTAS tabs for viewing task information and notes.
 
 import gleam/option.{None, Some}
 import lustre/element.{type Element}
@@ -8,18 +9,21 @@ import lustre/element.{type Element}
 import scrumbringer_client/ui/tabs
 
 // =============================================================================
-// Types (Public API preserved)
+// Types
 // =============================================================================
 
+/// Tab variants for Task Detail Modal.
 pub type Tab {
-  TasksTab
+  DetailsTab
   NotesTab
 }
 
+/// Labels for tabs (i18n compatible).
 pub type Labels {
-  Labels(tasks: String, notes: String)
+  Labels(details: String, notes: String)
 }
 
+/// Configuration for task tabs component.
 pub type Config(msg) {
   Config(
     active_tab: Tab,
@@ -34,7 +38,7 @@ pub type Config(msg) {
 // View
 // =============================================================================
 
-/// Renders the card tabs using the generic tabs component.
+/// Renders the task tabs using the generic tabs component.
 pub fn view(config: Config(msg)) -> Element(msg) {
   let Config(active_tab:, notes_count:, has_new_notes:, labels:, on_tab_click:) =
     config
@@ -42,8 +46,8 @@ pub fn view(config: Config(msg)) -> Element(msg) {
   tabs.view(tabs.config(
     tabs: [
       tabs.TabItem(
-        id: TasksTab,
-        label: labels.tasks,
+        id: DetailsTab,
+        label: labels.details,
         count: None,
         has_indicator: False,
       ),
@@ -58,8 +62,8 @@ pub fn view(config: Config(msg)) -> Element(msg) {
       ),
     ],
     active: active_tab,
-    container_class: "card-tabs",
-    tab_class: "card-tab",
+    container_class: "task-tabs",
+    tab_class: "task-tab",
     on_click: on_tab_click,
   ))
 }

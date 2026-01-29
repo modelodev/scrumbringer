@@ -258,6 +258,8 @@ fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
       card_id: option.None,
       card_title: option.None,
       card_color: option.None,
+      // Story 5.4: Default to False for metrics
+      has_new_notes: False,
     )
 
   decode.success(MetricsProjectTask(

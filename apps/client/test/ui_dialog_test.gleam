@@ -30,14 +30,7 @@ pub fn dialog_view_open_includes_title_and_icon_test() {
       on_close: client_state.NoOp,
     )
 
-  let rendered =
-    dialog.view(
-      config,
-      True,
-      None,
-      [div([], [text("Body")])],
-      [],
-    )
+  let rendered = dialog.view(config, True, None, [div([], [text("Body")])], [])
 
   let html = element.to_document_string(rendered)
 

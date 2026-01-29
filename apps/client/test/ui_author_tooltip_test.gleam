@@ -9,13 +9,11 @@ import scrumbringer_client/ui/tooltips/types.{AuthorInfo}
 
 pub fn shows_email_and_role_test() {
   let config =
-    author_tooltip.Config(
-      data: AuthorInfo(
-        name: "María García",
-        email: "maria@example.com",
-        role: "Product Owner",
-      ),
-    )
+    author_tooltip.Config(data: AuthorInfo(
+      name: "María García",
+      email: "maria@example.com",
+      role: "Product Owner",
+    ))
 
   let html = author_tooltip.view(config) |> element.to_document_string
 

@@ -96,6 +96,7 @@ import scrumbringer_client/pool_prefs
 import scrumbringer_client/reset_password
 import scrumbringer_client/router
 import scrumbringer_client/theme
+import scrumbringer_client/ui/task_tabs
 import scrumbringer_client/ui/toast
 
 // ----------------------------------------------------------------------------
@@ -109,6 +110,9 @@ import scrumbringer_client/ui/toast
 /// - `Loading`: Request in progress
 /// - `Loaded(a)`: Request succeeded with data
 /// - `Failed(ApiError)`: Request failed with error details
+///
+/// Note: domain/remote.gleam provides an equivalent type with helpers.
+/// This client-side definition is kept for historical compatibility.
 pub type Remote(a) {
   NotAsked
   Loading
@@ -547,7 +551,9 @@ pub type MemberModel {
     member_note_content: String,
     member_note_in_flight: Bool,
     member_note_error: Option(String),
+    member_note_dialog_open: Bool,
     card_detail_open: Option(Int),
+    member_task_detail_tab: task_tabs.Tab,
   )
 }
 
@@ -767,8 +773,11 @@ pub type PoolMsg {
   MemberPositionSaved(ApiResult(TaskPosition))
   MemberTaskDetailsOpened(Int)
   MemberTaskDetailsClosed
+  MemberTaskDetailTabClicked(task_tabs.Tab)
   MemberNotesFetched(ApiResult(List(TaskNote)))
   MemberNoteContentChanged(String)
+  MemberNoteDialogOpened
+  MemberNoteDialogClosed
   MemberNoteSubmitted
   MemberNoteAdded(ApiResult(TaskNote))
   AdminMetricsOverviewFetched(ApiResult(OrgMetricsOverview))
@@ -1320,7 +1329,9 @@ pub fn default_model() -> Model {
       member_note_content: "",
       member_note_in_flight: False,
       member_note_error: option.None,
+      member_note_dialog_open: False,
       card_detail_open: option.None,
+      member_task_detail_tab: task_tabs.DetailsTab,
     ),
     ui: UiModel(
       is_mobile: False,

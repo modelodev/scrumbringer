@@ -9,7 +9,7 @@ import domain/project_role
 import domain/user.{type User, User}
 
 import scrumbringer_client/client_state.{
-  type Model, CoreModel, MemberModel, Failed, Loaded, default_model, update_core,
+  type Model, CoreModel, Failed, Loaded, MemberModel, default_model, update_core,
   update_member,
 }
 import scrumbringer_client/features/pool/view as pool_view

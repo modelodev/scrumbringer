@@ -136,6 +136,13 @@ pub fn task_decoder() -> decode.Decoder(Task) {
   use card_title <- optional_field("card_title", decode.string)
   use card_color <- optional_field("card_color", decode.string)
 
+  // Story 5.4 AC4: has_new_notes indicator
+  use has_new_notes <- decode.optional_field(
+    "has_new_notes",
+    False,
+    decode.bool,
+  )
+
   decode.success(Task(
     id: id,
     project_id: project_id,
@@ -156,6 +163,7 @@ pub fn task_decoder() -> decode.Decoder(Task) {
     card_id: card_id,
     card_title: card_title,
     card_color: card_color,
+    has_new_notes: has_new_notes,
   ))
 }
 

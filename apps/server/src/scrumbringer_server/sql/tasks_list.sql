@@ -32,7 +32,14 @@ select
   t.version,
   coalesce(t.card_id, 0) as card_id,
   coalesce(c.title, '') as card_title,
-  coalesce(c.color, '') as card_color
+  coalesce(c.color, '') as card_color,
+  -- Story 5.4: AC4 - has_new_notes indicator
+  case
+    when (select max(n.created_at) from task_notes n where n.task_id = t.id) is null then false
+    when (select v.last_viewed_at from user_task_views v where v.task_id = t.id and v.user_id = $6) is null then true
+    when (select max(n.created_at) from task_notes n where n.task_id = t.id) > (select v.last_viewed_at from user_task_views v where v.task_id = t.id and v.user_id = $6) then true
+    else false
+  end as has_new_notes
 from tasks t
 join task_types tt on tt.id = t.type_id
 left join cards c on c.id = t.card_id

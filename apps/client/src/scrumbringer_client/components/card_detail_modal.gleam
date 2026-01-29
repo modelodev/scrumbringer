@@ -31,10 +31,9 @@ import lustre/attribute
 import lustre/component
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, span, text}
+import lustre/element/html.{div, span, text}
 import lustre/event
 
-import domain/api_error.{type ApiError}
 import domain/card.{
   type Card, type CardNote, type CardState, CardNote, Cerrada, EnCurso,
   Pendiente,
@@ -45,6 +44,9 @@ import domain/task_type
 
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/api/core.{type ApiResult}
+import scrumbringer_client/client_state.{
+  type Remote, Failed, Loaded, Loading, NotAsked,
+}
 import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
@@ -52,21 +54,14 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/card_section_header
 import scrumbringer_client/ui/card_tabs
 import scrumbringer_client/ui/color_picker
-import scrumbringer_client/ui/notes_composer
+import scrumbringer_client/ui/modal_close_button
+import scrumbringer_client/ui/note_dialog
 import scrumbringer_client/ui/notes_list
 import scrumbringer_client/ui/tooltips/types as notes_list_types
 
 // =============================================================================
 // Internal Types
 // =============================================================================
-
-/// Remote data state for async operations.
-pub type Remote(a) {
-  NotAsked
-  Loading
-  Loaded(a)
-  Failed(ApiError)
-}
 
 /// Internal component model - encapsulated state.
 pub type Model {
@@ -287,6 +282,8 @@ fn task_decoder() -> Decoder(Task) {
     card_id: card_id,
     card_title: card_title,
     card_color: card_color,
+    // Story 5.4: Task notes indicator not used in card detail context
+    has_new_notes: False,
   ))
 }
 
@@ -581,8 +578,15 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
       [],
     ),
     // Modal content
-    div([attribute.class("modal-content card-detail " <> border_class)], [
-      view_card_header(model, card),
+    div(
+      [
+        attribute.class("modal-content card-detail " <> border_class),
+        attribute.attribute("role", "dialog"),
+        attribute.attribute("aria-modal", "true"),
+        attribute.attribute("aria-labelledby", "card-detail-title"),
+      ],
+      [
+        view_card_header(model, card),
       // AC21: Tab navigation
       card_tabs.view(card_tabs.Config(
         active_tab: model.active_tab,
@@ -617,17 +621,13 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
   }
 
   div([attribute.class("card-detail-header")], [
-    // Title row with close button
+    // Title row with close button (using shared component)
     div([attribute.class("card-detail-title-row")], [
-      span([attribute.class("card-detail-title")], [text(card.title)]),
-      button(
-        [
-          attribute.class("btn-icon"),
-          event.on_click(CloseClicked),
-          attribute.attribute("aria-label", "Close"),
-        ],
-        [text("\u{2715}")],
+      span(
+        [attribute.class("card-detail-title"), attribute.id("card-detail-title")],
+        [text(card.title)],
       ),
+      modal_close_button.view_with_class("btn-icon", CloseClicked),
     ]),
     // State and progress
     div([attribute.class("card-detail-meta")], [
@@ -722,46 +722,20 @@ fn view_card_notes_section(model: Model) -> Element(Msg) {
   ])
 }
 
-/// Note creation dialog - modal overlay within the card detail modal.
+/// Note creation dialog - uses shared note_dialog component (Story 5.4.2).
 fn view_note_dialog(model: Model) -> Element(Msg) {
-  div([attribute.class("note-dialog-overlay")], [
-    div([attribute.class("note-dialog")], [
-      // Header
-      div([attribute.class("note-dialog-header")], [
-        span([attribute.class("note-dialog-title")], [
-          text(t(model.locale, i18n_text.AddNote)),
-        ]),
-        button(
-          [
-            attribute.class("btn-icon"),
-            event.on_click(NoteDialogClosed),
-            attribute.attribute("aria-label", "Close"),
-          ],
-          [text("\u{2715}")],
-        ),
-      ]),
-      // Content - textarea
-      div([attribute.class("note-dialog-body")], [
-        notes_composer.view(notes_composer.Config(
-          content: model.note_content,
-          placeholder: t(model.locale, i18n_text.NotePlaceholder),
-          submit_label: t(model.locale, i18n_text.AddNote),
-          submit_disabled: model.note_in_flight || model.note_content == "",
-          error: model.note_error,
-          on_content_change: NoteContentChanged,
-          on_submit: NoteSubmitted,
-          show_button: True,
-        )),
-      ]),
-      // Footer with actions
-      div([attribute.class("note-dialog-footer")], [
-        button(
-          [attribute.class("btn btn-secondary"), event.on_click(NoteDialogClosed)],
-          [text(t(model.locale, i18n_text.Cancel))],
-        ),
-      ]),
-    ]),
-  ])
+  note_dialog.view(note_dialog.Config(
+    title: t(model.locale, i18n_text.AddNote),
+    content: model.note_content,
+    placeholder: t(model.locale, i18n_text.NotePlaceholder),
+    error: model.note_error,
+    submit_label: t(model.locale, i18n_text.AddNote),
+    submit_disabled: model.note_in_flight || model.note_content == "",
+    cancel_label: t(model.locale, i18n_text.Cancel),
+    on_content_change: NoteContentChanged,
+    on_submit: NoteSubmitted,
+    on_close: NoteDialogClosed,
+  ))
 }
 
 fn note_to_view(model: Model, note: CardNote) -> notes_list.NoteView {

@@ -16,7 +16,7 @@
 //// - Card state management (see features/admin/cards.gleam)
 
 import gleam/list
-import gleam/option as option
+import gleam/option
 
 import domain/card.{type Card}
 import scrumbringer_client/client_state.{type Model, Loaded}

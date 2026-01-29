@@ -88,6 +88,7 @@ pub fn task_json(task: Task) -> json.Json {
     card_id: card_id,
     card_title: card_title,
     card_color: card_color,
+    has_new_notes: has_new_notes,
   ) = task
 
   json.object([
@@ -117,6 +118,8 @@ pub fn task_json(task: Task) -> json.Json {
     #("card_id", option_int_json(card_id)),
     #("card_title", option_string_json(card_title)),
     #("card_color", option_string_json(card_color)),
+    // Story 5.4 AC4: Indicator for unread notes
+    #("has_new_notes", json.bool(has_new_notes)),
   ])
 }
 

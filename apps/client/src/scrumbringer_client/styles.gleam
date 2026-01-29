@@ -729,12 +729,42 @@ pub fn base_css() -> String {
     ".card-detail-tasks-section { }",
     ".card-detail-notes-section { }",
     // Note dialog (modal within card detail modal)
-    ".note-dialog-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 10; border-radius: 8px; }",
+    ".note-dialog-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1100; }",
     ".note-dialog { background: var(--sb-elevated); border-radius: 8px; padding: 16px; min-width: 320px; max-width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }",
     ".note-dialog-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }",
     ".note-dialog-title { font-size: 16px; font-weight: 600; color: var(--sb-text); }",
     ".note-dialog-body { margin-bottom: 12px; }",
     ".note-dialog-footer { display: flex; justify-content: flex-end; gap: 8px; }",
+    // Task notes section (Story 5.4 UX unification)
+    ".task-notes-section { position: relative; }",
+    ".task-notes-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-weight: 500; }",
+    // Task Detail Modal (Story 5.4.1)
+    ".task-detail-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; }",
+    ".task-detail-modal .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); z-index: 1; }",
+    ".task-detail-modal .modal-content { position: relative; background: var(--sb-surface); border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.2); z-index: 2; }",
+    ".task-detail-header { padding: 20px 20px 16px; border-bottom: 1px solid var(--sb-border); position: relative; }",
+    ".task-detail-header .modal-close { position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 24px; color: var(--sb-muted); cursor: pointer; padding: 4px 8px; line-height: 1; }",
+    ".task-detail-header .modal-close:hover { color: var(--sb-text); }",
+    ".task-detail-title { font-size: 1.25rem; font-weight: 600; margin: 0 0 12px 0; padding-right: 40px; color: var(--sb-text); }",
+    ".task-detail-meta { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.875rem; color: var(--sb-muted); }",
+    ".task-meta-type, .task-meta-priority, .task-meta-status, .task-meta-assignee { display: flex; align-items: center; gap: 4px; }",
+    ".task-meta-assignee.muted { color: var(--sb-muted); opacity: 0.7; }",
+    // Task tabs (mirrors card-tabs)
+    ".task-tabs { display: flex; border-bottom: 2px solid var(--sb-border); padding: 0 20px; background: var(--sb-surface); }",
+    ".task-tab { padding: 12px 16px; background: none; border: none; cursor: pointer; color: var(--sb-muted); font-weight: 500; position: relative; font-size: 14px; }",
+    ".task-tab:hover { color: var(--sb-text); }",
+    ".task-tab.tab-active { color: var(--sb-primary); }",
+    ".task-tab.tab-active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px; background: var(--sb-primary); }",
+    ".task-tab .tab-count { font-size: 0.85em; }",
+    ".task-tab .new-notes-indicator { color: var(--sb-accent); font-size: 0.7em; margin-left: 4px; animation: pulse 2s infinite; }",
+    // Task detail tab content
+    ".task-details-section { padding: 20px; overflow-y: auto; flex: 1; }",
+    ".detail-row { display: flex; margin-bottom: 12px; }",
+    ".detail-label { font-weight: 500; color: var(--sb-muted); min-width: 120px; }",
+    ".detail-value { color: var(--sb-text); }",
+    ".task-detail-actions { margin-top: 24px; display: flex; gap: 12px; }",
+    // Modal footer
+    ".task-detail-modal .modal-footer { padding: 16px 20px; border-top: 1px solid var(--sb-border); display: flex; justify-content: flex-end; background: var(--sb-surface); }",
     ".card-add-task-form { padding: 16px; border: 1px dashed var(--sb-border); border-radius: 8px; background: var(--sb-surface); margin-bottom: 16px; }",
     ".form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }",
     ".form-group label { font-size: 13px; font-weight: 500; color: var(--sb-muted); }",
@@ -1132,6 +1162,15 @@ pub fn base_css() -> String {
     ".note-header .btn-xs { margin-left: auto; opacity: 0; transition: opacity 0.15s; }",
     ".note-item:hover .note-header .btn-xs { opacity: 1; }",
     ".note-content { margin: 0; font-size: 14px; line-height: 1.5; color: var(--sb-text); white-space: pre-wrap; }",
+    // Story 5.4 - Link Detection in Notes
+    // AC3: Notes with PR links highlighted with green border
+    ".note-delivery { border-color: var(--sb-success); border-width: 2px; }",
+    // AC1: Generic links are clickable
+    ".note-link { color: var(--sb-link); text-decoration: none; word-break: break-all; }",
+    ".note-link:hover { text-decoration: underline; }",
+    // AC2: GitHub links show icon and short path
+    ".github-link { display: inline-flex; align-items: center; gap: 2px; }",
+    ".github-link .nav-icon { color: var(--sb-muted); }",
     // AC20: CSS-only tooltip for author info
     ".tooltip-trigger { position: relative; cursor: help; }",
     ".tooltip-trigger[data-tooltip]::after { content: attr(data-tooltip); display: none; position: absolute; left: 0; top: calc(100% + 4px); background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 6px; padding: 4px 8px; font-size: 11px; color: var(--sb-text); white-space: nowrap; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }",

@@ -51,6 +51,8 @@ pub type Task {
     card_id: Option(Int),
     card_title: Option(String),
     card_color: Option(String),
+    /// Story 5.4 AC4: True if task has notes newer than user's last view.
+    has_new_notes: Bool,
   )
 }
 
@@ -77,6 +79,7 @@ pub fn from_list_row(row: sql.TasksListRow) -> Task {
     card_id: row.card_id,
     card_title: row.card_title,
     card_color: row.card_color,
+    has_new_notes: row.has_new_notes,
   )
 }
 
@@ -103,6 +106,7 @@ pub fn from_get_row(row: sql.TasksGetForUserRow) -> Task {
     card_id: row.card_id,
     card_title: row.card_title,
     card_color: row.card_color,
+    has_new_notes: False,
   )
 }
 
@@ -129,6 +133,7 @@ pub fn from_create_row(row: sql.TasksCreateRow) -> Task {
     card_id: row.card_id,
     card_title: row.card_title,
     card_color: row.card_color,
+    has_new_notes: False,
   )
 }
 
@@ -155,6 +160,7 @@ pub fn from_update_row(row: sql.TasksUpdateRow) -> Task {
     card_id: row.card_id,
     card_title: row.card_title,
     card_color: row.card_color,
+    has_new_notes: False,
   )
 }
 
@@ -181,6 +187,7 @@ pub fn from_claim_row(row: sql.TasksClaimRow) -> Task {
     card_id: row.card_id,
     card_title: row.card_title,
     card_color: row.card_color,
+    has_new_notes: False,
   )
 }
 
@@ -207,6 +214,7 @@ pub fn from_release_row(row: sql.TasksReleaseRow) -> Task {
     card_id: row.card_id,
     card_title: row.card_title,
     card_color: row.card_color,
+    has_new_notes: False,
   )
 }
 
@@ -233,6 +241,7 @@ pub fn from_complete_row(row: sql.TasksCompleteRow) -> Task {
     card_id: row.card_id,
     card_title: row.card_title,
     card_color: row.card_color,
+    has_new_notes: False,
   )
 }
 
@@ -258,6 +267,7 @@ fn from_fields(
   card_id card_id: Int,
   card_title card_title: String,
   card_color card_color: String,
+  has_new_notes has_new_notes: Bool,
 ) -> Task {
   Task(
     id: id,
@@ -279,6 +289,7 @@ fn from_fields(
     card_id: int_option(card_id),
     card_title: string_option(card_title),
     card_color: string_option(card_color),
+    has_new_notes: has_new_notes,
   )
 }
 

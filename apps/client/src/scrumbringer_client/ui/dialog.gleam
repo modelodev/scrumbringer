@@ -36,6 +36,7 @@ import lustre/event
 
 import scrumbringer_client/client_state.{type Model, type Msg}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/modal_close_button
 import scrumbringer_client/update_helpers
 
 // =============================================================================
@@ -117,15 +118,7 @@ fn view_header(config: DialogConfig(Msg)) -> Element(Msg) {
       },
       h3([attribute.id("dialog-title")], [text(config.title)]),
     ]),
-    button(
-      [
-        attribute.class("btn-icon dialog-close"),
-        attribute.type_("button"),
-        event.on_click(config.on_close),
-        attribute.attribute("aria-label", "Close"),
-      ],
-      [text("\u{2715}")],
-    ),
+    modal_close_button.view_with_class("btn-icon dialog-close", config.on_close),
   ])
 }
 

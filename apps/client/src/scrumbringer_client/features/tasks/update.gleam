@@ -58,6 +58,7 @@ import scrumbringer_client/client_state.{
   update_member,
 }
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/task_tabs
 import scrumbringer_client/update_helpers
 
 // =============================================================================
@@ -769,6 +770,19 @@ pub fn handle_task_details_closed(model: Model) -> #(Model, Effect(Msg)) {
   )
 }
 
+/// Handle task detail tab click.
+pub fn handle_task_detail_tab_clicked(
+  model: Model,
+  tab: task_tabs.Tab,
+) -> #(Model, Effect(Msg)) {
+  #(
+    update_member(model, fn(member) {
+      MemberModel(..member, member_task_detail_tab: tab)
+    }),
+    effect.none(),
+  )
+}
+
 /// Handle notes fetched response (success).
 pub fn handle_notes_fetched_ok(
   model: Model,
@@ -805,6 +819,35 @@ pub fn handle_note_content_changed(
   #(
     update_member(model, fn(member) {
       MemberModel(..member, member_note_content: value)
+    }),
+    effect.none(),
+  )
+}
+
+/// Handle note dialog opened (Story 5.4 UX unification).
+pub fn handle_note_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
+  #(
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_note_dialog_open: True,
+        member_note_error: opt.None,
+      )
+    }),
+    effect.none(),
+  )
+}
+
+/// Handle note dialog closed (Story 5.4 UX unification).
+pub fn handle_note_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
+  #(
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_note_dialog_open: False,
+        member_note_content: "",
+        member_note_error: opt.None,
+      )
     }),
     effect.none(),
   )
@@ -885,6 +928,7 @@ pub fn handle_note_added_ok(
         ..member,
         member_note_in_flight: False,
         member_note_content: "",
+        member_note_dialog_open: False,
         member_notes: Loaded(updated),
       )
     })

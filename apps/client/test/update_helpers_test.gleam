@@ -23,8 +23,8 @@ pub fn find_task_by_id_returns_none_when_not_loaded_test() {
 }
 
 pub fn find_task_by_id_returns_none_when_missing_test() {
-  let tasks =
-    [Task(
+  let tasks = [
+    Task(
       id: 1,
       project_id: 1,
       type_id: 1,
@@ -44,7 +44,9 @@ pub fn find_task_by_id_returns_none_when_missing_test() {
       card_id: None,
       card_title: None,
       card_color: None,
-    )]
+      has_new_notes: False,
+    ),
+  ]
 
   update_helpers.find_task_by_id(Loaded(tasks), 99)
   |> should.equal(None)
@@ -56,13 +58,14 @@ pub fn resolve_org_user_returns_none_when_not_loaded_test() {
 }
 
 pub fn resolve_org_user_returns_none_when_missing_test() {
-  let users =
-    [OrgUser(
+  let users = [
+    OrgUser(
       id: 1,
       email: "admin@example.com",
       org_role: "admin",
       created_at: "2026-01-01T00:00:00Z",
-    )]
+    ),
+  ]
 
   update_helpers.resolve_org_user(Loaded(users), 99)
   |> should.equal(None)

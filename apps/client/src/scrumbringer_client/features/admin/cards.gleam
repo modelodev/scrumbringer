@@ -210,4 +210,3 @@ pub fn fetch_cards_for_project(
     opt.None -> #(model, effect.none())
   }
 }
-

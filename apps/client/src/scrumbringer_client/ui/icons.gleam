@@ -277,6 +277,9 @@ pub type NavIcon {
   Logout
   // Informational icons
   Info
+  // Link icons (Story 5.4)
+  GitHub
+  ExternalLink
 }
 
 /// Icon size variants for consistent sizing.
@@ -361,6 +364,9 @@ pub fn nav_icon(icon: NavIcon, size: IconSize) -> Element(a) {
     Logout -> outline.arrow_right_start_on_rectangle()
     // Informational icons
     Info -> outline.information_circle()
+    // Link icons (Story 5.4)
+    GitHub -> outline.code_bracket()
+    ExternalLink -> outline.arrow_top_right_on_square()
   }
 
   let px = icon_size_px(size)
@@ -439,6 +445,9 @@ pub fn nav_icon_with_class(
     Logout -> outline.arrow_right_start_on_rectangle()
     // Informational icons
     Info -> outline.information_circle()
+    // Link icons (Story 5.4)
+    GitHub -> outline.code_bracket()
+    ExternalLink -> outline.arrow_top_right_on_square()
   }
 
   let px = icon_size_px(size)

@@ -210,9 +210,7 @@ fn view_card(config: KanbanConfig(msg), cwp: CardWithProgress) -> Element(msg) {
               True ->
                 span(
                   [
-                    attribute.class(
-                      "card-notes-indicator tooltip-trigger",
-                    ),
+                    attribute.class("card-notes-indicator tooltip-trigger"),
                     attribute.attribute("data-testid", "card-notes-indicator"),
                     attribute.attribute(
                       "data-tooltip",

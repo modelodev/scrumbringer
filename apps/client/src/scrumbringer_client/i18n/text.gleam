@@ -633,4 +633,8 @@ pub type Text {
   // AC21: Tab labels
   TabTasks
   TabNotes
+  // 5.4.1: Task detail modal
+  TabDetails
+  Unassigned
+  ClaimTask
 }

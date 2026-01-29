@@ -44,7 +44,7 @@ pub fn reset_to_login_clears_user_and_drag_state_test() {
   let client_state.MemberModel(
     member_drag: member_drag,
     member_pool_drag: member_pool_drag,
-    ..
+    ..,
   ) = member
 
   page |> should.equal(client_state.Login)

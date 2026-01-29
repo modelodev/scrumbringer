@@ -74,6 +74,7 @@ fn claimed_task() -> Task {
     card_id: Some(1),
     card_title: Some("Sprint"),
     card_color: Some("blue"),
+    has_new_notes: False,
   )
 }
 
@@ -98,6 +99,7 @@ fn available_task() -> Task {
     card_id: Some(1),
     card_title: Some("Sprint"),
     card_color: Some("blue"),
+    has_new_notes: False,
   )
 }
 

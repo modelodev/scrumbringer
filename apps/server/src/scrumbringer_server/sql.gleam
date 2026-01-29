@@ -5680,6 +5680,7 @@ pub type TasksListRow {
     card_id: Int,
     card_title: String,
     card_color: String,
+    has_new_notes: Bool,
   )
 }
 
@@ -5695,6 +5696,7 @@ pub fn tasks_list(
   arg_3: Int,
   arg_4: Int,
   arg_5: String,
+  arg_6: Int,
 ) -> Result(pog.Returned(TasksListRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -5717,6 +5719,7 @@ pub fn tasks_list(
     use card_id <- decode.field(17, decode.int)
     use card_title <- decode.field(18, decode.string)
     use card_color <- decode.field(19, decode.string)
+    use has_new_notes <- decode.field(20, decode.bool)
     decode.success(TasksListRow(
       id:,
       project_id:,
@@ -5738,6 +5741,7 @@ pub fn tasks_list(
       card_id:,
       card_title:,
       card_color:,
+      has_new_notes:,
     ))
   }
 
@@ -5775,7 +5779,14 @@ select
   t.version,
   coalesce(t.card_id, 0) as card_id,
   coalesce(c.title, '') as card_title,
-  coalesce(c.color, '') as card_color
+  coalesce(c.color, '') as card_color,
+  -- Story 5.4: AC4 - has_new_notes indicator
+  case
+    when (select max(n.created_at) from task_notes n where n.task_id = t.id) is null then false
+    when (select v.last_viewed_at from user_task_views v where v.task_id = t.id and v.user_id = $6) is null then true
+    when (select max(n.created_at) from task_notes n where n.task_id = t.id) > (select v.last_viewed_at from user_task_views v where v.task_id = t.id and v.user_id = $6) then true
+    else false
+  end as has_new_notes
 from tasks t
 join task_types tt on tt.id = t.type_id
 left join cards c on c.id = t.card_id
@@ -5796,6 +5807,7 @@ order by t.created_at desc;
   |> pog.parameter(pog.int(arg_3))
   |> pog.parameter(pog.int(arg_4))
   |> pog.parameter(pog.text(arg_5))
+  |> pog.parameter(pog.int(arg_6))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -6235,6 +6247,47 @@ values ($1, $2, now())
 on conflict (user_id, card_id)
 do update set last_viewed_at = excluded.last_viewed_at
 returning user_id, card_id, to_char(last_viewed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as last_viewed_at;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `user_task_views_upsert` query
+/// defined in `./src/scrumbringer_server/sql/user_task_views_upsert.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type UserTaskViewsUpsertRow {
+  UserTaskViewsUpsertRow(user_id: Int, task_id: Int, last_viewed_at: String)
+}
+
+/// name: user_task_views_upsert
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn user_task_views_upsert(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(UserTaskViewsUpsertRow), pog.QueryError) {
+  let decoder = {
+    use user_id <- decode.field(0, decode.int)
+    use task_id <- decode.field(1, decode.int)
+    use last_viewed_at <- decode.field(2, decode.string)
+    decode.success(UserTaskViewsUpsertRow(user_id:, task_id:, last_viewed_at:))
+  }
+
+  "-- name: user_task_views_upsert
+insert into user_task_views (user_id, task_id, last_viewed_at)
+values ($1, $2, now())
+on conflict (user_id, task_id)
+do update set last_viewed_at = excluded.last_viewed_at
+returning user_id, task_id, to_char(last_viewed_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as last_viewed_at;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))

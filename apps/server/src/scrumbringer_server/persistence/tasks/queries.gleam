@@ -47,10 +47,11 @@ pub type NotFoundOrDbError {
 }
 
 /// List tasks for a project with optional filters.
+/// Story 5.4: Now uses user_id for has_new_notes calculation.
 pub fn list_tasks_for_project(
   db: pog.Connection,
   project_id: Int,
-  _user_id: Int,
+  user_id: Int,
   status: Option(task_status.TaskStatus),
   type_id: Option(Int),
   capability_id: Option(Int),
@@ -63,6 +64,7 @@ pub fn list_tasks_for_project(
     option_int_to_db(type_id),
     option_int_to_db(capability_id),
     option_string_to_db(q),
+    user_id,
   ))
 
   returned.rows

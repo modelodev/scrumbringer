@@ -65,6 +65,8 @@ pub type Task {
     card_id: Option(Int),
     card_title: Option(String),
     card_color: Option(String),
+    /// Story 5.4 AC4: True if task has notes newer than user's last view.
+    has_new_notes: Bool,
   )
 }
 

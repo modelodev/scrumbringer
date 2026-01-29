@@ -28,28 +28,36 @@ import gleam/option as opt
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{
-  button, div, h3, input, label, option, p, select, span, text,
+  button, div, h3, input, label, option, select, span, text,
 }
 import lustre/event
 
 import domain/card.{type Card}
 import domain/task
 
-import scrumbringer_client/utils/card_queries
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, Loading, MemberCreateCardIdChanged,
   MemberCreateDescriptionChanged, MemberCreateDialogClosed,
   MemberCreatePriorityChanged, MemberCreateSubmitted, MemberCreateTitleChanged,
-  MemberCreateTypeIdChanged, MemberNoteContentChanged, MemberNoteSubmitted,
-  MemberPositionEditClosed, MemberPositionEditSubmitted,
-  MemberPositionEditXChanged, MemberPositionEditYChanged,
+  MemberCreateTypeIdChanged, MemberNoteContentChanged, MemberNoteDialogClosed,
+  MemberNoteDialogOpened, MemberNoteSubmitted, MemberPositionEditClosed,
+  MemberPositionEditSubmitted, MemberPositionEditXChanged,
+  MemberPositionEditYChanged, MemberTaskDetailTabClicked,
   MemberTaskDetailsClosed, NotAsked, pool_msg,
 }
-import scrumbringer_client/ui/color_picker
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/card_section_header
+import scrumbringer_client/ui/color_picker
+import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/error as ui_error
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/modal_close_button
+import scrumbringer_client/ui/note_dialog
+import scrumbringer_client/ui/notes_list
+import scrumbringer_client/ui/task_tabs
+import scrumbringer_client/ui/tooltips/types as notes_list_types
 import scrumbringer_client/update_helpers
+import scrumbringer_client/utils/card_queries
 
 // =============================================================================
 // Task Creation Dialog
@@ -68,13 +76,9 @@ pub fn view_create_dialog(model: Model) -> Element(Msg) {
           ]),
           h3([], [text(update_helpers.i18n_t(model, i18n_text.NewTask))]),
         ]),
-        button(
-          [
-            attribute.class("dialog-close"),
-            attribute.attribute("aria-label", "Close"),
-            event.on_click(pool_msg(MemberCreateDialogClosed)),
-          ],
-          [text("×")],
+        modal_close_button.view_with_class(
+          "dialog-close",
+          pool_msg(MemberCreateDialogClosed),
         ),
       ]),
       // Error message (if any)
@@ -237,30 +241,233 @@ fn card_id_to_string(card_id: opt.Option(Int)) -> String {
 }
 
 // =============================================================================
-// Task Details Dialog
+// Task Details Dialog (Story 5.4.1: Unified modal with tabs)
 // =============================================================================
 
-/// Renders the task details modal with notes.
+/// Renders the task details modal with header, tabs, and content.
+/// AC1: Shows task title, type, priority, status
+/// AC2: Tab system (DETALLES | NOTAS)
+/// AC7: Backdrop click-to-close
+/// AC8: Close button [×]
 pub fn view_task_details(model: Model, task_id: Int) -> Element(Msg) {
-  div([attribute.class("modal")], [
-    div([attribute.class("modal-content")], [
-      h3([], [text(update_helpers.i18n_t(model, i18n_text.Notes))]),
-      button([event.on_click(pool_msg(MemberTaskDetailsClosed))], [
-        text(update_helpers.i18n_t(model, i18n_text.Close)),
+  let task = find_task(model, task_id)
+
+  div([attribute.class("task-detail-modal")], [
+    // AC7: Backdrop that closes on click
+    div(
+      [
+        attribute.class("modal-backdrop"),
+        event.on_click(pool_msg(MemberTaskDetailsClosed)),
+      ],
+      [],
+    ),
+    div(
+      [
+        attribute.class("modal-content task-detail-content"),
+        attribute.attribute("role", "dialog"),
+        attribute.attribute("aria-modal", "true"),
+        attribute.attribute("aria-labelledby", "task-detail-title"),
+      ],
+      [
+        // AC1, AC8: Header with task info and close button
+        view_task_header(model, task),
+      // AC2: Tab system
+      view_task_tabs(model),
+      // Content based on active tab
+      view_task_tab_content(model, task_id, task),
+      // Footer
+      div([attribute.class("modal-footer")], [
+        button(
+          [
+            attribute.class("btn btn-secondary"),
+            event.on_click(pool_msg(MemberTaskDetailsClosed)),
+          ],
+          [text(update_helpers.i18n_t(model, i18n_text.Close))],
+        ),
       ]),
-      view_notes(model, task_id),
     ]),
   ])
 }
 
+/// Find a task by ID from the model.
+fn find_task(model: Model, task_id: Int) -> opt.Option(task.Task) {
+  case model.member.member_tasks {
+    Loaded(tasks) ->
+      list.find(tasks, fn(t) { t.id == task_id }) |> opt.from_result
+    NotAsked -> opt.None
+    Loading -> opt.None
+    Failed(_) -> opt.None
+  }
+}
+
+/// Task header with title, type, priority, status (AC1)
+fn view_task_header(model: Model, task: opt.Option(task.Task)) -> Element(Msg) {
+  case task {
+    opt.Some(t) ->
+      div([attribute.class("task-detail-header")], [
+        // Close button (using shared component)
+        modal_close_button.view_with_class(
+          "modal-close btn-icon",
+          pool_msg(MemberTaskDetailsClosed),
+        ),
+        // Task title
+        div(
+          [attribute.class("task-detail-title"), attribute.id("task-detail-title")],
+          [text(t.title)],
+        ),
+        // Task metadata row
+        div([attribute.class("task-detail-meta")], [
+          span([attribute.class("task-meta-type")], [
+            icons.nav_icon(icons.TaskTypes, icons.Small),
+            text(t.task_type.name),
+          ]),
+          span([attribute.class("task-meta-priority")], [
+            icons.nav_icon(icons.Automation, icons.Small),
+            text("P" <> int.to_string(t.priority)),
+          ]),
+          span([attribute.class("task-meta-status")], [
+            text(task_status_label(t)),
+          ]),
+          view_assignee(model, t),
+        ]),
+      ])
+    opt.None ->
+      div([attribute.class("task-detail-header")], [
+        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+      ])
+  }
+}
+
+/// Task status label
+fn task_status_label(t: task.Task) -> String {
+  case t.claimed_by {
+    opt.Some(_) -> "En progreso"
+    opt.None -> "Disponible"
+  }
+}
+
+/// Assignee display
+fn view_assignee(model: Model, t: task.Task) -> Element(Msg) {
+  case t.claimed_by {
+    opt.Some(_user_id) ->
+      span([attribute.class("task-meta-assignee")], [
+        icons.nav_icon(icons.UserCircle, icons.Small),
+        text("Asignado"),
+      ])
+    opt.None ->
+      span([attribute.class("task-meta-assignee muted")], [
+        text(update_helpers.i18n_t(model, i18n_text.Unassigned)),
+      ])
+  }
+}
+
+/// Tab system for task detail (AC2)
+fn view_task_tabs(model: Model) -> Element(Msg) {
+  let notes_count = case model.member.member_notes {
+    Loaded(notes) -> list.length(notes)
+    NotAsked -> 0
+    Loading -> 0
+    Failed(_) -> 0
+  }
+
+  task_tabs.view(
+    task_tabs.Config(
+      active_tab: model.member.member_task_detail_tab,
+      notes_count: notes_count,
+      has_new_notes: False,
+      labels: task_tabs.Labels(
+        details: update_helpers.i18n_t(model, i18n_text.TabDetails),
+        notes: update_helpers.i18n_t(model, i18n_text.TabNotes),
+      ),
+      on_tab_click: fn(tab) { pool_msg(MemberTaskDetailTabClicked(tab)) },
+    ),
+  )
+}
+
+/// Tab content based on active tab (AC3, AC4)
+fn view_task_tab_content(
+  model: Model,
+  task_id: Int,
+  task: opt.Option(task.Task),
+) -> Element(Msg) {
+  case model.member.member_task_detail_tab {
+    task_tabs.DetailsTab -> view_task_details_tab(model, task)
+    task_tabs.NotesTab -> view_notes(model, task_id)
+  }
+}
+
+/// Details tab content (AC3)
+fn view_task_details_tab(
+  model: Model,
+  task: opt.Option(task.Task),
+) -> Element(Msg) {
+  div([attribute.class("task-details-section")], [
+    case task {
+      opt.Some(t) ->
+        div([], [
+          // Card association
+          case t.card_id {
+            opt.Some(_) ->
+              div([attribute.class("detail-row")], [
+                span([attribute.class("detail-label")], [
+                  text(update_helpers.i18n_t(model, i18n_text.CardOptional)),
+                ]),
+                span([attribute.class("detail-value")], [
+                  text(t.card_title |> opt.unwrap("—")),
+                ]),
+              ])
+            opt.None -> element.none()
+          },
+          // Description
+          case t.description {
+            opt.Some(desc) ->
+              div([attribute.class("detail-row")], [
+                span([attribute.class("detail-label")], [
+                  text(update_helpers.i18n_t(model, i18n_text.Description)),
+                ]),
+                span([attribute.class("detail-value")], [text(desc)]),
+              ])
+            opt.None -> element.none()
+          },
+          // Actions
+          div([attribute.class("task-detail-actions")], [
+            button(
+              [
+                attribute.class("btn btn-primary"),
+                attribute.disabled(opt.is_some(t.claimed_by)),
+              ],
+              [text(update_helpers.i18n_t(model, i18n_text.ClaimTask))],
+            ),
+          ]),
+        ])
+      opt.None ->
+        div([attribute.class("loading")], [
+          text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+        ])
+    },
+  ])
+}
+
 /// Renders the notes section for a task.
+/// Story 5.4 UX: Dialog-based note creation (unified with card notes pattern).
 fn view_notes(model: Model, _task_id: Int) -> Element(Msg) {
   let current_user_id = case model.core.user {
     opt.Some(u) -> u.id
     opt.None -> 0
   }
 
-  div([], [
+  div([attribute.class("task-notes-section")], [
+    // Header with button (using shared component)
+    card_section_header.view_with_class(
+      "task-notes-header",
+      card_section_header.Config(
+        title: update_helpers.i18n_t(model, i18n_text.Notes),
+        button_label: "+ " <> update_helpers.i18n_t(model, i18n_text.AddNote),
+        button_disabled: False,
+        on_button_click: pool_msg(MemberNoteDialogOpened),
+      ),
+    ),
+    // Notes list
     case model.member.member_notes {
       NotAsked | Loading ->
         div([attribute.class("empty")], [
@@ -268,68 +475,57 @@ fn view_notes(model: Model, _task_id: Int) -> Element(Msg) {
         ])
       Failed(err) -> ui_error.error(err)
       Loaded(notes) ->
-        div(
-          [],
-          list.map(notes, fn(n) {
-            let task.TaskNote(
-              user_id: user_id,
-              content: content,
-              created_at: created_at,
-              ..,
-            ) = n
-            let author = case user_id == current_user_id {
-              True -> update_helpers.i18n_t(model, i18n_text.You)
-              False ->
-                update_helpers.i18n_t(model, i18n_text.UserNumber(user_id))
-            }
-
-            div([attribute.class("note")], [
-              p([], [text(author <> " @ " <> created_at)]),
-              p([], [text(content)]),
-            ])
-          }),
+        notes_list.view(
+          list.map(notes, fn(n) { task_note_to_view(model, n, current_user_id) }),
+          update_helpers.i18n_t(model, i18n_text.Delete),
+          update_helpers.i18n_t(model, i18n_text.DeleteAsAdmin),
+          fn(_id) { pool_msg(MemberTaskDetailsClosed) },
         )
     },
-    case model.member.member_note_error {
-      opt.Some(err) -> div([attribute.class("error")], [text(err)])
-      opt.None -> element.none()
+    // Dialog overlay (conditional)
+    case model.member.member_note_dialog_open {
+      True -> view_note_dialog(model)
+      False -> element.none()
     },
-    div([attribute.class("field")], [
-      label([], [text(update_helpers.i18n_t(model, i18n_text.AddNote))]),
-      input([
-        attribute.type_("text"),
-        attribute.value(model.member.member_note_content),
-        event.on_input(fn(value) { pool_msg(MemberNoteContentChanged(value)) }),
-      ]),
-    ]),
-    button(
-      [
-        event.on_click(pool_msg(MemberNoteSubmitted)),
-        attribute.disabled(model.member.member_note_in_flight),
-      ],
-      [
-        text(case model.member.member_note_in_flight {
-          True -> update_helpers.i18n_t(model, i18n_text.Adding)
-          False -> update_helpers.i18n_t(model, i18n_text.Add)
-        }),
-      ],
-    ),
   ])
 }
 
+/// Dialog for creating a note - uses shared note_dialog component (Story 5.4.2).
+fn view_note_dialog(model: Model) -> Element(Msg) {
+  note_dialog.view(note_dialog.Config(
+    title: update_helpers.i18n_t(model, i18n_text.AddNote),
+    content: model.member.member_note_content,
+    placeholder: update_helpers.i18n_t(model, i18n_text.NotePlaceholder),
+    error: model.member.member_note_error,
+    submit_label: update_helpers.i18n_t(model, i18n_text.AddNote),
+    submit_disabled: model.member.member_note_in_flight
+      || model.member.member_note_content == "",
+    cancel_label: update_helpers.i18n_t(model, i18n_text.Cancel),
+    on_content_change: fn(v) { pool_msg(MemberNoteContentChanged(v)) },
+    on_submit: pool_msg(MemberNoteSubmitted),
+    on_close: pool_msg(MemberNoteDialogClosed),
+  ))
+}
+
 // =============================================================================
-// Position Edit Dialog
+// Position Edit Dialog (Story 5.4.2: Migrated to ui/dialog)
 // =============================================================================
 
-/// Renders the position edit modal.
+/// Renders the position edit modal using ui/dialog.gleam.
 pub fn view_position_edit(model: Model, _task_id: Int) -> Element(Msg) {
-  div([attribute.class("modal")], [
-    div([attribute.class("modal-content")], [
-      h3([], [text(update_helpers.i18n_t(model, i18n_text.EditPosition))]),
-      case model.member.member_position_edit_error {
-        opt.Some(err) -> div([attribute.class("error")], [text(err)])
-        opt.None -> element.none()
-      },
+  let is_loading = model.member.member_position_edit_in_flight
+
+  dialog.view(
+    dialog.DialogConfig(
+      title: update_helpers.i18n_t(model, i18n_text.EditPosition),
+      icon: opt.None,
+      size: dialog.DialogSm,
+      on_close: pool_msg(MemberPositionEditClosed),
+    ),
+    True,
+    model.member.member_position_edit_error,
+    // Content: form fields
+    [
       div([attribute.class("field")], [
         label([], [text(update_helpers.i18n_t(model, i18n_text.XLabel))]),
         input([
@@ -350,23 +546,62 @@ pub fn view_position_edit(model: Model, _task_id: Int) -> Element(Msg) {
           }),
         ]),
       ]),
-      div([attribute.class("actions")], [
-        button([event.on_click(pool_msg(MemberPositionEditClosed))], [
-          text(update_helpers.i18n_t(model, i18n_text.Cancel)),
-        ]),
-        button(
-          [
-            event.on_click(pool_msg(MemberPositionEditSubmitted)),
-            attribute.disabled(model.member.member_position_edit_in_flight),
-          ],
-          [
-            text(case model.member.member_position_edit_in_flight {
-              True -> update_helpers.i18n_t(model, i18n_text.Saving)
-              False -> update_helpers.i18n_t(model, i18n_text.Save)
-            }),
-          ],
-        ),
-      ]),
-    ]),
-  ])
+    ],
+    // Footer: buttons (using on_click for non-form submit)
+    [
+      dialog.cancel_button(model, pool_msg(MemberPositionEditClosed)),
+      button(
+        [
+          attribute.type_("button"),
+          attribute.disabled(is_loading),
+          attribute.class(case is_loading {
+            True -> "btn-loading"
+            False -> ""
+          }),
+          event.on_click(pool_msg(MemberPositionEditSubmitted)),
+        ],
+        [
+          text(case is_loading {
+            True -> update_helpers.i18n_t(model, i18n_text.Saving)
+            False -> update_helpers.i18n_t(model, i18n_text.Save)
+          }),
+        ],
+      ),
+    ],
+  )
+}
+
+// =============================================================================
+// Task Note Conversion (Story 5.4: AC1-AC3)
+// =============================================================================
+
+/// Converts a TaskNote to NoteView for rendering with link detection.
+fn task_note_to_view(
+  model: Model,
+  note: task.TaskNote,
+  current_user_id: Int,
+) -> notes_list.NoteView {
+  let task.TaskNote(
+    id: id,
+    user_id: user_id,
+    content: content,
+    created_at: created_at,
+    ..,
+  ) = note
+
+  let author = case user_id == current_user_id {
+    True -> update_helpers.i18n_t(model, i18n_text.You)
+    False -> update_helpers.i18n_t(model, i18n_text.UserNumber(user_id))
+  }
+
+  notes_list.NoteView(
+    id: id,
+    author: author,
+    created_at: created_at,
+    content: content,
+    can_delete: False,
+    delete_context: notes_list_types.DeleteOwnNote,
+    author_email: "",
+    author_role: "",
+  )
 }

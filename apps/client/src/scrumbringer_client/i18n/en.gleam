@@ -720,5 +720,9 @@ pub fn translate(text: Text) -> String {
     // AC21: Tab labels
     text.TabTasks -> "Tasks"
     text.TabNotes -> "Notes"
+    // 5.4.1: Task detail modal
+    text.TabDetails -> "Details"
+    text.Unassigned -> "Unassigned"
+    text.ClaimTask -> "Claim task"
   }
 }

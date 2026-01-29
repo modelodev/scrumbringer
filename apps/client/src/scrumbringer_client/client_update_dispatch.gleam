@@ -1041,6 +1041,9 @@ pub fn handle_pool(
     client_state.MemberTaskDetailsClosed ->
       tasks_workflow.handle_task_details_closed(model)
 
+    client_state.MemberTaskDetailTabClicked(tab) ->
+      tasks_workflow.handle_task_detail_tab_clicked(model, tab)
+
     client_state.MemberNotesFetched(Ok(notes)) ->
       tasks_workflow.handle_notes_fetched_ok(model, notes)
     client_state.MemberNotesFetched(Error(err)) ->
@@ -1048,6 +1051,10 @@ pub fn handle_pool(
 
     client_state.MemberNoteContentChanged(v) ->
       tasks_workflow.handle_note_content_changed(model, v)
+    client_state.MemberNoteDialogOpened ->
+      tasks_workflow.handle_note_dialog_opened(model)
+    client_state.MemberNoteDialogClosed ->
+      tasks_workflow.handle_note_dialog_closed(model)
     client_state.MemberNoteSubmitted ->
       tasks_workflow.handle_note_submitted(model)
 

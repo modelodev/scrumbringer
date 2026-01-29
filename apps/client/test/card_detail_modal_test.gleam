@@ -7,9 +7,9 @@ import gleam/option
 import gleeunit/should
 
 import domain/card.{type Card, Card, EnCurso, Pendiente}
+import scrumbringer_client/client_state.{Loaded, NotAsked}
 import scrumbringer_client/components/card_detail_modal.{
-  type Model, CardIdReceived, CardReceived, Loaded, LocaleReceived, Model,
-  NotAsked, TasksReceived,
+  type Model, CardIdReceived, CardReceived, LocaleReceived, Model, TasksReceived,
 }
 import scrumbringer_client/i18n/locale.{En, Es}
 import scrumbringer_client/ui/card_tabs
