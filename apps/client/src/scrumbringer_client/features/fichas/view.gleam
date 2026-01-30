@@ -19,8 +19,6 @@
 //// - **components/card_detail_modal.gleam**: Card detail component
 
 import gleam/dynamic/decode
-import gleam/int
-import gleam/json
 import gleam/list
 import gleam/option
 
@@ -29,19 +27,25 @@ import lustre/element.{type Element}
 import lustre/element/html.{div, span, text}
 import lustre/event
 
-import domain/card.{type Card, type CardState, Cerrada, EnCurso, Pendiente}
+import domain/card.{type Card}
 import domain/task as domain_task
-import domain/task_status as domain_task_status
 import scrumbringer_client/client_state.{
   type Model, type Msg, CloseCardDetail, Loaded, Loading,
   MemberCreateDialogOpenedWithCard, OpenCardDetail, pool_msg,
 }
-import scrumbringer_client/i18n/locale
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/ui/attrs
+import scrumbringer_client/ui/card_detail_host
+import scrumbringer_client/ui/card_progress
+import scrumbringer_client/ui/card_state
+import scrumbringer_client/ui/card_state_badge
+import scrumbringer_client/ui/card_title_meta
 import scrumbringer_client/ui/color_picker
+import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/loading
+import scrumbringer_client/ui/section_header
 import scrumbringer_client/update_helpers
 import scrumbringer_client/utils/card_queries
 
@@ -62,33 +66,18 @@ pub fn view_fichas(model: Model) -> Element(Msg) {
 }
 
 fn view_fichas_header(model: Model) -> Element(Msg) {
-  div(
-    [
-      attribute.attribute("style", "margin-bottom: 16px;"),
-    ],
-    [
-      span(
-        [
-          attribute.attribute(
-            "style",
-            "font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--sb-muted);",
-          ),
-        ],
-        [text(update_helpers.i18n_t(model, i18n_text.MemberFichas))],
-      ),
-    ],
+  section_header.view(
+    icons.Cards,
+    update_helpers.i18n_t(model, i18n_text.MemberFichas),
   )
 }
 
 // Justification: nested case improves clarity for branching logic.
 fn view_fichas_content(model: Model) -> Element(Msg) {
-  // Use the existing model.admin.cards (admin cards data)
-  // In future, we may have member-specific card filtering
-  case model.admin.cards {
+  // Use member-scoped cards for Fichas
+  case model.member.member_cards {
     Loading ->
-      div([attribute.class("loading")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
-      ])
+      loading.loading(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis))
 
     Loaded(cards) ->
       case list.is_empty(cards) {
@@ -101,17 +90,12 @@ fn view_fichas_content(model: Model) -> Element(Msg) {
 }
 
 fn view_empty_state(model: Model) -> Element(Msg) {
-  div([attribute.class("empty-state")], [
-    div([attribute.class("empty-state-icon")], [
-      icons.nav_icon(icons.ClipboardDoc, icons.Large),
-    ]),
-    div([attribute.class("empty-state-title")], [
-      text(update_helpers.i18n_t(model, i18n_text.MemberFichasEmpty)),
-    ]),
-    div([attribute.class("empty-state-description")], [
-      text(update_helpers.i18n_t(model, i18n_text.MemberFichasEmptyHint)),
-    ]),
-  ])
+  empty_state.new(
+    icons.Clipboard,
+    update_helpers.i18n_t(model, i18n_text.MemberFichasEmpty),
+    update_helpers.i18n_t(model, i18n_text.MemberFichasEmptyHint),
+  )
+  |> empty_state.view
 }
 
 fn view_cards_list(model: Model, cards: List(Card)) -> Element(Msg) {
@@ -124,11 +108,22 @@ fn view_cards_list(model: Model, cards: List(Card)) -> Element(Msg) {
 fn view_card_item(model: Model, card: Card) -> Element(Msg) {
   let color_opt = color_from_string(card.color)
   let border_class = color_picker.border_class(color_opt)
-  let state_class = state_to_class(card.state)
-  let state_label = state_to_label(model, card.state)
+  let state_label = card_state.label(model.ui.locale, card.state)
 
-  let progress_text =
-    int.to_string(card.completed_count) <> "/" <> int.to_string(card.task_count)
+  let header_title_elements =
+    card_title_meta.elements(
+      span([attribute.class("ficha-title")], [text(card.title)]),
+      option.None,
+      option.None,
+      card.has_new_notes,
+      update_helpers.i18n_t(model, i18n_text.NewNotesTooltip),
+      card_title_meta.TitleNotesColor,
+    )
+
+  let header_children =
+    list.append(header_title_elements, [
+      card_state_badge.view(card.state, state_label, card_state_badge.Ficha),
+    ])
 
   div(
     [
@@ -138,53 +133,20 @@ fn view_card_item(model: Model, card: Card) -> Element(Msg) {
       attribute.attribute("tabindex", "0"),
     ],
     [
-      div([attribute.class("ficha-header")], [
-        span([attribute.class("ficha-title")], [text(card.title)]),
-        // AC16: Notes indicator with styled tooltip
-        case card.has_new_notes {
-          True ->
-            span(
-              [
-                attribute.class("card-notes-indicator tooltip-trigger"),
-                attribute.attribute("data-testid", "card-notes-indicator"),
-                attribute.attribute(
-                  "data-tooltip",
-                  update_helpers.i18n_t(model, i18n_text.NewNotesTooltip),
-                ),
-              ],
-              [text("[!]")],
-            )
-          False -> element.none()
-        },
-        span([attribute.class("ficha-state-badge " <> state_class)], [
-          text(state_label),
-        ]),
-      ]),
+      div([attribute.class("ficha-header")], header_children),
       case card.description {
         "" -> element.none()
         desc -> div([attribute.class("ficha-description")], [text(desc)])
       },
       div([attribute.class("ficha-meta")], [
-        span([], [text(progress_text)]),
+        card_progress.view(
+          card.completed_count,
+          card.task_count,
+          card_progress.Compact,
+        ),
       ]),
     ],
   )
-}
-
-fn state_to_class(state: CardState) -> String {
-  case state {
-    Pendiente -> "ficha-state-pendiente"
-    EnCurso -> "ficha-state-en_curso"
-    Cerrada -> "ficha-state-cerrada"
-  }
-}
-
-fn state_to_label(model: Model, state: CardState) -> String {
-  case state {
-    Pendiente -> update_helpers.i18n_t(model, i18n_text.CardStatePendiente)
-    EnCurso -> update_helpers.i18n_t(model, i18n_text.CardStateEnCurso)
-    Cerrada -> update_helpers.i18n_t(model, i18n_text.CardStateCerrada)
-  }
 }
 
 /// Convert string color from Card to color_picker.CardColor option.
@@ -230,33 +192,15 @@ pub fn view_card_detail_modal(model: Model) -> Element(Msg) {
           }
           let can_manage_notes = is_org_admin || is_manager
 
-          element.element(
-            "card-detail-modal",
-            [
-              // Attributes (strings)
-              attribute.attribute("card-id", int.to_string(card_id)),
-              attribute.attribute("locale", locale.serialize(model.ui.locale)),
-              attribute.attribute(
-                "current-user-id",
-                int.to_string(current_user_id),
-              ),
-              attribute.attribute("project-id", int.to_string(card.project_id)),
-              attribute.attribute(
-                "can-manage-notes",
-                bool_to_string(can_manage_notes),
-              ),
-              // Properties (JSON)
-              attribute.property("card", card_to_json(card)),
-              attribute.property("tasks", tasks_to_json(tasks)),
-              // Event listeners
-              event.on(
-                "create-task-requested",
-                decode_create_task_event(card_id),
-              ),
-              event.on("close-requested", decode_close_detail_event()),
-            ],
-            [],
-          )
+          card_detail_host.view(card_detail_host.Config(
+            card: card,
+            tasks: tasks,
+            locale: model.ui.locale,
+            current_user_id: current_user_id,
+            can_manage_notes: can_manage_notes,
+            on_create_task: decode_create_task_event(card_id),
+            on_close: decode_close_detail_event(),
+          ))
         }
       }
     }
@@ -286,110 +230,5 @@ fn get_card_tasks(model: Model, card_id: Int) -> List(domain_task.Task) {
         }
       })
     _ -> []
-  }
-}
-
-fn card_to_json(card: Card) -> json.Json {
-  json.object([
-    #("id", json.int(card.id)),
-    #("project_id", json.int(card.project_id)),
-    #("title", json.string(card.title)),
-    #("description", json.string(card.description)),
-    #("color", case card.color {
-      option.Some(c) -> json.string(c)
-      option.None -> json.null()
-    }),
-    #("state", json.string(card_state_to_string(card.state))),
-    #("task_count", json.int(card.task_count)),
-    #("completed_count", json.int(card.completed_count)),
-    #("created_by", json.int(card.created_by)),
-    #("created_at", json.string(card.created_at)),
-    #("has_new_notes", json.bool(card.has_new_notes)),
-  ])
-}
-
-fn card_state_to_string(state: CardState) -> String {
-  case state {
-    Pendiente -> "pendiente"
-    EnCurso -> "en_curso"
-    Cerrada -> "cerrada"
-  }
-}
-
-fn bool_to_string(value: Bool) -> String {
-  case value {
-    True -> "true"
-    False -> "false"
-  }
-}
-
-fn tasks_to_json(tasks: List(domain_task.Task)) -> json.Json {
-  json.array(tasks, task_to_json)
-}
-
-fn task_to_json(task: domain_task.Task) -> json.Json {
-  json.object([
-    #("id", json.int(task.id)),
-    #("project_id", json.int(task.project_id)),
-    #("type_id", json.int(task.type_id)),
-    #(
-      "task_type",
-      json.object([
-        #("id", json.int(task.task_type.id)),
-        #("name", json.string(task.task_type.name)),
-        #("icon", json.string(task.task_type.icon)),
-      ]),
-    ),
-    #("ongoing_by", case task.ongoing_by {
-      option.Some(ob) -> json.object([#("user_id", json.int(ob.user_id))])
-      option.None -> json.null()
-    }),
-    #("title", json.string(task.title)),
-    #("description", case task.description {
-      option.Some(d) -> json.string(d)
-      option.None -> json.null()
-    }),
-    #("priority", json.int(task.priority)),
-    #(
-      "status",
-      json.string(domain_task_status.task_status_to_string(task.status)),
-    ),
-    #("work_state", json.string(work_state_to_string(task.work_state))),
-    #("created_by", json.int(task.created_by)),
-    #("claimed_by", case task.claimed_by {
-      option.Some(id) -> json.int(id)
-      option.None -> json.null()
-    }),
-    #("claimed_at", case task.claimed_at {
-      option.Some(at) -> json.string(at)
-      option.None -> json.null()
-    }),
-    #("completed_at", case task.completed_at {
-      option.Some(at) -> json.string(at)
-      option.None -> json.null()
-    }),
-    #("created_at", json.string(task.created_at)),
-    #("version", json.int(task.version)),
-    #("card_id", case task.card_id {
-      option.Some(id) -> json.int(id)
-      option.None -> json.null()
-    }),
-    #("card_title", case task.card_title {
-      option.Some(t) -> json.string(t)
-      option.None -> json.null()
-    }),
-    #("card_color", case task.card_color {
-      option.Some(c) -> json.string(c)
-      option.None -> json.null()
-    }),
-  ])
-}
-
-fn work_state_to_string(state: domain_task_status.WorkState) -> String {
-  case state {
-    domain_task_status.WorkAvailable -> "available"
-    domain_task_status.WorkClaimed -> "claimed"
-    domain_task_status.WorkOngoing -> "ongoing"
-    domain_task_status.WorkCompleted -> "completed"
   }
 }

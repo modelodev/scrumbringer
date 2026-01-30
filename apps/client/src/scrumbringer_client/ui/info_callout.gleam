@@ -31,6 +31,24 @@ pub fn with_title(title: String, content: String) -> InfoCalloutConfig {
 pub fn view(callout: InfoCalloutConfig) -> Element(msg) {
   let InfoCalloutConfig(title:, content:) = callout
 
+  view_with_content(title, text(content))
+}
+
+/// Simple info callout without title.
+pub fn simple(content: String) -> Element(msg) {
+  new(content) |> view
+}
+
+/// Info callout with title.
+pub fn titled(title: String, content: String) -> Element(msg) {
+  with_title(title, content) |> view
+}
+
+/// Info callout with custom content element.
+pub fn view_with_content(
+  title: opt.Option(String),
+  content: Element(msg),
+) -> Element(msg) {
   div([attribute.class(css.to_string(css.info_callout()))], [
     div([attribute.class(css.to_string(css.info_callout_icon()))], [
       text(icons.emoji_to_string(icons.Lightbulb)),
@@ -43,19 +61,7 @@ pub fn view(callout: InfoCalloutConfig) -> Element(msg) {
           ])
         opt.None -> element.none()
       },
-      div([attribute.class(css.to_string(css.info_callout_text()))], [
-        text(content),
-      ]),
+      div([attribute.class(css.to_string(css.info_callout_text()))], [content]),
     ]),
   ])
-}
-
-/// Simple info callout without title.
-pub fn simple(content: String) -> Element(msg) {
-  new(content) |> view
-}
-
-/// Info callout with title.
-pub fn titled(title: String, content: String) -> Element(msg) {
-  with_title(title, content) |> view
 }

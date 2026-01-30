@@ -14,27 +14,35 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, h2, input, span, text}
+import lustre/element/html.{button, div, input, span, text}
 import lustre/event
 
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Loaded, MemberSaveCapabilitiesClicked,
-  MemberToggleCapability, pool_msg,
+  type Model, type Msg, MemberSaveCapabilitiesClicked, MemberToggleCapability,
+  pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/attrs
-import scrumbringer_client/ui/error_banner
+import scrumbringer_client/ui/empty_state
+import scrumbringer_client/ui/error_notice
+import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/info_callout
+import scrumbringer_client/ui/loading
+import scrumbringer_client/ui/remote as ui_remote
+import scrumbringer_client/ui/section_header
 import scrumbringer_client/update_helpers
 
 /// Renders the My Skills section.
 pub fn view_skills(model: Model) -> Element(Msg) {
   div([attrs.section()], [
-    h2([], [text(update_helpers.i18n_t(model, i18n_text.MySkills))]),
+    section_header.view(
+      icons.Crosshairs,
+      update_helpers.i18n_t(model, i18n_text.MySkills),
+    ),
     // MS01: Helper text explaining the section
     info_callout.simple(update_helpers.i18n_t(model, i18n_text.MySkillsHelp)),
     case model.member.member_my_capabilities_error {
-      opt.Some(err) -> error_banner.view(err)
+      opt.Some(err) -> error_notice.view(err)
       opt.None -> element.none()
     },
     view_skills_list(model),
@@ -60,38 +68,44 @@ pub fn view_skills(model: Model) -> Element(Msg) {
 
 /// Renders the list of capabilities with checkboxes.
 fn view_skills_list(model: Model) -> Element(Msg) {
-  case model.admin.capabilities {
-    Loaded(capabilities) ->
-      div(
-        [attribute.class("skills-list")],
-        list.map(capabilities, fn(c) {
-          let selected = case
-            dict.get(model.member.member_my_capability_ids_edit, c.id)
-          {
-            Ok(v) -> v
-            Error(_) -> False
-          }
+  ui_remote.view_remote(
+    model.member.member_capabilities,
+    loading: fn() {
+      loading.loading(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis))
+    },
+    error: fn(err) { error_notice.view(err.message) },
+    loaded: fn(capabilities) {
+      case list.is_empty(capabilities) {
+        True ->
+          empty_state.simple(
+            icons.UsersEmoji,
+            update_helpers.i18n_t(model, i18n_text.NoCapabilitiesYet),
+          )
+        False ->
+          div(
+            [attribute.class("skills-list")],
+            list.map(capabilities, fn(c) {
+              let selected = case
+                dict.get(model.member.member_my_capability_ids_edit, c.id)
+              {
+                Ok(v) -> v
+                Error(_) -> False
+              }
 
-          div([attribute.class("skill-row")], [
-            span([attribute.class("skill-name")], [text(c.name)]),
-            input([
-              attribute.type_("checkbox"),
-              attribute.attribute("checked", case selected {
-                True -> "true"
-                False -> "false"
-              }),
-              event.on_click(pool_msg(MemberToggleCapability(c.id))),
-            ]),
-          ])
-        }),
-      )
-
-    _ ->
-      div(
-        [
-          attribute.class("empty"),
-        ],
-        [text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis))],
-      )
-  }
+              div([attribute.class("skill-row")], [
+                span([attribute.class("skill-name")], [text(c.name)]),
+                input([
+                  attribute.type_("checkbox"),
+                  attribute.attribute("checked", case selected {
+                    True -> "true"
+                    False -> "false"
+                  }),
+                  event.on_click(pool_msg(MemberToggleCapability(c.id))),
+                ]),
+              ])
+            }),
+          )
+      }
+    },
+  )
 }

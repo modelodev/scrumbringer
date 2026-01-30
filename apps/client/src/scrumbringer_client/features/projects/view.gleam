@@ -21,7 +21,7 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element
-import lustre/element/html.{button, div, form, input, label, p, text}
+import lustre/element/html.{button, div, form, input, p, text}
 import lustre/event
 
 import domain/project.{type Project}
@@ -39,6 +39,7 @@ import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
+import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/section_header
 import scrumbringer_client/update_helpers
@@ -110,8 +111,8 @@ fn view_projects_create_dialog(model: Model) -> element.Element(Msg) {
           attribute.id("project-create-form"),
         ],
         [
-          div([attribute.class("field")], [
-            label([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
+          form_field.view(
+            update_helpers.i18n_t(model, i18n_text.Name),
             input([
               attribute.type_("text"),
               attribute.value(name),
@@ -121,7 +122,7 @@ fn view_projects_create_dialog(model: Model) -> element.Element(Msg) {
               attribute.required(True),
               attribute.autofocus(True),
             ]),
-          ]),
+          ),
         ],
       ),
     ],
@@ -178,8 +179,8 @@ fn view_projects_edit_dialog(model: Model) -> element.Element(Msg) {
           attribute.id("project-edit-form"),
         ],
         [
-          div([attribute.class("field")], [
-            label([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
+          form_field.view(
+            update_helpers.i18n_t(model, i18n_text.Name),
             input([
               attribute.type_("text"),
               attribute.value(name),
@@ -189,7 +190,7 @@ fn view_projects_edit_dialog(model: Model) -> element.Element(Msg) {
               attribute.required(True),
               attribute.autofocus(True),
             ]),
-          ]),
+          ),
         ],
       ),
     ],

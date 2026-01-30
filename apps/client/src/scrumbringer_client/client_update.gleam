@@ -1657,8 +1657,59 @@ fn member_refresh(
   model: client_state.Model,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   case model.member.member_section {
-    member_section.MySkills -> #(model, effect.none())
+    member_section.MySkills -> refresh_member_capabilities(model)
+    member_section.Fichas -> refresh_member_cards(model)
     _ -> refresh_member_tasks(model)
+  }
+}
+
+fn refresh_member_capabilities(
+  model: client_state.Model,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  case model.core.selected_project_id {
+    opt.Some(project_id) -> #(
+      client_state.update_member(model, fn(member) {
+        client_state.MemberModel(
+          ..member,
+          member_capabilities: client_state.Loading,
+        )
+      }),
+      api_org.list_project_capabilities(project_id, fn(result) {
+        client_state.pool_msg(client_state.MemberProjectCapabilitiesFetched(
+          result,
+        ))
+      }),
+    )
+    opt.None -> #(
+      client_state.update_member(model, fn(member) {
+        client_state.MemberModel(
+          ..member,
+          member_capabilities: client_state.NotAsked,
+        )
+      }),
+      effect.none(),
+    )
+  }
+}
+
+fn refresh_member_cards(
+  model: client_state.Model,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  case model.core.selected_project_id {
+    opt.Some(project_id) -> #(
+      client_state.update_member(model, fn(member) {
+        client_state.MemberModel(..member, member_cards: client_state.Loading)
+      }),
+      api_cards.list_cards(project_id, fn(result) {
+        client_state.pool_msg(client_state.MemberCardsFetched(result))
+      }),
+    )
+    opt.None -> #(
+      client_state.update_member(model, fn(member) {
+        client_state.MemberModel(..member, member_cards: client_state.NotAsked)
+      }),
+      effect.none(),
+    )
   }
 }
 
@@ -1734,15 +1785,21 @@ fn refresh_member_data(
       })
     })
 
-  let #(cards_effects, cards_model_update) =
-    cards_effects_for_refresh(model.core.selected_project_id)
+  let member_card_effects = case model.core.selected_project_id {
+    opt.Some(project_id) -> [
+      api_cards.list_cards(project_id, fn(result) {
+        client_state.pool_msg(client_state.MemberCardsFetched(result))
+      }),
+    ]
+    opt.None -> []
+  }
 
   let effects =
     list.append(
       task_effects,
       list.append(
         task_type_effects,
-        list.append([positions_effect], cards_effects),
+        list.append([positions_effect], member_card_effects),
       ),
     )
 
@@ -1756,39 +1813,16 @@ fn refresh_member_data(
         member_task_types: client_state.Loading,
         member_task_types_pending: list.length(project_ids),
         member_task_types_by_project: dict.new(),
+        member_cards: case model.core.selected_project_id {
+          opt.Some(_) -> client_state.Loading
+          opt.None -> client_state.NotAsked
+        },
       )
     })
-    |> cards_model_update
-
   #(next, effect.batch(effects))
 }
 
-fn cards_effects_for_refresh(
-  selected_project_id: opt.Option(Int),
-) -> #(
-  List(Effect(client_state.Msg)),
-  fn(client_state.Model) -> client_state.Model,
-) {
-  case selected_project_id {
-    opt.Some(project_id) -> #(
-      [
-        api_cards.list_cards(project_id, fn(result) {
-          client_state.pool_msg(client_state.CardsFetched(result))
-        }),
-      ],
-      fn(m: client_state.Model) {
-        client_state.update_admin(m, fn(admin) {
-          client_state.AdminModel(
-            ..admin,
-            cards: client_state.Loading,
-            cards_project_id: opt.Some(project_id),
-          )
-        })
-      },
-    )
-    opt.None -> #([], fn(m: client_state.Model) { m })
-  }
-}
+// cards_effects_for_refresh removed from member refresh to avoid admin coupling.
 
 fn task_filters_for_member_section(model: client_state.Model) -> TaskFilters {
   case model.member.member_section {

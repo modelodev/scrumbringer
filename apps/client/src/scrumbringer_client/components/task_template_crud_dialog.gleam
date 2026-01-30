@@ -30,8 +30,8 @@ import lustre/component
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html.{
-  button, div, form, h3, input, label, option as html_option, p, select, span,
-  text, textarea,
+  button, div, form, input, option as html_option, p, select, span, text,
+  textarea,
 }
 import lustre/event
 
@@ -46,6 +46,8 @@ import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/form_field
+import scrumbringer_client/ui/modal_header
 
 // =============================================================================
 // Internal Types
@@ -669,7 +671,11 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
       ],
       [
         // Header
-        view_header(model, i18n_text.CreateTaskTemplate, "\u{1F4DD}"),
+        modal_header.view_dialog_with_icon(
+          t(model.locale, i18n_text.CreateTaskTemplate),
+          text("\u{1F4DD}"),
+          CloseRequested,
+        ),
         // Error
         view_error(model.create_error),
         // Body
@@ -681,8 +687,8 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
             ],
             [
               // Name field
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.TaskTemplateName))]),
+              form_field.view(
+                t(model.locale, i18n_text.TaskTemplateName),
                 input([
                   attribute.type_("text"),
                   attribute.value(model.create_name),
@@ -690,52 +696,52 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
                   attribute.required(True),
                   attribute.attribute("aria-label", "Template name"),
                 ]),
-              ]),
+              ),
               // Description field (textarea with variables hint)
-              div([attribute.class("field")], [
-                label([], [
-                  text(t(model.locale, i18n_text.TaskTemplateDescription)),
-                ]),
-                textarea(
-                  [
-                    attribute.rows(4),
-                    attribute.value(model.create_description),
-                    event.on_input(CreateDescriptionChanged),
-                    attribute.attribute("aria-label", "Template description"),
-                  ],
-                  model.create_description,
-                ),
-                div([attribute.class("field-variables-hint")], [
-                  span([attribute.class("field-variables-label")], [
-                    text(t(model.locale, i18n_text.AvailableVariables) <> ": "),
+              form_field.view(
+                t(model.locale, i18n_text.TaskTemplateDescription),
+                div([], [
+                  textarea(
+                    [
+                      attribute.rows(4),
+                      attribute.value(model.create_description),
+                      event.on_input(CreateDescriptionChanged),
+                      attribute.attribute("aria-label", "Template description"),
+                    ],
+                    model.create_description,
+                  ),
+                  div([attribute.class("field-variables-hint")], [
+                    span([attribute.class("field-variables-label")], [
+                      text(
+                        t(model.locale, i18n_text.AvailableVariables) <> ": ",
+                      ),
+                    ]),
+                    span([attribute.class("field-variables-list")], [
+                      text(
+                        "{{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}",
+                      ),
+                    ]),
                   ]),
-                  span([attribute.class("field-variables-list")], [
-                    text(
-                      "{{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}",
-                    ),
-                  ]),
                 ]),
-              ]),
+              ),
               // Task Type selector
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.TaskTemplateType))]),
+              form_field.view(
+                t(model.locale, i18n_text.TaskTemplateType),
                 view_task_type_selector(
                   model.locale,
                   model.task_types,
                   model.create_type_id,
                   CreateTypeIdChanged,
                 ),
-              ]),
+              ),
               // Priority selector
-              div([attribute.class("field")], [
-                label([], [
-                  text(t(model.locale, i18n_text.TaskTemplatePriority)),
-                ]),
+              form_field.view(
+                t(model.locale, i18n_text.TaskTemplatePriority),
                 view_priority_selector(
                   model.create_priority,
                   CreatePriorityChanged,
                 ),
-              ]),
+              ),
             ],
           ),
         ]),
@@ -776,7 +782,11 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
       ],
       [
         // Header
-        view_header(model, i18n_text.EditTaskTemplate, "\u{270F}"),
+        modal_header.view_dialog_with_icon(
+          t(model.locale, i18n_text.EditTaskTemplate),
+          text("\u{270F}"),
+          EditCancelled,
+        ),
         // Error
         view_error(model.edit_error),
         // Body
@@ -788,56 +798,56 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
             ],
             [
               // Name field
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.TaskTemplateName))]),
+              form_field.view(
+                t(model.locale, i18n_text.TaskTemplateName),
                 input([
                   attribute.type_("text"),
                   attribute.value(model.edit_name),
                   event.on_input(EditNameChanged),
                   attribute.required(True),
                 ]),
-              ]),
+              ),
               // Description field (textarea with variables hint)
-              div([attribute.class("field")], [
-                label([], [
-                  text(t(model.locale, i18n_text.TaskTemplateDescription)),
-                ]),
-                textarea(
-                  [
-                    attribute.rows(4),
-                    attribute.value(model.edit_description),
-                    event.on_input(EditDescriptionChanged),
-                  ],
-                  model.edit_description,
-                ),
-                div([attribute.class("field-variables-hint")], [
-                  span([attribute.class("field-variables-label")], [
-                    text(t(model.locale, i18n_text.AvailableVariables) <> ": "),
+              form_field.view(
+                t(model.locale, i18n_text.TaskTemplateDescription),
+                div([], [
+                  textarea(
+                    [
+                      attribute.rows(4),
+                      attribute.value(model.edit_description),
+                      event.on_input(EditDescriptionChanged),
+                    ],
+                    model.edit_description,
+                  ),
+                  div([attribute.class("field-variables-hint")], [
+                    span([attribute.class("field-variables-label")], [
+                      text(
+                        t(model.locale, i18n_text.AvailableVariables) <> ": ",
+                      ),
+                    ]),
+                    span([attribute.class("field-variables-list")], [
+                      text(
+                        "{{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}",
+                      ),
+                    ]),
                   ]),
-                  span([attribute.class("field-variables-list")], [
-                    text(
-                      "{{father}}, {{from_state}}, {{to_state}}, {{project}}, {{user}}",
-                    ),
-                  ]),
                 ]),
-              ]),
+              ),
               // Task Type selector
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.TaskTemplateType))]),
+              form_field.view(
+                t(model.locale, i18n_text.TaskTemplateType),
                 view_task_type_selector(
                   model.locale,
                   model.task_types,
                   model.edit_type_id,
                   EditTypeIdChanged,
                 ),
-              ]),
+              ),
               // Priority selector
-              div([attribute.class("field")], [
-                label([], [
-                  text(t(model.locale, i18n_text.TaskTemplatePriority)),
-                ]),
+              form_field.view(
+                t(model.locale, i18n_text.TaskTemplatePriority),
                 view_priority_selector(model.edit_priority, EditPriorityChanged),
-              ]),
+              ),
             ],
           ),
         ]),
@@ -877,7 +887,11 @@ fn view_delete_dialog(model: Model, template: TaskTemplate) -> Element(Msg) {
       ],
       [
         // Header
-        view_header(model, i18n_text.DeleteTaskTemplate, "\u{1F5D1}"),
+        modal_header.view_dialog_with_icon(
+          t(model.locale, i18n_text.DeleteTaskTemplate),
+          text("\u{1F5D1}"),
+          DeleteCancelled,
+        ),
         // Error
         view_error(model.delete_error),
         // Body
@@ -907,28 +921,6 @@ fn view_delete_dialog(model: Model, template: TaskTemplate) -> Element(Msg) {
           ),
         ]),
       ],
-    ),
-  ])
-}
-
-fn view_header(
-  model: Model,
-  title_key: i18n_text.Text,
-  icon: String,
-) -> Element(Msg) {
-  div([attribute.class("dialog-header")], [
-    div([attribute.class("dialog-title")], [
-      span([attribute.class("dialog-icon")], [text(icon)]),
-      h3([], [text(t(model.locale, title_key))]),
-    ]),
-    button(
-      [
-        attribute.class("btn-icon dialog-close"),
-        attribute.type_("button"),
-        event.on_click(CloseRequested),
-        attribute.attribute("aria-label", "Close"),
-      ],
-      [text("\u{2715}")],
     ),
   ])
 }

@@ -23,7 +23,7 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, h3, hr, span, text}
+import lustre/element/html.{div, h3, hr, span, text}
 import lustre/event
 
 import domain/task.{type Task, ActiveTask, Task}
@@ -35,9 +35,12 @@ import scrumbringer_client/client_state.{
   MemberNowWorkingPauseClicked, MemberNowWorkingStartClicked, MemberPanelToggled,
   MemberReleaseClicked, pool_msg,
 }
-import scrumbringer_client/features/admin/view as admin_view
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/task_actions
+import scrumbringer_client/ui/task_item
+import scrumbringer_client/ui/task_type_icon
 import scrumbringer_client/update_helpers
 
 // =============================================================================
@@ -115,10 +118,10 @@ pub fn view_panel_sheet(model: Model, user_id: Int) -> Element(Msg) {
         case active_sessions {
           [] ->
             div([attribute.class("sheet-empty")], [
-              span([attribute.class("sheet-empty-icon")], [
-                text(icons.emoji_to_string(icons.Clock)),
-              ]),
-              text(update_helpers.i18n_t(model, i18n_text.NowWorkingNone)),
+              empty_state.simple(
+                icons.Clock,
+                update_helpers.i18n_t(model, i18n_text.NowWorkingNone),
+              ),
             ])
           _ ->
             div(
@@ -137,10 +140,10 @@ pub fn view_panel_sheet(model: Model, user_id: Int) -> Element(Msg) {
         case claimed_tasks {
           [] ->
             div([attribute.class("sheet-empty")], [
-              span([attribute.class("sheet-empty-icon")], [
-                text(icons.emoji_to_string(icons.Hand)),
-              ]),
-              text(update_helpers.i18n_t(model, i18n_text.NoClaimedTasks)),
+              empty_state.simple(
+                icons.Hand,
+                update_helpers.i18n_t(model, i18n_text.NoClaimedTasks),
+              ),
             ])
           _ ->
             div(
@@ -186,39 +189,44 @@ fn view_session_row(model: Model, session: SessionInfo) -> Element(Msg) {
     model.member.member_task_mutation_in_flight
     || model.member.member_now_working_in_flight
 
-  div([attribute.class("session-row")], [
-    span([attribute.class("session-icon")], [
-      admin_view.view_task_type_icon_inline(icon, 18, model.ui.theme),
-    ]),
-    span([attribute.class("session-title")], [text(title)]),
-    span([attribute.class("session-timer")], [text(elapsed)]),
-    div([attribute.class("session-actions")], [
-      button(
-        [
-          attribute.class("btn-action"),
-          attribute.attribute(
-            "title",
-            update_helpers.i18n_t(model, i18n_text.Pause),
-          ),
-          attribute.disabled(disable_actions),
-          event.on_click(pool_msg(MemberNowWorkingPauseClicked)),
-        ],
-        [icons.nav_icon(icons.Pause, icons.Small)],
-      ),
-      button(
-        [
-          attribute.class("btn-action btn-complete"),
-          attribute.attribute(
-            "title",
-            update_helpers.i18n_t(model, i18n_text.Complete),
-          ),
-          attribute.disabled(disable_actions),
-          event.on_click(pool_msg(MemberCompleteClicked(task_id, version))),
-        ],
-        [icons.nav_icon(icons.Check, icons.Small)],
-      ),
-    ]),
-  ])
+  let actions = [
+    task_actions.icon_action_with_class(
+      update_helpers.i18n_t(model, i18n_text.Pause),
+      pool_msg(MemberNowWorkingPauseClicked),
+      icons.Pause,
+      icons.Small,
+      disable_actions,
+      "btn-action",
+      opt.None,
+      opt.None,
+    ),
+    task_actions.icon_action_with_class(
+      update_helpers.i18n_t(model, i18n_text.Complete),
+      pool_msg(MemberCompleteClicked(task_id, version)),
+      icons.Check,
+      icons.Small,
+      disable_actions,
+      "btn-action btn-complete",
+      opt.None,
+      opt.None,
+    ),
+  ]
+
+  task_item.view(
+    task_item.Config(
+      container_class: "session-row",
+      content_class: "session-row-content",
+      on_click: opt.None,
+      icon: opt.Some(task_type_icon.view(icon, 18, model.ui.theme)),
+      icon_class: opt.Some("session-icon"),
+      title: title,
+      title_class: opt.Some("session-title"),
+      secondary: span([attribute.class("session-timer")], [text(elapsed)]),
+      actions: [div([attribute.class("session-actions")], actions)],
+      testid: opt.None,
+    ),
+    task_item.Div,
+  )
 }
 
 /// Row for a claimed (paused) task (CLAIMED section).
@@ -230,38 +238,44 @@ fn view_claimed_row(model: Model, task: Task) -> Element(Msg) {
     model.member.member_task_mutation_in_flight
     || model.member.member_now_working_in_flight
 
-  div([attribute.class("claimed-row")], [
-    span([attribute.class("claimed-icon")], [
-      admin_view.view_task_type_icon_inline(task_type.icon, 18, model.ui.theme),
-    ]),
-    span([attribute.class("claimed-title")], [text(title)]),
-    div([attribute.class("claimed-actions")], [
-      button(
-        [
-          attribute.class("btn-action btn-start"),
-          attribute.attribute(
-            "title",
-            update_helpers.i18n_t(model, i18n_text.Start),
-          ),
-          attribute.disabled(disable_actions),
-          event.on_click(pool_msg(MemberNowWorkingStartClicked(id))),
-        ],
-        [icons.nav_icon(icons.Play, icons.Small)],
-      ),
-      button(
-        [
-          attribute.class("btn-action"),
-          attribute.attribute(
-            "title",
-            update_helpers.i18n_t(model, i18n_text.Release),
-          ),
-          attribute.disabled(disable_actions),
-          event.on_click(pool_msg(MemberReleaseClicked(id, version))),
-        ],
-        [icons.nav_icon(icons.Return, icons.Small)],
-      ),
-    ]),
-  ])
+  let actions = [
+    task_actions.icon_action_with_class(
+      update_helpers.i18n_t(model, i18n_text.Start),
+      pool_msg(MemberNowWorkingStartClicked(id)),
+      icons.Play,
+      icons.Small,
+      disable_actions,
+      "btn-action btn-start",
+      opt.None,
+      opt.None,
+    ),
+    task_actions.icon_action_with_class(
+      update_helpers.i18n_t(model, i18n_text.Release),
+      pool_msg(MemberReleaseClicked(id, version)),
+      icons.Return,
+      icons.Small,
+      disable_actions,
+      "btn-action",
+      opt.None,
+      opt.None,
+    ),
+  ]
+
+  task_item.view(
+    task_item.Config(
+      container_class: "claimed-row",
+      content_class: "claimed-row-content",
+      on_click: opt.None,
+      icon: opt.Some(task_type_icon.view(task_type.icon, 18, model.ui.theme)),
+      icon_class: opt.Some("claimed-icon"),
+      title: title,
+      title_class: opt.Some("claimed-title"),
+      secondary: task_item.empty_secondary(),
+      actions: [div([attribute.class("claimed-actions")], actions)],
+      testid: opt.None,
+    ),
+    task_item.Div,
+  )
 }
 
 // =============================================================================

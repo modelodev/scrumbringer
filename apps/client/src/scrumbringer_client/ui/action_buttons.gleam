@@ -35,6 +35,10 @@
 //// - Click handlers (passed as parameter)
 //// - Confirmation dialogs (handled by caller)
 
+import gleam/list
+import gleam/option.{type Option, None, Some}
+import gleam/string
+
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{button}
@@ -52,6 +56,94 @@ pub type ButtonSize {
   SizeXs
   /// Small (for cards)
   SizeSm
+}
+
+// =============================================================================
+// Task Action Buttons
+// =============================================================================
+
+/// Generic icon-only task action button.
+///
+/// Use this for claim/release/complete/pause actions to keep styling consistent.
+pub fn task_icon_button(
+  title: String,
+  on_click: msg,
+  icon: icons.NavIcon,
+  size: ButtonSize,
+  disabled: Bool,
+  extra_class: String,
+  tooltip: Option(String),
+  testid: Option(String),
+) -> Element(msg) {
+  let size_class = case size {
+    SizeXs -> "btn-xs"
+    SizeSm -> "btn-sm"
+  }
+
+  let class = case string.is_empty(extra_class) {
+    True -> "btn-icon " <> size_class
+    False -> "btn-icon " <> size_class <> " " <> extra_class
+  }
+
+  let tooltip_attr = case tooltip {
+    Some(value) -> [attribute.attribute("data-tooltip", value)]
+    None -> []
+  }
+
+  let testid_attr = case testid {
+    Some(value) -> [attribute.attribute("data-testid", value)]
+    None -> []
+  }
+
+  let base_attrs = [
+    attribute.class(class),
+    attribute.attribute("title", title),
+    attribute.attribute("aria-label", title),
+    attribute.disabled(disabled),
+    event.on_click(on_click),
+  ]
+
+  let attrs = list.append(base_attrs, tooltip_attr)
+  let attrs_with_testid = list.append(attrs, testid_attr)
+
+  button(attrs_with_testid, [icons.nav_icon(icon, icons.Small)])
+}
+
+/// Generic task action button with full class control.
+///
+/// Use this when the view uses a non-standard class (e.g. mobile/kanban).
+pub fn task_icon_button_with_class(
+  title: String,
+  on_click: msg,
+  icon: icons.NavIcon,
+  icon_size: icons.IconSize,
+  disabled: Bool,
+  class: String,
+  tooltip: Option(String),
+  testid: Option(String),
+) -> Element(msg) {
+  let tooltip_attr = case tooltip {
+    Some(value) -> [attribute.attribute("data-tooltip", value)]
+    None -> []
+  }
+
+  let testid_attr = case testid {
+    Some(value) -> [attribute.attribute("data-testid", value)]
+    None -> []
+  }
+
+  let base_attrs = [
+    attribute.class(class),
+    attribute.attribute("title", title),
+    attribute.attribute("aria-label", title),
+    attribute.disabled(disabled),
+    event.on_click(on_click),
+  ]
+
+  let attrs = list.append(base_attrs, tooltip_attr)
+  let attrs_with_testid = list.append(attrs, testid_attr)
+
+  button(attrs_with_testid, [icons.nav_icon(icon, icon_size)])
 }
 
 // =============================================================================

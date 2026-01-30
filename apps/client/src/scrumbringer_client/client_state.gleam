@@ -511,6 +511,8 @@ pub type MemberModel {
     member_task_types: Remote(List(TaskType)),
     member_task_types_pending: Int,
     member_task_types_by_project: Dict(Int, List(TaskType)),
+    member_cards: Remote(List(Card)),
+    member_capabilities: Remote(List(Capability)),
     member_task_mutation_in_flight: Bool,
     member_task_mutation_task_id: Option(Int),
     member_tasks_snapshot: Option(List(Task)),
@@ -761,9 +763,11 @@ pub type PoolMsg {
   MemberMetricsFetched(ApiResult(MyMetrics))
   NowWorkingTicked
   MemberMyCapabilityIdsFetched(ApiResult(List(Int)))
+  MemberProjectCapabilitiesFetched(ApiResult(List(Capability)))
   MemberToggleCapability(Int)
   MemberSaveCapabilitiesClicked
   MemberMyCapabilityIdsSaved(ApiResult(List(Int)))
+  MemberCardsFetched(ApiResult(List(Card)))
   MemberPositionsFetched(ApiResult(List(TaskPosition)))
   MemberPositionEditOpened(Int)
   MemberPositionEditClosed
@@ -1289,6 +1293,8 @@ pub fn default_model() -> Model {
       member_task_types: NotAsked,
       member_task_types_pending: 0,
       member_task_types_by_project: dict.new(),
+      member_cards: NotAsked,
+      member_capabilities: NotAsked,
       member_task_mutation_in_flight: False,
       member_task_mutation_task_id: option.None,
       member_tasks_snapshot: option.None,

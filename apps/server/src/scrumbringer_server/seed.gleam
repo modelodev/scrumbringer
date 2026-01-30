@@ -40,8 +40,7 @@ pub fn main() {
   io.println("  SCRUMBRINGER SEED")
   io.println("========================================\n")
 
-  let config = seed_builder.realistic_config()
-  io.println("[OK] Config: realistic")
+  let config = config_from_env()
 
   case run_seed(config) {
     Ok(stats) -> print_summary(stats)
@@ -124,6 +123,19 @@ fn print_summary(stats: seed_builder.SeedResult) {
   io.println("  beta@example.com     - Org Member")
   io.println("  empty-admin@example.com - Org Admin (Empty Org)")
   io.println("")
+}
+
+fn config_from_env() -> seed_builder.SeedConfig {
+  case getenv("SEED_CONFIG", "realistic") {
+    "visual_qa" -> {
+      io.println("[OK] Config: visual_qa")
+      seed_builder.visual_qa_config()
+    }
+    _ -> {
+      io.println("[OK] Config: realistic")
+      seed_builder.realistic_config()
+    }
+  }
 }
 
 // =============================================================================

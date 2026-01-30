@@ -20,7 +20,7 @@ import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, form, h3, input, label, span, text}
+import lustre/element/html.{button, div, form, h3, input, text}
 import lustre/event
 
 import domain/org.{type InviteLink}
@@ -32,8 +32,11 @@ import scrumbringer_client/client_state.{
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/attrs
+import scrumbringer_client/ui/badge
+import scrumbringer_client/ui/copyable_input
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
+import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/section_header
 import scrumbringer_client/update_helpers
@@ -83,29 +86,21 @@ fn view_latest_invite(model: Model, origin: String) -> Element(Msg) {
         h3([], [
           text(update_helpers.i18n_t(model, i18n_text.LatestInviteLink)),
         ]),
-        div([attribute.class("field")], [
-          label([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
+        form_field.view(
+          update_helpers.i18n_t(model, i18n_text.EmailLabel),
           input([
             attribute.type_("text"),
             attribute.value(link.email),
             attribute.readonly(True),
           ]),
-        ]),
-        div([attribute.class("field")], [
-          label([], [text(update_helpers.i18n_t(model, i18n_text.Link))]),
-          input([
-            attribute.type_("text"),
-            attribute.value(full),
-            attribute.readonly(True),
-          ]),
-        ]),
-        button([event.on_click(admin_msg(InviteLinkCopyClicked(full)))], [
-          text(update_helpers.i18n_t(model, i18n_text.Copy)),
-        ]),
-        case model.admin.invite_link_copy_status {
-          opt.Some(status) -> div([attribute.class("hint")], [text(status)])
-          opt.None -> element.none()
-        },
+        ),
+        copyable_input.view(
+          update_helpers.i18n_t(model, i18n_text.Link),
+          full,
+          admin_msg(InviteLinkCopyClicked(full)),
+          update_helpers.i18n_t(model, i18n_text.Copy),
+          model.admin.invite_link_copy_status,
+        ),
       ])
     }
   }
@@ -125,12 +120,7 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
           text(link.email)
         }),
         data_table.column(t(i18n_text.State), fn(link: InviteLink) {
-          span(
-            [
-              attribute.class("badge badge-" <> state_badge_class(link.state)),
-            ],
-            [text(translate_invite_state(model, link.state))],
-          )
+          badge.status(translate_invite_state(model, link.state))
         }),
         data_table.column(t(i18n_text.CreatedAt), fn(link: InviteLink) {
           text(format_date.date_only(link.created_at))
@@ -189,8 +179,8 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
     model.admin.invite_link_error,
     [
       form([event.on_submit(fn(_) { admin_msg(InviteLinkCreateSubmitted) })], [
-        div([attribute.class("field")], [
-          label([], [text(update_helpers.i18n_t(model, i18n_text.EmailLabel))]),
+        form_field.view(
+          update_helpers.i18n_t(model, i18n_text.EmailLabel),
           input([
             attribute.type_("email"),
             attribute.value(model.admin.invite_link_email),
@@ -203,7 +193,7 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
               i18n_text.EmailPlaceholderExample,
             )),
           ]),
-        ]),
+        ),
         div([attribute.class("dialog-footer")], [
           dialog.cancel_button(model, admin_msg(InviteCreateDialogClosed)),
           dialog.submit_button(
@@ -241,13 +231,4 @@ fn translate_invite_state(model: Model, state: String) -> String {
     _ -> state
   }
 }
-
 /// Get badge class variant based on state.
-fn state_badge_class(state: String) -> String {
-  case string.lowercase(state) {
-    "active" -> "warning"
-    "used" -> "success"
-    "invalidated" | "expired" -> "neutral"
-    _ -> "neutral"
-  }
-}

@@ -30,6 +30,7 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
+import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_type_icon
@@ -381,14 +382,6 @@ fn view_my_card_item(
   config: RightPanelConfig(msg),
   card: MyCardProgress,
 ) -> Element(msg) {
-  let progress_text =
-    int.to_string(card.completed) <> "/" <> int.to_string(card.total)
-
-  let progress_percent = case card.total {
-    0 -> 0
-    t -> { card.completed * 100 } / t
-  }
-
   let border_class = task_color.card_border_class(card.card_color)
 
   button(
@@ -399,18 +392,7 @@ fn view_my_card_item(
     ],
     [
       span([attribute.class("card-title")], [text(card.card_title)]),
-      div([attribute.class("card-progress-row")], [
-        div([attribute.class("progress-bar-mini")], [
-          div(
-            [
-              attribute.class("progress-bar-fill"),
-              attribute.style("width", int.to_string(progress_percent) <> "%"),
-            ],
-            [],
-          ),
-        ]),
-        span([attribute.class("card-progress")], [text(progress_text)]),
-      ]),
+      card_progress.view(card.completed, card.total, card_progress.Compact),
     ],
   )
 }

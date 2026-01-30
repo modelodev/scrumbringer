@@ -25,7 +25,7 @@ pub fn dialog_view_open_includes_title_and_icon_test() {
   let config =
     dialog.DialogConfig(
       title: "Create",
-      icon: Some("icon"),
+      icon: Some(text("icon")),
       size: dialog.DialogSm,
       on_close: client_state.NoOp,
     )

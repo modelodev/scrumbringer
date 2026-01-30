@@ -51,10 +51,13 @@ import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/card_section_header
+import scrumbringer_client/ui/card_state
+import scrumbringer_client/ui/card_state_badge
 import scrumbringer_client/ui/card_tabs
 import scrumbringer_client/ui/color_picker
-import scrumbringer_client/ui/modal_close_button
+import scrumbringer_client/ui/modal_header
 import scrumbringer_client/ui/note_dialog
 import scrumbringer_client/ui/notes_list
 import scrumbringer_client/ui/tooltips/types as notes_list_types
@@ -587,23 +590,24 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
       ],
       [
         view_card_header(model, card),
-      // AC21: Tab navigation
-      card_tabs.view(card_tabs.Config(
-        active_tab: model.active_tab,
-        notes_count: notes_count,
-        has_new_notes: card.has_new_notes,
-        labels: card_tabs.Labels(
-          tasks: t(model.locale, i18n_text.TabTasks),
-          notes: t(model.locale, i18n_text.TabNotes),
-        ),
-        on_tab_click: TabClicked,
-      )),
-      // AC21: Conditional section rendering based on active tab
-      case model.active_tab {
-        card_tabs.TasksTab -> view_card_tasks_section(model)
-        card_tabs.NotesTab -> view_card_notes_section(model)
-      },
-    ]),
+        // AC21: Tab navigation
+        card_tabs.view(card_tabs.Config(
+          active_tab: model.active_tab,
+          notes_count: notes_count,
+          has_new_notes: card.has_new_notes,
+          labels: card_tabs.Labels(
+            tasks: t(model.locale, i18n_text.TabTasks),
+            notes: t(model.locale, i18n_text.TabNotes),
+          ),
+          on_tab_click: TabClicked,
+        )),
+        // AC21: Conditional section rendering based on active tab
+        case model.active_tab {
+          card_tabs.TasksTab -> view_card_tasks_section(model)
+          card_tabs.NotesTab -> view_card_notes_section(model)
+        },
+      ],
+    ),
     // Note creation dialog (modal within modal)
     case model.note_dialog_open {
       True -> view_note_dialog(model)
@@ -613,69 +617,33 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
 }
 
 fn view_card_header(model: Model, card: Card) -> Element(Msg) {
-  let state_class = state_to_class(card.state)
-  let state_label = state_to_label(model.locale, card.state)
-  let progress_pct = case card.task_count {
-    0 -> 0
-    n -> card.completed_count * 100 / n
-  }
+  let state_label = card_state.label(model.locale, card.state)
+  let meta =
+    div([attribute.class("card-detail-meta")], [
+      card_state_badge.view(card.state, state_label, card_state_badge.Detail),
+      card_progress.view(
+        card.completed_count,
+        card.task_count,
+        card_progress.Default,
+      ),
+    ])
 
   div([attribute.class("card-detail-header")], [
-    // Title row with close button (using shared component)
-    div([attribute.class("card-detail-title-row")], [
-      span(
-        [attribute.class("card-detail-title"), attribute.id("card-detail-title")],
-        [text(card.title)],
-      ),
-      modal_close_button.view_with_class("btn-icon", CloseClicked),
-    ]),
-    // State and progress
-    div([attribute.class("card-detail-meta")], [
-      span([attribute.class("card-state-badge " <> state_class)], [
-        text(state_label),
-      ]),
-      span([attribute.class("card-detail-progress-text")], [
-        text(
-          int.to_string(card.completed_count)
-          <> "/"
-          <> int.to_string(card.task_count)
-          <> " "
-          <> t(model.locale, i18n_text.CardTasksCompleted),
-        ),
-      ]),
-    ]),
-    // Progress bar with tooltip (AC18)
-    // Note: in_progress is approximated as (task_count - completed_count) for now
-    // Full breakdown requires task status counts from model.tasks
-    div(
-      [
-        attribute.class("card-detail-progress-bar"),
-        attribute.attribute(
-          "title",
-          t(
-            model.locale,
-            i18n_text.ProgressTooltip(
-              card.completed_count,
-              0,
-              card.task_count - card.completed_count,
-            ),
-          ),
-        ),
-      ],
-      [
-        div(
-          [
-            attribute.class("card-detail-progress-fill"),
-            attribute.attribute(
-              "style",
-              "width: " <> int.to_string(progress_pct) <> "%",
-            ),
-          ],
-          [],
-        ),
-      ],
-    ),
-    // Description
+    modal_header.view_extended(modal_header.ExtendedConfig(
+      title: card.title,
+      title_element: modal_header.TitleSpan,
+      close_position: modal_header.CloseBeforeTitle,
+      icon: option.None,
+      badges: [],
+      meta: option.Some(meta),
+      progress: option.None,
+      on_close: CloseClicked,
+      header_class: "card-detail-header-inner",
+      title_row_class: "card-detail-title-row",
+      title_class: "card-detail-title",
+      title_id: "card-detail-title",
+      close_button_class: "modal-close btn-icon",
+    )),
     case card.description {
       "" -> element.none()
       desc -> div([attribute.class("card-detail-description")], [text(desc)])
@@ -842,22 +810,6 @@ fn view_task_item(task: Task) -> Element(Msg) {
 // =============================================================================
 // Helper Functions
 // =============================================================================
-
-fn state_to_class(state: CardState) -> String {
-  case state {
-    Pendiente -> "card-state-pendiente"
-    EnCurso -> "card-state-en_curso"
-    Cerrada -> "card-state-cerrada"
-  }
-}
-
-fn state_to_label(loc: Locale, state: CardState) -> String {
-  case state {
-    Pendiente -> t(loc, i18n_text.CardStatePendiente)
-    EnCurso -> t(loc, i18n_text.CardStateEnCurso)
-    Cerrada -> t(loc, i18n_text.CardStateCerrada)
-  }
-}
 
 /// Convert string color from Card to color_picker.CardColor option.
 fn color_from_string(

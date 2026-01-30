@@ -3,10 +3,9 @@
 //// Thin wrapper over generic tabs.gleam for task detail modal context.
 //// Provides DETALLES | NOTAS tabs for viewing task information and notes.
 
-import gleam/option.{None, Some}
 import lustre/element.{type Element}
 
-import scrumbringer_client/ui/tabs
+import scrumbringer_client/ui/notes_tabs
 
 // =============================================================================
 // Types
@@ -43,27 +42,15 @@ pub fn view(config: Config(msg)) -> Element(msg) {
   let Config(active_tab:, notes_count:, has_new_notes:, labels:, on_tab_click:) =
     config
 
-  tabs.view(tabs.config(
-    tabs: [
-      tabs.TabItem(
-        id: DetailsTab,
-        label: labels.details,
-        count: None,
-        has_indicator: False,
-      ),
-      tabs.TabItem(
-        id: NotesTab,
-        label: labels.notes,
-        count: case notes_count > 0 {
-          True -> Some(notes_count)
-          False -> None
-        },
-        has_indicator: has_new_notes,
-      ),
-    ],
-    active: active_tab,
+  notes_tabs.view(notes_tabs.Config(
+    primary_tab: DetailsTab,
+    notes_tab: NotesTab,
+    active_tab: active_tab,
+    notes_count: notes_count,
+    has_new_notes: has_new_notes,
+    labels: notes_tabs.Labels(primary: labels.details, notes: labels.notes),
     container_class: "task-tabs",
     tab_class: "task-tab",
-    on_click: on_tab_click,
+    on_tab_click: on_tab_click,
   ))
 }

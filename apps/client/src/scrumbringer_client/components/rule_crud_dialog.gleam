@@ -31,8 +31,7 @@ import lustre/component
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html.{
-  button, div, form, h3, input, label, option as html_option, p, select, span,
-  text,
+  button, div, form, input, option as html_option, p, select, span, text,
 }
 import lustre/event
 
@@ -47,6 +46,8 @@ import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/form_field
+import scrumbringer_client/ui/modal_header
 
 // =============================================================================
 // Internal Types
@@ -706,7 +707,11 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
       ],
       [
         // Header
-        view_header(model, i18n_text.CreateRule, "\u{1F4DC}"),
+        modal_header.view_dialog_with_icon(
+          t(model.locale, i18n_text.CreateRule),
+          text("\u{1F4DC}"),
+          CloseRequested,
+        ),
         // Error
         view_error(model.create_error),
         // Body
@@ -718,8 +723,8 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
             ],
             [
               // Name field
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.RuleName))]),
+              form_field.view(
+                t(model.locale, i18n_text.RuleName),
                 input([
                   attribute.type_("text"),
                   attribute.value(model.create_name),
@@ -727,26 +732,26 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
                   attribute.required(True),
                   attribute.attribute("aria-label", "Rule name"),
                 ]),
-              ]),
+              ),
               // Goal field
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.RuleGoal))]),
+              form_field.view(
+                t(model.locale, i18n_text.RuleGoal),
                 input([
                   attribute.type_("text"),
                   attribute.value(model.create_goal),
                   event.on_input(CreateGoalChanged),
                   attribute.attribute("aria-label", "Rule goal"),
                 ]),
-              ]),
+              ),
               // Resource type selector
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.RuleResourceType))]),
+              form_field.view(
+                t(model.locale, i18n_text.RuleResourceType),
                 view_resource_type_selector(
                   model.locale,
                   model.create_resource_type,
                   CreateResourceTypeChanged,
                 ),
-              ]),
+              ),
               // Task type selector (conditional - only when resource_type == "task")
               view_conditional_task_type_field(
                 model,
@@ -755,26 +760,24 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
                 CreateTaskTypeIdChanged,
               ),
               // To state selector (dynamic options based on resource_type)
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.RuleToState))]),
+              form_field.view(
+                t(model.locale, i18n_text.RuleToState),
                 view_state_selector(
                   model.locale,
                   model.create_resource_type,
                   model.create_to_state,
                   CreateToStateChanged,
                 ),
-              ]),
+              ),
               // Active checkbox
-              div([attribute.class("field")], [
-                label([], [
-                  input([
-                    attribute.type_("checkbox"),
-                    attribute.checked(model.create_active),
-                    event.on_check(CreateActiveChanged),
-                  ]),
-                  text(" " <> t(model.locale, i18n_text.RuleActive)),
+              form_field.view(
+                t(model.locale, i18n_text.RuleActive),
+                input([
+                  attribute.type_("checkbox"),
+                  attribute.checked(model.create_active),
+                  event.on_check(CreateActiveChanged),
                 ]),
-              ]),
+              ),
             ],
           ),
         ]),
@@ -815,7 +818,11 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
       ],
       [
         // Header
-        view_header(model, i18n_text.EditRule, "\u{270F}"),
+        modal_header.view_dialog_with_icon(
+          t(model.locale, i18n_text.EditRule),
+          text("\u{270F}"),
+          EditCancelled,
+        ),
         // Error
         view_error(model.edit_error),
         // Body
@@ -827,33 +834,33 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
             ],
             [
               // Name field
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.RuleName))]),
+              form_field.view(
+                t(model.locale, i18n_text.RuleName),
                 input([
                   attribute.type_("text"),
                   attribute.value(model.edit_name),
                   event.on_input(EditNameChanged),
                   attribute.required(True),
                 ]),
-              ]),
+              ),
               // Goal field
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.RuleGoal))]),
+              form_field.view(
+                t(model.locale, i18n_text.RuleGoal),
                 input([
                   attribute.type_("text"),
                   attribute.value(model.edit_goal),
                   event.on_input(EditGoalChanged),
                 ]),
-              ]),
+              ),
               // Resource type selector
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.RuleResourceType))]),
+              form_field.view(
+                t(model.locale, i18n_text.RuleResourceType),
                 view_resource_type_selector(
                   model.locale,
                   model.edit_resource_type,
                   EditResourceTypeChanged,
                 ),
-              ]),
+              ),
               // Task type selector (conditional)
               view_conditional_task_type_field(
                 model,
@@ -862,26 +869,24 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
                 EditTaskTypeIdChanged,
               ),
               // To state selector (dynamic options)
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.RuleToState))]),
+              form_field.view(
+                t(model.locale, i18n_text.RuleToState),
                 view_state_selector(
                   model.locale,
                   model.edit_resource_type,
                   model.edit_to_state,
                   EditToStateChanged,
                 ),
-              ]),
+              ),
               // Active checkbox
-              div([attribute.class("field")], [
-                label([], [
-                  input([
-                    attribute.type_("checkbox"),
-                    attribute.checked(model.edit_active),
-                    event.on_check(EditActiveChanged),
-                  ]),
-                  text(" " <> t(model.locale, i18n_text.RuleActive)),
+              form_field.view(
+                t(model.locale, i18n_text.RuleActive),
+                input([
+                  attribute.type_("checkbox"),
+                  attribute.checked(model.edit_active),
+                  event.on_check(EditActiveChanged),
                 ]),
-              ]),
+              ),
             ],
           ),
         ]),
@@ -921,7 +926,11 @@ fn view_delete_dialog(model: Model, rule: Rule) -> Element(Msg) {
       ],
       [
         // Header
-        view_header(model, i18n_text.DeleteRule, "\u{1F5D1}"),
+        modal_header.view_dialog_with_icon(
+          t(model.locale, i18n_text.DeleteRule),
+          text("\u{1F5D1}"),
+          DeleteCancelled,
+        ),
         // Error
         view_error(model.delete_error),
         // Body
@@ -948,28 +957,6 @@ fn view_delete_dialog(model: Model, rule: Rule) -> Element(Msg) {
           ),
         ]),
       ],
-    ),
-  ])
-}
-
-fn view_header(
-  model: Model,
-  title_key: i18n_text.Text,
-  icon: String,
-) -> Element(Msg) {
-  div([attribute.class("dialog-header")], [
-    div([attribute.class("dialog-title")], [
-      span([attribute.class("dialog-icon")], [text(icon)]),
-      h3([], [text(t(model.locale, title_key))]),
-    ]),
-    button(
-      [
-        attribute.class("btn-icon dialog-close"),
-        attribute.type_("button"),
-        event.on_click(CloseRequested),
-        attribute.attribute("aria-label", "Close"),
-      ],
-      [text("\u{2715}")],
     ),
   ])
 }
@@ -1024,10 +1011,10 @@ fn view_conditional_task_type_field(
 ) -> Element(Msg) {
   case resource_type {
     "task" ->
-      div([attribute.class("field")], [
-        label([], [text(t(model.locale, i18n_text.RuleTaskType))]),
+      form_field.view(
+        t(model.locale, i18n_text.RuleTaskType),
         view_task_type_selector(model.task_types, selected_id, on_change),
-      ])
+      )
     _ -> element.none()
   }
 }

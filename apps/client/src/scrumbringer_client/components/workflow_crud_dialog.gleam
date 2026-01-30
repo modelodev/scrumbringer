@@ -26,7 +26,7 @@ import lustre/attribute
 import lustre/component
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, form, h3, input, label, p, span, text}
+import lustre/element/html.{button, div, form, input, p, span, text}
 import lustre/event
 
 import domain/api_error.{type ApiError}
@@ -39,6 +39,8 @@ import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/form_field
+import scrumbringer_client/ui/modal_header
 
 // =============================================================================
 // Internal Types
@@ -572,7 +574,11 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
       ],
       [
         // Header
-        view_header(model, i18n_text.CreateWorkflow, "\u{2699}"),
+        modal_header.view_dialog_with_icon(
+          t(model.locale, i18n_text.CreateWorkflow),
+          text("\u{2699}"),
+          CloseRequested,
+        ),
         // Error
         view_error(model.create_error),
         // Body
@@ -584,8 +590,8 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
             ],
             [
               // Name field
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.WorkflowName))]),
+              form_field.view(
+                t(model.locale, i18n_text.WorkflowName),
                 input([
                   attribute.type_("text"),
                   attribute.value(model.create_name),
@@ -593,28 +599,26 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
                   attribute.required(True),
                   attribute.attribute("aria-label", "Workflow name"),
                 ]),
-              ]),
+              ),
               // Description field
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.WorkflowDescription))]),
+              form_field.view(
+                t(model.locale, i18n_text.WorkflowDescription),
                 input([
                   attribute.type_("text"),
                   attribute.value(model.create_description),
                   event.on_input(CreateDescriptionChanged),
                   attribute.attribute("aria-label", "Workflow description"),
                 ]),
-              ]),
+              ),
               // Active checkbox
-              div([attribute.class("field field-checkbox")], [
-                label([attribute.class("checkbox-label")], [
-                  input([
-                    attribute.type_("checkbox"),
-                    attribute.checked(model.create_active),
-                    event.on_check(fn(_) { CreateActiveToggled }),
-                  ]),
-                  text(" " <> t(model.locale, i18n_text.WorkflowActive)),
+              form_field.view(
+                t(model.locale, i18n_text.WorkflowActive),
+                input([
+                  attribute.type_("checkbox"),
+                  attribute.checked(model.create_active),
+                  event.on_check(fn(_) { CreateActiveToggled }),
                 ]),
-              ]),
+              ),
             ],
           ),
         ]),
@@ -654,7 +658,11 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
       ],
       [
         // Header
-        view_header(model, i18n_text.EditWorkflow, "\u{270F}"),
+        modal_header.view_dialog_with_icon(
+          t(model.locale, i18n_text.EditWorkflow),
+          text("\u{270F}"),
+          EditCancelled,
+        ),
         // Error
         view_error(model.edit_error),
         // Body
@@ -666,35 +674,33 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
             ],
             [
               // Name field
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.WorkflowName))]),
+              form_field.view(
+                t(model.locale, i18n_text.WorkflowName),
                 input([
                   attribute.type_("text"),
                   attribute.value(model.edit_name),
                   event.on_input(EditNameChanged),
                   attribute.required(True),
                 ]),
-              ]),
+              ),
               // Description field
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.WorkflowDescription))]),
+              form_field.view(
+                t(model.locale, i18n_text.WorkflowDescription),
                 input([
                   attribute.type_("text"),
                   attribute.value(model.edit_description),
                   event.on_input(EditDescriptionChanged),
                 ]),
-              ]),
+              ),
               // Active checkbox
-              div([attribute.class("field field-checkbox")], [
-                label([attribute.class("checkbox-label")], [
-                  input([
-                    attribute.type_("checkbox"),
-                    attribute.checked(model.edit_active),
-                    event.on_check(fn(_) { EditActiveToggled }),
-                  ]),
-                  text(" " <> t(model.locale, i18n_text.WorkflowActive)),
+              form_field.view(
+                t(model.locale, i18n_text.WorkflowActive),
+                input([
+                  attribute.type_("checkbox"),
+                  attribute.checked(model.edit_active),
+                  event.on_check(fn(_) { EditActiveToggled }),
                 ]),
-              ]),
+              ),
             ],
           ),
         ]),
@@ -734,7 +740,11 @@ fn view_delete_dialog(model: Model, workflow: Workflow) -> Element(Msg) {
       ],
       [
         // Header
-        view_header(model, i18n_text.DeleteWorkflow, "\u{1F5D1}"),
+        modal_header.view_dialog_with_icon(
+          t(model.locale, i18n_text.DeleteWorkflow),
+          text("\u{1F5D1}"),
+          DeleteCancelled,
+        ),
         // Error
         view_error(model.delete_error),
         // Body
@@ -761,28 +771,6 @@ fn view_delete_dialog(model: Model, workflow: Workflow) -> Element(Msg) {
           ),
         ]),
       ],
-    ),
-  ])
-}
-
-fn view_header(
-  model: Model,
-  title_key: i18n_text.Text,
-  icon: String,
-) -> Element(Msg) {
-  div([attribute.class("dialog-header")], [
-    div([attribute.class("dialog-title")], [
-      span([attribute.class("dialog-icon")], [text(icon)]),
-      h3([], [text(t(model.locale, title_key))]),
-    ]),
-    button(
-      [
-        attribute.class("btn-icon dialog-close"),
-        attribute.type_("button"),
-        event.on_click(CloseRequested),
-        attribute.attribute("aria-label", "Close"),
-      ],
-      [text("\u{2715}")],
     ),
   ])
 }

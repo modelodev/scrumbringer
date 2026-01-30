@@ -27,8 +27,7 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, h3, span, text}
-import lustre/event
+import lustre/element/html.{div, h3, text}
 
 import domain/task.{type WorkSession, Task, WorkSession}
 
@@ -38,8 +37,12 @@ import scrumbringer_client/client_state.{
   pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/ui/error_banner
+import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/empty_state
+import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/task_actions
+import scrumbringer_client/ui/task_item
 import scrumbringer_client/update_helpers
 
 // =============================================================================
@@ -50,7 +53,7 @@ import scrumbringer_client/update_helpers
 /// Shows all active tasks with their timers, or empty state.
 pub fn view(model: Model) -> Element(Msg) {
   let error_el = case model.member.member_now_working_error {
-    opt.Some(err) -> error_banner.view(err)
+    opt.Some(err) -> error_notice.view(err)
     opt.None -> element.none()
   }
 
@@ -74,12 +77,10 @@ pub fn view(model: Model) -> Element(Msg) {
         // Empty state
         div([attribute.class("now-working-section")], [
           div([attribute.class("now-working-empty")], [
-            span([attribute.class("now-working-empty-icon")], [
-              text(icons.emoji_to_string(icons.Clock)),
-            ]),
-            span([], [
-              text(update_helpers.i18n_t(model, i18n_text.NowWorkingNone)),
-            ]),
+            empty_state.simple(
+              icons.Clock,
+              update_helpers.i18n_t(model, i18n_text.NowWorkingNone),
+            ),
           ]),
           error_el,
         ])
@@ -120,41 +121,40 @@ fn view_session(model: Model, session: WorkSession) -> Element(Msg) {
     model.member.member_task_mutation_in_flight
     || model.member.member_now_working_in_flight
 
-  div([attribute.class("now-working-session-item")], [
-    div([attribute.class("now-working-task-title")], [text(title)]),
-    div([attribute.class("now-working-timer")], [text(elapsed)]),
-    div([attribute.class("now-working-actions")], [
-      button(
-        [
-          attribute.class("btn-xs btn-icon"),
-          attribute.disabled(disable_actions),
-          attribute.attribute(
-            "title",
-            update_helpers.i18n_t(model, i18n_text.Pause),
-          ),
-          event.on_click(pool_msg(MemberNowWorkingPauseClicked)),
-        ],
-        [icons.nav_icon(icons.Pause, icons.Small)],
-      ),
-      ..case task_info {
-        opt.Some(Task(version: version, ..)) -> [
-          button(
-            [
-              attribute.class("btn-xs btn-icon"),
-              attribute.disabled(disable_actions),
-              attribute.attribute(
-                "title",
-                update_helpers.i18n_t(model, i18n_text.Complete),
-              ),
-              event.on_click(pool_msg(MemberCompleteClicked(task_id, version))),
-            ],
-            [icons.nav_icon(icons.Check, icons.Small)],
-          ),
-        ]
-        opt.None -> []
-      }
-    ]),
-  ])
+  let actions = case task_info {
+    opt.Some(Task(version: version, ..)) ->
+      task_actions.pause_and_complete(
+        update_helpers.i18n_t(model, i18n_text.Pause),
+        pool_msg(MemberNowWorkingPauseClicked),
+        update_helpers.i18n_t(model, i18n_text.Complete),
+        pool_msg(MemberCompleteClicked(task_id, version)),
+        action_buttons.SizeXs,
+        disable_actions,
+        "",
+        "",
+        opt.None,
+        opt.None,
+        opt.None,
+        opt.None,
+      )
+    opt.None -> []
+  }
+
+  task_item.view(
+    task_item.Config(
+      container_class: "now-working-session-item",
+      content_class: "now-working-task-title",
+      on_click: opt.None,
+      icon: opt.None,
+      icon_class: opt.None,
+      title: title,
+      title_class: opt.Some("now-working-task-title"),
+      secondary: div([attribute.class("now-working-timer")], [text(elapsed)]),
+      actions: [div([attribute.class("now-working-actions")], actions)],
+      testid: opt.None,
+    ),
+    task_item.Div,
+  )
 }
 
 // =============================================================================

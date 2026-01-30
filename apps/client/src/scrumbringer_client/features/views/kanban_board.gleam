@@ -31,8 +31,12 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/card_progress
+import scrumbringer_client/ui/card_title_meta
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_color
+import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_type_icon
 import scrumbringer_client/utils/text as text_utils
 
@@ -168,14 +172,6 @@ fn view_empty_column(
 }
 
 fn view_card(config: KanbanConfig(msg), cwp: CardWithProgress) -> Element(msg) {
-  let progress_text =
-    int.to_string(cwp.completed) <> "/" <> int.to_string(cwp.total)
-
-  let progress_percent = case cwp.total {
-    0 -> 0
-    _ -> cwp.completed * 100 / cwp.total
-  }
-
   div(
     [
       attribute.class("kanban-card"),
@@ -191,37 +187,14 @@ fn view_card(config: KanbanConfig(msg), cwp: CardWithProgress) -> Element(msg) {
             attribute.attribute("data-testid", "card-title"),
             event.on_click(config.on_card_click(cwp.card.id)),
           ],
-          [
-            // Color dot
-            case cwp.card.color {
-              Some(color) ->
-                span(
-                  [
-                    attribute.class("card-color-dot"),
-                    attribute.style("background-color", color),
-                  ],
-                  [],
-                )
-              None -> element.none()
-            },
+          card_title_meta.elements(
             text(cwp.card.title),
-            // AC16: Notes indicator with styled tooltip
-            case cwp.card.has_new_notes {
-              True ->
-                span(
-                  [
-                    attribute.class("card-notes-indicator tooltip-trigger"),
-                    attribute.attribute("data-testid", "card-notes-indicator"),
-                    attribute.attribute(
-                      "data-tooltip",
-                      i18n.t(config.locale, i18n_text.NewNotesTooltip),
-                    ),
-                  ],
-                  [text("[!]")],
-                )
-              False -> element.none()
-            },
-          ],
+            cwp.card.color,
+            None,
+            cwp.card.has_new_notes,
+            i18n.t(config.locale, i18n_text.NewNotesTooltip),
+            card_title_meta.ColorTitleNotes,
+          ),
         ),
         // Context menu for PM/Admin
         case config.is_pm_or_admin {
@@ -239,16 +212,7 @@ fn view_card(config: KanbanConfig(msg), cwp: CardWithProgress) -> Element(msg) {
       },
       // Progress bar
       div([attribute.class("kanban-card-progress")], [
-        div([attribute.class("progress-bar")], [
-          div(
-            [
-              attribute.class("progress-fill"),
-              attribute.style("width", int.to_string(progress_percent) <> "%"),
-            ],
-            [],
-          ),
-        ]),
-        span([attribute.class("progress-text")], [text(progress_text)]),
+        card_progress.view(cwp.completed, cwp.total, card_progress.Default),
       ]),
       // Task list (Story 4.5 AC29, Story 4.8 UX: improved styling)
       view_task_list(config, cwp.tasks),
@@ -301,44 +265,34 @@ fn view_task_item(config: KanbanConfig(msg), task: Task) -> Element(msg) {
   let type_icon = task.task_type.icon
   let border_class = task_color.card_border_class(task.card_color)
 
-  div(
-    [
-      attribute.class("kanban-task-item " <> border_class),
-      attribute.attribute("data-testid", "kanban-task-item"),
-    ],
-    [
-      button(
-        [
-          attribute.class("kanban-task-content"),
-          event.on_click(config.on_task_click(task.id)),
-        ],
-        [
-          span([attribute.class("task-type-icon")], [
-            task_type_icon.view(type_icon, 14, config.theme),
-          ]),
-          span([attribute.class("task-title")], [
-            text(text_utils.truncate(task.title, 25)),
-          ]),
-          secondary_info,
-        ],
-      ),
-      // Claim button for available tasks only
-      case task.status {
-        Available ->
-          button(
-            [
-              attribute.class("btn-claim-mini"),
-              attribute.attribute(
-                "title",
-                i18n.t(config.locale, i18n_text.Claim),
-              ),
-              event.on_click(config.on_task_claim(task.id, task.version)),
-            ],
-            [icons.nav_icon(icons.HandRaised, icons.XSmall)],
-          )
-        _ -> element.none()
-      },
-    ],
+  let actions = case task.status {
+    Available ->
+      task_item.single_action(task_actions.claim_icon_with_class(
+        i18n.t(config.locale, i18n_text.Claim),
+        config.on_task_claim(task.id, task.version),
+        icons.XSmall,
+        False,
+        "btn-claim-mini",
+        None,
+        None,
+      ))
+    _ -> task_item.no_actions()
+  }
+
+  task_item.view(
+    task_item.Config(
+      container_class: "kanban-task-item " <> border_class,
+      content_class: "kanban-task-content",
+      on_click: Some(config.on_task_click(task.id)),
+      icon: Some(task_type_icon.view(type_icon, 14, config.theme)),
+      icon_class: None,
+      title: text_utils.truncate(task.title, 25),
+      title_class: None,
+      secondary: secondary_info,
+      actions: actions,
+      testid: Some("kanban-task-item"),
+    ),
+    task_item.Div,
   )
 }
 

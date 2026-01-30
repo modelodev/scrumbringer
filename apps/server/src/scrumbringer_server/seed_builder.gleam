@@ -83,6 +83,7 @@ type BuildState {
     admin_id: Int,
     user_ids: List(Int),
     project_ids: List(Int),
+    empty_project_ids: List(Int),
     project_member_ids: List(#(Int, List(Int))),
     capability_ids: List(#(Int, Int, Int, Int)),
     task_type_ids: List(#(Int, Int, Int, Int)),
@@ -121,6 +122,29 @@ pub fn realistic_config() -> SeedConfig {
     workflows_per_project: 2,
     inactive_workflow_count: 1,
     empty_workflow_count: 0,
+    date_range_days: 30,
+  )
+}
+
+/// Visual QA configuration with explicit empty states.
+pub fn visual_qa_config() -> SeedConfig {
+  SeedConfig(
+    user_count: 6,
+    inactive_user_count: 2,
+    project_count: 3,
+    empty_project_count: 1,
+    tasks_per_project: 7,
+    priority_distribution: [1, 2, 3, 3, 3, 4, 5],
+    status_distribution: StatusDistribution(
+      available: 25,
+      claimed: 45,
+      completed: 30,
+    ),
+    cards_per_project: 4,
+    empty_card_count: 1,
+    workflows_per_project: 2,
+    inactive_workflow_count: 1,
+    empty_workflow_count: 1,
     date_range_days: 30,
   )
 }
@@ -198,6 +222,7 @@ pub fn build_seed(
       admin_id: admin_id,
       user_ids: [admin_id],
       project_ids: [],
+      empty_project_ids: [],
       project_member_ids: [],
       capability_ids: [],
       task_type_ids: [],
@@ -284,14 +309,16 @@ fn build_projects(
   let default_project_id = 1
   let project_names = ["Project Alpha", "Project Beta", "Project Gamma"]
   let names = list.take(project_names, config.project_count)
+  let empty_start = int.max(0, list.length(names) - config.empty_project_count)
   let other_users = list.drop(state.user_ids, 1)
   let assignable_users = case list.reverse(other_users) {
     [] -> []
     [_unassigned, ..rest] -> list.reverse(rest)
   }
 
-  use project_ids <- result.try(
+  use project_results <- result.try(
     list.index_map(names, fn(name, idx) {
+      let is_empty = idx >= empty_start
       let days_ago = config.date_range_days - { idx * 5 }
       use project_id <- result.try(seed_db.insert_project(
         db,
@@ -300,31 +327,58 @@ fn build_projects(
         Some(days_ago_timestamp(days_ago)),
       ))
 
-      // Add admin as manager for visibility in admin views
-      use _ <- result.try(seed_db.insert_member(
-        db,
-        project_id,
-        state.admin_id,
-        "manager",
-      ))
+      case is_empty {
+        True -> Ok(#(project_id, True))
+        False -> {
+          // Add admin as manager for visibility in admin views
+          use _ <- result.try(seed_db.insert_member(
+            db,
+            project_id,
+            state.admin_id,
+            "manager",
+          ))
 
-      use _ <- result.try(
-        list.try_map(assignable_users, fn(user_id) {
-          seed_db.insert_member(db, project_id, user_id, "member")
-        }),
-      )
+          use _ <- result.try(
+            list.try_map(assignable_users, fn(user_id) {
+              seed_db.insert_member(db, project_id, user_id, "member")
+            }),
+          )
 
-      Ok(project_id)
+          Ok(#(project_id, False))
+        }
+      }
     })
     |> result.all,
   )
 
-  let project_ids = [default_project_id, ..project_ids]
+  let project_ids = [
+    default_project_id,
+    ..list.map(project_results, fn(pair) {
+      let #(id, _) = pair
+      id
+    })
+  ]
+
+  let empty_project_ids =
+    project_results
+    |> list.fold([], fn(acc, pair) {
+      let #(id, is_empty) = pair
+      case is_empty {
+        True -> [id, ..acc]
+        False -> acc
+      }
+    })
+    |> list.reverse
+
   let project_members =
     list.map(project_ids, fn(project_id) {
       case project_id == default_project_id {
         True -> #(project_id, [])
-        False -> #(project_id, [state.admin_id, ..assignable_users])
+        False ->
+          case list.contains(empty_project_ids, project_id) {
+            True -> #(project_id, [])
+            False -> #(project_id, [state.admin_id, ..assignable_users])
+          }
       }
     })
 
@@ -332,6 +386,7 @@ fn build_projects(
     BuildState(
       ..state,
       project_ids: project_ids,
+      empty_project_ids: empty_project_ids,
       project_member_ids: project_members,
     ),
   )
@@ -342,7 +397,7 @@ fn build_capabilities(
   state: BuildState,
   _config: SeedConfig,
 ) -> Result(BuildState, String) {
-  let active_projects = state.project_ids
+  let active_projects = active_project_ids(state)
   let names = capability_name_pool()
 
   use capability_ids <- result.try(
@@ -450,7 +505,7 @@ fn build_cards(
   state: BuildState,
   config: SeedConfig,
 ) -> Result(BuildState, String) {
-  let active_projects = state.project_ids
+  let active_projects = active_project_ids(state)
   let titles = card_title_pool()
   let colors = card_color_pool()
 
@@ -543,7 +598,7 @@ fn build_workflows(
   state: BuildState,
   config: SeedConfig,
 ) -> Result(BuildState, String) {
-  let active_projects = state.project_ids
+  let active_projects = active_project_ids(state)
   let wf_names = workflow_name_pool()
 
   use workflow_ids_by_project <- result.try(
@@ -594,12 +649,13 @@ fn build_workflows(
 fn build_rules(
   db: pog.Connection,
   state: BuildState,
-  _config: SeedConfig,
+  config: SeedConfig,
 ) -> Result(BuildState, String) {
   use rule_ids_nested <- result.try(
     list.try_map(state.workflow_ids_by_project, fn(pair) {
       let #(project_id, wf_ids) = pair
       let task_types = task_types_for_project(state.task_type_ids, project_id)
+      let wf_ids = list.drop(wf_ids, config.empty_workflow_count)
 
       case wf_ids, task_types {
         [], _ -> Ok([])
@@ -666,16 +722,20 @@ fn build_tasks(
   let titles = task_title_pool()
   let priorities = config.priority_distribution
 
+  let active_task_types = task_types_for_active_projects(state)
   use task_ids_nested <- result.try(
-    list.index_map(state.task_type_ids, fn(types, proj_idx) {
+    list.index_map(active_task_types, fn(types, proj_idx) {
       let #(project_id, bug_id, feature_id, task_id) = types
       let cards_for_project =
         cards_for_project(state.card_ids_by_project, project_id)
+      let usable_cards = case config.empty_card_count > 0 {
+        True -> list.drop(cards_for_project, config.empty_card_count)
+        False -> cards_for_project
+      }
 
-      let _card_empty = list_at_int(cards_for_project, 0, 0)
-      let card_all_done = list_at_int(cards_for_project, 1, 0)
-      let card_mixed = list_at_int(cards_for_project, 2, 0)
-      let card_single = list_at_int(cards_for_project, 3, 0)
+      let card_all_done = list_at_int(usable_cards, 0, 0)
+      let card_mixed = list_at_int(usable_cards, 1, 0)
+      let card_single = list_at_int(usable_cards, 2, 0)
 
       let base_idx = proj_idx * config.tasks_per_project
 
@@ -773,7 +833,7 @@ fn build_task_events(
   state: BuildState,
   _config: SeedConfig,
 ) -> Result(BuildState, String) {
-  let active_projects = state.project_ids
+  let active_projects = active_project_ids(state)
 
   case active_projects {
     [] -> Ok(state)
@@ -902,7 +962,7 @@ fn trigger_rule_executions(
 ) -> Result(BuildState, String) {
   // Trigger some rule executions for tasks
   let tasks_to_trigger = list.take(state.task_ids, 3)
-  let active_projects = state.project_ids
+  let active_projects = active_project_ids(state)
 
   case active_projects, state.task_type_ids {
     [project_id, ..], [#(_proj, bug_type_id, _feat, _task), ..] -> {
@@ -1005,4 +1065,19 @@ fn list_at_helper(items: List(a), idx: Int, default: a) -> a {
     0, [first, ..] -> first
     n, [_, ..rest] -> list_at_helper(rest, n - 1, default)
   }
+}
+
+fn active_project_ids(state: BuildState) -> List(Int) {
+  list.filter(state.project_ids, fn(project_id) {
+    !list.contains(state.empty_project_ids, project_id)
+  })
+}
+
+fn task_types_for_active_projects(
+  state: BuildState,
+) -> List(#(Int, Int, Int, Int)) {
+  list.filter(state.task_type_ids, fn(entry) {
+    let #(project_id, _, _, _) = entry
+    !list.contains(state.empty_project_ids, project_id)
+  })
 }

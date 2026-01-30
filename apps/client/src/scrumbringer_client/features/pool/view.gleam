@@ -30,7 +30,7 @@ import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, h2, h3, p, span, text}
+import lustre/element/html.{button, div, h2, h3, p, text}
 import lustre/element/keyed
 import lustre/event
 
@@ -52,13 +52,16 @@ import scrumbringer_client/features/pool/dialogs as pool_dialogs
 import scrumbringer_client/features/pool/filters as pool_filters
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/pool_prefs
+import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/event_decoders
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/status_block
+import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_hover_popup
+import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_type_icon
 import scrumbringer_client/update_helpers
 
@@ -326,37 +329,34 @@ pub fn view_pool_task_row(model: Model, task: Task) -> Element(Msg) {
 
   let disable_actions = model.member.member_task_mutation_in_flight
 
-  let claim_action =
-    button(
-      [
-        attribute.class("btn-xs btn-icon"),
-        attribute.attribute(
-          "title",
-          update_helpers.i18n_t(model, i18n_text.Claim),
-        ),
-        attribute.attribute(
-          "aria-label",
-          update_helpers.i18n_t(model, i18n_text.Claim),
-        ),
-        event.on_click(pool_msg(MemberClaimClicked(id, version))),
-        attribute.disabled(disable_actions),
-      ],
-      [icons.nav_icon(icons.HandRaised, icons.Small)],
+  let claim_actions =
+    task_actions.claim_only(
+      update_helpers.i18n_t(model, i18n_text.Claim),
+      pool_msg(MemberClaimClicked(id, version)),
+      action_buttons.SizeXs,
+      disable_actions,
+      "",
+      opt.None,
+      opt.None,
     )
 
   let border_class = task_color.card_border_class(card_color)
 
-  div([attribute.class("task-row " <> border_class)], [
-    div([], [
-      div([attribute.class("task-row-title")], [
-        span([attribute.class("task-type-icon")], [
-          task_type_icon.view(type_icon, 16, model.ui.theme),
-        ]),
-        text(title),
-      ]),
-    ]),
-    div([attribute.class("task-row-actions")], [claim_action]),
-  ])
+  task_item.view(
+    task_item.Config(
+      container_class: "task-row " <> border_class,
+      content_class: "task-row-title",
+      on_click: opt.None,
+      icon: opt.Some(task_type_icon.view(type_icon, 16, model.ui.theme)),
+      icon_class: opt.None,
+      title: title,
+      title_class: opt.None,
+      secondary: task_item.empty_secondary(),
+      actions: [div([attribute.class("task-row-actions")], claim_actions)],
+      testid: opt.None,
+    ),
+    task_item.Div,
+  )
 }
 
 /// Renders a task card for the pool canvas view with drag-and-drop support.
@@ -444,39 +444,25 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
 
   let primary_action = case status, is_mine {
     Available, _ ->
-      button(
-        [
-          attribute.class("btn-xs btn-icon"),
-          attribute.attribute(
-            "title",
-            update_helpers.i18n_t(model, i18n_text.Claim),
-          ),
-          attribute.attribute(
-            "aria-label",
-            update_helpers.i18n_t(model, i18n_text.Claim),
-          ),
-          event.on_click(pool_msg(MemberClaimClicked(id, version))),
-          attribute.disabled(disable_actions),
-        ],
-        [icons.nav_icon(icons.HandRaised, icons.Small)],
+      task_actions.claim_icon(
+        update_helpers.i18n_t(model, i18n_text.Claim),
+        pool_msg(MemberClaimClicked(id, version)),
+        action_buttons.SizeXs,
+        disable_actions,
+        "",
+        opt.None,
+        opt.None,
       )
 
     Claimed(_), True ->
-      button(
-        [
-          attribute.class("btn-xs btn-icon"),
-          attribute.attribute(
-            "title",
-            update_helpers.i18n_t(model, i18n_text.Release),
-          ),
-          attribute.attribute(
-            "aria-label",
-            update_helpers.i18n_t(model, i18n_text.Release),
-          ),
-          event.on_click(pool_msg(MemberReleaseClicked(id, version))),
-          attribute.disabled(disable_actions),
-        ],
-        [icons.nav_icon(icons.Refresh, icons.Small)],
+      task_actions.release_icon(
+        update_helpers.i18n_t(model, i18n_text.Release),
+        pool_msg(MemberReleaseClicked(id, version)),
+        action_buttons.SizeXs,
+        disable_actions,
+        "",
+        opt.None,
+        opt.None,
       )
 
     _, _ -> element.none()
@@ -507,21 +493,14 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
 
   let complete_action = case status, is_mine {
     Claimed(_), True ->
-      button(
-        [
-          attribute.class("btn-xs btn-icon secondary-action"),
-          attribute.attribute(
-            "title",
-            update_helpers.i18n_t(model, i18n_text.Complete),
-          ),
-          attribute.attribute(
-            "aria-label",
-            update_helpers.i18n_t(model, i18n_text.Complete),
-          ),
-          event.on_click(pool_msg(MemberCompleteClicked(id, version))),
-          attribute.disabled(disable_actions),
-        ],
-        [icons.nav_icon(icons.CheckCircle, icons.Small)],
+      task_actions.complete_icon(
+        update_helpers.i18n_t(model, i18n_text.Complete),
+        pool_msg(MemberCompleteClicked(id, version)),
+        action_buttons.SizeXs,
+        disable_actions,
+        "secondary-action",
+        opt.None,
+        opt.None,
       )
 
     _, _ -> element.none()

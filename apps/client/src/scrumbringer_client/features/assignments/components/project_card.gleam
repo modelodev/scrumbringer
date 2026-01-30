@@ -16,6 +16,7 @@ import domain/project.{type Project, type ProjectMember}
 import domain/project_role.{Manager, Member, to_string}
 
 import scrumbringer_client/client_state
+import scrumbringer_client/features/assignments/components/assignments_card
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/icons
@@ -73,83 +74,60 @@ pub fn view(
     True -> t(i18n_text.CollapseRule)
     False -> t(i18n_text.ExpandRule)
   }
-  let toggle_icon = case is_expanded {
-    True -> "▼"
-    False -> "▶"
-  }
+  let body =
+    div([], [
+      case members_state {
+        client_state.NotAsked | client_state.Loading ->
+          loading.loading(t(i18n_text.AssignmentsLoadingMembers))
 
-  div([attribute.class("assignments-card")], [
-    div([attribute.class("assignments-card-header")], [
-      div([attribute.class("assignments-card-title")], [
-        button(
-          [
-            attribute.class("btn-expand"),
-            attribute.attribute("aria-label", toggle_label),
-            attribute.attribute("aria-expanded", case is_expanded {
-              True -> "true"
-              False -> "false"
-            }),
-            event.on_click(
-              client_state.admin_msg(client_state.AssignmentsProjectToggled(
-                project.id,
-              )),
-            ),
-          ],
-          [span([attribute.class("expand-icon")], [text(toggle_icon)])],
-        ),
-        span([attribute.class("assignments-card-icon")], [
-          icons.nav_icon(icons.Projects, icons.Small),
-        ]),
-        text(project.name),
-        warning_badge,
-      ]),
-      div([attribute.class("assignments-card-meta")], [text(users_label)]),
-    ]),
-    case is_expanded {
-      True ->
-        div([attribute.class("assignments-card-body")], [
-          case members_state {
-            client_state.NotAsked | client_state.Loading ->
-              loading.loading(t(i18n_text.AssignmentsLoadingMembers))
+        client_state.Failed(err) -> status_block.error_text(err.message)
 
-            client_state.Failed(err) -> status_block.error_text(err.message)
-
-            client_state.Loaded(members_list) ->
-              case members_list == [] {
-                True ->
-                  p([attribute.class("assignments-empty")], [
-                    text(t(i18n_text.NoMembersYet)),
-                  ])
-                False ->
-                  div([], [
-                    list.map(members_list, fn(member) {
-                      view_member_row(model, project.id, member, inline_confirm)
-                    })
-                    |> element.fragment,
-                  ])
-              }
-          },
-          case is_inline_add {
-            True -> view_inline_add(model)
+        client_state.Loaded(members_list) ->
+          case members_list == [] {
+            True ->
+              p([attribute.class("assignments-empty")], [
+                text(t(i18n_text.NoMembersYet)),
+              ])
             False ->
-              button(
-                [
-                  attribute.class("btn-sm"),
-                  event.on_click(
-                    client_state.admin_msg(
-                      client_state.AssignmentsInlineAddStarted(
-                        client_state.AddUserToProject(project.id),
-                      ),
-                    ),
+              div([], [
+                list.map(members_list, fn(member) {
+                  view_member_row(model, project.id, member, inline_confirm)
+                })
+                |> element.fragment,
+              ])
+          }
+      },
+      case is_inline_add {
+        True -> view_inline_add(model)
+        False ->
+          button(
+            [
+              attribute.class("btn-sm"),
+              event.on_click(
+                client_state.admin_msg(
+                  client_state.AssignmentsInlineAddStarted(
+                    client_state.AddUserToProject(project.id),
                   ),
-                ],
-                [text(t(i18n_text.AddMember))],
-              )
-          },
-        ])
-      False -> element.none()
-    },
-  ])
+                ),
+              ),
+            ],
+            [text(t(i18n_text.AddMember))],
+          )
+      },
+    ])
+
+  assignments_card.view(assignments_card.Config(
+    title: project.name,
+    icon: icons.Projects,
+    badge: warning_badge,
+    meta: users_label,
+    expanded: is_expanded,
+    toggle_label: toggle_label,
+    on_toggle: client_state.admin_msg(client_state.AssignmentsProjectToggled(
+      project.id,
+    )),
+    body: body,
+  ))
 }
 
 fn view_member_row(

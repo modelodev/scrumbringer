@@ -1005,6 +1005,23 @@ pub fn handle_pool(
     client_state.MemberMyCapabilityIdsFetched(Error(err)) ->
       skills_workflow.handle_my_capability_ids_fetched_error(model, err)
 
+    client_state.MemberProjectCapabilitiesFetched(Ok(capabilities)) ->
+      client_state.update_member(model, fn(member) {
+        client_state.MemberModel(
+          ..member,
+          member_capabilities: client_state.Loaded(capabilities),
+        )
+      })
+      |> fn(next) { #(next, effect.none()) }
+    client_state.MemberProjectCapabilitiesFetched(Error(err)) ->
+      client_state.update_member(model, fn(member) {
+        client_state.MemberModel(
+          ..member,
+          member_capabilities: client_state.Failed(err),
+        )
+      })
+      |> fn(next) { #(next, effect.none()) }
+
     client_state.MemberToggleCapability(id) ->
       skills_workflow.handle_toggle_capability(model, id)
     client_state.MemberSaveCapabilitiesClicked ->
@@ -1068,6 +1085,22 @@ pub fn handle_pool(
       admin_workflow.handle_cards_fetched_ok(model, cards)
     client_state.CardsFetched(Error(err)) ->
       admin_workflow.handle_cards_fetched_error(model, err)
+    client_state.MemberCardsFetched(Ok(cards)) ->
+      client_state.update_member(model, fn(member) {
+        client_state.MemberModel(
+          ..member,
+          member_cards: client_state.Loaded(cards),
+        )
+      })
+      |> fn(next) { #(next, effect.none()) }
+    client_state.MemberCardsFetched(Error(err)) ->
+      client_state.update_member(model, fn(member) {
+        client_state.MemberModel(
+          ..member,
+          member_cards: client_state.Failed(err),
+        )
+      })
+      |> fn(next) { #(next, effect.none()) }
     client_state.OpenCardDialog(mode) ->
       admin_workflow.handle_open_card_dialog(model, mode)
     client_state.CloseCardDialog ->

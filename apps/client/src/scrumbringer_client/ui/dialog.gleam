@@ -11,7 +11,7 @@
 //// dialog.view(
 ////   DialogConfig(
 ////     title: "Create Capability",
-////     icon: option.Some("🎯"),
+////     icon: option.Some(icons.nav_icon(icons.Target, icons.Small)),
 ////     size: DialogMd,
 ////     on_close: CapabilityCreateDialogClosed,
 ////   ),
@@ -55,7 +55,7 @@ pub type DialogSize {
 pub type DialogConfig(msg) {
   DialogConfig(
     title: String,
-    icon: Option(String),
+    icon: Option(Element(msg)),
     size: DialogSize,
     on_close: msg,
   )
@@ -113,7 +113,7 @@ fn view_header(config: DialogConfig(Msg)) -> Element(Msg) {
   div([attribute.class("dialog-header")], [
     div([attribute.class("dialog-title")], [
       case config.icon {
-        Some(icon) -> span([attribute.class("dialog-icon")], [text(icon)])
+        Some(icon) -> span([attribute.class("dialog-icon")], [icon])
         None -> element.none()
       },
       h3([attribute.id("dialog-title")], [text(config.title)]),

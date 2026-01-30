@@ -53,6 +53,7 @@ import domain/api_error.{type ApiError}
 import scrumbringer_client/client_state.{
   type Remote, Failed, Loaded, Loading, NotAsked,
 }
+import scrumbringer_client/ui/error_notice
 
 // =============================================================================
 // Types
@@ -399,5 +400,5 @@ fn view_error(prefix: Option(String), err: ApiError) -> Element(msg) {
     Some(p) -> p <> err.message
     None -> err.message
   }
-  div([class("error")], [text(message)])
+  error_notice.view(message)
 }

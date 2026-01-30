@@ -532,12 +532,14 @@ pub fn base_css() -> String {
     ".sheet-divider { border: none; border-top: 1px dashed var(--sb-border); margin: 16px 0; }",
     // Session row (NOW WORKING)
     ".session-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: color-mix(in oklab, var(--sb-primary) 8%, var(--sb-elevated)); border: 1px solid color-mix(in oklab, var(--sb-primary) 25%, var(--sb-border)); border-radius: 8px; margin-bottom: 8px; }",
+    ".session-row-content { display: flex; align-items: center; gap: 10px; flex: 1; }",
     ".session-icon { flex-shrink: 0; }",
     ".session-title { flex: 1; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }",
     ".session-timer { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--sb-primary); }",
     ".session-actions { display: flex; gap: 6px; flex-shrink: 0; }",
     // Claimed row (CLAIMED)
     ".claimed-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 8px; margin-bottom: 8px; }",
+    ".claimed-row-content { display: flex; align-items: center; gap: 10px; flex: 1; }",
     ".claimed-icon { flex-shrink: 0; }",
     ".claimed-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }",
     ".claimed-actions { display: flex; gap: 6px; flex-shrink: 0; }",
@@ -749,12 +751,11 @@ pub fn base_css() -> String {
     ".task-detail-meta { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.875rem; color: var(--sb-muted); }",
     ".task-meta-type, .task-meta-priority, .task-meta-status, .task-meta-assignee { display: flex; align-items: center; gap: 4px; }",
     ".task-meta-assignee.muted { color: var(--sb-muted); opacity: 0.7; }",
-    // Task tabs (mirrors card-tabs)
-    ".task-tabs { display: flex; border-bottom: 2px solid var(--sb-border); padding: 0 20px; background: var(--sb-surface); }",
-    ".task-tab { padding: 12px 16px; background: none; border: none; cursor: pointer; color: var(--sb-muted); font-weight: 500; position: relative; font-size: 14px; }",
-    ".task-tab:hover { color: var(--sb-text); }",
-    ".task-tab.tab-active { color: var(--sb-primary); }",
-    ".task-tab.tab-active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px; background: var(--sb-primary); }",
+    // Task tabs (aligned with card-tabs)
+    ".task-tabs { display: flex; border-bottom: 2px solid var(--sb-border); margin-bottom: 16px; gap: 4px; }",
+    ".task-tab { padding: 10px 16px; background: transparent; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--sb-muted); transition: all 0.15s; display: flex; align-items: center; gap: 6px; }",
+    ".task-tab:hover { color: var(--sb-text); border-bottom-color: var(--sb-border); }",
+    ".task-tab.tab-active { color: var(--sb-primary); border-bottom-color: var(--sb-primary); }",
     ".task-tab .tab-count { font-size: 0.85em; }",
     ".task-tab .new-notes-indicator { color: var(--sb-accent); font-size: 0.7em; margin-left: 4px; animation: pulse 2s infinite; }",
     // Task detail tab content

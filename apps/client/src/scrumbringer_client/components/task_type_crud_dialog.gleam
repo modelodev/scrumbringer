@@ -30,8 +30,7 @@ import lustre/component
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html.{
-  button, div, form, h3, input, label, option as html_option, p, select, span,
-  text,
+  button, div, form, input, label, option as html_option, p, select, span, text,
 }
 import lustre/event
 
@@ -43,6 +42,7 @@ import scrumbringer_client/api/core.{type ApiResult}
 import scrumbringer_client/api/tasks/task_types as api_task_types
 import scrumbringer_client/components/crud_dialog_base
 import scrumbringer_client/i18n/en as i18n_en
+import scrumbringer_client/ui/modal_header
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
 import scrumbringer_client/i18n/text as i18n_text
@@ -529,17 +529,11 @@ fn view(model: Model) -> Element(Msg) {
 fn view_create_dialog(model: Model) -> Element(Msg) {
   div([attribute.class("dialog-overlay")], [
     div([attribute.class("dialog dialog-lg dialog-lg-tight")], [
-      div([attribute.class("dialog-header")], [
-        h3([], [text(i18n_t(model.locale, i18n_text.CreateTaskType))]),
-        button(
-          [
-            attribute.class("dialog-close"),
-            attribute.type_("button"),
-            event.on_click(CloseRequested),
-          ],
-          [text("\u{2715}")],
-        ),
-      ]),
+      modal_header.view_dialog(
+        i18n_t(model.locale, i18n_text.CreateTaskType),
+        option.None,
+        CloseRequested,
+      ),
       form(
         [
           attribute.class("dialog-body"),
@@ -628,17 +622,11 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
 fn view_edit_dialog(model: Model) -> Element(Msg) {
   div([attribute.class("dialog-overlay")], [
     div([attribute.class("dialog dialog-lg dialog-lg-tight")], [
-      div([attribute.class("dialog-header")], [
-        h3([], [text(i18n_t(model.locale, i18n_text.EditTaskType))]),
-        button(
-          [
-            attribute.class("dialog-close"),
-            attribute.type_("button"),
-            event.on_click(EditCancelled),
-          ],
-          [text("\u{2715}")],
-        ),
-      ]),
+      modal_header.view_dialog(
+        i18n_t(model.locale, i18n_text.EditTaskType),
+        option.None,
+        EditCancelled,
+      ),
       form(
         [
           attribute.class("dialog-body"),
@@ -723,17 +711,11 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
 fn view_delete_dialog(model: Model, task_type: TaskType) -> Element(Msg) {
   div([attribute.class("dialog-overlay")], [
     div([attribute.class("dialog dialog-small")], [
-      div([attribute.class("dialog-header")], [
-        h3([], [text(i18n_t(model.locale, i18n_text.DeleteTaskType))]),
-        button(
-          [
-            attribute.class("dialog-close"),
-            attribute.type_("button"),
-            event.on_click(DeleteCancelled),
-          ],
-          [text("\u{2715}")],
-        ),
-      ]),
+      modal_header.view_dialog(
+        i18n_t(model.locale, i18n_text.DeleteTaskType),
+        option.None,
+        DeleteCancelled,
+      ),
       div([attribute.class("dialog-body")], [
         p([], [
           text(i18n_t(

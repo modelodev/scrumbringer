@@ -2,10 +2,9 @@
 ////
 //// Thin wrapper over generic tabs.gleam for card detail modal context.
 
-import gleam/option.{None, Some}
 import lustre/element.{type Element}
 
-import scrumbringer_client/ui/tabs
+import scrumbringer_client/ui/notes_tabs
 
 // =============================================================================
 // Types (Public API preserved)
@@ -39,27 +38,15 @@ pub fn view(config: Config(msg)) -> Element(msg) {
   let Config(active_tab:, notes_count:, has_new_notes:, labels:, on_tab_click:) =
     config
 
-  tabs.view(tabs.config(
-    tabs: [
-      tabs.TabItem(
-        id: TasksTab,
-        label: labels.tasks,
-        count: None,
-        has_indicator: False,
-      ),
-      tabs.TabItem(
-        id: NotesTab,
-        label: labels.notes,
-        count: case notes_count > 0 {
-          True -> Some(notes_count)
-          False -> None
-        },
-        has_indicator: has_new_notes,
-      ),
-    ],
-    active: active_tab,
+  notes_tabs.view(notes_tabs.Config(
+    primary_tab: TasksTab,
+    notes_tab: NotesTab,
+    active_tab: active_tab,
+    notes_count: notes_count,
+    has_new_notes: has_new_notes,
+    labels: notes_tabs.Labels(primary: labels.tasks, notes: labels.notes),
     container_class: "card-tabs",
     tab_class: "card-tab",
-    on_click: on_tab_click,
+    on_tab_click: on_tab_click,
   ))
 }

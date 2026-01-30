@@ -44,7 +44,6 @@ import domain/card.{type Card}
 import domain/org.{type OrgUser}
 import domain/project.{type Project}
 import domain/task.{type Task}
-import domain/task_status as domain_task_status
 import domain/task_type.{type TaskType}
 
 import scrumbringer_client/client_state.{
@@ -79,8 +78,16 @@ import scrumbringer_client/permissions
 import scrumbringer_client/theme
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/attrs
+import scrumbringer_client/ui/badge
+import scrumbringer_client/ui/card_detail_host
+import scrumbringer_client/ui/card_progress
+import scrumbringer_client/ui/card_state
+import scrumbringer_client/ui/card_state_badge
+import scrumbringer_client/ui/card_title_meta
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
+import scrumbringer_client/ui/error_notice
+import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/icon_catalog
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/section_header
@@ -250,7 +257,7 @@ fn view_org_role_cell(model: Model, u: OrgUser) -> Element(Msg) {
     // Inline error
     case inline_error == "" {
       True -> element.none()
-      False -> div([attribute.class("error")], [text(inline_error)])
+      False -> error_notice.view(inline_error)
     },
   ])
 }
@@ -308,8 +315,8 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
           attribute.id("capability-create-form"),
         ],
         [
-          div([attribute.class("field")], [
-            label([], [text(update_helpers.i18n_t(model, i18n_text.Name))]),
+          form_field.view(
+            update_helpers.i18n_t(model, i18n_text.Name),
             input([
               attribute.type_("text"),
               attribute.value(model.admin.capabilities_create_name),
@@ -323,7 +330,7 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
               )),
               attribute.attribute("aria-label", "Capability name"),
             ]),
-          ]),
+          ),
         ],
       ),
     ],
@@ -601,9 +608,11 @@ fn view_capabilities_list(
         data_table.column_with_class(
           t(i18n_text.AdminMembers),
           fn(c: Capability) {
-            span([attribute.class("count-badge")], [
-              text(int.to_string(get_member_count(c.id))),
-            ])
+            badge.new_unchecked(
+              int.to_string(get_member_count(c.id)),
+              badge.Neutral,
+            )
+            |> badge.view_with_class("count-badge")
           },
           "col-number",
           "cell-number",
@@ -675,7 +684,7 @@ fn view_capability_members_dialog(
       ]),
       // Error display
       case model.admin.capability_members_error {
-        opt.Some(err) -> div([attribute.class("error")], [text(err)])
+        opt.Some(err) -> error_notice.view(err)
         opt.None -> element.none()
       },
       // Loading state
@@ -1271,18 +1280,10 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
         data_table.column_with_class(
           update_helpers.i18n_t(model, i18n_text.CardTitle),
           fn(c: Card) {
-            let color_style = case c.color {
-              opt.Some(hex) -> "background-color: " <> hex <> ";"
-              opt.None -> "background-color: var(--sb-muted);"
-            }
-            div([attribute.class("card-title-with-color")], [
-              span(
-                [
-                  attribute.class("card-color-dot"),
-                  attribute.attribute("style", color_style),
-                ],
-                [],
-              ),
+            let tooltip =
+              update_helpers.i18n_t(model, i18n_text.NewNotesTooltip)
+            card_title_meta.view_with_class(
+              "card-title-with-color",
               button(
                 [
                   attribute.class("card-title-button"),
@@ -1291,23 +1292,12 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
                 ],
                 [text(c.title)],
               ),
-              // AC16: Notes indicator with styled tooltip
-              case c.has_new_notes {
-                True ->
-                  span(
-                    [
-                      attribute.class("card-notes-indicator tooltip-trigger"),
-                      attribute.attribute("data-testid", "card-notes-indicator"),
-                      attribute.attribute(
-                        "data-tooltip",
-                        update_helpers.i18n_t(model, i18n_text.NewNotesTooltip),
-                      ),
-                    ],
-                    [text("[!]")],
-                  )
-                False -> element.none()
-              },
-            ])
+              c.color,
+              opt.Some("var(--sb-muted)"),
+              c.has_new_notes,
+              tooltip,
+              card_title_meta.ColorTitleNotes,
+            )
           },
           "",
           "card-title-cell",
@@ -1315,12 +1305,24 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
         // UX: Estado con badge de color semántico
         data_table.column(
           update_helpers.i18n_t(model, i18n_text.CardState),
-          fn(c: Card) { view_card_state_badge(model, c.state) },
+          fn(c: Card) {
+            card_state_badge.view(
+              c.state,
+              card_state.label(model.ui.locale, c.state),
+              card_state_badge.Table,
+            )
+          },
         ),
         // UX: Progreso con mini barra + texto
         data_table.column(
           update_helpers.i18n_t(model, i18n_text.CardTasks),
-          fn(c: Card) { view_card_progress(c.completed_count, c.task_count) },
+          fn(c: Card) {
+            card_progress.view(
+              c.completed_count,
+              c.task_count,
+              card_progress.Compact,
+            )
+          },
         ),
         // UX: Acciones con iconos (como Task Types)
         // Story 4.12: Añadido botón [+] para crear tarea en tarjeta
@@ -1381,30 +1383,15 @@ fn view_card_detail_modal(model: Model, project: Project) -> Element(Msg) {
           let can_manage_notes =
             is_org_admin || permissions.is_project_manager(project)
 
-          element.element(
-            "card-detail-modal",
-            [
-              attribute.attribute("card-id", int.to_string(card_id)),
-              attribute.attribute("locale", locale.serialize(model.ui.locale)),
-              attribute.attribute(
-                "current-user-id",
-                int.to_string(current_user_id),
-              ),
-              attribute.attribute("project-id", int.to_string(card.project_id)),
-              attribute.attribute(
-                "can-manage-notes",
-                bool_to_string(can_manage_notes),
-              ),
-              attribute.property("card", card_to_modal_json(card)),
-              attribute.property("tasks", tasks_to_json(tasks)),
-              event.on(
-                "create-task-requested",
-                decode_create_task_event(card_id),
-              ),
-              event.on("close-requested", decode_card_detail_close_event()),
-            ],
-            [],
-          )
+          card_detail_host.view(card_detail_host.Config(
+            card: card,
+            tasks: tasks,
+            locale: model.ui.locale,
+            current_user_id: current_user_id,
+            can_manage_notes: can_manage_notes,
+            on_create_task: decode_create_task_event(card_id),
+            on_close: decode_card_detail_close_event(),
+          ))
         }
       }
     }
@@ -1432,153 +1419,6 @@ fn admin_get_card_tasks(model: Model, card_id: Int) -> List(Task) {
       })
     _ -> []
   }
-}
-
-fn card_to_modal_json(card: Card) -> json.Json {
-  let state_str = case card.state {
-    card.Pendiente -> "pendiente"
-    card.EnCurso -> "en_curso"
-    card.Cerrada -> "cerrada"
-  }
-
-  let color_field = case card.color {
-    opt.Some(color) -> json.string(color)
-    opt.None -> json.null()
-  }
-
-  json.object([
-    #("id", json.int(card.id)),
-    #("project_id", json.int(card.project_id)),
-    #("title", json.string(card.title)),
-    #("description", json.string(card.description)),
-    #("color", color_field),
-    #("state", json.string(state_str)),
-    #("task_count", json.int(card.task_count)),
-    #("completed_count", json.int(card.completed_count)),
-    #("created_by", json.int(card.created_by)),
-    #("created_at", json.string(card.created_at)),
-    #("has_new_notes", json.bool(card.has_new_notes)),
-  ])
-}
-
-fn tasks_to_json(tasks: List(Task)) -> json.Json {
-  json.array(tasks, task_to_json)
-}
-
-fn task_to_json(task: Task) -> json.Json {
-  json.object([
-    #("id", json.int(task.id)),
-    #("project_id", json.int(task.project_id)),
-    #("type_id", json.int(task.type_id)),
-    #(
-      "task_type",
-      json.object([
-        #("id", json.int(task.task_type.id)),
-        #("name", json.string(task.task_type.name)),
-        #("icon", json.string(task.task_type.icon)),
-      ]),
-    ),
-    #("ongoing_by", case task.ongoing_by {
-      opt.Some(ob) -> json.object([#("user_id", json.int(ob.user_id))])
-      opt.None -> json.null()
-    }),
-    #("title", json.string(task.title)),
-    #("description", case task.description {
-      opt.Some(d) -> json.string(d)
-      opt.None -> json.null()
-    }),
-    #("priority", json.int(task.priority)),
-    #(
-      "status",
-      json.string(domain_task_status.task_status_to_string(task.status)),
-    ),
-    #("work_state", json.string(work_state_to_string(task.work_state))),
-    #("created_by", json.int(task.created_by)),
-    #("claimed_by", case task.claimed_by {
-      opt.Some(id) -> json.int(id)
-      opt.None -> json.null()
-    }),
-    #("claimed_at", case task.claimed_at {
-      opt.Some(at) -> json.string(at)
-      opt.None -> json.null()
-    }),
-    #("completed_at", case task.completed_at {
-      opt.Some(at) -> json.string(at)
-      opt.None -> json.null()
-    }),
-    #("created_at", json.string(task.created_at)),
-    #("version", json.int(task.version)),
-    #("card_id", case task.card_id {
-      opt.Some(id) -> json.int(id)
-      opt.None -> json.null()
-    }),
-    #("card_title", case task.card_title {
-      opt.Some(t) -> json.string(t)
-      opt.None -> json.null()
-    }),
-    #("card_color", case task.card_color {
-      opt.Some(c) -> json.string(c)
-      opt.None -> json.null()
-    }),
-  ])
-}
-
-fn work_state_to_string(state: domain_task_status.WorkState) -> String {
-  case state {
-    domain_task_status.WorkAvailable -> "available"
-    domain_task_status.WorkClaimed -> "claimed"
-    domain_task_status.WorkOngoing -> "ongoing"
-    domain_task_status.WorkCompleted -> "completed"
-  }
-}
-
-fn bool_to_string(value: Bool) -> String {
-  case value {
-    True -> "true"
-    False -> "false"
-  }
-}
-
-/// UX: State badge with semantic color
-fn view_card_state_badge(model: Model, state: card.CardState) -> Element(Msg) {
-  let #(label, class) = case state {
-    card.Pendiente -> #(
-      update_helpers.i18n_t(model, i18n_text.CardStatePendiente),
-      "state-badge state-pending",
-    )
-    card.EnCurso -> #(
-      update_helpers.i18n_t(model, i18n_text.CardStateEnCurso),
-      "state-badge state-active",
-    )
-    card.Cerrada -> #(
-      update_helpers.i18n_t(model, i18n_text.CardStateCerrada),
-      "state-badge state-completed",
-    )
-  }
-  span([attribute.class(class)], [text(label)])
-}
-
-/// UX: Progress bar + count
-fn view_card_progress(completed: Int, total: Int) -> Element(Msg) {
-  let percent = case total {
-    0 -> 0
-    _ -> { completed * 100 } / total
-  }
-  let width_style = "width: " <> int.to_string(percent) <> "%;"
-  div([attribute.class("card-progress-cell")], [
-    div([attribute.class("progress-bar-mini")], [
-      div(
-        [
-          attribute.class("progress-fill-mini"),
-          attribute.attribute("style", width_style),
-        ],
-        [],
-      ),
-    ]),
-    span([attribute.class("progress-text-mini")], [
-      text(int.to_string(completed) <> "/" <> int.to_string(total)),
-    ]),
-  ])
 }
 
 // =============================================================================

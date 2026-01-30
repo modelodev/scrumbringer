@@ -12,22 +12,17 @@
 //// - Project drill-down with task-level metrics
 
 import gleam/int
-import gleam/list
 import gleam/option as opt
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{
-  button, div, h2, h3, p, table, tbody, td, text, th, thead, tr,
-}
-import lustre/element/keyed
+import lustre/element/html.{button, div, h2, h3, p, text}
 import lustre/event
 
 import domain/metrics.{
-  type MetricsProjectTask, type OrgMetricsBucket, type OrgMetricsOverview,
-  type OrgMetricsProjectOverview, type OrgMetricsProjectTasksPayload,
-  MetricsProjectTask, OrgMetricsBucket, OrgMetricsOverview,
-  OrgMetricsProjectOverview, OrgMetricsProjectTasksPayload,
+  type OrgMetricsBucket, type OrgMetricsOverview, type OrgMetricsProjectOverview,
+  type OrgMetricsProjectTasksPayload, MetricsProjectTask, OrgMetricsBucket,
+  OrgMetricsOverview, OrgMetricsProjectOverview, OrgMetricsProjectTasksPayload,
 }
 import domain/project.{type Project, Project}
 import domain/task.{Task}
@@ -38,6 +33,7 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/ui/attrs
+import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/remote as ui_remote
 import scrumbringer_client/ui/section_header
@@ -116,26 +112,45 @@ fn view_summary_table(
   release_rate_percent: opt.Option(Int),
   pool_flow_ratio_percent: opt.Option(Int),
 ) -> Element(Msg) {
-  table([attribute.class("table")], [
-    thead([], [
-      tr([], [
-        th([], [text(update_helpers.i18n_t(model, i18n_text.Claimed))]),
-        th([], [text(update_helpers.i18n_t(model, i18n_text.Released))]),
-        th([], [text(update_helpers.i18n_t(model, i18n_text.Completed))]),
-        th([], [text(update_helpers.i18n_t(model, i18n_text.ReleasePercent))]),
-        th([], [text(update_helpers.i18n_t(model, i18n_text.FlowPercent))]),
-      ]),
-    ]),
-    tbody([], [
-      tr([], [
-        td([], [text(int.to_string(claimed_count))]),
-        td([], [text(int.to_string(released_count))]),
-        td([], [text(int.to_string(completed_count))]),
-        td([], [text(option_percent_label(release_rate_percent))]),
-        td([], [text(option_percent_label(pool_flow_ratio_percent))]),
-      ]),
-    ]),
+  let row = #(
+    claimed_count,
+    released_count,
+    completed_count,
+    release_rate_percent,
+    pool_flow_ratio_percent,
+  )
+
+  data_table.new()
+  |> data_table.with_columns([
+    data_table.column(update_helpers.i18n_t(model, i18n_text.Claimed), fn(r) {
+      let #(claimed, _, _, _, _) = r
+      text(int.to_string(claimed))
+    }),
+    data_table.column(update_helpers.i18n_t(model, i18n_text.Released), fn(r) {
+      let #(_, released, _, _, _) = r
+      text(int.to_string(released))
+    }),
+    data_table.column(update_helpers.i18n_t(model, i18n_text.Completed), fn(r) {
+      let #(_, _, completed, _, _) = r
+      text(int.to_string(completed))
+    }),
+    data_table.column(
+      update_helpers.i18n_t(model, i18n_text.ReleasePercent),
+      fn(r) {
+        let #(_, _, _, release_rate, _) = r
+        text(option_percent_label(release_rate))
+      },
+    ),
+    data_table.column(
+      update_helpers.i18n_t(model, i18n_text.FlowPercent),
+      fn(r) {
+        let #(_, _, _, _, flow_rate) = r
+        text(option_percent_label(flow_rate))
+      },
+    ),
   ])
+  |> data_table.with_rows([row], fn(_) { "summary" })
+  |> data_table.view()
 }
 
 fn view_time_to_first_claim(
@@ -174,24 +189,22 @@ fn view_bucket_table(
   model: Model,
   buckets: List(OrgMetricsBucket),
 ) -> Element(Msg) {
-  table([attribute.class("table")], [
-    thead([], [
-      tr([], [
-        th([], [text(update_helpers.i18n_t(model, i18n_text.Bucket))]),
-        th([], [text(update_helpers.i18n_t(model, i18n_text.Count))]),
-      ]),
-    ]),
-    keyed.tbody(
-      [],
-      list.map(buckets, fn(b) {
-        let OrgMetricsBucket(bucket: bucket, count: count) = b
-        #(
-          bucket,
-          tr([], [td([], [text(bucket)]), td([], [text(int.to_string(count))])]),
-        )
-      }),
-    ),
+  data_table.new()
+  |> data_table.with_columns([
+    data_table.column(update_helpers.i18n_t(model, i18n_text.Bucket), fn(b) {
+      let OrgMetricsBucket(bucket: bucket, ..) = b
+      text(bucket)
+    }),
+    data_table.column(update_helpers.i18n_t(model, i18n_text.Count), fn(b) {
+      let OrgMetricsBucket(count: count, ..) = b
+      text(int.to_string(count))
+    }),
   ])
+  |> data_table.with_rows(buckets, fn(b) {
+    let OrgMetricsBucket(bucket: bucket, ..) = b
+    bucket
+  })
+  |> data_table.view()
 }
 
 fn view_by_project_table(
@@ -200,58 +213,65 @@ fn view_by_project_table(
 ) -> Element(Msg) {
   div([], [
     h3([], [text(update_helpers.i18n_t(model, i18n_text.ByProject))]),
-    table([attribute.class("table")], [
-      thead([], [
-        tr([], [
-          th([], [text(update_helpers.i18n_t(model, i18n_text.ProjectLabel))]),
-          th([], [text(update_helpers.i18n_t(model, i18n_text.Claimed))]),
-          th([], [text(update_helpers.i18n_t(model, i18n_text.Released))]),
-          th([], [text(update_helpers.i18n_t(model, i18n_text.Completed))]),
-          th([], [text(update_helpers.i18n_t(model, i18n_text.ReleasePercent))]),
-          th([], [text(update_helpers.i18n_t(model, i18n_text.FlowPercent))]),
-          th([], [text(update_helpers.i18n_t(model, i18n_text.Drill))]),
-        ]),
-      ]),
-      keyed.tbody(
-        [],
-        list.map(by_project, fn(p) {
-          let OrgMetricsProjectOverview(project_id: project_id, ..) = p
-          #(int.to_string(project_id), view_project_row(model, p))
+    data_table.new()
+      |> data_table.with_columns([
+        data_table.column(
+          update_helpers.i18n_t(model, i18n_text.ProjectLabel),
+          fn(p) {
+            let OrgMetricsProjectOverview(project_name: project_name, ..) = p
+            text(project_name)
+          },
+        ),
+        data_table.column(
+          update_helpers.i18n_t(model, i18n_text.Claimed),
+          fn(p) {
+            let OrgMetricsProjectOverview(claimed_count: claimed, ..) = p
+            text(int.to_string(claimed))
+          },
+        ),
+        data_table.column(
+          update_helpers.i18n_t(model, i18n_text.Released),
+          fn(p) {
+            let OrgMetricsProjectOverview(released_count: released, ..) = p
+            text(int.to_string(released))
+          },
+        ),
+        data_table.column(
+          update_helpers.i18n_t(model, i18n_text.Completed),
+          fn(p) {
+            let OrgMetricsProjectOverview(completed_count: completed, ..) = p
+            text(int.to_string(completed))
+          },
+        ),
+        data_table.column(
+          update_helpers.i18n_t(model, i18n_text.ReleasePercent),
+          fn(p) {
+            let OrgMetricsProjectOverview(release_rate_percent: rrp, ..) = p
+            text(option_percent_label(rrp))
+          },
+        ),
+        data_table.column(
+          update_helpers.i18n_t(model, i18n_text.FlowPercent),
+          fn(p) {
+            let OrgMetricsProjectOverview(pool_flow_ratio_percent: pfrp, ..) = p
+            text(option_percent_label(pfrp))
+          },
+        ),
+        data_table.column(update_helpers.i18n_t(model, i18n_text.Drill), fn(_) {
+          button(
+            [
+              attribute.class("btn-xs"),
+              event.on_click(NavigateTo(router.Org(permissions.Metrics), Push)),
+            ],
+            [text(update_helpers.i18n_t(model, i18n_text.View))],
+          )
         }),
-      ),
-    ]),
-  ])
-}
-
-fn view_project_row(model: Model, p: OrgMetricsProjectOverview) -> Element(Msg) {
-  // Story 4.5: project_id no longer needed since we navigate to org Metrics
-  let OrgMetricsProjectOverview(
-    project_id: _,
-    project_name: project_name,
-    claimed_count: claimed,
-    released_count: released,
-    completed_count: completed,
-    release_rate_percent: rrp,
-    pool_flow_ratio_percent: pfrp,
-  ) = p
-
-  tr([], [
-    td([], [text(project_name)]),
-    td([], [text(int.to_string(claimed))]),
-    td([], [text(int.to_string(released))]),
-    td([], [text(int.to_string(completed))]),
-    td([], [text(option_percent_label(rrp))]),
-    td([], [text(option_percent_label(pfrp))]),
-    td([], [
-      // Story 4.5: Metrics is an org-scoped section
-      button(
-        [
-          attribute.class("btn-xs"),
-          event.on_click(NavigateTo(router.Org(permissions.Metrics), Push)),
-        ],
-        [text(update_helpers.i18n_t(model, i18n_text.View))],
-      ),
-    ]),
+      ])
+      |> data_table.with_rows(by_project, fn(p) {
+        let OrgMetricsProjectOverview(project_id: project_id, ..) = p
+        int.to_string(project_id)
+      })
+      |> data_table.view(),
   ])
 }
 
@@ -298,44 +318,38 @@ fn view_project_tasks_table(
 ) -> Element(Msg) {
   let OrgMetricsProjectTasksPayload(tasks: tasks, ..) = payload
 
-  table([attribute.class("table")], [
-    thead([], [
-      tr([], [
-        th([], [text(update_helpers.i18n_t(model, i18n_text.Title))]),
-        th([], [text(update_helpers.i18n_t(model, i18n_text.Status))]),
-        th([], [text(update_helpers.i18n_t(model, i18n_text.Claims))]),
-        th([], [text(update_helpers.i18n_t(model, i18n_text.Releases))]),
-        th([], [text(update_helpers.i18n_t(model, i18n_text.Completes))]),
-        th([], [text(update_helpers.i18n_t(model, i18n_text.FirstClaim))]),
-      ]),
-    ]),
-    keyed.tbody(
-      [],
-      list.map(tasks, fn(t) {
-        let MetricsProjectTask(task: Task(id: task_id, ..), ..) = t
-        #(int.to_string(task_id), view_task_row(t))
-      }),
-    ),
+  data_table.new()
+  |> data_table.with_columns([
+    data_table.column(update_helpers.i18n_t(model, i18n_text.Title), fn(t) {
+      let MetricsProjectTask(task: Task(title: title, ..), ..) = t
+      text(title)
+    }),
+    data_table.column(update_helpers.i18n_t(model, i18n_text.Status), fn(t) {
+      let MetricsProjectTask(task: Task(status: status, ..), ..) = t
+      text(task_status_to_string(status))
+    }),
+    data_table.column(update_helpers.i18n_t(model, i18n_text.Claims), fn(t) {
+      let MetricsProjectTask(claim_count: claim_count, ..) = t
+      text(int.to_string(claim_count))
+    }),
+    data_table.column(update_helpers.i18n_t(model, i18n_text.Releases), fn(t) {
+      let MetricsProjectTask(release_count: release_count, ..) = t
+      text(int.to_string(release_count))
+    }),
+    data_table.column(update_helpers.i18n_t(model, i18n_text.Completes), fn(t) {
+      let MetricsProjectTask(complete_count: complete_count, ..) = t
+      text(int.to_string(complete_count))
+    }),
+    data_table.column(update_helpers.i18n_t(model, i18n_text.FirstClaim), fn(t) {
+      let MetricsProjectTask(first_claim_at: first_claim_at, ..) = t
+      text(option_string_label(first_claim_at))
+    }),
   ])
-}
-
-fn view_task_row(t: MetricsProjectTask) -> Element(Msg) {
-  let MetricsProjectTask(
-    task: Task(title: title, status: status, ..),
-    claim_count: claim_count,
-    release_count: release_count,
-    complete_count: complete_count,
-    first_claim_at: first_claim_at,
-  ) = t
-
-  tr([], [
-    td([], [text(title)]),
-    td([], [text(task_status_to_string(status))]),
-    td([], [text(int.to_string(claim_count))]),
-    td([], [text(int.to_string(release_count))]),
-    td([], [text(int.to_string(complete_count))]),
-    td([], [text(option_string_label(first_claim_at))]),
-  ])
+  |> data_table.with_rows(tasks, fn(t) {
+    let MetricsProjectTask(task: Task(id: task_id, ..), ..) = t
+    int.to_string(task_id)
+  })
+  |> data_table.view()
 }
 
 // --- Helpers ---

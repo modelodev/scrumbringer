@@ -19,7 +19,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, input, label, li, span, text, ul}
+import lustre/element/html.{button, div, input, label, span, text, ul}
 import lustre/event
 
 import domain/card.{type Card}
@@ -30,8 +30,15 @@ import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
+import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/card_progress
+import scrumbringer_client/ui/card_title_meta
+import scrumbringer_client/ui/expand_toggle
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_color
+import scrumbringer_client/ui/task_item
+import scrumbringer_client/ui/task_state
 import scrumbringer_client/ui/task_type_icon
 
 // =============================================================================
@@ -126,13 +133,27 @@ fn view_card_group(
     None -> ""
   }
 
-  let progress_text =
-    int.to_string(group.completed) <> "/" <> int.to_string(group.total)
-
-  let progress_percent = case group.total {
-    0 -> 0
-    _ -> group.completed * 100 / group.total
+  let title_elements = case group.card {
+    Some(c) ->
+      card_title_meta.elements(
+        span([attribute.class("card-title")], [text(title)]),
+        c.color,
+        None,
+        c.has_new_notes,
+        i18n.t(config.locale, i18n_text.NewNotesTooltip),
+        card_title_meta.TitleNotesColor,
+      )
+    None -> [span([attribute.class("card-title")], [text(title)])]
   }
+
+  let header_children =
+    list.append(
+      [expand_toggle.view(is_expanded)],
+      list.append(title_elements, [
+        // Progress bar (AC34)
+        card_progress.view(group.completed, group.total, card_progress.Default),
+      ]),
+    )
 
   div(
     [
@@ -147,67 +168,7 @@ fn view_card_group(
           attribute.attribute("aria-expanded", bool_to_string(is_expanded)),
           event.on_click(config.on_toggle_card(card_id)),
         ],
-        [
-          span([attribute.class("expand-icon")], [
-            text(case is_expanded {
-              True -> "▼"
-              False -> "▶"
-            }),
-          ]),
-          span([attribute.class("card-title")], [text(title)]),
-          case group.card {
-            // AC16: Notes indicator with styled tooltip
-            Some(c) ->
-              case c.has_new_notes {
-                True ->
-                  span(
-                    [
-                      attribute.class("card-notes-indicator tooltip-trigger"),
-                      attribute.attribute("data-testid", "card-notes-indicator"),
-                      attribute.attribute(
-                        "data-tooltip",
-                        i18n.t(config.locale, i18n_text.NewNotesTooltip),
-                      ),
-                    ],
-                    [text("[!]")],
-                  )
-                False -> element.none()
-              }
-            None -> element.none()
-          },
-          // Color indicator if card has color
-          case group.card {
-            Some(c) ->
-              case c.color {
-                Some(color) ->
-                  span(
-                    [
-                      attribute.class("card-color-dot"),
-                      attribute.style("background-color", color),
-                    ],
-                    [],
-                  )
-                None -> element.none()
-              }
-            None -> element.none()
-          },
-          // Progress bar (AC34)
-          div([attribute.class("card-progress-bar-container")], [
-            div([attribute.class("progress-bar")], [
-              div(
-                [
-                  attribute.class("progress-fill"),
-                  attribute.style(
-                    "width",
-                    int.to_string(progress_percent) <> "%",
-                  ),
-                ],
-                [],
-              ),
-            ]),
-            span([attribute.class("card-progress")], [text(progress_text)]),
-          ]),
-        ],
+        header_children,
       ),
       // Task list (collapsible)
       case is_expanded {
@@ -260,59 +221,46 @@ fn view_task_item(
     }
     Available ->
       span([attribute.class("task-status-muted")], [
-        text(i18n.t(config.locale, i18n_text.TaskStateAvailable)),
+        text(task_state.label(config.locale, task.status)),
       ])
     Completed ->
       // Completed - show status label
       span([attribute.class("task-status")], [
-        text(task_status_label(config.locale, task.status)),
+        text(task_state.label(config.locale, task.status)),
       ])
     // Available tasks: no label needed (claim icon is sufficient indicator)
   }
 
   let type_icon = task.task_type.icon
 
-  li(
-    [
-      attribute.class("task-item " <> card_border_class),
-      attribute.attribute("data-testid", "task-card"),
-    ],
-    [
-      button(
-        [
-          attribute.class("task-item-content"),
-          event.on_click(config.on_task_click(task.id)),
-        ],
-        [
-          span([attribute.class("task-type-icon")], [
-            task_type_icon.view(type_icon, 14, config.theme),
-          ]),
-          span([attribute.class("task-title")], [text(task.title)]),
-          status_display,
-        ],
-      ),
-      // AC9: Claim button as icon with tooltip for available tasks only
-      case task.status {
-        Available ->
-          button(
-            [
-              attribute.class("btn-xs btn-claim btn-icon"),
-              attribute.attribute("data-testid", "task-claim-btn"),
-              attribute.attribute(
-                "title",
-                i18n.t(config.locale, i18n_text.ClaimThisTask),
-              ),
-              attribute.attribute(
-                "aria-label",
-                i18n.t(config.locale, i18n_text.Claim),
-              ),
-              event.on_click(config.on_task_claim(task.id, task.version)),
-            ],
-            [icons.nav_icon(icons.HandRaised, icons.Small)],
-          )
-        _ -> element.none()
-      },
-    ],
+  let actions = case task.status {
+    Available ->
+      task_item.single_action(task_actions.claim_icon(
+        i18n.t(config.locale, i18n_text.ClaimThisTask),
+        config.on_task_claim(task.id, task.version),
+        action_buttons.SizeXs,
+        False,
+        "btn-claim",
+        None,
+        Some("task-claim-btn"),
+      ))
+    _ -> task_item.no_actions()
+  }
+
+  task_item.view(
+    task_item.Config(
+      container_class: "task-item " <> card_border_class,
+      content_class: "task-item-content",
+      on_click: Some(config.on_task_click(task.id)),
+      icon: Some(task_type_icon.view(type_icon, 14, config.theme)),
+      icon_class: None,
+      title: task.title,
+      title_class: None,
+      secondary: status_display,
+      actions: actions,
+      testid: Some("task-card"),
+    ),
+    task_item.ListItem,
   )
 }
 
@@ -369,15 +317,6 @@ fn group_tasks_by_card(tasks: List(Task), cards: List(Card)) -> List(CardGroup) 
       None, None -> order.Eq
     }
   })
-}
-
-fn task_status_label(locale: Locale, status: task_status.TaskStatus) -> String {
-  case status {
-    Available -> i18n.t(locale, i18n_text.TaskStateAvailable)
-    Claimed(Taken) -> i18n.t(locale, i18n_text.TaskStateClaimed)
-    Claimed(Ongoing) -> i18n.t(locale, i18n_text.NowWorking)
-    Completed -> i18n.t(locale, i18n_text.TaskStateCompleted)
-  }
 }
 
 fn bool_to_string(b: Bool) -> String {

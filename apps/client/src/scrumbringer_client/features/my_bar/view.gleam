@@ -38,9 +38,7 @@ import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{
-  button, div, h2, h3, p, span, table, tbody, td, text, th, thead, tr,
-}
+import lustre/element/html.{button, div, h2, h3, p, span, text}
 import lustre/element/keyed
 import lustre/event
 
@@ -58,12 +56,16 @@ import scrumbringer_client/client_state.{
   MemberReleaseClicked, NotAsked, pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/card_badge
 import scrumbringer_client/ui/color_picker
+import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/empty_state
-import scrumbringer_client/ui/error_banner
+import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_color
+import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_type_icon
 import scrumbringer_client/update_helpers
 
@@ -88,7 +90,7 @@ pub fn view_bar(model: Model, user: User) -> Element(Msg) {
           ])
 
         // MB01: Error display with banner
-        Failed(err) -> error_banner.view(err.message)
+        Failed(err) -> error_notice.view(err.message)
 
         Loaded(tasks) -> {
           let mine =
@@ -282,19 +284,21 @@ fn view_card_group(model: Model, user: User, group: CardGroup) -> Element(Msg) {
 
 /// Renders the personal metrics panel.
 pub fn view_member_metrics_panel(model: Model) -> Element(Msg) {
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
+
   case model.member.member_metrics {
     NotAsked | Loading ->
       div([attribute.class("panel")], [
-        h3([], [text(update_helpers.i18n_t(model, i18n_text.MyMetrics))]),
+        h3([], [text(t(i18n_text.MyMetrics))]),
         div([attribute.class("loading")], [
-          text(update_helpers.i18n_t(model, i18n_text.LoadingMetrics)),
+          text(t(i18n_text.LoadingMetrics)),
         ]),
       ])
 
     Failed(err) ->
       div([attribute.class("panel")], [
-        h3([], [text(update_helpers.i18n_t(model, i18n_text.MyMetrics))]),
-        div([attribute.class("error")], [text(err.message)]),
+        h3([], [text(t(i18n_text.MyMetrics))]),
+        error_notice.view(err.message),
       ])
 
     Loaded(metrics) -> {
@@ -306,26 +310,24 @@ pub fn view_member_metrics_panel(model: Model) -> Element(Msg) {
       ) = metrics
 
       div([attribute.class("panel")], [
-        h3([], [text(update_helpers.i18n_t(model, i18n_text.MyMetrics))]),
+        h3([], [text(t(i18n_text.MyMetrics))]),
         p([], [
-          text(update_helpers.i18n_t(model, i18n_text.WindowDays(window_days))),
+          text(t(i18n_text.WindowDays(window_days))),
         ]),
-        table([attribute.class("table")], [
-          thead([], [
-            tr([], [
-              th([], [text(update_helpers.i18n_t(model, i18n_text.Claimed))]),
-              th([], [text(update_helpers.i18n_t(model, i18n_text.Released))]),
-              th([], [text(update_helpers.i18n_t(model, i18n_text.Completed))]),
-            ]),
-          ]),
-          tbody([], [
-            tr([], [
-              td([], [text(int.to_string(claimed_count))]),
-              td([], [text(int.to_string(released_count))]),
-              td([], [text(int.to_string(completed_count))]),
-            ]),
-          ]),
-        ]),
+        data_table.new()
+          |> data_table.with_columns([
+            data_table.column(t(i18n_text.Claimed), fn(_) {
+              text(int.to_string(claimed_count))
+            }),
+            data_table.column(t(i18n_text.Released), fn(_) {
+              text(int.to_string(released_count))
+            }),
+            data_table.column(t(i18n_text.Completed), fn(_) {
+              text(int.to_string(completed_count))
+            }),
+          ])
+          |> data_table.with_rows([metrics], fn(_) { "metrics" })
+          |> data_table.view(),
       ])
     }
   }
@@ -362,101 +364,32 @@ pub fn view_member_bar_task_row(
     || model.member.member_now_working_in_flight
 
   let claim_action =
-    button(
-      [
-        attribute.class("btn-xs btn-icon"),
-        attribute.attribute(
-          "title",
-          update_helpers.i18n_t(model, i18n_text.Claim),
-        ),
-        attribute.attribute(
-          "aria-label",
-          update_helpers.i18n_t(model, i18n_text.Claim),
-        ),
-        event.on_click(pool_msg(MemberClaimClicked(id, version))),
-        attribute.disabled(disable_actions),
-      ],
-      [icons.nav_icon(icons.HandRaised, icons.Small)],
-    )
-
-  let release_action =
-    button(
-      [
-        attribute.class("btn-xs btn-icon"),
-        attribute.attribute(
-          "data-tooltip",
-          update_helpers.i18n_t(model, i18n_text.Release),
-        ),
-        attribute.attribute(
-          "title",
-          update_helpers.i18n_t(model, i18n_text.Release),
-        ),
-        attribute.attribute(
-          "aria-label",
-          update_helpers.i18n_t(model, i18n_text.Release),
-        ),
-        event.on_click(pool_msg(MemberReleaseClicked(id, version))),
-        attribute.disabled(disable_actions),
-      ],
-      [icons.nav_icon(icons.Refresh, icons.Small)],
-    )
-
-  let complete_action =
-    button(
-      [
-        attribute.class("btn-xs btn-icon"),
-        attribute.attribute(
-          "data-tooltip",
-          update_helpers.i18n_t(model, i18n_text.Complete),
-        ),
-        attribute.attribute(
-          "title",
-          update_helpers.i18n_t(model, i18n_text.Complete),
-        ),
-        attribute.attribute(
-          "aria-label",
-          update_helpers.i18n_t(model, i18n_text.Complete),
-        ),
-        event.on_click(pool_msg(MemberCompleteClicked(id, version))),
-        attribute.disabled(disable_actions),
-      ],
-      [icons.nav_icon(icons.CheckCircle, icons.Small)],
+    task_actions.claim_only(
+      update_helpers.i18n_t(model, i18n_text.Claim),
+      pool_msg(MemberClaimClicked(id, version)),
+      action_buttons.SizeXs,
+      disable_actions,
+      "",
+      opt.None,
+      opt.None,
     )
 
   let start_action =
-    button(
-      [
-        attribute.class("btn-xs"),
-        attribute.attribute(
-          "title",
-          update_helpers.i18n_t(model, i18n_text.StartNowWorking),
-        ),
-        attribute.attribute(
-          "aria-label",
-          update_helpers.i18n_t(model, i18n_text.StartNowWorking),
-        ),
-        event.on_click(pool_msg(MemberNowWorkingStartClicked(id))),
-        attribute.disabled(disable_actions),
-      ],
-      [text(update_helpers.i18n_t(model, i18n_text.Start))],
+    task_actions.text_action(
+      update_helpers.i18n_t(model, i18n_text.Start),
+      pool_msg(MemberNowWorkingStartClicked(id)),
+      "btn-xs",
+      update_helpers.i18n_t(model, i18n_text.StartNowWorking),
+      disable_actions,
     )
 
   let pause_action =
-    button(
-      [
-        attribute.class("btn-xs"),
-        attribute.attribute(
-          "title",
-          update_helpers.i18n_t(model, i18n_text.PauseNowWorking),
-        ),
-        attribute.attribute(
-          "aria-label",
-          update_helpers.i18n_t(model, i18n_text.PauseNowWorking),
-        ),
-        event.on_click(pool_msg(MemberNowWorkingPauseClicked)),
-        attribute.disabled(disable_actions),
-      ],
-      [text(update_helpers.i18n_t(model, i18n_text.Pause))],
+    task_actions.text_action(
+      update_helpers.i18n_t(model, i18n_text.Pause),
+      pool_msg(MemberNowWorkingPauseClicked),
+      "btn-xs",
+      update_helpers.i18n_t(model, i18n_text.PauseNowWorking),
+      disable_actions,
     )
 
   let is_active =
@@ -468,25 +401,49 @@ pub fn view_member_bar_task_row(
   }
 
   let actions = case status, is_mine {
-    Available, _ -> [claim_action]
-    Claimed(_), True -> [now_working_action, release_action, complete_action]
+    Available, _ -> claim_action
+    Claimed(_), True -> [
+      now_working_action,
+      ..task_actions.release_and_complete(
+        update_helpers.i18n_t(model, i18n_text.Release),
+        pool_msg(MemberReleaseClicked(id, version)),
+        update_helpers.i18n_t(model, i18n_text.Complete),
+        pool_msg(MemberCompleteClicked(id, version)),
+        action_buttons.SizeXs,
+        disable_actions,
+        "",
+        "",
+        opt.Some(update_helpers.i18n_t(model, i18n_text.Release)),
+        opt.Some(update_helpers.i18n_t(model, i18n_text.Complete)),
+        opt.None,
+        opt.None,
+      )
+    ]
     _, _ -> []
   }
 
-  div([attribute.class("task-row")], [
-    div([], [
-      div([attribute.class("task-row-title")], [text(title)]),
-      div([attribute.class("task-row-meta")], [
-        text(update_helpers.i18n_t(model, i18n_text.PriorityShort(priority))),
-        text(" · "),
+  task_item.view(
+    task_item.Config(
+      container_class: "task-row",
+      content_class: "task-row-title",
+      on_click: opt.None,
+      icon: opt.None,
+      icon_class: opt.None,
+      title: title,
+      title_class: opt.None,
+      secondary: div([attribute.class("task-row-meta")], [
         span([attribute.attribute("style", "margin-right:4px;")], [
           task_type_icon.view(type_icon, 16, model.ui.theme),
         ]),
+        text(update_helpers.i18n_t(model, i18n_text.PriorityShort(priority))),
+        text(" · "),
         text(type_label),
       ]),
-    ]),
-    div([attribute.class("task-row-actions")], actions),
-  ])
+      actions: [div([attribute.class("task-row-actions")], actions)],
+      testid: opt.None,
+    ),
+    task_item.Div,
+  )
 }
 
 // Inline icon helper removed in favor of ui/task_type_icon.view

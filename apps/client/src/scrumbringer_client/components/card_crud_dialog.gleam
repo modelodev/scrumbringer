@@ -26,7 +26,7 @@ import lustre/attribute
 import lustre/component
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, form, h3, input, label, p, span, text}
+import lustre/element/html.{button, div, form, input, p, span, text}
 import lustre/event
 
 import domain/api_error.{type ApiError}
@@ -39,7 +39,9 @@ import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/modal_header
 
 // =============================================================================
 // Internal Types
@@ -626,7 +628,11 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
       ],
       [
         // Header (Story 4.8 UX: Heroicon instead of emoji)
-        view_header(model, i18n_text.CreateCard, icons.Cards),
+        modal_header.view_dialog_with_icon(
+          t(model.locale, i18n_text.CreateCard),
+          icons.nav_icon(icons.Cards, icons.Medium),
+          CloseRequested,
+        ),
         // Error
         view_error(model.create_error),
         // Body
@@ -638,8 +644,8 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
             ],
             [
               // Title field
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.CardTitle))]),
+              form_field.view(
+                t(model.locale, i18n_text.CardTitle),
                 input([
                   attribute.type_("text"),
                   attribute.value(model.create_title),
@@ -647,20 +653,20 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
                   attribute.required(True),
                   attribute.attribute("aria-label", "Card title"),
                 ]),
-              ]),
+              ),
               // Description field
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.CardDescription))]),
+              form_field.view(
+                t(model.locale, i18n_text.CardDescription),
                 input([
                   attribute.type_("text"),
                   attribute.value(model.create_description),
                   event.on_input(CreateDescriptionChanged),
                   attribute.attribute("aria-label", "Card description"),
                 ]),
-              ]),
+              ),
               // Color picker
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.ColorLabel))]),
+              form_field.view(
+                t(model.locale, i18n_text.ColorLabel),
                 view_color_picker(
                   model.locale,
                   model.create_color,
@@ -668,7 +674,7 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
                   CreateColorToggle,
                   CreateColorChanged,
                 ),
-              ]),
+              ),
             ],
           ),
         ]),
@@ -708,7 +714,11 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
       ],
       [
         // Header (Story 4.8 UX: Heroicon instead of emoji)
-        view_header(model, i18n_text.EditCard, icons.Pencil),
+        modal_header.view_dialog_with_icon(
+          t(model.locale, i18n_text.EditCard),
+          icons.nav_icon(icons.Pencil, icons.Medium),
+          EditCancelled,
+        ),
         // Error
         view_error(model.edit_error),
         // Body
@@ -720,27 +730,27 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
             ],
             [
               // Title field
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.CardTitle))]),
+              form_field.view(
+                t(model.locale, i18n_text.CardTitle),
                 input([
                   attribute.type_("text"),
                   attribute.value(model.edit_title),
                   event.on_input(EditTitleChanged),
                   attribute.required(True),
                 ]),
-              ]),
+              ),
               // Description field
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.CardDescription))]),
+              form_field.view(
+                t(model.locale, i18n_text.CardDescription),
                 input([
                   attribute.type_("text"),
                   attribute.value(model.edit_description),
                   event.on_input(EditDescriptionChanged),
                 ]),
-              ]),
+              ),
               // Color picker
-              div([attribute.class("field")], [
-                label([], [text(t(model.locale, i18n_text.ColorLabel))]),
+              form_field.view(
+                t(model.locale, i18n_text.ColorLabel),
                 view_color_picker(
                   model.locale,
                   model.edit_color,
@@ -748,7 +758,7 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
                   EditColorToggle,
                   EditColorChanged,
                 ),
-              ]),
+              ),
             ],
           ),
         ]),
@@ -788,7 +798,11 @@ fn view_delete_dialog(model: Model, card: Card) -> Element(Msg) {
       ],
       [
         // Header (Story 4.8 UX: Heroicon instead of emoji)
-        view_header(model, i18n_text.DeleteCard, icons.Trash),
+        modal_header.view_dialog_with_icon(
+          t(model.locale, i18n_text.DeleteCard),
+          icons.nav_icon(icons.Trash, icons.Medium),
+          DeleteCancelled,
+        ),
         // Error
         view_error(model.delete_error),
         // Body
@@ -815,30 +829,6 @@ fn view_delete_dialog(model: Model, card: Card) -> Element(Msg) {
           ),
         ]),
       ],
-    ),
-  ])
-}
-
-fn view_header(
-  model: Model,
-  title_key: i18n_text.Text,
-  icon: icons.NavIcon,
-) -> Element(Msg) {
-  div([attribute.class("dialog-header")], [
-    div([attribute.class("dialog-title")], [
-      span([attribute.class("dialog-icon")], [
-        icons.nav_icon(icon, icons.Medium),
-      ]),
-      h3([], [text(t(model.locale, title_key))]),
-    ]),
-    button(
-      [
-        attribute.class("btn-icon dialog-close"),
-        attribute.type_("button"),
-        event.on_click(CloseRequested),
-        attribute.attribute("aria-label", "Close"),
-      ],
-      [text("\u{2715}")],
     ),
   ])
 }

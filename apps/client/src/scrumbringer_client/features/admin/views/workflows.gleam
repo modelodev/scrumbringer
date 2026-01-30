@@ -59,10 +59,19 @@ import scrumbringer_client/client_state.{
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
+import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error as ui_error
+import scrumbringer_client/ui/error_notice
+import scrumbringer_client/ui/expand_toggle
+import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/info_callout
+import scrumbringer_client/ui/loading
+import scrumbringer_client/ui/modal_header
+import scrumbringer_client/ui/remote as ui_remote
 import scrumbringer_client/ui/section_header
 import scrumbringer_client/update_helpers
 
@@ -125,9 +134,9 @@ fn view_workflows_list(
 
 /// Story 4.9 AC21: Contextual hint linking Rules to Templates.
 fn view_rules_hint(model: Model) -> Element(Msg) {
-  div([attribute.class("info-callout")], [
-    span([attribute.class("info-callout-icon")], [text("\u{1F4A1}")]),
-    span([attribute.class("info-callout-text")], [
+  info_callout.view_with_content(
+    opt.None,
+    span([], [
       text(update_helpers.i18n_t(model, i18n_text.RulesHintTemplates)),
       a(
         [
@@ -142,12 +151,12 @@ fn view_rules_hint(model: Model) -> Element(Msg) {
         ],
       ),
     ]),
-  ])
+  )
 }
 
-/// Render the workflow-crud-dialog Lustre component.
 // Justification: nested case keeps dialog mode and project scoping logic colocated.
 
+/// Render the workflow-crud-dialog Lustre component.
 fn view_workflow_crud_dialog(model: Model) -> Element(Msg) {
   case model.admin.workflows_dialog_mode {
     opt.None -> element.none()
@@ -400,56 +409,59 @@ fn view_rules_table(
 ) -> Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
 
-  case rules {
-    NotAsked | Loading ->
-      div([attribute.class("loading")], [text(t(i18n_text.LoadingEllipsis))])
-
-    Failed(err) ->
+  ui_remote.view_remote(
+    rules,
+    loading: fn() { loading.loading(t(i18n_text.LoadingEllipsis)) },
+    error: fn(err) {
       case err.status {
         403 ->
           div([attribute.class("forbidden")], [text(t(i18n_text.NotPermitted))])
-        _ -> div([attribute.class("error")], [text(err.message)])
+        _ -> error_notice.view(err.message)
       }
-
-    Loaded([]) ->
-      div([attribute.class("empty")], [text(t(i18n_text.NoRulesYet))])
-
-    Loaded(rs) ->
-      div([attribute.class("rules-expandable-table")], [
-        table([attribute.class("table data-table")], [
-          thead([], [
-            tr([], [
-              th([attribute.class("col-expand")], []),
-              th([], [text(t(i18n_text.RuleName))]),
-              th([], [text(t(i18n_text.RuleResourceType))]),
-              th([], [text(t(i18n_text.RuleToState))]),
-              th([], [text(t(i18n_text.RuleActive))]),
-              th([], [text(t(i18n_text.RuleTemplates))]),
-              th([], [text(t(i18n_text.RuleMetricsApplied))]),
-              th([], [text(t(i18n_text.RuleMetricsSuppressed))]),
-              th([attribute.class("col-actions")], [text(t(i18n_text.Actions))]),
+    },
+    loaded: fn(rs) {
+      case rs {
+        [] -> empty_state.simple(icons.Inbox, t(i18n_text.NoRulesYet))
+        _ ->
+          div([attribute.class("rules-expandable-table")], [
+            table([attribute.class("table data-table")], [
+              thead([], [
+                tr([], [
+                  th([attribute.class("col-expand")], []),
+                  th([], [text(t(i18n_text.RuleName))]),
+                  th([], [text(t(i18n_text.RuleResourceType))]),
+                  th([], [text(t(i18n_text.RuleToState))]),
+                  th([], [text(t(i18n_text.RuleActive))]),
+                  th([], [text(t(i18n_text.RuleTemplates))]),
+                  th([], [text(t(i18n_text.RuleMetricsApplied))]),
+                  th([], [text(t(i18n_text.RuleMetricsSuppressed))]),
+                  th([attribute.class("col-actions")], [
+                    text(t(i18n_text.Actions)),
+                  ]),
+                ]),
+              ]),
+              keyed.tbody(
+                [],
+                list.flat_map(rs, fn(r) {
+                  view_rule_row_expandable(
+                    model,
+                    r,
+                    get_rule_metrics(metrics, r.id),
+                  )
+                }),
+              ),
             ]),
-          ]),
-          keyed.tbody(
-            [],
-            list.flat_map(rs, fn(r) {
-              view_rule_row_expandable(
-                model,
-                r,
-                get_rule_metrics(metrics, r.id),
-              )
-            }),
-          ),
-        ]),
-        // Attach template modal
-        view_attach_template_modal(model),
-      ])
-  }
+            // Attach template modal
+            view_attach_template_modal(model),
+          ])
+      }
+    },
+  )
 }
 
-/// Render an expandable rule row with optional expansion for attached templates.
 // Justification: large function kept intact to preserve cohesive UI logic.
 
+/// Render an expandable rule row with optional expansion for attached templates.
 fn view_rule_row_expandable(
   model: Model,
   rule: Rule,
@@ -457,7 +469,7 @@ fn view_rule_row_expandable(
 ) -> List(#(String, Element(Msg))) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
   let is_expanded = set.contains(model.admin.rules_expanded, rule.id)
-  let expand_title = case is_expanded {
+  let _expand_title = case is_expanded {
     True -> t(i18n_text.CollapseRule)
     False -> t(i18n_text.ExpandRule)
   }
@@ -486,18 +498,7 @@ fn view_rule_row_expandable(
       [
         // Expand/collapse icon (AC1: visual indicator) - use triangles for consistency
         td([attribute.class("cell-expand")], [
-          span(
-            [
-              attribute.class("rule-expand-icon"),
-              attribute.title(expand_title),
-            ],
-            [
-              text(case is_expanded {
-                True -> "▼"
-                False -> "▶"
-              }),
-            ],
-          ),
+          expand_toggle.view_with_class(is_expanded, "rule-expand-icon"),
         ]),
         // Name
         td([], [text(rule.name)]),
@@ -514,11 +515,12 @@ fn view_rule_row_expandable(
         // Templates count badge
         td([attribute.class("cell-templates")], [
           case template_count {
-            0 -> span([attribute.class("badge badge-empty")], [text("0")])
+            0 ->
+              badge.new_unchecked("0", badge.Neutral)
+              |> badge.view_with_class("badge-empty")
             n ->
-              span([attribute.class("badge badge-count")], [
-                text(int.to_string(n)),
-              ])
+              badge.new_unchecked(int.to_string(n), badge.Neutral)
+              |> badge.view_with_class("badge-count")
           },
         ]),
         // Applied metrics
@@ -695,9 +697,11 @@ fn view_attached_template_item(
     ]),
     // AC4: Priority badge
     div([attribute.class("attached-template-meta")], [
-      span([attribute.class("priority-badge")], [
-        text(t(i18n_text.PriorityShort(tmpl.priority))),
-      ]),
+      badge.new_unchecked(
+        t(i18n_text.PriorityShort(tmpl.priority)),
+        badge.Neutral,
+      )
+        |> badge.view_with_class("priority-badge"),
       // Detach button using action_buttons per coding standards
       case is_detaching {
         True ->
@@ -712,14 +716,14 @@ fn view_attached_template_item(
   ])
 }
 
+// Justification: large function kept intact to preserve cohesive UI logic.
+
 /// Render the attach template modal.
 /// AC9: Modal opens on button click
 /// AC10: Shows only templates from current project
 /// AC11: Already attached templates excluded
 /// AC12: Radio buttons for selection
 /// AC14-15: Empty state with link to Templates
-// Justification: large function kept intact to preserve cohesive UI logic.
-
 fn view_attach_template_modal(model: Model) -> Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
 
@@ -733,16 +737,11 @@ fn view_attach_template_modal(model: Model) -> Element(Msg) {
 
       div([attribute.class("modal-backdrop")], [
         div([attribute.class("modal-sm")], [
-          div([attribute.class("modal-header")], [
-            h3([], [text(t(i18n_text.AttachTemplate))]),
-            button(
-              [
-                attribute.class("btn-close"),
-                event.on_click(pool_msg(AttachTemplateModalClosed)),
-              ],
-              [icons.nav_icon(icons.Close, icons.Small)],
-            ),
-          ]),
+          modal_header.view_dialog(
+            t(i18n_text.AttachTemplate),
+            opt.None,
+            pool_msg(AttachTemplateModalClosed),
+          ),
           view_attach_template_modal_body(
             model,
             attached_ids,
@@ -1104,10 +1103,10 @@ pub fn view_task_templates(
 
 /// Story 4.9: Unified hint with rules link and variables documentation.
 fn view_templates_hint(model: Model) -> Element(Msg) {
-  div([attribute.class("info-callout")], [
-    span([attribute.class("info-callout-icon")], [text("\u{1F4A1}")]),
-    div([attribute.class("info-callout-content")], [
-      span([attribute.class("info-callout-text")], [
+  info_callout.view_with_content(
+    opt.None,
+    div([], [
+      span([], [
         text(update_helpers.i18n_t(model, i18n_text.TemplatesHintRules)),
         a(
           [
@@ -1126,12 +1125,12 @@ fn view_templates_hint(model: Model) -> Element(Msg) {
         text(update_helpers.i18n_t(model, i18n_text.TaskTemplateVariablesHelp)),
       ]),
     ]),
-  ])
+  )
 }
 
-/// Render the task-template-crud-dialog Lustre component.
 // Justification: nested case keeps dialog mode and project scoping logic colocated.
 
+/// Render the task-template-crud-dialog Lustre component.
 fn view_task_template_crud_dialog(model: Model) -> Element(Msg) {
   case model.admin.task_templates_dialog_mode {
     opt.None -> element.none()
@@ -1328,9 +1327,8 @@ fn view_task_templates_table(
         data_table.column_with_class(
           t(i18n_text.TaskTemplatePriority),
           fn(tmpl: TaskTemplate) {
-            span([attribute.class("priority-badge")], [
-              text(int.to_string(tmpl.priority)),
-            ])
+            badge.new_unchecked(int.to_string(tmpl.priority), badge.Neutral)
+            |> badge.view_with_class("priority-badge")
           },
           "col-number",
           "cell-number",
@@ -1393,10 +1391,8 @@ pub fn view_rule_metrics(model: Model) -> Element(Msg) {
       ]),
       // Date range inputs - auto-refresh on change
       div([attribute.class("filters-row")], [
-        div([attribute.class("field")], [
-          label([attribute.class("filter-label")], [
-            text(t(i18n_text.RuleMetricsFrom)),
-          ]),
+        form_field.view(
+          t(i18n_text.RuleMetricsFrom),
           input([
             attribute.type_("date"),
             attribute.value(model.admin.admin_rule_metrics_from),
@@ -1406,11 +1402,9 @@ pub fn view_rule_metrics(model: Model) -> Element(Msg) {
             }),
             attribute.attribute("aria-label", t(i18n_text.RuleMetricsFrom)),
           ]),
-        ]),
-        div([attribute.class("field")], [
-          label([attribute.class("filter-label")], [
-            text(t(i18n_text.RuleMetricsTo)),
-          ]),
+        ),
+        form_field.view(
+          t(i18n_text.RuleMetricsTo),
           input([
             attribute.type_("date"),
             attribute.value(model.admin.admin_rule_metrics_to),
@@ -1420,7 +1414,7 @@ pub fn view_rule_metrics(model: Model) -> Element(Msg) {
             }),
             attribute.attribute("aria-label", t(i18n_text.RuleMetricsTo)),
           ]),
-        ]),
+        ),
         // Loading indicator (replaces manual refresh button)
         case is_loading {
           True ->
@@ -1473,34 +1467,14 @@ fn view_quick_range_button(
 fn view_rule_metrics_results(model: Model) -> Element(Msg) {
   case model.admin.admin_rule_metrics {
     NotAsked ->
-      // Empty state with icon and action hint (T5)
-      div([attribute.class("empty-state")], [
-        div([attribute.class("empty-state-icon")], [
-          icons.nav_icon(icons.ChartUp, icons.Large),
-        ]),
-        div([attribute.class("empty-state-title")], [
-          text("Sin datos que mostrar"),
-        ]),
-        div([attribute.class("empty-state-description")], [
-          text(
-            "Selecciona un rango de fechas o usa los botones de rango rápido para ver las métricas de tus automatizaciones.",
-          ),
-        ]),
-      ])
+      empty_state.simple(
+        icons.Lightbulb,
+        "Selecciona un rango de fechas o usa los botones de rango rápido para ver las métricas de tus automatizaciones.",
+      )
 
-    Loading ->
-      div([attribute.class("loading-state")], [
-        div([attribute.class("loading-spinner")], []),
-        text("Cargando métricas..."),
-      ])
+    Loading -> loading.loading("Cargando métricas...")
 
-    Failed(err) ->
-      div([attribute.class("error-state")], [
-        span([attribute.class("error-icon")], [
-          icons.nav_icon(icons.Warning, icons.Small),
-        ]),
-        text(err.message),
-      ])
+    Failed(err) -> error_notice.view(err.message)
 
     Loaded(workflows) -> view_rule_metrics_loaded(model, workflows)
   }
@@ -1512,17 +1486,10 @@ fn view_rule_metrics_loaded(
 ) -> Element(Msg) {
   case workflows {
     [] ->
-      div([attribute.class("empty-state")], [
-        div([attribute.class("empty-state-icon")], [
-          icons.nav_icon(icons.EmptyMailbox, icons.Large),
-        ]),
-        div([attribute.class("empty-state-title")], [text("No hay ejecuciones")]),
-        div([attribute.class("empty-state-description")], [
-          text(
-            "No se encontraron ejecuciones de automatizaciones en el rango seleccionado.",
-          ),
-        ]),
-      ])
+      empty_state.simple(
+        icons.Inbox,
+        "No se encontraron ejecuciones de automatizaciones en el rango seleccionado.",
+      )
     _ ->
       div([attribute.class("admin-card")], [
         div([attribute.class("admin-card-header")], [
@@ -1614,11 +1581,6 @@ fn view_workflow_row(
 ) -> List(#(String, Element(Msg))) {
   let is_expanded =
     model.admin.admin_rule_metrics_expanded_workflow == opt.Some(w.workflow_id)
-  let expand_icon = case is_expanded {
-    True -> "[-]"
-    False -> "[+]"
-  }
-
   let main_row = #(
     "wf-" <> int.to_string(w.workflow_id),
     tr(
@@ -1629,7 +1591,7 @@ fn view_workflow_row(
         ),
       ],
       [
-        td([attribute.class("expand-col")], [text(expand_icon)]),
+        td([attribute.class("expand-col")], [expand_toggle.view(is_expanded)]),
         td([], [text(w.workflow_name)]),
         td([], [text(int.to_string(w.rule_count))]),
         td([], [text(int.to_string(w.evaluated_count))]),
@@ -1892,6 +1854,30 @@ fn view_drilldown_executions_loaded(
   model: Model,
   response: api_workflows.RuleExecutionsResponse,
 ) -> Element(Msg) {
+  let origin_cell: fn(api_workflows.RuleExecution) -> Element(Msg) = fn(exec) {
+    let api_workflows.RuleExecution(_, origin_type, origin_id, _, _, _, _, _) =
+      exec
+    text(origin_type <> " #" <> int.to_string(origin_id))
+  }
+  let outcome_cell: fn(api_workflows.RuleExecution) -> Element(Msg) = fn(exec) {
+    let api_workflows.RuleExecution(_, _, _, outcome, _, _, _, _) = exec
+    span([attribute.class(outcome_class_for(outcome))], [
+      text(outcome_text_for(model, exec)),
+    ])
+  }
+  let user_cell: fn(api_workflows.RuleExecution) -> Element(Msg) = fn(exec) {
+    let api_workflows.RuleExecution(_, _, _, _, _, _, user_email, _) = exec
+    text(display_user_email(user_email))
+  }
+  let timestamp_cell: fn(api_workflows.RuleExecution) -> Element(Msg) = fn(exec) {
+    let api_workflows.RuleExecution(_, _, _, _, _, _, _, created_at) = exec
+    text(created_at)
+  }
+  let key_fn: fn(api_workflows.RuleExecution) -> String = fn(exec) {
+    let api_workflows.RuleExecution(id, _, _, _, _, _, _, _) = exec
+    int.to_string(id)
+  }
+
   div([attribute.class("drilldown-executions")], [
     h3([], [
       text(update_helpers.i18n_t(model, i18n_text.RecentExecutions)),
@@ -1903,54 +1889,33 @@ fn view_drilldown_executions_loaded(
         ])
       executions ->
         element.fragment([
-          table([attribute.class("table executions-table")], [
-            thead([], [
-              tr([], [
-                th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.Origin)),
-                ]),
-                th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.Outcome)),
-                ]),
-                th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.User)),
-                ]),
-                th([], [
-                  text(update_helpers.i18n_t(model, i18n_text.Timestamp)),
-                ]),
-              ]),
-            ]),
-            keyed.tbody(
-              [],
-              list.map(executions, fn(exec) { view_execution_row(model, exec) }),
-            ),
-          ]),
+          data_table.new()
+            |> data_table.with_class("executions-table")
+            |> data_table.with_columns([
+              data_table.column(
+                update_helpers.i18n_t(model, i18n_text.Origin),
+                origin_cell,
+              ),
+              data_table.column(
+                update_helpers.i18n_t(model, i18n_text.Outcome),
+                outcome_cell,
+              ),
+              data_table.column(
+                update_helpers.i18n_t(model, i18n_text.User),
+                user_cell,
+              ),
+              data_table.column(
+                update_helpers.i18n_t(model, i18n_text.Timestamp),
+                timestamp_cell,
+              ),
+            ])
+            |> data_table.with_rows(executions, key_fn)
+            |> data_table.view(),
           // Pagination
           view_executions_pagination(model, response.pagination),
         ])
     },
   ])
-}
-
-fn view_execution_row(
-  model: Model,
-  exec: api_workflows.RuleExecution,
-) -> #(String, Element(Msg)) {
-  let outcome_class = outcome_class_for(exec.outcome)
-  let outcome_text = outcome_text_for(model, exec)
-  let user_email = display_user_email(exec.user_email)
-
-  #(
-    int.to_string(exec.id),
-    tr([], [
-      td([], [
-        text(exec.origin_type <> " #" <> int.to_string(exec.origin_id)),
-      ]),
-      td([attribute.class(outcome_class)], [text(outcome_text)]),
-      td([], [text(user_email)]),
-      td([], [text(exec.created_at)]),
-    ]),
-  )
 }
 
 fn outcome_class_for(outcome: String) -> String {
