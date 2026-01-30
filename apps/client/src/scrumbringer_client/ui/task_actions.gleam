@@ -181,27 +181,6 @@ pub fn pause_icon(
   )
 }
 
-pub fn start_icon(
-  title: String,
-  on_click: msg,
-  size: action_buttons.ButtonSize,
-  disabled: Bool,
-  extra_class: String,
-  tooltip: Option(String),
-  testid: Option(String),
-) -> Element(msg) {
-  icon_action(
-    title,
-    on_click,
-    icons.Play,
-    size,
-    disabled,
-    extra_class,
-    tooltip,
-    testid,
-  )
-}
-
 pub fn claim_only(
   title: String,
   on_click: msg,

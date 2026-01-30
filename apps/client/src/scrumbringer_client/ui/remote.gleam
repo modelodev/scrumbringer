@@ -21,7 +21,7 @@ import domain/api_error.{type ApiError}
 import scrumbringer_client/client_state.{
   type Remote, Failed, Loaded, Loading, NotAsked,
 }
-import scrumbringer_client/ui/error as ui_error
+import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/loading as ui_loading
 
 /// Render a Remote value with custom handlers for each state.
@@ -71,7 +71,7 @@ pub fn view_remote_panel(
 ) -> Element(msg) {
   case remote {
     NotAsked | Loading -> ui_loading.loading_panel(title, loading_msg)
-    Failed(err) -> ui_error.error_panel(title, err)
+    Failed(err) -> error_notice.view_panel(title, err.message)
     Loaded(data) -> loaded_view(data)
   }
 }
@@ -94,7 +94,7 @@ pub fn view_remote_inline(
 ) -> Element(msg) {
   case remote {
     NotAsked | Loading -> ui_loading.loading(loading_msg)
-    Failed(err) -> ui_error.error(err)
+    Failed(err) -> error_notice.view(err.message)
     Loaded(data) -> loaded_view(data)
   }
 }

@@ -53,7 +53,6 @@ import scrumbringer_client/ui/copyable_input
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/loading
-import scrumbringer_client/ui/status_block
 import scrumbringer_client/update_helpers
 
 /// Renders the login page with email/password form.
@@ -195,7 +194,7 @@ pub fn view_accept_invite(model: Model) -> Element(Msg) {
 
   let content = case state {
     accept_invite.NoToken ->
-      status_block.error_text(update_helpers.i18n_t(
+      error_notice.view(update_helpers.i18n_t(
         model,
         i18n_text.MissingInviteToken,
       ))
@@ -204,7 +203,7 @@ pub fn view_accept_invite(model: Model) -> Element(Msg) {
       loading.loading(update_helpers.i18n_t(model, i18n_text.ValidatingInvite))
 
     accept_invite.Invalid(code: _, message: message) ->
-      status_block.error_text(message)
+      error_notice.view(message)
 
     accept_invite.Ready(email) ->
       view_accept_invite_form(model, email, password, False, password_error)

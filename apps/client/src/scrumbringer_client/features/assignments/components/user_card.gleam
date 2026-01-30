@@ -8,7 +8,7 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element
-import lustre/element/html.{button, div, option, p, select, span, text}
+import lustre/element/html.{button, div, option, p, select, text}
 import lustre/event
 
 import domain/org.{type OrgUser}
@@ -19,9 +19,9 @@ import scrumbringer_client/client_state
 import scrumbringer_client/features/assignments/components/assignments_card
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/badge
+import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/loading
-import scrumbringer_client/ui/status_block
 import scrumbringer_client/update_helpers
 
 pub fn view(
@@ -82,7 +82,7 @@ pub fn view(
         client_state.NotAsked | client_state.Loading ->
           loading.loading(t(i18n_text.AssignmentsLoadingProjects))
 
-        client_state.Failed(err) -> status_block.error_text(err.message)
+        client_state.Failed(err) -> error_notice.view(err.message)
 
         client_state.Loaded(projects_list) ->
           case projects_list == [] {
@@ -248,7 +248,7 @@ fn view_inline_add(
 
   div([attribute.class("assignments-inline-add")], [
     div([attribute.class("assignments-inline-add-row")], [
-      span([attribute.class("assignments-inline-add-label")], [
+      div([attribute.class("assignments-inline-add-label")], [
         text(t(i18n_text.UserProjectsAdd)),
       ]),
       select(

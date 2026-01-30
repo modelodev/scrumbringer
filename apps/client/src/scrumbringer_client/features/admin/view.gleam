@@ -91,7 +91,6 @@ import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/icon_catalog
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/section_header
-import scrumbringer_client/ui/status_block
 import scrumbringer_client/update_helpers
 
 // =============================================================================
@@ -120,11 +119,17 @@ fn view_org_settings_table(model: Model) -> Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
 
   case model.admin.org_settings_users {
-    NotAsked -> status_block.empty_text(t(i18n_text.OpenThisSectionToLoadUsers))
+    NotAsked ->
+      div([attrs.empty()], [
+        text(t(i18n_text.OpenThisSectionToLoadUsers)),
+      ])
 
-    Loading -> status_block.empty_text(t(i18n_text.LoadingUsers))
+    Loading ->
+      div([attrs.empty()], [
+        text(t(i18n_text.LoadingUsers)),
+      ])
 
-    Failed(err) -> status_block.error_text(err.message)
+    Failed(err) -> error_notice.view(err.message)
 
     Loaded(users) -> {
       element.fragment([

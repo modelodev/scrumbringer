@@ -63,7 +63,6 @@ import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/empty_state
-import scrumbringer_client/ui/error as ui_error
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/expand_toggle
 import scrumbringer_client/ui/form_field
@@ -1516,7 +1515,7 @@ fn view_rule_metrics_table(
         text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
       ])
 
-    Failed(err) -> ui_error.error(err)
+    Failed(err) -> error_notice.view(err.message)
 
     Loaded(workflows) -> view_rule_metrics_table_loaded(model, workflows)
   }
@@ -1645,7 +1644,7 @@ fn view_workflow_rules_expansion_content(
       div([attribute.class("loading")], [
         text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
       ])
-    Failed(err) -> ui_error.error(err)
+    Failed(err) -> error_notice.view(err.message)
     Loaded(loaded) -> view_workflow_rules_expansion_loaded(model, loaded)
   }
 }
@@ -1755,7 +1754,7 @@ fn view_drilldown_details(model: Model) -> Element(Msg) {
         text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
       ])
 
-    Failed(err) -> ui_error.error(err)
+    Failed(err) -> error_notice.view(err.message)
 
     Loaded(details) ->
       div([attribute.class("drilldown-details")], [
@@ -1844,7 +1843,7 @@ fn view_drilldown_executions(model: Model) -> Element(Msg) {
         text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
       ])
 
-    Failed(err) -> ui_error.error(err)
+    Failed(err) -> error_notice.view(err.message)
 
     Loaded(response) -> view_drilldown_executions_loaded(model, response)
   }

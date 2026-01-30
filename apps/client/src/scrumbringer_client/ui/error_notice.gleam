@@ -4,7 +4,7 @@
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, text}
+import lustre/element/html.{button, div, h2, text}
 import lustre/event
 
 import scrumbringer_client/ui/attrs
@@ -24,5 +24,12 @@ pub fn view_dismissible(
     button([attribute.class("btn-xs"), event.on_click(on_dismiss)], [
       text(dismiss_label),
     ]),
+  ])
+}
+
+pub fn view_panel(title: String, message: String) -> Element(msg) {
+  div([attribute.class("panel")], [
+    h2([], [text(title)]),
+    view(message),
   ])
 }

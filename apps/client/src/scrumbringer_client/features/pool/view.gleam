@@ -55,9 +55,9 @@ import scrumbringer_client/pool_prefs
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/empty_state
+import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/event_decoders
 import scrumbringer_client/ui/icons
-import scrumbringer_client/ui/status_block
 import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_hover_popup
@@ -254,7 +254,7 @@ fn view_tasks_loading(model: Model) -> Element(Msg) {
 
 /// Error state view.
 fn view_tasks_error(message: String) -> Element(Msg) {
-  status_block.error_text(message)
+  error_notice.view(message)
 }
 
 /// No matches for current filters.

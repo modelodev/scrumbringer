@@ -5,9 +5,9 @@ import scrumbringer_client/i18n/locale
 import scrumbringer_client/theme
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_banner
+import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/layout
-import scrumbringer_client/ui/status_block
 
 pub fn empty_state_view_renders_title_description_and_action_test() {
   let state =
@@ -31,16 +31,11 @@ pub fn empty_state_simple_renders_description_test() {
   string.contains(html, "Nothing here") |> should.be_true
 }
 
-pub fn status_block_renders_empty_and_error_text_test() {
-  let empty_html =
-    status_block.empty_text("No data")
-    |> element.to_document_string
-
+pub fn error_notice_renders_error_text_test() {
   let error_html =
-    status_block.error_text("Boom")
+    error_notice.view("Boom")
     |> element.to_document_string
 
-  string.contains(empty_html, "No data") |> should.be_true
   string.contains(error_html, "Boom") |> should.be_true
 }
 

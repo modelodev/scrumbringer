@@ -27,10 +27,10 @@ import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/empty_state
+import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/loading
 import scrumbringer_client/ui/section_header
-import scrumbringer_client/ui/status_block
 import scrumbringer_client/update_helpers
 
 pub fn view_assignments(
@@ -121,7 +121,7 @@ fn view_by_project(
     client_state.NotAsked | client_state.Loading ->
       loading.loading(t(i18n_text.AssignmentsLoadingProjects))
 
-    client_state.Failed(err) -> status_block.error_text(err.message)
+    client_state.Failed(err) -> error_notice.view(err.message)
 
     client_state.Loaded(projects_list) ->
       case projects_list == [] {
@@ -165,7 +165,7 @@ fn view_by_user(model: client_state.Model) -> element.Element(client_state.Msg) 
     client_state.NotAsked | client_state.Loading ->
       loading.loading(t(i18n_text.LoadingUsers))
 
-    client_state.Failed(err) -> status_block.error_text(err.message)
+    client_state.Failed(err) -> error_notice.view(err.message)
 
     client_state.Loaded(users_list) -> {
       let only_current_user = case model.core.user, list.first(users_list) {

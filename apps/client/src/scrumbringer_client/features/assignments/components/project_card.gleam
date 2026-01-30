@@ -19,9 +19,9 @@ import scrumbringer_client/client_state
 import scrumbringer_client/features/assignments/components/assignments_card
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/badge
+import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/loading
-import scrumbringer_client/ui/status_block
 import scrumbringer_client/update_helpers
 
 pub fn view(
@@ -80,7 +80,7 @@ pub fn view(
         client_state.NotAsked | client_state.Loading ->
           loading.loading(t(i18n_text.AssignmentsLoadingMembers))
 
-        client_state.Failed(err) -> status_block.error_text(err.message)
+        client_state.Failed(err) -> error_notice.view(err.message)
 
         client_state.Loaded(members_list) ->
           case members_list == [] {

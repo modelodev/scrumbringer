@@ -47,7 +47,7 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/card_section_header
 import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/dialog
-import scrumbringer_client/ui/error as ui_error
+import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/modal_header
@@ -469,7 +469,7 @@ fn view_notes(model: Model, _task_id: Int) -> Element(Msg) {
         div([attribute.class("empty")], [
           text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
         ])
-      Failed(err) -> ui_error.error(err)
+      Failed(err) -> error_notice.view(err.message)
       Loaded(notes) ->
         notes_list.view(
           list.map(notes, fn(n) { task_note_to_view(model, n, current_user_id) }),
