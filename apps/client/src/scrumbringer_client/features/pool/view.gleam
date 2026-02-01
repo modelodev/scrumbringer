@@ -42,9 +42,9 @@ import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, Loading, MemberClaimClicked,
   MemberCompleteClicked, MemberCreateDialogOpened, MemberDragEnded,
-  MemberDragMoved, MemberDragStarted, MemberReleaseClicked,
-  MemberTaskDetailsOpened, NotAsked, PoolDragDragging, PoolDragIdle,
-  PoolDragPendingRect, pool_msg,
+  MemberDragMoved, MemberDragStarted, MemberPoolTouchEnded,
+  MemberPoolTouchStarted, MemberReleaseClicked, MemberTaskDetailsOpened,
+  NotAsked, PoolDragDragging, PoolDragIdle, PoolDragPendingRect, pool_msg,
 }
 import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/panel as now_working_panel
@@ -209,8 +209,16 @@ pub fn view_pool_body(model: Model, user: User) -> Element(Msg) {
           pool_msg(MemberDragMoved(x, y))
         }),
       ),
+      event.on(
+        "touchmove",
+        event_decoders.touch_client_position(fn(x, y) {
+          pool_msg(MemberDragMoved(x, y))
+        }),
+      ),
       event.on("mouseup", decode.success(pool_msg(MemberDragEnded))),
       event.on("mouseleave", decode.success(pool_msg(MemberDragEnded))),
+      event.on("touchend", decode.success(pool_msg(MemberDragEnded))),
+      event.on("touchcancel", decode.success(pool_msg(MemberDragEnded))),
     ],
     [
       div([attribute.class("content pool-main")], [
@@ -409,7 +417,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     }
   }
 
-  let size = 110
+  let size = 128
 
   let age_days = age_in_days(created_at)
 
@@ -431,6 +439,10 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     s -> with_border <> " " <> s
   }
   let card_classes = card_classes <> blocked_class
+  let card_classes = case model.member.member_pool_preview_task_id {
+    opt.Some(preview_id) if preview_id == id -> card_classes <> " touch-preview"
+    _ -> card_classes
+  }
 
   let style =
     "position:absolute; left:"
@@ -516,6 +528,16 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
       attribute.attribute(
         "aria-describedby",
         "task-preview-" <> int.to_string(id),
+      ),
+      attribute.attribute("tabindex", "0"),
+      event.on(
+        "touchstart",
+        decode.success(pool_msg(MemberPoolTouchStarted(id))),
+      ),
+      event.on("touchend", decode.success(pool_msg(MemberPoolTouchEnded(id)))),
+      event.on(
+        "touchcancel",
+        decode.success(pool_msg(MemberPoolTouchEnded(id))),
       ),
     ],
     [

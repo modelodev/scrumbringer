@@ -2223,6 +2223,7 @@ pub type ProjectMembersListRow {
     user_id: Int,
     role: String,
     created_at: String,
+    claimed_count: Int,
   )
 }
 
@@ -2240,23 +2241,35 @@ pub fn project_members_list(
     use user_id <- decode.field(1, decode.int)
     use role <- decode.field(2, decode.string)
     use created_at <- decode.field(3, decode.string)
+    use claimed_count <- decode.field(4, decode.int)
     decode.success(ProjectMembersListRow(
       project_id:,
       user_id:,
       role:,
       created_at:,
+      claimed_count:,
     ))
   }
 
   "-- name: list_project_members
 select
-  project_id,
-  user_id,
-  role,
-  to_char(created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at
+  project_members.project_id,
+  project_members.user_id,
+  project_members.role,
+  to_char(project_members.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
+  coalesce(count(tasks.id), 0) as claimed_count
 from project_members
-where project_id = $1
-order by user_id asc;
+left join tasks
+  on tasks.project_id = project_members.project_id
+  and tasks.claimed_by = project_members.user_id
+  and tasks.status = 'claimed'
+where project_members.project_id = $1
+group by
+  project_members.project_id,
+  project_members.user_id,
+  project_members.role,
+  project_members.created_at
+order by project_members.user_id asc;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -6379,6 +6392,54 @@ left join lateral (
   |> pog.parameter(pog.int(arg_1))
   |> pog.parameter(pog.int(arg_2))
   |> pog.parameter(pog.int(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `tasks_release_all` query
+/// defined in `./src/scrumbringer_server/sql/tasks_release_all.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TasksReleaseAllRow {
+  TasksReleaseAllRow(id: Int)
+}
+
+/// name: release_all_tasks_for_user
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn tasks_release_all(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(TasksReleaseAllRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    decode.success(TasksReleaseAllRow(id:))
+  }
+
+  "-- name: release_all_tasks_for_user
+with updated as (
+  update tasks
+  set
+    claimed_by = null,
+    claimed_at = null,
+    status = 'available',
+    version = version + 1
+  where project_id = $1
+    and claimed_by = $2
+    and status = 'claimed'
+  returning id
+)
+select id
+from updated;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

@@ -59,10 +59,12 @@ fn project_member_decoder() -> decode.Decoder(ProjectMember) {
   use user_id <- decode.field("user_id", decode.int)
   use role <- decode.field("role", project_role_decoder())
   use created_at <- decode.field("created_at", decode.string)
+  use claimed_count <- decode.field("claimed_count", decode.int)
   decode.success(ProjectMember(
     user_id: user_id,
     role: role,
     created_at: created_at,
+    claimed_count: claimed_count,
   ))
 }
 
@@ -160,6 +162,20 @@ pub type RoleChangeResult {
   )
 }
 
+/// Result of releasing all tasks for a project member.
+pub type ReleaseAllResult {
+  ReleaseAllResult(released_count: Int, task_ids: List(Int))
+}
+
+fn release_all_result_decoder() -> decode.Decoder(ReleaseAllResult) {
+  use released_count <- decode.field("released_count", decode.int)
+  use task_ids <- decode.field("task_ids", decode.list(decode.int))
+  decode.success(ReleaseAllResult(
+    released_count: released_count,
+    task_ids: task_ids,
+  ))
+}
+
 fn role_change_result_decoder() -> decode.Decoder(RoleChangeResult) {
   use user_id <- decode.field("user_id", decode.int)
   use email <- decode.field("email", decode.string)
@@ -191,6 +207,26 @@ pub fn update_member_role(
       <> "/members/"
       <> int.to_string(user_id),
     option.Some(body),
+    decoder,
+    to_msg,
+  )
+}
+
+/// Release all claimed tasks for a project member.
+pub fn release_all_member_tasks(
+  project_id: Int,
+  user_id: Int,
+  to_msg: fn(ApiResult(ReleaseAllResult)) -> msg,
+) -> Effect(msg) {
+  let decoder = release_all_result_decoder()
+  core.request(
+    "POST",
+    "/api/v1/projects/"
+      <> int.to_string(project_id)
+      <> "/members/"
+      <> int.to_string(user_id)
+      <> "/release-all-tasks",
+    option.None,
     decoder,
     to_msg,
   )

@@ -30,6 +30,7 @@ pub type ProjectMember {
     user_id: Int,
     role: ProjectRole,
     created_at: String,
+    claimed_count: Int,
   )
 }
 

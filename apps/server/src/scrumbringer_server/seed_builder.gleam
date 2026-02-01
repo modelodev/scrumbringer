@@ -109,31 +109,8 @@ pub fn realistic_config() -> SeedConfig {
     user_count: 6,
     inactive_user_count: 2,
     project_count: 3,
-    empty_project_count: 0,
-    tasks_per_project: 7,
-    priority_distribution: [1, 2, 3, 3, 3, 4, 5],
-    status_distribution: StatusDistribution(
-      available: 25,
-      claimed: 45,
-      completed: 30,
-    ),
-    cards_per_project: 4,
-    empty_card_count: 1,
-    workflows_per_project: 2,
-    inactive_workflow_count: 1,
-    empty_workflow_count: 0,
-    date_range_days: 30,
-  )
-}
-
-/// Visual QA configuration with explicit empty states.
-pub fn visual_qa_config() -> SeedConfig {
-  SeedConfig(
-    user_count: 6,
-    inactive_user_count: 2,
-    project_count: 3,
     empty_project_count: 1,
-    tasks_per_project: 7,
+    tasks_per_project: 9,
     priority_distribution: [1, 2, 3, 3, 3, 4, 5],
     status_distribution: StatusDistribution(
       available: 25,
@@ -147,6 +124,11 @@ pub fn visual_qa_config() -> SeedConfig {
     empty_workflow_count: 1,
     date_range_days: 30,
   )
+}
+
+/// Visual QA configuration with explicit empty states.
+pub fn visual_qa_config() -> SeedConfig {
+  realistic_config()
 }
 
 // =============================================================================
@@ -182,7 +164,7 @@ pub fn card_color_pool() -> List(String) {
 /// Pool of user emails for generated users.
 fn user_email_pool() -> List(String) {
   [
-    "pm@example.com", "member@example.com", "beta@example.com",
+    "member@example.com", "pm@example.com", "beta@example.com",
     "dev@example.com", "qa@example.com", "lead@example.com",
     "intern@example.com", "contractor@example.com",
   ]
@@ -750,6 +732,7 @@ fn build_tasks(
       }
 
       let creator_id = list_at_int(state.user_ids, proj_idx, state.admin_id)
+      let claimed_user_id = claimed_member_id(state, project_id, creator_id)
 
       let tasks = [
         #(
@@ -790,7 +773,7 @@ fn build_tasks(
         let #(title, type_id, status, card_id) = task_def
         let priority = list_at_int(priorities, idx % list.length(priorities), 3)
         let claimed_by = case status {
-          "claimed" -> Some(creator_id)
+          "claimed" -> Some(claimed_user_id)
           _ -> None
         }
         let claimed_at = case status {
@@ -1071,6 +1054,16 @@ fn active_project_ids(state: BuildState) -> List(Int) {
   list.filter(state.project_ids, fn(project_id) {
     !list.contains(state.empty_project_ids, project_id)
   })
+}
+
+fn claimed_member_id(state: BuildState, project_id: Int, fallback: Int) -> Int {
+  let members = members_for_project(state.project_member_ids, project_id)
+  let non_admins =
+    list.filter(members, fn(user_id) { user_id != state.admin_id })
+  case non_admins {
+    [first, ..] -> first
+    [] -> fallback
+  }
 }
 
 fn task_types_for_active_projects(

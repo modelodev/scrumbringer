@@ -308,6 +308,7 @@ pub fn base_css() -> String {
     ".task-card.preview-left .task-card-preview::after { left: auto; right: -9px; border-width: 9px 0 9px 9px; border-color: transparent transparent transparent var(--sb-border); }",
     ".task-card:hover .task-card-preview { opacity: 1; transform: scale(1); transition-delay: 350ms; }",
     ".task-card:focus-within .task-card-preview { opacity: 1; transform: scale(1); transition-delay: 0ms; }",
+    ".task-card.touch-preview .task-card-preview { opacity: 1; transform: scale(1); transition-delay: 0ms; }",
     ".drag-handle { cursor: grab; user-select: none; padding: 0; border: 1px solid var(--sb-border); border-radius: 8px; background: transparent; color: var(--sb-muted); display: inline-flex; align-items: center; justify-content: center; min-width: 28px; min-height: 28px; line-height: 0; }",
     ".drag-handle:hover { border-color: var(--sb-primary); }
 .drag-handle:active { cursor: grabbing; }",
@@ -900,6 +901,8 @@ pub fn base_css() -> String {
     ".cell-actions .btn-icon { margin-left: 8px; }",
     ".cell-actions .btn-icon:first-child { margin-left: 0; }",
     ".count-badge { display: inline-block; min-width: 28px; height: 24px; line-height: 22px; padding: 0 8px; background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--sb-muted); text-align: center; vertical-align: middle; box-sizing: border-box; }",
+    ".claimed-badge { min-width: 28px; padding: 2px 8px; border-radius: 999px; font-weight: 600; font-size: 12px; line-height: 1; text-align: center; background: #eaf1ff; color: #1e3a8a; }",
+    ".release-btn { width: 28px; height: 28px; }",
     ".btn-danger-icon { color: var(--sb-danger); }",
     ".btn-danger-icon:hover { background: color-mix(in oklab, var(--sb-danger) 15%, transparent); }",
     // UX: Cards config improvements (Sally UX review)

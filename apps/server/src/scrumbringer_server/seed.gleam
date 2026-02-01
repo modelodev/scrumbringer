@@ -126,16 +126,8 @@ fn print_summary(stats: seed_builder.SeedResult) {
 }
 
 fn config_from_env() -> seed_builder.SeedConfig {
-  case getenv("SEED_CONFIG", "realistic") {
-    "visual_qa" -> {
-      io.println("[OK] Config: visual_qa")
-      seed_builder.visual_qa_config()
-    }
-    _ -> {
-      io.println("[OK] Config: realistic")
-      seed_builder.realistic_config()
-    }
-  }
+  io.println("[OK] Config: realistic (single seed)")
+  seed_builder.realistic_config()
 }
 
 // =============================================================================

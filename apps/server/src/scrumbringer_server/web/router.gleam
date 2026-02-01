@@ -181,6 +181,21 @@ fn route_projects(
       Some(projects.handle_members(req, auth_ctx, project_id))
     ["api", "v1", "projects", project_id, "members", user_id] ->
       Some(projects.handle_member(req, auth_ctx, project_id, user_id))
+    [
+      "api",
+      "v1",
+      "projects",
+      project_id,
+      "members",
+      user_id,
+      "release-all-tasks",
+    ] ->
+      Some(projects.handle_member_release_all(
+        req,
+        auth_ctx,
+        project_id,
+        user_id,
+      ))
     ["api", "v1", "projects", project_id, "task-types"] ->
       Some(tasks.handle_task_types(req, auth_ctx, project_id))
     ["api", "v1", "task-types", type_id] ->

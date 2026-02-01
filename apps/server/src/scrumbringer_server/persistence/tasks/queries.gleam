@@ -46,6 +46,16 @@ pub type NotFoundOrDbError {
   DbError(pog.QueryError)
 }
 
+/// Result of releasing all claimed tasks for a user within a project.
+pub type ReleaseAllResult {
+  ReleaseAllResult(released_count: Int, task_ids: List(Int))
+}
+
+/// Errors returned when releasing all tasks for a user.
+pub type ReleaseAllError {
+  ReleaseAllDbError(pog.QueryError)
+}
+
 /// List tasks for a project with optional filters.
 /// Story 5.4: Now uses user_id for has_new_notes calculation.
 pub fn list_tasks_for_project(
@@ -279,6 +289,57 @@ pub fn release_task(
   |> result.map_error(transaction_error_to_not_found_or_db_error)
 }
 
+/// Release all claimed tasks for a user within a project.
+pub fn release_all_tasks_for_user(
+  db: pog.Connection,
+  org_id: Int,
+  project_id: Int,
+  target_user_id: Int,
+  actor_user_id: Int,
+) -> Result(ReleaseAllResult, ReleaseAllError) {
+  pog.transaction(db, fn(tx) {
+    case sql.tasks_release_all(tx, project_id, target_user_id) {
+      Ok(pog.Returned(rows: rows, ..)) -> {
+        let task_ids = rows |> list.map(fn(row) { row.id })
+        task_ids
+        |> list.each(fn(task_id) {
+          let _ =
+            work_sessions_db.close_session_for_task(
+              tx,
+              target_user_id,
+              task_id,
+              "task_released",
+            )
+          Nil
+        })
+
+        use _ <- result.try(
+          task_ids
+          |> list.try_map(fn(task_id) {
+            task_events_db.insert(
+              tx,
+              org_id,
+              project_id,
+              task_id,
+              actor_user_id,
+              task_events_db.TaskReleased,
+            )
+            |> result.map_error(ReleaseAllDbError)
+          })
+          |> result.map(fn(_) { Nil }),
+        )
+
+        Ok(ReleaseAllResult(
+          released_count: list.length(task_ids),
+          task_ids: task_ids,
+        ))
+      }
+      Error(e) -> Error(ReleaseAllDbError(e))
+    }
+  })
+  |> result.map_error(transaction_error_to_release_all_error)
+}
+
 /// Complete a claimed task.
 pub fn complete_task(
   db: pog.Connection,
@@ -341,5 +402,14 @@ fn transaction_error_to_not_found_or_db_error(
   case error {
     pog.TransactionRolledBack(err) -> err
     pog.TransactionQueryError(err) -> DbError(err)
+  }
+}
+
+fn transaction_error_to_release_all_error(
+  error: pog.TransactionError(ReleaseAllError),
+) -> ReleaseAllError {
+  case error {
+    pog.TransactionRolledBack(err) -> err
+    pog.TransactionQueryError(err) -> ReleaseAllDbError(err)
   }
 }

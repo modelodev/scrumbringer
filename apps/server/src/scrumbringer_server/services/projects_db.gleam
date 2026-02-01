@@ -45,6 +45,7 @@ pub type ProjectMember {
     user_id: Int,
     role: ProjectRole,
     created_at: String,
+    claimed_count: Int,
   )
 }
 
@@ -178,6 +179,36 @@ pub fn is_project_member(
   }
 }
 
+/// Checks whether a project exists.
+///
+/// Example:
+///   project_exists(db, project_id)
+pub fn project_exists(
+  db: pog.Connection,
+  project_id: Int,
+) -> Result(Bool, pog.QueryError) {
+  case sql.projects_org_id(db, project_id) {
+    Ok(pog.Returned(rows: [_row, ..], ..)) -> Ok(True)
+    Ok(pog.Returned(rows: [], ..)) -> Ok(False)
+    Error(e) -> Error(e)
+  }
+}
+
+/// Checks whether a user exists.
+///
+/// Example:
+///   user_exists(db, user_id)
+pub fn user_exists(
+  db: pog.Connection,
+  user_id: Int,
+) -> Result(Bool, pog.QueryError) {
+  case sql.users_org_id(db, user_id) {
+    Ok(pog.Returned(rows: [_row, ..], ..)) -> Ok(True)
+    Ok(pog.Returned(rows: [], ..)) -> Ok(False)
+    Error(e) -> Error(e)
+  }
+}
+
 /// Checks whether the user is a manager of any project in the org.
 ///
 /// Example:
@@ -217,6 +248,7 @@ pub fn list_members(
       user_id: row.user_id,
       role: role,
       created_at: row.created_at,
+      claimed_count: row.claimed_count,
     ))
   })
 }
@@ -287,6 +319,7 @@ fn insert_member(
             user_id: row.user_id,
             role: parsed_role,
             created_at: row.created_at,
+            claimed_count: 0,
           ))
         Error(e) -> Error(DbError(e))
       }

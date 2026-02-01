@@ -127,6 +127,7 @@ fn bootstrap_register(
       user_id: user_id,
       role: ss.Admin,
       created_at: now_iso,
+      claimed_count: 0,
     )
 
   let state =

@@ -61,7 +61,12 @@ pub fn filter_projects_by_name_test() {
 pub fn project_collapsed_hides_members_test() {
   let project = sample_project(1, "Project Alpha")
   let member =
-    ProjectMember(user_id: 2, role: Manager, created_at: "2026-01-01")
+    ProjectMember(
+      user_id: 2,
+      role: Manager,
+      created_at: "2026-01-01",
+      claimed_count: 0,
+    )
   let org_user =
     OrgUser(
       id: 2,
@@ -97,7 +102,12 @@ pub fn project_collapsed_hides_members_test() {
 pub fn project_expanded_shows_members_test() {
   let project = sample_project(1, "Project Alpha")
   let member =
-    ProjectMember(user_id: 2, role: Manager, created_at: "2026-01-01")
+    ProjectMember(
+      user_id: 2,
+      role: Manager,
+      created_at: "2026-01-01",
+      claimed_count: 0,
+    )
   let org_user =
     OrgUser(
       id: 2,

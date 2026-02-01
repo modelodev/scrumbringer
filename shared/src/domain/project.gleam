@@ -39,8 +39,13 @@ pub type Project {
 /// ## Example
 ///
 /// ```gleam
-/// ProjectMember(user_id: 1, role: Member, created_at: "2024-01-17T12:00:00Z")
+/// ProjectMember(user_id: 1, role: Member, created_at: "2024-01-17T12:00:00Z", claimed_count: 0)
 /// ```
 pub type ProjectMember {
-  ProjectMember(user_id: Int, role: ProjectRole, created_at: String)
+  ProjectMember(
+    user_id: Int,
+    role: ProjectRole,
+    created_at: String,
+    claimed_count: Int,
+  )
 }

@@ -333,6 +333,14 @@ pub type Text {
   RemoveMemberTitle
   RemoveMemberConfirm(user_email: String, project_name: String)
   Remove
+  ClaimedTasks(count: Int)
+  ReleaseAll
+  ReleaseAllConfirmTitle
+  ReleaseAllConfirmBody(count: Int, user_name: String)
+  ReleaseAllSuccess(count: Int, user_name: String)
+  ReleaseAllNone(user_name: String)
+  ReleaseAllError(user_name: String)
+  ReleaseAllSelfError
   // Member capabilities (Story 4.7 AC10-14, Story 4.8 AC23)
   CapabilitiesForUser(user_email: String, project_name: String)
   NoCapabilitiesDefined

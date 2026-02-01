@@ -386,6 +386,21 @@ pub fn translate(text: Text) -> String {
     text.RemoveMemberConfirm(user_email, project_name) ->
       "¿Quitar " <> user_email <> " de " <> project_name <> "?"
     text.Remove -> "Quitar"
+    text.ClaimedTasks(count) -> int.to_string(count) <> " reclamadas"
+    text.ReleaseAll -> "Liberar todas"
+    text.ReleaseAllConfirmTitle -> "Confirmar liberación"
+    text.ReleaseAllConfirmBody(count, user_name) ->
+      "Vas a liberar "
+      <> int.to_string(count)
+      <> " tareas de "
+      <> user_name
+      <> ". Las tareas volverán al pool."
+    text.ReleaseAllSuccess(count, user_name) ->
+      "Se liberaron " <> int.to_string(count) <> " tareas de " <> user_name
+    text.ReleaseAllNone(user_name) -> user_name <> " no tiene tareas reclamadas"
+    text.ReleaseAllError(user_name) ->
+      "No se pudieron liberar tareas de " <> user_name
+    text.ReleaseAllSelfError -> "No puedes liberar tus propias tareas"
     // Member capabilities (Story 4.7 AC10-14, Story 4.8 AC23)
     text.CapabilitiesForUser(user_email, project_name) ->
       "Capacidades de " <> user_email <> " en " <> project_name

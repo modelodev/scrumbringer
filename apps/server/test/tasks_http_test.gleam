@@ -721,6 +721,252 @@ pub fn task_events_persist_for_lifecycle_actions_test() {
   count_task_events(db, task_id, "task_completed") |> should.equal(1)
 }
 
+pub fn release_all_tasks_for_member_success_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Bulk Release")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Bulk Release'", [])
+
+  create_member_user(handler, db, "member@example.com", "inv_member")
+  let member_id =
+    single_int(
+      db,
+      "select id from users where email = 'member@example.com'",
+      [],
+    )
+
+  add_member(handler, session, csrf, project_id, member_id, "member")
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  let task_a =
+    create_task(handler, session, csrf, project_id, "Task A", "", 1, type_id)
+  let task_b =
+    create_task(handler, session, csrf, project_id, "Task B", "", 1, type_id)
+
+  let member_login = login_as(handler, "member@example.com", "passwordpassword")
+  let member_session = find_cookie_value(member_login.headers, "sb_session")
+  let member_csrf = find_cookie_value(member_login.headers, "sb_csrf")
+
+  claim_task(
+    handler,
+    member_session,
+    member_csrf,
+    task_a,
+    task_version(db, task_a),
+  )
+  |> should.equal(200)
+  claim_task(
+    handler,
+    member_session,
+    member_csrf,
+    task_b,
+    task_version(db, task_b),
+  )
+  |> should.equal(200)
+
+  let list_req =
+    simulate.request(
+      http.Get,
+      "/api/v1/projects/" <> int_to_string(project_id) <> "/members",
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+
+  let list_res = handler(list_req)
+  list_res.status |> should.equal(200)
+  let list_body = simulate.read_body(list_res)
+  let assert Ok(list_dynamic) = json.parse(list_body, decode.dynamic)
+  let member_decoder = {
+    use user_id <- decode.field("user_id", decode.int)
+    use claimed_count <- decode.field("claimed_count", decode.int)
+    decode.success(#(user_id, claimed_count))
+  }
+  let members_decoder = {
+    use members <- decode.field("members", decode.list(member_decoder))
+    decode.success(members)
+  }
+  let list_response_decoder = {
+    use members <- decode.field("data", members_decoder)
+    decode.success(members)
+  }
+
+  let assert Ok(members_payload) =
+    decode.run(list_dynamic, list_response_decoder)
+  let member_claimed =
+    members_payload
+    |> list.filter(fn(row) { row.0 == member_id })
+    |> list.map(fn(row) { row.1 })
+  member_claimed |> should.equal([2])
+
+  let req =
+    simulate.request(
+      http.Post,
+      "/api/v1/projects/"
+        <> int_to_string(project_id)
+        <> "/members/"
+        <> int_to_string(member_id)
+        <> "/release-all-tasks",
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+
+  let res = handler(req)
+  res.status |> should.equal(200)
+
+  let body = simulate.read_body(res)
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+  let payload_decoder = {
+    use released_count <- decode.field("released_count", decode.int)
+    use task_ids <- decode.field("task_ids", decode.list(decode.int))
+    decode.success(#(released_count, task_ids))
+  }
+  let response_decoder = {
+    use payload <- decode.field("data", payload_decoder)
+    decode.success(payload)
+  }
+
+  let assert Ok(#(released_count, task_ids)) =
+    decode.run(dynamic, response_decoder)
+  released_count |> should.equal(2)
+  list.length(task_ids) |> should.equal(2)
+
+  let claimed_left =
+    single_int(
+      db,
+      "select count(*) from tasks where project_id = $1 and claimed_by = $2 and status = 'claimed'",
+      [pog.int(project_id), pog.int(member_id)],
+    )
+  claimed_left |> should.equal(0)
+}
+
+pub fn release_all_tasks_for_member_forbidden_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Bulk Release Forbidden")
+  let project_id =
+    single_int(
+      db,
+      "select id from projects where name = 'Bulk Release Forbidden'",
+      [],
+    )
+
+  create_member_user(handler, db, "member@example.com", "inv_member")
+  let member_id =
+    single_int(
+      db,
+      "select id from users where email = 'member@example.com'",
+      [],
+    )
+
+  add_member(handler, session, csrf, project_id, member_id, "member")
+
+  let admin_id =
+    single_int(db, "select id from users where email = 'admin@example.com'", [])
+
+  let member_login = login_as(handler, "member@example.com", "passwordpassword")
+  let member_session = find_cookie_value(member_login.headers, "sb_session")
+  let member_csrf = find_cookie_value(member_login.headers, "sb_csrf")
+
+  let req =
+    simulate.request(
+      http.Post,
+      "/api/v1/projects/"
+        <> int_to_string(project_id)
+        <> "/members/"
+        <> int_to_string(admin_id)
+        <> "/release-all-tasks",
+    )
+    |> request.set_cookie("sb_session", member_session)
+    |> request.set_cookie("sb_csrf", member_csrf)
+    |> request.set_header("X-CSRF", member_csrf)
+
+  let res = handler(req)
+  res.status |> should.equal(403)
+  string.contains(simulate.read_body(res), "FORBIDDEN") |> should.be_true
+}
+
+pub fn release_all_tasks_for_member_self_release_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Bulk Release Self")
+  let project_id =
+    single_int(
+      db,
+      "select id from projects where name = 'Bulk Release Self'",
+      [],
+    )
+
+  let admin_id =
+    single_int(db, "select id from users where email = 'admin@example.com'", [])
+
+  let req =
+    simulate.request(
+      http.Post,
+      "/api/v1/projects/"
+        <> int_to_string(project_id)
+        <> "/members/"
+        <> int_to_string(admin_id)
+        <> "/release-all-tasks",
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+
+  let res = handler(req)
+  res.status |> should.equal(400)
+  string.contains(simulate.read_body(res), "SELF_RELEASE") |> should.be_true
+}
+
+pub fn release_all_tasks_for_member_not_found_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: _db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  let req =
+    simulate.request(
+      http.Post,
+      "/api/v1/projects/99999/members/99999/release-all-tasks",
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+
+  let res = handler(req)
+  res.status |> should.equal(404)
+  string.contains(simulate.read_body(res), "NOT_FOUND") |> should.be_true
+}
+
 pub fn task_dependencies_reject_circular_dependency_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app

@@ -39,7 +39,8 @@ import scrumbringer_client/client_state.{
   MemberAddDialogClosed, MemberAddDialogOpened, MemberAddRoleChanged,
   MemberAddSubmitted, MemberAddUserSelected, MemberCapabilitiesDialogClosed,
   MemberCapabilitiesDialogOpened, MemberCapabilitiesSaveClicked,
-  MemberCapabilitiesToggled, MemberRemoveCancelled, MemberRemoveClicked,
+  MemberCapabilitiesToggled, MemberReleaseAllCancelled, MemberReleaseAllClicked,
+  MemberReleaseAllConfirmed, MemberRemoveCancelled, MemberRemoveClicked,
   MemberRemoveConfirmed, MemberRoleChangeRequested, OrgUsersSearchChanged,
   OrgUsersSearchDebounced, OrgUsersSearchFailed, OrgUsersSearchIdle,
   OrgUsersSearchLoaded, OrgUsersSearchLoading, admin_msg,
@@ -55,7 +56,6 @@ import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/section_header
 import scrumbringer_client/update_helpers
-import scrumbringer_client/utils/format_date
 
 // =============================================================================
 // Members View
@@ -99,6 +99,11 @@ pub fn view_members(
           model.admin.members,
           model.admin.org_users_cache,
         ),
+        case model.admin.members_release_confirm {
+          opt.Some(target) ->
+            view_release_all_dialog(model, project.name, target)
+          opt.None -> element.none()
+        },
         // Add member dialog
         case model.admin.members_add_dialog_open {
           True -> view_add_member_dialog(model)
@@ -163,10 +168,6 @@ fn view_members_table(
         data_table.column(t(i18n_text.User), fn(m: ProjectMember) {
           text(resolve_email(m.user_id))
         }),
-        // User ID
-        data_table.column(t(i18n_text.UserId), fn(m: ProjectMember) {
-          text(int.to_string(m.user_id))
-        }),
         // Role (dropdown for admins, text for others)
         data_table.column(t(i18n_text.Role), fn(m: ProjectMember) {
           view_member_role_cell(model, m, is_org_admin)
@@ -184,10 +185,12 @@ fn view_members_table(
           "col-number",
           "cell-number",
         ),
-        // Created date
-        data_table.column(t(i18n_text.CreatedAt), fn(m: ProjectMember) {
-          text(format_date.date_only(m.created_at))
-        }),
+        data_table.column_with_class(
+          t(i18n_text.Claimed),
+          fn(m: ProjectMember) { view_member_claimed_count(m) },
+          "col-number",
+          "cell-number",
+        ),
         // Actions (Story 4.8 UX)
         data_table.column_with_class(
           t(i18n_text.Actions),
@@ -201,6 +204,14 @@ fn view_members_table(
 }
 
 fn view_member_actions(model: Model, m: ProjectMember) -> Element(Msg) {
+  let count = m.claimed_count
+  let is_self = case model.core.user {
+    opt.Some(user) -> user.id == m.user_id
+    opt.None -> False
+  }
+  let can_release = count > 0 && is_self == False
+  let is_loading = model.admin.members_release_in_flight == opt.Some(m.user_id)
+
   div([attribute.class("actions-row")], [
     action_buttons.task_icon_button(
       update_helpers.i18n_t(model, i18n_text.ManageCapabilities),
@@ -212,6 +223,20 @@ fn view_member_actions(model: Model, m: ProjectMember) -> Element(Msg) {
       opt.None,
       opt.Some("member-capabilities-btn"),
     ),
+    case can_release {
+      True ->
+        action_buttons.task_icon_button(
+          update_helpers.i18n_t(model, i18n_text.ReleaseAll),
+          admin_msg(MemberReleaseAllClicked(m.user_id, count)),
+          icons.Return,
+          action_buttons.SizeXs,
+          is_loading,
+          "release-btn",
+          opt.None,
+          opt.Some("member-release-btn"),
+        )
+      False -> element.none()
+    },
     action_buttons.task_icon_button_with_class(
       update_helpers.i18n_t(model, i18n_text.Remove),
       admin_msg(MemberRemoveClicked(m.user_id)),
@@ -223,6 +248,11 @@ fn view_member_actions(model: Model, m: ProjectMember) -> Element(Msg) {
       opt.None,
     ),
   ])
+}
+
+fn view_member_claimed_count(m: ProjectMember) -> Element(Msg) {
+  badge.new_unchecked(int.to_string(m.claimed_count), badge.Neutral)
+  |> badge.view_with_class("claimed-badge")
 }
 
 /// Render role cell - dropdown for org admins, text for project managers.
@@ -455,6 +485,51 @@ fn view_remove_member_dialog(
             False -> update_helpers.i18n_t(model, i18n_text.Remove)
           }),
         ],
+      ),
+    ],
+  )
+}
+
+fn view_release_all_dialog(
+  model: Model,
+  project_name: String,
+  target: client_state.ReleaseAllTarget,
+) -> Element(Msg) {
+  let client_state.ReleaseAllTarget(user: user, claimed_count: claimed_count) =
+    target
+  let _ = project_name
+
+  dialog.view(
+    dialog.DialogConfig(
+      title: update_helpers.i18n_t(model, i18n_text.ReleaseAllConfirmTitle),
+      icon: opt.None,
+      size: dialog.DialogSm,
+      on_close: admin_msg(MemberReleaseAllCancelled),
+    ),
+    True,
+    model.admin.members_release_error,
+    [
+      p([], [
+        text(update_helpers.i18n_t(
+          model,
+          i18n_text.ReleaseAllConfirmBody(claimed_count, user.email),
+        )),
+      ]),
+    ],
+    [
+      dialog.cancel_button(model, admin_msg(MemberReleaseAllCancelled)),
+      button(
+        [
+          event.on_click(admin_msg(MemberReleaseAllConfirmed)),
+          attribute.disabled(
+            model.admin.members_release_in_flight == opt.Some(user.id),
+          ),
+          attribute.class(case model.admin.members_release_in_flight {
+            opt.Some(_) -> "btn-primary btn-loading"
+            opt.None -> "btn-primary"
+          }),
+        ],
+        [text(update_helpers.i18n_t(model, i18n_text.Release))],
       ),
     ],
   )

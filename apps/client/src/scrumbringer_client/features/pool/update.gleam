@@ -38,9 +38,9 @@ import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
   type Model, type Msg, type PoolDragState, MemberCanvasRectFetched, MemberDrag,
-  MemberModel, MemberPoolMyTasksRectFetched, MemberPositionSaved,
-  MemberTaskClaimed, PoolDragDragging, PoolDragIdle, PoolDragPendingRect, Rect,
-  pool_msg, rect_contains_point, update_member,
+  MemberModel, MemberPoolLongPressCheck, MemberPoolMyTasksRectFetched,
+  MemberPositionSaved, MemberTaskClaimed, PoolDragDragging, PoolDragIdle,
+  PoolDragPendingRect, Rect, pool_msg, rect_contains_point, update_member,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/member_section
@@ -308,6 +308,88 @@ fn close_dialog_shortcut(model: Model) -> #(Model, Effect(Msg)) {
 // =============================================================================
 // Drag-and-Drop Handlers
 // =============================================================================
+
+/// Handle touch start on a task card (tap/long-press).
+pub fn handle_pool_touch_started(
+  model: Model,
+  task_id: Int,
+) -> #(Model, Effect(Msg)) {
+  let model =
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_pool_touch_task_id: opt.Some(task_id),
+        member_pool_touch_longpress: opt.None,
+      )
+    })
+
+  #(
+    model,
+    app_effects.schedule_timeout(450, fn() {
+      pool_msg(MemberPoolLongPressCheck(task_id))
+    }),
+  )
+}
+
+/// Handle touch end on a task card.
+pub fn handle_pool_touch_ended(
+  model: Model,
+  task_id: Int,
+) -> #(Model, Effect(Msg)) {
+  case model.member.member_pool_touch_longpress {
+    opt.Some(id) if id == task_id -> {
+      let #(model, fx) = handle_drag_ended(model)
+      let model =
+        update_member(model, fn(member) {
+          MemberModel(
+            ..member,
+            member_pool_touch_task_id: opt.None,
+            member_pool_touch_longpress: opt.None,
+          )
+        })
+      #(model, fx)
+    }
+    _ -> {
+      let next_preview = case model.member.member_pool_preview_task_id {
+        opt.Some(id) if id == task_id -> opt.None
+        _ -> opt.Some(task_id)
+      }
+      #(
+        update_member(model, fn(member) {
+          MemberModel(
+            ..member,
+            member_pool_preview_task_id: next_preview,
+            member_pool_touch_task_id: opt.None,
+            member_pool_touch_longpress: opt.None,
+          )
+        }),
+        effect.none(),
+      )
+    }
+  }
+}
+
+/// Handle long-press check for touch drag.
+pub fn handle_pool_long_press_check(
+  model: Model,
+  task_id: Int,
+) -> #(Model, Effect(Msg)) {
+  case model.member.member_pool_touch_task_id {
+    opt.Some(id) if id == task_id -> {
+      let #(model, fx) = handle_drag_started(model, task_id, 0, 0)
+      let model =
+        update_member(model, fn(member) {
+          MemberModel(
+            ..member,
+            member_pool_touch_longpress: opt.Some(task_id),
+            member_pool_preview_task_id: opt.None,
+          )
+        })
+      #(model, fx)
+    }
+    _ -> #(model, effect.none())
+  }
+}
 
 /// Handle drag-to-claim armed state change.
 pub fn handle_pool_drag_to_claim_armed(

@@ -303,6 +303,21 @@ pub fn handle_admin(
     client_state.MemberRemoved(Error(err)) ->
       admin_workflow.handle_member_removed_error(model, err)
 
+    client_state.MemberReleaseAllClicked(user_id, claimed_count) ->
+      admin_workflow.handle_member_release_all_clicked(
+        model,
+        user_id,
+        claimed_count,
+      )
+    client_state.MemberReleaseAllCancelled ->
+      admin_workflow.handle_member_release_all_cancelled(model)
+    client_state.MemberReleaseAllConfirmed ->
+      admin_workflow.handle_member_release_all_confirmed(model)
+    client_state.MemberReleaseAllResult(Ok(result)) ->
+      admin_workflow.handle_member_release_all_ok(model, result)
+    client_state.MemberReleaseAllResult(Error(err)) ->
+      admin_workflow.handle_member_release_all_error(model, err)
+
     client_state.MemberRoleChangeRequested(user_id, new_role) ->
       admin_workflow.handle_member_role_change_requested(
         model,
@@ -603,6 +618,12 @@ pub fn handle_pool(
       pool_workflow.handle_clear_filters(model, member_refresh)
     client_state.MemberPoolViewModeSet(mode) ->
       pool_workflow.handle_pool_view_mode_set(model, mode)
+    client_state.MemberPoolTouchStarted(task_id) ->
+      pool_workflow.handle_pool_touch_started(model, task_id)
+    client_state.MemberPoolTouchEnded(task_id) ->
+      pool_workflow.handle_pool_touch_ended(model, task_id)
+    client_state.MemberPoolLongPressCheck(task_id) ->
+      pool_workflow.handle_pool_long_press_check(model, task_id)
     client_state.MemberListHideCompletedToggled -> #(
       client_state.update_member(model, fn(member) {
         client_state.MemberModel(

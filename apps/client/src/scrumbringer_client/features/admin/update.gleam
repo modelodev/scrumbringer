@@ -44,6 +44,7 @@ import scrumbringer_client/update_helpers
 // Re-export from split modules
 import scrumbringer_client/features/admin/cards
 import scrumbringer_client/features/admin/member_add
+import scrumbringer_client/features/admin/member_release_all
 import scrumbringer_client/features/admin/member_remove
 import scrumbringer_client/features/admin/org_settings
 import scrumbringer_client/features/admin/rule_metrics
@@ -109,6 +110,20 @@ pub const handle_member_remove_confirmed = member_remove.handle_member_remove_co
 pub const handle_member_removed_ok = member_remove.handle_member_removed_ok
 
 pub const handle_member_removed_error = member_remove.handle_member_removed_error
+
+// =============================================================================
+// Re-exports: Member Release All
+// =============================================================================
+
+pub const handle_member_release_all_clicked = member_release_all.handle_member_release_all_clicked
+
+pub const handle_member_release_all_cancelled = member_release_all.handle_member_release_all_cancelled
+
+pub const handle_member_release_all_confirmed = member_release_all.handle_member_release_all_confirmed
+
+pub const handle_member_release_all_ok = member_release_all.handle_member_release_all_ok
+
+pub const handle_member_release_all_error = member_release_all.handle_member_release_all_error
 
 // =============================================================================
 // Member Role Change Handlers

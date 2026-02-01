@@ -369,6 +369,11 @@ pub type AssignmentsAddContext {
   AddProjectToUser(user_id: Int)
 }
 
+/// Represents the release-all confirmation target.
+pub type ReleaseAllTarget {
+  ReleaseAllTarget(user: OrgUser, claimed_count: Int)
+}
+
 /// Assignments UI state.
 pub type AssignmentsModel {
   AssignmentsModel(
@@ -439,6 +444,9 @@ pub type AdminModel {
     members_remove_confirm: Option(OrgUser),
     members_remove_in_flight: Bool,
     members_remove_error: Option(String),
+    members_release_confirm: Option(ReleaseAllTarget),
+    members_release_in_flight: Option(Int),
+    members_release_error: Option(String),
     member_capabilities_dialog_user_id: Option(Int),
     member_capabilities_loading: Bool,
     member_capabilities_saving: Bool,
@@ -544,6 +552,9 @@ pub type MemberModel {
     member_canvas_left: Int,
     member_canvas_top: Int,
     member_pool_drag: PoolDragState,
+    member_pool_touch_task_id: Option(Int),
+    member_pool_touch_longpress: Option(Int),
+    member_pool_preview_task_id: Option(Int),
     member_position_edit_task: Option(Int),
     member_position_edit_x: String,
     member_position_edit_y: String,
@@ -657,6 +668,10 @@ pub type AdminMsg {
   MemberRemoveCancelled
   MemberRemoveConfirmed
   MemberRemoved(ApiResult(Nil))
+  MemberReleaseAllClicked(Int, Int)
+  MemberReleaseAllCancelled
+  MemberReleaseAllConfirmed
+  MemberReleaseAllResult(ApiResult(api_projects.ReleaseAllResult))
   MemberRoleChangeRequested(Int, ProjectRole)
   MemberRoleChanged(ApiResult(api_projects.RoleChangeResult))
   MemberCapabilitiesDialogOpened(Int)
@@ -731,6 +746,9 @@ pub type PoolMsg {
   MemberPoolFiltersToggled
   MemberClearFilters
   MemberPoolViewModeSet(pool_prefs.ViewMode)
+  MemberPoolTouchStarted(Int)
+  MemberPoolTouchEnded(Int)
+  MemberPoolLongPressCheck(Int)
   MemberListHideCompletedToggled
   MemberListCardToggled(Int)
   ViewModeChanged(view_mode.ViewMode)
@@ -1230,6 +1248,9 @@ pub fn default_model() -> Model {
       members_remove_confirm: option.None,
       members_remove_in_flight: False,
       members_remove_error: option.None,
+      members_release_confirm: option.None,
+      members_release_in_flight: option.None,
+      members_release_error: option.None,
       member_capabilities_dialog_user_id: option.None,
       member_capabilities_loading: False,
       member_capabilities_saving: False,
@@ -1347,6 +1368,9 @@ pub fn default_model() -> Model {
       member_canvas_left: 0,
       member_canvas_top: 0,
       member_pool_drag: PoolDragIdle,
+      member_pool_touch_task_id: option.None,
+      member_pool_touch_longpress: option.None,
+      member_pool_preview_task_id: option.None,
       member_position_edit_task: option.None,
       member_position_edit_x: "",
       member_position_edit_y: "",

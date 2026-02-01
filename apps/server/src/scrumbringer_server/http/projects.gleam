@@ -32,6 +32,7 @@ import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
+import scrumbringer_server/persistence/tasks/queries as tasks_queries
 import scrumbringer_server/services/projects_db
 import scrumbringer_server/services/store_state.{type StoredUser}
 import wisp
@@ -72,6 +73,20 @@ pub fn handle_member(
     http.Delete -> handle_member_delete(req, ctx, project_id, user_id)
     http.Patch -> handle_member_role_update(req, ctx, project_id, user_id)
     _ -> wisp.method_not_allowed([http.Delete, http.Patch])
+  }
+}
+
+/// Handle /api/projects/:id/members/:user_id/release-all-tasks requests.
+/// Example: handle_member_release_all(req, ctx, project_id, user_id)
+pub fn handle_member_release_all(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+  user_id: String,
+) -> wisp.Response {
+  case req.method {
+    http.Post -> handle_member_release_all_post(req, ctx, project_id, user_id)
+    _ -> wisp.method_not_allowed([http.Post])
   }
 }
 
@@ -134,6 +149,18 @@ fn handle_member_role_update(
   case update_member_role(req, ctx, project_id, user_id, data) {
     Ok(result) ->
       api.ok(json.object([#("member", role_update_result_json(result))]))
+    Error(resp) -> resp
+  }
+}
+
+fn handle_member_release_all_post(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+  user_id: String,
+) -> wisp.Response {
+  case release_all_tasks(req, ctx, project_id, user_id) {
+    Ok(payload) -> api.ok(payload)
     Error(resp) -> resp
   }
 }
@@ -334,6 +361,69 @@ fn list_members(
   }
 }
 
+fn release_all_tasks(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  project_id: String,
+  user_id: String,
+) -> Result(json.Json, wisp.Response) {
+  use user <- result.try(require_current_user(req, ctx))
+  use _ <- result.try(csrf.require_csrf(req))
+  use project_id <- result.try(parse_project_id(project_id))
+  use target_user_id <- result.try(parse_user_id(user_id))
+
+  case target_user_id == user.id {
+    True -> Error(api.error(400, "SELF_RELEASE", "Cannot release own tasks"))
+    False -> {
+      let auth.Ctx(db: db, ..) = ctx
+      case projects_db.project_exists(db, project_id) {
+        Ok(False) -> Error(api.error(404, "NOT_FOUND", "Project not found"))
+        Ok(True) -> {
+          case projects_db.user_exists(db, target_user_id) {
+            Ok(False) -> Error(api.error(404, "NOT_FOUND", "User not found"))
+            Ok(True) -> {
+              use _ <- result.try(require_project_admin(db, project_id, user.id))
+              case
+                projects_db.is_project_member(db, project_id, target_user_id)
+              {
+                Ok(False) ->
+                  Error(api.error(404, "NOT_FOUND", "Membership not found"))
+                Ok(True) -> {
+                  case
+                    tasks_queries.release_all_tasks_for_user(
+                      db,
+                      user.org_id,
+                      project_id,
+                      target_user_id,
+                      user.id,
+                    )
+                  {
+                    Ok(tasks_queries.ReleaseAllResult(
+                      released_count: released_count,
+                      task_ids: task_ids,
+                    )) ->
+                      Ok(
+                        json.object([
+                          #("released_count", json.int(released_count)),
+                          #("task_ids", json.array(task_ids, json.int)),
+                        ]),
+                      )
+                    Error(tasks_queries.ReleaseAllDbError(_)) ->
+                      Error(api.error(500, "INTERNAL", "Database error"))
+                  }
+                }
+                Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+              }
+            }
+            Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+          }
+        }
+        Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+      }
+    }
+  }
+}
+
 fn add_member(
   req: wisp.Request,
   ctx: auth.Ctx,
@@ -386,7 +476,6 @@ fn require_org_admin(user: StoredUser) -> Result(Nil, wisp.Response) {
       Error(api.error(403, "FORBIDDEN", "Only org admins can manage projects"))
   }
 }
-
 
 fn parse_project_id(value: String) -> Result(Int, wisp.Response) {
   case int.parse(value) {
@@ -486,6 +575,7 @@ fn member_json(member: projects_db.ProjectMember) -> json.Json {
     user_id: user_id,
     role: role,
     created_at: created_at,
+    claimed_count: claimed_count,
   ) = member
 
   json.object([
@@ -493,6 +583,7 @@ fn member_json(member: projects_db.ProjectMember) -> json.Json {
     #("user_id", json.int(user_id)),
     #("role", json.string(project_role.to_string(role))),
     #("created_at", json.string(created_at)),
+    #("claimed_count", json.int(claimed_count)),
   ])
 }
 
