@@ -721,6 +721,245 @@ pub fn task_events_persist_for_lifecycle_actions_test() {
   count_task_events(db, task_id, "task_completed") |> should.equal(1)
 }
 
+pub fn task_dependencies_reject_circular_dependency_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Deps")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Deps'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  let task_a =
+    create_task(handler, session, csrf, project_id, "Task A", "", 1, type_id)
+  let task_b =
+    create_task(handler, session, csrf, project_id, "Task B", "", 1, type_id)
+
+  let dep_req =
+    simulate.request(
+      http.Post,
+      "/api/v1/tasks/" <> int_to_string(task_a) <> "/dependencies",
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+    |> simulate.json_body(
+      json.object([#("depends_on_task_id", json.int(task_b))]),
+    )
+
+  let dep_res = handler(dep_req)
+  dep_res.status |> should.equal(200)
+
+  let circular_req =
+    simulate.request(
+      http.Post,
+      "/api/v1/tasks/" <> int_to_string(task_b) <> "/dependencies",
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+    |> simulate.json_body(
+      json.object([#("depends_on_task_id", json.int(task_a))]),
+    )
+
+  let circular_res = handler(circular_req)
+  circular_res.status |> should.equal(422)
+  simulate.read_body(circular_res)
+  |> string.contains("Circular dependency detected")
+  |> should.be_true()
+}
+
+pub fn task_dependencies_reject_cross_project_dependency_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Deps One")
+  create_project(handler, session, csrf, "Deps Two")
+
+  let project_one_id =
+    single_int(db, "select id from projects where name = 'Deps One'", [])
+  let project_two_id =
+    single_int(db, "select id from projects where name = 'Deps Two'", [])
+
+  create_task_type(handler, session, csrf, project_one_id, "Bug", "bug-ant", 0)
+  create_task_type(handler, session, csrf, project_two_id, "Bug", "bug-ant", 0)
+
+  let type_one_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_one_id)],
+    )
+  let type_two_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_two_id)],
+    )
+
+  let task_one =
+    create_task(
+      handler,
+      session,
+      csrf,
+      project_one_id,
+      "Task One",
+      "",
+      1,
+      type_one_id,
+    )
+  let task_two =
+    create_task(
+      handler,
+      session,
+      csrf,
+      project_two_id,
+      "Task Two",
+      "",
+      1,
+      type_two_id,
+    )
+
+  let cross_req =
+    simulate.request(
+      http.Post,
+      "/api/v1/tasks/" <> int_to_string(task_one) <> "/dependencies",
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+    |> simulate.json_body(
+      json.object([#("depends_on_task_id", json.int(task_two))]),
+    )
+
+  let cross_res = handler(cross_req)
+  cross_res.status |> should.equal(422)
+  simulate.read_body(cross_res)
+  |> string.contains("Dependency must be in same project")
+  |> should.be_true()
+}
+
+pub fn task_dependencies_reject_completed_dependency_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Deps Completed")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Deps Completed'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  let task_blocked =
+    create_task(
+      handler,
+      session,
+      csrf,
+      project_id,
+      "Task Blocked",
+      "",
+      1,
+      type_id,
+    )
+  let task_completed =
+    create_task(
+      handler,
+      session,
+      csrf,
+      project_id,
+      "Task Completed",
+      "",
+      1,
+      type_id,
+    )
+
+  let claim_status =
+    claim_task(
+      handler,
+      session,
+      csrf,
+      task_completed,
+      task_version(db, task_completed),
+    )
+  claim_status |> should.equal(200)
+
+  let complete_status =
+    complete_task(
+      handler,
+      session,
+      csrf,
+      task_completed,
+      task_version(db, task_completed),
+    )
+  complete_status |> should.equal(200)
+
+  let completed_req =
+    simulate.request(
+      http.Post,
+      "/api/v1/tasks/" <> int_to_string(task_blocked) <> "/dependencies",
+    )
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+    |> simulate.json_body(
+      json.object([#("depends_on_task_id", json.int(task_completed))]),
+    )
+
+  let completed_res = handler(completed_req)
+  completed_res.status |> should.equal(422)
+  simulate.read_body(completed_res)
+  |> string.contains("Dependency task is already completed")
+  |> should.be_true()
+}
+
+pub fn task_dependencies_schema_indices_present_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+
+  let columns_count =
+    single_int(
+      db,
+      "select count(*) from information_schema.columns where table_name = 'task_dependencies' and column_name in ('task_id', 'depends_on_task_id', 'created_at', 'created_by')",
+      [],
+    )
+  columns_count |> should.equal(4)
+
+  let index_count =
+    single_int(
+      db,
+      "select count(*) from pg_indexes where tablename = 'task_dependencies' and indexname in ('idx_task_dependencies_task_id', 'idx_task_dependencies_depends_on_task_id')",
+      [],
+    )
+  index_count |> should.equal(2)
+}
+
 pub fn me_metrics_returns_counts_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
