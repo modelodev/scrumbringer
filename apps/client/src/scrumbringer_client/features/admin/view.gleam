@@ -152,18 +152,15 @@ fn view_org_settings_table(model: Model) -> Element(Msg) {
                 opt.Some(user) -> user.id == u.id
                 opt.None -> False
               }
-              button(
-                [
-                  attribute.class("btn-icon btn-xs btn-danger-icon"),
-                  attribute.attribute("title", t(i18n_text.DeleteUser)),
-                  attribute.attribute("aria-label", t(i18n_text.DeleteUser)),
-                  attribute.attribute("data-testid", "org-user-delete-btn"),
-                  attribute.disabled(
-                    is_self || model.admin.org_settings_delete_in_flight,
-                  ),
-                  event.on_click(admin_msg(OrgSettingsDeleteClicked(u.id))),
-                ],
-                [icons.nav_icon(icons.Trash, icons.Small)],
+              action_buttons.task_icon_button_with_class(
+                t(i18n_text.DeleteUser),
+                admin_msg(OrgSettingsDeleteClicked(u.id)),
+                icons.Trash,
+                icons.Small,
+                is_self || model.admin.org_settings_delete_in_flight,
+                "btn-icon btn-xs btn-danger-icon",
+                opt.None,
+                opt.Some("org-user-delete-btn"),
               )
             },
             "col-actions",

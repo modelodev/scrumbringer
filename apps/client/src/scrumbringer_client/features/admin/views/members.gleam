@@ -45,6 +45,7 @@ import scrumbringer_client/client_state.{
   OrgUsersSearchLoaded, OrgUsersSearchLoading, admin_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/data_table
@@ -201,30 +202,25 @@ fn view_members_table(
 
 fn view_member_actions(model: Model, m: ProjectMember) -> Element(Msg) {
   div([attribute.class("actions-row")], [
-    // Manage capabilities button
-    button(
-      [
-        attribute.class("btn-icon btn-xs"),
-        attribute.attribute(
-          "title",
-          update_helpers.i18n_t(model, i18n_text.ManageCapabilities),
-        ),
-        attribute.attribute("data-testid", "member-capabilities-btn"),
-        event.on_click(admin_msg(MemberCapabilitiesDialogOpened(m.user_id))),
-      ],
-      [icons.nav_icon(icons.Cog, icons.Small)],
+    action_buttons.task_icon_button(
+      update_helpers.i18n_t(model, i18n_text.ManageCapabilities),
+      admin_msg(MemberCapabilitiesDialogOpened(m.user_id)),
+      icons.Cog,
+      action_buttons.SizeXs,
+      False,
+      "",
+      opt.None,
+      opt.Some("member-capabilities-btn"),
     ),
-    // Remove button
-    button(
-      [
-        attribute.class("btn-icon btn-xs btn-danger-icon"),
-        attribute.attribute(
-          "title",
-          update_helpers.i18n_t(model, i18n_text.Remove),
-        ),
-        event.on_click(admin_msg(MemberRemoveClicked(m.user_id))),
-      ],
-      [icons.nav_icon(icons.Trash, icons.Small)],
+    action_buttons.task_icon_button_with_class(
+      update_helpers.i18n_t(model, i18n_text.Remove),
+      admin_msg(MemberRemoveClicked(m.user_id)),
+      icons.Trash,
+      icons.Small,
+      False,
+      "btn-icon btn-xs btn-danger-icon",
+      opt.None,
+      opt.None,
     ),
   ])
 }

@@ -71,8 +71,10 @@ import scrumbringer_client/styles
 import scrumbringer_client/theme
 
 // Story 4.5: css module no longer used after unified layout removal
+import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/task_actions
 
 // Story 4.5: ui_layout no longer directly imported (used via panels)
 import scrumbringer_client/client_ffi
@@ -1027,34 +1029,25 @@ fn view_claimed_task_row(
 
   let start_or_pause = case is_active {
     True ->
-      button(
-        [
-          attribute.class("btn-xs btn-icon"),
-          attribute.attribute(
-            "title",
-            update_helpers.i18n_t(model, i18n_text.Pause),
-          ),
-          attribute.disabled(disable_actions),
-          event.on_click(client_state.pool_msg(
-            client_state.MemberNowWorkingPauseClicked,
-          )),
-        ],
-        [icons.nav_icon(icons.Pause, icons.Small)],
+      task_actions.pause_icon(
+        update_helpers.i18n_t(model, i18n_text.Pause),
+        client_state.pool_msg(client_state.MemberNowWorkingPauseClicked),
+        action_buttons.SizeXs,
+        disable_actions,
+        "",
+        opt.None,
+        opt.None,
       )
     False ->
-      button(
-        [
-          attribute.class("btn-xs btn-icon"),
-          attribute.attribute(
-            "title",
-            update_helpers.i18n_t(model, i18n_text.Start),
-          ),
-          attribute.disabled(disable_actions),
-          event.on_click(
-            client_state.pool_msg(client_state.MemberNowWorkingStartClicked(id)),
-          ),
-        ],
-        [icons.nav_icon(icons.Play, icons.Small)],
+      task_actions.icon_action(
+        update_helpers.i18n_t(model, i18n_text.Start),
+        client_state.pool_msg(client_state.MemberNowWorkingStartClicked(id)),
+        icons.Play,
+        action_buttons.SizeXs,
+        disable_actions,
+        "",
+        opt.None,
+        opt.None,
       )
   }
 
@@ -1078,36 +1071,23 @@ fn view_claimed_task_row(
     ]),
     div([attribute.class("task-row-actions")], [
       start_or_pause,
-      button(
-        [
-          attribute.class("btn-xs btn-icon"),
-          attribute.attribute(
-            "title",
-            update_helpers.i18n_t(model, i18n_text.Complete),
-          ),
-          attribute.disabled(disable_actions),
-          event.on_click(
-            client_state.pool_msg(client_state.MemberCompleteClicked(
-              id,
-              version,
-            )),
-          ),
-        ],
-        [icons.nav_icon(icons.Check, icons.Small)],
+      task_actions.complete_icon(
+        update_helpers.i18n_t(model, i18n_text.Complete),
+        client_state.pool_msg(client_state.MemberCompleteClicked(id, version)),
+        action_buttons.SizeXs,
+        disable_actions,
+        "",
+        opt.None,
+        opt.None,
       ),
-      button(
-        [
-          attribute.class("btn-xs btn-icon"),
-          attribute.attribute(
-            "title",
-            update_helpers.i18n_t(model, i18n_text.Release),
-          ),
-          attribute.disabled(disable_actions),
-          event.on_click(
-            client_state.pool_msg(client_state.MemberReleaseClicked(id, version)),
-          ),
-        ],
-        [icons.nav_icon(icons.Return, icons.Small)],
+      task_actions.release_icon(
+        update_helpers.i18n_t(model, i18n_text.Release),
+        client_state.pool_msg(client_state.MemberReleaseClicked(id, version)),
+        action_buttons.SizeXs,
+        disable_actions,
+        "",
+        opt.None,
+        opt.None,
       ),
     ]),
   ])
