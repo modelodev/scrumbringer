@@ -11,6 +11,7 @@ pub fn project_tasks_url_builds_query_params_test() {
       type_id: option.None,
       capability_id: option.None,
       q: option.None,
+      blocked: option.None,
     ),
   )
   |> should.equal("/api/v1/projects/1/tasks")
@@ -22,6 +23,7 @@ pub fn project_tasks_url_builds_query_params_test() {
       type_id: option.Some(2),
       capability_id: option.Some(3),
       q: option.Some("hello world"),
+      blocked: option.None,
     ),
   )
   |> should.equal(

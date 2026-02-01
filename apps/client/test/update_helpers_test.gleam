@@ -45,6 +45,8 @@ pub fn find_task_by_id_returns_none_when_missing_test() {
       card_title: None,
       card_color: None,
       has_new_notes: False,
+      blocked_count: 0,
+      dependencies: [],
     ),
   ]
 

@@ -22,7 +22,10 @@
 //// - **sql.gleam**: Provides row types from squirrel
 //// - **domain/task_status**: Provides TaskStatus ADT
 
+import domain/task.{type TaskDependency, TaskDependency}
 import domain/task_status
+import gleam/dynamic/decode
+import gleam/json
 import gleam/option.{type Option, None, Some}
 import scrumbringer_server/sql
 
@@ -53,6 +56,10 @@ pub type Task {
     card_color: Option(String),
     /// Story 5.4 AC4: True if task has notes newer than user's last view.
     has_new_notes: Bool,
+    /// Story 5.6: Number of incomplete dependencies blocking this task.
+    blocked_count: Int,
+    /// Story 5.6: Dependencies blocking this task.
+    dependencies: List(TaskDependency),
   )
 }
 
@@ -80,6 +87,8 @@ pub fn from_list_row(row: sql.TasksListRow) -> Task {
     card_title: row.card_title,
     card_color: row.card_color,
     has_new_notes: row.has_new_notes,
+    blocked_count: row.blocked_count,
+    dependencies: decode_dependencies(row.dependencies),
   )
 }
 
@@ -107,6 +116,8 @@ pub fn from_get_row(row: sql.TasksGetForUserRow) -> Task {
     card_title: row.card_title,
     card_color: row.card_color,
     has_new_notes: False,
+    blocked_count: row.blocked_count,
+    dependencies: decode_dependencies(row.dependencies),
   )
 }
 
@@ -134,6 +145,8 @@ pub fn from_create_row(row: sql.TasksCreateRow) -> Task {
     card_title: row.card_title,
     card_color: row.card_color,
     has_new_notes: False,
+    blocked_count: row.blocked_count,
+    dependencies: decode_dependencies(row.dependencies),
   )
 }
 
@@ -161,6 +174,8 @@ pub fn from_update_row(row: sql.TasksUpdateRow) -> Task {
     card_title: row.card_title,
     card_color: row.card_color,
     has_new_notes: False,
+    blocked_count: row.blocked_count,
+    dependencies: decode_dependencies(row.dependencies),
   )
 }
 
@@ -188,6 +203,8 @@ pub fn from_claim_row(row: sql.TasksClaimRow) -> Task {
     card_title: row.card_title,
     card_color: row.card_color,
     has_new_notes: False,
+    blocked_count: row.blocked_count,
+    dependencies: decode_dependencies(row.dependencies),
   )
 }
 
@@ -215,6 +232,8 @@ pub fn from_release_row(row: sql.TasksReleaseRow) -> Task {
     card_title: row.card_title,
     card_color: row.card_color,
     has_new_notes: False,
+    blocked_count: row.blocked_count,
+    dependencies: decode_dependencies(row.dependencies),
   )
 }
 
@@ -242,6 +261,8 @@ pub fn from_complete_row(row: sql.TasksCompleteRow) -> Task {
     card_title: row.card_title,
     card_color: row.card_color,
     has_new_notes: False,
+    blocked_count: row.blocked_count,
+    dependencies: decode_dependencies(row.dependencies),
   )
 }
 
@@ -268,6 +289,8 @@ fn from_fields(
   card_title card_title: String,
   card_color card_color: String,
   has_new_notes has_new_notes: Bool,
+  blocked_count blocked_count: Int,
+  dependencies dependencies: List(TaskDependency),
 ) -> Task {
   Task(
     id: id,
@@ -290,7 +313,37 @@ fn from_fields(
     card_title: string_option(card_title),
     card_color: string_option(card_color),
     has_new_notes: has_new_notes,
+    blocked_count: blocked_count,
+    dependencies: dependencies,
   )
+}
+
+fn decode_dependencies(raw: String) -> List(TaskDependency) {
+  case json.parse(from: raw, using: decode.list(task_dependency_decoder())) {
+    Ok(deps) -> deps
+    Error(_) -> []
+  }
+}
+
+fn task_dependency_decoder() -> decode.Decoder(TaskDependency) {
+  use depends_on_task_id <- decode.field("task_id", decode.int)
+  use title <- decode.field("title", decode.string)
+  use status_str <- decode.field("status", decode.string)
+  use claimed_by <- decode.optional_field(
+    "claimed_by",
+    None,
+    decode.optional(decode.string),
+  )
+  let status = case task_status.parse_task_status(status_str) {
+    Ok(s) -> s
+    Error(_) -> task_status.Available
+  }
+  decode.success(TaskDependency(
+    depends_on_task_id: depends_on_task_id,
+    title: title,
+    status: status,
+    claimed_by: claimed_by,
+  ))
 }
 
 /// Convert 0 to None, non-zero to Some.

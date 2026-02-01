@@ -36,11 +36,12 @@ import lustre/attribute
 import lustre/element.{type Element}
 
 // Story 4.5: Removed label, option, select - no longer used after unified layout
-import lustre/element/html.{a, button, div, h2, h3, p, span, style, text}
+import lustre/element/html.{a, button, div, h2, h3, li, p, span, style, text, ul}
 import lustre/event
 
 import domain/org_role
 import domain/project.{type Project}
+import domain/task_status
 import domain/user.{type User}
 import domain/view_mode
 
@@ -72,9 +73,11 @@ import scrumbringer_client/theme
 
 // Story 4.5: css module no longer used after unified layout removal
 import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_actions
+import scrumbringer_client/ui/task_state
 
 // Story 4.5: ui_layout no longer directly imported (used via panels)
 import scrumbringer_client/client_ffi
@@ -83,7 +86,6 @@ import scrumbringer_client/update_helpers
 import scrumbringer_client/utils/card_queries
 
 import domain/task.{type Task, ActiveTask, Task, WorkSession}
-import domain/task_status.{Claimed, Taken}
 
 import scrumbringer_client/features/layout/center_panel
 import scrumbringer_client/features/layout/left_panel
@@ -475,7 +477,87 @@ fn view_member_three_panel(
     ),
     // Story 5.3: Card detail modal for Pool/Lista/Kanban views
     view_member_card_detail_modal(model, user),
+    view_member_blocked_claim_modal(model),
   ])
+}
+
+fn view_member_blocked_claim_modal(
+  model: client_state.Model,
+) -> Element(client_state.Msg) {
+  case model.member.member_blocked_claim_task {
+    opt.None -> element.none()
+    opt.Some(#(task_id, _version)) -> {
+      let task_opt =
+        update_helpers.find_task_by_id(model.member.member_tasks, task_id)
+      let task_title = case task_opt {
+        opt.Some(t) -> t.title
+        opt.None -> update_helpers.i18n_t(model, i18n_text.TaskNumber(task_id))
+      }
+      let blocking = case task_opt {
+        opt.Some(t) ->
+          list.filter(t.dependencies, fn(dep) {
+            dep.status != task_status.Completed
+          })
+        opt.None -> []
+      }
+      let count = list.length(blocking)
+      let warning =
+        update_helpers.i18n_t(model, i18n_text.BlockedTaskWarning(count))
+      let list_items =
+        list.map(blocking, fn(dep) {
+          let status_label = task_state.label(model.ui.locale, dep.status)
+          let status_text = case dep.status {
+            task_status.Claimed(_) ->
+              case dep.claimed_by {
+                opt.Some(email) ->
+                  update_helpers.i18n_t(model, i18n_text.ClaimedBy)
+                  <> " "
+                  <> email
+                opt.None -> status_label
+              }
+            _ -> status_label
+          }
+          li([], [text(dep.title <> " - " <> status_text)])
+        })
+
+      dialog.view(
+        dialog.DialogConfig(
+          title: update_helpers.i18n_t(model, i18n_text.BlockedTaskTitle),
+          icon: opt.Some(icons.nav_icon(icons.Warning, icons.Medium)),
+          size: dialog.DialogSm,
+          on_close: client_state.pool_msg(
+            client_state.MemberBlockedClaimCancelled,
+          ),
+        ),
+        True,
+        opt.None,
+        [
+          p([attribute.class("blocked-claim-title")], [text(task_title)]),
+          p([attribute.class("blocked-claim-warning")], [text(warning)]),
+          case list_items {
+            [] -> element.none()
+            _ -> ul([attribute.class("blocked-claim-list")], list_items)
+          },
+        ],
+        [
+          dialog.cancel_button(
+            model,
+            client_state.pool_msg(client_state.MemberBlockedClaimCancelled),
+          ),
+          button(
+            [
+              attribute.type_("button"),
+              attribute.class("btn btn-primary"),
+              event.on_click(client_state.pool_msg(
+                client_state.MemberBlockedClaimConfirmed,
+              )),
+            ],
+            [text(update_helpers.i18n_t(model, i18n_text.Claim))],
+          ),
+        ],
+      )
+    }
+  }
 }
 
 // Justification: large function kept intact to preserve cohesive UI logic.
@@ -756,7 +838,8 @@ fn build_right_panel(
   let my_tasks = case model.member.member_tasks {
     client_state.Loaded(tasks) ->
       list.filter(tasks, fn(t) {
-        t.status == Claimed(Taken) && t.claimed_by == opt.Some(user.id)
+        t.status == task_status.Claimed(task_status.Taken)
+        && t.claimed_by == opt.Some(user.id)
       })
     _ -> []
   }
@@ -955,7 +1038,8 @@ fn view_claimed_tasks_section(
       tasks
       |> list.filter(fn(t) {
         let Task(status: status, claimed_by: claimed_by, ..) = t
-        status == Claimed(Taken) && claimed_by == opt.Some(user.id)
+        status == task_status.Claimed(task_status.Taken)
+        && claimed_by == opt.Some(user.id)
       })
       |> list.sort(by: my_bar_view.compare_member_bar_tasks)
     _ -> []

@@ -36,6 +36,7 @@ import scrumbringer_client/ui/card_title_meta
 import scrumbringer_client/ui/expand_toggle
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_actions
+import scrumbringer_client/ui/task_blocked_badge
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_state
@@ -247,16 +248,27 @@ fn view_task_item(
     _ -> task_item.no_actions()
   }
 
+  let blocked_class = case task.blocked_count > 0 {
+    True -> " task-blocked"
+    False -> ""
+  }
+
+  let secondary =
+    div([attribute.class("task-item-meta")], [
+      status_display,
+      task_blocked_badge.view(config.locale, task, "task-blocked-inline"),
+    ])
+
   task_item.view(
     task_item.Config(
-      container_class: "task-item " <> card_border_class,
+      container_class: "task-item " <> card_border_class <> blocked_class,
       content_class: "task-item-content",
       on_click: Some(config.on_task_click(task.id)),
       icon: Some(task_type_icon.view(type_icon, 14, config.theme)),
       icon_class: None,
       title: task.title,
       title_class: None,
-      secondary: status_display,
+      secondary: secondary,
       actions: actions,
       testid: Some("task-card"),
     ),

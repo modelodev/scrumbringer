@@ -32,7 +32,8 @@
 
 // Re-export domain types for backwards compatibility
 import domain/task.{
-  type Task, type TaskFilters, type TaskNote, type TaskPosition,
+  type Task, type TaskDependency, type TaskFilters, type TaskNote,
+  type TaskPosition,
 }
 import domain/task_status
 import domain/task_type.{type TaskType, type TaskTypeInline}
@@ -41,6 +42,7 @@ import domain/task_type.{type TaskType, type TaskTypeInline}
 import scrumbringer_client/api/tasks/active
 import scrumbringer_client/api/tasks/capabilities
 import scrumbringer_client/api/tasks/decoders
+import scrumbringer_client/api/tasks/dependencies
 import scrumbringer_client/api/tasks/notes
 import scrumbringer_client/api/tasks/operations
 import scrumbringer_client/api/tasks/positions
@@ -65,6 +67,10 @@ pub type TaskFiltersAlias =
 /// Represents TaskNoteAlias.
 pub type TaskNoteAlias =
   TaskNote
+
+/// Represents TaskDependencyAlias.
+pub type TaskDependencyAlias =
+  TaskDependency
 
 /// Represents TaskPositionAlias.
 pub type TaskPositionAlias =
@@ -130,6 +136,16 @@ pub const complete_task = operations.complete_task
 pub const list_task_notes = notes.list_task_notes
 
 pub const add_task_note = notes.add_task_note
+
+// =============================================================================
+// Re-export Functions: Dependencies
+// =============================================================================
+
+pub const list_task_dependencies = dependencies.list_task_dependencies
+
+pub const add_task_dependency = dependencies.add_task_dependency
+
+pub const delete_task_dependency = dependencies.delete_task_dependency
 
 // =============================================================================
 // Re-export Functions: Work Sessions (multi-session)

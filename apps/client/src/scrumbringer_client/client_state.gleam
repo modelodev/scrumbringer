@@ -77,7 +77,8 @@ import domain/org.{type InviteLink, type OrgUser}
 import domain/project.{type Project, type ProjectMember}
 import domain/project_role.{type ProjectRole, Member as MemberRole}
 import domain/task.{
-  type Task, type TaskNote, type TaskPosition, type WorkSessionsPayload,
+  type Task, type TaskDependency, type TaskNote, type TaskPosition,
+  type WorkSessionsPayload,
 }
 import domain/task_type.{type TaskType}
 import domain/view_mode
@@ -556,6 +557,15 @@ pub type MemberModel {
     member_note_dialog_open: Bool,
     card_detail_open: Option(Int),
     member_task_detail_tab: task_tabs.Tab,
+    member_dependencies: Remote(List(TaskDependency)),
+    member_dependency_dialog_open: Bool,
+    member_dependency_search_query: String,
+    member_dependency_candidates: Remote(List(Task)),
+    member_dependency_selected_task_id: Option(Int),
+    member_dependency_add_in_flight: Bool,
+    member_dependency_add_error: Option(String),
+    member_dependency_remove_in_flight: Option(Int),
+    member_blocked_claim_task: Option(#(Int, Int)),
   )
 }
 
@@ -778,6 +788,18 @@ pub type PoolMsg {
   MemberTaskDetailsOpened(Int)
   MemberTaskDetailsClosed
   MemberTaskDetailTabClicked(task_tabs.Tab)
+  MemberDependenciesFetched(ApiResult(List(TaskDependency)))
+  MemberDependencyDialogOpened
+  MemberDependencyDialogClosed
+  MemberDependencySearchChanged(String)
+  MemberDependencyCandidatesFetched(ApiResult(List(Task)))
+  MemberDependencySelected(Int)
+  MemberDependencyAddSubmitted
+  MemberDependencyAdded(ApiResult(TaskDependency))
+  MemberDependencyRemoveClicked(Int)
+  MemberDependencyRemoved(Int, ApiResult(Nil))
+  MemberBlockedClaimCancelled
+  MemberBlockedClaimConfirmed
   MemberNotesFetched(ApiResult(List(TaskNote)))
   MemberNoteContentChanged(String)
   MemberNoteDialogOpened
@@ -1338,6 +1360,15 @@ pub fn default_model() -> Model {
       member_note_dialog_open: False,
       card_detail_open: option.None,
       member_task_detail_tab: task_tabs.DetailsTab,
+      member_dependencies: NotAsked,
+      member_dependency_dialog_open: False,
+      member_dependency_search_query: "",
+      member_dependency_candidates: NotAsked,
+      member_dependency_selected_task_id: option.None,
+      member_dependency_add_in_flight: False,
+      member_dependency_add_error: option.None,
+      member_dependency_remove_in_flight: option.None,
+      member_blocked_claim_task: option.None,
     ),
     ui: UiModel(
       is_mobile: False,

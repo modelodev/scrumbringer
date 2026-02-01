@@ -35,6 +35,7 @@ import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/card_title_meta
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_actions
+import scrumbringer_client/ui/task_blocked_badge
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_type_icon
@@ -267,6 +268,15 @@ fn view_task_item(config: KanbanConfig(msg), task: Task) -> Element(msg) {
   let #(_card_title_opt, resolved_color) =
     card_queries.resolve_task_card_info_from_cards(config.cards, task)
   let border_class = task_color.card_border_class(resolved_color)
+  let blocked_class = case task.blocked_count > 0 {
+    True -> " task-blocked"
+    False -> ""
+  }
+  let secondary =
+    div([attribute.class("task-item-meta")], [
+      secondary_info,
+      task_blocked_badge.view(config.locale, task, "task-blocked-inline"),
+    ])
 
   let actions = case task.status {
     Available ->
@@ -284,14 +294,14 @@ fn view_task_item(config: KanbanConfig(msg), task: Task) -> Element(msg) {
 
   task_item.view(
     task_item.Config(
-      container_class: "kanban-task-item " <> border_class,
+      container_class: "kanban-task-item " <> border_class <> blocked_class,
       content_class: "kanban-task-content",
       on_click: Some(config.on_task_click(task.id)),
       icon: Some(task_type_icon.view(type_icon, 14, config.theme)),
       icon_class: None,
       title: text_utils.truncate(task.title, 25),
       title_class: None,
-      secondary: secondary_info,
+      secondary: secondary,
       actions: actions,
       testid: Some("kanban-task-item"),
     ),

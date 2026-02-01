@@ -25,9 +25,14 @@ pub fn renders_details_and_notes_tabs_test() {
   let config =
     Config(
       active_tab: DetailsTab,
+      dependencies_count: 2,
       notes_count: 3,
       has_new_notes: True,
-      labels: Labels(details: "Detalles", notes: "Notas"),
+      labels: Labels(
+        details: "Detalles",
+        dependencies: "Dependencias",
+        notes: "Notas",
+      ),
       on_tab_click: fn(_) { Nil },
     )
 
@@ -36,8 +41,10 @@ pub fn renders_details_and_notes_tabs_test() {
 
   // Then: Contains both tab labels
   html |> string.contains("Detalles") |> should.be_true()
+  html |> string.contains("Dependencias") |> should.be_true()
   html |> string.contains("Notas") |> should.be_true()
   html |> string.contains("(3)") |> should.be_true()
+  html |> string.contains("(2)") |> should.be_true()
 }
 
 pub fn active_tab_has_active_class_test() {
@@ -45,9 +52,14 @@ pub fn active_tab_has_active_class_test() {
   let config =
     Config(
       active_tab: NotesTab,
+      dependencies_count: 0,
       notes_count: 0,
       has_new_notes: False,
-      labels: Labels(details: "Details", notes: "Notes"),
+      labels: Labels(
+        details: "Details",
+        dependencies: "Dependencies",
+        notes: "Notes",
+      ),
       on_tab_click: fn(_) { Nil },
     )
 
@@ -63,9 +75,14 @@ pub fn shows_new_notes_indicator_test() {
   let config =
     Config(
       active_tab: DetailsTab,
+      dependencies_count: 1,
       notes_count: 5,
       has_new_notes: True,
-      labels: Labels(details: "Details", notes: "Notes"),
+      labels: Labels(
+        details: "Details",
+        dependencies: "Dependencies",
+        notes: "Notes",
+      ),
       on_tab_click: fn(_) { Nil },
     )
 
@@ -81,9 +98,10 @@ pub fn uses_task_tabs_class_test() {
   let config =
     Config(
       active_tab: DetailsTab,
+      dependencies_count: 0,
       notes_count: 0,
       has_new_notes: False,
-      labels: Labels(details: "D", notes: "N"),
+      labels: Labels(details: "D", dependencies: "Dep", notes: "N"),
       on_tab_click: fn(_) { Nil },
     )
 

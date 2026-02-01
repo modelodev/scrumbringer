@@ -24,6 +24,7 @@
 import gleam/int
 import gleam/list
 import gleam/option as opt
+import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
@@ -32,12 +33,16 @@ import lustre/event
 
 import domain/card.{type Card}
 import domain/task
+import domain/task_status
 
 import scrumbringer_client/client_state.{
   type Model, type Msg, Failed, Loaded, Loading, MemberCreateCardIdChanged,
   MemberCreateDescriptionChanged, MemberCreateDialogClosed,
   MemberCreatePriorityChanged, MemberCreateSubmitted, MemberCreateTitleChanged,
-  MemberCreateTypeIdChanged, MemberNoteContentChanged, MemberNoteDialogClosed,
+  MemberCreateTypeIdChanged, MemberDependencyAddSubmitted,
+  MemberDependencyDialogClosed, MemberDependencyDialogOpened,
+  MemberDependencyRemoveClicked, MemberDependencySearchChanged,
+  MemberDependencySelected, MemberNoteContentChanged, MemberNoteDialogClosed,
   MemberNoteDialogOpened, MemberNoteSubmitted, MemberPositionEditClosed,
   MemberPositionEditSubmitted, MemberPositionEditXChanged,
   MemberPositionEditYChanged, MemberTaskDetailTabClicked,
@@ -366,13 +371,22 @@ fn view_task_tabs(model: Model) -> Element(Msg) {
     Failed(_) -> 0
   }
 
+  let dependencies_count = case model.member.member_dependencies {
+    Loaded(deps) -> list.length(deps)
+    NotAsked -> 0
+    Loading -> 0
+    Failed(_) -> 0
+  }
+
   task_tabs.view(
     task_tabs.Config(
       active_tab: model.member.member_task_detail_tab,
+      dependencies_count: dependencies_count,
       notes_count: notes_count,
       has_new_notes: False,
       labels: task_tabs.Labels(
         details: update_helpers.i18n_t(model, i18n_text.TabDetails),
+        dependencies: update_helpers.i18n_t(model, i18n_text.TabDependencies),
         notes: update_helpers.i18n_t(model, i18n_text.TabNotes),
       ),
       on_tab_click: fn(tab) { pool_msg(MemberTaskDetailTabClicked(tab)) },
@@ -388,7 +402,261 @@ fn view_task_tab_content(
 ) -> Element(Msg) {
   case model.member.member_task_detail_tab {
     task_tabs.DetailsTab -> view_task_details_tab(model, task)
+    task_tabs.DependenciesTab -> view_dependencies(model, task_id, task)
     task_tabs.NotesTab -> view_notes(model, task_id)
+  }
+}
+
+/// Renders the dependencies section for a task.
+fn view_dependencies(
+  model: Model,
+  task_id: Int,
+  task: opt.Option(task.Task),
+) -> Element(Msg) {
+  let dependencies = case model.member.member_dependencies {
+    Loaded(deps) -> deps
+    _ -> []
+  }
+
+  let incomplete =
+    list.count(dependencies, fn(dep) { dep.status != task_status.Completed })
+
+  let header_title = case incomplete > 0 {
+    True ->
+      update_helpers.i18n_t(model, i18n_text.Dependencies)
+      <> " ("
+      <> int.to_string(incomplete)
+      <> ")"
+    False -> update_helpers.i18n_t(model, i18n_text.Dependencies)
+  }
+
+  div([attribute.class("task-dependencies-section")], [
+    card_section_header.view_with_class(
+      "task-dependencies-header",
+      card_section_header.Config(
+        title: header_title,
+        button_label: "+ "
+          <> update_helpers.i18n_t(model, i18n_text.AddDependency),
+        button_disabled: opt.is_none(task),
+        on_button_click: pool_msg(MemberDependencyDialogOpened),
+      ),
+    ),
+    case model.member.member_dependencies {
+      NotAsked | Loading ->
+        div([attribute.class("empty")], [
+          text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+        ])
+      Failed(err) -> error_notice.view(err.message)
+      Loaded(deps) ->
+        case deps {
+          [] ->
+            div([attribute.class("empty")], [
+              text(update_helpers.i18n_t(model, i18n_text.NoDependencies)),
+            ])
+          _ ->
+            div(
+              [attribute.class("task-dependencies-list")],
+              list.map(deps, fn(dep) {
+                view_dependency_row(model, task_id, dep)
+              }),
+            )
+        }
+    },
+    case model.member.member_dependency_dialog_open {
+      True -> view_dependency_dialog(model, task)
+      False -> element.none()
+    },
+  ])
+}
+
+fn view_dependency_row(
+  model: Model,
+  task_id: Int,
+  dep: task.TaskDependency,
+) -> Element(Msg) {
+  let task.TaskDependency(
+    depends_on_task_id: depends_on_task_id,
+    title: title,
+    status: status,
+    claimed_by: claimed_by,
+  ) = dep
+
+  let status_label = task_state.label(model.ui.locale, status)
+
+  let status_note = case status {
+    task_status.Completed -> status_label
+    task_status.Claimed(_) ->
+      case claimed_by {
+        opt.Some(email) ->
+          update_helpers.i18n_t(model, i18n_text.ClaimedBy) <> " " <> email
+        opt.None -> status_label
+      }
+    _ -> status_label
+  }
+
+  let icon = case status {
+    task_status.Completed -> icons.nav_icon(icons.CheckCircle, icons.Small)
+    _ -> icons.nav_icon(icons.Warning, icons.Small)
+  }
+
+  let is_removing =
+    model.member.member_dependency_remove_in_flight
+    == opt.Some(depends_on_task_id)
+
+  div([attribute.class("task-dependency-row")], [
+    div([attribute.class("task-dependency-main")], [
+      span([attribute.class("task-dependency-icon")], [icon]),
+      div([attribute.class("task-dependency-text")], [
+        span([attribute.class("task-dependency-title")], [text(title)]),
+        span([attribute.class("task-dependency-status")], [text(status_note)]),
+      ]),
+    ]),
+    button(
+      [
+        attribute.class("btn-icon btn-xs task-dependency-remove"),
+        attribute.disabled(is_removing || task_id == depends_on_task_id),
+        event.on_click(
+          pool_msg(MemberDependencyRemoveClicked(depends_on_task_id)),
+        ),
+      ],
+      [icons.nav_icon(icons.XMark, icons.Small)],
+    ),
+  ])
+}
+
+fn view_dependency_dialog(
+  model: Model,
+  task: opt.Option(task.Task),
+) -> Element(Msg) {
+  let current_task_id = case task {
+    opt.Some(t) -> t.id
+    opt.None -> 0
+  }
+
+  let candidates = case model.member.member_dependency_candidates {
+    Loaded(tasks) ->
+      list.filter(tasks, fn(t) {
+        t.id != current_task_id && t.status != task_status.Completed
+      })
+    _ -> []
+  }
+
+  let query = string.trim(model.member.member_dependency_search_query)
+
+  let filtered = case string.is_empty(query) {
+    True -> candidates
+    False ->
+      list.filter(candidates, fn(t) {
+        string.contains(string.lowercase(t.title), string.lowercase(query))
+      })
+  }
+
+  let selected_id = model.member.member_dependency_selected_task_id
+
+  dialog.view(
+    dialog.DialogConfig(
+      title: update_helpers.i18n_t(model, i18n_text.AddDependency),
+      icon: opt.Some(icons.nav_icon(icons.Plus, icons.Medium)),
+      size: dialog.DialogMd,
+      on_close: pool_msg(MemberDependencyDialogClosed),
+    ),
+    True,
+    model.member.member_dependency_add_error,
+    [
+      form(
+        [
+          event.on_submit(fn(_) { pool_msg(MemberDependencyAddSubmitted) }),
+          attribute.id("task-dependency-form"),
+        ],
+        [
+          form_field.view(
+            update_helpers.i18n_t(model, i18n_text.TaskDependsOn),
+            input([
+              attribute.type_("text"),
+              attribute.value(model.member.member_dependency_search_query),
+              attribute.placeholder(update_helpers.i18n_t(
+                model,
+                i18n_text.SearchPlaceholder,
+              )),
+              event.on_input(fn(value) {
+                pool_msg(MemberDependencySearchChanged(value))
+              }),
+            ]),
+          ),
+          view_dependency_candidates(model, filtered, selected_id),
+        ],
+      ),
+    ],
+    [
+      dialog.cancel_button(model, pool_msg(MemberDependencyDialogClosed)),
+      button(
+        [
+          attribute.type_("submit"),
+          attribute.form("task-dependency-form"),
+          attribute.disabled(
+            model.member.member_dependency_add_in_flight
+            || opt.is_none(selected_id),
+          ),
+          attribute.class(case model.member.member_dependency_add_in_flight {
+            True -> "btn-loading"
+            False -> ""
+          }),
+        ],
+        [
+          text(case model.member.member_dependency_add_in_flight {
+            True -> update_helpers.i18n_t(model, i18n_text.Adding)
+            False -> update_helpers.i18n_t(model, i18n_text.Add)
+          }),
+        ],
+      ),
+    ],
+  )
+}
+
+fn view_dependency_candidates(
+  model: Model,
+  tasks: List(task.Task),
+  selected_id: opt.Option(Int),
+) -> Element(Msg) {
+  case model.member.member_dependency_candidates {
+    NotAsked | Loading ->
+      div([attribute.class("empty")], [
+        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+      ])
+    Failed(err) -> error_notice.view(err.message)
+    Loaded(_tasks) ->
+      case tasks {
+        [] ->
+          div([attribute.class("empty")], [
+            text(update_helpers.i18n_t(model, i18n_text.NoMatchingTasks)),
+          ])
+        _ ->
+          div(
+            [attribute.class("task-dependency-candidates")],
+            list.map(tasks, fn(t) {
+              let is_selected = selected_id == opt.Some(t.id)
+              let status = task_state.label(model.ui.locale, t.status)
+              button(
+                [
+                  attribute.type_("button"),
+                  attribute.class(case is_selected {
+                    True -> "dependency-candidate selected"
+                    False -> "dependency-candidate"
+                  }),
+                  event.on_click(pool_msg(MemberDependencySelected(t.id))),
+                ],
+                [
+                  span([attribute.class("dependency-candidate-title")], [
+                    text(t.title),
+                  ]),
+                  span([attribute.class("dependency-candidate-status")], [
+                    text(status),
+                  ]),
+                ],
+              )
+            }),
+          )
+      }
   }
 }
 

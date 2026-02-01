@@ -56,6 +56,7 @@ pub fn list_tasks_for_project(
   type_id: Option(Int),
   capability_id: Option(Int),
   q: Option(String),
+  blocked: Option(Bool),
 ) -> Result(List(Task), pog.QueryError) {
   use returned <- result.try(sql.tasks_list(
     db,
@@ -65,11 +66,20 @@ pub fn list_tasks_for_project(
     option_int_to_db(capability_id),
     option_string_to_db(q),
     user_id,
+    blocked_filter_to_db(blocked),
   ))
 
   returned.rows
   |> list.map(mappers.from_list_row)
   |> Ok
+}
+
+fn blocked_filter_to_db(value: Option(Bool)) -> String {
+  case value {
+    None -> ""
+    Some(True) -> "true"
+    Some(False) -> "false"
+  }
 }
 
 fn status_filter_to_db_string(status: Option(task_status.TaskStatus)) -> String {

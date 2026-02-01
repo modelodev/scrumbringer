@@ -93,6 +93,7 @@ pub type TaskFilters {
     type_id: Option(Int),
     capability_id: Option(Int),
     q: Option(String),
+    blocked: Option(Bool),
   )
 }
 

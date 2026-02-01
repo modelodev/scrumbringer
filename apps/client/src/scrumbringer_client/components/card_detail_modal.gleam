@@ -38,7 +38,7 @@ import domain/card.{
   type Card, type CardNote, type CardState, CardNote, Cerrada, EnCurso,
   Pendiente,
 }
-import domain/task.{type Task}
+import domain/task.{type Task, type TaskDependency}
 import domain/task_status.{Available, Completed}
 import domain/task_type
 
@@ -264,6 +264,12 @@ fn task_decoder() -> Decoder(Task) {
     option.None,
     decode.optional(decode.string),
   )
+  use blocked_count <- decode.optional_field("blocked_count", 0, decode.int)
+  use dependencies <- decode.optional_field(
+    "dependencies",
+    [],
+    decode.list(task_dependency_decoder()),
+  )
 
   decode.success(task.Task(
     id: id,
@@ -287,6 +293,29 @@ fn task_decoder() -> Decoder(Task) {
     card_color: card_color,
     // Story 5.4: Task notes indicator not used in card detail context
     has_new_notes: False,
+    blocked_count: blocked_count,
+    dependencies: dependencies,
+  ))
+}
+
+fn task_dependency_decoder() -> Decoder(TaskDependency) {
+  use depends_on_task_id <- decode.field("task_id", decode.int)
+  use title <- decode.field("title", decode.string)
+  use status_str <- decode.then(decode.string)
+  let status = case task_status.parse_task_status(status_str) {
+    Ok(s) -> s
+    Error(_) -> Available
+  }
+  use claimed_by <- decode.optional_field(
+    "claimed_by",
+    option.None,
+    decode.optional(decode.string),
+  )
+  decode.success(task.TaskDependency(
+    depends_on_task_id: depends_on_task_id,
+    title: title,
+    status: status,
+    claimed_by: claimed_by,
   ))
 }
 

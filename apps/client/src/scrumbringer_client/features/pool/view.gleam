@@ -58,6 +58,7 @@ import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/event_decoders
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_actions
+import scrumbringer_client/ui/task_blocked_badge
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_hover_popup
 import scrumbringer_client/ui/task_item
@@ -331,17 +332,23 @@ pub fn view_pool_task_row(model: Model, task: Task) -> Element(Msg) {
     card_queries.resolve_task_card_info(model, task)
 
   let border_class = task_color.card_border_class(resolved_color)
+  let blocked_class = case task.blocked_count > 0 {
+    True -> " task-blocked"
+    False -> ""
+  }
 
   task_item.view(
     task_item.Config(
-      container_class: "task-row " <> border_class,
+      container_class: "task-row " <> border_class <> blocked_class,
       content_class: "task-row-title",
       on_click: opt.Some(pool_msg(MemberTaskDetailsOpened(id))),
       icon: opt.Some(task_type_icon.view(type_icon, 16, model.ui.theme)),
       icon_class: opt.None,
       title: title,
       title_class: opt.None,
-      secondary: task_item.empty_secondary(),
+      secondary: div([attribute.class("task-row-meta")], [
+        task_blocked_badge.view(model.ui.locale, task, "task-blocked-inline"),
+      ]),
       actions: [div([attribute.class("task-row-actions")], claim_actions)],
       testid: opt.None,
     ),
@@ -379,6 +386,10 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     card_queries.resolve_task_card_info(model, task)
 
   let card_border_class = task_color.card_border_class(resolved_card_color)
+  let blocked_class = case task.blocked_count > 0 {
+    True -> " task-blocked"
+    False -> ""
+  }
 
   // Get saved position or generate deterministic initial position based on task ID
   let #(x, y) = case dict.get(model.member.member_positions_by_task, id) {
@@ -419,6 +430,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     "" -> with_border
     s -> with_border <> " " <> s
   }
+  let card_classes = card_classes <> blocked_class
 
   let style =
     "position:absolute; left:"
@@ -508,7 +520,10 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     ],
     [
       div([attribute.class("task-card-top")], [
-        div([attribute.class("task-card-actions-left")], [primary_action]),
+        div([attribute.class("task-card-actions-left")], [
+          task_blocked_badge.view(model.ui.locale, task, "task-blocked-card"),
+          primary_action,
+        ]),
         div([attribute.class("task-card-actions-right")], [
           drag_handle,
           complete_action,

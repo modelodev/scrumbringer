@@ -3971,6 +3971,164 @@ RETURNING
   |> pog.execute(db)
 }
 
+/// A row you get from running the `task_dependencies_create` query
+/// defined in `./src/scrumbringer_server/sql/task_dependencies_create.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskDependenciesCreateRow {
+  TaskDependenciesCreateRow(
+    task_id: Int,
+    title: String,
+    status: String,
+    claimed_by: String,
+  )
+}
+
+/// name: create_task_dependency
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_dependencies_create(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+  arg_3: Int,
+) -> Result(pog.Returned(TaskDependenciesCreateRow), pog.QueryError) {
+  let decoder = {
+    use task_id <- decode.field(0, decode.int)
+    use title <- decode.field(1, decode.string)
+    use status <- decode.field(2, decode.string)
+    use claimed_by <- decode.field(3, decode.string)
+    decode.success(TaskDependenciesCreateRow(
+      task_id:,
+      title:,
+      status:,
+      claimed_by:,
+    ))
+  }
+
+  "-- name: create_task_dependency
+with inserted as (
+  insert into task_dependencies (task_id, depends_on_task_id, created_by)
+  values ($1, $2, $3)
+  returning depends_on_task_id
+)
+select
+  i.depends_on_task_id as task_id,
+  t.title,
+  t.status,
+  coalesce(u.email, '') as claimed_by
+from inserted i
+join tasks t on t.id = i.depends_on_task_id
+left join users u on u.id = t.claimed_by;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `task_dependencies_delete` query
+/// defined in `./src/scrumbringer_server/sql/task_dependencies_delete.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskDependenciesDeleteRow {
+  TaskDependenciesDeleteRow(task_id: Int, depends_on_task_id: Int)
+}
+
+/// name: delete_task_dependency
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_dependencies_delete(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: Int,
+) -> Result(pog.Returned(TaskDependenciesDeleteRow), pog.QueryError) {
+  let decoder = {
+    use task_id <- decode.field(0, decode.int)
+    use depends_on_task_id <- decode.field(1, decode.int)
+    decode.success(TaskDependenciesDeleteRow(task_id:, depends_on_task_id:))
+  }
+
+  "-- name: delete_task_dependency
+delete from task_dependencies
+where task_id = $1
+  and depends_on_task_id = $2
+returning
+  task_id,
+  depends_on_task_id;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.int(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `task_dependencies_list` query
+/// defined in `./src/scrumbringer_server/sql/task_dependencies_list.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TaskDependenciesListRow {
+  TaskDependenciesListRow(
+    task_id: Int,
+    title: String,
+    status: String,
+    claimed_by: String,
+  )
+}
+
+/// name: list_task_dependencies
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn task_dependencies_list(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(TaskDependenciesListRow), pog.QueryError) {
+  let decoder = {
+    use task_id <- decode.field(0, decode.int)
+    use title <- decode.field(1, decode.string)
+    use status <- decode.field(2, decode.string)
+    use claimed_by <- decode.field(3, decode.string)
+    decode.success(TaskDependenciesListRow(
+      task_id:,
+      title:,
+      status:,
+      claimed_by:,
+    ))
+  }
+
+  "-- name: list_task_dependencies
+select
+  td.depends_on_task_id as task_id,
+  t.title,
+  t.status,
+  coalesce(u.email, '') as claimed_by
+from task_dependencies td
+join tasks t on t.id = td.depends_on_task_id
+left join users u on u.id = t.claimed_by
+where td.task_id = $1
+order by t.created_at desc;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `task_events_insert` query
 /// defined in `./src/scrumbringer_server/sql/task_events_insert.sql`.
 ///
@@ -5111,6 +5269,8 @@ pub type TasksClaimRow {
     ongoing_by_user_id: Int,
     card_title: String,
     card_color: String,
+    dependencies: String,
+    blocked_count: Int,
   )
 }
 
@@ -5146,6 +5306,8 @@ pub fn tasks_claim(
     use ongoing_by_user_id <- decode.field(17, decode.int)
     use card_title <- decode.field(18, decode.string)
     use card_color <- decode.field(19, decode.string)
+    use dependencies <- decode.field(20, decode.string)
+    use blocked_count <- decode.field(21, decode.int)
     decode.success(TasksClaimRow(
       id:,
       project_id:,
@@ -5167,6 +5329,8 @@ pub fn tasks_claim(
       ongoing_by_user_id:,
       card_title:,
       card_color:,
+      dependencies:,
+      blocked_count:,
     ))
   }
 
@@ -5204,10 +5368,32 @@ select
   false as is_ongoing,
   0 as ongoing_by_user_id,
   coalesce(c.title, '') as card_title,
-  coalesce(c.color, '') as card_color
+  coalesce(c.color, '') as card_color,
+  deps.dependencies as dependencies,
+  deps.blocked_count as blocked_count
 from updated
 join task_types tt on tt.id = updated.type_id
-left join cards c on c.id = updated.card_id;
+left join cards c on c.id = updated.card_id
+left join lateral (
+  select
+    coalesce(
+      json_agg(
+        json_build_object(
+          'task_id', d.depends_on_task_id,
+          'title', dt.title,
+          'status', dt.status,
+          'claimed_by', u.email
+        )
+        order by dt.created_at desc
+      ) filter (where dt.id is not null),
+      '[]'
+    ) as dependencies,
+    coalesce(count(*) filter (where dt.status != 'completed'), 0) as blocked_count
+  from task_dependencies d
+  join tasks dt on dt.id = d.depends_on_task_id
+  left join users u on u.id = dt.claimed_by
+  where d.task_id = updated.id
+) deps on true;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -5245,6 +5431,8 @@ pub type TasksCompleteRow {
     ongoing_by_user_id: Int,
     card_title: String,
     card_color: String,
+    dependencies: String,
+    blocked_count: Int,
   )
 }
 
@@ -5280,6 +5468,8 @@ pub fn tasks_complete(
     use ongoing_by_user_id <- decode.field(17, decode.int)
     use card_title <- decode.field(18, decode.string)
     use card_color <- decode.field(19, decode.string)
+    use dependencies <- decode.field(20, decode.string)
+    use blocked_count <- decode.field(21, decode.int)
     decode.success(TasksCompleteRow(
       id:,
       project_id:,
@@ -5301,6 +5491,8 @@ pub fn tasks_complete(
       ongoing_by_user_id:,
       card_title:,
       card_color:,
+      dependencies:,
+      blocked_count:,
     ))
   }
 
@@ -5338,10 +5530,32 @@ select
   false as is_ongoing,
   0 as ongoing_by_user_id,
   coalesce(c.title, '') as card_title,
-  coalesce(c.color, '') as card_color
+  coalesce(c.color, '') as card_color,
+  deps.dependencies as dependencies,
+  deps.blocked_count as blocked_count
 from updated
 join task_types tt on tt.id = updated.type_id
-left join cards c on c.id = updated.card_id;
+left join cards c on c.id = updated.card_id
+left join lateral (
+  select
+    coalesce(
+      json_agg(
+        json_build_object(
+          'task_id', d.depends_on_task_id,
+          'title', dt.title,
+          'status', dt.status,
+          'claimed_by', u.email
+        )
+        order by dt.created_at desc
+      ) filter (where dt.id is not null),
+      '[]'
+    ) as dependencies,
+    coalesce(count(*) filter (where dt.status != 'completed'), 0) as blocked_count
+  from task_dependencies d
+  join tasks dt on dt.id = d.depends_on_task_id
+  left join users u on u.id = dt.claimed_by
+  where d.task_id = updated.id
+) deps on true;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -5379,6 +5593,8 @@ pub type TasksCreateRow {
     ongoing_by_user_id: Int,
     card_title: String,
     card_color: String,
+    dependencies: String,
+    blocked_count: Int,
   )
 }
 
@@ -5420,6 +5636,8 @@ pub fn tasks_create(
     use ongoing_by_user_id <- decode.field(17, decode.int)
     use card_title <- decode.field(18, decode.string)
     use card_color <- decode.field(19, decode.string)
+    use dependencies <- decode.field(20, decode.string)
+    use blocked_count <- decode.field(21, decode.int)
     decode.success(TasksCreateRow(
       id:,
       project_id:,
@@ -5441,6 +5659,8 @@ pub fn tasks_create(
       ongoing_by_user_id:,
       card_title:,
       card_color:,
+      dependencies:,
+      blocked_count:,
     ))
   }
 
@@ -5496,7 +5716,9 @@ select
   (false) as is_ongoing,
   0 as ongoing_by_user_id,
   coalesce(c.title, '') as card_title,
-  coalesce(c.color, '') as card_color
+  coalesce(c.color, '') as card_color,
+  '[]'::json as dependencies,
+  0 as blocked_count
 from inserted
 join task_types tt on tt.id = inserted.type_id
 left join cards c on c.id = inserted.card_id;
@@ -5541,6 +5763,8 @@ pub type TasksGetForUserRow {
     card_id: Int,
     card_title: String,
     card_color: String,
+    dependencies: String,
+    blocked_count: Int,
   )
 }
 
@@ -5575,6 +5799,8 @@ pub fn tasks_get_for_user(
     use card_id <- decode.field(17, decode.int)
     use card_title <- decode.field(18, decode.string)
     use card_color <- decode.field(19, decode.string)
+    use dependencies <- decode.field(20, decode.string)
+    use blocked_count <- decode.field(21, decode.int)
     decode.success(TasksGetForUserRow(
       id:,
       project_id:,
@@ -5596,6 +5822,8 @@ pub fn tasks_get_for_user(
       card_id:,
       card_title:,
       card_color:,
+      dependencies:,
+      blocked_count:,
     ))
   }
 
@@ -5633,10 +5861,32 @@ select
   t.version,
   coalesce(t.card_id, 0) as card_id,
   coalesce(c.title, '') as card_title,
-  coalesce(c.color, '') as card_color
+  coalesce(c.color, '') as card_color,
+  deps.dependencies as dependencies,
+  deps.blocked_count as blocked_count
 from tasks t
 join task_types tt on tt.id = t.type_id
 left join cards c on c.id = t.card_id
+left join lateral (
+  select
+    coalesce(
+      json_agg(
+        json_build_object(
+          'task_id', d.depends_on_task_id,
+          'title', dt.title,
+          'status', dt.status,
+          'claimed_by', u.email
+        )
+        order by dt.created_at desc
+      ) filter (where dt.id is not null),
+      '[]'
+    ) as dependencies,
+    coalesce(count(*) filter (where dt.status != 'completed'), 0) as blocked_count
+  from task_dependencies d
+  join tasks dt on dt.id = d.depends_on_task_id
+  left join users u on u.id = dt.claimed_by
+  where d.task_id = t.id
+) deps on true
 where t.id = $1
   and exists(
     select 1
@@ -5681,6 +5931,8 @@ pub type TasksListRow {
     card_title: String,
     card_color: String,
     has_new_notes: Bool,
+    dependencies: String,
+    blocked_count: Int,
   )
 }
 
@@ -5697,6 +5949,7 @@ pub fn tasks_list(
   arg_4: Int,
   arg_5: String,
   arg_6: Int,
+  arg_7: String,
 ) -> Result(pog.Returned(TasksListRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -5720,6 +5973,8 @@ pub fn tasks_list(
     use card_title <- decode.field(18, decode.string)
     use card_color <- decode.field(19, decode.string)
     use has_new_notes <- decode.field(20, decode.bool)
+    use dependencies <- decode.field(21, decode.string)
+    use blocked_count <- decode.field(22, decode.int)
     decode.success(TasksListRow(
       id:,
       project_id:,
@@ -5742,6 +5997,8 @@ pub fn tasks_list(
       card_title:,
       card_color:,
       has_new_notes:,
+      dependencies:,
+      blocked_count:,
     ))
   }
 
@@ -5786,10 +6043,32 @@ select
     when (select v.last_viewed_at from user_task_views v where v.task_id = t.id and v.user_id = $6) is null then true
     when (select max(n.created_at) from task_notes n where n.task_id = t.id) > (select v.last_viewed_at from user_task_views v where v.task_id = t.id and v.user_id = $6) then true
     else false
-  end as has_new_notes
+  end as has_new_notes,
+  deps.dependencies as dependencies,
+  deps.blocked_count as blocked_count
 from tasks t
 join task_types tt on tt.id = t.type_id
 left join cards c on c.id = t.card_id
+left join lateral (
+  select
+    coalesce(
+      json_agg(
+        json_build_object(
+          'task_id', d.depends_on_task_id,
+          'title', dt.title,
+          'status', dt.status,
+          'claimed_by', u.email
+        )
+        order by dt.created_at desc
+      ) filter (where dt.id is not null),
+      '[]'
+    ) as dependencies,
+    coalesce(count(*) filter (where dt.status != 'completed'), 0) as blocked_count
+  from task_dependencies d
+  join tasks dt on dt.id = d.depends_on_task_id
+  left join users u on u.id = dt.claimed_by
+  where d.task_id = t.id
+) deps on true
 where t.project_id = $1
   and ($2 = '' or t.status = $2)
   and ($3 <= 0 or t.type_id = $3)
@@ -5798,6 +6077,11 @@ where t.project_id = $1
     $5 = ''
     or t.title ilike ('%' || $5 || '%')
     or t.description ilike ('%' || $5 || '%')
+  )
+  and (
+    $7 = ''
+    or ($7 = 'true' and deps.blocked_count > 0)
+    or ($7 = 'false' and deps.blocked_count = 0)
   )
 order by t.created_at desc;
 "
@@ -5808,6 +6092,7 @@ order by t.created_at desc;
   |> pog.parameter(pog.int(arg_4))
   |> pog.parameter(pog.text(arg_5))
   |> pog.parameter(pog.int(arg_6))
+  |> pog.parameter(pog.text(arg_7))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -5963,6 +6248,8 @@ pub type TasksReleaseRow {
     ongoing_by_user_id: Int,
     card_title: String,
     card_color: String,
+    dependencies: String,
+    blocked_count: Int,
   )
 }
 
@@ -5998,6 +6285,8 @@ pub fn tasks_release(
     use ongoing_by_user_id <- decode.field(17, decode.int)
     use card_title <- decode.field(18, decode.string)
     use card_color <- decode.field(19, decode.string)
+    use dependencies <- decode.field(20, decode.string)
+    use blocked_count <- decode.field(21, decode.int)
     decode.success(TasksReleaseRow(
       id:,
       project_id:,
@@ -6019,6 +6308,8 @@ pub fn tasks_release(
       ongoing_by_user_id:,
       card_title:,
       card_color:,
+      dependencies:,
+      blocked_count:,
     ))
   }
 
@@ -6057,10 +6348,32 @@ select
   false as is_ongoing,
   0 as ongoing_by_user_id,
   coalesce(c.title, '') as card_title,
-  coalesce(c.color, '') as card_color
+  coalesce(c.color, '') as card_color,
+  deps.dependencies as dependencies,
+  deps.blocked_count as blocked_count
 from updated
 join task_types tt on tt.id = updated.type_id
-left join cards c on c.id = updated.card_id;
+left join cards c on c.id = updated.card_id
+left join lateral (
+  select
+    coalesce(
+      json_agg(
+        json_build_object(
+          'task_id', d.depends_on_task_id,
+          'title', dt.title,
+          'status', dt.status,
+          'claimed_by', u.email
+        )
+        order by dt.created_at desc
+      ) filter (where dt.id is not null),
+      '[]'
+    ) as dependencies,
+    coalesce(count(*) filter (where dt.status != 'completed'), 0) as blocked_count
+  from task_dependencies d
+  join tasks dt on dt.id = d.depends_on_task_id
+  left join users u on u.id = dt.claimed_by
+  where d.task_id = updated.id
+) deps on true;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -6098,6 +6411,8 @@ pub type TasksUpdateRow {
     ongoing_by_user_id: Int,
     card_title: String,
     card_color: String,
+    dependencies: String,
+    blocked_count: Int,
   )
 }
 
@@ -6137,6 +6452,8 @@ pub fn tasks_update(
     use ongoing_by_user_id <- decode.field(17, decode.int)
     use card_title <- decode.field(18, decode.string)
     use card_color <- decode.field(19, decode.string)
+    use dependencies <- decode.field(20, decode.string)
+    use blocked_count <- decode.field(21, decode.int)
     decode.success(TasksUpdateRow(
       id:,
       project_id:,
@@ -6158,6 +6475,8 @@ pub fn tasks_update(
       ongoing_by_user_id:,
       card_title:,
       card_color:,
+      dependencies:,
+      blocked_count:,
     ))
   }
 
@@ -6197,10 +6516,32 @@ select
   false as is_ongoing,
   0 as ongoing_by_user_id,
   coalesce(c.title, '') as card_title,
-  coalesce(c.color, '') as card_color
+  coalesce(c.color, '') as card_color,
+  deps.dependencies as dependencies,
+  deps.blocked_count as blocked_count
 from updated
 join task_types tt on tt.id = updated.type_id
-left join cards c on c.id = updated.card_id;
+left join cards c on c.id = updated.card_id
+left join lateral (
+  select
+    coalesce(
+      json_agg(
+        json_build_object(
+          'task_id', d.depends_on_task_id,
+          'title', dt.title,
+          'status', dt.status,
+          'claimed_by', u.email
+        )
+        order by dt.created_at desc
+      ) filter (where dt.id is not null),
+      '[]'
+    ) as dependencies,
+    coalesce(count(*) filter (where dt.status != 'completed'), 0) as blocked_count
+  from task_dependencies d
+  join tasks dt on dt.id = d.depends_on_task_id
+  left join users u on u.id = dt.claimed_by
+  where d.task_id = updated.id
+) deps on true;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))

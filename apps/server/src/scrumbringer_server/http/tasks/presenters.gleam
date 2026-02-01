@@ -14,6 +14,7 @@
 //// let json = presenters.task_type_json(task_type)
 //// ```
 
+import domain/task.{type TaskDependency, TaskDependency}
 import domain/task_status.{
   type TaskStatus, Available, Claimed, Completed, Ongoing, Taken,
 }
@@ -89,6 +90,8 @@ pub fn task_json(task: Task) -> json.Json {
     card_title: card_title,
     card_color: card_color,
     has_new_notes: has_new_notes,
+    blocked_count: blocked_count,
+    dependencies: dependencies,
   ) = task
 
   json.object([
@@ -120,6 +123,24 @@ pub fn task_json(task: Task) -> json.Json {
     #("card_color", option_string_json(card_color)),
     // Story 5.4 AC4: Indicator for unread notes
     #("has_new_notes", json.bool(has_new_notes)),
+    #("blocked_count", json.int(blocked_count)),
+    #("dependencies", json.array(dependencies, of: dependency_json)),
+  ])
+}
+
+pub fn dependency_json(dep: TaskDependency) -> json.Json {
+  let TaskDependency(
+    depends_on_task_id: depends_on_task_id,
+    title: title,
+    status: status,
+    claimed_by: claimed_by,
+  ) = dep
+
+  json.object([
+    #("task_id", json.int(depends_on_task_id)),
+    #("title", json.string(title)),
+    #("status", json.string(status_to_string(status))),
+    #("claimed_by", option_string_json(claimed_by)),
   ])
 }
 

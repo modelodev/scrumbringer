@@ -130,6 +130,15 @@ pub type Text {
   Notes
   AddNote
   NotePlaceholder
+  Dependencies
+  AddDependency
+  NoDependencies
+  NoMatchingTasks
+  TaskDependsOn
+  Blocked
+  BlockedByTasks(count: Int)
+  BlockedTaskTitle
+  BlockedTaskWarning(count: Int)
   EditPosition
   XLabel
   YLabel
@@ -635,6 +644,7 @@ pub type Text {
   TabNotes
   // 5.4.1: Task detail modal
   TabDetails
+  TabDependencies
   Unassigned
   ClaimTask
 }

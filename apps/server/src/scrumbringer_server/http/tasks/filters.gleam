@@ -49,11 +49,13 @@ pub fn parse_task_filters(
   use type_id <- result.try(parse_int_filter(query, "type_id"))
   use capability_id <- result.try(parse_capability_filter(query))
   use q <- result.try(parse_string_filter(query, "q"))
+  use blocked <- result.try(parse_blocked_filter(query))
   Ok(workflow_types.TaskFilters(
     status: status,
     type_id: type_id,
     capability_id: capability_id,
     q: q,
+    blocked: blocked,
   ))
 }
 
@@ -154,6 +156,24 @@ pub fn parse_string_filter(
     Ok(None) -> Ok(None)
     Ok(Some(value)) -> Ok(normalize_optional_string(value))
     Error(_) -> Error(api.error(422, "VALIDATION_ERROR", "Invalid " <> key))
+  }
+}
+
+/// Parse blocked filter: must be "true" or "false".
+fn parse_blocked_filter(
+  query: List(#(String, String)),
+) -> Result(Option(Bool), wisp.Response) {
+  case single_query_value(query, "blocked") {
+    Ok(None) -> Ok(None)
+
+    Ok(Some(value)) ->
+      case value {
+        "true" -> Ok(Some(True))
+        "false" -> Ok(Some(False))
+        _ -> Error(api.error(422, "VALIDATION_ERROR", "Invalid blocked"))
+      }
+
+    Error(_) -> Error(api.error(422, "VALIDATION_ERROR", "Invalid blocked"))
   }
 }
 

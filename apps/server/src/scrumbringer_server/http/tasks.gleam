@@ -27,11 +27,13 @@
 //// - `tasks/tasks_list_create`: task list/create endpoints
 //// - `tasks/tasks_get_patch`: task get/patch endpoints
 //// - `tasks/tasks_transitions`: claim/release/complete endpoints
+//// - `tasks/task_dependencies`: dependencies list/create/delete endpoints
 //// - `tasks/presenters`: JSON serialization functions
 //// - `tasks/filters`: Query parameter parsing
 
 import gleam/http
 import scrumbringer_server/http/auth
+import scrumbringer_server/http/tasks/task_dependencies
 import scrumbringer_server/http/tasks/task_types_handlers
 import scrumbringer_server/http/tasks/tasks_get_patch
 import scrumbringer_server/http/tasks/tasks_list_create
@@ -95,6 +97,30 @@ pub fn handle_task(
     http.Patch -> tasks_get_patch.handle_task_patch(req, ctx, task_id)
     _ -> wisp.method_not_allowed([http.Get, http.Patch])
   }
+}
+
+/// Handle task dependencies routes (GET list, POST create).
+pub fn handle_task_dependencies(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  task_id: String,
+) -> wisp.Response {
+  task_dependencies.handle_task_dependencies(req, ctx, task_id)
+}
+
+/// Handle single task dependency routes (DELETE).
+pub fn handle_task_dependency(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  task_id: String,
+  depends_on_task_id: String,
+) -> wisp.Response {
+  task_dependencies.handle_task_dependency(
+    req,
+    ctx,
+    task_id,
+    depends_on_task_id,
+  )
 }
 
 /// Handle task claim (POST).

@@ -9,6 +9,9 @@ import gleam/http
 import gleam/int
 import gleam/json
 import gleam/option.{None, Some}
+import gleam/result
+import gleam/string
+import gleam/time/timestamp
 import gleeunit/should
 import pog
 import scrumbringer_server
@@ -53,6 +56,7 @@ pub fn workflow_metrics_empty_returns_zero_counters_test() {
 pub fn rule_metrics_returns_correct_counts_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
+  let assert Ok(admin_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let assert Ok(project_id) =
     fixtures.create_project(handler, session, "MetricsCountsTest")
@@ -70,10 +74,33 @@ pub fn rule_metrics_returns_correct_counts_test() {
       "completed",
     )
 
-  insert_execution(db, rule_id, "task", 1, "applied", "")
-  insert_execution(db, rule_id, "task", 2, "applied", "")
-  insert_execution(db, rule_id, "task", 3, "suppressed", "idempotent")
-  insert_execution(db, rule_id, "task", 4, "suppressed", "not_user_triggered")
+  let ts = execution_time()
+  let assert Ok(Nil) =
+    insert_execution(db, rule_id, admin_id, "task", 1, "applied", "", ts)
+  let assert Ok(Nil) =
+    insert_execution(db, rule_id, admin_id, "task", 2, "applied", "", ts)
+  let assert Ok(Nil) =
+    insert_execution(
+      db,
+      rule_id,
+      admin_id,
+      "task",
+      3,
+      "suppressed",
+      "idempotent",
+      ts,
+    )
+  let assert Ok(Nil) =
+    insert_execution(
+      db,
+      rule_id,
+      admin_id,
+      "task",
+      4,
+      "suppressed",
+      "not_user_triggered",
+      ts,
+    )
 
   // Use explicit wide date range to avoid timing issues
   let res =
@@ -97,6 +124,7 @@ pub fn rule_metrics_returns_correct_counts_test() {
 pub fn rule_metrics_suppression_breakdown_is_correct_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
+  let assert Ok(admin_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let assert Ok(project_id) =
     fixtures.create_project(handler, session, "BreakdownTest")
@@ -114,12 +142,73 @@ pub fn rule_metrics_suppression_breakdown_is_correct_test() {
       "done",
     )
 
-  insert_execution(db, rule_id, "task", 1, "suppressed", "idempotent")
-  insert_execution(db, rule_id, "task", 2, "suppressed", "idempotent")
-  insert_execution(db, rule_id, "task", 3, "suppressed", "idempotent")
-  insert_execution(db, rule_id, "task", 4, "suppressed", "not_user_triggered")
-  insert_execution(db, rule_id, "task", 5, "suppressed", "not_matching")
-  insert_execution(db, rule_id, "task", 6, "suppressed", "inactive")
+  let ts = execution_time()
+  let assert Ok(Nil) =
+    insert_execution(
+      db,
+      rule_id,
+      admin_id,
+      "task",
+      1,
+      "suppressed",
+      "idempotent",
+      ts,
+    )
+  let assert Ok(Nil) =
+    insert_execution(
+      db,
+      rule_id,
+      admin_id,
+      "task",
+      2,
+      "suppressed",
+      "idempotent",
+      ts,
+    )
+  let assert Ok(Nil) =
+    insert_execution(
+      db,
+      rule_id,
+      admin_id,
+      "task",
+      3,
+      "suppressed",
+      "idempotent",
+      ts,
+    )
+  let assert Ok(Nil) =
+    insert_execution(
+      db,
+      rule_id,
+      admin_id,
+      "task",
+      4,
+      "suppressed",
+      "not_user_triggered",
+      ts,
+    )
+  let assert Ok(Nil) =
+    insert_execution(
+      db,
+      rule_id,
+      admin_id,
+      "task",
+      5,
+      "suppressed",
+      "not_matching",
+      ts,
+    )
+  let assert Ok(Nil) =
+    insert_execution(
+      db,
+      rule_id,
+      admin_id,
+      "task",
+      6,
+      "suppressed",
+      "inactive",
+      ts,
+    )
 
   let res =
     get_rule_metrics_with_dates(
@@ -143,6 +232,7 @@ pub fn rule_metrics_suppression_breakdown_is_correct_test() {
 pub fn workflow_metrics_aggregates_all_rules_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
+  let assert Ok(admin_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let assert Ok(project_id) =
     fixtures.create_project(handler, session, "AggregationTest")
@@ -174,13 +264,47 @@ pub fn workflow_metrics_aggregates_all_rules_test() {
       "completed",
     )
 
-  insert_execution(db, rule1_id, "task", 1, "applied", "")
-  insert_execution(db, rule1_id, "task", 2, "applied", "")
-  insert_execution(db, rule1_id, "task", 3, "suppressed", "idempotent")
+  let ts = execution_time()
+  let assert Ok(Nil) =
+    insert_execution(db, rule1_id, admin_id, "task", 1, "applied", "", ts)
+  let assert Ok(Nil) =
+    insert_execution(db, rule1_id, admin_id, "task", 2, "applied", "", ts)
+  let assert Ok(Nil) =
+    insert_execution(
+      db,
+      rule1_id,
+      admin_id,
+      "task",
+      3,
+      "suppressed",
+      "idempotent",
+      ts,
+    )
 
-  insert_execution(db, rule2_id, "task", 4, "applied", "")
-  insert_execution(db, rule2_id, "task", 5, "suppressed", "not_user_triggered")
-  insert_execution(db, rule2_id, "task", 6, "suppressed", "not_matching")
+  let assert Ok(Nil) =
+    insert_execution(db, rule2_id, admin_id, "task", 4, "applied", "", ts)
+  let assert Ok(Nil) =
+    insert_execution(
+      db,
+      rule2_id,
+      admin_id,
+      "task",
+      5,
+      "suppressed",
+      "not_user_triggered",
+      ts,
+    )
+  let assert Ok(Nil) =
+    insert_execution(
+      db,
+      rule2_id,
+      admin_id,
+      "task",
+      6,
+      "suppressed",
+      "not_matching",
+      ts,
+    )
 
   let res =
     get_workflow_metrics_with_dates(
@@ -207,6 +331,7 @@ pub fn workflow_metrics_aggregates_all_rules_test() {
 pub fn executions_list_returns_paginated_results_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
+  let assert Ok(admin_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let assert Ok(project_id) =
     fixtures.create_project(handler, session, "ExecutionsTest")
@@ -229,11 +354,35 @@ pub fn executions_list_returns_paginated_results_test() {
       "done",
     )
 
-  insert_execution(db, rule_id, "task", 1, "applied", "")
-  insert_execution(db, rule_id, "task", 2, "applied", "")
-  insert_execution(db, rule_id, "task", 3, "suppressed", "idempotent")
-  insert_execution(db, rule_id, "task", 4, "applied", "")
-  insert_execution(db, rule_id, "task", 5, "suppressed", "not_user_triggered")
+  let ts = execution_time()
+  let assert Ok(Nil) =
+    insert_execution(db, rule_id, admin_id, "task", 1, "applied", "", ts)
+  let assert Ok(Nil) =
+    insert_execution(db, rule_id, admin_id, "task", 2, "applied", "", ts)
+  let assert Ok(Nil) =
+    insert_execution(
+      db,
+      rule_id,
+      admin_id,
+      "task",
+      3,
+      "suppressed",
+      "idempotent",
+      ts,
+    )
+  let assert Ok(Nil) =
+    insert_execution(db, rule_id, admin_id, "task", 4, "applied", "", ts)
+  let assert Ok(Nil) =
+    insert_execution(
+      db,
+      rule_id,
+      admin_id,
+      "task",
+      5,
+      "suppressed",
+      "not_user_triggered",
+      ts,
+    )
 
   let res =
     get_rule_executions_with_dates(
@@ -470,28 +619,36 @@ fn get_org_metrics(handler, session) {
 // Database Helpers
 // =============================================================================
 
+fn execution_time() -> timestamp.Timestamp {
+  let assert Ok(ts) = timestamp.parse_rfc3339("2026-01-15T12:00:00Z")
+  ts
+}
+
 fn insert_execution(
   db: pog.Connection,
   rule_id: Int,
+  user_id: Int,
   origin_type: String,
   origin_id: Int,
   outcome: String,
   suppression_reason: String,
-) {
+  created_at: timestamp.Timestamp,
+) -> Result(Nil, String) {
   let sql =
-    "INSERT INTO rule_executions (rule_id, origin_type, origin_id, outcome, suppression_reason, user_id) "
-    <> "VALUES ($1, $2, $3, $4, NULLIF($5, ''), 1)"
+    "INSERT INTO rule_executions (rule_id, origin_type, origin_id, outcome, suppression_reason, user_id, created_at) "
+    <> "VALUES ($1, $2, $3, $4, NULLIF($5, ''), $6, $7)"
 
-  let _ =
-    pog.query(sql)
-    |> pog.parameter(pog.int(rule_id))
-    |> pog.parameter(pog.text(origin_type))
-    |> pog.parameter(pog.int(origin_id))
-    |> pog.parameter(pog.text(outcome))
-    |> pog.parameter(pog.text(suppression_reason))
-    |> pog.execute(db)
-
-  Nil
+  pog.query(sql)
+  |> pog.parameter(pog.int(rule_id))
+  |> pog.parameter(pog.text(origin_type))
+  |> pog.parameter(pog.int(origin_id))
+  |> pog.parameter(pog.text(outcome))
+  |> pog.parameter(pog.text(suppression_reason))
+  |> pog.parameter(pog.int(user_id))
+  |> pog.parameter(pog.timestamp(created_at))
+  |> pog.execute(db)
+  |> result.map(fn(_) { Nil })
+  |> result.map_error(fn(e) { "insert_execution failed: " <> string.inspect(e) })
 }
 
 // =============================================================================

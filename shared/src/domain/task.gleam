@@ -41,6 +41,8 @@ import gleam/option.{type Option}
 ///   completed_at: None,
 ///   created_at: "2024-01-17T12:00:00Z",
 ///   version: 1,
+///   blocked_count: 0,
+///   dependencies: [],
 /// )
 /// ```
 pub type Task {
@@ -67,6 +69,31 @@ pub type Task {
     card_color: Option(String),
     /// Story 5.4 AC4: True if task has notes newer than user's last view.
     has_new_notes: Bool,
+    /// Story 5.6: Number of incomplete dependencies blocking this task.
+    blocked_count: Int,
+    /// Story 5.6: Dependencies blocking this task.
+    dependencies: List(TaskDependency),
+  )
+}
+
+/// A dependency entry for a task.
+///
+/// ## Example
+///
+/// ```gleam
+/// TaskDependency(
+///   depends_on_task_id: 12,
+///   title: "Configure OAuth",
+///   status: Claimed(Taken),
+///   claimed_by: Some("alice@example.com"),
+/// )
+/// ```
+pub type TaskDependency {
+  TaskDependency(
+    depends_on_task_id: Int,
+    title: String,
+    status: TaskStatus,
+    claimed_by: Option(String),
   )
 }
 
@@ -158,7 +185,7 @@ pub type WorkSessionsPayload {
 /// ## Example
 ///
 /// ```gleam
-/// TaskFilters(status: Some("available"), type_id: None, capability_id: Some(1), q: None)
+/// TaskFilters(status: Some("available"), type_id: None, capability_id: Some(1), q: None, blocked: None)
 /// ```
 pub type TaskFilters {
   TaskFilters(
@@ -166,5 +193,6 @@ pub type TaskFilters {
     type_id: Option(Int),
     capability_id: Option(Int),
     q: Option(String),
+    blocked: Option(Bool),
   )
 }

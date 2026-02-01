@@ -65,6 +65,8 @@ fn sample_task(
     card_title: Some("Sprint"),
     card_color: Some("blue"),
     has_new_notes: False,
+    blocked_count: 0,
+    dependencies: [],
   )
 }
 

@@ -21,9 +21,9 @@ import gleam/option
 import scrumbringer_client/api/core.{optional_field}
 
 import domain/task.{
-  type Task, type TaskNote, type TaskPosition, type WorkSession,
-  type WorkSessionsPayload, Task, TaskNote, TaskPosition, WorkSession,
-  WorkSessionsPayload,
+  type Task, type TaskDependency, type TaskNote, type TaskPosition,
+  type WorkSession, type WorkSessionsPayload, Task, TaskDependency, TaskNote,
+  TaskPosition, WorkSession, WorkSessionsPayload,
 }
 import domain/task_status.{
   type OngoingBy, type WorkState, Available, OngoingBy, WorkAvailable,
@@ -143,6 +143,14 @@ pub fn task_decoder() -> decode.Decoder(Task) {
     decode.bool,
   )
 
+  // Story 5.6: blocked count + dependencies list
+  use blocked_count <- decode.optional_field("blocked_count", 0, decode.int)
+  use dependencies <- decode.optional_field(
+    "dependencies",
+    [],
+    decode.list(task_dependency_decoder()),
+  )
+
   decode.success(Task(
     id: id,
     project_id: project_id,
@@ -164,6 +172,27 @@ pub fn task_decoder() -> decode.Decoder(Task) {
     card_title: card_title,
     card_color: card_color,
     has_new_notes: has_new_notes,
+    blocked_count: blocked_count,
+    dependencies: dependencies,
+  ))
+}
+
+/// Decoder for TaskDependency.
+pub fn task_dependency_decoder() -> decode.Decoder(TaskDependency) {
+  use depends_on_task_id <- decode.field("task_id", decode.int)
+  use title <- decode.field("title", decode.string)
+  use status_raw <- decode.field("status", decode.string)
+  let status = case parse_task_status(status_raw) {
+    Ok(s) -> s
+    Error(_) -> Available
+  }
+  use claimed_by <- optional_field("claimed_by", decode.string)
+
+  decode.success(TaskDependency(
+    depends_on_task_id: depends_on_task_id,
+    title: title,
+    status: status,
+    claimed_by: claimed_by,
   ))
 }
 

@@ -77,6 +77,8 @@ fn claimed_task() -> Task {
     card_title: Some("Sprint"),
     card_color: Some("blue"),
     has_new_notes: False,
+    blocked_count: 0,
+    dependencies: [],
   )
 }
 
@@ -102,6 +104,8 @@ fn available_task() -> Task {
     card_title: Some("Sprint"),
     card_color: Some("blue"),
     has_new_notes: False,
+    blocked_count: 0,
+    dependencies: [],
   )
 }
 

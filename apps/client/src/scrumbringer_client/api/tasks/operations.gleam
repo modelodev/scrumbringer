@@ -61,6 +61,25 @@ fn add_param_int(
   }
 }
 
+fn add_param_bool(
+  existing: String,
+  key: String,
+  value: option.Option(Bool),
+) -> String {
+  case value {
+    option.None -> existing
+    option.Some(v) ->
+      existing
+      <> append_query(existing)
+      <> key
+      <> "="
+      <> case v {
+        True -> "true"
+        False -> "false"
+      }
+  }
+}
+
 fn append_query(existing: String) -> String {
   case string.contains(existing, "?") {
     True -> "&"
@@ -75,6 +94,7 @@ pub fn project_tasks_url(project_id: Int, filters: TaskFilters) -> String {
     type_id: type_id,
     capability_id: capability_id,
     q: q,
+    blocked: blocked,
   ) = filters
 
   let params =
@@ -83,6 +103,7 @@ pub fn project_tasks_url(project_id: Int, filters: TaskFilters) -> String {
     |> add_param_int("type_id", type_id)
     |> add_param_int("capability_id", capability_id)
     |> add_param_string("q", q)
+    |> add_param_bool("blocked", blocked)
 
   "/api/v1/projects/" <> int.to_string(project_id) <> "/tasks" <> params
 }

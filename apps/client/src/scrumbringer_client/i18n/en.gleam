@@ -142,6 +142,17 @@ pub fn translate(text: Text) -> String {
     text.Notes -> "Notes"
     text.AddNote -> "Add note"
     text.NotePlaceholder -> "Write a note..."
+    text.Dependencies -> "Dependencies"
+    text.AddDependency -> "Add dependency"
+    text.NoDependencies -> "No dependencies"
+    text.NoMatchingTasks -> "No matching tasks"
+    text.TaskDependsOn -> "This task depends on"
+    text.Blocked -> "Blocked"
+    text.BlockedByTasks(count) ->
+      "Blocked by " <> int.to_string(count) <> " tasks"
+    text.BlockedTaskTitle -> "Blocked task"
+    text.BlockedTaskWarning(count) ->
+      "This task depends on " <> int.to_string(count) <> " incomplete tasks."
     text.EditPosition -> "Edit position"
     text.XLabel -> "x"
     text.YLabel -> "y"
@@ -722,6 +733,7 @@ pub fn translate(text: Text) -> String {
     text.TabNotes -> "Notes"
     // 5.4.1: Task detail modal
     text.TabDetails -> "Details"
+    text.TabDependencies -> "Dependencies"
     text.Unassigned -> "Unassigned"
     text.ClaimTask -> "Claim task"
   }

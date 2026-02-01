@@ -49,13 +49,17 @@ import scrumbringer_client/api/tasks as api_tasks
 
 // Domain types
 import domain/api_error.{type ApiError}
-import domain/task.{type Task, type TaskNote, Task}
+import domain/task.{
+  type Task, type TaskDependency, type TaskNote, Task, TaskFilters,
+}
 import domain/task_status.{Available, Claimed, Completed, Taken}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, Loading, MemberModel, MemberNoteAdded,
-  MemberNotesFetched, MemberTaskClaimed, MemberTaskCompleted, MemberTaskCreated,
-  MemberTaskReleased, MemberWorkSessionsFetched, NotAsked, pool_msg,
-  update_member,
+  type Model, type Msg, type Remote, Failed, Loaded, Loading,
+  MemberDependenciesFetched, MemberDependencyAdded,
+  MemberDependencyCandidatesFetched, MemberDependencyRemoved, MemberModel,
+  MemberNoteAdded, MemberNotesFetched, MemberTaskClaimed, MemberTaskCompleted,
+  MemberTaskCreated, MemberTaskReleased, MemberWorkSessionsFetched, NotAsked,
+  pool_msg, update_member,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/task_tabs
@@ -416,29 +420,71 @@ pub fn handle_claim_clicked(
 ) -> #(Model, Effect(Msg)) {
   case model.member.member_task_mutation_in_flight {
     True -> #(model, effect.none())
-    False -> {
-      // 1. Snapshot current tasks
-      let snapshot = get_tasks_snapshot(model)
-      // 2. Apply optimistic update: mark task as claimed
-      let model = apply_optimistic_claim(model, task_id)
-      // 3. Set in-flight state with snapshot
-      let model =
-        update_member(model, fn(member) {
-          MemberModel(
-            ..member,
-            member_task_mutation_in_flight: True,
-            member_task_mutation_task_id: opt.Some(task_id),
-            member_tasks_snapshot: snapshot,
-          )
-        })
+    False ->
+      case update_helpers.find_task_by_id(model.member.member_tasks, task_id) {
+        opt.Some(Task(blocked_count: blocked_count, ..)) if blocked_count > 0 -> #(
+          update_member(model, fn(member) {
+            MemberModel(
+              ..member,
+              member_blocked_claim_task: opt.Some(#(task_id, version)),
+            )
+          }),
+          effect.none(),
+        )
+        _ -> submit_claim(model, task_id, version)
+      }
+  }
+}
+
+pub fn handle_blocked_claim_cancelled(model: Model) -> #(Model, Effect(Msg)) {
+  #(
+    update_member(model, fn(member) {
+      MemberModel(..member, member_blocked_claim_task: opt.None)
+    }),
+    effect.none(),
+  )
+}
+
+pub fn handle_blocked_claim_confirmed(model: Model) -> #(Model, Effect(Msg)) {
+  case model.member.member_blocked_claim_task {
+    opt.None -> #(model, effect.none())
+    opt.Some(#(task_id, version)) -> {
+      let #(model, fx) = submit_claim(model, task_id, version)
       #(
-        model,
-        api_tasks.claim_task(task_id, version, fn(result) {
-          pool_msg(MemberTaskClaimed(result))
+        update_member(model, fn(member) {
+          MemberModel(..member, member_blocked_claim_task: opt.None)
         }),
+        fx,
       )
     }
   }
+}
+
+fn submit_claim(
+  model: Model,
+  task_id: Int,
+  version: Int,
+) -> #(Model, Effect(Msg)) {
+  // 1. Snapshot current tasks
+  let snapshot = get_tasks_snapshot(model)
+  // 2. Apply optimistic update: mark task as claimed
+  let model = apply_optimistic_claim(model, task_id)
+  // 3. Set in-flight state with snapshot
+  let model =
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_task_mutation_in_flight: True,
+        member_task_mutation_task_id: opt.Some(task_id),
+        member_tasks_snapshot: snapshot,
+      )
+    })
+  #(
+    model,
+    api_tasks.claim_task(task_id, version, fn(result) {
+      pool_msg(MemberTaskClaimed(result))
+    }),
+  )
 }
 
 /// Handle release button click with optimistic update.
@@ -739,19 +785,30 @@ pub fn handle_task_details_opened(
   model: Model,
   task_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  #(
+  let next_model =
     update_member(model, fn(member) {
       MemberModel(
         ..member,
         member_notes_task_id: opt.Some(task_id),
         member_notes: Loading,
         member_note_error: opt.None,
+        member_dependencies: Loading,
+        member_dependency_add_error: opt.None,
+        member_dependency_remove_in_flight: opt.None,
       )
-    }),
+    })
+
+  let notes_fx =
     api_tasks.list_task_notes(task_id, fn(result) {
       pool_msg(MemberNotesFetched(result))
-    }),
-  )
+    })
+
+  let deps_fx =
+    api_tasks.list_task_dependencies(task_id, fn(result) {
+      pool_msg(MemberDependenciesFetched(result))
+    })
+
+  #(next_model, effect.batch([notes_fx, deps_fx]))
 }
 
 /// Close task details dialog.
@@ -764,6 +821,14 @@ pub fn handle_task_details_closed(model: Model) -> #(Model, Effect(Msg)) {
         member_notes: NotAsked,
         member_note_content: "",
         member_note_error: opt.None,
+        member_dependencies: NotAsked,
+        member_dependency_dialog_open: False,
+        member_dependency_search_query: "",
+        member_dependency_candidates: NotAsked,
+        member_dependency_selected_task_id: opt.None,
+        member_dependency_add_in_flight: False,
+        member_dependency_add_error: opt.None,
+        member_dependency_remove_in_flight: opt.None,
       )
     }),
     effect.none(),
@@ -965,4 +1030,375 @@ pub fn handle_note_added_error(
       opt.None -> #(model, effect.none())
     }
   })
+}
+
+// =============================================================================
+// Task Dependencies Handlers
+// =============================================================================
+
+pub fn handle_dependencies_fetched_ok(
+  model: Model,
+  deps: List(TaskDependency),
+) -> #(Model, Effect(Msg)) {
+  #(
+    update_member(model, fn(member) {
+      MemberModel(..member, member_dependencies: Loaded(deps))
+    }),
+    effect.none(),
+  )
+}
+
+pub fn handle_dependencies_fetched_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
+      update_member(model, fn(member) {
+        MemberModel(..member, member_dependencies: Failed(err))
+      }),
+      effect.none(),
+    )
+  })
+}
+
+pub fn handle_dependency_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
+  case model.member.member_notes_task_id {
+    opt.None -> #(model, effect.none())
+    opt.Some(task_id) ->
+      case update_helpers.find_task_by_id(model.member.member_tasks, task_id) {
+        opt.None -> #(model, effect.none())
+        opt.Some(task) -> {
+          let model =
+            update_member(model, fn(member) {
+              MemberModel(
+                ..member,
+                member_dependency_dialog_open: True,
+                member_dependency_search_query: "",
+                member_dependency_candidates: Loading,
+                member_dependency_selected_task_id: opt.None,
+                member_dependency_add_error: opt.None,
+              )
+            })
+          let filters =
+            TaskFilters(
+              status: opt.None,
+              type_id: opt.None,
+              capability_id: opt.None,
+              q: opt.None,
+              blocked: opt.None,
+            )
+          #(
+            model,
+            api_tasks.list_project_tasks(task.project_id, filters, fn(result) {
+              pool_msg(MemberDependencyCandidatesFetched(result))
+            }),
+          )
+        }
+      }
+  }
+}
+
+pub fn handle_dependency_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
+  #(
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_dependency_dialog_open: False,
+        member_dependency_search_query: "",
+        member_dependency_candidates: NotAsked,
+        member_dependency_selected_task_id: opt.None,
+        member_dependency_add_error: opt.None,
+      )
+    }),
+    effect.none(),
+  )
+}
+
+pub fn handle_dependency_search_changed(
+  model: Model,
+  value: String,
+) -> #(Model, Effect(Msg)) {
+  #(
+    update_member(model, fn(member) {
+      MemberModel(..member, member_dependency_search_query: value)
+    }),
+    effect.none(),
+  )
+}
+
+pub fn handle_dependency_candidates_fetched_ok(
+  model: Model,
+  tasks: List(Task),
+) -> #(Model, Effect(Msg)) {
+  #(
+    update_member(model, fn(member) {
+      MemberModel(..member, member_dependency_candidates: Loaded(tasks))
+    }),
+    effect.none(),
+  )
+}
+
+pub fn handle_dependency_candidates_fetched_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
+      update_member(model, fn(member) {
+        MemberModel(..member, member_dependency_candidates: Failed(err))
+      }),
+      effect.none(),
+    )
+  })
+}
+
+pub fn handle_dependency_selected(
+  model: Model,
+  task_id: Int,
+) -> #(Model, Effect(Msg)) {
+  #(
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_dependency_selected_task_id: opt.Some(task_id),
+      )
+    }),
+    effect.none(),
+  )
+}
+
+pub fn handle_dependency_add_submitted(model: Model) -> #(Model, Effect(Msg)) {
+  case model.member.member_dependency_add_in_flight {
+    True -> #(model, effect.none())
+    False -> submit_dependency_add(model)
+  }
+}
+
+fn submit_dependency_add(model: Model) -> #(Model, Effect(Msg)) {
+  case
+    model.member.member_notes_task_id,
+    model.member.member_dependency_selected_task_id
+  {
+    opt.Some(task_id), opt.Some(depends_on_task_id) ->
+      submit_dependency_add_for_task(model, task_id, depends_on_task_id)
+    _, _ -> #(model, effect.none())
+  }
+}
+
+fn submit_dependency_add_for_task(
+  model: Model,
+  task_id: Int,
+  depends_on_task_id: Int,
+) -> #(Model, Effect(Msg)) {
+  let model =
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_dependency_add_in_flight: True,
+        member_dependency_add_error: opt.None,
+      )
+    })
+  #(
+    model,
+    api_tasks.add_task_dependency(task_id, depends_on_task_id, fn(result) {
+      pool_msg(MemberDependencyAdded(result))
+    }),
+  )
+}
+
+pub fn handle_dependency_added_ok(
+  model: Model,
+  dep: TaskDependency,
+) -> #(Model, Effect(Msg)) {
+  let updated = add_dependency_to_state(model, dep)
+  let model =
+    update_member(updated, fn(member) {
+      MemberModel(
+        ..member,
+        member_dependency_add_in_flight: False,
+        member_dependency_dialog_open: False,
+        member_dependency_search_query: "",
+        member_dependency_selected_task_id: opt.None,
+        member_dependency_add_error: opt.None,
+      )
+    })
+  #(model, effect.none())
+}
+
+pub fn handle_dependency_added_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
+      update_member(model, fn(member) {
+        MemberModel(
+          ..member,
+          member_dependency_add_in_flight: False,
+          member_dependency_add_error: opt.Some(err.message),
+        )
+      }),
+      effect.none(),
+    )
+  })
+}
+
+pub fn handle_dependency_remove_clicked(
+  model: Model,
+  depends_on_task_id: Int,
+) -> #(Model, Effect(Msg)) {
+  case model.member.member_dependency_remove_in_flight {
+    opt.Some(_) -> #(model, effect.none())
+    opt.None ->
+      case model.member.member_notes_task_id {
+        opt.None -> #(model, effect.none())
+        opt.Some(task_id) -> #(
+          update_member(model, fn(member) {
+            MemberModel(
+              ..member,
+              member_dependency_remove_in_flight: opt.Some(depends_on_task_id),
+            )
+          }),
+          api_tasks.delete_task_dependency(
+            task_id,
+            depends_on_task_id,
+            fn(result) {
+              pool_msg(MemberDependencyRemoved(depends_on_task_id, result))
+            },
+          ),
+        )
+      }
+  }
+}
+
+pub fn handle_dependency_removed_ok(
+  model: Model,
+  depends_on_task_id: Int,
+) -> #(Model, Effect(Msg)) {
+  let updated = remove_dependency_from_state(model, depends_on_task_id)
+  #(
+    update_member(updated, fn(member) {
+      MemberModel(..member, member_dependency_remove_in_flight: opt.None)
+    }),
+    effect.none(),
+  )
+}
+
+pub fn handle_dependency_removed_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
+      update_member(model, fn(member) {
+        MemberModel(..member, member_dependency_remove_in_flight: opt.None)
+      }),
+      update_helpers.toast_error(err.message),
+    )
+  })
+}
+
+fn add_dependency_to_state(model: Model, dep: TaskDependency) -> Model {
+  case model.member.member_notes_task_id {
+    opt.None -> model
+    opt.Some(task_id) ->
+      update_member(model, fn(member) {
+        let updated_deps = case member.member_dependencies {
+          Loaded(list) -> Loaded([dep, ..list])
+          _ -> Loaded([dep])
+        }
+        let blocked_delta = case dep.status {
+          Completed -> 0
+          _ -> 1
+        }
+        let updated_tasks = case member.member_tasks {
+          Loaded(tasks) ->
+            Loaded(
+              list.map(tasks, fn(t) {
+                case t.id == task_id {
+                  True ->
+                    Task(
+                      ..t,
+                      dependencies: [dep, ..t.dependencies],
+                      blocked_count: t.blocked_count + blocked_delta,
+                    )
+                  False -> t
+                }
+              }),
+            )
+          _ -> member.member_tasks
+        }
+        MemberModel(
+          ..member,
+          member_dependencies: updated_deps,
+          member_tasks: updated_tasks,
+        )
+      })
+  }
+}
+
+fn remove_dependency_from_state(model: Model, depends_on_task_id: Int) -> Model {
+  case model.member.member_notes_task_id {
+    opt.None -> model
+    opt.Some(task_id) ->
+      update_member(model, fn(member) {
+        let #(updated_deps, blocked_delta) =
+          remove_dependency_from_list(
+            member.member_dependencies,
+            depends_on_task_id,
+          )
+        let updated_tasks = case member.member_tasks {
+          Loaded(tasks) ->
+            Loaded(
+              list.map(tasks, fn(t) {
+                case t.id == task_id {
+                  True ->
+                    Task(
+                      ..t,
+                      dependencies: list.filter(t.dependencies, fn(dep) {
+                        dep.depends_on_task_id != depends_on_task_id
+                      }),
+                      blocked_count: case t.blocked_count - blocked_delta {
+                        n if n < 0 -> 0
+                        n -> n
+                      },
+                    )
+                  False -> t
+                }
+              }),
+            )
+          _ -> member.member_tasks
+        }
+        MemberModel(
+          ..member,
+          member_dependencies: updated_deps,
+          member_tasks: updated_tasks,
+        )
+      })
+  }
+}
+
+fn remove_dependency_from_list(
+  deps_remote: Remote(List(TaskDependency)),
+  depends_on_task_id: Int,
+) -> #(Remote(List(TaskDependency)), Int) {
+  case deps_remote {
+    Loaded(deps) -> {
+      let #(remaining, removed_status) =
+        list.fold(deps, #([], opt.None), fn(acc, dep) {
+          let #(items, status_opt) = acc
+          case dep.depends_on_task_id == depends_on_task_id {
+            True -> #(items, opt.Some(dep.status))
+            False -> #([dep, ..items], status_opt)
+          }
+        })
+      let blocked_delta = case removed_status {
+        opt.Some(Completed) | opt.None -> 0
+        opt.Some(_) -> 1
+      }
+      #(Loaded(list.reverse(remaining)), blocked_delta)
+    }
+    _ -> #(deps_remote, 0)
+  }
 }

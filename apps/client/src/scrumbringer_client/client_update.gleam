@@ -476,8 +476,7 @@ fn build_snapshot(model: client_state.Model) -> hydration.Snapshot {
 /// ```gleam
 /// let #(model, effects) = hydrate_model(model)
 /// ```
-// Justification: large function kept intact to preserve cohesive UI logic.
-
+/// Justification: large function kept intact to preserve cohesive UI logic.
 fn hydrate_model(
   model: client_state.Model,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
@@ -1599,6 +1598,7 @@ fn fetch_right_panel_data(
             type_id: opt.None,
             capability_id: opt.None,
             q: opt.None,
+            blocked: opt.None,
           ),
           fn(result) {
             client_state.pool_msg(client_state.MemberProjectTasksFetched(
@@ -1651,8 +1651,7 @@ fn fetch_right_panel_data(
 ///
 /// The batched fetching logic and state updates are tightly coupled
 /// and splitting would complicate the refresh coordination.
-// Justification: large function kept intact to preserve cohesive UI logic.
-
+/// Justification: large function kept intact to preserve cohesive UI logic.
 fn member_refresh(
   model: client_state.Model,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
@@ -1832,6 +1831,7 @@ fn task_filters_for_member_section(model: client_state.Model) -> TaskFilters {
         type_id: opt.None,
         capability_id: opt.None,
         q: opt.None,
+        blocked: opt.None,
       )
 
     member_section.Pool ->
@@ -1844,6 +1844,7 @@ fn task_filters_for_member_section(model: client_state.Model) -> TaskFilters {
           model.member.member_filters_capability_id,
         ),
         q: update_helpers.empty_to_opt(model.member.member_filters_q),
+        blocked: opt.None,
       )
 
     _ ->
@@ -1856,6 +1857,7 @@ fn task_filters_for_member_section(model: client_state.Model) -> TaskFilters {
           model.member.member_filters_capability_id,
         ),
         q: update_helpers.empty_to_opt(model.member.member_filters_q),
+        blocked: opt.None,
       )
   }
 }

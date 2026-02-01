@@ -891,6 +891,11 @@ pub fn handle_pool(
     client_state.MemberCompleteClicked(task_id, version) ->
       tasks_workflow.handle_complete_clicked(model, task_id, version)
 
+    client_state.MemberBlockedClaimCancelled ->
+      tasks_workflow.handle_blocked_claim_cancelled(model)
+    client_state.MemberBlockedClaimConfirmed ->
+      tasks_workflow.handle_blocked_claim_confirmed(model)
+
     client_state.MemberTaskClaimed(Ok(_)) ->
       tasks_workflow.handle_task_claimed_ok(model, member_refresh)
     client_state.MemberTaskReleased(Ok(_)) ->
@@ -1060,6 +1065,36 @@ pub fn handle_pool(
 
     client_state.MemberTaskDetailTabClicked(tab) ->
       tasks_workflow.handle_task_detail_tab_clicked(model, tab)
+
+    client_state.MemberDependenciesFetched(Ok(deps)) ->
+      tasks_workflow.handle_dependencies_fetched_ok(model, deps)
+    client_state.MemberDependenciesFetched(Error(err)) ->
+      tasks_workflow.handle_dependencies_fetched_error(model, err)
+
+    client_state.MemberDependencyDialogOpened ->
+      tasks_workflow.handle_dependency_dialog_opened(model)
+    client_state.MemberDependencyDialogClosed ->
+      tasks_workflow.handle_dependency_dialog_closed(model)
+    client_state.MemberDependencySearchChanged(value) ->
+      tasks_workflow.handle_dependency_search_changed(model, value)
+    client_state.MemberDependencyCandidatesFetched(Ok(tasks)) ->
+      tasks_workflow.handle_dependency_candidates_fetched_ok(model, tasks)
+    client_state.MemberDependencyCandidatesFetched(Error(err)) ->
+      tasks_workflow.handle_dependency_candidates_fetched_error(model, err)
+    client_state.MemberDependencySelected(task_id) ->
+      tasks_workflow.handle_dependency_selected(model, task_id)
+    client_state.MemberDependencyAddSubmitted ->
+      tasks_workflow.handle_dependency_add_submitted(model)
+    client_state.MemberDependencyAdded(Ok(dep)) ->
+      tasks_workflow.handle_dependency_added_ok(model, dep)
+    client_state.MemberDependencyAdded(Error(err)) ->
+      tasks_workflow.handle_dependency_added_error(model, err)
+    client_state.MemberDependencyRemoveClicked(depends_on_task_id) ->
+      tasks_workflow.handle_dependency_remove_clicked(model, depends_on_task_id)
+    client_state.MemberDependencyRemoved(depends_on_task_id, Ok(_)) ->
+      tasks_workflow.handle_dependency_removed_ok(model, depends_on_task_id)
+    client_state.MemberDependencyRemoved(_depends_on_task_id, Error(err)) ->
+      tasks_workflow.handle_dependency_removed_error(model, err)
 
     client_state.MemberNotesFetched(Ok(notes)) ->
       tasks_workflow.handle_notes_fetched_ok(model, notes)
