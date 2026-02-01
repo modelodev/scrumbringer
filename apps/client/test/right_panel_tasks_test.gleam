@@ -6,6 +6,7 @@ import gleam/string
 import gleeunit/should
 import lustre/element
 
+import scrumbringer_client/client_state
 import scrumbringer_client/features/layout/right_panel
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/theme
@@ -17,6 +18,7 @@ fn base_config(
 ) -> right_panel.RightPanelConfig(Int) {
   right_panel.RightPanelConfig(
     locale: i18n_locale.En,
+    model: client_state.default_model(),
     user: None,
     my_tasks: my_tasks,
     my_cards: my_cards,

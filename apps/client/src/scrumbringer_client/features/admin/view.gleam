@@ -33,7 +33,7 @@ import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{
-  button, div, form, h2, h3, img, input, label, option, p, select, span, text,
+  button, div, form, h2, img, input, label, option, p, select, span, text,
 }
 import lustre/event
 
@@ -663,6 +663,7 @@ fn view_capability_members_dialog(
   capability_id: Int,
   project_name: String,
 ) -> Element(Msg) {
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
   // Get capability name for display
   let capability_name = case model.admin.capabilities {
     Loaded(caps) ->
@@ -679,105 +680,96 @@ fn view_capability_members_dialog(
     _ -> []
   }
 
-  div([attribute.class("modal")], [
-    div([attribute.class("modal-content members-dialog")], [
-      h3([], [
-        text(update_helpers.i18n_t(
-          model,
-          i18n_text.MembersForCapability(capability_name, project_name),
-        )),
-      ]),
-      // Error display
-      case model.admin.capability_members_error {
-        opt.Some(err) -> error_notice.view(err)
-        opt.None -> element.none()
-      },
-      // Loading state
-      case model.admin.capability_members_loading {
-        True ->
-          div([attribute.class("loading")], [
-            text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
-          ])
-        False ->
-          // Members checkbox list (AC17)
-          case members {
-            [] ->
-              div([attribute.class("empty")], [
-                text(update_helpers.i18n_t(model, i18n_text.NoMembersDefined)),
-              ])
-            _ ->
-              div(
-                [
-                  attribute.class("members-checklist"),
-                  attribute.attribute("data-testid", "members-checklist"),
-                ],
-                list.map(members, fn(member) {
-                  // Get member email from cache
-                  let email = case
-                    update_helpers.resolve_org_user(
-                      model.admin.org_users_cache,
-                      member.user_id,
-                    )
-                  {
-                    opt.Some(user) -> user.email
-                    opt.None ->
-                      update_helpers.i18n_t(
-                        model,
-                        i18n_text.UserNumber(member.user_id),
+  dialog.view(
+    dialog.DialogConfig(
+      title: t(i18n_text.MembersForCapability(capability_name, project_name)),
+      icon: opt.None,
+      size: dialog.DialogMd,
+      on_close: admin_msg(CapabilityMembersDialogClosed),
+    ),
+    True,
+    model.admin.capability_members_error,
+    [
+      div([attribute.class("members-dialog")], [
+        case model.admin.capability_members_loading {
+          True ->
+            div([attribute.class("loading")], [
+              text(t(i18n_text.LoadingEllipsis)),
+            ])
+          False ->
+            // Members checkbox list (AC17)
+            case members {
+              [] ->
+                div([attribute.class("empty")], [
+                  text(t(i18n_text.NoMembersDefined)),
+                ])
+              _ ->
+                div(
+                  [
+                    attribute.class("members-checklist"),
+                    attribute.attribute("data-testid", "members-checklist"),
+                  ],
+                  list.map(members, fn(member) {
+                    // Get member email from cache
+                    let email = case
+                      update_helpers.resolve_org_user(
+                        model.admin.org_users_cache,
+                        member.user_id,
                       )
-                  }
-                  let is_selected =
-                    list.contains(
-                      model.admin.capability_members_selected,
-                      member.user_id,
+                    {
+                      opt.Some(user) -> user.email
+                      opt.None -> t(i18n_text.UserNumber(member.user_id))
+                    }
+                    let is_selected =
+                      list.contains(
+                        model.admin.capability_members_selected,
+                        member.user_id,
+                      )
+                    label(
+                      [
+                        attribute.class("checkbox-label"),
+                        attribute.attribute(
+                          "data-member-id",
+                          int.to_string(member.user_id),
+                        ),
+                      ],
+                      [
+                        input([
+                          attribute.type_("checkbox"),
+                          attribute.checked(is_selected),
+                          event.on_check(fn(_) {
+                            admin_msg(CapabilityMembersToggled(member.user_id))
+                          }),
+                        ]),
+                        span([attribute.class("member-email")], [text(email)]),
+                      ],
                     )
-                  label(
-                    [
-                      attribute.class("checkbox-label"),
-                      attribute.attribute(
-                        "data-member-id",
-                        int.to_string(member.user_id),
-                      ),
-                    ],
-                    [
-                      input([
-                        attribute.type_("checkbox"),
-                        attribute.checked(is_selected),
-                        event.on_check(fn(_) {
-                          admin_msg(CapabilityMembersToggled(member.user_id))
-                        }),
-                      ]),
-                      span([attribute.class("member-email")], [text(email)]),
-                    ],
-                  )
-                }),
-              )
-          }
-      },
-      // Actions
-      div([attribute.class("actions")], [
-        button([event.on_click(admin_msg(CapabilityMembersDialogClosed))], [
-          text(update_helpers.i18n_t(model, i18n_text.Cancel)),
-        ]),
-        button(
-          [
-            attribute.class("btn-primary"),
-            event.on_click(admin_msg(CapabilityMembersSaveClicked)),
-            attribute.disabled(
-              model.admin.capability_members_saving
-              || model.admin.capability_members_loading,
-            ),
-          ],
-          [
-            text(case model.admin.capability_members_saving {
-              True -> update_helpers.i18n_t(model, i18n_text.Saving)
-              False -> update_helpers.i18n_t(model, i18n_text.Save)
-            }),
-          ],
-        ),
+                  }),
+                )
+            }
+        },
       ]),
-    ]),
-  ])
+    ],
+    [
+      dialog.cancel_button(model, admin_msg(CapabilityMembersDialogClosed)),
+      button(
+        [
+          attribute.class("btn-primary"),
+          event.on_click(admin_msg(CapabilityMembersSaveClicked)),
+          attribute.disabled(
+            model.admin.capability_members_saving
+            || model.admin.capability_members_loading,
+          ),
+        ],
+        [
+          text(case model.admin.capability_members_saving {
+            True -> t(i18n_text.Saving)
+            False -> t(i18n_text.Save)
+          }),
+        ],
+      ),
+    ],
+  )
 }
 
 // =============================================================================

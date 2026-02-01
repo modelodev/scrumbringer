@@ -26,14 +26,18 @@ import lustre/event
 
 import domain/task.{type Task}
 import domain/user.{type User}
+import scrumbringer_client/client_state.{type Model}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
+import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_type_icon
+import scrumbringer_client/utils/card_queries
 
 // =============================================================================
 // Types
@@ -66,6 +70,7 @@ pub type MyCardProgress {
 pub type RightPanelConfig(msg) {
   RightPanelConfig(
     locale: Locale,
+    model: Model,
     user: Option(User),
     my_tasks: List(Task),
     my_cards: List(MyCardProgress),
@@ -178,46 +183,35 @@ fn view_active_task_card(
     div([attribute.class("task-actions")], [
       case active.is_paused {
         True ->
-          button(
-            [
-              attribute.class("btn-xs btn-icon"),
-              attribute.attribute("data-testid", "my-task-start-btn"),
-              attribute.attribute(
-                "title",
-                i18n.t(config.locale, i18n_text.Resume),
-              ),
-              attribute.disabled(config.disable_actions),
-              event.on_click(config.on_task_start(active.task_id)),
-            ],
-            [icons.nav_icon(icons.Play, icons.Small)],
+          task_actions.icon_action(
+            i18n.t(config.locale, i18n_text.Resume),
+            config.on_task_start(active.task_id),
+            icons.Play,
+            action_buttons.SizeXs,
+            config.disable_actions,
+            "",
+            None,
+            Some("my-task-start-btn"),
           )
         False ->
-          button(
-            [
-              attribute.class("btn-xs btn-icon"),
-              attribute.attribute("data-testid", "task-pause-btn"),
-              attribute.attribute(
-                "title",
-                i18n.t(config.locale, i18n_text.Pause),
-              ),
-              attribute.disabled(config.disable_actions),
-              event.on_click(config.on_task_pause(active.task_id)),
-            ],
-            [icons.nav_icon(icons.Pause, icons.Small)],
+          task_actions.pause_icon(
+            i18n.t(config.locale, i18n_text.Pause),
+            config.on_task_pause(active.task_id),
+            action_buttons.SizeXs,
+            config.disable_actions,
+            "",
+            None,
+            Some("task-pause-btn"),
           )
       },
-      button(
-        [
-          attribute.class("btn-xs btn-icon"),
-          attribute.attribute("data-testid", "task-complete-btn"),
-          attribute.attribute(
-            "title",
-            i18n.t(config.locale, i18n_text.Complete),
-          ),
-          attribute.disabled(config.disable_actions),
-          event.on_click(config.on_task_complete(active.task_id)),
-        ],
-        [icons.nav_icon(icons.Check, icons.Small)],
+      task_actions.complete_icon(
+        i18n.t(config.locale, i18n_text.Complete),
+        config.on_task_complete(active.task_id),
+        action_buttons.SizeXs,
+        config.disable_actions,
+        "",
+        None,
+        Some("task-complete-btn"),
       ),
     ]),
   ])
@@ -296,7 +290,9 @@ fn view_my_tasks(config: RightPanelConfig(msg)) -> Element(msg) {
 }
 
 fn view_my_task_item(config: RightPanelConfig(msg), task: Task) -> Element(msg) {
-  let border_class = task_color.card_border_class(task.card_color)
+  let #(_card_title_opt, resolved_color) =
+    card_queries.resolve_task_card_info(config.model, task)
+  let border_class = task_color.card_border_class(resolved_color)
 
   div([attribute.class("task-item " <> border_class)], [
     div([attribute.class("task-title-row")], [
@@ -307,27 +303,24 @@ fn view_my_task_item(config: RightPanelConfig(msg), task: Task) -> Element(msg) 
       span([attribute.class("task-title")], [text(task.title)]),
     ]),
     div([attribute.class("task-actions")], [
-      // Start button (icon)
-      button(
-        [
-          attribute.class("btn-xs btn-icon"),
-          attribute.attribute("data-testid", "my-task-start-btn"),
-          attribute.attribute("title", i18n.t(config.locale, i18n_text.Start)),
-          attribute.disabled(config.disable_actions),
-          event.on_click(config.on_task_start(task.id)),
-        ],
-        [icons.nav_icon(icons.Play, icons.Small)],
+      task_actions.icon_action(
+        i18n.t(config.locale, i18n_text.Start),
+        config.on_task_start(task.id),
+        icons.Play,
+        action_buttons.SizeXs,
+        config.disable_actions,
+        "",
+        None,
+        Some("my-task-start-btn"),
       ),
-      // Release button (icon)
-      button(
-        [
-          attribute.class("btn-xs btn-icon"),
-          attribute.attribute("data-testid", "my-task-release-btn"),
-          attribute.attribute("title", i18n.t(config.locale, i18n_text.Release)),
-          attribute.disabled(config.disable_actions),
-          event.on_click(config.on_task_release(task.id)),
-        ],
-        [icons.nav_icon(icons.Return, icons.Small)],
+      task_actions.release_icon(
+        i18n.t(config.locale, i18n_text.Release),
+        config.on_task_release(task.id),
+        action_buttons.SizeXs,
+        config.disable_actions,
+        "",
+        None,
+        Some("my-task-release-btn"),
       ),
     ]),
   ])

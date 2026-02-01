@@ -68,6 +68,7 @@ import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_type_icon
 import scrumbringer_client/update_helpers
+import scrumbringer_client/utils/card_queries
 
 // Re-export view_task_type_icon_inline from client_view for internal use
 // This function is needed for rendering task type icons in the bar
@@ -350,6 +351,9 @@ pub fn view_member_bar_task_row(
     created_at: _created_at,
     version: version,
     claimed_by: claimed_by,
+    card_id: card_id,
+    card_title: card_title,
+    card_color: card_color,
     ..,
   ) = task
 
@@ -358,6 +362,49 @@ pub fn view_member_bar_task_row(
   let type_label = task_type.name
 
   let type_icon = task_type.icon
+
+  let none_color: opt.Option(color_picker.CardColor) = opt.None
+
+  let card_title_opt = case card_title {
+    opt.Some(ct) -> opt.Some(ct)
+    opt.None -> {
+      case card_id {
+        opt.Some(cid) ->
+          case card_queries.find_card(model, cid) {
+            opt.Some(card) -> opt.Some(card.title)
+            opt.None -> opt.None
+          }
+        opt.None -> opt.None
+      }
+    }
+  }
+
+  let card_color_opt: opt.Option(color_picker.CardColor) = case card_title {
+    opt.Some(_) ->
+      case card_color {
+        opt.None -> none_color
+        opt.Some(c) -> color_picker.string_to_color(c)
+      }
+    opt.None -> {
+      case card_id {
+        opt.Some(cid) ->
+          case card_queries.find_card(model, cid) {
+            opt.Some(card) ->
+              case card.color {
+                opt.None -> none_color
+                opt.Some(c) -> color_picker.string_to_color(c)
+              }
+            opt.None -> none_color
+          }
+        opt.None -> none_color
+      }
+    }
+  }
+
+  let card_badge_el = case card_title_opt {
+    opt.Some(ct) -> card_badge.view(ct, card_color_opt, opt.Some(ct))
+    opt.None -> element.none()
+  }
 
   let disable_actions =
     model.member.member_task_mutation_in_flight
@@ -432,6 +479,7 @@ pub fn view_member_bar_task_row(
       title: title,
       title_class: opt.None,
       secondary: div([attribute.class("task-row-meta")], [
+        card_badge_el,
         span([attribute.attribute("style", "margin-right:4px;")], [
           task_type_icon.view(type_icon, 16, model.ui.theme),
         ]),

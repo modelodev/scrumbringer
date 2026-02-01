@@ -403,15 +403,18 @@ fn view_task_details_tab(
         div([], [
           // Card association
           case t.card_id {
-            opt.Some(_) ->
+            opt.Some(_) -> {
+              let #(resolved_card_title, _resolved_card_color) =
+                card_queries.resolve_task_card_info(model, t)
               div([attribute.class("detail-row")], [
                 span([attribute.class("detail-label")], [
                   text(update_helpers.i18n_t(model, i18n_text.CardOptional)),
                 ]),
                 span([attribute.class("detail-value")], [
-                  text(t.card_title |> opt.unwrap("—")),
+                  text(resolved_card_title |> opt.unwrap("—")),
                 ]),
               ])
+            }
             opt.None -> element.none()
           },
           // Description

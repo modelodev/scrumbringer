@@ -78,6 +78,7 @@ import scrumbringer_client/ui/icons
 import scrumbringer_client/client_ffi
 import scrumbringer_client/ui/toast as ui_toast
 import scrumbringer_client/update_helpers
+import scrumbringer_client/utils/card_queries
 
 import domain/task.{type Task, ActiveTask, Task, WorkSession}
 import domain/task_status.{Claimed, Taken}
@@ -137,6 +138,16 @@ fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) 
     case model.member.member_create_dialog_open {
       True -> pool_dialogs.view_create_dialog(model)
       False -> element.none()
+    },
+    // Global task detail dialog (renders from list/canvas/pool)
+    case model.member.member_notes_task_id {
+      opt.Some(task_id) -> pool_dialogs.view_task_details(model, task_id)
+      opt.None -> element.none()
+    },
+    // Global position edit dialog (renders from list/canvas/pool)
+    case model.member.member_position_edit_task {
+      opt.Some(task_id) -> pool_dialogs.view_position_edit(model, task_id)
+      opt.None -> element.none()
     },
   ])
 }
@@ -796,7 +807,11 @@ fn build_right_panel(
       let #(title, type_icon, card_color) = case model.member.member_tasks {
         client_state.Loaded(tasks) ->
           case list.find(tasks, fn(t) { t.id == id }) {
-            Ok(t) -> #(t.title, t.task_type.icon, t.card_color)
+            Ok(t) -> {
+              let #(_card_title_opt, resolved_color) =
+                card_queries.resolve_task_card_info(model, t)
+              #(t.title, t.task_type.icon, resolved_color)
+            }
             Error(_) -> #(
               "Task #" <> int.to_string(id),
               "clipboard-document",
@@ -830,6 +845,7 @@ fn build_right_panel(
 
   right_panel.view(right_panel.RightPanelConfig(
     locale: model.ui.locale,
+    model: model,
     user: opt.Some(user),
     my_tasks: my_tasks,
     my_cards: my_cards,

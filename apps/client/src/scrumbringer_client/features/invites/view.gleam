@@ -20,7 +20,7 @@ import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, form, h3, input, text}
+import lustre/element/html.{div, form, h3, input, text}
 import lustre/event
 
 import domain/org.{type InviteLink}
@@ -31,6 +31,7 @@ import scrumbringer_client/client_state.{
   InviteLinkRegenerateClicked, admin_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/copyable_input
@@ -129,15 +130,15 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
           t(i18n_text.Link),
           fn(link: InviteLink) {
             let full = build_full_url(origin, link.url_path)
-            button(
-              [
-                attribute.class("btn-xs btn-icon"),
-                attribute.attribute("title", t(i18n_text.CopyLink)),
-                attribute.attribute("aria-label", t(i18n_text.CopyLink)),
-                attribute.disabled(model.admin.invite_link_in_flight),
-                event.on_click(admin_msg(InviteLinkCopyClicked(full))),
-              ],
-              [icons.nav_icon(icons.Copy, icons.Small)],
+            action_buttons.task_icon_button(
+              t(i18n_text.CopyLink),
+              admin_msg(InviteLinkCopyClicked(full)),
+              icons.Copy,
+              action_buttons.SizeXs,
+              model.admin.invite_link_in_flight,
+              "",
+              opt.None,
+              opt.None,
             )
           },
           "col-actions",
@@ -146,17 +147,15 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
         data_table.column_with_class(
           t(i18n_text.Actions),
           fn(link: InviteLink) {
-            button(
-              [
-                attribute.class("btn-xs btn-icon"),
-                attribute.attribute("title", t(i18n_text.Regenerate)),
-                attribute.attribute("aria-label", t(i18n_text.Regenerate)),
-                attribute.disabled(model.admin.invite_link_in_flight),
-                event.on_click(
-                  admin_msg(InviteLinkRegenerateClicked(link.email)),
-                ),
-              ],
-              [icons.nav_icon(icons.Refresh, icons.Small)],
+            action_buttons.task_icon_button(
+              t(i18n_text.Regenerate),
+              admin_msg(InviteLinkRegenerateClicked(link.email)),
+              icons.Refresh,
+              action_buttons.SizeXs,
+              model.admin.invite_link_in_flight,
+              "",
+              opt.None,
+              opt.None,
             )
           },
           "col-actions",

@@ -48,7 +48,6 @@ import scrumbringer_client/client_state.{
 }
 import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/panel as now_working_panel
-import scrumbringer_client/features/pool/dialogs as pool_dialogs
 import scrumbringer_client/features/pool/filters as pool_filters
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/pool_prefs
@@ -64,6 +63,7 @@ import scrumbringer_client/ui/task_hover_popup
 import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_type_icon
 import scrumbringer_client/update_helpers
+import scrumbringer_client/utils/card_queries
 
 // =============================================================================
 // Types
@@ -120,18 +120,6 @@ pub fn view_pool_main(model: Model, _user: User) -> Element(Msg) {
         // Unified toolbar: view mode, filters toggle, and new task - all in one row
         pool_filters.view_unified_toolbar(model),
         view_tasks(model),
-        case model.member.member_create_dialog_open {
-          True -> pool_dialogs.view_create_dialog(model)
-          False -> element.none()
-        },
-        case model.member.member_notes_task_id {
-          opt.Some(task_id) -> pool_dialogs.view_task_details(model, task_id)
-          opt.None -> element.none()
-        },
-        case model.member.member_position_edit_task {
-          opt.Some(task_id) -> pool_dialogs.view_position_edit(model, task_id)
-          opt.None -> element.none()
-        },
       ])
     }
   }
@@ -320,7 +308,6 @@ pub fn view_pool_task_row(model: Model, task: Task) -> Element(Msg) {
     title: title,
     type_id: _type_id,
     task_type: task_type,
-    card_color: card_color,
     version: version,
     ..,
   ) = task
@@ -340,13 +327,16 @@ pub fn view_pool_task_row(model: Model, task: Task) -> Element(Msg) {
       opt.None,
     )
 
-  let border_class = task_color.card_border_class(card_color)
+  let #(_card_title_opt, resolved_color) =
+    card_queries.resolve_task_card_info(model, task)
+
+  let border_class = task_color.card_border_class(resolved_color)
 
   task_item.view(
     task_item.Config(
       container_class: "task-row " <> border_class,
       content_class: "task-row-title",
-      on_click: opt.None,
+      on_click: opt.Some(pool_msg(MemberTaskDetailsOpened(id))),
       icon: opt.Some(task_type_icon.view(type_icon, 16, model.ui.theme)),
       icon_class: opt.None,
       title: title,
@@ -373,8 +363,6 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     created_at: created_at,
     description: description,
     version: version,
-    card_title: card_title,
-    card_color: card_color,
     ..,
   ) = task
 
@@ -387,7 +375,10 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
 
   let type_icon = task_type.icon
 
-  let card_border_class = task_color.card_border_class(card_color)
+  let #(resolved_card_title, resolved_card_color) =
+    card_queries.resolve_task_card_info(model, task)
+
+  let card_border_class = task_color.card_border_class(resolved_card_color)
 
   // Get saved position or generate deterministic initial position based on task ID
   let #(x, y) = case dict.get(model.member.member_positions_by_task, id) {
@@ -548,7 +539,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
         [
           task_hover_popup.view(task_hover_popup.TaskHoverConfig(
             card_label: update_helpers.i18n_t(model, i18n_text.ParentCardLabel),
-            card_title: card_title,
+            card_title: resolved_card_title,
             age_label: update_helpers.i18n_t(model, i18n_text.AgeLabel),
             age_value: update_helpers.i18n_t(
               model,

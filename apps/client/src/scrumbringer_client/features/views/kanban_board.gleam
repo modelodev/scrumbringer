@@ -38,6 +38,7 @@ import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_type_icon
+import scrumbringer_client/utils/card_queries
 import scrumbringer_client/utils/text as text_utils
 
 // =============================================================================
@@ -263,7 +264,9 @@ fn view_task_item(config: KanbanConfig(msg), task: Task) -> Element(msg) {
   }
 
   let type_icon = task.task_type.icon
-  let border_class = task_color.card_border_class(task.card_color)
+  let #(_card_title_opt, resolved_color) =
+    card_queries.resolve_task_card_info_from_cards(config.cards, task)
+  let border_class = task_color.card_border_class(resolved_color)
 
   let actions = case task.status {
     Available ->

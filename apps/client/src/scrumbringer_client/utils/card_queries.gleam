@@ -19,6 +19,7 @@ import gleam/list
 import gleam/option
 
 import domain/card.{type Card}
+import domain/task.{type Task, Task}
 import scrumbringer_client/client_state.{type Model, Loaded}
 
 /// Find a card by ID in the loaded cards list.
@@ -52,5 +53,52 @@ pub fn get_project_cards(model: Model) -> List(Card) {
           }
       }
     option.None -> []
+  }
+}
+
+/// Resolve card title and color for a task, using task fields first and
+/// falling back to loaded cards.
+pub fn resolve_task_card_info(
+  model: Model,
+  task: Task,
+) -> #(option.Option(String), option.Option(String)) {
+  let Task(card_id: card_id, card_title: card_title, card_color: card_color, ..) =
+    task
+
+  case card_title {
+    option.Some(ct) -> #(option.Some(ct), card_color)
+    option.None -> {
+      case card_id {
+        option.Some(cid) ->
+          case find_card(model, cid) {
+            option.Some(card) -> #(option.Some(card.title), card.color)
+            option.None -> #(option.None, option.None)
+          }
+        option.None -> #(option.None, option.None)
+      }
+    }
+  }
+}
+
+/// Resolve card title and color for a task using a provided cards list.
+pub fn resolve_task_card_info_from_cards(
+  cards: List(Card),
+  task: Task,
+) -> #(option.Option(String), option.Option(String)) {
+  let Task(card_id: card_id, card_title: card_title, card_color: card_color, ..) =
+    task
+
+  case card_title {
+    option.Some(ct) -> #(option.Some(ct), card_color)
+    option.None -> {
+      case card_id {
+        option.Some(cid) ->
+          case list.find(cards, fn(c) { c.id == cid }) {
+            Ok(card) -> #(option.Some(card.title), card.color)
+            Error(_) -> #(option.None, option.None)
+          }
+        option.None -> #(option.None, option.None)
+      }
+    }
   }
 }
