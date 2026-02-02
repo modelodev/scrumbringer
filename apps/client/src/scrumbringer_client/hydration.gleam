@@ -56,6 +56,7 @@ pub type Snapshot {
     task_types: ResourceState,
     task_types_project_id: Option(Int),
     member_tasks: ResourceState,
+    member_cards: ResourceState,
     work_sessions: ResourceState,
     me_metrics: ResourceState,
     org_metrics_overview: ResourceState,
@@ -323,7 +324,10 @@ fn plan_member(snap: Snapshot) -> List(Command) {
         #(needs_fetch(snap.work_sessions), FetchWorkSessions),
         #(needs_fetch(snap.me_metrics), FetchMeMetrics),
         #(needs_fetch(snap.org_users_cache), FetchOrgUsersCache),
-        #(needs_fetch(snap.member_tasks), RefreshMember),
+        #(
+          needs_fetch(snap.member_tasks) || needs_fetch(snap.member_cards),
+          RefreshMember,
+        ),
       ])
   }
 }

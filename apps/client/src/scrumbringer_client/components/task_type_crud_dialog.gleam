@@ -42,11 +42,11 @@ import scrumbringer_client/api/core.{type ApiResult}
 import scrumbringer_client/api/tasks/task_types as api_task_types
 import scrumbringer_client/components/crud_dialog_base
 import scrumbringer_client/i18n/en as i18n_en
-import scrumbringer_client/ui/modal_header
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/icon_catalog
+import scrumbringer_client/ui/modal_header
 
 // =============================================================================
 // Internal Types
@@ -796,6 +796,12 @@ pub fn view_icon_picker_trigger_for_test(
     CreateIconToggle,
     CreateIconChanged,
   )
+}
+
+pub fn view_create_dialog_for_test(locale: Locale) -> Element(Msg) {
+  let model = default_model()
+  let model = Model(..model, locale: locale, mode: Some(ModeCreate))
+  view_create_dialog(model)
 }
 
 fn view_icon_picker(

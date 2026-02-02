@@ -23,6 +23,7 @@ pub fn admin_members_unknown_auth_requires_fetch_me_test() {
       task_types: hydration.NotAsked,
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
+      member_cards: hydration.NotAsked,
       work_sessions: hydration.NotAsked,
       me_metrics: hydration.NotAsked,
       org_metrics_overview: hydration.NotAsked,
@@ -50,6 +51,7 @@ pub fn admin_members_authed_admin_plans_projects_then_members_test() {
       task_types: hydration.NotAsked,
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
+      member_cards: hydration.NotAsked,
       work_sessions: hydration.NotAsked,
       me_metrics: hydration.NotAsked,
       org_metrics_overview: hydration.NotAsked,
@@ -81,6 +83,7 @@ pub fn admin_members_authed_admin_plans_projects_then_members_test() {
       task_types: hydration.NotAsked,
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
+      member_cards: hydration.NotAsked,
       work_sessions: hydration.NotAsked,
       me_metrics: hydration.NotAsked,
       org_metrics_overview: hydration.NotAsked,
@@ -115,6 +118,7 @@ pub fn admin_route_non_admin_redirects_to_member_pool_test() {
       task_types: hydration.NotAsked,
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
+      member_cards: hydration.NotAsked,
       work_sessions: hydration.NotAsked,
       me_metrics: hydration.NotAsked,
       org_metrics_overview: hydration.NotAsked,
@@ -146,6 +150,7 @@ pub fn admin_members_project_manager_not_loaded_fetches_projects_test() {
       task_types: hydration.NotAsked,
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
+      member_cards: hydration.NotAsked,
       work_sessions: hydration.NotAsked,
       me_metrics: hydration.NotAsked,
       org_metrics_overview: hydration.NotAsked,
@@ -175,6 +180,7 @@ pub fn admin_members_project_manager_loaded_grants_access_test() {
       task_types: hydration.NotAsked,
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
+      member_cards: hydration.NotAsked,
       work_sessions: hydration.NotAsked,
       me_metrics: hydration.NotAsked,
       org_metrics_overview: hydration.NotAsked,
@@ -210,6 +216,7 @@ pub fn admin_org_level_section_pm_redirects_test() {
       task_types: hydration.NotAsked,
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
+      member_cards: hydration.NotAsked,
       work_sessions: hydration.NotAsked,
       me_metrics: hydration.NotAsked,
       org_metrics_overview: hydration.NotAsked,
@@ -241,6 +248,7 @@ pub fn member_pool_with_projects_loaded_only_refreshes_member_test() {
       task_types: hydration.NotAsked,
       task_types_project_id: None,
       member_tasks: hydration.NotAsked,
+      member_cards: hydration.NotAsked,
       work_sessions: hydration.NotAsked,
       me_metrics: hydration.NotAsked,
       org_metrics_overview: hydration.NotAsked,
@@ -254,4 +262,32 @@ pub fn member_pool_with_projects_loaded_only_refreshes_member_test() {
     hydration.FetchMeMetrics,
     hydration.RefreshMember,
   ])
+}
+
+pub fn member_pool_refreshes_when_cards_missing_test() {
+  let snap =
+    hydration.Snapshot(
+      auth: hydration.Authed(org_role.Member),
+      projects: hydration.Loaded,
+      is_any_project_manager: False,
+      invite_links: hydration.Loaded,
+      capabilities: hydration.Loaded,
+      my_capability_ids: hydration.Loaded,
+      org_settings_users: hydration.NotAsked,
+      org_users_cache: hydration.Loaded,
+      members: hydration.NotAsked,
+      members_project_id: None,
+      task_types: hydration.Loaded,
+      task_types_project_id: None,
+      member_tasks: hydration.Loaded,
+      member_cards: hydration.NotAsked,
+      work_sessions: hydration.Loaded,
+      me_metrics: hydration.Loaded,
+      org_metrics_overview: hydration.NotAsked,
+      org_metrics_project_tasks: hydration.NotAsked,
+      org_metrics_project_id: None,
+    )
+
+  hydration.plan(router.Member(member_section.Pool, Some(2), None), snap)
+  |> should.equal([hydration.RefreshMember])
 }

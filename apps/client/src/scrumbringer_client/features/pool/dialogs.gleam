@@ -36,7 +36,8 @@ import domain/task
 import domain/task_status
 
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, Loading, MemberCreateCardIdChanged,
+  type Model, type Msg, Failed, Loaded, Loading, MemberClaimClicked,
+  MemberCompleteClicked, MemberCreateCardIdChanged,
   MemberCreateDescriptionChanged, MemberCreateDialogClosed,
   MemberCreatePriorityChanged, MemberCreateSubmitted, MemberCreateTitleChanged,
   MemberCreateTypeIdChanged, MemberDependencyAddSubmitted,
@@ -45,7 +46,7 @@ import scrumbringer_client/client_state.{
   MemberDependencySelected, MemberNoteContentChanged, MemberNoteDialogClosed,
   MemberNoteDialogOpened, MemberNoteSubmitted, MemberPositionEditClosed,
   MemberPositionEditSubmitted, MemberPositionEditXChanged,
-  MemberPositionEditYChanged, MemberTaskDetailTabClicked,
+  MemberPositionEditYChanged, MemberReleaseClicked, MemberTaskDetailTabClicked,
   MemberTaskDetailsClosed, NotAsked, pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
@@ -58,6 +59,7 @@ import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/modal_header
 import scrumbringer_client/ui/note_dialog
 import scrumbringer_client/ui/notes_list
+import scrumbringer_client/ui/search_select
 import scrumbringer_client/ui/task_state
 import scrumbringer_client/ui/task_tabs
 import scrumbringer_client/ui/tooltips/types as notes_list_types
@@ -269,15 +271,7 @@ pub fn view_task_details(model: Model, task_id: Int) -> Element(Msg) {
         // Content based on active tab
         view_task_tab_content(model, task_id, task),
         // Footer
-        div([attribute.class("modal-footer")], [
-          button(
-            [
-              attribute.class("btn btn-secondary"),
-              event.on_click(pool_msg(MemberTaskDetailsClosed)),
-            ],
-            [text(update_helpers.i18n_t(model, i18n_text.Close))],
-          ),
-        ]),
+        view_task_footer(model, task),
       ],
     ),
   ])
@@ -306,15 +300,15 @@ fn view_task_header(model: Model, task: opt.Option(task.Task)) -> Element(Msg) {
         badges: [],
         meta: opt.Some(
           div([attribute.class("task-detail-meta")], [
-            span([attribute.class("task-meta-type")], [
+            span([attribute.class("task-meta-chip task-meta-type")], [
               icons.nav_icon(icons.TaskTypes, icons.Small),
               text(t.task_type.name),
             ]),
-            span([attribute.class("task-meta-priority")], [
+            span([attribute.class("task-meta-chip task-meta-priority")], [
               icons.nav_icon(icons.Automation, icons.Small),
               text("P" <> int.to_string(t.priority)),
             ]),
-            span([attribute.class("task-meta-status")], [
+            span([attribute.class("task-meta-chip task-meta-status")], [
               text(task_state.label(model.ui.locale, t.status)),
             ]),
             view_assignee(model, t),
@@ -351,12 +345,12 @@ fn view_task_header(model: Model, task: opt.Option(task.Task)) -> Element(Msg) {
 fn view_assignee(model: Model, t: task.Task) -> Element(Msg) {
   case t.claimed_by {
     opt.Some(_user_id) ->
-      span([attribute.class("task-meta-assignee")], [
+      span([attribute.class("task-meta-chip task-meta-assignee")], [
         icons.nav_icon(icons.UserCircle, icons.Small),
         text("Asignado"),
       ])
     opt.None ->
-      span([attribute.class("task-meta-assignee muted")], [
+      span([attribute.class("task-meta-chip task-meta-assignee muted")], [
         text(update_helpers.i18n_t(model, i18n_text.Unassigned)),
       ])
   }
@@ -441,6 +435,9 @@ fn view_dependencies(
         on_button_click: pool_msg(MemberDependencyDialogOpened),
       ),
     ),
+    div([attribute.class("task-section-hint")], [
+      text(update_helpers.i18n_t(model, i18n_text.TaskDependenciesHint)),
+    ]),
     case model.member.member_dependencies {
       NotAsked | Loading ->
         div([attribute.class("empty")], [
@@ -450,8 +447,16 @@ fn view_dependencies(
       Loaded(deps) ->
         case deps {
           [] ->
-            div([attribute.class("empty")], [
-              text(update_helpers.i18n_t(model, i18n_text.NoDependencies)),
+            div([attribute.class("task-empty-state")], [
+              div([attribute.class("task-empty-title")], [
+                text(update_helpers.i18n_t(model, i18n_text.NoDependencies)),
+              ]),
+              div([attribute.class("task-empty-body")], [
+                text(update_helpers.i18n_t(
+                  model,
+                  i18n_text.TaskDependenciesEmptyHint,
+                )),
+              ]),
             ])
           _ ->
             div(
@@ -533,22 +538,26 @@ fn view_dependency_dialog(
     opt.None -> 0
   }
 
-  let candidates = case model.member.member_dependency_candidates {
-    Loaded(tasks) ->
-      list.filter(tasks, fn(t) {
-        t.id != current_task_id && t.status != task_status.Completed
-      })
-    _ -> []
-  }
-
   let query = string.trim(model.member.member_dependency_search_query)
 
-  let filtered = case string.is_empty(query) {
-    True -> candidates
-    False ->
-      list.filter(candidates, fn(t) {
-        string.contains(string.lowercase(t.title), string.lowercase(query))
-      })
+  let results = case model.member.member_dependency_candidates {
+    Loaded(tasks) -> {
+      let candidates =
+        list.filter(tasks, fn(t) {
+          t.id != current_task_id && t.status != task_status.Completed
+        })
+      let filtered = case string.is_empty(query) {
+        True -> candidates
+        False ->
+          list.filter(candidates, fn(t) {
+            string.contains(string.lowercase(t.title), string.lowercase(query))
+          })
+      }
+      Loaded(filtered)
+    }
+    Loading -> Loading
+    NotAsked -> NotAsked
+    Failed(err) -> Failed(err)
   }
 
   let selected_id = model.member.member_dependency_selected_task_id
@@ -569,21 +578,29 @@ fn view_dependency_dialog(
           attribute.id("task-dependency-form"),
         ],
         [
-          form_field.view(
-            update_helpers.i18n_t(model, i18n_text.TaskDependsOn),
-            input([
-              attribute.type_("text"),
-              attribute.value(model.member.member_dependency_search_query),
-              attribute.placeholder(update_helpers.i18n_t(
-                model,
-                i18n_text.SearchPlaceholder,
-              )),
-              event.on_input(fn(value) {
-                pool_msg(MemberDependencySearchChanged(value))
-              }),
-            ]),
-          ),
-          view_dependency_candidates(model, filtered, selected_id),
+          search_select.view(search_select.Config(
+            label: update_helpers.i18n_t(model, i18n_text.TaskDependsOn),
+            placeholder: update_helpers.i18n_t(
+              model,
+              i18n_text.SearchPlaceholder,
+            ),
+            value: model.member.member_dependency_search_query,
+            on_change: fn(value) {
+              pool_msg(MemberDependencySearchChanged(value))
+            },
+            input_attributes: [],
+            results: results,
+            render_item: fn(t) {
+              view_dependency_candidate_item(model, t, selected_id)
+            },
+            empty_label: update_helpers.i18n_t(model, i18n_text.NoMatchingTasks),
+            loading_label: update_helpers.i18n_t(
+              model,
+              i18n_text.LoadingEllipsis,
+            ),
+            error_label: fn(message) { message },
+            class: "task-dependency-search",
+          )),
         ],
       ),
     ],
@@ -613,51 +630,27 @@ fn view_dependency_dialog(
   )
 }
 
-fn view_dependency_candidates(
+fn view_dependency_candidate_item(
   model: Model,
-  tasks: List(task.Task),
+  t: task.Task,
   selected_id: opt.Option(Int),
 ) -> Element(Msg) {
-  case model.member.member_dependency_candidates {
-    NotAsked | Loading ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
-      ])
-    Failed(err) -> error_notice.view(err.message)
-    Loaded(_tasks) ->
-      case tasks {
-        [] ->
-          div([attribute.class("empty")], [
-            text(update_helpers.i18n_t(model, i18n_text.NoMatchingTasks)),
-          ])
-        _ ->
-          div(
-            [attribute.class("task-dependency-candidates")],
-            list.map(tasks, fn(t) {
-              let is_selected = selected_id == opt.Some(t.id)
-              let status = task_state.label(model.ui.locale, t.status)
-              button(
-                [
-                  attribute.type_("button"),
-                  attribute.class(case is_selected {
-                    True -> "dependency-candidate selected"
-                    False -> "dependency-candidate"
-                  }),
-                  event.on_click(pool_msg(MemberDependencySelected(t.id))),
-                ],
-                [
-                  span([attribute.class("dependency-candidate-title")], [
-                    text(t.title),
-                  ]),
-                  span([attribute.class("dependency-candidate-status")], [
-                    text(status),
-                  ]),
-                ],
-              )
-            }),
-          )
-      }
-  }
+  let is_selected = selected_id == opt.Some(t.id)
+  let status = task_state.label(model.ui.locale, t.status)
+  button(
+    [
+      attribute.type_("button"),
+      attribute.class(case is_selected {
+        True -> "dependency-candidate selected"
+        False -> "dependency-candidate"
+      }),
+      event.on_click(pool_msg(MemberDependencySelected(t.id))),
+    ],
+    [
+      span([attribute.class("dependency-candidate-title")], [text(t.title)]),
+      span([attribute.class("dependency-candidate-status")], [text(status)]),
+    ],
+  )
 }
 
 /// Details tab content (AC3)
@@ -667,46 +660,47 @@ fn view_task_details_tab(
 ) -> Element(Msg) {
   div([attribute.class("task-details-section")], [
     case task {
-      opt.Some(t) ->
-        div([], [
-          // Card association
-          case t.card_id {
-            opt.Some(_) -> {
-              let #(resolved_card_title, _resolved_card_color) =
-                card_queries.resolve_task_card_info(model, t)
-              div([attribute.class("detail-row")], [
-                span([attribute.class("detail-label")], [
-                  text(update_helpers.i18n_t(model, i18n_text.CardOptional)),
-                ]),
-                span([attribute.class("detail-value")], [
-                  text(resolved_card_title |> opt.unwrap("—")),
-                ]),
-              ])
-            }
-            opt.None -> element.none()
-          },
-          // Description
-          case t.description {
-            opt.Some(desc) ->
-              div([attribute.class("detail-row")], [
-                span([attribute.class("detail-label")], [
-                  text(update_helpers.i18n_t(model, i18n_text.Description)),
-                ]),
-                span([attribute.class("detail-value")], [text(desc)]),
-              ])
-            opt.None -> element.none()
-          },
-          // Actions
-          div([attribute.class("task-detail-actions")], [
-            button(
+      opt.Some(t) -> {
+        let #(resolved_card_title, _resolved_card_color) =
+          card_queries.resolve_task_card_info(model, t)
+        let card_title = resolved_card_title |> opt.unwrap("—")
+        let card_empty = card_title == "—"
+        let desc = case t.description {
+          opt.Some(value) -> value
+          opt.None -> "—"
+        }
+        let desc_empty = desc == "—"
+        div([attribute.class("task-detail-grid")], [
+          div([attribute.class("detail-row")], [
+            span([attribute.class("detail-label")], [
+              text(update_helpers.i18n_t(model, i18n_text.CardOptional)),
+            ]),
+            span(
               [
-                attribute.class("btn btn-primary"),
-                attribute.disabled(opt.is_some(t.claimed_by)),
+                attribute.class(case card_empty {
+                  True -> "detail-value muted"
+                  False -> "detail-value"
+                }),
               ],
-              [text(update_helpers.i18n_t(model, i18n_text.ClaimTask))],
+              [text(card_title)],
+            ),
+          ]),
+          div([attribute.class("detail-row")], [
+            span([attribute.class("detail-label")], [
+              text(update_helpers.i18n_t(model, i18n_text.Description)),
+            ]),
+            span(
+              [
+                attribute.class(case desc_empty {
+                  True -> "detail-value muted"
+                  False -> "detail-value"
+                }),
+              ],
+              [text(desc)],
             ),
           ]),
         ])
+      }
       opt.None ->
         div([attribute.class("loading")], [
           text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
@@ -734,6 +728,9 @@ fn view_notes(model: Model, _task_id: Int) -> Element(Msg) {
         on_button_click: pool_msg(MemberNoteDialogOpened),
       ),
     ),
+    div([attribute.class("task-section-hint")], [
+      text(update_helpers.i18n_t(model, i18n_text.TaskNotesHint)),
+    ]),
     // Notes list
     case model.member.member_notes {
       NotAsked | Loading ->
@@ -742,12 +739,26 @@ fn view_notes(model: Model, _task_id: Int) -> Element(Msg) {
         ])
       Failed(err) -> error_notice.view(err.message)
       Loaded(notes) ->
-        notes_list.view(
-          list.map(notes, fn(n) { task_note_to_view(model, n, current_user_id) }),
-          update_helpers.i18n_t(model, i18n_text.Delete),
-          update_helpers.i18n_t(model, i18n_text.DeleteAsAdmin),
-          fn(_id) { pool_msg(MemberTaskDetailsClosed) },
-        )
+        case notes {
+          [] ->
+            div([attribute.class("task-empty-state")], [
+              div([attribute.class("task-empty-title")], [
+                text(update_helpers.i18n_t(model, i18n_text.NoNotesYet)),
+              ]),
+              div([attribute.class("task-empty-body")], [
+                text(update_helpers.i18n_t(model, i18n_text.TaskNotesEmptyHint)),
+              ]),
+            ])
+          _ ->
+            notes_list.view(
+              list.map(notes, fn(n) {
+                task_note_to_view(model, n, current_user_id)
+              }),
+              update_helpers.i18n_t(model, i18n_text.Delete),
+              update_helpers.i18n_t(model, i18n_text.DeleteAsAdmin),
+              fn(_id) { pool_msg(MemberTaskDetailsClosed) },
+            )
+        }
     },
     // Dialog overlay (conditional)
     case model.member.member_note_dialog_open {
@@ -755,6 +766,78 @@ fn view_notes(model: Model, _task_id: Int) -> Element(Msg) {
       False -> element.none()
     },
   ])
+}
+
+fn view_task_footer(model: Model, task: opt.Option(task.Task)) -> Element(Msg) {
+  let close_button =
+    button(
+      [
+        attribute.class("btn btn-secondary"),
+        event.on_click(pool_msg(MemberTaskDetailsClosed)),
+      ],
+      [text(update_helpers.i18n_t(model, i18n_text.Close))],
+    )
+
+  case task {
+    opt.None ->
+      div([attribute.class("modal-footer task-detail-footer")], [close_button])
+
+    opt.Some(t) -> {
+      let current_user_id = case model.core.user {
+        opt.Some(u) -> u.id
+        opt.None -> 0
+      }
+      let is_mine = t.claimed_by == opt.Some(current_user_id)
+      let disable_actions = model.member.member_task_mutation_in_flight
+
+      let actions = case t.work_state {
+        task_status.WorkAvailable -> [
+          button(
+            [
+              attribute.class("btn btn-primary"),
+              attribute.disabled(disable_actions || t.blocked_count > 0),
+              event.on_click(pool_msg(MemberClaimClicked(t.id, t.version))),
+            ],
+            [text(update_helpers.i18n_t(model, i18n_text.ClaimTask))],
+          ),
+        ]
+
+        task_status.WorkClaimed | task_status.WorkOngoing ->
+          case is_mine {
+            True -> [
+              button(
+                [
+                  attribute.class("btn btn-secondary"),
+                  attribute.disabled(disable_actions),
+                  event.on_click(
+                    pool_msg(MemberReleaseClicked(t.id, t.version)),
+                  ),
+                ],
+                [text(update_helpers.i18n_t(model, i18n_text.Release))],
+              ),
+              button(
+                [
+                  attribute.class("btn btn-primary"),
+                  attribute.disabled(disable_actions),
+                  event.on_click(
+                    pool_msg(MemberCompleteClicked(t.id, t.version)),
+                  ),
+                ],
+                [text(update_helpers.i18n_t(model, i18n_text.Complete))],
+              ),
+            ]
+            False -> []
+          }
+
+        task_status.WorkCompleted -> []
+      }
+
+      div(
+        [attribute.class("modal-footer task-detail-footer")],
+        list.append([close_button], actions),
+      )
+    }
+  }
 }
 
 /// Dialog for creating a note - uses shared note_dialog component (Story 5.4.2).

@@ -35,25 +35,27 @@ import domain/project.{type Project, type ProjectMember}
 import domain/project_role.{Manager, Member}
 
 import scrumbringer_client/client_state.{
-  type Model, type Msg, type OrgUsersSearchState, type Remote, Loaded,
+  type Model, type Msg, type Remote, Failed, Loaded, Loading,
   MemberAddDialogClosed, MemberAddDialogOpened, MemberAddRoleChanged,
   MemberAddSubmitted, MemberAddUserSelected, MemberCapabilitiesDialogClosed,
   MemberCapabilitiesDialogOpened, MemberCapabilitiesSaveClicked,
   MemberCapabilitiesToggled, MemberReleaseAllCancelled, MemberReleaseAllClicked,
   MemberReleaseAllConfirmed, MemberRemoveCancelled, MemberRemoveClicked,
-  MemberRemoveConfirmed, MemberRoleChangeRequested, OrgUsersSearchChanged,
-  OrgUsersSearchDebounced, OrgUsersSearchFailed, OrgUsersSearchIdle,
-  OrgUsersSearchLoaded, OrgUsersSearchLoading, admin_msg,
+  MemberRemoveConfirmed, MemberRoleChangeRequested, NotAsked,
+  OrgUsersSearchChanged, OrgUsersSearchDebounced, OrgUsersSearchFailed,
+  OrgUsersSearchIdle, OrgUsersSearchLoaded, OrgUsersSearchLoading, admin_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/badge
+import scrumbringer_client/ui/confirm_dialog
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/search_select
 import scrumbringer_client/ui/section_header
 import scrumbringer_client/update_helpers
 
@@ -306,6 +308,13 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
     | OrgUsersSearchFailed(query, _, _) -> query
   }
 
+  let search_results = case model.admin.org_users_search {
+    OrgUsersSearchIdle(_, _) -> NotAsked
+    OrgUsersSearchLoading(_, _) -> Loading
+    OrgUsersSearchLoaded(_, _, users) -> Loaded(users)
+    OrgUsersSearchFailed(_, _, err) -> Failed(err)
+  }
+
   dialog.view(
     dialog.DialogConfig(
       title: update_helpers.i18n_t(model, i18n_text.AddMember),
@@ -316,25 +325,43 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
     True,
     model.admin.members_add_error,
     [
-      form_field.view(
-        update_helpers.i18n_t(model, i18n_text.SearchByEmail),
-        input([
-          attribute.type_("text"),
-          attribute.value(search_query),
-          event.on_input(fn(value) { admin_msg(OrgUsersSearchChanged(value)) }),
+      search_select.view(search_select.Config(
+        label: update_helpers.i18n_t(model, i18n_text.SearchByEmail),
+        placeholder: update_helpers.i18n_t(
+          model,
+          i18n_text.EmailPlaceholderExample,
+        ),
+        value: search_query,
+        on_change: fn(value) { admin_msg(OrgUsersSearchChanged(value)) },
+        input_attributes: [
           event.debounce(
             event.on_input(fn(value) {
               admin_msg(OrgUsersSearchDebounced(value))
             }),
             350,
           ),
-          attribute.placeholder(update_helpers.i18n_t(
-            model,
-            i18n_text.EmailPlaceholderExample,
-          )),
-        ]),
-      ),
-      view_org_users_search_results(model, model.admin.org_users_search),
+        ],
+        results: search_results,
+        render_item: fn(u: OrgUser) {
+          div([attribute.class("search-select-item")], [
+            span([attribute.class("search-select-primary")], [text(u.email)]),
+            span([attribute.class("search-select-secondary")], [
+              text(u.org_role),
+            ]),
+            button(
+              [
+                attribute.class("btn btn-secondary btn-xs"),
+                event.on_click(admin_msg(MemberAddUserSelected(u.id))),
+              ],
+              [text(update_helpers.i18n_t(model, i18n_text.Select))],
+            ),
+          ])
+        },
+        empty_label: update_helpers.i18n_t(model, i18n_text.TypeAnEmailToSearch),
+        loading_label: update_helpers.i18n_t(model, i18n_text.Searching),
+        error_label: fn(message) { message },
+        class: "org-users-search",
+      )),
       form_field.view(
         update_helpers.i18n_t(model, i18n_text.Role),
         select(
@@ -380,113 +407,37 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
   )
 }
 
-// Justification: nested case improves clarity for branching logic.
-fn view_org_users_search_results(
-  model: Model,
-  results: OrgUsersSearchState,
-) -> Element(Msg) {
-  case results {
-    OrgUsersSearchIdle(_query, _) ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.TypeAnEmailToSearch)),
-      ])
-
-    OrgUsersSearchLoading(_query, _) ->
-      div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.Searching)),
-      ])
-
-    OrgUsersSearchFailed(_query, _token, err) ->
-      case err.status == 403 {
-        True ->
-          div(
-            [
-              attribute.class("not-permitted"),
-            ],
-            [text(update_helpers.i18n_t(model, i18n_text.NotPermitted))],
-          )
-        False -> error_notice.view(err.message)
-      }
-
-    OrgUsersSearchLoaded(_query, _token, users) ->
-      case users {
-        [] ->
-          div([attribute.class("empty")], [
-            text(update_helpers.i18n_t(model, i18n_text.NoResults)),
-          ])
-
-        _ ->
-          data_table.new()
-          |> data_table.with_columns([
-            data_table.column(
-              update_helpers.i18n_t(model, i18n_text.EmailLabel),
-              fn(u: OrgUser) { text(u.email) },
-            ),
-            data_table.column(
-              update_helpers.i18n_t(model, i18n_text.OrgRole),
-              fn(u: OrgUser) { text(u.org_role) },
-            ),
-            data_table.column(
-              update_helpers.i18n_t(model, i18n_text.Created),
-              fn(u: OrgUser) { text(u.created_at) },
-            ),
-            data_table.column(
-              update_helpers.i18n_t(model, i18n_text.Select),
-              fn(u: OrgUser) {
-                button(
-                  [event.on_click(admin_msg(MemberAddUserSelected(u.id)))],
-                  [text(update_helpers.i18n_t(model, i18n_text.Select))],
-                )
-              },
-            ),
-          ])
-          |> data_table.with_rows(users, fn(u) { int.to_string(u.id) })
-          |> data_table.view()
-      }
-  }
-}
-
 fn view_remove_member_dialog(
   model: Model,
   project_name: String,
   user: OrgUser,
 ) -> Element(Msg) {
-  dialog.view(
-    dialog.DialogConfig(
+  confirm_dialog.view(
+    confirm_dialog.ConfirmConfig(
       title: update_helpers.i18n_t(model, i18n_text.RemoveMemberTitle),
-      icon: opt.None,
-      size: dialog.DialogSm,
-      on_close: admin_msg(MemberRemoveCancelled),
+      body: [
+        p([], [
+          text(update_helpers.i18n_t(
+            model,
+            i18n_text.RemoveMemberConfirm(user.email, project_name),
+          )),
+        ]),
+      ],
+      confirm_label: case model.admin.members_remove_in_flight {
+        True -> update_helpers.i18n_t(model, i18n_text.Removing)
+        False -> update_helpers.i18n_t(model, i18n_text.Remove)
+      },
+      cancel_label: update_helpers.i18n_t(model, i18n_text.Cancel),
+      on_confirm: admin_msg(MemberRemoveConfirmed),
+      on_cancel: admin_msg(MemberRemoveCancelled),
+      is_open: True,
+      is_loading: model.admin.members_remove_in_flight,
+      error: model.admin.members_remove_error,
+      confirm_class: case model.admin.members_remove_in_flight {
+        True -> "btn-danger btn-loading"
+        False -> "btn-danger"
+      },
     ),
-    True,
-    model.admin.members_remove_error,
-    [
-      p([], [
-        text(update_helpers.i18n_t(
-          model,
-          i18n_text.RemoveMemberConfirm(user.email, project_name),
-        )),
-      ]),
-    ],
-    [
-      dialog.cancel_button(model, admin_msg(MemberRemoveCancelled)),
-      button(
-        [
-          event.on_click(admin_msg(MemberRemoveConfirmed)),
-          attribute.disabled(model.admin.members_remove_in_flight),
-          attribute.class(case model.admin.members_remove_in_flight {
-            True -> "btn-loading"
-            False -> ""
-          }),
-        ],
-        [
-          text(case model.admin.members_remove_in_flight {
-            True -> update_helpers.i18n_t(model, i18n_text.Removing)
-            False -> update_helpers.i18n_t(model, i18n_text.Remove)
-          }),
-        ],
-      ),
-    ],
   )
 }
 
@@ -499,39 +450,29 @@ fn view_release_all_dialog(
     target
   let _ = project_name
 
-  dialog.view(
-    dialog.DialogConfig(
+  confirm_dialog.view(
+    confirm_dialog.ConfirmConfig(
       title: update_helpers.i18n_t(model, i18n_text.ReleaseAllConfirmTitle),
-      icon: opt.None,
-      size: dialog.DialogSm,
-      on_close: admin_msg(MemberReleaseAllCancelled),
+      body: [
+        p([], [
+          text(update_helpers.i18n_t(
+            model,
+            i18n_text.ReleaseAllConfirmBody(claimed_count, user.email),
+          )),
+        ]),
+      ],
+      confirm_label: update_helpers.i18n_t(model, i18n_text.Release),
+      cancel_label: update_helpers.i18n_t(model, i18n_text.Cancel),
+      on_confirm: admin_msg(MemberReleaseAllConfirmed),
+      on_cancel: admin_msg(MemberReleaseAllCancelled),
+      is_open: True,
+      is_loading: model.admin.members_release_in_flight == opt.Some(user.id),
+      error: model.admin.members_release_error,
+      confirm_class: case model.admin.members_release_in_flight {
+        opt.Some(_) -> "btn-primary btn-loading"
+        opt.None -> "btn-primary"
+      },
     ),
-    True,
-    model.admin.members_release_error,
-    [
-      p([], [
-        text(update_helpers.i18n_t(
-          model,
-          i18n_text.ReleaseAllConfirmBody(claimed_count, user.email),
-        )),
-      ]),
-    ],
-    [
-      dialog.cancel_button(model, admin_msg(MemberReleaseAllCancelled)),
-      button(
-        [
-          event.on_click(admin_msg(MemberReleaseAllConfirmed)),
-          attribute.disabled(
-            model.admin.members_release_in_flight == opt.Some(user.id),
-          ),
-          attribute.class(case model.admin.members_release_in_flight {
-            opt.Some(_) -> "btn-primary btn-loading"
-            opt.None -> "btn-primary"
-          }),
-        ],
-        [text(update_helpers.i18n_t(model, i18n_text.Release))],
-      ),
-    ],
   )
 }
 

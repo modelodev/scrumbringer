@@ -133,6 +133,11 @@ pub type Text {
   Dependencies
   AddDependency
   NoDependencies
+  TaskDependenciesHint
+  TaskDependenciesEmptyHint
+  TaskNotesHint
+  NoNotesYet
+  TaskNotesEmptyHint
   NoMatchingTasks
   TaskDependsOn
   Blocked

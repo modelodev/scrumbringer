@@ -25,7 +25,7 @@ import lustre/event
 import domain/card.{type Card}
 import domain/org.{type OrgUser}
 import domain/task.{type Task}
-import domain/task_status.{Available, Claimed, Completed, Ongoing, Taken}
+import domain/task_status.{Available, Claimed, Completed}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -39,7 +39,7 @@ import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_blocked_badge
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
-import scrumbringer_client/ui/task_state
+import scrumbringer_client/ui/task_status_utils
 import scrumbringer_client/ui/task_type_icon
 
 // =============================================================================
@@ -208,11 +208,7 @@ fn view_task_item(
           |> option.unwrap(i18n.t(config.locale, i18n_text.UnknownUser))
         None -> i18n.t(config.locale, i18n_text.UnknownUser)
       }
-      let status_icon = case task.status {
-        Claimed(Ongoing) -> icons.Play
-        Claimed(Taken) -> icons.Pause
-        _ -> icons.Pause
-      }
+      let status_icon = task_status_utils.claimed_icon(task.status)
       span([attribute.class("task-claimed-by")], [
         text(i18n.t(config.locale, i18n_text.ClaimedBy) <> " " <> claimed_email),
         span([attribute.class("task-claimed-icon")], [
@@ -222,12 +218,12 @@ fn view_task_item(
     }
     Available ->
       span([attribute.class("task-status-muted")], [
-        text(task_state.label(config.locale, task.status)),
+        text(task_status_utils.label(config.locale, task.status)),
       ])
     Completed ->
       // Completed - show status label
       span([attribute.class("task-status")], [
-        text(task_state.label(config.locale, task.status)),
+        text(task_status_utils.label(config.locale, task.status)),
       ])
     // Available tasks: no label needed (claim icon is sufficient indicator)
   }

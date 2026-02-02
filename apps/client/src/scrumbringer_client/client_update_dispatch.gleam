@@ -1141,6 +1141,7 @@ pub fn handle_pool(
       admin_workflow.handle_cards_fetched_ok(model, cards)
     client_state.CardsFetched(Error(err)) ->
       admin_workflow.handle_cards_fetched_error(model, err)
+
     client_state.MemberCardsFetched(Ok(cards)) ->
       client_state.update_member(model, fn(member) {
         client_state.MemberModel(

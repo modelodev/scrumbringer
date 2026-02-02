@@ -38,12 +38,13 @@ import domain/card.{
   type Card, type CardNote, type CardState, CardNote, Cerrada, EnCurso,
   Pendiente,
 }
-import domain/task.{type Task, type TaskDependency}
+import domain/task.{type Task}
 import domain/task_status.{Available, Completed}
 import domain/task_type
 
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/api/core.{type ApiResult}
+import scrumbringer_client/api/tasks/decoders as task_decoders
 import scrumbringer_client/client_state.{
   type Remote, Failed, Loaded, Loading, NotAsked,
 }
@@ -268,7 +269,7 @@ fn task_decoder() -> Decoder(Task) {
   use dependencies <- decode.optional_field(
     "dependencies",
     [],
-    decode.list(task_dependency_decoder()),
+    decode.list(task_decoders.task_dependency_decoder()),
   )
 
   decode.success(task.Task(
@@ -295,27 +296,6 @@ fn task_decoder() -> Decoder(Task) {
     has_new_notes: False,
     blocked_count: blocked_count,
     dependencies: dependencies,
-  ))
-}
-
-fn task_dependency_decoder() -> Decoder(TaskDependency) {
-  use depends_on_task_id <- decode.field("task_id", decode.int)
-  use title <- decode.field("title", decode.string)
-  use status_str <- decode.then(decode.string)
-  let status = case task_status.parse_task_status(status_str) {
-    Ok(s) -> s
-    Error(_) -> Available
-  }
-  use claimed_by <- decode.optional_field(
-    "claimed_by",
-    option.None,
-    decode.optional(decode.string),
-  )
-  decode.success(task.TaskDependency(
-    depends_on_task_id: depends_on_task_id,
-    title: title,
-    status: status,
-    claimed_by: claimed_by,
   ))
 }
 

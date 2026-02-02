@@ -797,6 +797,7 @@ pub type PoolMsg {
   MemberMyCapabilityIdsSaved(ApiResult(List(Int)))
   MemberCardsFetched(ApiResult(List(Card)))
   MemberPositionsFetched(ApiResult(List(TaskPosition)))
+
   MemberPositionEditOpened(Int)
   MemberPositionEditClosed
   MemberPositionEditXChanged(String)

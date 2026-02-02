@@ -448,6 +448,7 @@ fn build_snapshot(model: client_state.Model) -> hydration.Snapshot {
     task_types: remote_state(model.admin.task_types),
     task_types_project_id: model.admin.task_types_project_id,
     member_tasks: remote_state(model.member.member_tasks),
+    member_cards: remote_state(model.member.member_cards),
     work_sessions: remote_state(model.member.member_work_sessions),
     me_metrics: remote_state(model.member.member_metrics),
     org_metrics_overview: remote_state(model.admin.admin_metrics_overview),

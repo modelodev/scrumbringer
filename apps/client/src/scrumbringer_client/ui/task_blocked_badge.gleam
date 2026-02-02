@@ -15,7 +15,7 @@ import domain/task_status
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/ui/task_state
+import scrumbringer_client/ui/task_status_utils
 
 pub fn view(locale: Locale, task: Task, extra_class: String) -> Element(msg) {
   case task.blocked_count > 0 {
@@ -53,7 +53,7 @@ fn tooltip_text(locale: Locale, deps: List(TaskDependency)) -> String {
 }
 
 fn dependency_status(locale: Locale, dep: TaskDependency) -> String {
-  let status_label = task_state.label(locale, dep.status)
+  let status_label = task_status_utils.label(locale, dep.status)
   case dep.status {
     task_status.Claimed(_) ->
       case dep.claimed_by {

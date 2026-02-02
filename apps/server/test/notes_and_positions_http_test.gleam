@@ -6,6 +6,7 @@ import gleam/json
 import gleam/list
 import gleam/result
 import gleam/string
+import gleam/time/timestamp
 import gleeunit/should
 import pog
 import scrumbringer_server
@@ -485,6 +486,57 @@ pub fn card_notes_list_requires_card_membership_test() {
   outsider_res.status |> should.equal(404)
   string.contains(simulate.read_body(outsider_res), "NOT_FOUND")
   |> should.be_true
+}
+
+pub fn card_notes_list_orders_by_created_at_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  let card_id =
+    create_card(handler, admin_session, admin_csrf, project_id, "Card")
+
+  let admin_id =
+    single_int(db, "select id from users where email = 'admin@example.com'", [])
+
+  insert_note_with_created_at(
+    db,
+    card_id,
+    admin_id,
+    "First",
+    "2026-02-01T10:00:00Z",
+  )
+
+  insert_note_with_created_at(
+    db,
+    card_id,
+    admin_id,
+    "Second",
+    "2026-02-01T11:00:00Z",
+  )
+
+  let list_res =
+    handler(
+      simulate.request(
+        http.Get,
+        "/api/v1/cards/" <> int_to_string(card_id) <> "/notes",
+      )
+      |> request.set_cookie("sb_session", admin_session)
+      |> request.set_cookie("sb_csrf", admin_csrf),
+    )
+
+  list_res.status |> should.equal(200)
+  decode_note_list_contents(simulate.read_body(list_res))
+  |> should.equal(["First", "Second"])
 }
 
 // Justification: large function kept intact to preserve cohesive logic.
@@ -1072,6 +1124,27 @@ fn decode_note_list_contents(body: String) -> List(String) {
 
   let assert Ok(notes) = decode.run(dynamic, response_decoder)
   notes
+}
+
+fn insert_note_with_created_at(
+  db: pog.Connection,
+  card_id: Int,
+  user_id: Int,
+  content: String,
+  created_at: String,
+) {
+  let assert Ok(ts) = timestamp.parse_rfc3339(created_at)
+  let assert Ok(_) =
+    pog.query(
+      "insert into card_notes (card_id, user_id, content, created_at) values ($1, $2, $3, $4)",
+    )
+    |> pog.parameter(pog.int(card_id))
+    |> pog.parameter(pog.int(user_id))
+    |> pog.parameter(pog.text(content))
+    |> pog.parameter(pog.timestamp(ts))
+    |> pog.execute(db)
+
+  Nil
 }
 
 fn decode_note_id(body: String) -> Int {

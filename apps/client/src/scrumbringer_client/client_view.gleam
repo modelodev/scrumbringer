@@ -73,7 +73,7 @@ import scrumbringer_client/theme
 
 // Story 4.5: css module no longer used after unified layout removal
 import scrumbringer_client/ui/action_buttons
-import scrumbringer_client/ui/dialog
+import scrumbringer_client/ui/confirm_dialog
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_actions
@@ -520,18 +520,9 @@ fn view_member_blocked_claim_modal(
           li([], [text(dep.title <> " - " <> status_text)])
         })
 
-      dialog.view(
-        dialog.DialogConfig(
-          title: update_helpers.i18n_t(model, i18n_text.BlockedTaskTitle),
-          icon: opt.Some(icons.nav_icon(icons.Warning, icons.Medium)),
-          size: dialog.DialogSm,
-          on_close: client_state.pool_msg(
-            client_state.MemberBlockedClaimCancelled,
-          ),
-        ),
-        True,
-        opt.None,
-        [
+      confirm_dialog.view(confirm_dialog.ConfirmConfig(
+        title: update_helpers.i18n_t(model, i18n_text.BlockedTaskTitle),
+        body: [
           p([attribute.class("blocked-claim-title")], [text(task_title)]),
           p([attribute.class("blocked-claim-warning")], [text(warning)]),
           case list_items {
@@ -539,23 +530,19 @@ fn view_member_blocked_claim_modal(
             _ -> ul([attribute.class("blocked-claim-list")], list_items)
           },
         ],
-        [
-          dialog.cancel_button(
-            model,
-            client_state.pool_msg(client_state.MemberBlockedClaimCancelled),
-          ),
-          button(
-            [
-              attribute.type_("button"),
-              attribute.class("btn btn-primary"),
-              event.on_click(client_state.pool_msg(
-                client_state.MemberBlockedClaimConfirmed,
-              )),
-            ],
-            [text(update_helpers.i18n_t(model, i18n_text.Claim))],
-          ),
-        ],
-      )
+        confirm_label: update_helpers.i18n_t(model, i18n_text.Claim),
+        cancel_label: update_helpers.i18n_t(model, i18n_text.Cancel),
+        on_confirm: client_state.pool_msg(
+          client_state.MemberBlockedClaimConfirmed,
+        ),
+        on_cancel: client_state.pool_msg(
+          client_state.MemberBlockedClaimCancelled,
+        ),
+        is_open: True,
+        is_loading: False,
+        error: opt.None,
+        confirm_class: "btn-primary",
+      ))
     }
   }
 }
@@ -714,10 +701,7 @@ fn build_center_panel(
     client_state.Loaded(caps) -> caps
     _ -> []
   }
-  let cards = case model.admin.cards {
-    client_state.Loaded(c) -> c
-    _ -> []
-  }
+  let cards = card_queries.get_project_cards(model)
 
   // Build view-specific content
   let pool_content = pool_view.view_pool_main(model, user)
@@ -845,8 +829,9 @@ fn build_right_panel(
   }
 
   // Build my cards with progress (cards user is assigned to via tasks)
-  let my_cards = case model.admin.cards {
-    client_state.Loaded(cards) -> {
+  let my_cards = case card_queries.get_project_cards(model) {
+    [] -> []
+    cards -> {
       // Get all tasks to compute progress
       let all_tasks = case model.member.member_tasks {
         client_state.Loaded(tasks) -> tasks
@@ -876,7 +861,6 @@ fn build_right_panel(
         }
       })
     }
-    _ -> []
   }
 
   // Build active tasks list (supports multiple concurrent tasks)

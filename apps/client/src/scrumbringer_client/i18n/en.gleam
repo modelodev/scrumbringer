@@ -145,6 +145,15 @@ pub fn translate(text: Text) -> String {
     text.Dependencies -> "Dependencies"
     text.AddDependency -> "Add dependency"
     text.NoDependencies -> "No dependencies"
+    text.TaskDependenciesHint ->
+      "Use dependencies to block this task until other work is finished."
+    text.TaskDependenciesEmptyHint ->
+      "Add a dependency to reflect the order in which work should happen."
+    text.TaskNotesHint ->
+      "Capture decisions, context, or progress updates here."
+    text.NoNotesYet -> "No notes yet"
+    text.TaskNotesEmptyHint ->
+      "Add the first note to keep this task aligned and searchable."
     text.NoMatchingTasks -> "No matching tasks"
     text.TaskDependsOn -> "This task depends on"
     text.Blocked -> "Blocked"
