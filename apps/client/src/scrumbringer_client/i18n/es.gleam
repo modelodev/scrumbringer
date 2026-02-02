@@ -144,6 +144,7 @@ pub fn translate(text: Text) -> String {
     text.Notes -> "Notas"
     text.AddNote -> "Añadir nota"
     text.NotePlaceholder -> "Escribe una nota..."
+    text.RecentNotes -> "Notas recientes"
     text.Dependencies -> "Dependencias"
     text.AddDependency -> "Añadir dependencia"
     text.NoDependencies -> "Sin dependencias"

@@ -29,6 +29,7 @@ pub fn reset_to_login_clears_user_and_drag_state_test() {
           task_id: 1,
           offset_x: 5,
           offset_y: 5,
+          offset_ready: True,
         )),
         member_pool_drag: client_state.PoolDragDragging(
           over_my_tasks: True,

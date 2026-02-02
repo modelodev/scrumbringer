@@ -34,8 +34,8 @@ import lustre/element/html.{button, div, h2, h3, p, text}
 import lustre/element/keyed
 import lustre/event
 
-import domain/task.{type Task, Task}
-import domain/task_status.{Available, Claimed, Taken}
+import domain/task.{type Task, Task, TaskNote}
+import domain/task_status.{Available, Claimed, Completed, Taken}
 import domain/user.{type User}
 
 import scrumbringer_client/client_ffi
@@ -44,7 +44,8 @@ import scrumbringer_client/client_state.{
   MemberCompleteClicked, MemberCreateDialogOpened, MemberDragEnded,
   MemberDragMoved, MemberDragStarted, MemberPoolTouchEnded,
   MemberPoolTouchStarted, MemberReleaseClicked, MemberTaskDetailsOpened,
-  NotAsked, PoolDragDragging, PoolDragIdle, PoolDragPendingRect, pool_msg,
+  MemberTaskHoverOpened, NotAsked, PoolDragDragging, PoolDragIdle,
+  PoolDragPendingRect, pool_msg,
 }
 import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/panel as now_working_panel
@@ -62,6 +63,7 @@ import scrumbringer_client/ui/task_blocked_badge
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_hover_popup
 import scrumbringer_client/ui/task_item
+import scrumbringer_client/ui/task_status_utils
 import scrumbringer_client/ui/task_type_icon
 import scrumbringer_client/update_helpers
 import scrumbringer_client/utils/card_queries
@@ -318,6 +320,7 @@ pub fn view_pool_task_row(model: Model, task: Task) -> Element(Msg) {
     type_id: _type_id,
     task_type: task_type,
     version: version,
+    blocked_count: blocked_count,
     ..,
   ) = task
 
@@ -325,16 +328,19 @@ pub fn view_pool_task_row(model: Model, task: Task) -> Element(Msg) {
 
   let disable_actions = model.member.member_task_mutation_in_flight
 
-  let claim_actions =
-    task_actions.claim_only(
-      update_helpers.i18n_t(model, i18n_text.Claim),
-      pool_msg(MemberClaimClicked(id, version)),
-      action_buttons.SizeXs,
-      disable_actions,
-      "",
-      opt.None,
-      opt.None,
-    )
+  let claim_actions = case blocked_count > 0 {
+    True -> []
+    False ->
+      task_actions.claim_only(
+        update_helpers.i18n_t(model, i18n_text.Claim),
+        pool_msg(MemberClaimClicked(id, version)),
+        action_buttons.SizeXs,
+        disable_actions,
+        "",
+        opt.None,
+        opt.None,
+      )
+  }
 
   let #(_card_title_opt, resolved_color) =
     card_queries.resolve_task_card_info(model, task)
@@ -375,6 +381,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     priority: _priority,
     status: status,
     claimed_by: claimed_by,
+    blocked_count: blocked_count,
     created_at: created_at,
     description: description,
     version: version,
@@ -458,6 +465,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
   let disable_actions = model.member.member_task_mutation_in_flight
 
   let primary_action = case status, is_mine {
+    Available, _ if blocked_count > 0 -> element.none()
     Available, _ ->
       task_actions.claim_icon(
         update_helpers.i18n_t(model, i18n_text.Claim),
@@ -498,8 +506,8 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
         attribute.attribute("type", "button"),
         event.on(
           "mousedown",
-          event_decoders.mouse_offset(fn(ox, oy) {
-            pool_msg(MemberDragStarted(id, ox, oy))
+          event_decoders.mouse_client_position(fn(x, y) {
+            pool_msg(MemberDragStarted(id, x, y))
           }),
         ),
       ],
@@ -525,14 +533,21 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     [
       attribute.class(card_classes),
       attribute.attribute("style", style),
+      attribute.id("task-card-" <> int.to_string(id)),
       attribute.attribute(
         "aria-describedby",
         "task-preview-" <> int.to_string(id),
       ),
       attribute.attribute("tabindex", "0"),
       event.on(
+        "mouseenter",
+        decode.success(pool_msg(MemberTaskHoverOpened(id))),
+      ),
+      event.on(
         "touchstart",
-        decode.success(pool_msg(MemberPoolTouchStarted(id))),
+        event_decoders.touch_client_position(fn(x, y) {
+          pool_msg(MemberPoolTouchStarted(id, x, y))
+        }),
       ),
       event.on("touchend", decode.success(pool_msg(MemberPoolTouchEnded(id)))),
       event.on(
@@ -587,6 +602,10 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
               i18n_text.Description,
             ),
             description: opt.unwrap(description, ""),
+            blocked_label: hover_blocked_label(model, task),
+            blocked_items: hover_blocked_items(model, task),
+            notes_label: hover_notes_label(model, task),
+            notes: hover_notes_for_task(model, id),
             open_label: update_helpers.i18n_t(model, i18n_text.OpenTask),
             on_open: pool_msg(MemberTaskDetailsOpened(id)),
           )),
@@ -594,6 +613,70 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
       ),
     ],
   )
+}
+
+fn hover_blocked_label(model: Model, task: Task) -> opt.Option(String) {
+  let blocking = blocking_dependencies(task)
+  let count = list.length(blocking)
+  case count > 0 {
+    True ->
+      opt.Some(update_helpers.i18n_t(model, i18n_text.BlockedByTasks(count)))
+    False -> opt.None
+  }
+}
+
+fn hover_blocked_items(model: Model, task: Task) -> List(String) {
+  let blocking = blocking_dependencies(task)
+  blocking
+  |> list.take(2)
+  |> list.map(fn(dep) {
+    dep.title <> " · " <> task_status_utils.label(model.ui.locale, dep.status)
+  })
+}
+
+fn blocking_dependencies(task: Task) -> List(task.TaskDependency) {
+  let Task(dependencies: dependencies, ..) = task
+  list.filter(dependencies, fn(dep) { dep.status != Completed })
+}
+
+fn hover_notes_label(model: Model, task: Task) -> opt.Option(String) {
+  let Task(id: task_id, ..) = task
+  case hover_notes_for_task(model, task_id) {
+    [] -> opt.None
+    _ -> opt.Some(update_helpers.i18n_t(model, i18n_text.RecentNotes))
+  }
+}
+
+fn hover_notes_for_task(
+  model: Model,
+  task_id: Int,
+) -> List(task_hover_popup.HoverNote) {
+  let current_user_id = case model.core.user {
+    opt.Some(u) -> u.id
+    opt.None -> 0
+  }
+
+  case dict.get(model.member.member_hover_notes_cache, task_id) {
+    Ok(notes) ->
+      list.map(notes, fn(note) {
+        let TaskNote(
+          user_id: user_id,
+          created_at: created_at,
+          content: content,
+          ..,
+        ) = note
+        let author = case user_id == current_user_id {
+          True -> update_helpers.i18n_t(model, i18n_text.You)
+          False -> update_helpers.i18n_t(model, i18n_text.UserNumber(user_id))
+        }
+        task_hover_popup.HoverNote(
+          author: author,
+          created_at: created_at,
+          content: content,
+        )
+      })
+    Error(_) -> []
+  }
 }
 
 // --- Helpers ---

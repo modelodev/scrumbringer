@@ -27,19 +27,21 @@
 
 import gleam/dict
 import gleam/int
+import gleam/list
 import gleam/option as opt
 
 import lustre/effect.{type Effect}
 
-import domain/api_error.{type ApiError}
-import domain/task.{type TaskPosition, Task, TaskPosition}
+import domain/api_error.{type ApiError, type ApiResult}
+import domain/task
 import scrumbringer_client/api/tasks as api_tasks
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
   type Model, type Msg, type PoolDragState, MemberCanvasRectFetched, MemberDrag,
-  MemberModel, MemberPoolLongPressCheck, MemberPoolMyTasksRectFetched,
-  MemberPositionSaved, MemberTaskClaimed, PoolDragDragging, PoolDragIdle,
+  MemberDragOffsetResolved, MemberModel, MemberPoolLongPressCheck,
+  MemberPoolMyTasksRectFetched, MemberPositionSaved, MemberTaskClaimed,
+  MemberTaskHoverNotesFetched, PoolDragDragging, PoolDragIdle,
   PoolDragPendingRect, Rect, pool_msg, rect_contains_point, update_member,
 }
 import scrumbringer_client/i18n/text as i18n_text
@@ -313,22 +315,37 @@ fn close_dialog_shortcut(model: Model) -> #(Model, Effect(Msg)) {
 pub fn handle_pool_touch_started(
   model: Model,
   task_id: Int,
+  client_x: Int,
+  client_y: Int,
 ) -> #(Model, Effect(Msg)) {
+  let #(model, hover_fx) = ensure_hover_notes(model, task_id)
   let model =
     update_member(model, fn(member) {
       MemberModel(
         ..member,
         member_pool_touch_task_id: opt.Some(task_id),
         member_pool_touch_longpress: opt.None,
+        member_pool_touch_client_x: client_x,
+        member_pool_touch_client_y: client_y,
       )
     })
 
   #(
     model,
-    app_effects.schedule_timeout(450, fn() {
-      pool_msg(MemberPoolLongPressCheck(task_id))
-    }),
+    effect.batch([
+      hover_fx,
+      app_effects.schedule_timeout(450, fn() {
+        pool_msg(MemberPoolLongPressCheck(task_id))
+      }),
+    ]),
   )
+}
+
+pub fn handle_task_hover_opened(
+  model: Model,
+  task_id: Int,
+) -> #(Model, Effect(Msg)) {
+  ensure_hover_notes(model, task_id)
 }
 
 /// Handle touch end on a task card.
@@ -345,6 +362,8 @@ pub fn handle_pool_touch_ended(
             ..member,
             member_pool_touch_task_id: opt.None,
             member_pool_touch_longpress: opt.None,
+            member_pool_touch_client_x: 0,
+            member_pool_touch_client_y: 0,
           )
         })
       #(model, fx)
@@ -361,6 +380,8 @@ pub fn handle_pool_touch_ended(
             member_pool_preview_task_id: next_preview,
             member_pool_touch_task_id: opt.None,
             member_pool_touch_longpress: opt.None,
+            member_pool_touch_client_x: 0,
+            member_pool_touch_client_y: 0,
           )
         }),
         effect.none(),
@@ -376,7 +397,13 @@ pub fn handle_pool_long_press_check(
 ) -> #(Model, Effect(Msg)) {
   case model.member.member_pool_touch_task_id {
     opt.Some(id) if id == task_id -> {
-      let #(model, fx) = handle_drag_started(model, task_id, 0, 0)
+      let #(model, fx) =
+        handle_drag_started(
+          model,
+          task_id,
+          model.member.member_pool_touch_client_x,
+          model.member.member_pool_touch_client_y,
+        )
       let model =
         update_member(model, fn(member) {
           MemberModel(
@@ -456,8 +483,8 @@ pub fn handle_canvas_rect_fetched(
 pub fn handle_drag_started(
   model: Model,
   task_id: Int,
-  offset_x: Int,
-  offset_y: Int,
+  client_x: Int,
+  client_y: Int,
 ) -> #(Model, Effect(Msg)) {
   let model =
     update_member(model, fn(member) {
@@ -465,8 +492,9 @@ pub fn handle_drag_started(
         ..member,
         member_drag: opt.Some(MemberDrag(
           task_id: task_id,
-          offset_x: offset_x,
-          offset_y: offset_y,
+          offset_x: 0,
+          offset_y: 0,
+          offset_ready: False,
         )),
         member_pool_drag: PoolDragPendingRect,
       )
@@ -477,6 +505,12 @@ pub fn handle_drag_started(
     effect.from(fn(dispatch) {
       let #(left, top) = client_ffi.element_client_offset("member-canvas")
       dispatch(pool_msg(MemberCanvasRectFetched(left, top)))
+
+      let #(card_left, card_top, _width, _height) =
+        client_ffi.element_client_rect("task-card-" <> int.to_string(task_id))
+      let offset_x = client_x - card_left
+      let offset_y = client_y - card_top
+      dispatch(pool_msg(MemberDragOffsetResolved(task_id, offset_x, offset_y)))
 
       let #(dz_left, dz_top, dz_width, dz_height) =
         client_ffi.element_client_rect("pool-my-tasks")
@@ -502,10 +536,12 @@ pub fn handle_drag_moved(
     opt.None -> #(model, effect.none())
 
     opt.Some(drag) -> {
-      let MemberDrag(task_id: task_id, offset_x: ox, offset_y: oy) = drag
-
-      let x = client_x - model.member.member_canvas_left - ox
-      let y = client_y - model.member.member_canvas_top - oy
+      let MemberDrag(
+        task_id: task_id,
+        offset_x: ox,
+        offset_y: oy,
+        offset_ready: offset_ready,
+      ) = drag
 
       let over_my_tasks =
         pool_drag_over_my_tasks(
@@ -516,21 +552,143 @@ pub fn handle_drag_moved(
       let next_drag =
         next_pool_drag_state(model.member.member_pool_drag, over_my_tasks)
 
+      case offset_ready {
+        False -> #(
+          update_member(model, fn(member) {
+            MemberModel(..member, member_pool_drag: next_drag)
+          }),
+          effect.none(),
+        )
+        True -> {
+          let x = client_x - model.member.member_canvas_left - ox
+          let y = client_y - model.member.member_canvas_top - oy
+
+          #(
+            update_member(model, fn(member) {
+              MemberModel(
+                ..member,
+                member_positions_by_task: dict.insert(
+                  model.member.member_positions_by_task,
+                  task_id,
+                  #(x, y),
+                ),
+                member_pool_drag: next_drag,
+              )
+            }),
+            effect.none(),
+          )
+        }
+      }
+    }
+  }
+}
+
+pub fn handle_drag_offset_resolved(
+  model: Model,
+  task_id: Int,
+  offset_x: Int,
+  offset_y: Int,
+) -> #(Model, Effect(Msg)) {
+  let updated = case model.member.member_drag {
+    opt.Some(drag) -> {
+      let MemberDrag(task_id: drag_task_id, ..) = drag
+      case drag_task_id == task_id {
+        True ->
+          opt.Some(MemberDrag(
+            task_id: task_id,
+            offset_x: offset_x,
+            offset_y: offset_y,
+            offset_ready: True,
+          ))
+        False -> opt.Some(drag)
+      }
+    }
+    opt.None -> opt.None
+  }
+
+  #(
+    update_member(model, fn(member) {
+      MemberModel(..member, member_drag: updated)
+    }),
+    effect.none(),
+  )
+}
+
+pub fn handle_task_hover_notes_fetched(
+  model: Model,
+  task_id: Int,
+  result: ApiResult(List(task.TaskNote)),
+) -> #(Model, Effect(Msg)) {
+  let model =
+    update_member(model, fn(member) {
+      MemberModel(
+        ..member,
+        member_hover_notes_pending: dict.delete(
+          model.member.member_hover_notes_pending,
+          task_id,
+        ),
+      )
+    })
+
+  case result {
+    Ok(notes) -> {
+      let trimmed = take_last_notes(notes, 2)
       #(
         update_member(model, fn(member) {
           MemberModel(
             ..member,
-            member_positions_by_task: dict.insert(
-              model.member.member_positions_by_task,
+            member_hover_notes_cache: dict.insert(
+              model.member.member_hover_notes_cache,
               task_id,
-              #(x, y),
+              trimmed,
             ),
-            member_pool_drag: next_drag,
           )
         }),
         effect.none(),
       )
     }
+    Error(_err) -> #(model, effect.none())
+  }
+}
+
+fn ensure_hover_notes(model: Model, task_id: Int) -> #(Model, Effect(Msg)) {
+  let cached = dict.get(model.member.member_hover_notes_cache, task_id)
+  let pending = dict.get(model.member.member_hover_notes_pending, task_id)
+
+  case cached, pending {
+    Ok(_), _ -> #(model, effect.none())
+    _, Ok(_) -> #(model, effect.none())
+    _, _ -> {
+      let model =
+        update_member(model, fn(member) {
+          MemberModel(
+            ..member,
+            member_hover_notes_pending: dict.insert(
+              model.member.member_hover_notes_pending,
+              task_id,
+              True,
+            ),
+          )
+        })
+
+      let notes_fx =
+        api_tasks.list_task_notes(task_id, fn(result) {
+          pool_msg(MemberTaskHoverNotesFetched(task_id, result))
+        })
+
+      #(model, notes_fx)
+    }
+  }
+}
+
+fn take_last_notes(
+  notes: List(task.TaskNote),
+  count: Int,
+) -> List(task.TaskNote) {
+  let total = list.length(notes)
+  case total <= count {
+    True -> notes
+    False -> list.drop(notes, total - count)
   }
 }
 
@@ -598,7 +756,7 @@ fn handle_claim_drop(model: Model, task_id: Int) -> #(Model, Effect(Msg)) {
     update_helpers.find_task_by_id(model.member.member_tasks, task_id),
     model.member.member_task_mutation_in_flight
   {
-    opt.Some(Task(version: version, ..)), False -> #(
+    opt.Some(task.Task(version: version, ..)), False -> #(
       update_member(model, fn(member) {
         MemberModel(..member, member_task_mutation_in_flight: True)
       }),
@@ -764,9 +922,9 @@ fn submit_position_edit_invalid(model: Model) -> #(Model, Effect(Msg)) {
 /// Handle position saved response (success).
 pub fn handle_position_saved_ok(
   model: Model,
-  pos: TaskPosition,
+  pos: task.TaskPosition,
 ) -> #(Model, Effect(Msg)) {
-  let TaskPosition(task_id: task_id, x: x, y: y, ..) = pos
+  let task.TaskPosition(task_id: task_id, x: x, y: y, ..) = pos
 
   #(
     update_member(model, fn(member) {
@@ -813,7 +971,7 @@ pub fn handle_position_saved_error(
 /// Handle positions fetched response (success).
 pub fn handle_positions_fetched_ok(
   model: Model,
-  positions: List(TaskPosition),
+  positions: List(task.TaskPosition),
 ) -> #(Model, Effect(Msg)) {
   #(
     update_member(model, fn(member) {

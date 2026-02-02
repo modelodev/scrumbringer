@@ -15,6 +15,7 @@ import domain/task_status
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_status_utils
 
 pub fn view(locale: Locale, task: Task, extra_class: String) -> Element(msg) {
@@ -27,12 +28,10 @@ pub fn view(locale: Locale, task: Task, extra_class: String) -> Element(msg) {
           attribute.attribute("title", tooltip_text(locale, task.dependencies)),
         ],
         [
-          text(
-            i18n.t(locale, i18n_text.Blocked)
-            <> " ("
-            <> int.to_string(task.blocked_count)
-            <> ")",
-          ),
+          icons.nav_icon(icons.Warning, icons.XSmall),
+          span([attribute.class("task-blocked-count")], [
+            text(int.to_string(task.blocked_count)),
+          ]),
         ],
       )
   }

@@ -164,7 +164,7 @@ pub type IconPreview {
 /// Captures the task being dragged and the offset from the cursor
 /// to the card's origin, enabling smooth visual feedback.
 pub type MemberDrag {
-  MemberDrag(task_id: Int, offset_x: Int, offset_y: Int)
+  MemberDrag(task_id: Int, offset_x: Int, offset_y: Int, offset_ready: Bool)
 }
 
 /// Drag-to-claim state for pool interactions.
@@ -554,7 +554,11 @@ pub type MemberModel {
     member_pool_drag: PoolDragState,
     member_pool_touch_task_id: Option(Int),
     member_pool_touch_longpress: Option(Int),
+    member_pool_touch_client_x: Int,
+    member_pool_touch_client_y: Int,
     member_pool_preview_task_id: Option(Int),
+    member_hover_notes_cache: Dict(Int, List(TaskNote)),
+    member_hover_notes_pending: Dict(Int, Bool),
     member_position_edit_task: Option(Int),
     member_position_edit_x: String,
     member_position_edit_y: String,
@@ -746,9 +750,11 @@ pub type PoolMsg {
   MemberPoolFiltersToggled
   MemberClearFilters
   MemberPoolViewModeSet(pool_prefs.ViewMode)
-  MemberPoolTouchStarted(Int)
+  MemberPoolTouchStarted(Int, Int, Int)
   MemberPoolTouchEnded(Int)
   MemberPoolLongPressCheck(Int)
+  MemberTaskHoverOpened(Int)
+  MemberTaskHoverNotesFetched(Int, ApiResult(List(TaskNote)))
   MemberListHideCompletedToggled
   MemberListCardToggled(Int)
   ViewModeChanged(view_mode.ViewMode)
@@ -764,6 +770,7 @@ pub type PoolMsg {
   MemberTaskTypesFetched(Int, ApiResult(List(TaskType)))
   MemberCanvasRectFetched(Int, Int)
   MemberDragStarted(Int, Int, Int)
+  MemberDragOffsetResolved(Int, Int, Int)
   MemberDragMoved(Int, Int)
   MemberDragEnded
   MemberCreateDialogOpened
@@ -1371,7 +1378,11 @@ pub fn default_model() -> Model {
       member_pool_drag: PoolDragIdle,
       member_pool_touch_task_id: option.None,
       member_pool_touch_longpress: option.None,
+      member_pool_touch_client_x: 0,
+      member_pool_touch_client_y: 0,
       member_pool_preview_task_id: option.None,
+      member_hover_notes_cache: dict.new(),
+      member_hover_notes_pending: dict.new(),
       member_position_edit_task: option.None,
       member_position_edit_x: "",
       member_position_edit_y: "",

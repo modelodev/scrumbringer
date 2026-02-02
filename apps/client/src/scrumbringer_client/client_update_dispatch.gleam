@@ -618,12 +618,21 @@ pub fn handle_pool(
       pool_workflow.handle_clear_filters(model, member_refresh)
     client_state.MemberPoolViewModeSet(mode) ->
       pool_workflow.handle_pool_view_mode_set(model, mode)
-    client_state.MemberPoolTouchStarted(task_id) ->
-      pool_workflow.handle_pool_touch_started(model, task_id)
+    client_state.MemberPoolTouchStarted(task_id, client_x, client_y) ->
+      pool_workflow.handle_pool_touch_started(
+        model,
+        task_id,
+        client_x,
+        client_y,
+      )
     client_state.MemberPoolTouchEnded(task_id) ->
       pool_workflow.handle_pool_touch_ended(model, task_id)
     client_state.MemberPoolLongPressCheck(task_id) ->
       pool_workflow.handle_pool_long_press_check(model, task_id)
+    client_state.MemberTaskHoverOpened(task_id) ->
+      pool_workflow.handle_task_hover_opened(model, task_id)
+    client_state.MemberTaskHoverNotesFetched(task_id, result) ->
+      pool_workflow.handle_task_hover_notes_fetched(model, task_id, result)
     client_state.MemberListHideCompletedToggled -> #(
       client_state.update_member(model, fn(member) {
         client_state.MemberModel(
@@ -874,8 +883,15 @@ pub fn handle_pool(
 
     client_state.MemberCanvasRectFetched(left, top) ->
       pool_workflow.handle_canvas_rect_fetched(model, left, top)
-    client_state.MemberDragStarted(task_id, offset_x, offset_y) ->
-      pool_workflow.handle_drag_started(model, task_id, offset_x, offset_y)
+    client_state.MemberDragStarted(task_id, client_x, client_y) ->
+      pool_workflow.handle_drag_started(model, task_id, client_x, client_y)
+    client_state.MemberDragOffsetResolved(task_id, offset_x, offset_y) ->
+      pool_workflow.handle_drag_offset_resolved(
+        model,
+        task_id,
+        offset_x,
+        offset_y,
+      )
     client_state.MemberDragMoved(client_x, client_y) ->
       pool_workflow.handle_drag_moved(model, client_x, client_y)
     client_state.MemberDragEnded -> pool_workflow.handle_drag_ended(model)

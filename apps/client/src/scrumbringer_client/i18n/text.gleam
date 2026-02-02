@@ -130,6 +130,7 @@ pub type Text {
   Notes
   AddNote
   NotePlaceholder
+  RecentNotes
   Dependencies
   AddDependency
   NoDependencies

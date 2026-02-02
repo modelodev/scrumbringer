@@ -14,6 +14,10 @@ pub fn task_hover_popup_hides_card_and_description_when_empty_test() {
       age_value: "2d",
       description_label: "Descripción",
       description: "",
+      blocked_label: None,
+      blocked_items: [],
+      notes_label: None,
+      notes: [],
       open_label: "Abrir tarea",
       on_open: "msg",
     ))
@@ -34,6 +38,10 @@ pub fn task_hover_popup_renders_card_and_description_test() {
       age_value: "29d",
       description_label: "Descripción",
       description: "Revisar cambios",
+      blocked_label: None,
+      blocked_items: [],
+      notes_label: None,
+      notes: [],
       open_label: "Abrir tarea",
       on_open: "msg",
     ))
