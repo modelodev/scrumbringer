@@ -96,6 +96,7 @@ import scrumbringer_client/permissions
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/reset_password
 import scrumbringer_client/router
+import scrumbringer_client/state/normalized_store
 import scrumbringer_client/theme
 import scrumbringer_client/ui/task_tabs
 import scrumbringer_client/ui/toast
@@ -520,6 +521,7 @@ pub type MemberModel {
     member_task_types: Remote(List(TaskType)),
     member_task_types_pending: Int,
     member_task_types_by_project: Dict(Int, List(TaskType)),
+    member_cards_store: normalized_store.NormalizedStore(Int, Card),
     member_cards: Remote(List(Card)),
     member_capabilities: Remote(List(Capability)),
     member_task_mutation_in_flight: Bool,
@@ -802,7 +804,7 @@ pub type PoolMsg {
   MemberToggleCapability(Int)
   MemberSaveCapabilitiesClicked
   MemberMyCapabilityIdsSaved(ApiResult(List(Int)))
-  MemberCardsFetched(ApiResult(List(Card)))
+  MemberProjectCardsFetched(Int, ApiResult(List(Card)))
   MemberPositionsFetched(ApiResult(List(TaskPosition)))
 
   MemberPositionEditOpened(Int)
@@ -1344,6 +1346,7 @@ pub fn default_model() -> Model {
       member_task_types: NotAsked,
       member_task_types_pending: 0,
       member_task_types_by_project: dict.new(),
+      member_cards_store: normalized_store.new(),
       member_cards: NotAsked,
       member_capabilities: NotAsked,
       member_task_mutation_in_flight: False,

@@ -30,11 +30,12 @@ import lustre/event
 import domain/card.{type Card}
 import domain/task as domain_task
 import scrumbringer_client/client_state.{
-  type Model, type Msg, CloseCardDetail, Loaded, Loading,
+  type Model, type Msg, CloseCardDetail, Loaded,
   MemberCreateDialogOpenedWithCard, OpenCardDetail, pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
+import scrumbringer_client/state/normalized_store
 import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/card_detail_host
 import scrumbringer_client/ui/card_progress
@@ -74,18 +75,20 @@ fn view_fichas_header(model: Model) -> Element(Msg) {
 
 // Justification: nested case improves clarity for branching logic.
 fn view_fichas_content(model: Model) -> Element(Msg) {
-  // Use member-scoped cards for Fichas
-  case model.member.member_cards {
-    Loading ->
-      loading.loading(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis))
+  let cards = card_queries.get_project_cards(model)
+  let pending = normalized_store.pending(model.member.member_cards_store)
 
-    Loaded(cards) ->
-      case list.is_empty(cards) {
-        True -> view_empty_state(model)
-        False -> view_cards_list(model, cards)
+  case list.is_empty(cards) {
+    True ->
+      case pending > 0 {
+        True ->
+          loading.loading(update_helpers.i18n_t(
+            model,
+            i18n_text.LoadingEllipsis,
+          ))
+        False -> view_empty_state(model)
       }
-
-    _ -> view_empty_state(model)
+    False -> view_cards_list(model, cards)
   }
 }
 

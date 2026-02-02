@@ -26,6 +26,7 @@ import scrumbringer_client/features/skills/update as skills_workflow
 import scrumbringer_client/features/task_types/update as task_types_workflow
 import scrumbringer_client/features/tasks/update as tasks_workflow
 import scrumbringer_client/router
+import scrumbringer_client/state/normalized_store
 import scrumbringer_client/update_helpers
 
 /// Represents AdminContext.
@@ -1158,22 +1159,52 @@ pub fn handle_pool(
     client_state.CardsFetched(Error(err)) ->
       admin_workflow.handle_cards_fetched_error(model, err)
 
-    client_state.MemberCardsFetched(Ok(cards)) ->
+    client_state.MemberProjectCardsFetched(project_id, Ok(cards)) -> {
+      let next_store =
+        normalized_store.upsert(
+          model.member.member_cards_store,
+          project_id,
+          cards,
+          fn(card_item) {
+            let card.Card(id: id, ..) = card_item
+            id
+          },
+        )
+        |> normalized_store.decrement_pending
+
+      let next_cards = case normalized_store.is_ready(next_store) {
+        True -> client_state.Loaded(normalized_store.to_list(next_store))
+        False -> model.member.member_cards
+      }
+
       client_state.update_member(model, fn(member) {
         client_state.MemberModel(
           ..member,
-          member_cards: client_state.Loaded(cards),
+          member_cards_store: next_store,
+          member_cards: next_cards,
         )
       })
       |> fn(next) { #(next, effect.none()) }
-    client_state.MemberCardsFetched(Error(err)) ->
+    }
+    client_state.MemberProjectCardsFetched(_project_id, Error(err)) -> {
+      let next_store =
+        model.member.member_cards_store
+        |> normalized_store.decrement_pending
+
+      let next_cards = case model.member.member_cards {
+        client_state.Loaded(_) -> model.member.member_cards
+        _ -> client_state.Failed(err)
+      }
+
       client_state.update_member(model, fn(member) {
         client_state.MemberModel(
           ..member,
-          member_cards: client_state.Failed(err),
+          member_cards_store: next_store,
+          member_cards: next_cards,
         )
       })
       |> fn(next) { #(next, effect.none()) }
+    }
     client_state.OpenCardDialog(mode) ->
       admin_workflow.handle_open_card_dialog(model, mode)
     client_state.CloseCardDialog ->

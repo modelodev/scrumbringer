@@ -5,13 +5,18 @@ import scrumbringer_client/client_state
 import scrumbringer_client/features/fichas/view as fichas_view
 import scrumbringer_client/features/skills/view as skills_view
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/state/normalized_store
 import scrumbringer_client/update_helpers
 
 pub fn fichas_view_shows_empty_state_for_member_cards_test() {
   let model =
     client_state.default_model()
     |> client_state.update_member(fn(member) {
-      client_state.MemberModel(..member, member_cards: client_state.Loaded([]))
+      client_state.MemberModel(
+        ..member,
+        member_cards_store: normalized_store.new(),
+        member_cards: client_state.NotAsked,
+      )
     })
 
   let html =

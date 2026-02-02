@@ -51,6 +51,7 @@ import scrumbringer_client/permissions
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/reset_password
 import scrumbringer_client/router
+import scrumbringer_client/state/normalized_store
 import scrumbringer_client/theme
 import scrumbringer_client/update_helpers
 
@@ -1695,22 +1696,63 @@ fn refresh_member_capabilities(
 fn refresh_member_cards(
   model: client_state.Model,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  case model.core.selected_project_id {
-    opt.Some(project_id) -> #(
-      client_state.update_member(model, fn(member) {
-        client_state.MemberModel(..member, member_cards: client_state.Loading)
-      }),
-      api_cards.list_cards(project_id, fn(result) {
-        client_state.pool_msg(client_state.MemberCardsFetched(result))
-      }),
-    )
-    opt.None -> #(
-      client_state.update_member(model, fn(member) {
-        client_state.MemberModel(..member, member_cards: client_state.NotAsked)
-      }),
-      effect.none(),
-    )
+  let projects = update_helpers.active_projects(model)
+  let project_ids = project_ids_for_member_refresh(model, projects)
+
+  case project_ids {
+    [] -> reset_member_cards(model)
+    _ -> refresh_member_cards_for_projects(model, project_ids)
   }
+}
+
+fn reset_member_cards(
+  model: client_state.Model,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  #(
+    client_state.update_member(model, fn(member) {
+      client_state.MemberModel(
+        ..member,
+        member_cards_store: normalized_store.new(),
+        member_cards: client_state.NotAsked,
+      )
+    }),
+    effect.none(),
+  )
+}
+
+fn refresh_member_cards_for_projects(
+  model: client_state.Model,
+  project_ids: List(Int),
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  let effects =
+    list.map(project_ids, fn(project_id) {
+      api_cards.list_cards(project_id, fn(result) {
+        client_state.pool_msg(client_state.MemberProjectCardsFetched(
+          project_id,
+          result,
+        ))
+      })
+    })
+
+  let next =
+    client_state.update_member(model, fn(member) {
+      let next_store =
+        normalized_store.with_pending(
+          member.member_cards_store,
+          list.length(project_ids),
+        )
+      let next_member_cards = case member.member_cards {
+        client_state.Loaded(_) -> member.member_cards
+        _ -> client_state.Loading
+      }
+      client_state.MemberModel(
+        ..member,
+        member_cards_store: next_store,
+        member_cards: next_member_cards,
+      )
+    })
+
+  #(next, effect.batch(effects))
 }
 
 fn refresh_member_tasks(
@@ -1785,14 +1827,15 @@ fn refresh_member_data(
       })
     })
 
-  let member_card_effects = case model.core.selected_project_id {
-    opt.Some(project_id) -> [
+  let member_card_effects =
+    list.map(project_ids, fn(project_id) {
       api_cards.list_cards(project_id, fn(result) {
-        client_state.pool_msg(client_state.MemberCardsFetched(result))
-      }),
-    ]
-    opt.None -> []
-  }
+        client_state.pool_msg(client_state.MemberProjectCardsFetched(
+          project_id,
+          result,
+        ))
+      })
+    })
 
   let effects =
     list.append(
@@ -1813,9 +1856,13 @@ fn refresh_member_data(
         member_task_types: client_state.Loading,
         member_task_types_pending: list.length(project_ids),
         member_task_types_by_project: dict.new(),
-        member_cards: case model.core.selected_project_id {
-          opt.Some(_) -> client_state.Loading
-          opt.None -> client_state.NotAsked
+        member_cards_store: normalized_store.with_pending(
+          member.member_cards_store,
+          list.length(project_ids),
+        ),
+        member_cards: case member.member_cards {
+          client_state.Loaded(_) -> member.member_cards
+          _ -> client_state.Loading
         },
       )
     })

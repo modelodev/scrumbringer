@@ -5,6 +5,7 @@ import lustre/effect
 import scrumbringer_client/client_state
 import scrumbringer_client/client_update
 import scrumbringer_client/member_section
+import scrumbringer_client/state/normalized_store
 
 fn base_member_model() -> client_state.Model {
   client_state.default_model()
@@ -31,6 +32,7 @@ pub fn member_refresh_fichas_fetches_cards_test() {
     client_update.update(model, client_state.ProjectSelected("2"))
 
   next.member.member_cards |> should.equal(client_state.Loading)
+  normalized_store.pending(next.member.member_cards_store) |> should.equal(1)
   fx |> should.not_equal(effect.none())
 }
 
