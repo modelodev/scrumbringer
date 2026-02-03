@@ -127,9 +127,24 @@ fn view_column(
   column_state: CardState,
   cards: List(CardWithProgress),
 ) -> Element(msg) {
+  let header_icon = case column_state {
+    Pendiente -> icons.Pause
+    EnCurso -> icons.Play
+    Cerrada -> icons.CheckCircle
+  }
+
   div([attribute.class("kanban-column " <> column_class)], [
     div([attribute.class("kanban-column-header")], [
-      h4([], [text(title)]),
+      div([attribute.class("kanban-column-title")], [
+        span(
+          [
+            attribute.class("kanban-column-icon"),
+            attribute.attribute("aria-hidden", "true"),
+          ],
+          [icons.nav_icon(header_icon, icons.Small)],
+        ),
+        h4([], [text(title)]),
+      ]),
       span([attribute.class("column-count")], [
         text(int.to_string(list.length(cards))),
       ]),

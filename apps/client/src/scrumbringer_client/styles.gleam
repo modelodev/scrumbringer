@@ -13,6 +13,7 @@ import gleam/string
 pub fn base_css() -> String {
   [
     ":root { color-scheme: light dark; }",
+    "/* Breakpoints: sm 640px, md 768px, lg 1024px */",
     "* { box-sizing: border-box; }",
     "body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: var(--sb-bg); color: var(--sb-text); }",
     ".app { min-height: 100vh; background: var(--sb-bg); color: var(--sb-text); padding: 16px; }",
@@ -29,7 +30,7 @@ pub fn base_css() -> String {
 .pool-my-tasks-dropzone.drag-active { border-color: var(--sb-border); background: color-mix(in oklab, var(--sb-elevated) 70%, transparent); }
 .pool-my-tasks-dropzone.drop-over { border-color: var(--sb-primary); background: color-mix(in oklab, var(--sb-primary) 12%, var(--sb-elevated)); }
 .dropzone-hint { font-size: 12px; color: var(--sb-muted); margin-bottom: 6px; }",
-    "@media (max-width: 1280px) { .pool-right { width: 320px; } }
+    "@media (max-width: 1024px) { .pool-right { width: 320px; } }
 @media (max-width: 1024px) { .pool-layout { flex-direction: column; } .pool-right { width: 100%; } }",
     // Pool unified toolbar (Story 4.8 - simplified)
     ".pool-toolbar { display: flex; align-items: center; gap: 12px; padding: 8px 0; margin-bottom: 12px; }",
@@ -58,6 +59,7 @@ pub fn base_css() -> String {
     ".user { color: var(--sb-muted); }",
     ".section { display: flex; flex-direction: column; gap: 10px; }",
     ".field { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }",
+    ".required-indicator { color: var(--sb-danger); margin-left: 4px; font-weight: 600; }",
     ".filters-row { display: flex; gap: 10px; align-items: stretch; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }",
     ".filters-row .field { margin: 0; min-width: 140px; position: relative; }",
     ".filters-row .field.filter-q { min-width: 180px; }",
@@ -72,7 +74,13 @@ pub fn base_css() -> String {
     ".hint { color: var(--sb-muted); font-size: 0.9em; }",
     ".empty { color: var(--sb-muted); }",
     ".loading { color: var(--sb-info); }",
+    ".spinner { border: 2px solid var(--sb-border); border-top-color: var(--sb-primary); border-radius: 50%; animation: spin 0.6s linear infinite; }",
+    ".spinner-sm { width: 16px; height: 16px; }",
+    ".spinner-md { width: 24px; height: 24px; }",
+    ".spinner-lg { width: 32px; height: 32px; }",
+    "@keyframes spin { to { transform: rotate(360deg); } }",
     ".error { color: var(--sb-danger); }",
+    ".field-error { color: var(--sb-danger); font-size: 0.875rem; margin-top: 0.25rem; display: flex; align-items: center; gap: 0.25rem; }",
     "input, select, textarea { padding: 8px; border-radius: 10px; border: 1px solid var(--sb-border); background: var(--sb-elevated); color: var(--sb-text); font-family: inherit; }",
     "button { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--sb-border); background: var(--sb-elevated); color: var(--sb-text); cursor: pointer; }",
     ".btn-xs { padding: 4px 8px; font-size: 12px; border-radius: 8px; }",
@@ -88,7 +96,8 @@ pub fn base_css() -> String {
     "a:hover { text-decoration: underline; }",
     ":focus-visible { outline: 3px solid var(--sb-focus-ring); outline-offset: 2px; }",
     ".table { width: 100%; border-collapse: collapse; }",
-    ".table th { text-align: left; color: var(--sb-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; padding: 10px 12px; border-bottom: 2px solid var(--sb-border); background: var(--sb-surface); }",
+    ".table th { text-align: left; color: var(--sb-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 12px; border-bottom: 2px solid var(--sb-border); background: var(--sb-surface); }",
+    ".table-header { font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }",
     ".table td { padding: 10px 12px; border-bottom: 1px solid var(--sb-border); vertical-align: middle; }",
     ".table tbody tr:nth-child(even) { background: color-mix(in oklab, var(--sb-surface) 50%, var(--sb-bg)); }",
     ".table tbody tr:hover { background: var(--sb-elevated); }",
@@ -424,11 +433,12 @@ pub fn base_css() -> String {
     // UX IMPROVEMENTS - Table Actions (AC02, E06)
     // =====================================================
     ".table-actions { display: flex; gap: 4px; justify-content: flex-end; }",
-    ".table-actions button { padding: 4px 8px; min-width: 32px; min-height: 32px; }",
+    ".table-actions button { padding: 12px; min-width: 44px; min-height: 44px; }",
+    ".cell-actions .btn-icon, .actions-row .btn-icon, .btn-group .btn-icon { padding: 12px; min-width: 44px; min-height: 44px; }",
     ".table td.actions-cell { text-align: right; }",
     // DataTable component (extends .table)
     ".data-table { width: 100%; border-collapse: collapse; }",
-    ".data-table th { text-align: left; color: var(--sb-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; padding: 10px 12px; border-bottom: 2px solid var(--sb-border); background: var(--sb-surface); }",
+    ".data-table th { text-align: left; color: var(--sb-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 12px; border-bottom: 2px solid var(--sb-border); background: var(--sb-surface); }",
     ".data-table td { padding: 10px 12px; border-bottom: 1px solid var(--sb-border); vertical-align: middle; }",
     ".data-table tbody tr:nth-child(even) { background: color-mix(in oklab, var(--sb-surface) 50%, var(--sb-bg)); }",
     ".data-table tbody tr:hover { background: var(--sb-elevated); }",
@@ -437,7 +447,7 @@ pub fn base_css() -> String {
     ".data-table th .sort-icon { margin-left: 4px; opacity: 0.4; font-size: 10px; }",
     ".data-table th.sortable:hover .sort-icon { opacity: 1; }",
     // DataTable responsive collapse (card view on mobile)
-    "@media (max-width: 640px) { .data-table, .data-table thead, .data-table tbody, .data-table th, .data-table td, .data-table tr { display: block; } .data-table thead { position: absolute; top: -9999px; left: -9999px; } .data-table tr { margin-bottom: 12px; border: 1px solid var(--sb-border); border-radius: 8px; padding: 12px; background: var(--sb-surface); } .data-table td { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border: none; border-bottom: 1px solid var(--sb-border); } .data-table td:last-child { border-bottom: none; } .data-table td::before { content: attr(data-label); font-weight: 600; color: var(--sb-muted); font-size: 12px; text-transform: uppercase; } }",
+    "@media (max-width: 640px) { .data-table, .data-table thead, .data-table tbody, .data-table th, .data-table td, .data-table tr { display: block; } .data-table thead { position: absolute; top: -9999px; left: -9999px; } .data-table tr { margin-bottom: 12px; border: 1px solid var(--sb-border); border-radius: 8px; padding: 12px; background: var(--sb-surface); } .data-table td { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border: none; border-bottom: 1px solid var(--sb-border); } .data-table td:last-child { border-bottom: none; } .data-table td::before { content: attr(data-label); font-weight: 600; color: var(--sb-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; } }",
     ".usage-badge { font-size: 12px; color: var(--sb-muted); }",
     // =====================================================
     // UX IMPROVEMENTS - Form Sections (E07)
@@ -855,6 +865,9 @@ pub fn base_css() -> String {
     // Loading state
     ".loading-state { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 32px; color: var(--sb-muted); }",
     ".loading-spinner { width: 24px; height: 24px; border: 3px solid var(--sb-border); border-top-color: var(--sb-primary); border-radius: 50%; animation: btn-spin 0.8s linear infinite; }",
+    // Skeleton loading
+    ".skeleton { background: var(--sb-muted); border-radius: 4px; animation: pulse 1.5s ease-in-out infinite; }",
+    "@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }",
     // Error state
     ".error-state { display: flex; align-items: center; gap: 12px; padding: 16px; background: color-mix(in oklab, var(--sb-danger) 10%, var(--sb-surface)); border: 1px solid color-mix(in oklab, var(--sb-danger) 30%, var(--sb-border)); border-radius: 10px; color: var(--sb-danger); }",
     ".error-icon { font-size: 1.2em; }",
@@ -993,7 +1006,7 @@ pub fn base_css() -> String {
     ".nav-link { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: var(--sb-text); }",
     ".nav-link:hover { background: var(--sb-elevated); }",
     ".nav-link:disabled { opacity: 0.5; cursor: not-allowed; }",
-    ".nav-link.active { background: var(--sb-elevated); border-color: var(--sb-primary); }",
+    ".nav-link.active { background: #F0FDFA; border-left: 3px solid #0D9488; padding-left: 9px; }",
     ".nav-icon { font-size: 14px; }",
     ".nav-label { flex: 1; }",
     ".active-indicator { color: var(--sb-primary); font-size: 8px; }",
@@ -1069,6 +1082,11 @@ pub fn base_css() -> String {
     ".preference-icon { display: flex; align-items: center; color: var(--sb-muted); }",
     ".preference-select { flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--sb-border); background: var(--sb-elevated); font-size: 14px; cursor: pointer; }",
     ".preference-select:hover { border-color: var(--sb-primary); }",
+    // Empty section hints (right panel - inline contextual hints)
+    // padding-left: 24px aligns with title text after icon (16px icon + 8px gap)
+    ".section-empty-hint { color: var(--sb-muted); font-size: 12px; font-style: italic; padding: 8px 4px 8px 24px; }",
+    // Inside dropzone (has 8px padding), reduce hint padding to maintain alignment
+    ".pool-my-tasks-dropzone .section-empty-hint { padding-left: 16px; }",
     // Profile section (Story 4.8 UX: compact with icon buttons)
     ".profile-section { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 0; }",
     ".profile-section .user-info { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }",
@@ -1126,12 +1144,14 @@ pub fn base_css() -> String {
     // Kanban Board View (Story 4.4)
     // =============================================================================
     ".kanban-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; height: 100%; min-height: 400px; }",
-    "@media (max-width: 900px) { .kanban-board { grid-template-columns: 1fr; } }",
+    "@media (max-width: 1024px) { .kanban-board { grid-template-columns: 1fr; } }",
     ".kanban-column { background: var(--sb-bg); border: 1px solid var(--sb-border); border-radius: 12px; display: flex; flex-direction: column; min-height: 200px; }",
     ".kanban-column.pendiente { border-top: 3px solid var(--sb-muted); }",
     ".kanban-column.en-curso { border-top: 3px solid var(--sb-primary); }",
     ".kanban-column.cerrada { border-top: 3px solid var(--sb-success); }",
     ".kanban-column-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--sb-border); }",
+    ".kanban-column-title { display: flex; align-items: center; gap: 8px; }",
+    ".kanban-column-icon { display: inline-flex; align-items: center; justify-content: center; color: var(--sb-muted); }",
     ".kanban-column-header h4 { margin: 0; font-size: 14px; font-weight: 600; }",
     ".column-count { font-size: 12px; color: var(--sb-muted); background: var(--sb-elevated); padding: 2px 8px; border-radius: 10px; }",
     ".kanban-column-content { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }",
@@ -1189,7 +1209,7 @@ pub fn base_css() -> String {
     ".drawer.open { transform: translateX(0); }",
     ".drawer-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--sb-border); }",
     ".drawer-content { flex: 1; overflow-y: auto; padding: 16px; }",
-    ".drawer-close { background: transparent; border: none; font-size: 24px; cursor: pointer; color: var(--sb-muted); }",
+    ".drawer-close { background: transparent; border: none; font-size: 24px; cursor: pointer; color: var(--sb-muted); min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }",
     // =============================================================================
     // Mobile Mini Task Bar (Story 4.4 - Phase 6)
     // =============================================================================

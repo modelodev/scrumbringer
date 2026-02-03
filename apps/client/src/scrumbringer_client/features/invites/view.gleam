@@ -89,7 +89,7 @@ fn view_latest_invite(model: Model, origin: String) -> Element(Msg) {
         h3([], [
           text(update_helpers.i18n_t(model, i18n_text.LatestInviteLink)),
         ]),
-        form_field.view(
+        form_field.view_required(
           update_helpers.i18n_t(model, i18n_text.EmailLabel),
           input([
             attribute.type_("text"),

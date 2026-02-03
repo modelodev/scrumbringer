@@ -636,7 +636,7 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
             ],
             [
               // Title field
-              form_field.view(
+              form_field.view_required(
                 t(model.locale, i18n_text.CardTitle),
                 input([
                   attribute.type_("text"),
@@ -722,7 +722,7 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
             ],
             [
               // Title field
-              form_field.view(
+              form_field.view_required(
                 t(model.locale, i18n_text.CardTitle),
                 input([
                   attribute.type_("text"),

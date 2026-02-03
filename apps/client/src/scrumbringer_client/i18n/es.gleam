@@ -748,9 +748,11 @@ pub fn translate(text: Text) -> String {
     text.MyCards -> "Mis tarjetas"
     text.NoTasksClaimed -> "Sin tareas reclamadas"
     text.NoCardsAssigned -> "Sin tarjetas asignadas"
+    text.NoTasksInProgress -> "Sin tareas en curso"
     // AC32: Empty state hints
     text.NoTasksClaimedHint -> "Explora Pool para reclamar una tarea"
     text.NoCardsAssignedHint -> "Ver Tarjetas para ver las disponibles"
+    text.NoTasksInProgressHint -> "Inicia una tarea desde Mis Tareas"
 
     // Story 5.3: Card notes hovers (AC16-AC22)
     text.NewNotesTooltip -> "Hay notas nuevas"

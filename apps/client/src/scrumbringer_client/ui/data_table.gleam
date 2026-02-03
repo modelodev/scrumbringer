@@ -204,8 +204,8 @@ fn view_header(column: Column(row, msg)) -> Element(msg) {
 
   let base_attrs = [attribute("role", "columnheader")]
   let class_attrs = case header_class {
-    Some(css) -> [class(css), ..base_attrs]
-    None -> base_attrs
+    Some(css) -> [class("table-header " <> css), ..base_attrs]
+    None -> [class("table-header"), ..base_attrs]
   }
 
   case on_sort {
@@ -213,8 +213,8 @@ fn view_header(column: Column(row, msg)) -> Element(msg) {
       th(
         [
           class(case header_class {
-            Some(css) -> "sortable " <> css
-            None -> "sortable"
+            Some(css) -> "table-header sortable " <> css
+            None -> "table-header sortable"
           }),
           attribute("role", "columnheader"),
           attribute("aria-sort", "none"),

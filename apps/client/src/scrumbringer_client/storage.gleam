@@ -62,15 +62,16 @@ pub fn save_pool_view_mode(mode: pool_prefs.ViewMode) -> Nil {
 }
 
 // Justification: nested case improves clarity for branching logic.
+// Default: BothCollapsed - Config and Org sections start collapsed
 pub fn load_sidebar_state() -> client_state.SidebarCollapse {
   case theme.local_storage_get(sidebar_storage_key) {
-    "" -> client_state.NoneCollapsed
+    "" -> client_state.BothCollapsed
     val ->
       case val {
         "1,1" -> client_state.BothCollapsed
         "1,0" -> client_state.ConfigCollapsed
         "0,1" -> client_state.OrgCollapsed
-        _ -> client_state.NoneCollapsed
+        _ -> client_state.BothCollapsed
       }
   }
 }

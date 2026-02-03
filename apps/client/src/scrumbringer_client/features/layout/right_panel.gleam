@@ -106,9 +106,9 @@ pub fn view(config: RightPanelConfig(msg)) -> Element(msg) {
     div([attribute.class("right-panel-activity")], [
       // Active tasks section (supports multiple)
       view_active_tasks_section(config),
-      // My Tasks section
+      // My Tasks section (with inline hint when empty)
       view_my_tasks(config),
-      // My Cards section
+      // My Cards section (with inline hint when empty)
       view_my_cards(config),
     ]),
     // Footer sections (bottom - pushed down with flex spacer)
@@ -126,11 +126,14 @@ pub fn view(config: RightPanelConfig(msg)) -> Element(msg) {
 // =============================================================================
 
 fn view_active_tasks_section(config: RightPanelConfig(msg)) -> Element(msg) {
-  case config.active_tasks {
-    [] -> element.none()
-    tasks -> {
-      let task_count = list.length(tasks)
-      let header_text = case task_count {
+  let is_empty = list.is_empty(config.active_tasks)
+  let task_count = list.length(config.active_tasks)
+
+  // Header text with count if not empty
+  let header_text = case is_empty {
+    True -> i18n.t(config.locale, i18n_text.InProgress) <> " (0)"
+    False ->
+      case task_count {
         1 -> i18n.t(config.locale, i18n_text.InProgress)
         n ->
           i18n.t(config.locale, i18n_text.InProgress)
@@ -138,25 +141,37 @@ fn view_active_tasks_section(config: RightPanelConfig(msg)) -> Element(msg) {
           <> int.to_string(n)
           <> ")"
       }
+  }
 
-      div(
-        [
-          attribute.class("active-task-section"),
-          attribute.attribute("data-testid", "active-task"),
-        ],
-        [
-          h4([attribute.class("section-title section-title-with-icon")], [
-            icons.nav_icon(icons.Play, icons.Small),
-            text(header_text),
-          ]),
+  let section_class = case is_empty {
+    True -> "active-task-section section-collapsed"
+    False -> "active-task-section"
+  }
+
+  div(
+    [
+      attribute.class(section_class),
+      attribute.attribute("data-testid", "active-task"),
+    ],
+    [
+      h4([attribute.class("section-title section-title-with-icon")], [
+        icons.nav_icon(icons.Play, icons.Small),
+        text(header_text),
+      ]),
+      // Tasks list or empty hint
+      case config.active_tasks {
+        [] ->
+          div([attribute.class("section-empty-hint")], [
+            text(i18n.t(config.locale, i18n_text.NoTasksInProgressHint)),
+          ])
+        tasks ->
           div(
             [attribute.class("active-tasks-list")],
             list.map(tasks, fn(active) { view_active_task_card(config, active) }),
-          ),
-        ],
-      )
-    }
-  }
+          )
+      },
+    ],
+  )
 }
 
 fn view_active_task_card(
@@ -276,9 +291,12 @@ fn view_my_tasks(config: RightPanelConfig(msg)) -> Element(msg) {
             ])
         },
       ]),
-      // Simple flat task list
+      // Task list or empty hint
       case filtered_tasks {
-        [] -> element.none()
+        [] ->
+          div([attribute.class("section-empty-hint")], [
+            text(i18n.t(config.locale, i18n_text.NoTasksClaimedHint)),
+          ])
         tasks ->
           div(
             [attribute.class("task-list")],
@@ -358,9 +376,12 @@ fn view_my_cards(config: RightPanelConfig(msg)) -> Element(msg) {
             ])
         },
       ]),
-      // Hide empty state content when collapsed
+      // Cards list or empty hint
       case config.my_cards {
-        [] -> element.none()
+        [] ->
+          div([attribute.class("section-empty-hint")], [
+            text(i18n.t(config.locale, i18n_text.NoCardsAssignedHint)),
+          ])
         cards ->
           div(
             [attribute.class("my-cards-list")],

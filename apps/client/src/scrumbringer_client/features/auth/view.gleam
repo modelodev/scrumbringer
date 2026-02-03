@@ -76,7 +76,7 @@ pub fn view_login(model: Model) -> Element(Msg) {
       opt.None -> element.none()
     },
     form([event.on_submit(fn(_) { auth_msg(LoginSubmitted) })], [
-      form_field.view(
+      form_field.view_required(
         update_helpers.i18n_t(model, i18n_text.EmailLabel),
         input([
           attribute.attribute("id", "login-email"),
@@ -89,7 +89,7 @@ pub fn view_login(model: Model) -> Element(Msg) {
           attribute.attribute("aria-label", "Email address"),
         ]),
       ),
-      form_field.view(
+      form_field.view_required(
         update_helpers.i18n_t(model, i18n_text.PasswordLabel),
         input([
           attribute.attribute("id", "login-password"),
@@ -128,6 +128,11 @@ pub fn view_forgot_password(model: Model) -> Element(Msg) {
     False -> update_helpers.i18n_t(model, i18n_text.GenerateResetLink)
   }
 
+  let btn_class = case model.auth.forgot_password_in_flight {
+    True -> "btn-loading"
+    False -> ""
+  }
+
   let origin = client_ffi.location_origin()
 
   let link = case model.auth.forgot_password_result {
@@ -147,7 +152,7 @@ pub fn view_forgot_password(model: Model) -> Element(Msg) {
       opt.None -> element.none()
     },
     form([event.on_submit(fn(_) { auth_msg(ForgotPasswordSubmitted) })], [
-      form_field.view(
+      form_field.view_required(
         update_helpers.i18n_t(model, i18n_text.EmailLabel),
         input([
           attribute.type_("email"),
@@ -162,6 +167,7 @@ pub fn view_forgot_password(model: Model) -> Element(Msg) {
         [
           attribute.type_("submit"),
           attribute.disabled(model.auth.forgot_password_in_flight),
+          attribute.class(btn_class),
         ],
         [text(submit_label)],
       ),
@@ -251,29 +257,30 @@ fn view_accept_invite_form(
         attribute.disabled(True),
       ]),
     ),
-    div([], [
-      form_field.view(
-        update_helpers.i18n_t(model, i18n_text.PasswordLabel),
-        input([
-          attribute.type_("password"),
-          attribute.value(password),
-          event.on_input(fn(value) {
-            AcceptInviteMsg(accept_invite.PasswordChanged(value))
-          }),
-          attribute.required(True),
-        ]),
-      ),
-      case password_error {
-        opt.Some(err) -> error_notice.view(err)
-        opt.None -> element.none()
-      },
-      p([], [
-        text(update_helpers.i18n_t(model, i18n_text.MinimumPasswordLength)),
+    form_field.with_error(
+      update_helpers.i18n_t(model, i18n_text.PasswordLabel),
+      input([
+        attribute.type_("password"),
+        attribute.value(password),
+        event.on_input(fn(value) {
+          AcceptInviteMsg(accept_invite.PasswordChanged(value))
+        }),
+        attribute.required(True),
       ]),
-    ]),
-    button([attribute.type_("submit"), attribute.disabled(in_flight)], [
-      text(submit_label),
-    ]),
+      password_error,
+    ),
+    p([], [text(update_helpers.i18n_t(model, i18n_text.MinimumPasswordLength))]),
+    button(
+      [
+        attribute.type_("submit"),
+        attribute.disabled(in_flight),
+        attribute.class(case in_flight {
+          True -> "btn-loading"
+          False -> ""
+        }),
+      ],
+      [text(submit_label)],
+    ),
   ])
 }
 
@@ -350,28 +357,29 @@ fn view_reset_password_form(
         attribute.disabled(True),
       ]),
     ),
-    div([], [
-      form_field.view(
-        update_helpers.i18n_t(model, i18n_text.NewPasswordLabel),
-        input([
-          attribute.type_("password"),
-          attribute.value(password),
-          event.on_input(fn(value) {
-            ResetPasswordMsg(reset_password.PasswordChanged(value))
-          }),
-          attribute.required(True),
-        ]),
-      ),
-      case password_error {
-        opt.Some(err) -> error_notice.view(err)
-        opt.None -> element.none()
-      },
-      p([], [
-        text(update_helpers.i18n_t(model, i18n_text.MinimumPasswordLength)),
+    form_field.with_error(
+      update_helpers.i18n_t(model, i18n_text.NewPasswordLabel),
+      input([
+        attribute.type_("password"),
+        attribute.value(password),
+        event.on_input(fn(value) {
+          ResetPasswordMsg(reset_password.PasswordChanged(value))
+        }),
+        attribute.required(True),
       ]),
-    ]),
-    button([attribute.type_("submit"), attribute.disabled(in_flight)], [
-      text(submit_label),
-    ]),
+      password_error,
+    ),
+    p([], [text(update_helpers.i18n_t(model, i18n_text.MinimumPasswordLength))]),
+    button(
+      [
+        attribute.type_("submit"),
+        attribute.disabled(in_flight),
+        attribute.class(case in_flight {
+          True -> "btn-loading"
+          False -> ""
+        }),
+      ],
+      [text(submit_label)],
+    ),
   ])
 }

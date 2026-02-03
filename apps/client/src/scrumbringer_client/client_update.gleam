@@ -1110,6 +1110,10 @@ fn handle_navigate_to(
     True -> #(model, effect.none())
 
     False -> {
+      let model =
+        client_state.update_ui(model, fn(ui) {
+          client_state.UiModel(..ui, mobile_drawer: client_state.DrawerClosed)
+        })
       let #(model, route_fx) = apply_route_fields(model, next_route)
       let #(model, hyd_fx) = hydrate_model(model)
       let title_fx = router.update_page_title(next_route, model.ui.locale)

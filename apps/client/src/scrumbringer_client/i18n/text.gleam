@@ -637,9 +637,11 @@ pub type Text {
   MyCards
   NoTasksClaimed
   NoCardsAssigned
+  NoTasksInProgress
   // AC32: Empty state hints with CTAs
   NoTasksClaimedHint
   NoCardsAssignedHint
+  NoTasksInProgressHint
 
   // Story 5.3: Card notes hovers (AC16-AC22)
   NewNotesTooltip

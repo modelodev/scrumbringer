@@ -67,3 +67,16 @@ pub fn view_remote_renders_table_rows_test() {
   let html = element.to_document_string(rendered)
   string.contains(html, "Alice") |> should.be_true
 }
+
+pub fn view_remote_renders_table_headers_with_class_test() {
+  let rendered =
+    data_table.view_remote(
+      Loaded(["Alice"]),
+      loading_msg: "Loading...",
+      empty_msg: "No rows",
+      config: base_config(),
+    )
+
+  let html = element.to_document_string(rendered)
+  string.contains(html, "table-header") |> should.be_true
+}

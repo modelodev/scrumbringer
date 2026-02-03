@@ -1117,7 +1117,7 @@ pub fn default_model() -> Model {
       theme: theme.Default,
       locale: i18n_locale.En,
       mobile_drawer: DrawerClosed,
-      sidebar_collapse: NoneCollapsed,
+      sidebar_collapse: BothCollapsed,
       preferences_popup_open: False,
     ),
   )

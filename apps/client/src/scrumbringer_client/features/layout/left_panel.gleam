@@ -11,6 +11,7 @@
 ////   - Navigation links: Pool, Lista, Tarjetas (ALL members)
 //// - Configuration section (PM/Admin only)
 //// - Organization section (Org Admin only)
+//// - Unified active state indication across all nav items
 ////
 //// Non-responsibilities:
 //// - Layout structure (handled by ThreePanelLayout)
@@ -30,6 +31,8 @@ import domain/view_mode.{type ViewMode, Cards, List, Pool}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/permissions
+import scrumbringer_client/router
 import scrumbringer_client/ui/icons
 
 // =============================================================================
@@ -45,8 +48,8 @@ pub type LeftPanelConfig(msg) {
     selected_project_id: Option(Int),
     is_pm: Bool,
     is_org_admin: Bool,
-    // Current view mode for active indicator (AC3)
-    current_view_mode: Option(ViewMode),
+    // Current route for unified active indicator
+    current_route: Option(router.Route),
     // Collapse state
     config_collapsed: Bool,
     org_collapsed: Bool,
@@ -78,6 +81,82 @@ pub type LeftPanelConfig(msg) {
     on_navigate_org_metrics: msg,
     on_toggle_config: msg,
     on_toggle_org: msg,
+  )
+}
+
+/// Determines if a nav item is active based on current route
+fn is_route_active(
+  current_route: Option(router.Route),
+  check_view_mode: Option(ViewMode),
+  check_config_section: Option(permissions.AdminSection),
+  check_org_section: Option(permissions.AdminSection),
+) -> Bool {
+  case current_route {
+    None -> False
+    Some(route) ->
+      case route {
+        // Work views: match by ViewMode
+        router.Member(_, _, view_mode) ->
+          case check_view_mode, view_mode {
+            Some(expected), Some(actual) -> expected == actual
+            _, _ -> False
+          }
+        // Config sections: match by AdminSection
+        router.Config(section, _) ->
+          case check_config_section {
+            Some(expected) -> expected == section
+            None -> False
+          }
+        // Org sections: match by AdminSection
+        router.Org(section) ->
+          case check_org_section {
+            Some(expected) -> expected == section
+            None -> False
+          }
+        // Other routes don't match nav items
+        _ -> False
+      }
+  }
+}
+
+/// Unified nav item renderer with active state
+fn view_nav_item(
+  locale: Locale,
+  is_active: Bool,
+  testid: String,
+  icon: icons.NavIcon,
+  label_key: i18n_text.Text,
+  disabled: Bool,
+  on_click_msg: msg,
+  badge: Option(Int),
+) -> Element(msg) {
+  let active_class = case is_active {
+    True -> " active"
+    False -> ""
+  }
+  let active_indicator = case is_active {
+    True -> span([attribute.class("active-indicator")], [text("●")])
+    False -> element.none()
+  }
+  let badge_el = case badge {
+    Some(count) if count > 0 ->
+      span([attribute.class("badge")], [text(int_to_string(count))])
+    _ -> element.none()
+  }
+
+  button(
+    [
+      attribute.class("nav-link" <> active_class),
+      attribute.attribute("data-testid", testid),
+      attribute.disabled(disabled),
+      event.on_click(on_click_msg),
+    ],
+    [
+      icons.nav_icon(icon, icons.Small),
+      span([attribute.class("nav-label")], [text(i18n.t(locale, label_key))]),
+      badge_el,
+      active_indicator,
+    ],
   )
 }
 
@@ -217,7 +296,7 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
       },
       // Navigation links - ALL roles (AC2)
       div([attribute.class("nav-links")], [
-        view_nav_link(
+        view_work_nav_link(
           config,
           Pool,
           "nav-pool",
@@ -225,7 +304,7 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
           i18n_text.Pool,
           config.on_navigate_pool,
         ),
-        view_nav_link(
+        view_work_nav_link(
           config,
           List,
           "nav-list",
@@ -233,7 +312,7 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
           i18n_text.List,
           config.on_navigate_list,
         ),
-        view_nav_link(
+        view_work_nav_link(
           config,
           Cards,
           "nav-cards",
@@ -246,8 +325,8 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
   )
 }
 
-/// Renders a navigation link with active indicator (AC3)
-fn view_nav_link(
+/// Renders a work section navigation link (Pool/List/Cards)
+fn view_work_nav_link(
   config: LeftPanelConfig(msg),
   mode: ViewMode,
   testid: String,
@@ -255,30 +334,16 @@ fn view_nav_link(
   label_key: i18n_text.Text,
   on_click_msg: msg,
 ) -> Element(msg) {
-  let is_active = config.current_view_mode == Some(mode)
-  let active_class = case is_active {
-    True -> " active"
-    False -> ""
-  }
-  let active_indicator = case is_active {
-    True -> span([attribute.class("active-indicator")], [text("●")])
-    False -> element.none()
-  }
-
-  button(
-    [
-      attribute.class("nav-link" <> active_class),
-      attribute.attribute("data-testid", testid),
-      attribute.disabled(config.selected_project_id == None),
-      event.on_click(on_click_msg),
-    ],
-    [
-      icons.nav_icon(icon, icons.Small),
-      span([attribute.class("nav-label")], [
-        text(i18n.t(config.locale, label_key)),
-      ]),
-      active_indicator,
-    ],
+  let is_active = is_route_active(config.current_route, Some(mode), None, None)
+  view_nav_item(
+    config.locale,
+    is_active,
+    testid,
+    icon,
+    label_key,
+    config.selected_project_id == None,
+    on_click_msg,
+    None,
   )
 }
 
@@ -286,7 +351,29 @@ fn view_nav_link(
 // Configuration Section
 // =============================================================================
 
-// Justification: large function kept intact to preserve cohesive UI logic.
+/// Renders a config section navigation link
+fn view_config_nav_link(
+  config: LeftPanelConfig(msg),
+  section: permissions.AdminSection,
+  testid: String,
+  icon: icons.NavIcon,
+  label_key: i18n_text.Text,
+  on_click_msg: msg,
+) -> Element(msg) {
+  let is_active =
+    is_route_active(config.current_route, None, Some(section), None)
+  view_nav_item(
+    config.locale,
+    is_active,
+    testid,
+    icon,
+    label_key,
+    config.selected_project_id == None,
+    on_click_msg,
+    None,
+  )
+}
+
 fn view_config_section(config: LeftPanelConfig(msg)) -> Element(msg) {
   let collapsed_class = case config.config_collapsed {
     True -> " collapsed"
@@ -319,113 +406,67 @@ fn view_config_section(config: LeftPanelConfig(msg)) -> Element(msg) {
         True -> element.none()
         False ->
           div([attribute.class("section-items")], [
-            button(
-              [
-                attribute.class("nav-link"),
-                attribute.attribute("data-testid", "nav-team"),
-                attribute.disabled(config.selected_project_id == None),
-                event.on_click(config.on_navigate_config_team),
-              ],
-              [
-                icons.nav_icon(icons.Team, icons.Small),
-                span([attribute.class("nav-label")], [
-                  text(i18n.t(config.locale, i18n_text.Team)),
-                ]),
-              ],
+            view_config_nav_link(
+              config,
+              permissions.Members,
+              "nav-team",
+              icons.Team,
+              i18n_text.Team,
+              config.on_navigate_config_team,
             ),
-            button(
-              [
-                attribute.class("nav-link"),
-                attribute.attribute("data-testid", "nav-capabilities"),
-                attribute.disabled(config.selected_project_id == None),
-                event.on_click(config.on_navigate_config_capabilities),
-              ],
-              [
-                icons.nav_icon(icons.Crosshairs, icons.Small),
-                span([attribute.class("nav-label")], [
-                  text(i18n.t(config.locale, i18n_text.Capabilities)),
-                ]),
-              ],
+            view_config_nav_link(
+              config,
+              permissions.Capabilities,
+              "nav-capabilities",
+              icons.Crosshairs,
+              i18n_text.Capabilities,
+              config.on_navigate_config_capabilities,
             ),
             // Story 4.9 AC3: Separator - ORGANIZACIÓN DEL TRABAJO group
             view_nav_separator(),
-            // Story 4.9: Cards Config nav item
-            button(
-              [
-                attribute.class("nav-link"),
-                attribute.attribute("data-testid", "nav-cards-config"),
-                attribute.disabled(config.selected_project_id == None),
-                event.on_click(config.on_navigate_config_cards),
-              ],
-              [
-                icons.nav_icon(icons.Cards, icons.Small),
-                span([attribute.class("nav-label")], [
-                  text(i18n.t(config.locale, i18n_text.CardsConfig)),
-                ]),
-              ],
+            view_config_nav_link(
+              config,
+              permissions.Cards,
+              "nav-cards-config",
+              icons.Cards,
+              i18n_text.CardsConfig,
+              config.on_navigate_config_cards,
             ),
-            // Story 4.9: Task Types nav item
-            button(
-              [
-                attribute.class("nav-link"),
-                attribute.attribute("data-testid", "nav-task-types"),
-                attribute.disabled(config.selected_project_id == None),
-                event.on_click(config.on_navigate_config_task_types),
-              ],
-              [
-                icons.nav_icon(icons.TaskTypes, icons.Small),
-                span([attribute.class("nav-label")], [
-                  text(i18n.t(config.locale, i18n_text.TaskTypes)),
-                ]),
-              ],
+            view_config_nav_link(
+              config,
+              permissions.TaskTypes,
+              "nav-task-types",
+              icons.TaskTypes,
+              i18n_text.TaskTypes,
+              config.on_navigate_config_task_types,
             ),
             // Story 4.9 AC3: Separator - AUTOMATIZACIÓN group
             view_nav_separator(),
-            button(
-              [
-                attribute.class("nav-link"),
-                attribute.attribute("data-testid", "nav-rules"),
-                attribute.disabled(config.selected_project_id == None),
-                event.on_click(config.on_navigate_config_rules),
-              ],
-              [
-                icons.nav_icon(icons.Automation, icons.Small),
-                span([attribute.class("nav-label")], [
-                  text(i18n.t(config.locale, i18n_text.AdminWorkflows)),
-                ]),
-              ],
+            view_config_nav_link(
+              config,
+              permissions.Workflows,
+              "nav-rules",
+              icons.Automation,
+              i18n_text.AdminWorkflows,
+              config.on_navigate_config_rules,
             ),
-            // Story 4.9: Templates nav item
-            button(
-              [
-                attribute.class("nav-link"),
-                attribute.attribute("data-testid", "nav-templates"),
-                attribute.disabled(config.selected_project_id == None),
-                event.on_click(config.on_navigate_config_templates),
-              ],
-              [
-                icons.nav_icon(icons.TaskTemplates, icons.Small),
-                span([attribute.class("nav-label")], [
-                  text(i18n.t(config.locale, i18n_text.Templates)),
-                ]),
-              ],
+            view_config_nav_link(
+              config,
+              permissions.TaskTemplates,
+              "nav-templates",
+              icons.TaskTemplates,
+              i18n_text.Templates,
+              config.on_navigate_config_templates,
             ),
             // Story 4.9 AC3: Separator - RESULTADOS group
             view_nav_separator(),
-            // AC31: Metrics link in Configuration section for PM/Admin
-            button(
-              [
-                attribute.class("nav-link"),
-                attribute.attribute("data-testid", "nav-metrics"),
-                attribute.disabled(config.selected_project_id == None),
-                event.on_click(config.on_navigate_config_metrics),
-              ],
-              [
-                icons.nav_icon(icons.Metrics, icons.Small),
-                span([attribute.class("nav-label")], [
-                  text(i18n.t(config.locale, i18n_text.AdminMetrics)),
-                ]),
-              ],
+            view_config_nav_link(
+              config,
+              permissions.RuleMetrics,
+              "nav-metrics",
+              icons.Metrics,
+              i18n_text.AdminMetrics,
+              config.on_navigate_config_metrics,
             ),
           ])
       },
@@ -436,6 +477,31 @@ fn view_config_section(config: LeftPanelConfig(msg)) -> Element(msg) {
 // =============================================================================
 // Organization Section
 // =============================================================================
+
+/// Renders an org section navigation link
+fn view_org_nav_link(
+  config: LeftPanelConfig(msg),
+  section: permissions.AdminSection,
+  testid: String,
+  icon: icons.NavIcon,
+  label_key: i18n_text.Text,
+  on_click_msg: msg,
+  badge: Option(Int),
+) -> Element(msg) {
+  let is_active =
+    is_route_active(config.current_route, None, None, Some(section))
+  view_nav_item(
+    config.locale,
+    is_active,
+    testid,
+    icon,
+    label_key,
+    False,
+    // Org section items are never disabled
+    on_click_msg,
+    badge,
+  )
+}
 
 fn view_org_section(config: LeftPanelConfig(msg)) -> Element(msg) {
   let collapsed_class = case config.org_collapsed {
@@ -469,87 +535,55 @@ fn view_org_section(config: LeftPanelConfig(msg)) -> Element(msg) {
         True -> element.none()
         False ->
           div([attribute.class("section-items")], [
-            button(
-              [
-                attribute.class("nav-link"),
-                attribute.attribute("data-testid", "nav-invites"),
-                event.on_click(config.on_navigate_org_invites),
-              ],
-              [
-                icons.nav_icon(icons.Invites, icons.Small),
-                span([attribute.class("nav-label")], [
-                  text(i18n.t(config.locale, i18n_text.Invites)),
-                ]),
-                view_badge(config.pending_invites_count),
-              ],
+            view_org_nav_link(
+              config,
+              permissions.Invites,
+              "nav-invites",
+              icons.Invites,
+              i18n_text.Invites,
+              config.on_navigate_org_invites,
+              Some(config.pending_invites_count),
             ),
-            button(
-              [
-                attribute.class("nav-link"),
-                attribute.attribute("data-testid", "nav-users"),
-                event.on_click(config.on_navigate_org_users),
-              ],
-              [
-                icons.nav_icon(icons.OrgUsers, icons.Small),
-                span([attribute.class("nav-label")], [
-                  text(i18n.t(config.locale, i18n_text.OrgUsers)),
-                ]),
-                view_badge(config.users_count),
-              ],
+            view_org_nav_link(
+              config,
+              permissions.OrgSettings,
+              "nav-users",
+              icons.OrgUsers,
+              i18n_text.OrgUsers,
+              config.on_navigate_org_users,
+              Some(config.users_count),
             ),
-            button(
-              [
-                attribute.class("nav-link"),
-                attribute.attribute("data-testid", "nav-projects"),
-                event.on_click(config.on_navigate_org_projects),
-              ],
-              [
-                icons.nav_icon(icons.Projects, icons.Small),
-                span([attribute.class("nav-label")], [
-                  text(i18n.t(config.locale, i18n_text.Projects)),
-                ]),
-                view_badge(config.projects_count),
-              ],
+            view_org_nav_link(
+              config,
+              permissions.Projects,
+              "nav-projects",
+              icons.Projects,
+              i18n_text.Projects,
+              config.on_navigate_org_projects,
+              Some(config.projects_count),
             ),
-            button(
-              [
-                attribute.class("nav-link"),
-                attribute.attribute("data-testid", "nav-assignments"),
-                event.on_click(config.on_navigate_org_assignments),
-              ],
-              [
-                icons.nav_icon(icons.Team, icons.Small),
-                span([attribute.class("nav-label")], [
-                  text(i18n.t(config.locale, i18n_text.Assignments)),
-                ]),
-              ],
+            view_org_nav_link(
+              config,
+              permissions.Assignments,
+              "nav-assignments",
+              icons.Team,
+              i18n_text.Assignments,
+              config.on_navigate_org_assignments,
+              None,
             ),
-            // AC32: Org Metrics link for Org Admin
-            button(
-              [
-                attribute.class("nav-link"),
-                attribute.attribute("data-testid", "nav-org-metrics"),
-                event.on_click(config.on_navigate_org_metrics),
-              ],
-              [
-                icons.nav_icon(icons.OrgMetrics, icons.Small),
-                span([attribute.class("nav-label")], [
-                  text(i18n.t(config.locale, i18n_text.OrgMetrics)),
-                ]),
-              ],
+            view_org_nav_link(
+              config,
+              permissions.Metrics,
+              "nav-org-metrics",
+              icons.OrgMetrics,
+              i18n_text.OrgMetrics,
+              config.on_navigate_org_metrics,
+              None,
             ),
           ])
       },
     ],
   )
-}
-
-/// Renders a badge with a count (only if count > 0)
-fn view_badge(count: Int) -> Element(msg) {
-  case count > 0 {
-    True -> span([attribute.class("badge")], [text(int_to_string(count))])
-    False -> element.none()
-  }
 }
 
 // =============================================================================

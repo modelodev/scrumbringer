@@ -571,9 +571,28 @@ fn build_left_panel(
 
   // Story 4.5: Use Config and Org routes instead of client_state.Admin
   // Story 4.7: TRABAJO section visible for all roles (AC1, AC7-9)
-  // Only show active view indicator when on client_state.Member page (AC3)
-  let current_view = case model.core.page {
-    client_state.Member -> opt.Some(model.member.view_mode)
+  // Unified active indicator: build current route from page state
+  let current_route = case model.core.page {
+    client_state.Member ->
+      opt.Some(router.Member(
+        member_section.Pool,
+        model.core.selected_project_id,
+        opt.Some(model.member.view_mode),
+      ))
+    client_state.Admin ->
+      // Determine if it's a Config or Org section based on active_section
+      case model.core.active_section {
+        permissions.Invites
+        | permissions.OrgSettings
+        | permissions.Projects
+        | permissions.Assignments
+        | permissions.Metrics -> opt.Some(router.Org(model.core.active_section))
+        _ ->
+          opt.Some(router.Config(
+            model.core.active_section,
+            model.core.selected_project_id,
+          ))
+      }
     _ -> opt.None
   }
 
@@ -584,8 +603,8 @@ fn build_left_panel(
     selected_project_id: model.core.selected_project_id,
     is_pm: is_pm,
     is_org_admin: is_org_admin,
-    // Current view mode for active indicator (AC3) - only when on client_state.Member page
-    current_view_mode: current_view,
+    // Unified current route for active indicator across all nav items
+    current_route: current_route,
     // Collapse state
     config_collapsed: client_state.sidebar_config_collapsed(
       model.ui.sidebar_collapse,

@@ -18,6 +18,22 @@ import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{div, text}
 
+pub type SpinnerSize {
+  Small
+  Medium
+  Large
+}
+
+pub fn spinner(size: SpinnerSize) -> Element(msg) {
+  let size_class = case size {
+    Small -> "spinner-sm"
+    Medium -> "spinner-md"
+    Large -> "spinner-lg"
+  }
+
+  div([attribute.class("spinner " <> size_class)], [])
+}
+
 /// Render a simple loading indicator with custom message.
 ///
 /// ## Example

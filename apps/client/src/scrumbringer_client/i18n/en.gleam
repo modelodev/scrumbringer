@@ -731,9 +731,11 @@ pub fn translate(text: Text) -> String {
     text.MyCards -> "My Cards"
     text.NoTasksClaimed -> "No tasks claimed"
     text.NoCardsAssigned -> "No cards assigned"
+    text.NoTasksInProgress -> "No tasks in progress"
     // AC32: Empty state hints
     text.NoTasksClaimedHint -> "Browse Pool to claim a task"
     text.NoCardsAssignedHint -> "View Cards to see available cards"
+    text.NoTasksInProgressHint -> "Start a task from My Tasks"
 
     // Story 5.3: Card notes hovers (AC16-AC22)
     text.NewNotesTooltip -> "There are new notes"
