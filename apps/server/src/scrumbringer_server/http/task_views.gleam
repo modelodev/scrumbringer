@@ -8,6 +8,7 @@ import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
 import scrumbringer_server/services/authorization
+import scrumbringer_server/services/service_error
 import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/user_task_views_db
 import wisp
@@ -66,9 +67,10 @@ fn mark_view(ctx: auth.Ctx, user: StoredUser, task_id: Int) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
   case tasks_queries.get_task_for_user(db, task_id, user.id) {
-    Error(tasks_queries.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
-    Error(tasks_queries.DbError(_)) ->
+    Error(service_error.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
+    Error(service_error.DbError(_)) ->
       api.error(500, "INTERNAL", "Database error")
+    Error(_) -> api.error(500, "INTERNAL", "Database error")
     Ok(task) ->
       case authorization.is_project_member(db, user.id, task.project_id) {
         False -> api.error(404, "NOT_FOUND", "Not found")

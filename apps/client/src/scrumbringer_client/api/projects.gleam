@@ -22,28 +22,16 @@ import gleam/option
 import lustre/effect.{type Effect}
 
 import scrumbringer_client/api/core.{type ApiResult}
+import scrumbringer_client/decoders
 
 // Import types from shared domain
 import domain/project.{type Project, type ProjectMember, Project, ProjectMember}
-import domain/project_role.{type ProjectRole, Manager, Member}
-
-// =============================================================================
-// Decoders
-// =============================================================================
-
-fn project_role_decoder() -> decode.Decoder(ProjectRole) {
-  use role_string <- decode.then(decode.string)
-  case role_string {
-    "manager" -> decode.success(Manager)
-    "member" -> decode.success(Member)
-    _ -> decode.failure(Manager, "ProjectRole")
-  }
-}
+import domain/project_role.{type ProjectRole}
 
 fn project_decoder() -> decode.Decoder(Project) {
   use id <- decode.field("id", decode.int)
   use name <- decode.field("name", decode.string)
-  use my_role <- decode.field("my_role", project_role_decoder())
+  use my_role <- decode.field("my_role", decoders.project_role_decoder())
   use created_at <- decode.field("created_at", decode.string)
   use members_count <- decode.field("members_count", decode.int)
   decode.success(Project(
@@ -57,7 +45,7 @@ fn project_decoder() -> decode.Decoder(Project) {
 
 fn project_member_decoder() -> decode.Decoder(ProjectMember) {
   use user_id <- decode.field("user_id", decode.int)
-  use role <- decode.field("role", project_role_decoder())
+  use role <- decode.field("role", decoders.project_role_decoder())
   use created_at <- decode.field("created_at", decode.string)
   use claimed_count <- decode.field("claimed_count", decode.int)
   decode.success(ProjectMember(
@@ -179,8 +167,11 @@ fn release_all_result_decoder() -> decode.Decoder(ReleaseAllResult) {
 fn role_change_result_decoder() -> decode.Decoder(RoleChangeResult) {
   use user_id <- decode.field("user_id", decode.int)
   use email <- decode.field("email", decode.string)
-  use role <- decode.field("role", project_role_decoder())
-  use previous_role <- decode.field("previous_role", project_role_decoder())
+  use role <- decode.field("role", decoders.project_role_decoder())
+  use previous_role <- decode.field(
+    "previous_role",
+    decoders.project_role_decoder(),
+  )
   decode.success(RoleChangeResult(
     user_id: user_id,
     email: email,

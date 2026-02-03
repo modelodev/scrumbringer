@@ -6,17 +6,14 @@
 import gleam/list
 import gleam/result
 import pog
+import scrumbringer_server/services/service_error.{
+  type ServiceError, DbError, Unexpected,
+}
 import scrumbringer_server/sql
 
 /// A task's position on a user's board view.
 pub type TaskPosition {
   TaskPosition(task_id: Int, user_id: Int, x: Int, y: Int, updated_at: String)
-}
-
-/// Errors that can occur when upserting a position.
-pub type UpsertPositionError {
-  DbError(pog.QueryError)
-  UnexpectedEmptyResult
 }
 
 /// Lists all task positions for a user in a project.
@@ -59,10 +56,10 @@ pub fn upsert_position(
   user_id: Int,
   x: Int,
   y: Int,
-) -> Result(TaskPosition, UpsertPositionError) {
+) -> Result(TaskPosition, ServiceError) {
   case sql.task_positions_upsert(db, task_id, user_id, x, y) {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(position_from_upsert_row(row))
-    Ok(pog.Returned(rows: [], ..)) -> Error(UnexpectedEmptyResult)
+    Ok(pog.Returned(rows: [], ..)) -> Error(Unexpected("empty_result"))
     Error(e) -> Error(DbError(e))
   }
 }

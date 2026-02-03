@@ -27,6 +27,9 @@ import gleam/string
 import helpers/option as option_helpers
 import pog
 import scrumbringer_server/services/rules_target
+import scrumbringer_server/services/service_error.{
+  type ServiceError, DbError, InvalidReference, NotFound,
+}
 import scrumbringer_server/sql
 
 /// Rule record with a typed target.
@@ -57,40 +60,6 @@ pub type RuleTemplate {
     created_at: String,
     execution_order: Int,
   )
-}
-
-/// Errors returned when creating a rule.
-pub type CreateRuleError {
-  CreateInvalidWorkflow
-  CreateInvalidTaskType
-  CreateInvalidResourceType
-  CreateDbError(pog.QueryError)
-}
-
-/// Errors returned when updating a rule.
-pub type UpdateRuleError {
-  UpdateNotFound
-  UpdateInvalidTaskType
-  UpdateInvalidResourceType
-  UpdateDbError(pog.QueryError)
-}
-
-/// Errors returned when deleting a rule.
-pub type DeleteRuleError {
-  DeleteNotFound
-  DeleteDbError(pog.QueryError)
-}
-
-/// Errors returned when attaching a template to a rule.
-pub type AttachTemplateError {
-  AttachNotFound
-  AttachDbError(pog.QueryError)
-}
-
-/// Errors returned when detaching a template from a rule.
-pub type DetachTemplateError {
-  DetachNotFound
-  DetachDbError(pog.QueryError)
 }
 
 // =============================================================================
@@ -171,19 +140,19 @@ fn template_from_row(row: sql.RuleTemplatesListForRuleRow) -> RuleTemplate {
 
 fn target_error_to_create_error(
   error: rules_target.RuleTargetError,
-) -> CreateRuleError {
+) -> ServiceError {
   case error {
-    rules_target.InvalidResourceType -> CreateInvalidResourceType
-    rules_target.TaskTypeNotAllowedForCard -> CreateInvalidTaskType
+    rules_target.InvalidResourceType -> InvalidReference("resource_type")
+    rules_target.TaskTypeNotAllowedForCard -> InvalidReference("task_type_id")
   }
 }
 
 fn target_error_to_update_error(
   error: rules_target.RuleTargetError,
-) -> UpdateRuleError {
+) -> ServiceError {
   case error {
-    rules_target.InvalidResourceType -> UpdateInvalidResourceType
-    rules_target.TaskTypeNotAllowedForCard -> UpdateInvalidTaskType
+    rules_target.InvalidResourceType -> InvalidReference("resource_type")
+    rules_target.TaskTypeNotAllowedForCard -> InvalidReference("task_type_id")
   }
 }
 
@@ -210,14 +179,11 @@ pub fn list_rules_for_workflow(
 ///
 /// Example:
 ///   get_rule(db, rule_id)
-pub fn get_rule(
-  db: pog.Connection,
-  rule_id: Int,
-) -> Result(Rule, UpdateRuleError) {
+pub fn get_rule(db: pog.Connection, rule_id: Int) -> Result(Rule, ServiceError) {
   case sql.rules_get(db, rule_id) {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(rule_from_get_row(row))
-    Ok(pog.Returned(rows: [], ..)) -> Error(UpdateNotFound)
-    Error(e) -> Error(UpdateDbError(e))
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Error(e) -> Error(DbError(e))
   }
 }
 
@@ -234,7 +200,7 @@ pub fn create_rule(
   task_type_id: Int,
   to_state: String,
   active: Bool,
-) -> Result(Rule, CreateRuleError) {
+) -> Result(Rule, ServiceError) {
   use target <- result.try(
     rules_target.from_strings(resource_type, task_type_id, to_state)
     |> result.map_error(target_error_to_create_error),
@@ -263,7 +229,7 @@ fn create_rule_in_db(
   task_type_value: Int,
   to_state_value: String,
   active: Bool,
-) -> Result(Rule, CreateRuleError) {
+) -> Result(Rule, ServiceError) {
   case
     sql.rules_create(
       db,
@@ -277,26 +243,26 @@ fn create_rule_in_db(
     )
   {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(rule_from_create_row(row))
-    Ok(pog.Returned(rows: [], ..)) -> Error(CreateInvalidWorkflow)
+    Ok(pog.Returned(rows: [], ..)) -> Error(InvalidReference("workflow_id"))
     Error(error) -> Error(map_create_rule_error(error))
   }
 }
 
-fn map_create_rule_error(error: pog.QueryError) -> CreateRuleError {
+fn map_create_rule_error(error: pog.QueryError) -> ServiceError {
   case error {
     pog.ConstraintViolated(constraint: constraint, ..) ->
       map_create_rule_constraint(error, constraint)
-    _ -> CreateDbError(error)
+    _ -> DbError(error)
   }
 }
 
 fn map_create_rule_constraint(
   error: pog.QueryError,
   constraint: String,
-) -> CreateRuleError {
+) -> ServiceError {
   case string.contains(constraint, "task_types") {
-    True -> CreateInvalidTaskType
-    False -> CreateDbError(error)
+    True -> InvalidReference("task_type_id")
+    False -> DbError(error)
   }
 }
 
@@ -313,7 +279,7 @@ pub fn update_rule(
   task_type_id: Option(Int),
   to_state: Option(String),
   active: Option(Bool),
-) -> Result(Rule, UpdateRuleError) {
+) -> Result(Rule, ServiceError) {
   case sql.rules_get(db, rule_id) {
     Ok(pog.Returned(rows: [row, ..], ..)) ->
       update_rule_with_row(
@@ -327,8 +293,8 @@ pub fn update_rule(
         to_state,
         active,
       )
-    Ok(pog.Returned(rows: [], ..)) -> Error(UpdateNotFound)
-    Error(error) -> Error(UpdateDbError(error))
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Error(error) -> Error(DbError(error))
   }
 }
 
@@ -342,7 +308,7 @@ fn update_rule_with_row(
   task_type_id: Option(Int),
   to_state: Option(String),
   active: Option(Bool),
-) -> Result(Rule, UpdateRuleError) {
+) -> Result(Rule, ServiceError) {
   let name_value = case name {
     Some(value) -> value
     None -> row.name
@@ -404,7 +370,7 @@ fn update_rule_in_db(
   task_type_param: Int,
   to_state_param: String,
   active_flag: Int,
-) -> Result(Rule, UpdateRuleError) {
+) -> Result(Rule, ServiceError) {
   case
     sql.rules_update(
       db,
@@ -419,26 +385,26 @@ fn update_rule_in_db(
   {
     Ok(pog.Returned(rows: [updated_row, ..], ..)) ->
       Ok(rule_from_update_row(updated_row))
-    Ok(pog.Returned(rows: [], ..)) -> Error(UpdateNotFound)
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
     Error(error) -> Error(map_update_rule_error(error))
   }
 }
 
-fn map_update_rule_error(error: pog.QueryError) -> UpdateRuleError {
+fn map_update_rule_error(error: pog.QueryError) -> ServiceError {
   case error {
     pog.ConstraintViolated(constraint: constraint, ..) ->
       map_update_rule_constraint(error, constraint)
-    _ -> UpdateDbError(error)
+    _ -> DbError(error)
   }
 }
 
 fn map_update_rule_constraint(
   error: pog.QueryError,
   constraint: String,
-) -> UpdateRuleError {
+) -> ServiceError {
   case string.contains(constraint, "task_types") {
-    True -> UpdateInvalidTaskType
-    False -> UpdateDbError(error)
+    True -> InvalidReference("task_type_id")
+    False -> DbError(error)
   }
 }
 
@@ -449,11 +415,11 @@ fn map_update_rule_constraint(
 pub fn delete_rule(
   db: pog.Connection,
   rule_id: Int,
-) -> Result(Nil, DeleteRuleError) {
+) -> Result(Nil, ServiceError) {
   case sql.rules_delete(db, rule_id) {
     Ok(pog.Returned(rows: [_, ..], ..)) -> Ok(Nil)
-    Ok(pog.Returned(rows: [], ..)) -> Error(DeleteNotFound)
-    Error(e) -> Error(DeleteDbError(e))
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Error(e) -> Error(DbError(e))
   }
 }
 
@@ -481,11 +447,11 @@ pub fn attach_template(
   rule_id: Int,
   template_id: Int,
   execution_order: Int,
-) -> Result(Nil, AttachTemplateError) {
+) -> Result(Nil, ServiceError) {
   case sql.rule_templates_attach(db, rule_id, template_id, execution_order) {
     Ok(pog.Returned(rows: [_, ..], ..)) -> Ok(Nil)
-    Ok(pog.Returned(rows: [], ..)) -> Error(AttachNotFound)
-    Error(e) -> Error(AttachDbError(e))
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Error(e) -> Error(DbError(e))
   }
 }
 
@@ -497,10 +463,10 @@ pub fn detach_template(
   db: pog.Connection,
   rule_id: Int,
   template_id: Int,
-) -> Result(Nil, DetachTemplateError) {
+) -> Result(Nil, ServiceError) {
   case sql.rule_templates_detach(db, rule_id, template_id) {
     Ok(pog.Returned(rows: [_, ..], ..)) -> Ok(Nil)
-    Ok(pog.Returned(rows: [], ..)) -> Error(DetachNotFound)
-    Error(e) -> Error(DetachDbError(e))
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Error(e) -> Error(DbError(e))
   }
 }

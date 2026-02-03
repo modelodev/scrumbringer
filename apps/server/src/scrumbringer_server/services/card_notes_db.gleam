@@ -5,6 +5,9 @@
 import gleam/list
 import gleam/result
 import pog
+import scrumbringer_server/services/service_error.{
+  type ServiceError, DbError, NotFound, Unexpected,
+}
 import scrumbringer_server/sql
 
 /// A note attached to a card.
@@ -19,24 +22,6 @@ pub type CardNote {
     author_email: String,
     author_role: String,
   )
-}
-
-/// Errors that can occur when creating a note.
-pub type CreateNoteError {
-  CreateDbError(pog.QueryError)
-  CreateUnexpectedEmptyResult
-}
-
-/// Errors that can occur when reading a note.
-pub type GetNoteError {
-  GetDbError(pog.QueryError)
-  GetNoteNotFound
-}
-
-/// Errors that can occur when deleting a note.
-pub type DeleteNoteError {
-  DeleteDbError(pog.QueryError)
-  DeleteNoteNotFound
 }
 
 /// Lists all notes for a card, ordered by creation time.
@@ -56,10 +41,10 @@ pub fn get_note(
   db: pog.Connection,
   card_id: Int,
   note_id: Int,
-) -> Result(CardNote, GetNoteError) {
+) -> Result(CardNote, ServiceError) {
   case sql.card_notes_get(db, card_id, note_id) {
-    Error(e) -> Error(GetDbError(e))
-    Ok(pog.Returned(rows: [], ..)) -> Error(GetNoteNotFound)
+    Error(e) -> Error(DbError(e))
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(note_from_get_row(row))
   }
 }
@@ -70,11 +55,11 @@ pub fn create_note(
   card_id: Int,
   user_id: Int,
   content: String,
-) -> Result(CardNote, CreateNoteError) {
+) -> Result(CardNote, ServiceError) {
   case sql.card_notes_create(db, card_id, user_id, content) {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(note_from_create_row(row))
-    Ok(pog.Returned(rows: [], ..)) -> Error(CreateUnexpectedEmptyResult)
-    Error(e) -> Error(CreateDbError(e))
+    Ok(pog.Returned(rows: [], ..)) -> Error(Unexpected("empty_result"))
+    Error(e) -> Error(DbError(e))
   }
 }
 
@@ -83,11 +68,11 @@ pub fn delete_note(
   db: pog.Connection,
   card_id: Int,
   note_id: Int,
-) -> Result(Nil, DeleteNoteError) {
+) -> Result(Nil, ServiceError) {
   case sql.card_notes_delete(db, card_id, note_id) {
     Ok(pog.Returned(rows: [_row, ..], ..)) -> Ok(Nil)
-    Ok(pog.Returned(rows: [], ..)) -> Error(DeleteNoteNotFound)
-    Error(e) -> Error(DeleteDbError(e))
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Error(e) -> Error(DbError(e))
   }
 }
 

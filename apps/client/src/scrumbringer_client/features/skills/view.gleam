@@ -22,7 +22,6 @@ import scrumbringer_client/client_state.{
   pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/icons
@@ -34,7 +33,7 @@ import scrumbringer_client/update_helpers
 
 /// Renders the My Skills section.
 pub fn view_skills(model: Model) -> Element(Msg) {
-  div([attrs.section()], [
+  div([attribute.class("section")], [
     section_header.view(
       icons.Crosshairs,
       update_helpers.i18n_t(model, i18n_text.MySkills),

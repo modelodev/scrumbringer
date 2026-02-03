@@ -24,9 +24,10 @@ import gleam/bit_array
 import gleam/crypto
 import gleam/dynamic/decode
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{type Option}
 import gleam/result
 import gleam/string
+import helpers/option as option_helpers
 import pog
 import scrumbringer_server/sql
 
@@ -104,8 +105,8 @@ fn upsert_with_retry(
         token: row.token,
         state: parse_state(row.state),
         created_at: row.created_at,
-        used_at: string_option(row.used_at),
-        invalidated_at: string_option(row.invalidated_at),
+        used_at: option_helpers.string_to_option(row.used_at),
+        invalidated_at: option_helpers.string_to_option(row.invalidated_at),
       ))
 
     Ok(pog.Returned(rows: [], ..)) -> Error(NoRowReturned)
@@ -174,8 +175,8 @@ pub fn list_invite_links(
       token: row.token,
       state: parse_state(row.state),
       created_at: row.created_at,
-      used_at: string_option(row.used_at),
-      invalidated_at: string_option(row.invalidated_at),
+      used_at: option_helpers.string_to_option(row.used_at),
+      invalidated_at: option_helpers.string_to_option(row.invalidated_at),
     )
   })
   |> Ok
@@ -194,13 +195,6 @@ fn parse_state(raw: String) -> InviteLinkState {
     "used" -> Used
     "invalidated" -> Invalidated
     _ -> Active
-  }
-}
-
-fn string_option(value: String) -> Option(String) {
-  case value {
-    "" -> None
-    v -> Some(v)
   }
 }
 

@@ -63,6 +63,7 @@ import scrumbringer_client/client_state.{
   TaskTypeCrudDeleted, TaskTypeCrudUpdated, TaskTypeDialogCreate,
   TaskTypeDialogDelete, TaskTypeDialogEdit, admin_msg, pool_msg,
 }
+import scrumbringer_client/decoders
 import scrumbringer_client/features/admin/views/members as members_view
 import scrumbringer_client/features/admin/views/workflows as workflows_view
 import scrumbringer_client/i18n/locale
@@ -77,7 +78,6 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/theme
 import scrumbringer_client/ui/action_buttons
-import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/card_detail_host
 import scrumbringer_client/ui/card_progress
@@ -102,7 +102,7 @@ import scrumbringer_client/update_helpers
 pub fn view_org_settings(model: Model) -> Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
 
-  div([attrs.section()], [
+  div([attribute.class("section")], [
     // Section header with subtitle (Story 4.8: consistent icons + help text)
     section_header.view_with_subtitle(
       icons.OrgUsers,
@@ -120,12 +120,12 @@ fn view_org_settings_table(model: Model) -> Element(Msg) {
 
   case model.admin.org_settings_users {
     NotAsked ->
-      div([attrs.empty()], [
+      div([attribute.class("empty")], [
         text(t(i18n_text.OpenThisSectionToLoadUsers)),
       ])
 
     Loading ->
-      div([attrs.empty()], [
+      div([attribute.class("empty")], [
         text(t(i18n_text.LoadingUsers)),
       ])
 
@@ -1049,7 +1049,7 @@ fn card_decoder() -> decode.Decoder(Card) {
   use title <- decode.field("title", decode.string)
   use description <- decode.field("description", decode.string)
   use color <- decode.field("color", decode.optional(decode.string))
-  use state <- decode.field("state", card_state_decoder())
+  use state <- decode.field("state", decoders.card_state_decoder())
   use task_count <- decode.field("task_count", decode.int)
   use completed_count <- decode.field("completed_count", decode.int)
   use created_by <- decode.field("created_by", decode.int)
@@ -1072,15 +1072,6 @@ fn card_decoder() -> decode.Decoder(Card) {
     created_at: created_at,
     has_new_notes: has_new_notes,
   ))
-}
-
-fn card_state_decoder() -> decode.Decoder(card.CardState) {
-  use state_str <- decode.then(decode.string)
-  case state_str {
-    "en_curso" -> decode.success(card.EnCurso)
-    "cerrada" -> decode.success(card.Cerrada)
-    _ -> decode.success(card.Pendiente)
-  }
 }
 
 /// Convert a Card to JSON for passing as a property to the component.

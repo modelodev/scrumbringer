@@ -11,6 +11,10 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import pog
+import scrumbringer_server/services/service_error.{
+  type ServiceError, AlreadyExists, Conflict, DbError, InvalidReference,
+  NotFound, Unexpected,
+}
 import scrumbringer_server/sql
 
 /// A task type that categorizes tasks within a project.
@@ -24,29 +28,6 @@ pub type TaskType {
     capability_id: Option(Int),
     tasks_count: Int,
   )
-}
-
-/// Errors that can occur when creating a task type.
-pub type CreateTaskTypeError {
-  AlreadyExists
-  InvalidCapabilityId
-  DbError(pog.QueryError)
-  NoRowReturned
-}
-
-/// Errors that can occur when updating a task type.
-/// Story 4.9 AC13
-pub type UpdateTaskTypeError {
-  UpdateNotFound
-  UpdateDbError(pog.QueryError)
-}
-
-/// Errors that can occur when deleting a task type.
-/// Story 4.9 AC14
-pub type DeleteTaskTypeError {
-  DeleteNotFound
-  DeleteHasTasks
-  DeleteDbError(pog.QueryError)
 }
 
 /// Lists all task types for a given project.
@@ -115,7 +96,7 @@ pub fn create_task_type(
   name: String,
   icon: String,
   capability_id: Option(Int),
-) -> Result(TaskType, CreateTaskTypeError) {
+) -> Result(TaskType, ServiceError) {
   let capability_param = capability_param(capability_id)
 
   case sql.task_types_create(db, project_id, name, icon, capability_param) {
@@ -129,13 +110,13 @@ pub fn create_task_type(
         tasks_count: 0,
       ))
 
-    Ok(pog.Returned(rows: [], ..)) -> Error(NoRowReturned)
+    Ok(pog.Returned(rows: [], ..)) -> Error(Unexpected("no_row_returned"))
 
     Error(error) -> Error(map_create_task_type_error(error))
   }
 }
 
-fn map_create_task_type_error(error: pog.QueryError) -> CreateTaskTypeError {
+fn map_create_task_type_error(error: pog.QueryError) -> ServiceError {
   case error {
     pog.ConstraintViolated(constraint: constraint, ..) ->
       map_create_task_type_constraint(error, constraint)
@@ -146,7 +127,7 @@ fn map_create_task_type_error(error: pog.QueryError) -> CreateTaskTypeError {
 fn map_create_task_type_constraint(
   error: pog.QueryError,
   constraint: String,
-) -> CreateTaskTypeError {
+) -> ServiceError {
   case string.contains(constraint, "task_types") {
     True -> AlreadyExists
     False -> map_create_capability_constraint(error, constraint)
@@ -156,9 +137,9 @@ fn map_create_task_type_constraint(
 fn map_create_capability_constraint(
   error: pog.QueryError,
   constraint: String,
-) -> CreateTaskTypeError {
+) -> ServiceError {
   case string.contains(constraint, "capability") {
-    True -> InvalidCapabilityId
+    True -> InvalidReference("capability_id")
     False -> DbError(error)
   }
 }
@@ -178,7 +159,7 @@ pub fn update_task_type(
   name: String,
   icon: String,
   capability_id: Option(Int),
-) -> Result(TaskType, UpdateTaskTypeError) {
+) -> Result(TaskType, ServiceError) {
   let capability_param = capability_param(capability_id)
 
   case sql.task_types_update(db, type_id, name, icon, capability_param) {
@@ -192,8 +173,8 @@ pub fn update_task_type(
         tasks_count: 0,
       ))
 
-    Ok(pog.Returned(rows: [], ..)) -> Error(UpdateNotFound)
-    Error(error) -> Error(UpdateDbError(error))
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Error(error) -> Error(DbError(error))
   }
 }
 
@@ -217,13 +198,13 @@ fn capability_param(capability_id: Option(Int)) -> Int {
 pub fn delete_task_type(
   db: pog.Connection,
   type_id: Int,
-) -> Result(Int, DeleteTaskTypeError) {
+) -> Result(Int, ServiceError) {
   case sql.task_types_delete(db, type_id) {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(row.id)
 
-    Ok(pog.Returned(rows: [], ..)) -> Error(DeleteHasTasks)
+    Ok(pog.Returned(rows: [], ..)) -> Error(Conflict("task_type_in_use"))
 
-    Error(error) -> Error(DeleteDbError(error))
+    Error(error) -> Error(DbError(error))
   }
 }
 

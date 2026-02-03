@@ -34,13 +34,9 @@ import lustre/element.{type Element}
 import lustre/element/html.{div, span, text}
 import lustre/event
 
-import domain/card.{
-  type Card, type CardNote, type CardState, CardNote, Cerrada, EnCurso,
-  Pendiente,
-}
+import domain/card.{type Card, type CardNote, CardNote}
 import domain/task.{type Task}
 import domain/task_status.{Available, Completed}
-import domain/task_type
 
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/api/core.{type ApiResult}
@@ -48,6 +44,7 @@ import scrumbringer_client/api/tasks/decoders as task_decoders
 import scrumbringer_client/client_state.{
   type Remote, Failed, Loaded, Loading, NotAsked,
 }
+import scrumbringer_client/decoders
 import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
@@ -172,7 +169,7 @@ fn card_property_decoder() -> Decoder(Msg) {
   use title <- decode.field("title", decode.string)
   use description <- decode.field("description", decode.string)
   use color <- decode.field("color", decode.optional(decode.string))
-  use state <- decode.field("state", card_state_decoder())
+  use state <- decode.field("state", decoders.card_state_decoder())
   use task_count <- decode.field("task_count", decode.int)
   use completed_count <- decode.field("completed_count", decode.int)
   use created_by <- decode.field("created_by", decode.int)
@@ -199,15 +196,6 @@ fn card_property_decoder() -> Decoder(Msg) {
   )
 }
 
-fn card_state_decoder() -> Decoder(CardState) {
-  use state_str <- decode.then(decode.string)
-  case state_str {
-    "en_curso" -> decode.success(EnCurso)
-    "cerrada" -> decode.success(Cerrada)
-    _ -> decode.success(Pendiente)
-  }
-}
-
 fn tasks_property_decoder() -> Decoder(Msg) {
   decode.list(task_decoder())
   |> decode.map(TasksReceived)
@@ -217,11 +205,14 @@ fn task_decoder() -> Decoder(Task) {
   use id <- decode.field("id", decode.int)
   use project_id <- decode.field("project_id", decode.int)
   use type_id <- decode.field("type_id", decode.int)
-  use task_type <- decode.field("task_type", task_type_inline_decoder())
+  use task_type <- decode.field(
+    "task_type",
+    task_decoders.task_type_inline_decoder(),
+  )
   use ongoing_by <- decode.optional_field(
     "ongoing_by",
     option.None,
-    decode.optional(ongoing_by_decoder()),
+    decode.optional(task_decoders.ongoing_by_decoder()),
   )
   use title <- decode.field("title", decode.string)
   use description <- decode.optional_field(
@@ -297,18 +288,6 @@ fn task_decoder() -> Decoder(Task) {
     blocked_count: blocked_count,
     dependencies: dependencies,
   ))
-}
-
-fn task_type_inline_decoder() -> Decoder(task_type.TaskTypeInline) {
-  use id <- decode.field("id", decode.int)
-  use name <- decode.field("name", decode.string)
-  use icon <- decode.field("icon", decode.string)
-  decode.success(task_type.TaskTypeInline(id: id, name: name, icon: icon))
-}
-
-fn ongoing_by_decoder() -> Decoder(task_status.OngoingBy) {
-  use user_id <- decode.field("user_id", decode.int)
-  decode.success(task_status.OngoingBy(user_id: user_id))
 }
 
 fn task_status_decoder() -> Decoder(task_status.TaskStatus) {

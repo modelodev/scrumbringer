@@ -30,38 +30,8 @@ import lustre/effect.{type Effect}
 
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state
-import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/pool_prefs
-import scrumbringer_client/router
 import scrumbringer_client/theme.{type Theme}
-
-// =============================================================================
-// Navigation Effects
-// =============================================================================
-
-/// Push a new URL to browser history (creates back button entry).
-///
-/// Wrapper around router.push for convenience.
-pub fn navigate_push(route: router.Route) -> Effect(msg) {
-  router.push(route)
-}
-
-/// Replace current URL in browser history (no back button entry).
-///
-/// Wrapper around router.replace for convenience.
-pub fn navigate_replace(route: router.Route) -> Effect(msg) {
-  router.replace(route)
-}
-
-/// Update the browser document title for the current route.
-///
-/// Sets title in format "Section - Scrumbringer" for authenticated pages.
-pub fn update_title(
-  route: router.Route,
-  locale: i18n_locale.Locale,
-) -> Effect(msg) {
-  router.update_page_title(route, locale)
-}
 
 // =============================================================================
 // Theme Persistence Effects

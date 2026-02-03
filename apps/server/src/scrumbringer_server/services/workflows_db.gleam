@@ -20,11 +20,14 @@
 //// - Uses `sql.gleam` for queries
 
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{type Option}
 import gleam/result
 import gleam/string
 import helpers/option as option_helpers
 import pog
+import scrumbringer_server/services/service_error.{
+  type ServiceError, AlreadyExists, DbError, NotFound, Unexpected,
+}
 import scrumbringer_server/sql
 
 /// Workflow record with active flag and rule count.
@@ -40,25 +43,6 @@ pub type Workflow {
     created_by: Int,
     created_at: String,
   )
-}
-
-/// Errors returned when creating a workflow.
-pub type CreateWorkflowError {
-  CreateWorkflowAlreadyExists
-  CreateWorkflowDbError(pog.QueryError)
-}
-
-/// Errors returned when updating a workflow.
-pub type UpdateWorkflowError {
-  UpdateWorkflowNotFound
-  UpdateWorkflowAlreadyExists
-  UpdateWorkflowDbError(pog.QueryError)
-}
-
-/// Errors returned when deleting a workflow.
-pub type DeleteWorkflowError {
-  DeleteWorkflowNotFound
-  DeleteWorkflowDbError(pog.QueryError)
 }
 
 // =============================================================================
@@ -119,11 +103,11 @@ pub fn list_project_workflows(
 pub fn get_workflow(
   db: pog.Connection,
   workflow_id: Int,
-) -> Result(Workflow, UpdateWorkflowError) {
+) -> Result(Workflow, ServiceError) {
   case sql.workflows_get(db, workflow_id) {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(from_get_row(row))
-    Ok(pog.Returned(rows: [], ..)) -> Error(UpdateWorkflowNotFound)
-    Error(e) -> Error(UpdateWorkflowDbError(e))
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Error(e) -> Error(DbError(e))
   }
 }
 
@@ -139,7 +123,7 @@ pub fn create_workflow(
   description: String,
   active: Bool,
   created_by: Int,
-) -> Result(Workflow, CreateWorkflowError) {
+) -> Result(Workflow, ServiceError) {
   case
     sql.workflows_create(
       db,
@@ -163,27 +147,26 @@ pub fn create_workflow(
         created_by: row.created_by,
         created_at: row.created_at,
       ))
-    Ok(pog.Returned(rows: [], ..)) ->
-      Error(CreateWorkflowDbError(pog.UnexpectedArgumentCount(7, 0)))
+    Ok(pog.Returned(rows: [], ..)) -> Error(Unexpected("empty_result"))
     Error(error) -> Error(map_create_workflow_error(error))
   }
 }
 
-fn map_create_workflow_error(error: pog.QueryError) -> CreateWorkflowError {
+fn map_create_workflow_error(error: pog.QueryError) -> ServiceError {
   case error {
     pog.ConstraintViolated(constraint: constraint, ..) ->
       map_create_workflow_constraint(error, constraint)
-    _ -> CreateWorkflowDbError(error)
+    _ -> DbError(error)
   }
 }
 
 fn map_create_workflow_constraint(
   error: pog.QueryError,
   constraint: String,
-) -> CreateWorkflowError {
+) -> ServiceError {
   case string.contains(constraint, "workflows") {
-    True -> CreateWorkflowAlreadyExists
-    False -> CreateWorkflowDbError(error)
+    True -> AlreadyExists
+    False -> DbError(error)
   }
 }
 
@@ -198,15 +181,15 @@ pub fn update_workflow(
   project_id: Int,
   name: Option(String),
   description: Option(String),
-) -> Result(Workflow, UpdateWorkflowError) {
+) -> Result(Workflow, ServiceError) {
   case
     sql.workflows_update(
       db,
       workflow_id,
       org_id,
       project_id,
-      option_string_update_to_db(name),
-      option_string_update_to_db(description),
+      option_helpers.option_to_value(name, "__unset__"),
+      option_helpers.option_to_value(description, "__unset__"),
     )
   {
     Ok(pog.Returned(rows: [row, ..], ..)) ->
@@ -221,33 +204,26 @@ pub fn update_workflow(
         created_by: row.created_by,
         created_at: row.created_at,
       ))
-    Ok(pog.Returned(rows: [], ..)) -> Error(UpdateWorkflowNotFound)
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
     Error(error) -> Error(map_update_workflow_error(error))
   }
 }
 
-fn map_update_workflow_error(error: pog.QueryError) -> UpdateWorkflowError {
+fn map_update_workflow_error(error: pog.QueryError) -> ServiceError {
   case error {
     pog.ConstraintViolated(constraint: constraint, ..) ->
       map_update_workflow_constraint(error, constraint)
-    _ -> UpdateWorkflowDbError(error)
+    _ -> DbError(error)
   }
 }
 
 fn map_update_workflow_constraint(
   error: pog.QueryError,
   constraint: String,
-) -> UpdateWorkflowError {
+) -> ServiceError {
   case string.contains(constraint, "workflows") {
-    True -> UpdateWorkflowAlreadyExists
-    False -> UpdateWorkflowDbError(error)
-  }
-}
-
-fn option_string_update_to_db(value: Option(String)) -> String {
-  case value {
-    None -> "__unset__"
-    Some(actual) -> actual
+    True -> AlreadyExists
+    False -> DbError(error)
   }
 }
 
@@ -260,11 +236,11 @@ pub fn delete_workflow(
   workflow_id: Int,
   org_id: Int,
   project_id: Int,
-) -> Result(Nil, DeleteWorkflowError) {
+) -> Result(Nil, ServiceError) {
   case sql.workflows_delete(db, workflow_id, org_id, project_id) {
     Ok(pog.Returned(rows: [_, ..], ..)) -> Ok(Nil)
-    Ok(pog.Returned(rows: [], ..)) -> Error(DeleteWorkflowNotFound)
-    Error(e) -> Error(DeleteWorkflowDbError(e))
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Error(e) -> Error(DbError(e))
   }
 }
 
@@ -278,13 +254,13 @@ pub fn set_active_cascade(
   org_id: Int,
   project_id: Int,
   active: Bool,
-) -> Result(Nil, UpdateWorkflowError) {
+) -> Result(Nil, ServiceError) {
   case sql.workflows_set_active(db, workflow_id, org_id, project_id, active) {
     Ok(pog.Returned(rows: [_, ..], ..)) -> {
       let _ = sql.rules_set_active_for_workflow(db, workflow_id, active)
       Ok(Nil)
     }
-    Ok(pog.Returned(rows: [], ..)) -> Error(UpdateWorkflowNotFound)
-    Error(e) -> Error(UpdateWorkflowDbError(e))
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Error(e) -> Error(DbError(e))
   }
 }

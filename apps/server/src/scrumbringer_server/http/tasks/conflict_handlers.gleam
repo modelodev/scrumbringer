@@ -19,6 +19,7 @@ import gleam/option.{type Option, Some}
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
+import scrumbringer_server/services/service_error
 import wisp
 
 // =============================================================================
@@ -32,7 +33,7 @@ import wisp
 ///
 /// ```gleam
 /// case tasks_queries.claim_task(...) {
-///   Error(tasks_queries.NotFound) -> handle_claim_conflict(db, task_id, user_id)
+///   Error(service_error.NotFound) -> handle_claim_conflict(db, task_id, user_id)
 ///   ...
 /// }
 /// ```
@@ -43,7 +44,9 @@ pub fn handle_claim_conflict(
   user_id: Int,
 ) -> wisp.Response {
   case tasks_queries.get_task_for_user(db, task_id, user_id) {
-    Error(tasks_queries.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
+    Error(service_error.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
+    Error(service_error.DbError(_)) ->
+      api.error(500, "INTERNAL", "Database error")
     Error(_) -> api.error(500, "INTERNAL", "Database error")
 
     Ok(current) ->
@@ -63,7 +66,7 @@ pub fn handle_claim_conflict(
 ///
 /// ```gleam
 /// case tasks_queries.release_task(...) {
-///   Error(tasks_queries.NotFound) ->
+///   Error(service_error.NotFound) ->
 ///     handle_version_or_claim_conflict(db, task_id, user_id)
 ///   ...
 /// }
@@ -75,7 +78,9 @@ pub fn handle_version_or_claim_conflict(
   user_id: Int,
 ) -> wisp.Response {
   case tasks_queries.get_task_for_user(db, task_id, user_id) {
-    Error(tasks_queries.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
+    Error(service_error.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
+    Error(service_error.DbError(_)) ->
+      api.error(500, "INTERNAL", "Database error")
     Error(_) -> api.error(500, "INTERNAL", "Database error")
 
     Ok(current) ->

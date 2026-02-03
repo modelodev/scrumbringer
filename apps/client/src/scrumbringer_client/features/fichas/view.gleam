@@ -36,7 +36,6 @@ import scrumbringer_client/client_state.{
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/state/normalized_store
-import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/card_detail_host
 import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/card_state
@@ -57,7 +56,7 @@ import scrumbringer_client/utils/card_queries
 /// Main entry point for the fichas view.
 pub fn view_fichas(model: Model) -> Element(Msg) {
   div([attribute.class("content")], [
-    div([attrs.section()], [
+    div([attribute.class("section")], [
       view_fichas_header(model),
       view_fichas_content(model),
     ]),

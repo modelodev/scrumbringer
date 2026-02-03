@@ -284,7 +284,8 @@ fn find_matching_rules(
   event: StateChange,
 ) -> Result(List(MatchingRule), RuleEngineError) {
   let resource_type_str = event_resource_type(event)
-  let task_type_param = option_int_to_db(event_task_type_id(event))
+  let task_type_param =
+    option_helpers.option_to_value(event_task_type_id(event), 0)
   let to_state_value = event_to_state_string(event)
 
   case
@@ -563,7 +564,7 @@ fn create_task_from_template(
       description,
       template.priority,
       event_user_id(event),
-      option_int_to_db(card_id_param),
+      option_helpers.option_to_value(card_id_param, 0),
     )
   {
     Ok(pog.Returned(rows: [row, ..], ..)) -> {
@@ -720,13 +721,6 @@ fn event_card_id(event: StateChange) -> option.Option(Int) {
   case event {
     TaskChange(ctx: ctx, ..) -> ctx.card_id
     CardChange(..) -> option.None
-  }
-}
-
-fn option_int_to_db(value: option.Option(Int)) -> Int {
-  case value {
-    option.None -> 0
-    option.Some(actual) -> actual
   }
 }
 

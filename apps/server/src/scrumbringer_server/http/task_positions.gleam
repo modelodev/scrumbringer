@@ -33,6 +33,7 @@ import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
 import scrumbringer_server/services/projects_db
+import scrumbringer_server/services/service_error
 import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/task_positions_db
 import wisp
@@ -211,13 +212,13 @@ fn upsert_position(
 ) -> Result(task_positions_db.TaskPosition, wisp.Response) {
   case task_positions_db.upsert_position(db, task_id, user_id, x, y) {
     Ok(position) -> Ok(position)
-    Error(task_positions_db.DbError(_)) ->
+    Error(service_error.DbError(_)) ->
       Error(api.error(500, "INTERNAL", "Database error"))
-    Error(task_positions_db.UnexpectedEmptyResult) ->
+    Error(service_error.Unexpected(_)) ->
       Error(api.error(500, "INTERNAL", "Database error"))
+    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
   }
 }
-
 
 fn parse_task_id(task_id: String) -> Result(Int, wisp.Response) {
   case int.parse(task_id) {
@@ -284,8 +285,10 @@ fn require_task_access(
 ) -> Result(Nil, wisp.Response) {
   case tasks_queries.get_task_for_user(db, task_id, user_id) {
     Ok(_) -> Ok(Nil)
-    Error(tasks_queries.NotFound) ->
+    Error(service_error.NotFound) ->
       Error(api.error(404, "NOT_FOUND", "Not found"))
+    Error(service_error.DbError(_)) ->
+      Error(api.error(500, "INTERNAL", "Database error"))
     Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
   }
 }

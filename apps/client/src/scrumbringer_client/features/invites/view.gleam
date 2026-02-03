@@ -32,7 +32,6 @@ import scrumbringer_client/client_state.{
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
-import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/copyable_input
 import scrumbringer_client/ui/data_table
@@ -51,7 +50,7 @@ import scrumbringer_client/utils/format_date
 pub fn view_invites(model: Model) -> Element(Msg) {
   let origin = client_ffi.location_origin()
 
-  div([attrs.section()], [
+  div([attribute.class("section")], [
     // Section header with add button (Story 4.8: consistent icons)
     section_header.view_with_action(
       icons.Invites,

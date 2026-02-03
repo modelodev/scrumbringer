@@ -30,11 +30,12 @@ import lustre/element/html.{button, div, form, input, p, span, text}
 import lustre/event
 
 import domain/api_error.{type ApiError}
-import domain/card.{type Card, type CardState, Card, Cerrada, EnCurso, Pendiente}
+import domain/card.{type Card, Card, Cerrada, EnCurso, Pendiente}
 
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/api/core.{type ApiResult}
 import scrumbringer_client/components/crud_dialog_base
+import scrumbringer_client/decoders
 import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
@@ -172,7 +173,7 @@ fn card_property_decoder() -> Decoder(Msg) {
   use title <- decode.field("title", decode.string)
   use description <- decode.field("description", decode.string)
   use color <- decode.field("color", decode.optional(decode.string))
-  use state <- decode.field("state", card_state_decoder())
+  use state <- decode.field("state", decoders.card_state_decoder())
   use task_count <- decode.field("task_count", decode.int)
   use completed_count <- decode.field("completed_count", decode.int)
   use created_by <- decode.field("created_by", decode.int)
@@ -201,15 +202,6 @@ fn card_property_decoder() -> Decoder(Msg) {
     "edit" -> decode.success(ModeReceived(ModeEdit(card)))
     "delete" -> decode.success(ModeReceived(ModeDelete(card)))
     _ -> decode.success(ModeReceived(ModeEdit(card)))
-  }
-}
-
-fn card_state_decoder() -> Decoder(CardState) {
-  use state_str <- decode.then(decode.string)
-  case state_str {
-    "en_curso" -> decode.success(EnCurso)
-    "cerrada" -> decode.success(Cerrada)
-    _ -> decode.success(Pendiente)
   }
 }
 

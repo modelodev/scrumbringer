@@ -34,6 +34,7 @@ import scrumbringer_server/http/auth
 import scrumbringer_server/http/authorization
 import scrumbringer_server/http/csrf
 import scrumbringer_server/services/projects_db
+import scrumbringer_server/services/service_error
 import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/task_templates_db
 import wisp
@@ -295,12 +296,22 @@ fn fetch_template(
 ) -> Result(task_templates_db.TaskTemplate, wisp.Response) {
   case task_templates_db.get_template(db, template_id) {
     Ok(template) -> Ok(template)
-    Error(task_templates_db.UpdateNotFound) ->
+    Error(service_error.NotFound) ->
       Error(api.error(404, "NOT_FOUND", "Not found"))
-    Error(task_templates_db.UpdateDbError(_)) ->
+    Error(service_error.DbError(_)) ->
       Error(api.error(500, "INTERNAL", "Database error"))
-    Error(task_templates_db.UpdateInvalidTypeId) ->
+    Error(service_error.InvalidReference("type_id")) ->
       Error(api.error(422, "VALIDATION_ERROR", "Invalid type_id"))
+    Error(service_error.InvalidReference(_)) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid type_id"))
+    Error(service_error.ValidationError(msg)) ->
+      Error(api.error(422, "VALIDATION_ERROR", msg))
+    Error(service_error.Conflict(_)) ->
+      Error(api.error(409, "CONFLICT", "Conflict"))
+    Error(service_error.Unexpected(_)) ->
+      Error(api.error(500, "INTERNAL", "Unexpected error"))
+    Error(service_error.AlreadyExists) ->
+      Error(api.error(409, "CONFLICT", "Conflict"))
   }
 }
 
@@ -383,10 +394,19 @@ fn create_template_db(
     Ok(template) ->
       api.ok(json.object([#("template", template_json(template))]))
 
-    Error(task_templates_db.CreateInvalidTypeId) ->
+    Error(service_error.InvalidReference("type_id")) ->
       api.error(422, "VALIDATION_ERROR", "Invalid type_id")
-    Error(task_templates_db.CreateDbError(_)) ->
+    Error(service_error.InvalidReference(_)) ->
+      api.error(422, "VALIDATION_ERROR", "Invalid type_id")
+    Error(service_error.ValidationError(msg)) ->
+      api.error(422, "VALIDATION_ERROR", msg)
+    Error(service_error.DbError(_)) ->
       api.error(500, "INTERNAL", "Database error")
+    Error(service_error.Conflict(_)) -> api.error(409, "CONFLICT", "Conflict")
+    Error(service_error.Unexpected(_)) ->
+      api.error(500, "INTERNAL", "Unexpected error")
+    Error(service_error.AlreadyExists) -> api.error(409, "CONFLICT", "Conflict")
+    Error(service_error.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
   }
 }
 
@@ -451,12 +471,19 @@ fn update_template_db(
     Ok(template) ->
       api.ok(json.object([#("template", template_json(template))]))
 
-    Error(task_templates_db.UpdateNotFound) ->
-      api.error(404, "NOT_FOUND", "Not found")
-    Error(task_templates_db.UpdateInvalidTypeId) ->
+    Error(service_error.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
+    Error(service_error.InvalidReference("type_id")) ->
       api.error(422, "VALIDATION_ERROR", "Invalid type_id")
-    Error(task_templates_db.UpdateDbError(_)) ->
+    Error(service_error.InvalidReference(_)) ->
+      api.error(422, "VALIDATION_ERROR", "Invalid type_id")
+    Error(service_error.ValidationError(msg)) ->
+      api.error(422, "VALIDATION_ERROR", msg)
+    Error(service_error.DbError(_)) ->
       api.error(500, "INTERNAL", "Database error")
+    Error(service_error.Conflict(_)) -> api.error(409, "CONFLICT", "Conflict")
+    Error(service_error.Unexpected(_)) ->
+      api.error(500, "INTERNAL", "Unexpected error")
+    Error(service_error.AlreadyExists) -> api.error(409, "CONFLICT", "Conflict")
   }
 }
 
@@ -482,10 +509,17 @@ fn delete_template_db(
 
   case task_templates_db.delete_template(db, template_id, org_id) {
     Ok(Nil) -> api.no_content()
-    Error(task_templates_db.DeleteNotFound) ->
-      api.error(404, "NOT_FOUND", "Not found")
-    Error(task_templates_db.DeleteDbError(_)) ->
+    Error(service_error.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
+    Error(service_error.DbError(_)) ->
       api.error(500, "INTERNAL", "Database error")
+    Error(service_error.ValidationError(msg)) ->
+      api.error(422, "VALIDATION_ERROR", msg)
+    Error(service_error.InvalidReference(_)) ->
+      api.error(422, "VALIDATION_ERROR", "Invalid type_id")
+    Error(service_error.Conflict(_)) -> api.error(409, "CONFLICT", "Conflict")
+    Error(service_error.Unexpected(_)) ->
+      api.error(500, "INTERNAL", "Unexpected error")
+    Error(service_error.AlreadyExists) -> api.error(409, "CONFLICT", "Conflict")
   }
 }
 
@@ -541,7 +575,6 @@ fn decode_update_payload(
     Ok(payload) -> Ok(payload)
   }
 }
-
 
 /// Story 4.9 AC20: Added rules_count field.
 fn template_json(template: task_templates_db.TaskTemplate) -> json.Json {

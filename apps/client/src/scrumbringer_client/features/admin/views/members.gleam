@@ -47,7 +47,6 @@ import scrumbringer_client/client_state.{
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
-import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/confirm_dialog
 import scrumbringer_client/ui/data_table
@@ -71,7 +70,7 @@ pub fn view_members(
 ) -> Element(Msg) {
   case selected_project {
     opt.None ->
-      div([attrs.empty()], [
+      div([attribute.class("empty")], [
         text(update_helpers.i18n_t(
           model,
           i18n_text.SelectProjectToManageMembers,
@@ -79,7 +78,7 @@ pub fn view_members(
       ])
 
     opt.Some(project) ->
-      div([attrs.section()], [
+      div([attribute.class("section")], [
         // Section header with subtitle and action (Story 4.8: consistent icons + help text)
         section_header.view_full(
           icons.Team,

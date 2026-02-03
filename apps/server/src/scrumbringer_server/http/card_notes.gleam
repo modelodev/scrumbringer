@@ -33,6 +33,7 @@ import scrumbringer_server/http/csrf
 import scrumbringer_server/services/authorization
 import scrumbringer_server/services/card_notes_db
 import scrumbringer_server/services/cards_db
+import scrumbringer_server/services/service_error
 import scrumbringer_server/services/store_state.{type StoredUser}
 import wisp
 
@@ -177,10 +178,20 @@ fn create_note(
     Ok(_card) ->
       case card_notes_db.create_note(db, card_id, user.id, content) {
         Ok(note) -> api.ok(json.object([#("note", note_json(note))]))
-        Error(card_notes_db.CreateDbError(_)) ->
+        Error(service_error.DbError(_)) ->
           api.error(500, "INTERNAL", "Database error")
-        Error(card_notes_db.CreateUnexpectedEmptyResult) ->
+        Error(service_error.Unexpected(_)) ->
           api.error(500, "INTERNAL", "Database error")
+        Error(service_error.NotFound) ->
+          api.error(404, "NOT_FOUND", "Not found")
+        Error(service_error.ValidationError(msg)) ->
+          api.error(422, "VALIDATION_ERROR", msg)
+        Error(service_error.InvalidReference(_)) ->
+          api.error(422, "VALIDATION_ERROR", "Invalid reference")
+        Error(service_error.Conflict(_)) ->
+          api.error(409, "CONFLICT", "Conflict")
+        Error(service_error.AlreadyExists) ->
+          api.error(409, "CONFLICT", "Conflict")
       }
   }
 }
@@ -226,10 +237,20 @@ fn delete_note(
 
     Ok(card) ->
       case card_notes_db.get_note(db, card_id, note_id) {
-        Error(card_notes_db.GetNoteNotFound) ->
+        Error(service_error.NotFound) ->
           api.error(404, "NOT_FOUND", "Not found")
-        Error(card_notes_db.GetDbError(_)) ->
+        Error(service_error.DbError(_)) ->
           api.error(500, "INTERNAL", "Database error")
+        Error(service_error.ValidationError(msg)) ->
+          api.error(422, "VALIDATION_ERROR", msg)
+        Error(service_error.InvalidReference(_)) ->
+          api.error(422, "VALIDATION_ERROR", "Invalid reference")
+        Error(service_error.Conflict(_)) ->
+          api.error(409, "CONFLICT", "Conflict")
+        Error(service_error.Unexpected(_)) ->
+          api.error(500, "INTERNAL", "Unexpected error")
+        Error(service_error.AlreadyExists) ->
+          api.error(409, "CONFLICT", "Conflict")
         Ok(note) ->
           case can_delete_note(db, user, card.project_id, note) {
             False -> api.error(403, "FORBIDDEN", "Forbidden")
@@ -246,10 +267,17 @@ fn delete_note_in_db(
 ) -> wisp.Response {
   case card_notes_db.delete_note(db, card_id, note_id) {
     Ok(Nil) -> api.no_content()
-    Error(card_notes_db.DeleteNoteNotFound) ->
-      api.error(404, "NOT_FOUND", "Not found")
-    Error(card_notes_db.DeleteDbError(_)) ->
+    Error(service_error.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
+    Error(service_error.DbError(_)) ->
       api.error(500, "INTERNAL", "Database error")
+    Error(service_error.ValidationError(msg)) ->
+      api.error(422, "VALIDATION_ERROR", msg)
+    Error(service_error.InvalidReference(_)) ->
+      api.error(422, "VALIDATION_ERROR", "Invalid reference")
+    Error(service_error.Conflict(_)) -> api.error(409, "CONFLICT", "Conflict")
+    Error(service_error.Unexpected(_)) ->
+      api.error(500, "INTERNAL", "Unexpected error")
+    Error(service_error.AlreadyExists) -> api.error(409, "CONFLICT", "Conflict")
   }
 }
 
@@ -280,7 +308,6 @@ fn decode_note_payload(data: dynamic.Dynamic) -> Result(String, wisp.Response) {
     Ok(content) -> Ok(content)
   }
 }
-
 
 fn parse_card_id(card_id: String) -> Result(Int, wisp.Response) {
   case int.parse(card_id) {

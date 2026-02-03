@@ -16,13 +16,11 @@
 //// }
 //// ```
 
+import domain/field_update.{type FieldUpdate, Set, Unchanged}
 import gleam/option.{type Option}
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/services/projects_db
-import scrumbringer_server/services/workflows/types.{
-  type FieldUpdate, Set, Unset,
-}
 import scrumbringer_server/services/workflows/validation_core
 import wisp
 
@@ -82,12 +80,12 @@ pub fn validate_priority(priority: Int) -> Result(Nil, wisp.Response) {
 }
 
 // Justification: nested case improves clarity for branching logic.
-/// Validate optional priority: Unset means not provided, otherwise 1-5.
+/// Validate optional priority: Unchanged means not provided, otherwise 1-5.
 ///
 /// ## Example
 ///
 /// ```gleam
-/// validate_optional_priority(Unset)    // Ok(Nil) - not provided
+/// validate_optional_priority(Unchanged)    // Ok(Nil) - not provided
 /// validate_optional_priority(Set(3))   // Ok(Nil) - valid
 /// validate_optional_priority(Set(10))  // Error - invalid
 /// ```
@@ -96,7 +94,7 @@ pub fn validate_optional_priority(
   priority: FieldUpdate(Int),
 ) -> Result(Nil, wisp.Response) {
   case priority {
-    Unset -> Ok(Nil)
+    Unchanged -> Ok(Nil)
     Set(value) ->
       case validation_core.validate_priority_value(value) {
         Ok(Nil) -> Ok(Nil)
@@ -113,7 +111,7 @@ pub fn validate_optional_priority(
 // =============================================================================
 
 // Justification: nested case improves clarity for branching logic.
-/// Validate task type update: Unset means no update, otherwise check project.
+/// Validate task type update: Unchanged means no update, otherwise check project.
 ///
 /// ## Example
 ///
@@ -130,7 +128,7 @@ pub fn validate_type_update(
   project_id: Int,
 ) -> Result(Nil, wisp.Response) {
   case type_id {
-    Unset -> Ok(Nil)
+    Unchanged -> Ok(Nil)
     Set(value) ->
       case
         validation_core.validate_task_type_in_project(db, value, project_id)

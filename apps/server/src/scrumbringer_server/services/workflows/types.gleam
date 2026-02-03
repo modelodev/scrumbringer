@@ -16,8 +16,9 @@
 //// - **handlers.gleam**: Uses these types for message handling
 //// - **http/tasks.gleam**: Constructs messages and interprets responses
 
+import domain/field_update
 import domain/task_status
-import gleam/option.{type Option, None, Some}
+import gleam/option.{type Option}
 import pog
 import scrumbringer_server/persistence/tasks/mappers as tasks_mappers
 import scrumbringer_server/services/task_types_db
@@ -114,33 +115,11 @@ pub fn task_status_to_db(status: TaskStatus) -> String {
 /// Task update fields (ADT-based, no sentinels).
 pub type TaskUpdates {
   TaskUpdates(
-    title: FieldUpdate(String),
-    description: FieldUpdate(String),
-    priority: FieldUpdate(Int),
-    type_id: FieldUpdate(Int),
+    title: field_update.FieldUpdate(String),
+    description: field_update.FieldUpdate(String),
+    priority: field_update.FieldUpdate(Int),
+    type_id: field_update.FieldUpdate(Int),
   )
-}
-
-/// Field update ADT for partial updates.
-pub type FieldUpdate(a) {
-  Unset
-  Set(a)
-}
-
-/// Convert optional value to FieldUpdate.
-pub fn field_update_from_option(value: Option(a)) -> FieldUpdate(a) {
-  case value {
-    None -> Unset
-    Some(data) -> Set(data)
-  }
-}
-
-/// Convert FieldUpdate to optional value.
-pub fn field_update_to_option(value: FieldUpdate(a)) -> Option(a) {
-  case value {
-    Unset -> None
-    Set(data) -> Some(data)
-  }
 }
 
 // =============================================================================

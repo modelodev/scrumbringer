@@ -36,6 +36,7 @@ import scrumbringer_server/http/authorization
 import scrumbringer_server/http/csrf
 import scrumbringer_server/services/rules_db
 import scrumbringer_server/services/rules_target
+import scrumbringer_server/services/service_error
 import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/task_templates_db
 import scrumbringer_server/services/workflows_db
@@ -250,14 +251,26 @@ fn create_rule_flow(
     )
   {
     Ok(rule) -> Ok(api.ok(json.object([#("rule", rule_json(rule))])))
-    Error(rules_db.CreateInvalidResourceType) ->
+    Error(service_error.InvalidReference("resource_type")) ->
       Error(api.error(422, "VALIDATION_ERROR", "Invalid resource_type"))
-    Error(rules_db.CreateInvalidTaskType) ->
+    Error(service_error.InvalidReference("task_type_id")) ->
       Error(api.error(422, "VALIDATION_ERROR", "Invalid task_type_id"))
-    Error(rules_db.CreateInvalidWorkflow) ->
+    Error(service_error.InvalidReference("workflow_id")) ->
       Error(api.error(404, "NOT_FOUND", "Workflow not found"))
-    Error(rules_db.CreateDbError(_)) ->
+    Error(service_error.InvalidReference(_)) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid reference"))
+    Error(service_error.DbError(_)) ->
       Error(api.error(500, "INTERNAL", "Database error"))
+    Error(service_error.ValidationError(msg)) ->
+      Error(api.error(422, "VALIDATION_ERROR", msg))
+    Error(service_error.Conflict(_)) ->
+      Error(api.error(409, "CONFLICT", "Conflict"))
+    Error(service_error.Unexpected(_)) ->
+      Error(api.error(500, "INTERNAL", "Unexpected error"))
+    Error(service_error.NotFound) ->
+      Error(api.error(404, "NOT_FOUND", "Not found"))
+    Error(service_error.AlreadyExists) ->
+      Error(api.error(409, "CONFLICT", "Conflict"))
   }
 }
 
@@ -292,14 +305,24 @@ fn update_rule_flow(
     )
   {
     Ok(rule) -> Ok(api.ok(json.object([#("rule", rule_json(rule))])))
-    Error(rules_db.UpdateNotFound) ->
+    Error(service_error.NotFound) ->
       Error(api.error(404, "NOT_FOUND", "Not found"))
-    Error(rules_db.UpdateInvalidResourceType) ->
+    Error(service_error.InvalidReference("resource_type")) ->
       Error(api.error(422, "VALIDATION_ERROR", "Invalid resource_type"))
-    Error(rules_db.UpdateInvalidTaskType) ->
+    Error(service_error.InvalidReference("task_type_id")) ->
       Error(api.error(422, "VALIDATION_ERROR", "Invalid task_type_id"))
-    Error(rules_db.UpdateDbError(_)) ->
+    Error(service_error.InvalidReference(_)) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid reference"))
+    Error(service_error.ValidationError(msg)) ->
+      Error(api.error(422, "VALIDATION_ERROR", msg))
+    Error(service_error.DbError(_)) ->
       Error(api.error(500, "INTERNAL", "Database error"))
+    Error(service_error.Conflict(_)) ->
+      Error(api.error(409, "CONFLICT", "Conflict"))
+    Error(service_error.Unexpected(_)) ->
+      Error(api.error(500, "INTERNAL", "Unexpected error"))
+    Error(service_error.AlreadyExists) ->
+      Error(api.error(409, "CONFLICT", "Conflict"))
   }
 }
 
@@ -595,10 +618,20 @@ fn delete_rule_db(
 ) -> Result(Nil, wisp.Response) {
   case rules_db.delete_rule(db, rule_id) {
     Ok(Nil) -> Ok(Nil)
-    Error(rules_db.DeleteNotFound) ->
+    Error(service_error.NotFound) ->
       Error(api.error(404, "NOT_FOUND", "Not found"))
-    Error(rules_db.DeleteDbError(_)) ->
+    Error(service_error.DbError(_)) ->
       Error(api.error(500, "INTERNAL", "Database error"))
+    Error(service_error.ValidationError(msg)) ->
+      Error(api.error(422, "VALIDATION_ERROR", msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid reference"))
+    Error(service_error.Conflict(_)) ->
+      Error(api.error(409, "CONFLICT", "Conflict"))
+    Error(service_error.Unexpected(_)) ->
+      Error(api.error(500, "INTERNAL", "Unexpected error"))
+    Error(service_error.AlreadyExists) ->
+      Error(api.error(409, "CONFLICT", "Conflict"))
   }
 }
 
@@ -615,10 +648,20 @@ fn attach_rule_template_db(
         Ok(templates) -> Ok(templates)
         Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
       }
-    Error(rules_db.AttachNotFound) ->
+    Error(service_error.NotFound) ->
       Error(api.error(404, "NOT_FOUND", "Not found"))
-    Error(rules_db.AttachDbError(_)) ->
+    Error(service_error.DbError(_)) ->
       Error(api.error(500, "INTERNAL", "Database error"))
+    Error(service_error.ValidationError(msg)) ->
+      Error(api.error(422, "VALIDATION_ERROR", msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid reference"))
+    Error(service_error.Conflict(_)) ->
+      Error(api.error(409, "CONFLICT", "Conflict"))
+    Error(service_error.Unexpected(_)) ->
+      Error(api.error(500, "INTERNAL", "Unexpected error"))
+    Error(service_error.AlreadyExists) ->
+      Error(api.error(409, "CONFLICT", "Conflict"))
   }
 }
 
@@ -629,10 +672,20 @@ fn detach_rule_template_db(
 ) -> Result(Nil, wisp.Response) {
   case rules_db.detach_template(db, rule_id, template_id) {
     Ok(Nil) -> Ok(Nil)
-    Error(rules_db.DetachNotFound) ->
+    Error(service_error.NotFound) ->
       Error(api.error(404, "NOT_FOUND", "Not found"))
-    Error(rules_db.DetachDbError(_)) ->
+    Error(service_error.DbError(_)) ->
       Error(api.error(500, "INTERNAL", "Database error"))
+    Error(service_error.ValidationError(msg)) ->
+      Error(api.error(422, "VALIDATION_ERROR", msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid reference"))
+    Error(service_error.Conflict(_)) ->
+      Error(api.error(409, "CONFLICT", "Conflict"))
+    Error(service_error.Unexpected(_)) ->
+      Error(api.error(500, "INTERNAL", "Unexpected error"))
+    Error(service_error.AlreadyExists) ->
+      Error(api.error(409, "CONFLICT", "Conflict"))
   }
 }
 
@@ -664,9 +717,20 @@ fn validate_template_scope(
         False ->
           Error(api.error(422, "VALIDATION_ERROR", "Invalid template scope"))
       }
-    Error(task_templates_db.UpdateNotFound) ->
+    Error(service_error.NotFound) ->
       Error(api.error(404, "NOT_FOUND", "Template not found"))
-    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
+    Error(service_error.DbError(_)) ->
+      Error(api.error(500, "INTERNAL", "Database error"))
+    Error(service_error.ValidationError(msg)) ->
+      Error(api.error(422, "VALIDATION_ERROR", msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid template scope"))
+    Error(service_error.Conflict(_)) ->
+      Error(api.error(409, "CONFLICT", "Conflict"))
+    Error(service_error.Unexpected(_)) ->
+      Error(api.error(500, "INTERNAL", "Unexpected error"))
+    Error(service_error.AlreadyExists) ->
+      Error(api.error(409, "CONFLICT", "Conflict"))
   }
 }
 

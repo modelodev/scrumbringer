@@ -24,6 +24,7 @@
 //// - **validation.gleam**: Input validation helpers
 //// - **authorization.gleam**: Authorization checks
 
+import domain/field_update
 import domain/task_status.{Available, Claimed, Completed, task_status_to_string}
 import gleam/option.{type Option, None, Some}
 import pog
@@ -31,6 +32,7 @@ import scrumbringer_server/persistence/tasks/mappers as task_mappers
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
 import scrumbringer_server/services/cards_db
 import scrumbringer_server/services/rules_engine
+import scrumbringer_server/services/service_error
 import scrumbringer_server/services/task_types_db
 import scrumbringer_server/services/work_sessions_db
 import scrumbringer_server/services/workflows/authorization
@@ -41,7 +43,7 @@ import scrumbringer_server/services/workflows/types.{
   ListTaskTypes, ListTasks, NotAuthorized, NotFound, ReleaseTask, TaskResult,
   TaskTypeAlreadyExists, TaskTypeCreated, TaskTypeDeleted, TaskTypeInUse,
   TaskTypeUpdated, TaskTypesList, TasksList, UpdateTask, UpdateTaskType,
-  ValidationError, VersionConflict, field_update_to_option,
+  ValidationError, VersionConflict,
 }
 import scrumbringer_server/services/workflows/validation
 
@@ -150,11 +152,18 @@ fn handle_create_task_type(
     task_types_db.create_task_type(db, project_id, name, icon, capability_id)
   {
     Ok(task_type) -> Ok(TaskTypeCreated(task_type))
-    Error(task_types_db.AlreadyExists) -> Error(TaskTypeAlreadyExists)
-    Error(task_types_db.InvalidCapabilityId) ->
+    Error(service_error.AlreadyExists) -> Error(TaskTypeAlreadyExists)
+    Error(service_error.InvalidReference("capability_id")) ->
       Error(ValidationError("Invalid capability_id"))
-    Error(task_types_db.DbError(e)) -> Error(DbError(e))
-    Error(task_types_db.NoRowReturned) ->
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid capability_id"))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Failed to create task type"))
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.Conflict(_)) ->
+      Error(ValidationError("Failed to create task type"))
+    Error(service_error.NotFound) ->
       Error(ValidationError("Failed to create task type"))
   }
 }
@@ -182,8 +191,17 @@ fn handle_update_task_type(
         task_types_db.update_task_type(db, type_id, name, icon, capability_id)
       {
         Ok(task_type) -> Ok(TaskTypeUpdated(task_type))
-        Error(task_types_db.UpdateNotFound) -> Error(NotFound)
-        Error(task_types_db.UpdateDbError(e)) -> Error(DbError(e))
+        Error(service_error.NotFound) -> Error(NotFound)
+        Error(service_error.DbError(e)) -> Error(DbError(e))
+        Error(service_error.Conflict(_)) ->
+          Error(ValidationError("Failed to update task type"))
+        Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+        Error(service_error.InvalidReference(_)) ->
+          Error(ValidationError("Invalid capability_id"))
+        Error(service_error.Unexpected(_)) ->
+          Error(ValidationError("Failed to update task type"))
+        Error(service_error.AlreadyExists) ->
+          Error(ValidationError("Task type already exists"))
       }
     }
 
@@ -200,9 +218,18 @@ fn handle_delete_task_type(
 ) -> Result(Response, Error) {
   case task_types_db.delete_task_type(db, type_id) {
     Ok(deleted_id) -> Ok(TaskTypeDeleted(deleted_id))
-    Error(task_types_db.DeleteHasTasks) -> Error(TaskTypeInUse)
-    Error(task_types_db.DeleteNotFound) -> Error(NotFound)
-    Error(task_types_db.DeleteDbError(e)) -> Error(DbError(e))
+    Error(service_error.Conflict("task_type_in_use")) -> Error(TaskTypeInUse)
+    Error(service_error.Conflict(_)) ->
+      Error(ValidationError("Failed to delete task type"))
+    Error(service_error.NotFound) -> Error(NotFound)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Failed to delete task type"))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Failed to delete task type"))
+    Error(service_error.AlreadyExists) ->
+      Error(ValidationError("Failed to delete task type"))
   }
 }
 
@@ -227,7 +254,10 @@ fn handle_list_tasks(
     )
   {
     Ok(tasks) -> Ok(TasksList(tasks))
-    Error(e) -> Error(DbError(e))
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.Unexpected(_)) ->
+      Error(DbError(pog.UnexpectedArgumentCount(1, 0)))
+    Error(_) -> Error(DbError(pog.UnexpectedArgumentCount(1, 0)))
   }
 }
 
@@ -284,11 +314,19 @@ fn handle_create_task(
           let _ = evaluate_task_rules_created(db, ctx, user_id)
           Ok(TaskResult(task))
         }
-        Error(tasks_queries.InvalidTypeId) ->
+        Error(service_error.InvalidReference("type_id")) ->
           Error(ValidationError("Invalid type_id"))
-        Error(tasks_queries.InvalidCardId) ->
+        Error(service_error.InvalidReference("card_id")) ->
           Error(ValidationError("Invalid card_id"))
-        Error(tasks_queries.CreateDbError(e)) -> Error(DbError(e))
+        Error(service_error.InvalidReference(_)) ->
+          Error(ValidationError("Invalid reference"))
+        Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+        Error(service_error.DbError(e)) -> Error(DbError(e))
+        Error(service_error.Unexpected(_)) ->
+          Error(ValidationError("Unexpected error"))
+        Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+        Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
+        Error(service_error.NotFound) -> Error(NotFound)
       }
   }
 }
@@ -300,8 +338,15 @@ fn handle_get_task(
 ) -> Result(Response, Error) {
   case tasks_queries.get_task_for_user(db, task_id, user_id) {
     Ok(task) -> Ok(TaskResult(task))
-    Error(tasks_queries.NotFound) -> Error(NotFound)
-    Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+    Error(service_error.NotFound) -> Error(NotFound)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
   }
 }
 
@@ -315,8 +360,15 @@ fn handle_update_task(
   use _ <- validation.validate_optional_priority(updates.priority)
 
   case tasks_queries.get_task_for_user(db, task_id, user_id) {
-    Error(tasks_queries.NotFound) -> Error(NotFound)
-    Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+    Error(service_error.NotFound) -> Error(NotFound)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
 
     Ok(current) ->
       update_task_for_current(db, task_id, user_id, version, updates, current)
@@ -367,10 +419,10 @@ fn update_task_for_owner(
     current.project_id,
   )
 
-  let title_update = field_update_to_option(updates.title)
-  let description_update = field_update_to_option(updates.description)
-  let priority_update = field_update_to_option(updates.priority)
-  let type_id_update = field_update_to_option(updates.type_id)
+  let title_update = field_update.to_option(updates.title)
+  let description_update = field_update.to_option(updates.description)
+  let priority_update = field_update.to_option(updates.priority)
+  let type_id_update = field_update.to_option(updates.type_id)
 
   case
     tasks_queries.update_task_claimed_by_user(
@@ -385,8 +437,15 @@ fn update_task_for_owner(
     )
   {
     Ok(task) -> Ok(TaskResult(task))
-    Error(tasks_queries.NotFound) -> Error(VersionConflict)
-    Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+    Error(service_error.NotFound) -> Error(VersionConflict)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
   }
 }
 
@@ -398,8 +457,15 @@ fn handle_claim_task(
   version: Int,
 ) -> Result(Response, Error) {
   case tasks_queries.get_task_for_user(db, task_id, user_id) {
-    Error(tasks_queries.NotFound) -> Error(NotFound)
-    Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+    Error(service_error.NotFound) -> Error(NotFound)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
 
     Ok(current) ->
       claim_task_for_current(db, task_id, user_id, org_id, version, current)
@@ -432,8 +498,15 @@ fn claim_available_task(
 ) -> Result(Response, Error) {
   case tasks_queries.claim_task(db, org_id, task_id, user_id, version) {
     Ok(task) -> claim_task_success(db, task_id, user_id, org_id, current, task)
-    Error(tasks_queries.NotFound) -> detect_conflict(db, task_id, user_id)
-    Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+    Error(service_error.NotFound) -> detect_conflict(db, task_id, user_id)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
   }
 }
 
@@ -476,8 +549,15 @@ fn handle_release_task(
   version: Int,
 ) -> Result(Response, Error) {
   case tasks_queries.get_task_for_user(db, task_id, user_id) {
-    Error(tasks_queries.NotFound) -> Error(NotFound)
-    Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+    Error(service_error.NotFound) -> Error(NotFound)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
 
     Ok(current) ->
       release_task_for_current(db, task_id, user_id, org_id, version, current)
@@ -533,8 +613,15 @@ fn release_task_for_owner(
   case tasks_queries.release_task(db, org_id, task_id, user_id, version) {
     Ok(task) ->
       release_task_success(db, task_id, user_id, org_id, current, task)
-    Error(tasks_queries.NotFound) -> Error(VersionConflict)
-    Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+    Error(service_error.NotFound) -> Error(VersionConflict)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
   }
 }
 
@@ -577,8 +664,15 @@ fn handle_complete_task(
   version: Int,
 ) -> Result(Response, Error) {
   case tasks_queries.get_task_for_user(db, task_id, user_id) {
-    Error(tasks_queries.NotFound) -> Error(NotFound)
-    Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+    Error(service_error.NotFound) -> Error(NotFound)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
 
     Ok(current) ->
       complete_task_for_current(db, task_id, user_id, org_id, version, current)
@@ -634,8 +728,15 @@ fn complete_task_for_owner(
   case tasks_queries.complete_task(db, org_id, task_id, user_id, version) {
     Ok(task) ->
       complete_task_success(db, task_id, user_id, org_id, current, task)
-    Error(tasks_queries.NotFound) -> Error(VersionConflict)
-    Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+    Error(service_error.NotFound) -> Error(VersionConflict)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
   }
 }
 
@@ -680,8 +781,15 @@ fn detect_conflict(
   user_id: Int,
 ) -> Result(Response, Error) {
   case tasks_queries.get_task_for_user(db, task_id, user_id) {
-    Error(tasks_queries.NotFound) -> Error(NotFound)
-    Error(tasks_queries.DbError(e)) -> Error(DbError(e))
+    Error(service_error.NotFound) -> Error(NotFound)
+    Error(service_error.DbError(e)) -> Error(DbError(e))
+    Error(service_error.ValidationError(msg)) -> Error(ValidationError(msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(ValidationError("Invalid reference"))
+    Error(service_error.Unexpected(_)) ->
+      Error(ValidationError("Unexpected error"))
+    Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
+    Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
 
     Ok(current) -> conflict_from_task(current)
   }

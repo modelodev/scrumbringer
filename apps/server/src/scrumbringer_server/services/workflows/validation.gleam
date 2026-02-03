@@ -17,11 +17,11 @@
 //// - **types.gleam**: Uses Error and Response types
 //// - **handlers.gleam**: Calls these validators before operations
 
+import domain/field_update.{type FieldUpdate, Set, Unchanged}
 import gleam/option.{type Option}
 import pog
 import scrumbringer_server/services/workflows/types.{
-  type Error, type FieldUpdate, type Response, DbError, Set, Unset,
-  ValidationError,
+  type Error, type Response, DbError, ValidationError,
 }
 import scrumbringer_server/services/workflows/validation_core
 
@@ -58,13 +58,13 @@ pub fn validate_priority(
 }
 
 // Justification: nested case improves clarity for branching logic.
-/// Validate optional priority (Unset means no update).
+/// Validate optional priority (Unchanged means no update).
 pub fn validate_optional_priority(
   priority: FieldUpdate(Int),
   next: fn(Nil) -> Result(Response, Error),
 ) -> Result(Response, Error) {
   case priority {
-    Unset -> next(Nil)
+    Unchanged -> next(Nil)
     Set(value) ->
       case validation_core.validate_priority_value(value) {
         Ok(Nil) -> next(Nil)
@@ -90,7 +90,7 @@ pub fn validate_task_type_in_project(
 }
 
 // Justification: nested case improves clarity for branching logic.
-/// Validate type update (Unset means no update).
+/// Validate type update (Unchanged means no update).
 pub fn validate_type_update(
   db: pog.Connection,
   type_id: FieldUpdate(Int),
@@ -98,7 +98,7 @@ pub fn validate_type_update(
   next: fn(Nil) -> Result(Response, Error),
 ) -> Result(Response, Error) {
   case type_id {
-    Unset -> next(Nil)
+    Unchanged -> next(Nil)
     Set(value) ->
       case
         validation_core.validate_task_type_in_project(db, value, project_id)

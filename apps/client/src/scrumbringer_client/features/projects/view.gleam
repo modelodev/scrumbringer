@@ -36,7 +36,6 @@ import scrumbringer_client/client_state.{
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
-import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/form_field
@@ -51,7 +50,7 @@ import scrumbringer_client/utils/format_date
 
 /// Main projects section view.
 pub fn view_projects(model: Model) -> element.Element(Msg) {
-  div([attrs.section()], [
+  div([attribute.class("section")], [
     // Section header with add button (Story 4.8: consistent icons)
     section_header.view_with_action(
       icons.Projects,

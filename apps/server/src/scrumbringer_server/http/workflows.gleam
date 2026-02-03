@@ -34,6 +34,7 @@ import scrumbringer_server/http/auth
 import scrumbringer_server/http/authorization
 import scrumbringer_server/http/csrf
 import scrumbringer_server/services/projects_db
+import scrumbringer_server/services/service_error
 import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/workflows_db
 import wisp
@@ -184,10 +185,20 @@ fn create_project_workflow(
   {
     Ok(workflow) ->
       Ok(api.ok(json.object([#("workflow", workflow_json(workflow))])))
-    Error(workflows_db.CreateWorkflowAlreadyExists) ->
+    Error(service_error.AlreadyExists) ->
       Error(api.error(422, "VALIDATION_ERROR", "Workflow name already exists"))
-    Error(workflows_db.CreateWorkflowDbError(_)) ->
+    Error(service_error.DbError(_)) ->
       Error(api.error(500, "INTERNAL", "Database error"))
+    Error(service_error.NotFound) ->
+      Error(api.error(404, "NOT_FOUND", "Not found"))
+    Error(service_error.ValidationError(msg)) ->
+      Error(api.error(422, "VALIDATION_ERROR", msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid reference"))
+    Error(service_error.Conflict(_)) ->
+      Error(api.error(409, "CONFLICT", "Conflict"))
+    Error(service_error.Unexpected(_)) ->
+      Error(api.error(500, "INTERNAL", "Unexpected error"))
   }
 }
 
@@ -285,7 +296,6 @@ fn require_workflow_manager(
   }
 }
 
-
 fn parse_id(value: String) -> Result(Int, wisp.Response) {
   case int.parse(value) {
     Ok(id) -> Ok(id)
@@ -309,12 +319,20 @@ fn get_workflow(
 ) -> Result(workflows_db.Workflow, wisp.Response) {
   case workflows_db.get_workflow(db, workflow_id) {
     Ok(workflow) -> Ok(workflow)
-    Error(workflows_db.UpdateWorkflowNotFound) ->
+    Error(service_error.NotFound) ->
       Error(api.error(404, "NOT_FOUND", "Not found"))
-    Error(workflows_db.UpdateWorkflowAlreadyExists) ->
+    Error(service_error.AlreadyExists) ->
       Error(api.error(422, "VALIDATION_ERROR", "Workflow name already exists"))
-    Error(workflows_db.UpdateWorkflowDbError(_)) ->
+    Error(service_error.DbError(_)) ->
       Error(api.error(500, "INTERNAL", "Database error"))
+    Error(service_error.ValidationError(msg)) ->
+      Error(api.error(422, "VALIDATION_ERROR", msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid reference"))
+    Error(service_error.Conflict(_)) ->
+      Error(api.error(409, "CONFLICT", "Conflict"))
+    Error(service_error.Unexpected(_)) ->
+      Error(api.error(500, "INTERNAL", "Unexpected error"))
   }
 }
 
@@ -406,16 +424,24 @@ fn update_metadata_if_needed(
         )
       {
         Ok(_) -> Ok(Nil)
-        Error(workflows_db.UpdateWorkflowNotFound) ->
+        Error(service_error.NotFound) ->
           Error(api.error(404, "NOT_FOUND", "Not found"))
-        Error(workflows_db.UpdateWorkflowAlreadyExists) ->
+        Error(service_error.AlreadyExists) ->
           Error(api.error(
             422,
             "VALIDATION_ERROR",
             "Workflow name already exists",
           ))
-        Error(workflows_db.UpdateWorkflowDbError(_)) ->
+        Error(service_error.DbError(_)) ->
           Error(api.error(500, "INTERNAL", "Database error"))
+        Error(service_error.ValidationError(msg)) ->
+          Error(api.error(422, "VALIDATION_ERROR", msg))
+        Error(service_error.InvalidReference(_)) ->
+          Error(api.error(422, "VALIDATION_ERROR", "Invalid reference"))
+        Error(service_error.Conflict(_)) ->
+          Error(api.error(409, "CONFLICT", "Conflict"))
+        Error(service_error.Unexpected(_)) ->
+          Error(api.error(500, "INTERNAL", "Unexpected error"))
       }
   }
 }
@@ -441,16 +467,24 @@ fn update_active_if_needed(
         )
       {
         Ok(Nil) -> Ok(Nil)
-        Error(workflows_db.UpdateWorkflowNotFound) ->
+        Error(service_error.NotFound) ->
           Error(api.error(404, "NOT_FOUND", "Not found"))
-        Error(workflows_db.UpdateWorkflowAlreadyExists) ->
+        Error(service_error.AlreadyExists) ->
           Error(api.error(
             422,
             "VALIDATION_ERROR",
             "Workflow name already exists",
           ))
-        Error(workflows_db.UpdateWorkflowDbError(_)) ->
+        Error(service_error.DbError(_)) ->
           Error(api.error(500, "INTERNAL", "Database error"))
+        Error(service_error.ValidationError(msg)) ->
+          Error(api.error(422, "VALIDATION_ERROR", msg))
+        Error(service_error.InvalidReference(_)) ->
+          Error(api.error(422, "VALIDATION_ERROR", "Invalid reference"))
+        Error(service_error.Conflict(_)) ->
+          Error(api.error(409, "CONFLICT", "Conflict"))
+        Error(service_error.Unexpected(_)) ->
+          Error(api.error(500, "INTERNAL", "Unexpected error"))
       }
   }
 }
@@ -463,10 +497,20 @@ fn delete_workflow_db(
 ) -> Result(Nil, wisp.Response) {
   case workflows_db.delete_workflow(db, workflow_id, org_id, project_id) {
     Ok(Nil) -> Ok(Nil)
-    Error(workflows_db.DeleteWorkflowNotFound) ->
+    Error(service_error.NotFound) ->
       Error(api.error(404, "NOT_FOUND", "Not found"))
-    Error(workflows_db.DeleteWorkflowDbError(_)) ->
+    Error(service_error.DbError(_)) ->
       Error(api.error(500, "INTERNAL", "Database error"))
+    Error(service_error.ValidationError(msg)) ->
+      Error(api.error(422, "VALIDATION_ERROR", msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid reference"))
+    Error(service_error.Conflict(_)) ->
+      Error(api.error(409, "CONFLICT", "Conflict"))
+    Error(service_error.Unexpected(_)) ->
+      Error(api.error(500, "INTERNAL", "Unexpected error"))
+    Error(service_error.AlreadyExists) ->
+      Error(api.error(409, "CONFLICT", "Conflict"))
   }
 }
 
@@ -477,12 +521,20 @@ fn get_workflow_response(
   case workflows_db.get_workflow(db, workflow_id) {
     Ok(workflow) ->
       Ok(api.ok(json.object([#("workflow", workflow_json(workflow))])))
-    Error(workflows_db.UpdateWorkflowNotFound) ->
+    Error(service_error.NotFound) ->
       Error(api.error(404, "NOT_FOUND", "Not found"))
-    Error(workflows_db.UpdateWorkflowAlreadyExists) ->
+    Error(service_error.AlreadyExists) ->
       Error(api.error(422, "VALIDATION_ERROR", "Workflow name already exists"))
-    Error(workflows_db.UpdateWorkflowDbError(_)) ->
+    Error(service_error.DbError(_)) ->
       Error(api.error(500, "INTERNAL", "Database error"))
+    Error(service_error.ValidationError(msg)) ->
+      Error(api.error(422, "VALIDATION_ERROR", msg))
+    Error(service_error.InvalidReference(_)) ->
+      Error(api.error(422, "VALIDATION_ERROR", "Invalid reference"))
+    Error(service_error.Conflict(_)) ->
+      Error(api.error(409, "CONFLICT", "Conflict"))
+    Error(service_error.Unexpected(_)) ->
+      Error(api.error(500, "INTERNAL", "Unexpected error"))
   }
 }
 

@@ -34,6 +34,7 @@ import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
 import scrumbringer_server/services/projects_db
+import scrumbringer_server/services/service_error
 import scrumbringer_server/services/store_state.{type StoredUser}
 import wisp
 
@@ -408,7 +409,9 @@ fn release_all_tasks(
                           #("task_ids", json.array(task_ids, json.int)),
                         ]),
                       )
-                    Error(tasks_queries.ReleaseAllDbError(_)) ->
+                    Error(service_error.DbError(_)) ->
+                      Error(api.error(500, "INTERNAL", "Database error"))
+                    Error(_) ->
                       Error(api.error(500, "INTERNAL", "Database error"))
                   }
                 }

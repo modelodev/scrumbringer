@@ -4,6 +4,7 @@ import gleeunit/should
 import scrumbringer_server
 import scrumbringer_server/services/cards_db
 import scrumbringer_server/services/org_invites_db
+import scrumbringer_server/services/service_error
 import scrumbringer_server/services/task_templates_db
 
 pub fn cards_db_returns_not_found_for_missing_card_test() {
@@ -46,7 +47,7 @@ pub fn task_templates_update_returns_not_found_test() {
     task_templates_db.update_template(db, 999_999, 1, 1, None, None, None, None)
   {
     Ok(_) -> should.fail()
-    Error(task_templates_db.UpdateNotFound) -> should.be_true(True)
+    Error(service_error.NotFound) -> should.be_true(True)
     Error(_) -> should.fail()
   }
 }
@@ -57,7 +58,7 @@ pub fn task_templates_delete_returns_not_found_test() {
 
   case task_templates_db.delete_template(db, 999_999, 1) {
     Ok(_) -> should.fail()
-    Error(task_templates_db.DeleteNotFound) -> should.be_true(True)
+    Error(service_error.NotFound) -> should.be_true(True)
     Error(_) -> should.fail()
   }
 }

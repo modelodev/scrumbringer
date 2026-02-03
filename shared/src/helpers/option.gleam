@@ -90,3 +90,18 @@ pub fn value_to_option(value: a, null_value: a) -> Option(a) {
     False -> Some(value)
   }
 }
+
+/// Convert an Option to a value using a provided fallback for None.
+///
+/// ## Example
+///
+/// ```gleam
+/// option_to_value(None, 0) // 0
+/// option_to_value(Some(5), 0) // 5
+/// ```
+pub fn option_to_value(opt: Option(a), none_value: a) -> a {
+  case opt {
+    None -> none_value
+    Some(value) -> value
+  }
+}

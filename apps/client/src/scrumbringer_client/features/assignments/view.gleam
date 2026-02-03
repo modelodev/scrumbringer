@@ -25,7 +25,6 @@ import scrumbringer_client/features/projects/view as projects_view
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/router
-import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/icons
@@ -38,7 +37,7 @@ pub fn view_assignments(
 ) -> element.Element(client_state.Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
 
-  div([attrs.section()], [
+  div([attribute.class("section")], [
     section_header.view(icons.Team, t(i18n_text.Assignments)),
     view_toolbar(model),
     case model.admin.assignments.view_mode {

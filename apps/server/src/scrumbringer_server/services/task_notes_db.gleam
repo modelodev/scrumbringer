@@ -6,6 +6,9 @@
 import gleam/list
 import gleam/result
 import pog
+import scrumbringer_server/services/service_error.{
+  type ServiceError, DbError, Unexpected,
+}
 import scrumbringer_server/sql
 
 /// A note attached to a task.
@@ -17,12 +20,6 @@ pub type TaskNote {
     content: String,
     created_at: String,
   )
-}
-
-/// Errors that can occur when creating a note.
-pub type CreateNoteError {
-  DbError(pog.QueryError)
-  UnexpectedEmptyResult
 }
 
 /// Lists all notes for a task, ordered by creation time.
@@ -60,10 +57,10 @@ pub fn create_note(
   task_id: Int,
   user_id: Int,
   content: String,
-) -> Result(TaskNote, CreateNoteError) {
+) -> Result(TaskNote, ServiceError) {
   case sql.task_notes_create(db, task_id, user_id, content) {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(note_from_create_row(row))
-    Ok(pog.Returned(rows: [], ..)) -> Error(UnexpectedEmptyResult)
+    Ok(pog.Returned(rows: [], ..)) -> Error(Unexpected("empty_result"))
     Error(e) -> Error(DbError(e))
   }
 }

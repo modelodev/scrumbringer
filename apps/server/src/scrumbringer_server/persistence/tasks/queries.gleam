@@ -27,33 +27,17 @@ import domain/task_status
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import helpers/option as option_helpers
 import pog
 import scrumbringer_server/persistence/tasks/mappers.{type Task}
+import scrumbringer_server/services/service_error
 import scrumbringer_server/services/task_events_db
 import scrumbringer_server/services/work_sessions_db
 import scrumbringer_server/sql
 
-/// Error when task creation fails.
-pub type CreateTaskError {
-  InvalidTypeId
-  InvalidCardId
-  CreateDbError(pog.QueryError)
-}
-
-/// Error when task not found or DB error.
-pub type NotFoundOrDbError {
-  NotFound
-  DbError(pog.QueryError)
-}
-
 /// Result of releasing all claimed tasks for a user within a project.
 pub type ReleaseAllResult {
   ReleaseAllResult(released_count: Int, task_ids: List(Int))
-}
-
-/// Errors returned when releasing all tasks for a user.
-pub type ReleaseAllError {
-  ReleaseAllDbError(pog.QueryError)
 }
 
 /// List tasks for a project with optional filters.
@@ -67,17 +51,20 @@ pub fn list_tasks_for_project(
   capability_id: Option(Int),
   q: Option(String),
   blocked: Option(Bool),
-) -> Result(List(Task), pog.QueryError) {
-  use returned <- result.try(sql.tasks_list(
-    db,
-    project_id,
-    status_filter_to_db_string(status),
-    option_int_to_db(type_id),
-    option_int_to_db(capability_id),
-    option_string_to_db(q),
-    user_id,
-    blocked_filter_to_db(blocked),
-  ))
+) -> Result(List(Task), service_error.ServiceError) {
+  use returned <- result.try(
+    sql.tasks_list(
+      db,
+      project_id,
+      status_filter_to_db_string(status),
+      option_helpers.option_to_value(type_id, 0),
+      option_helpers.option_to_value(capability_id, 0),
+      option_helpers.option_to_value(q, ""),
+      user_id,
+      blocked_filter_to_db(blocked),
+    )
+    |> result.map_error(service_error.DbError),
+  )
 
   returned.rows
   |> list.map(mappers.from_list_row)
@@ -110,7 +97,7 @@ pub fn create_task(
   priority: Int,
   created_by: Int,
   card_id: Option(Int),
-) -> Result(Task, CreateTaskError) {
+) -> Result(Task, service_error.ServiceError) {
   pog.transaction(db, fn(tx) {
     case
       sql.tasks_create(
@@ -121,7 +108,7 @@ pub fn create_task(
         description,
         priority,
         created_by,
-        option_int_to_db(card_id),
+        option_helpers.option_to_value(card_id, 0),
       )
     {
       Ok(pog.Returned(rows: [row, ..], ..)) -> {
@@ -136,14 +123,15 @@ pub fn create_task(
             created_by,
             task_events_db.TaskCreated,
           )
-          |> result.map_error(CreateDbError),
+          |> result.map_error(service_error.DbError),
         )
 
         Ok(task)
       }
 
-      Ok(pog.Returned(rows: [], ..)) -> Error(InvalidTypeId)
-      Error(e) -> Error(CreateDbError(e))
+      Ok(pog.Returned(rows: [], ..)) ->
+        Error(service_error.InvalidReference("type_id"))
+      Error(e) -> Error(service_error.DbError(e))
     }
   })
   |> result.map_error(transaction_error_to_create_task_error)
@@ -154,11 +142,11 @@ pub fn get_task_for_user(
   db: pog.Connection,
   task_id: Int,
   user_id: Int,
-) -> Result(Task, NotFoundOrDbError) {
+) -> Result(Task, service_error.ServiceError) {
   case sql.tasks_get_for_user(db, task_id, user_id) {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(mappers.from_get_row(row))
-    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
-    Error(e) -> Error(DbError(e))
+    Ok(pog.Returned(rows: [], ..)) -> Error(service_error.NotFound)
+    Error(e) -> Error(service_error.DbError(e))
   }
 }
 
@@ -172,43 +160,22 @@ pub fn update_task_claimed_by_user(
   priority: Option(Int),
   type_id: Option(Int),
   version: Int,
-) -> Result(Task, NotFoundOrDbError) {
+) -> Result(Task, service_error.ServiceError) {
   case
     sql.tasks_update(
       db,
       task_id,
       user_id,
-      option_string_update_to_db(title),
-      option_string_update_to_db(description),
-      option_int_to_db(priority),
-      option_int_to_db(type_id),
+      option_helpers.option_to_value(title, "__unset__"),
+      option_helpers.option_to_value(description, "__unset__"),
+      option_helpers.option_to_value(priority, 0),
+      option_helpers.option_to_value(type_id, 0),
       version,
     )
   {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(mappers.from_update_row(row))
-    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
-    Error(e) -> Error(DbError(e))
-  }
-}
-
-fn option_int_to_db(value: Option(Int)) -> Int {
-  case value {
-    None -> 0
-    Some(actual) -> actual
-  }
-}
-
-fn option_string_to_db(value: Option(String)) -> String {
-  case value {
-    None -> ""
-    Some(actual) -> actual
-  }
-}
-
-fn option_string_update_to_db(value: Option(String)) -> String {
-  case value {
-    None -> "__unset__"
-    Some(actual) -> actual
+    Ok(pog.Returned(rows: [], ..)) -> Error(service_error.NotFound)
+    Error(e) -> Error(service_error.DbError(e))
   }
 }
 
@@ -219,7 +186,7 @@ pub fn claim_task(
   task_id: Int,
   user_id: Int,
   version: Int,
-) -> Result(Task, NotFoundOrDbError) {
+) -> Result(Task, service_error.ServiceError) {
   pog.transaction(db, fn(tx) {
     case sql.tasks_claim(tx, task_id, user_id, version) {
       Ok(pog.Returned(rows: [row, ..], ..)) -> {
@@ -234,13 +201,13 @@ pub fn claim_task(
             user_id,
             task_events_db.TaskClaimed,
           )
-          |> result.map_error(DbError),
+          |> result.map_error(service_error.DbError),
         )
 
         Ok(task)
       }
-      Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
-      Error(e) -> Error(DbError(e))
+      Ok(pog.Returned(rows: [], ..)) -> Error(service_error.NotFound)
+      Error(e) -> Error(service_error.DbError(e))
     }
   })
   |> result.map_error(transaction_error_to_not_found_or_db_error)
@@ -253,7 +220,7 @@ pub fn release_task(
   task_id: Int,
   user_id: Int,
   version: Int,
-) -> Result(Task, NotFoundOrDbError) {
+) -> Result(Task, service_error.ServiceError) {
   pog.transaction(db, fn(tx) {
     // Best effort: close any active work session before release.
     let _ =
@@ -277,13 +244,13 @@ pub fn release_task(
             user_id,
             task_events_db.TaskReleased,
           )
-          |> result.map_error(DbError),
+          |> result.map_error(service_error.DbError),
         )
 
         Ok(task)
       }
-      Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
-      Error(e) -> Error(DbError(e))
+      Ok(pog.Returned(rows: [], ..)) -> Error(service_error.NotFound)
+      Error(e) -> Error(service_error.DbError(e))
     }
   })
   |> result.map_error(transaction_error_to_not_found_or_db_error)
@@ -296,7 +263,7 @@ pub fn release_all_tasks_for_user(
   project_id: Int,
   target_user_id: Int,
   actor_user_id: Int,
-) -> Result(ReleaseAllResult, ReleaseAllError) {
+) -> Result(ReleaseAllResult, service_error.ServiceError) {
   pog.transaction(db, fn(tx) {
     case sql.tasks_release_all(tx, project_id, target_user_id) {
       Ok(pog.Returned(rows: rows, ..)) -> {
@@ -324,7 +291,7 @@ pub fn release_all_tasks_for_user(
               actor_user_id,
               task_events_db.TaskReleased,
             )
-            |> result.map_error(ReleaseAllDbError)
+            |> result.map_error(service_error.DbError)
           })
           |> result.map(fn(_) { Nil }),
         )
@@ -334,7 +301,7 @@ pub fn release_all_tasks_for_user(
           task_ids: task_ids,
         ))
       }
-      Error(e) -> Error(ReleaseAllDbError(e))
+      Error(e) -> Error(service_error.DbError(e))
     }
   })
   |> result.map_error(transaction_error_to_release_all_error)
@@ -347,7 +314,7 @@ pub fn complete_task(
   task_id: Int,
   user_id: Int,
   version: Int,
-) -> Result(Task, NotFoundOrDbError) {
+) -> Result(Task, service_error.ServiceError) {
   pog.transaction(db, fn(tx) {
     // Best effort: close any active work session before complete.
     let _ =
@@ -371,13 +338,13 @@ pub fn complete_task(
             user_id,
             task_events_db.TaskCompleted,
           )
-          |> result.map_error(DbError),
+          |> result.map_error(service_error.DbError),
         )
 
         Ok(task)
       }
-      Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
-      Error(e) -> Error(DbError(e))
+      Ok(pog.Returned(rows: [], ..)) -> Error(service_error.NotFound)
+      Error(e) -> Error(service_error.DbError(e))
     }
   })
   |> result.map_error(transaction_error_to_not_found_or_db_error)
@@ -388,28 +355,28 @@ pub fn complete_task(
 // =============================================================================
 
 fn transaction_error_to_create_task_error(
-  error: pog.TransactionError(CreateTaskError),
-) -> CreateTaskError {
+  error: pog.TransactionError(service_error.ServiceError),
+) -> service_error.ServiceError {
   case error {
     pog.TransactionRolledBack(err) -> err
-    pog.TransactionQueryError(err) -> CreateDbError(err)
+    pog.TransactionQueryError(err) -> service_error.DbError(err)
   }
 }
 
 fn transaction_error_to_not_found_or_db_error(
-  error: pog.TransactionError(NotFoundOrDbError),
-) -> NotFoundOrDbError {
+  error: pog.TransactionError(service_error.ServiceError),
+) -> service_error.ServiceError {
   case error {
     pog.TransactionRolledBack(err) -> err
-    pog.TransactionQueryError(err) -> DbError(err)
+    pog.TransactionQueryError(err) -> service_error.DbError(err)
   }
 }
 
 fn transaction_error_to_release_all_error(
-  error: pog.TransactionError(ReleaseAllError),
-) -> ReleaseAllError {
+  error: pog.TransactionError(service_error.ServiceError),
+) -> service_error.ServiceError {
   case error {
     pog.TransactionRolledBack(err) -> err
-    pog.TransactionQueryError(err) -> ReleaseAllDbError(err)
+    pog.TransactionQueryError(err) -> service_error.DbError(err)
   }
 }

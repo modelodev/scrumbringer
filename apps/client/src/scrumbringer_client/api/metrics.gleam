@@ -22,6 +22,7 @@ import gleam/option
 import lustre/effect.{type Effect}
 
 import scrumbringer_client/api/core.{type ApiResult}
+import scrumbringer_client/api/tasks/decoders as task_decoders
 
 // Import types from shared domain
 import domain/metrics.{
@@ -32,11 +33,7 @@ import domain/metrics.{
   OrgMetricsProjectTasksPayload,
 }
 import domain/task.{Task}
-import domain/task_status.{
-  type OngoingBy, type TaskStatus, type WorkState, Available, OngoingBy,
-  WorkAvailable, WorkClaimed, WorkCompleted, WorkOngoing, parse_task_status,
-}
-import domain/task_type.{type TaskTypeInline, TaskTypeInline}
+import domain/task_status.{type TaskStatus, Available, parse_task_status}
 
 // =============================================================================
 // Decoders
@@ -151,31 +148,6 @@ fn org_metrics_overview_decoder() -> decode.Decoder(OrgMetricsOverview) {
   ))
 }
 
-fn task_type_inline_decoder() -> decode.Decoder(TaskTypeInline) {
-  use id <- decode.field("id", decode.int)
-  use name <- decode.field("name", decode.string)
-  use icon <- decode.field("icon", decode.string)
-  decode.success(TaskTypeInline(id: id, name: name, icon: icon))
-}
-
-fn ongoing_by_decoder() -> decode.Decoder(OngoingBy) {
-  use user_id <- decode.field("user_id", decode.int)
-  decode.success(OngoingBy(user_id: user_id))
-}
-
-fn work_state_decoder() -> decode.Decoder(WorkState) {
-  decode.string
-  |> decode.map(fn(raw) {
-    case raw {
-      "available" -> WorkAvailable
-      "claimed" -> WorkClaimed
-      "ongoing" -> WorkOngoing
-      "completed" -> WorkCompleted
-      _ -> WorkClaimed
-    }
-  })
-}
-
 fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
   use id <- decode.field("id", decode.int)
   use project_id <- decode.field("project_id", decode.int)
@@ -228,13 +200,19 @@ fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
     decode.optional(decode.string),
   )
 
-  use task_type <- decode.field("task_type", task_type_inline_decoder())
+  use task_type <- decode.field(
+    "task_type",
+    task_decoders.task_type_inline_decoder(),
+  )
   use ongoing_by <- decode.optional_field(
     "ongoing_by",
     option.None,
-    decode.optional(ongoing_by_decoder()),
+    decode.optional(task_decoders.ongoing_by_decoder()),
   )
-  use work_state <- decode.field("work_state", work_state_decoder())
+  use work_state <- decode.field(
+    "work_state",
+    task_decoders.work_state_decoder(),
+  )
 
   let task =
     Task(

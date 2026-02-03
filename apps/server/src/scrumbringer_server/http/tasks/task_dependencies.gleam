@@ -20,6 +20,7 @@ import scrumbringer_server/http/csrf
 import scrumbringer_server/http/tasks/presenters
 import scrumbringer_server/persistence/tasks/mappers.{type Task}
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
+import scrumbringer_server/services/service_error
 import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/task_dependencies_db
 import wisp
@@ -108,8 +109,20 @@ fn list_dependencies_for_task(
               ),
             ]),
           )
-        Error(task_dependencies_db.ListDbError(_)) ->
+        Error(service_error.DbError(_)) ->
           api.error(500, "INTERNAL", "Database error")
+        Error(service_error.NotFound) ->
+          api.error(404, "NOT_FOUND", "Not found")
+        Error(service_error.ValidationError(msg)) ->
+          api.error(422, "VALIDATION_ERROR", msg)
+        Error(service_error.InvalidReference(_)) ->
+          api.error(422, "VALIDATION_ERROR", "Invalid reference")
+        Error(service_error.Conflict(_)) ->
+          api.error(409, "CONFLICT", "Conflict")
+        Error(service_error.Unexpected(_)) ->
+          api.error(500, "INTERNAL", "Unexpected error")
+        Error(service_error.AlreadyExists) ->
+          api.error(409, "CONFLICT", "Conflict")
       }
   }
 }
@@ -171,9 +184,17 @@ fn create_dependency_checked(
   depends_on_task_id: Int,
 ) -> wisp.Response {
   case tasks_queries.get_task_for_user(db, task_id, user.id) {
-    Error(tasks_queries.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
-    Error(tasks_queries.DbError(_)) ->
+    Error(service_error.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
+    Error(service_error.DbError(_)) ->
       api.error(500, "INTERNAL", "Database error")
+    Error(service_error.ValidationError(msg)) ->
+      api.error(422, "VALIDATION_ERROR", msg)
+    Error(service_error.InvalidReference(_)) ->
+      api.error(422, "VALIDATION_ERROR", "Invalid reference")
+    Error(service_error.Conflict(_)) -> api.error(409, "CONFLICT", "Conflict")
+    Error(service_error.Unexpected(_)) ->
+      api.error(500, "INTERNAL", "Unexpected error")
+    Error(service_error.AlreadyExists) -> api.error(409, "CONFLICT", "Conflict")
 
     Ok(task) ->
       case
@@ -197,9 +218,17 @@ fn validate_dependency_target(
   depends_on_task_id: Int,
 ) -> wisp.Response {
   case tasks_queries.get_task_for_user(db, depends_on_task_id, user.id) {
-    Error(tasks_queries.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
-    Error(tasks_queries.DbError(_)) ->
+    Error(service_error.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
+    Error(service_error.DbError(_)) ->
       api.error(500, "INTERNAL", "Database error")
+    Error(service_error.ValidationError(msg)) ->
+      api.error(422, "VALIDATION_ERROR", msg)
+    Error(service_error.InvalidReference(_)) ->
+      api.error(422, "VALIDATION_ERROR", "Invalid reference")
+    Error(service_error.Conflict(_)) -> api.error(409, "CONFLICT", "Conflict")
+    Error(service_error.Unexpected(_)) ->
+      api.error(500, "INTERNAL", "Unexpected error")
+    Error(service_error.AlreadyExists) -> api.error(409, "CONFLICT", "Conflict")
     Ok(depends_on_task) ->
       case depends_on_task.project_id != task.project_id {
         True ->
@@ -280,10 +309,17 @@ fn create_dependency_row(
   {
     Ok(dep) ->
       api.ok(json.object([#("dependency", presenters.dependency_json(dep))]))
-    Error(task_dependencies_db.UnexpectedEmptyResult) ->
+    Error(service_error.Unexpected(_)) ->
       api.error(500, "INTERNAL", "Database error")
-    Error(task_dependencies_db.CreateDbError(_)) ->
+    Error(service_error.DbError(_)) ->
       api.error(500, "INTERNAL", "Database error")
+    Error(service_error.NotFound) -> api.error(404, "NOT_FOUND", "Not found")
+    Error(service_error.ValidationError(msg)) ->
+      api.error(422, "VALIDATION_ERROR", msg)
+    Error(service_error.InvalidReference(_)) ->
+      api.error(422, "VALIDATION_ERROR", "Invalid reference")
+    Error(service_error.Conflict(_)) -> api.error(409, "CONFLICT", "Conflict")
+    Error(service_error.AlreadyExists) -> api.error(409, "CONFLICT", "Conflict")
   }
 }
 
@@ -315,10 +351,20 @@ fn delete_dependency_with_csrf(
         Ok(depends_on_task_id) -> {
           let auth.Ctx(db: db, ..) = ctx
           case tasks_queries.get_task_for_user(db, task_id, user.id) {
-            Error(tasks_queries.NotFound) ->
+            Error(service_error.NotFound) ->
               api.error(404, "NOT_FOUND", "Not found")
-            Error(tasks_queries.DbError(_)) ->
+            Error(service_error.DbError(_)) ->
               api.error(500, "INTERNAL", "Database error")
+            Error(service_error.ValidationError(msg)) ->
+              api.error(422, "VALIDATION_ERROR", msg)
+            Error(service_error.InvalidReference(_)) ->
+              api.error(422, "VALIDATION_ERROR", "Invalid reference")
+            Error(service_error.Conflict(_)) ->
+              api.error(409, "CONFLICT", "Conflict")
+            Error(service_error.Unexpected(_)) ->
+              api.error(500, "INTERNAL", "Unexpected error")
+            Error(service_error.AlreadyExists) ->
+              api.error(409, "CONFLICT", "Conflict")
             Ok(task) ->
               case
                 authorization.require_project_manager_with_org_bypass(
@@ -337,10 +383,20 @@ fn delete_dependency_with_csrf(
                     )
                   {
                     Ok(Nil) -> api.no_content()
-                    Error(task_dependencies_db.NotFound) ->
+                    Error(service_error.NotFound) ->
                       api.error(404, "NOT_FOUND", "Not found")
-                    Error(task_dependencies_db.DeleteDbError(_)) ->
+                    Error(service_error.DbError(_)) ->
                       api.error(500, "INTERNAL", "Database error")
+                    Error(service_error.ValidationError(msg)) ->
+                      api.error(422, "VALIDATION_ERROR", msg)
+                    Error(service_error.InvalidReference(_)) ->
+                      api.error(422, "VALIDATION_ERROR", "Invalid reference")
+                    Error(service_error.Conflict(_)) ->
+                      api.error(409, "CONFLICT", "Conflict")
+                    Error(service_error.Unexpected(_)) ->
+                      api.error(500, "INTERNAL", "Unexpected error")
+                    Error(service_error.AlreadyExists) ->
+                      api.error(409, "CONFLICT", "Conflict")
                   }
               }
           }
@@ -377,8 +433,10 @@ fn require_task_access(
 ) -> Result(Nil, wisp.Response) {
   case tasks_queries.get_task_for_user(db, task_id, user_id) {
     Ok(_) -> Ok(Nil)
-    Error(tasks_queries.NotFound) ->
+    Error(service_error.NotFound) ->
       Error(api.error(404, "NOT_FOUND", "Not found"))
+    Error(service_error.DbError(_)) ->
+      Error(api.error(500, "INTERNAL", "Database error"))
     Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
   }
 }
@@ -387,7 +445,7 @@ fn would_create_cycle(
   db: pog.Connection,
   task_id: Int,
   depends_on_task_id: Int,
-) -> Result(Bool, task_dependencies_db.ListError) {
+) -> Result(Bool, service_error.ServiceError) {
   walk_dependency_graph(db, task_id, [depends_on_task_id], [])
 }
 
@@ -396,7 +454,7 @@ fn walk_dependency_graph(
   target_id: Int,
   queue: List(Int),
   visited: List(Int),
-) -> Result(Bool, task_dependencies_db.ListError) {
+) -> Result(Bool, service_error.ServiceError) {
   case queue {
     [] -> Ok(False)
     [current, ..rest] ->

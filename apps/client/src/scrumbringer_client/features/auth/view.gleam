@@ -48,7 +48,6 @@ import scrumbringer_client/client_state.{
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/reset_password
-import scrumbringer_client/ui/attrs
 import scrumbringer_client/ui/copyable_input
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/form_field
@@ -136,7 +135,7 @@ pub fn view_forgot_password(model: Model) -> Element(Msg) {
     opt.None -> ""
   }
 
-  div([attrs.section()], [
+  div([attribute.class("section")], [
     p([], [text(update_helpers.i18n_t(model, i18n_text.NoEmailIntegrationNote))]),
     case model.auth.forgot_password_error {
       opt.Some(err) ->

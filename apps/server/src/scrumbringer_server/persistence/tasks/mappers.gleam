@@ -26,7 +26,8 @@ import domain/task.{type TaskDependency, TaskDependency}
 import domain/task_status
 import gleam/dynamic/decode
 import gleam/json
-import gleam/option.{type Option, None, Some}
+import gleam/option.{type Option, None}
+import helpers/option as option_helpers
 import scrumbringer_server/sql
 
 /// Task record with type-safe status.
@@ -299,19 +300,19 @@ fn from_fields(
     type_name: type_name,
     type_icon: type_icon,
     title: title,
-    description: string_option(description),
+    description: option_helpers.string_to_option(description),
     priority: priority,
     status: task_status.from_db(status, is_ongoing),
-    ongoing_by_user_id: int_option(ongoing_by_user_id),
+    ongoing_by_user_id: option_helpers.int_to_option(ongoing_by_user_id),
     created_by: created_by,
-    claimed_by: int_option(claimed_by),
-    claimed_at: string_option(claimed_at),
-    completed_at: string_option(completed_at),
+    claimed_by: option_helpers.int_to_option(claimed_by),
+    claimed_at: option_helpers.string_to_option(claimed_at),
+    completed_at: option_helpers.string_to_option(completed_at),
     created_at: created_at,
     version: version,
-    card_id: int_option(card_id),
-    card_title: string_option(card_title),
-    card_color: string_option(card_color),
+    card_id: option_helpers.int_to_option(card_id),
+    card_title: option_helpers.string_to_option(card_title),
+    card_color: option_helpers.string_to_option(card_color),
     has_new_notes: has_new_notes,
     blocked_count: blocked_count,
     dependencies: dependencies,
@@ -344,20 +345,4 @@ fn task_dependency_decoder() -> decode.Decoder(TaskDependency) {
     status: status,
     claimed_by: claimed_by,
   ))
-}
-
-/// Convert 0 to None, non-zero to Some.
-fn int_option(value: Int) -> Option(Int) {
-  case value {
-    0 -> None
-    v -> Some(v)
-  }
-}
-
-/// Convert empty string to None, non-empty to Some.
-fn string_option(value: String) -> Option(String) {
-  case value {
-    "" -> None
-    v -> Some(v)
-  }
 }

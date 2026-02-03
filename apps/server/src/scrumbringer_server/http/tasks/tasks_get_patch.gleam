@@ -20,6 +20,7 @@
 //// - Uses `services/workflows/handlers` for task operations
 //// - Uses `http/tasks/presenters` for response JSON
 
+import domain/field_update
 import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/http
@@ -197,10 +198,10 @@ fn build_updates(
   #(
     version,
     workflow_types.TaskUpdates(
-      title: workflow_types.field_update_from_option(title),
-      description: workflow_types.field_update_from_option(description),
-      priority: workflow_types.field_update_from_option(priority),
-      type_id: workflow_types.field_update_from_option(type_id),
+      title: field_update.from_option(title),
+      description: field_update.from_option(description),
+      priority: field_update.from_option(priority),
+      type_id: field_update.from_option(type_id),
     ),
   )
 }
@@ -215,7 +216,6 @@ fn require_current_user(
       Error(api.error(401, "AUTH_REQUIRED", "Authentication required"))
   }
 }
-
 
 fn parse_task_id(value: String) -> Result(Int, wisp.Response) {
   case int.parse(value) {

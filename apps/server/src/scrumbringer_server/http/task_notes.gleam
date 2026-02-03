@@ -30,6 +30,7 @@ import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
+import scrumbringer_server/services/service_error
 import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/task_notes_db
 import wisp
@@ -152,10 +153,20 @@ fn create_note(
     Ok(Nil) ->
       case task_notes_db.create_note(db, task_id, user.id, content) {
         Ok(note) -> api.ok(json.object([#("note", note_json(note))]))
-        Error(task_notes_db.DbError(_)) ->
+        Error(service_error.DbError(_)) ->
           api.error(500, "INTERNAL", "Database error")
-        Error(task_notes_db.UnexpectedEmptyResult) ->
+        Error(service_error.Unexpected(_)) ->
           api.error(500, "INTERNAL", "Database error")
+        Error(service_error.NotFound) ->
+          api.error(404, "NOT_FOUND", "Not found")
+        Error(service_error.ValidationError(msg)) ->
+          api.error(422, "VALIDATION_ERROR", msg)
+        Error(service_error.InvalidReference(_)) ->
+          api.error(422, "VALIDATION_ERROR", "Invalid reference")
+        Error(service_error.Conflict(_)) ->
+          api.error(409, "CONFLICT", "Conflict")
+        Error(service_error.AlreadyExists) ->
+          api.error(409, "CONFLICT", "Conflict")
       }
   }
 }
@@ -172,7 +183,6 @@ fn decode_note_payload(data: dynamic.Dynamic) -> Result(String, wisp.Response) {
   }
 }
 
-
 fn parse_task_id(task_id: String) -> Result(Int, wisp.Response) {
   case int.parse(task_id) {
     Ok(id) -> Ok(id)
@@ -187,8 +197,10 @@ fn require_task_access(
 ) -> Result(Nil, wisp.Response) {
   case tasks_queries.get_task_for_user(db, task_id, user_id) {
     Ok(_) -> Ok(Nil)
-    Error(tasks_queries.NotFound) ->
+    Error(service_error.NotFound) ->
       Error(api.error(404, "NOT_FOUND", "Not found"))
+    Error(service_error.DbError(_)) ->
+      Error(api.error(500, "INTERNAL", "Database error"))
     Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
   }
 }

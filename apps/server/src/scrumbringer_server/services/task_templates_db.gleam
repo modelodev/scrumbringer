@@ -19,11 +19,14 @@
 //// - Uses `sql.gleam` for query execution
 
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{type Option}
 import gleam/result
 import gleam/string
 import helpers/option as option_helpers
 import pog
+import scrumbringer_server/services/service_error.{
+  type ServiceError, DbError, InvalidReference, NotFound,
+}
 import scrumbringer_server/sql
 
 /// Template definition for creating tasks (includes rules_count).
@@ -41,25 +44,6 @@ pub type TaskTemplate {
     created_at: String,
     rules_count: Int,
   )
-}
-
-/// Errors returned when creating a template.
-pub type CreateTemplateError {
-  CreateInvalidTypeId
-  CreateDbError(pog.QueryError)
-}
-
-/// Errors returned when updating a template.
-pub type UpdateTemplateError {
-  UpdateNotFound
-  UpdateInvalidTypeId
-  UpdateDbError(pog.QueryError)
-}
-
-/// Errors returned when deleting a template.
-pub type DeleteTemplateError {
-  DeleteNotFound
-  DeleteDbError(pog.QueryError)
 }
 
 // =============================================================================
@@ -159,11 +143,11 @@ pub fn list_project_templates(
 pub fn get_template(
   db: pog.Connection,
   template_id: Int,
-) -> Result(TaskTemplate, UpdateTemplateError) {
+) -> Result(TaskTemplate, ServiceError) {
   case sql.task_templates_get(db, template_id) {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(from_get_row(row))
-    Ok(pog.Returned(rows: [], ..)) -> Error(UpdateNotFound)
-    Error(e) -> Error(UpdateDbError(e))
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Error(e) -> Error(DbError(e))
   }
 }
 
@@ -180,7 +164,7 @@ pub fn create_template(
   type_id: Int,
   priority: Int,
   created_by: Int,
-) -> Result(TaskTemplate, CreateTemplateError) {
+) -> Result(TaskTemplate, ServiceError) {
   case
     sql.task_templates_create(
       db,
@@ -194,8 +178,8 @@ pub fn create_template(
     )
   {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(from_create_row(row))
-    Ok(pog.Returned(rows: [], ..)) -> Error(CreateInvalidTypeId)
-    Error(e) -> Error(CreateDbError(e))
+    Ok(pog.Returned(rows: [], ..)) -> Error(InvalidReference("type_id"))
+    Error(e) -> Error(DbError(e))
   }
 }
 
@@ -212,36 +196,22 @@ pub fn update_template(
   description: Option(String),
   type_id: Option(Int),
   priority: Option(Int),
-) -> Result(TaskTemplate, UpdateTemplateError) {
+) -> Result(TaskTemplate, ServiceError) {
   case
     sql.task_templates_update(
       db,
       template_id,
       project_id,
       org_id,
-      option_string_update_to_db(name),
-      option_string_update_to_db(description),
-      option_int_to_db(type_id),
-      option_int_to_db(priority),
+      option_helpers.option_to_value(name, "__unset__"),
+      option_helpers.option_to_value(description, "__unset__"),
+      option_helpers.option_to_value(type_id, 0),
+      option_helpers.option_to_value(priority, 0),
     )
   {
     Ok(pog.Returned(rows: [row, ..], ..)) -> Ok(from_update_row(row))
-    Ok(pog.Returned(rows: [], ..)) -> Error(UpdateNotFound)
-    Error(e) -> Error(UpdateDbError(e))
-  }
-}
-
-fn option_int_to_db(value: Option(Int)) -> Int {
-  case value {
-    None -> 0
-    Some(actual) -> actual
-  }
-}
-
-fn option_string_update_to_db(value: Option(String)) -> String {
-  case value {
-    None -> "__unset__"
-    Some(actual) -> actual
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Error(e) -> Error(DbError(e))
   }
 }
 
@@ -253,11 +223,11 @@ pub fn delete_template(
   db: pog.Connection,
   template_id: Int,
   org_id: Int,
-) -> Result(Nil, DeleteTemplateError) {
+) -> Result(Nil, ServiceError) {
   case sql.task_templates_delete(db, template_id, org_id) {
     Ok(pog.Returned(rows: [_, ..], ..)) -> Ok(Nil)
-    Ok(pog.Returned(rows: [], ..)) -> Error(DeleteNotFound)
-    Error(e) -> Error(DeleteDbError(e))
+    Ok(pog.Returned(rows: [], ..)) -> Error(NotFound)
+    Error(e) -> Error(DbError(e))
   }
 }
 
@@ -266,16 +236,14 @@ pub fn delete_template(
 ///
 /// Example:
 ///   constraint_to_error(error)
-pub fn constraint_to_error(
-  error: pog.QueryError,
-) -> Result(Nil, CreateTemplateError) {
+pub fn constraint_to_error(error: pog.QueryError) -> Result(Nil, ServiceError) {
   case error {
     pog.ConstraintViolated(constraint: constraint, ..) ->
       case string.contains(constraint, "task_templates") {
-        True -> Error(CreateInvalidTypeId)
-        False -> Error(CreateDbError(error))
+        True -> Error(InvalidReference("type_id"))
+        False -> Error(DbError(error))
       }
 
-    _ -> Error(CreateDbError(error))
+    _ -> Error(DbError(error))
   }
 }

@@ -168,21 +168,12 @@ pub fn delete_org_user(
 // =============================================================================
 
 import domain/project.{type Project, Project}
-import domain/project_role.{type ProjectRole, Manager, Member}
-
-fn project_role_decoder() -> decode.Decoder(ProjectRole) {
-  use role_string <- decode.then(decode.string)
-  case role_string {
-    "manager" -> decode.success(Manager)
-    "member" -> decode.success(Member)
-    _ -> decode.failure(Manager, "ProjectRole")
-  }
-}
+import scrumbringer_client/decoders
 
 fn user_project_decoder() -> decode.Decoder(Project) {
   use id <- decode.field("id", decode.int)
   use name <- decode.field("name", decode.string)
-  use my_role <- decode.field("role", project_role_decoder())
+  use my_role <- decode.field("role", decoders.project_role_decoder())
   // Note: created_at and members_count not returned by this endpoint
   decode.success(Project(
     id: id,
