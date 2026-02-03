@@ -75,7 +75,8 @@ pub type Card {
 ///   content: "Scope agreed with PM",
 ///   created_at: "2026-01-28T12:00:00Z",
 ///   author_email: "user@example.com",
-///   author_role: "Developer",
+///   author_project_role: Some("manager"),
+///   author_org_role: "admin",
 /// )
 /// ```
 pub type CardNote {
@@ -86,7 +87,8 @@ pub type CardNote {
     content: String,
     created_at: String,
     author_email: String,
-    author_role: String,
+    author_project_role: Option(String),
+    author_org_role: String,
   )
 }
 

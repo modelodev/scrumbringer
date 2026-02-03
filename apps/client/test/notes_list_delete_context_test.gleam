@@ -1,5 +1,6 @@
 //// Tests for notes list delete context (AC19).
 
+import gleam/option
 import gleam/string
 import gleeunit/should
 import lustre/element
@@ -17,7 +18,8 @@ pub fn delete_button_shows_own_note_label_test() {
       can_delete: True,
       delete_context: DeleteOwnNote,
       author_email: "maria@example.com",
-      author_role: "Member",
+      author_project_role: option.None,
+      author_org_role: "member",
     ),
   ]
 
@@ -44,7 +46,8 @@ pub fn delete_button_shows_admin_context_test() {
       can_delete: True,
       delete_context: DeleteAsAdmin,
       author_email: "carlos@example.com",
-      author_role: "Developer",
+      author_project_role: option.Some("manager"),
+      author_org_role: "admin",
     ),
   ]
 

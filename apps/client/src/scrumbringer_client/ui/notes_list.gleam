@@ -9,6 +9,7 @@ import domain/link_detection.{
   GitHubIssue, GitHubPR, Link, PlainText,
 }
 import gleam/list
+import gleam/option
 import lustre/attribute.{type Attribute}
 import lustre/element.{type Element}
 import lustre/element/html.{a, button, div, p, span, text}
@@ -28,7 +29,8 @@ pub type NoteView {
     can_delete: Bool,
     delete_context: DeleteNoteContext,
     author_email: String,
-    author_role: String,
+    author_project_role: option.Option(String),
+    author_org_role: String,
   )
 }
 
@@ -60,7 +62,8 @@ fn view_note(
     can_delete: can_delete,
     delete_context: delete_context,
     author_email: author_email,
-    author_role: author_role,
+    author_project_role: author_project_role,
+    author_org_role: author_org_role,
   ) = note
 
   let actual_delete_label = case delete_context {
@@ -68,8 +71,13 @@ fn view_note(
     DeleteAsAdmin -> delete_admin_label
   }
 
+  let author_role_label = case author_project_role {
+    option.Some(role) -> role
+    option.None -> author_org_role
+  }
+
   // AC20: Tooltip text shows full email and role
-  let tooltip_text = author_email <> " (" <> author_role <> ")"
+  let tooltip_text = author_email <> " (" <> author_role_label <> ")"
 
   // AC1, AC2, AC3: Detect links and check for PR
   let segments = link_detection.detect_links(content)

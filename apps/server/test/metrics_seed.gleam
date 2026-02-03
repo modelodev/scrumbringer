@@ -190,7 +190,7 @@ pub fn seed() -> Result(SeedResult, String) {
     wf_bug_id,
     Some(alpha_bug_type),
     "On Bug Resolved",
-    "resolved",
+    "completed",
   ))
   use _ <- result.try(fixtures.attach_template(
     handler,
@@ -206,7 +206,7 @@ pub fn seed() -> Result(SeedResult, String) {
     wf_bug_id,
     Some(alpha_bug_type),
     "On Bug Closed",
-    "closed",
+    "completed",
   ))
   use _ <- result.try(fixtures.attach_template(
     handler,
@@ -230,7 +230,7 @@ pub fn seed() -> Result(SeedResult, String) {
     wf_feature_id,
     Some(alpha_feature_type),
     "On Feature Done",
-    "done",
+    "completed",
   ))
   use _ <- result.try(fixtures.attach_template(
     handler,
@@ -251,7 +251,7 @@ pub fn seed() -> Result(SeedResult, String) {
     session,
     wf_card_id,
     "On Card Archived",
-    "archived",
+    "cerrada",
   ))
   io.println("[OK] Created Card Automation workflow")
 
@@ -291,7 +291,7 @@ pub fn seed() -> Result(SeedResult, String) {
     wf_beta,
     Some(beta_bug_type),
     "On Beta Bug Resolved",
-    "resolved",
+    "completed",
   ))
   io.println("[OK] Created workflow for Beta")
 
@@ -336,7 +336,9 @@ pub fn seed() -> Result(SeedResult, String) {
       fixtures.create_card(handler, session, alpha_id, title)
     }),
   )
-  io.println("[OK] Created " <> int.to_string(list.length(card_ids)) <> " cards")
+  io.println(
+    "[OK] Created " <> int.to_string(list.length(card_ids)) <> " cards",
+  )
 
   use beta_bug_ids <- result.try(
     list.try_map(["Beta Bug 1", "Beta Bug 2"], fn(title) {
@@ -360,7 +362,7 @@ pub fn seed() -> Result(SeedResult, String) {
           org_id,
           admin_user_id,
           Some("in_progress"),
-          "resolved",
+          "completed",
           Some(alpha_bug_type),
         )
       rules_engine.evaluate_rules(db, event)
@@ -384,8 +386,8 @@ pub fn seed() -> Result(SeedResult, String) {
           alpha_id,
           org_id,
           admin_user_id,
-          Some("resolved"),
-          "closed",
+          Some("completed"),
+          "completed",
           Some(alpha_bug_type),
         )
       rules_engine.evaluate_rules(db, event)
@@ -394,7 +396,11 @@ pub fn seed() -> Result(SeedResult, String) {
       })
     }),
   )
-  io.println("[OK] Triggered 'On Bug Closed' for " <> int.to_string(list.length(closed_bugs)) <> " bugs")
+  io.println(
+    "[OK] Triggered 'On Bug Closed' for "
+    <> int.to_string(list.length(closed_bugs))
+    <> " bugs",
+  )
 
   let done_features = list.take(feature_ids, 2)
   use _ <- result.try(
@@ -406,7 +412,7 @@ pub fn seed() -> Result(SeedResult, String) {
           org_id,
           dev_user_id,
           Some("in_progress"),
-          "done",
+          "completed",
           Some(alpha_feature_type),
         )
       rules_engine.evaluate_rules(db, event)
@@ -415,7 +421,11 @@ pub fn seed() -> Result(SeedResult, String) {
       })
     }),
   )
-  io.println("[OK] Triggered 'On Feature Done' for " <> int.to_string(list.length(done_features)) <> " features")
+  io.println(
+    "[OK] Triggered 'On Feature Done' for "
+    <> int.to_string(list.length(done_features))
+    <> " features",
+  )
 
   let archived_cards = list.take(card_ids, 2)
   use _ <- result.try(
@@ -427,7 +437,7 @@ pub fn seed() -> Result(SeedResult, String) {
           org_id,
           admin_user_id,
           Some("active"),
-          "archived",
+          "cerrada",
         )
       rules_engine.evaluate_rules(db, event)
       |> result.map_error(fn(e) {
@@ -435,7 +445,11 @@ pub fn seed() -> Result(SeedResult, String) {
       })
     }),
   )
-  io.println("[OK] Triggered 'On Card Archived' for " <> int.to_string(list.length(archived_cards)) <> " cards")
+  io.println(
+    "[OK] Triggered 'On Card Archived' for "
+    <> int.to_string(list.length(archived_cards))
+    <> " cards",
+  )
 
   // Beta bugs
   use _ <- result.try(
@@ -447,7 +461,7 @@ pub fn seed() -> Result(SeedResult, String) {
           org_id,
           admin_user_id,
           Some("in_progress"),
-          "resolved",
+          "completed",
           Some(beta_bug_type),
         )
       rules_engine.evaluate_rules(db, event)
@@ -468,7 +482,7 @@ pub fn seed() -> Result(SeedResult, String) {
       org_id,
       admin_user_id,
       Some("claimed"),
-      "resolved",
+      "completed",
       Some(alpha_bug_type),
     )
   use _ <- result.try(

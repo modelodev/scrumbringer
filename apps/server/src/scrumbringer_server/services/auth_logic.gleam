@@ -22,6 +22,7 @@
 //// - Uses `services/store_state.gleam` for in-memory state models
 
 import domain/org_role.{Admin, Member}
+import domain/project_role.{Manager}
 import gleam/dict
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -125,7 +126,7 @@ fn bootstrap_register(
     ss.ProjectMember(
       project_id: project_id,
       user_id: user_id,
-      role: ss.Admin,
+      role: Manager,
       created_at: now_iso,
       claimed_count: 0,
     )

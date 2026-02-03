@@ -271,7 +271,8 @@ pub type CardNotesCreateRow {
     content: String,
     created_at: String,
     author_email: String,
-    author_role: String,
+    author_project_role: String,
+    author_org_role: String,
   )
 }
 
@@ -294,7 +295,8 @@ pub fn card_notes_create(
     use content <- decode.field(3, decode.string)
     use created_at <- decode.field(4, decode.string)
     use author_email <- decode.field(5, decode.string)
-    use author_role <- decode.field(6, decode.string)
+    use author_project_role <- decode.field(6, decode.string)
+    use author_org_role <- decode.field(7, decode.string)
     decode.success(CardNotesCreateRow(
       id:,
       card_id:,
@@ -302,7 +304,8 @@ pub fn card_notes_create(
       content:,
       created_at:,
       author_email:,
-      author_role:,
+      author_project_role:,
+      author_org_role:,
     ))
   }
 
@@ -320,7 +323,8 @@ select
   i.content,
   to_char(i.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
   u.email as author_email,
-  coalesce(pm.role, u.org_role) as author_role
+  coalesce(pm.role, '') as author_project_role,
+  u.org_role as author_org_role
 from inserted i
 join users u on u.id = i.user_id
 left join cards c on c.id = i.card_id
@@ -386,7 +390,8 @@ pub type CardNotesGetRow {
     content: String,
     created_at: String,
     author_email: String,
-    author_role: String,
+    author_project_role: String,
+    author_org_role: String,
   )
 }
 
@@ -408,7 +413,8 @@ pub fn card_notes_get(
     use content <- decode.field(3, decode.string)
     use created_at <- decode.field(4, decode.string)
     use author_email <- decode.field(5, decode.string)
-    use author_role <- decode.field(6, decode.string)
+    use author_project_role <- decode.field(6, decode.string)
+    use author_org_role <- decode.field(7, decode.string)
     decode.success(CardNotesGetRow(
       id:,
       card_id:,
@@ -416,7 +422,8 @@ pub fn card_notes_get(
       content:,
       created_at:,
       author_email:,
-      author_role:,
+      author_project_role:,
+      author_org_role:,
     ))
   }
 
@@ -429,7 +436,8 @@ select
   n.content,
   to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
   u.email as author_email,
-  coalesce(pm.role, u.org_role) as author_role
+  coalesce(pm.role, '') as author_project_role,
+  u.org_role as author_org_role
 from card_notes n
 join users u on u.id = n.user_id
 left join cards c on c.id = n.card_id
@@ -458,7 +466,8 @@ pub type CardNotesListRow {
     content: String,
     created_at: String,
     author_email: String,
-    author_role: String,
+    author_project_role: String,
+    author_org_role: String,
   )
 }
 
@@ -479,7 +488,8 @@ pub fn card_notes_list(
     use content <- decode.field(3, decode.string)
     use created_at <- decode.field(4, decode.string)
     use author_email <- decode.field(5, decode.string)
-    use author_role <- decode.field(6, decode.string)
+    use author_project_role <- decode.field(6, decode.string)
+    use author_org_role <- decode.field(7, decode.string)
     decode.success(CardNotesListRow(
       id:,
       card_id:,
@@ -487,7 +497,8 @@ pub fn card_notes_list(
       content:,
       created_at:,
       author_email:,
-      author_role:,
+      author_project_role:,
+      author_org_role:,
     ))
   }
 
@@ -500,7 +511,8 @@ select
   n.content,
   to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') as created_at,
   u.email as author_email,
-  coalesce(pm.role, u.org_role) as author_role
+  coalesce(pm.role, '') as author_project_role,
+  u.org_role as author_org_role
 from card_notes n
 join users u on u.id = n.user_id
 left join cards c on c.id = n.card_id

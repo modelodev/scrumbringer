@@ -3,7 +3,9 @@
 //// Card notes provide context and decisions at the card level.
 
 import gleam/list
+import gleam/option.{type Option}
 import gleam/result
+import helpers/option as option_helpers
 import pog
 import scrumbringer_server/services/service_error.{
   type ServiceError, DbError, NotFound, Unexpected,
@@ -20,7 +22,8 @@ pub type CardNote {
     created_at: String,
     // AC20: Author info for tooltip
     author_email: String,
-    author_role: String,
+    author_project_role: Option(String),
+    author_org_role: String,
   )
 }
 
@@ -28,8 +31,11 @@ pub type CardNote {
 pub fn list_notes_for_card(
   db: pog.Connection,
   card_id: Int,
-) -> Result(List(CardNote), pog.QueryError) {
-  use returned <- result.try(sql.card_notes_list(db, card_id))
+) -> Result(List(CardNote), ServiceError) {
+  use returned <- result.try(
+    sql.card_notes_list(db, card_id)
+    |> result.map_error(DbError),
+  )
 
   returned.rows
   |> list.map(note_from_list_row)
@@ -84,7 +90,10 @@ fn note_from_list_row(row: sql.CardNotesListRow) -> CardNote {
     content: row.content,
     created_at: row.created_at,
     author_email: row.author_email,
-    author_role: row.author_role,
+    author_project_role: option_helpers.string_to_option(
+      row.author_project_role,
+    ),
+    author_org_role: row.author_org_role,
   )
 }
 
@@ -96,7 +105,10 @@ fn note_from_create_row(row: sql.CardNotesCreateRow) -> CardNote {
     content: row.content,
     created_at: row.created_at,
     author_email: row.author_email,
-    author_role: row.author_role,
+    author_project_role: option_helpers.string_to_option(
+      row.author_project_role,
+    ),
+    author_org_role: row.author_org_role,
   )
 }
 
@@ -108,6 +120,9 @@ fn note_from_get_row(row: sql.CardNotesGetRow) -> CardNote {
     content: row.content,
     created_at: row.created_at,
     author_email: row.author_email,
-    author_role: row.author_role,
+    author_project_role: option_helpers.string_to_option(
+      row.author_project_role,
+    ),
+    author_org_role: row.author_org_role,
   )
 }

@@ -4,6 +4,7 @@
 //// development and testing. Production uses the PostgreSQL database.
 
 import domain/org_role.{type OrgRole}
+import domain/project_role.{type ProjectRole}
 import gleam/dict
 import gleam/option.{type Option, None}
 
@@ -15,12 +16,6 @@ pub type Organization {
 /// A project within an organization.
 pub type Project {
   Project(id: Int, org_id: Int, name: String, created_at: String)
-}
-
-/// A user's role within a project.
-pub type ProjectRole {
-  Admin
-  Member
 }
 
 /// A user's membership in a project.

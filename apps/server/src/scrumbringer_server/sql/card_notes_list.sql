@@ -7,7 +7,8 @@ select
   n.content,
   to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
   u.email as author_email,
-  coalesce(pm.role, u.org_role) as author_role
+  coalesce(pm.role, '') as author_project_role,
+  u.org_role as author_org_role
 from card_notes n
 join users u on u.id = n.user_id
 left join cards c on c.id = n.card_id

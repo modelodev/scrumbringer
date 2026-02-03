@@ -18,18 +18,23 @@
 ////
 //// - Used by `services/rules_db.gleam` and `services/rules_engine.gleam`
 
+import domain/card
+import domain/task_status
 import gleam/option.{type Option, None, Some}
+import gleam/result
 
 /// Target for a rule (task or card).
 pub type RuleTarget {
-  TaskRule(to_state: String, task_type_id: Option(Int))
-  CardRule(to_state: String)
+  TaskRule(to_state: task_status.TaskStatus, task_type_id: Option(Int))
+  CardRule(to_state: card.CardState)
 }
 
 /// Errors returned when parsing rule targets.
 pub type RuleTargetError {
   InvalidResourceType
   TaskTypeNotAllowedForCard
+  InvalidTaskState
+  InvalidCardState
 }
 
 // Justification: nested case improves clarity for branching logic.
@@ -48,12 +53,18 @@ pub fn from_strings(
   }
 
   case resource_type {
-    "task" -> Ok(TaskRule(to_state, task_type_opt))
+    "task" -> {
+      use parsed_state <- result.try(parse_task_state(to_state))
+      Ok(TaskRule(parsed_state, task_type_opt))
+    }
     "card" ->
       // Justification: nested case prevents task types on card rules.
       case task_type_opt {
         Some(_) -> Error(TaskTypeNotAllowedForCard)
-        None -> Ok(CardRule(to_state))
+        None -> {
+          use parsed_state <- result.try(parse_card_state(to_state))
+          Ok(CardRule(parsed_state))
+        }
       }
     _ -> Error(InvalidResourceType)
   }
@@ -87,8 +98,8 @@ pub fn task_type_id(target: RuleTarget) -> Option(Int) {
 ///   to_state_string(TaskRule("claimed", None))
 pub fn to_state_string(target: RuleTarget) -> String {
   case target {
-    TaskRule(to_state, _) -> to_state
-    CardRule(to_state) -> to_state
+    TaskRule(to_state, _) -> task_status.task_status_to_string(to_state)
+    CardRule(to_state) -> card.state_to_string(to_state)
   }
 }
 
@@ -106,4 +117,22 @@ pub fn to_db_values(target: RuleTarget) -> #(String, Int, String) {
   }
 
   #(resource_type, task_type_param, state)
+}
+
+fn parse_task_state(
+  value: String,
+) -> Result(task_status.TaskStatus, RuleTargetError) {
+  case task_status.parse_task_status(value) {
+    Ok(state) -> Ok(state)
+    Error(_) -> Error(InvalidTaskState)
+  }
+}
+
+fn parse_card_state(value: String) -> Result(card.CardState, RuleTargetError) {
+  case value {
+    "pendiente" -> Ok(card.Pendiente)
+    "en_curso" -> Ok(card.EnCurso)
+    "cerrada" -> Ok(card.Cerrada)
+    _ -> Error(InvalidCardState)
+  }
 }

@@ -952,6 +952,7 @@ fn task_note_to_view(
     can_delete: False,
     delete_context: notes_list_types.DeleteOwnNote,
     author_email: "",
-    author_role: "",
+    author_project_role: opt.None,
+    author_org_role: "",
   )
 }

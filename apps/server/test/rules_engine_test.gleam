@@ -203,7 +203,7 @@ pub fn evaluate_rules_card_resource_type_test() {
       session,
       workflow_id,
       "Card Closed",
-      "closed",
+      "cerrada",
     )
   let assert Ok(card_id) =
     fixtures.create_card(handler, session, project_id, "Test Card")
@@ -218,7 +218,7 @@ pub fn evaluate_rules_card_resource_type_test() {
       org_id,
       user_id,
       Some("open"),
-      "closed",
+      "cerrada",
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -342,7 +342,7 @@ pub fn variable_father_card_resolves_to_link_test() {
       session,
       workflow_id,
       "Card Closed",
-      "closed",
+      "cerrada",
     )
   let assert Ok(Nil) =
     fixtures.attach_template(handler, session, rule_id, template_id)
@@ -359,7 +359,7 @@ pub fn variable_father_card_resolves_to_link_test() {
       org_id,
       user_id,
       Some("open"),
-      "closed",
+      "cerrada",
     )
 
   let result = rules_engine.evaluate_rules(db, event)

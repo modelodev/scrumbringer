@@ -28,7 +28,7 @@ import helpers/option as option_helpers
 import pog
 import scrumbringer_server/services/rules_target
 import scrumbringer_server/services/service_error.{
-  type ServiceError, DbError, InvalidReference, NotFound,
+  type ServiceError, DbError, InvalidReference, NotFound, ValidationError,
 }
 import scrumbringer_server/sql
 
@@ -144,6 +144,8 @@ fn target_error_to_create_error(
   case error {
     rules_target.InvalidResourceType -> InvalidReference("resource_type")
     rules_target.TaskTypeNotAllowedForCard -> InvalidReference("task_type_id")
+    rules_target.InvalidTaskState -> ValidationError("Invalid task to_state")
+    rules_target.InvalidCardState -> ValidationError("Invalid card to_state")
   }
 }
 
@@ -153,6 +155,8 @@ fn target_error_to_update_error(
   case error {
     rules_target.InvalidResourceType -> InvalidReference("resource_type")
     rules_target.TaskTypeNotAllowedForCard -> InvalidReference("task_type_id")
+    rules_target.InvalidTaskState -> ValidationError("Invalid task to_state")
+    rules_target.InvalidCardState -> ValidationError("Invalid card to_state")
   }
 }
 

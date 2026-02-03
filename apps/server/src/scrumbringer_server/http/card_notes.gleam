@@ -26,6 +26,7 @@ import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
+import helpers/json as json_helpers
 import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
@@ -350,7 +351,8 @@ fn note_json(note: card_notes_db.CardNote) -> json.Json {
     content: content,
     created_at: created_at,
     author_email: author_email,
-    author_role: author_role,
+    author_project_role: author_project_role,
+    author_org_role: author_org_role,
   ) = note
 
   json.object([
@@ -361,6 +363,10 @@ fn note_json(note: card_notes_db.CardNote) -> json.Json {
     #("created_at", json.string(created_at)),
     // AC20: Author info for tooltip
     #("author_email", json.string(author_email)),
-    #("author_role", json.string(author_role)),
+    #(
+      "author_project_role",
+      json_helpers.option_string_json(author_project_role),
+    ),
+    #("author_org_role", json.string(author_org_role)),
   ])
 }

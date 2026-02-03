@@ -139,7 +139,7 @@ pub fn rule_metrics_suppression_breakdown_is_correct_test() {
       workflow_id,
       Some(type_id),
       "Breakdown Rule",
-      "done",
+      "completed",
     )
 
   let ts = execution_time()
@@ -351,7 +351,7 @@ pub fn executions_list_returns_paginated_results_test() {
       workflow_id,
       Some(type_id),
       "Executions Rule",
-      "done",
+      "completed",
     )
 
   let ts = execution_time()
@@ -421,7 +421,7 @@ pub fn executions_list_empty_returns_empty_array_test() {
       workflow_id,
       Some(type_id),
       "Empty Rule",
-      "done",
+      "completed",
     )
 
   let res = get_rule_executions(handler, session, rule_id, None, None)
