@@ -1082,7 +1082,14 @@ pub fn insert_task_db_simple(
   created_by: Int,
   card_id: Option(Int),
 ) -> Result(Int, String) {
-  seed_db.insert_task_simple(db, project_id, type_id, title, created_by, card_id)
+  seed_db.insert_task_simple(
+    db,
+    project_id,
+    type_id,
+    title,
+    created_by,
+    card_id,
+  )
 }
 
 /// Insert accumulated work time for a user on a task.

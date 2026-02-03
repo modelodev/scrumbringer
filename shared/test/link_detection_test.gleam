@@ -96,9 +96,7 @@ pub fn detect_url_at_end_test() {
 
 pub fn detect_github_pr_test() {
   let result =
-    link_detection.detect_links(
-      "PR: https://github.com/owner/repo/pull/123",
-    )
+    link_detection.detect_links("PR: https://github.com/owner/repo/pull/123")
 
   result
   |> should.equal([
@@ -115,9 +113,7 @@ pub fn detect_github_pr_test() {
 
 pub fn detect_github_issue_test() {
   let result =
-    link_detection.detect_links(
-      "Issue: https://github.com/foo/bar/issues/456",
-    )
+    link_detection.detect_links("Issue: https://github.com/foo/bar/issues/456")
 
   result
   |> should.equal([
@@ -182,7 +178,8 @@ pub fn github_short_path_generic_test() {
 // =============================================================================
 
 pub fn has_pr_link_true_test() {
-  let segments = link_detection.detect_links("PR: https://github.com/a/b/pull/1")
+  let segments =
+    link_detection.detect_links("PR: https://github.com/a/b/pull/1")
 
   link_detection.has_pr_link(segments)
   |> should.be_true()

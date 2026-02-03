@@ -26,8 +26,7 @@ pub fn insert_card_accepts_sql_timestamp_test() {
   let assert Ok(#(app, _handler, _session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
-  let assert Ok(project_id) =
-    seed_db.insert_project(db, 1, "Core", None)
+  let assert Ok(project_id) = seed_db.insert_project(db, 1, "Core", None)
   let assert Ok(user_id) =
     seed_db.insert_user_simple(db, 1, "card@example.com", "admin")
 
@@ -58,8 +57,7 @@ pub fn insert_task_accepts_sql_timestamp_test() {
   let assert Ok(#(app, _handler, _session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
-  let assert Ok(project_id) =
-    seed_db.insert_project(db, 1, "Core", None)
+  let assert Ok(project_id) = seed_db.insert_project(db, 1, "Core", None)
   let assert Ok(user_id) =
     seed_db.insert_user_simple(db, 1, "task@example.com", "admin")
   let assert Ok(type_id) =

@@ -9,7 +9,11 @@ import scrumbringer_server
 import wisp
 import wisp/simulate
 
-fn create_card_req(project_id: Int, title: String, color: String) -> wisp.Request {
+fn create_card_req(
+  project_id: Int,
+  title: String,
+  color: String,
+) -> wisp.Request {
   simulate.request(
     http.Post,
     "/api/v1/projects/" <> int.to_string(project_id) <> "/cards",
@@ -25,8 +29,7 @@ fn create_card_req(project_id: Int, title: String, color: String) -> wisp.Reques
 
 pub fn create_card_requires_auth_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Core")
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
 
   let res = handler(create_card_req(project_id, "Card", "red"))
   res.status |> should.equal(401)
@@ -34,8 +37,7 @@ pub fn create_card_requires_auth_test() {
 
 pub fn create_card_requires_csrf_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Core")
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
 
   let res =
     handler(
@@ -49,8 +51,7 @@ pub fn create_card_requires_csrf_test() {
 
 pub fn create_card_rejects_invalid_color_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Core")
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
 
   let res =
     handler(
@@ -64,8 +65,7 @@ pub fn create_card_rejects_invalid_color_test() {
 
 pub fn create_card_rejects_missing_title_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Core")
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
 
   let res =
     handler(
@@ -83,8 +83,7 @@ pub fn create_card_rejects_missing_title_test() {
 
 pub fn create_card_rejects_invalid_content_type_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Core")
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
 
   let res =
     handler(
@@ -103,8 +102,7 @@ pub fn create_card_requires_project_admin_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Core")
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
 
   let assert Ok(member_id) =
     fixtures.create_member_user(handler, db, "member@example.com", "il_member")
@@ -159,8 +157,7 @@ pub fn update_card_not_found_test() {
 
 pub fn update_card_rejects_invalid_color_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Core")
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(card_id) =
@@ -208,8 +205,7 @@ pub fn delete_card_not_found_test() {
 
 pub fn delete_card_conflict_when_tasks_exist_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Core")
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(card_id) =

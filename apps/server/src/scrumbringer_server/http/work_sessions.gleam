@@ -270,7 +270,6 @@ fn decode_task_id_payload(data: dynamic.Dynamic) -> Result(Int, wisp.Response) {
   decode_task_id_data(data)
 }
 
-
 fn state_to_json(state: work_sessions_db.WorkSessionsState) -> json.Json {
   let work_sessions_db.WorkSessionsState(
     active_sessions: sessions,

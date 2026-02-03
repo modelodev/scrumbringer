@@ -88,7 +88,6 @@ fn mark_view_in_db(
   }
 }
 
-
 fn parse_card_id(card_id: String) -> Result(Int, wisp.Response) {
   case int.parse(card_id) {
     Ok(id) -> Ok(id)

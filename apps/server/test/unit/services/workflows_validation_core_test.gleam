@@ -14,8 +14,7 @@ pub fn validate_task_title_value_rejects_empty_test() {
 }
 
 pub fn validate_task_title_value_rejects_too_long_test() {
-  let long =
-    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  let long = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
   case validation_core.validate_task_title_value(long) {
     Ok(_) -> should.fail()
@@ -36,8 +35,7 @@ pub fn validate_task_type_in_project_rejects_mismatched_project_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Core")
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
   let assert Ok(other_project_id) =
     fixtures.create_project(handler, session, "Other")
   let assert Ok(type_id) =
@@ -56,8 +54,7 @@ pub fn validate_capability_in_project_rejects_mismatched_project_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Core")
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
   let assert Ok(other_project_id) =
     fixtures.create_project(handler, session, "Other")
   let assert Ok(capability) =

@@ -84,7 +84,10 @@ pub fn require_csrf_invalid_token_returns_403_with_error_body_test() {
       case response.body {
         wisp.Text(body) -> {
           // Body should contain error details
-          body |> should.equal("{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"CSRF token missing or invalid\",\"details\":{}}}")
+          body
+          |> should.equal(
+            "{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"CSRF token missing or invalid\",\"details\":{}}}",
+          )
         }
         _ -> should.fail()
       }

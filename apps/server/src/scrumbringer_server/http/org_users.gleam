@@ -214,7 +214,6 @@ fn require_org_admin_with_message(
   }
 }
 
-
 fn parse_org_role(value: String) -> Result(org_role.OrgRole, wisp.Response) {
   case org_role.parse(value) {
     Ok(role) -> Ok(role)

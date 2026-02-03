@@ -16,7 +16,10 @@ pub fn main() {
   gleeunit.main()
 }
 
-fn start_session_request(task_id: Int, session: fixtures.Session) -> wisp.Request {
+fn start_session_request(
+  task_id: Int,
+  session: fixtures.Session,
+) -> wisp.Request {
   simulate.request(http.Post, "/api/v1/me/work-sessions/start")
   |> fixtures.with_auth(session)
   |> simulate.json_body(json.object([#("task_id", json.int(task_id))]))
@@ -72,20 +75,23 @@ pub fn start_rejects_completed_task_test() {
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
   let assert Ok(task_id) =
-    fixtures.insert_task_db(db, seed_db.TaskInsertOptions(
-      project_id: project_id,
-      type_id: type_id,
-      title: "Completed",
-      description: "Done",
-      priority: 3,
-      status: "completed",
-      created_by: user_id,
-      claimed_by: opt.Some(user_id),
-      card_id: opt.None,
-      created_at: opt.None,
-      claimed_at: opt.None,
-      completed_at: opt.None,
-    ))
+    fixtures.insert_task_db(
+      db,
+      seed_db.TaskInsertOptions(
+        project_id: project_id,
+        type_id: type_id,
+        title: "Completed",
+        description: "Done",
+        priority: 3,
+        status: "completed",
+        created_by: user_id,
+        claimed_by: opt.Some(user_id),
+        card_id: opt.None,
+        created_at: opt.None,
+        claimed_at: opt.None,
+        completed_at: opt.None,
+      ),
+    )
 
   let res = handler(start_session_request(task_id, session))
   res.status |> should.equal(409)
@@ -96,7 +102,7 @@ pub fn start_rejects_completed_task_test() {
 pub fn start_returns_conflict_for_missing_task_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
 
-  let res = handler(start_session_request(999999, session))
+  let res = handler(start_session_request(999_999, session))
   res.status |> should.equal(409)
   string.contains(simulate.read_body(res), "CONFLICT_CLAIMED")
   |> should.be_true
@@ -125,7 +131,7 @@ pub fn start_is_idempotent_when_session_exists_test() {
 pub fn heartbeat_returns_not_found_without_session_test() {
   let assert Ok(#(_app, handler, session)) = fixtures.bootstrap()
 
-  let res = handler(heartbeat_request(999999, session))
+  let res = handler(heartbeat_request(999_999, session))
   res.status |> should.equal(404)
   string.contains(simulate.read_body(res), "NOT_FOUND") |> should.be_true
 }
@@ -193,7 +199,7 @@ pub fn pause_without_session_returns_ok_test() {
     handler(
       simulate.request(http.Post, "/api/v1/me/work-sessions/pause")
       |> fixtures.with_auth(session)
-      |> simulate.json_body(json.object([#("task_id", json.int(999999))])),
+      |> simulate.json_body(json.object([#("task_id", json.int(999_999))])),
     )
 
   res.status |> should.equal(200)

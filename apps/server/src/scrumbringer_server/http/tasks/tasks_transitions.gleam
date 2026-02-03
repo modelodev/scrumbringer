@@ -288,7 +288,6 @@ fn decode_version(data: dynamic.Dynamic) -> Result(Int, wisp.Response) {
   }
 }
 
-
 fn parse_task_id(task_id: String) -> Result(Int, wisp.Response) {
   case int.parse(task_id) {
     Ok(id) -> Ok(id)

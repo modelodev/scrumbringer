@@ -183,7 +183,10 @@ pub fn view_simple(title: String, on_close: msg) -> Element(msg) {
 /// Use this when integrating with existing CSS patterns.
 pub fn view_extended(config: ExtendedConfig(msg)) -> Element(msg) {
   let close_button =
-    modal_close_button.view_with_class(config.close_button_class, config.on_close)
+    modal_close_button.view_with_class(
+      config.close_button_class,
+      config.on_close,
+    )
 
   let title_content = [
     case config.icon {

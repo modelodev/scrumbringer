@@ -1777,9 +1777,7 @@ pub type PingRow {
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn ping(
-  db: pog.Connection,
-) -> Result(pog.Returned(PingRow), pog.QueryError) {
+pub fn ping(db: pog.Connection) -> Result(pog.Returned(PingRow), pog.QueryError) {
   let decoder = {
     use ok <- decode.field(0, decode.int)
     decode.success(PingRow(ok:))

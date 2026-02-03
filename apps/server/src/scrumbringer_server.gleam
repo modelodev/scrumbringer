@@ -57,7 +57,7 @@ fn start_db_pool(database_url: String) -> Result(pog.Connection, StartupError) {
   let pool_size = env_int("SB_DB_POOL_SIZE", 10)
   let wait_attempts = env_int("SB_DB_WAIT_ATTEMPTS", 60)
   let wait_sleep_ms = env_int("SB_DB_WAIT_MS", 50)
-  let wait_query_timeout_ms = env_int("SB_DB_WAIT_QUERY_TIMEOUT_MS", 15000)
+  let wait_query_timeout_ms = env_int("SB_DB_WAIT_QUERY_TIMEOUT_MS", 15_000)
 
   use _ <- result.try(
     ensure_all_started(atom.create("pgo"))
@@ -71,28 +71,24 @@ fn start_db_pool(database_url: String) -> Result(pog.Connection, StartupError) {
 
   case pog.start(pog.pool_size(config, pool_size)) {
     Ok(started) -> {
-      use _ <- result.try(
-        wait_for_db(
-          started.data,
-          wait_attempts,
-          wait_sleep_ms,
-          wait_query_timeout_ms,
-        ),
-      )
+      use _ <- result.try(wait_for_db(
+        started.data,
+        wait_attempts,
+        wait_sleep_ms,
+        wait_query_timeout_ms,
+      ))
       Ok(started.data)
     }
 
     Error(_) -> {
       // Pool may already be started; reuse it.
       let db = pog.named_connection(pool_name)
-      use _ <- result.try(
-        wait_for_db(
-          db,
-          wait_attempts,
-          wait_sleep_ms,
-          wait_query_timeout_ms,
-        ),
-      )
+      use _ <- result.try(wait_for_db(
+        db,
+        wait_attempts,
+        wait_sleep_ms,
+        wait_query_timeout_ms,
+      ))
       Ok(db)
     }
   }

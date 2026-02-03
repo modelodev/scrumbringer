@@ -6,6 +6,7 @@ import scrumbringer_server/services/auth_logic
 import scrumbringer_server/services/store_state as ss
 
 const now_iso = "2026-01-20T00:00:00Z"
+
 const now_unix = 1_737_000_000
 
 fn state_with_org() -> ss.State {
@@ -92,10 +93,7 @@ pub fn register_rejects_invalid_invite_code_test() {
 
 pub fn register_rejects_expired_invite_test() {
   let invite =
-    ss.OrgInvite(
-      ..invite_base("expired"),
-      expires_at_unix: Some(now_unix - 1),
-    )
+    ss.OrgInvite(..invite_base("expired"), expires_at_unix: Some(now_unix - 1))
   let state = state_with_invite(invite)
 
   let result =

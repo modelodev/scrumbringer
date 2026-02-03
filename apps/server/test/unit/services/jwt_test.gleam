@@ -7,6 +7,7 @@ import scrumbringer_server/services/jwt
 import scrumbringer_server/services/time
 
 const secret_a = <<"secret-a":utf8>>
+
 const secret_b = <<"secret-b":utf8>>
 
 fn base64_json(value: json.Json) -> String {
@@ -109,7 +110,7 @@ pub fn verify_unsupported_role_test() {
       #("org_id", json.int(1)),
       #("org_role", json.string("superadmin")),
       #("iat", json.int(10)),
-      #("exp", json.int(9999999)),
+      #("exp", json.int(9_999_999)),
     ])
 
   let token = sign_with_payload(payload, secret_a)

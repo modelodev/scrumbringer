@@ -89,7 +89,6 @@ fn require_org_admin(user: StoredUser) -> Result(Nil, wisp.Response) {
   }
 }
 
-
 fn decode_expires_in_hours(data: dynamic.Dynamic) -> Result(Int, wisp.Response) {
   let decoder = {
     use hours <- decode.optional_field(

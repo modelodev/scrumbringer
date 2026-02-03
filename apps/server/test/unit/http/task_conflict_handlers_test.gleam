@@ -51,7 +51,7 @@ pub fn handle_claim_conflict_returns_not_found_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
-  let res = conflict_handlers.handle_claim_conflict(db, 999999, user_id)
+  let res = conflict_handlers.handle_claim_conflict(db, 999_999, user_id)
   res.status |> should.equal(404)
   string.contains(simulate.read_body(res), "NOT_FOUND") |> should.be_true
 }
@@ -61,8 +61,7 @@ pub fn handle_claim_conflict_returns_conflict_for_available_task_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Core")
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(task_id) =
@@ -78,8 +77,7 @@ pub fn handle_claim_conflict_returns_claimed_conflict_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Core")
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(task_id) =
@@ -97,8 +95,7 @@ pub fn handle_claim_conflict_returns_validation_for_completed_test() {
   let scrumbringer_server.App(db: db, ..) = app
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Core")
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(task_id) =
@@ -116,8 +113,7 @@ pub fn handle_version_or_claim_conflict_forbidden_when_claimed_by_other_test() {
   let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Core")
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(task_id) =
@@ -146,8 +142,7 @@ pub fn handle_version_or_claim_conflict_returns_validation_for_available_test() 
   let scrumbringer_server.App(db: db, ..) = app
   let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
 
-  let assert Ok(project_id) =
-    fixtures.create_project(handler, session, "Core")
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
   let assert Ok(type_id) =
     fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
   let assert Ok(task_id) =
