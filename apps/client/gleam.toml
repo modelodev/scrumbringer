@@ -8,6 +8,7 @@ gleam_json = "~> 3.0"
 lustre = "~> 5.0"
 shared = { path = "../../shared" }
 gleroglero = ">= 1.2.0 and < 2.0.0"
+modem = ">= 2.1.2 and < 3.0.0"
 
 [dev-dependencies]
 gleeunit = "~> 1.0"

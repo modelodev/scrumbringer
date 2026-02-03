@@ -60,6 +60,7 @@
 import gleam/dict.{type Dict}
 import gleam/option.{type Option}
 import gleam/set
+import gleam/uri.{type Uri}
 
 import domain/user.{type User}
 
@@ -925,7 +926,7 @@ pub type PoolMsg {
 /// - Member pool flows
 pub type Msg {
   NoOp
-  UrlChanged
+  UrlChanged(Uri)
   NavigateTo(router.Route, NavMode)
   MeFetched(ApiResult(User))
   AcceptInviteMsg(accept_invite.Msg)

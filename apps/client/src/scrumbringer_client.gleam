@@ -54,11 +54,14 @@
 //// - **router.gleam**: Provides URL parsing and route types
 
 import gleam/option as opt
+import gleam/string
+import gleam/uri.{type Uri, Uri}
 
 import lustre
 import lustre/effect.{type Effect}
 
 import domain/view_mode
+import modem
 import scrumbringer_client/accept_invite
 import scrumbringer_client/api/auth as api_auth
 import scrumbringer_client/client_ffi
@@ -177,13 +180,10 @@ pub fn main() {
 /// either partial Model construction (not type-safe) or complex builder
 /// patterns that add indirection without clarity.
 fn init(flags: Flags) -> #(Model, Effect(Msg)) {
-  let pathname = client_ffi.location_pathname()
-  let search = client_ffi.location_search()
-  let hash = client_ffi.location_hash()
   let is_mobile = client_ffi.is_mobile()
 
   let parsed =
-    router.parse(pathname, search, hash)
+    router.parse_uri(initial_uri())
     |> router.apply_mobile_rules(is_mobile)
 
   let route = case parsed {
@@ -302,11 +302,41 @@ fn init(flags: Flags) -> #(Model, Effect(Msg)) {
   #(
     model,
     effect.batch([
-      client_update.register_popstate_effect(),
+      modem.init(client_state.UrlChanged),
       client_update.register_keydown_effect(),
       redirect_fx,
       base_effect,
       title_fx,
     ]),
+  )
+}
+
+fn initial_uri() -> Uri {
+  case modem.initial_uri() {
+    Ok(uri) -> uri
+    Error(_) -> uri_from_location()
+  }
+}
+
+fn uri_from_location() -> Uri {
+  let pathname = client_ffi.location_pathname()
+  let search = client_ffi.location_search()
+  let hash = client_ffi.location_hash()
+  let query = case search {
+    "" -> opt.None
+    _ -> opt.Some(string.drop_start(search, 1))
+  }
+  let fragment = case hash {
+    "" -> opt.None
+    _ -> opt.Some(string.drop_start(hash, 1))
+  }
+  Uri(
+    scheme: opt.None,
+    userinfo: opt.None,
+    host: opt.None,
+    port: opt.None,
+    path: pathname,
+    query: query,
+    fragment: fragment,
   )
 }

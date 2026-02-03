@@ -69,21 +69,6 @@ pub fn set_document_title(_title: String) -> Nil {
   Nil
 }
 
-/// Register a callback for browser back/forward navigation.
-///
-/// Example:
-/// ```gleam
-/// register_popstate(fn(_) { dispatch(UrlChanged) })
-/// ```
-/// Registers popstate.
-///
-/// Example:
-///   register_popstate(...)
-@external(javascript, "./fetch.ffi.mjs", "register_popstate")
-pub fn register_popstate(_cb: fn(Nil) -> Nil) -> Nil {
-  Nil
-}
-
 // =============================================================================
 // Location APIs
 // =============================================================================

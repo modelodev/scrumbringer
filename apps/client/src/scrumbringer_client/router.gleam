@@ -25,7 +25,7 @@
 //// import scrumbringer_client/router
 ////
 //// // Parse URL
-//// case router.parse("/config/members", "?project=5", "") {
+//// case router.parse_uri(uri) {
 ////   router.Parsed(route) -> apply_route(route)
 ////   router.Redirect(route) -> redirect_to(route)
 //// }
@@ -48,6 +48,8 @@ import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
+import gleam/uri.{type Uri}
+import modem
 
 import lustre/effect.{type Effect}
 
@@ -111,15 +113,7 @@ type QueryParseError {
 /// Parse URL components into a Route.
 ///
 /// Returns Redirect if the URL has invalid query params.
-///
-/// ## Example
-///
-/// ```gleam
-/// parse("/config/members", "?project=5", "")
-/// // Parsed(Config(Members, Some(5)))
-///
-/// ```
-pub fn parse(pathname: String, search: String, _hash: String) -> ParseResult {
+fn parse(pathname: String, search: String, _hash: String) -> ParseResult {
   let query_result = parse_query_params(search)
   let #(query_params, query_invalid) = case query_result {
     Ok(params) -> #(params, False)
@@ -132,6 +126,19 @@ pub fn parse(pathname: String, search: String, _hash: String) -> ParseResult {
     True -> Redirect(route)
     False -> Parsed(route)
   }
+}
+
+/// Parse a URI into a Route.
+pub fn parse_uri(uri: Uri) -> ParseResult {
+  let search = case uri.query {
+    None -> ""
+    Some(query) -> "?" <> query
+  }
+  let hash = case uri.fragment {
+    None -> ""
+    Some(fragment) -> "#" <> fragment
+  }
+  parse(uri.path, search, hash)
 }
 
 fn parse_query_params(search: String) -> Result(QueryParams, QueryParseError) {
@@ -271,51 +278,65 @@ fn parse_member_section(
 /// Justification: nested case improves clarity for branching logic.
 /// ```
 pub fn format(route: Route) -> String {
+  let #(path, query, fragment) = format_parts(route)
+  let with_query = case query {
+    None -> path
+    Some(q) -> path <> "?" <> q
+  }
+  case fragment {
+    None -> with_query
+    Some(f) -> with_query <> "#" <> f
+  }
+}
+
+fn format_parts(route: Route) -> #(String, Option(String), Option(String)) {
   case route {
-    Login -> "/"
+    Login -> #("/", None, None)
 
     AcceptInvite(token) ->
       case token {
-        "" -> "/accept-invite"
-        _ -> "/accept-invite?token=" <> token
+        "" -> #("/accept-invite", None, None)
+        _ -> #("/accept-invite", Some("token=" <> token), None)
       }
 
     ResetPassword(token) ->
       case token {
-        "" -> "/reset-password"
-        _ -> "/reset-password?token=" <> token
+        "" -> #("/reset-password", None, None)
+        _ -> #("/reset-password", Some("token=" <> token), None)
       }
 
     // Story 4.5: New /config/* routes for project-scoped config
     Config(section, project_id) -> {
       let base = "/config/" <> config_section_slug(section)
-      with_project(base, project_id)
+      let #(path, query) = with_project_parts(base, project_id)
+      #(path, query, None)
     }
 
     // Story 4.5: New /org/* routes for org-scoped admin
-    Org(section) -> {
-      "/org/" <> org_section_slug(section)
-    }
+    Org(section) -> #("/org/" <> org_section_slug(section), None, None)
 
     Member(section, project_id, view) -> {
       let base = "/app/" <> member_section.to_slug(section)
-      with_query_params(base, project_id, view)
+      let query = with_query_parts(project_id, view)
+      #(base, query, None)
     }
   }
 }
 
-fn with_project(base: String, project_id: Option(Int)) -> String {
+fn with_project_parts(
+  base: String,
+  project_id: Option(Int),
+) -> #(String, Option(String)) {
   case project_id {
-    None -> base
-    Some(id) -> base <> "?project=" <> int.to_string(id)
+    None -> #(base, None)
+    Some(id) -> #(base, Some("project=" <> int.to_string(id)))
   }
 }
 
-fn with_query_params(
-  base: String,
+fn with_query_parts(
   project_id: Option(Int),
   view: Option(ViewMode),
-) -> String {
+) -> Option(String) {
   let params = [
     project_id |> option.map(fn(id) { "project=" <> int.to_string(id) }),
     view |> option.map(fn(v) { "view=" <> view_mode.to_string(v) }),
@@ -325,8 +346,8 @@ fn with_query_params(
     |> list.filter_map(fn(p) { option.to_result(p, Nil) })
     |> string.join("&")
   case query {
-    "" -> base
-    q -> base <> "?" <> q
+    "" -> None
+    q -> Some(q)
   }
 }
 
@@ -334,7 +355,16 @@ fn with_query_params(
 // Assignments view helpers
 // =============================================================================
 
-pub fn assignments_view_from_search(
+pub fn assignments_view_from_uri(
+  uri: Uri,
+) -> Option(assignments_view_mode.AssignmentsViewMode) {
+  case uri.query {
+    None -> None
+    Some(query) -> assignments_view_from_search(query)
+  }
+}
+
+fn assignments_view_from_search(
   search: String,
 ) -> Option(assignments_view_mode.AssignmentsViewMode) {
   case query_param(search, "view") {
@@ -356,15 +386,15 @@ pub fn format_assignments(
 pub fn replace_assignments_view(
   view: assignments_view_mode.AssignmentsViewMode,
 ) -> Effect(msg) {
-  let url = format_assignments(Some(view))
-  effect.from(fn(_dispatch) { client_ffi.history_replace_state(url) })
+  let query = "view=" <> assignments_view_mode.to_param(view)
+  modem.replace("/org/assignments", Some(query), None)
 }
 
 pub fn push_assignments_view(
   view: assignments_view_mode.AssignmentsViewMode,
 ) -> Effect(msg) {
-  let url = format_assignments(Some(view))
-  effect.from(fn(_dispatch) { client_ffi.history_push_state(url) })
+  let query = "view=" <> assignments_view_mode.to_param(view)
+  modem.push("/org/assignments", Some(query), None)
 }
 
 fn token_from_search(search: String) -> String {
@@ -475,7 +505,7 @@ fn org_section_slug(section: permissions.AdminSection) -> String {
 /// ## Example
 ///
 /// ```gleam
-/// let result = parse("/app/pool", "", "")
+/// let result = parse_uri(uri)
 /// apply_mobile_rules(result, True)
 /// // Parsed(Member(Pool, None)) - no longer redirects
 /// ```
@@ -498,8 +528,8 @@ pub fn apply_mobile_rules(result: ParseResult, _is_mobile: Bool) -> ParseResult 
 /// // Navigates to "/config/projects?project=5" with history entry
 /// ```
 pub fn push(route: Route) -> Effect(msg) {
-  let url = format(route)
-  effect.from(fn(_dispatch) { client_ffi.history_push_state(url) })
+  let #(path, query, fragment) = format_parts(route)
+  modem.push(path, query, fragment)
 }
 
 /// Replace the current URL in browser history (no back button entry).
@@ -511,8 +541,8 @@ pub fn push(route: Route) -> Effect(msg) {
 /// // Replaces current URL with "/" without history entry
 /// ```
 pub fn replace(route: Route) -> Effect(msg) {
-  let url = format(route)
-  effect.from(fn(_dispatch) { client_ffi.history_replace_state(url) })
+  let #(path, query, fragment) = format_parts(route)
+  modem.replace(path, query, fragment)
 }
 
 /// Update the browser document title based on the current route.

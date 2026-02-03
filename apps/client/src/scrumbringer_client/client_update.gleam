@@ -29,6 +29,7 @@ import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option as opt
+import gleam/uri.{type Uri}
 import lustre/effect.{type Effect}
 
 import scrumbringer_client/accept_invite
@@ -152,16 +153,6 @@ pub fn reset_password_effect(
 
     _ -> effect.none()
   }
-}
-
-/// Registers popstate effect.
-///
-/// Example:
-///   register_popstate_effect(...)
-pub fn register_popstate_effect() -> Effect(client_state.Msg) {
-  effect.from(fn(dispatch) {
-    client_ffi.register_popstate(fn(_) { dispatch(client_state.UrlChanged) })
-  })
 }
 
 /// Registers keydown effect.
@@ -994,10 +985,8 @@ fn can_fetch_project(model: client_state.Model, project_id: Int) -> Bool {
 // Justification: nested case improves clarity for branching logic.
 fn handle_url_changed(
   model: client_state.Model,
+  uri: Uri,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let pathname = client_ffi.location_pathname()
-  let search = client_ffi.location_search()
-  let hash = client_ffi.location_hash()
   let is_mobile = client_ffi.is_mobile()
 
   let model =
@@ -1006,7 +995,7 @@ fn handle_url_changed(
     })
 
   let parsed =
-    router.parse(pathname, search, hash)
+    router.parse_uri(uri)
     |> router.apply_mobile_rules(is_mobile)
 
   let route = case parsed {
@@ -1024,7 +1013,7 @@ fn handle_url_changed(
 
         False -> {
           let #(model, route_fx) = apply_route_fields(model, route)
-          let model = apply_assignments_view_from_url(model, route, search)
+          let model = apply_assignments_view_from_url(model, route, uri)
           let #(model, hyd_fx) = hydrate_model(model)
           #(model, effect.batch([route_fx, hyd_fx, title_fx]))
         }
@@ -1032,7 +1021,7 @@ fn handle_url_changed(
 
     router.Redirect(_) -> {
       let #(model, route_fx) = apply_route_fields(model, route)
-      let model = apply_assignments_view_from_url(model, route, search)
+      let model = apply_assignments_view_from_url(model, route, uri)
       let #(model, hyd_fx) = hydrate_model(model)
       #(
         model,
@@ -1050,11 +1039,11 @@ fn handle_url_changed(
 fn apply_assignments_view_from_url(
   model: client_state.Model,
   route: router.Route,
-  search: String,
+  uri: Uri,
 ) -> client_state.Model {
   case route {
     router.Org(permissions.Assignments) ->
-      case router.assignments_view_from_search(search) {
+      case router.assignments_view_from_uri(uri) {
         opt.Some(view_mode) ->
           client_state.update_admin(model, fn(admin) {
             let client_state.AssignmentsModel(
@@ -1930,7 +1919,7 @@ pub fn update(
     // No operation - used for placeholder handlers
     client_state.NoOp -> #(model, effect.none())
 
-    client_state.UrlChanged -> handle_url_changed(model)
+    client_state.UrlChanged(uri) -> handle_url_changed(model, uri)
 
     client_state.NavigateTo(route, mode) ->
       handle_navigate_to(model, route, mode)
