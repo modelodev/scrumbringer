@@ -46,7 +46,7 @@
 apps/client/src/scrumbringer_client/
 ├── features/pool/
 ├── client_ffi.gleam
-└── fetch.ffi.mjs
+└── dom.ffi.mjs
 ```
 
 ### Standards and Constraints

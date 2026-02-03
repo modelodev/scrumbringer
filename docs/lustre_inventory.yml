@@ -1,0 +1,594 @@
+inventory_version: 1
+
+coverage:
+  primary_root: "apps/client/src/"
+  secondary_roots: ["shared/src/"]
+  src_modules_found: 182
+  src_modules_inventoried: 182
+  complete: yes
+  notes: "Inventario exhaustivo de la SPA y el dominio compartido, incluyendo el índice total de módulos."
+
+repo_summary:
+  target_runtime: js
+  build_targets: ["javascript"]
+  packages:
+    - name: "scrumbringer_client"
+      path: "apps/client"
+      notes: "Aplicación Lustre principal (SPA)."
+    - name: "shared"
+      path: "shared"
+      notes: "Lógica de dominio y codecs compartidos entre frontend y backend."
+  architectural_notes:
+    - "Arquitectura MVU estricta con estado centralizado en client_state."
+    - "Desacoplamiento de efectos mediante FFI y wrappers en api/*."
+    - "Uso intensivo de Custom Elements para componentes de UI complejos."
+
+tag_catalog_used:
+  - mvu
+  - state-model
+  - msg-protocol
+  - view
+  - view-composition
+  - attributes
+  - events
+  - event-decoding
+  - forms
+  - validation
+  - effects
+  - http-client
+  - routing
+  - navigation
+  - local-storage
+  - dom
+  - timers
+  - ssr
+  - hydration
+  - components
+  - multi-client
+  - serialization
+  - dto
+  - domain-model
+  - error-handling
+  - ffi
+  - interop-js
+  - testing
+  - performance
+  - utils
+  - normalized-state
+
+tag_catalog_proposed:
+  - tag: "form-state"
+    reason: "Módulos que gestionan estados intermedios de formularios antes de persistencia."
+
+module_index:
+  - { module: "pool_prefs", path: "apps/client/src/scrumbringer_client/pool_prefs.gleam" }
+  - { module: "client_view", path: "apps/client/src/scrumbringer_client/client_view.gleam" }
+  - { module: "styles", path: "apps/client/src/scrumbringer_client/styles.gleam" }
+  - { module: "i18n/i18n", path: "apps/client/src/scrumbringer_client/i18n/i18n.gleam" }
+  - { module: "i18n/locale", path: "apps/client/src/scrumbringer_client/i18n/locale.gleam" }
+  - { module: "i18n/en", path: "apps/client/src/scrumbringer_client/i18n/en.gleam" }
+  - { module: "i18n/es", path: "apps/client/src/scrumbringer_client/i18n/es.gleam" }
+  - { module: "i18n/text", path: "apps/client/src/scrumbringer_client/i18n/text.gleam" }
+  - { module: "components/crud_dialog_base", path: "apps/client/src/scrumbringer_client/components/crud_dialog_base.gleam" }
+  - { module: "components/truncated_text", path: "apps/client/src/scrumbringer_client/components/truncated_text.gleam" }
+  - { module: "components/card_crud_dialog", path: "apps/client/src/scrumbringer_client/components/card_crud_dialog.gleam" }
+  - { module: "components/card_detail_modal", path: "apps/client/src/scrumbringer_client/components/card_detail_modal.gleam" }
+  - { module: "components/rule_crud_dialog", path: "apps/client/src/scrumbringer_client/components/rule_crud_dialog.gleam" }
+  - { module: "components/task_template_crud_dialog", path: "apps/client/src/scrumbringer_client/components/task_template_crud_dialog.gleam" }
+  - { module: "components/task_type_crud_dialog", path: "apps/client/src/scrumbringer_client/components/task_type_crud_dialog.gleam" }
+  - { module: "components/workflow_crud_dialog", path: "apps/client/src/scrumbringer_client/components/workflow_crud_dialog.gleam" }
+  - { module: "workspace_state", path: "apps/client/src/scrumbringer_client/workspace_state.gleam" }
+  - { module: "router", path: "apps/client/src/scrumbringer_client/router.gleam" }
+  - { module: "theme", path: "apps/client/src/scrumbringer_client/theme.gleam" }
+  - { module: "update_helpers", path: "apps/client/src/scrumbringer_client/update_helpers.gleam" }
+  - { module: "state/normalized_store", path: "apps/client/src/scrumbringer_client/state/normalized_store.gleam" }
+  - { module: "client_ffi", path: "apps/client/src/scrumbringer_client/client_ffi.gleam" }
+  - { module: "member_section", path: "apps/client/src/scrumbringer_client/member_section.gleam" }
+  - { module: "assignments_view_mode", path: "apps/client/src/scrumbringer_client/assignments_view_mode.gleam" }
+  - { module: "decoders", path: "apps/client/src/scrumbringer_client/decoders.gleam" }
+  - { module: "api/tasks/notes", path: "apps/client/src/scrumbringer_client/api/tasks/notes.gleam" }
+  - { module: "api/tasks/positions", path: "apps/client/src/scrumbringer_client/api/tasks/positions.gleam" }
+  - { module: "api/tasks/capabilities", path: "apps/client/src/scrumbringer_client/api/tasks/capabilities.gleam" }
+  - { module: "api/tasks/operations", path: "apps/client/src/scrumbringer_client/api/tasks/operations.gleam" }
+  - { module: "api/tasks/task_types", path: "apps/client/src/scrumbringer_client/api/tasks/task_types.gleam" }
+  - { module: "api/tasks/active", path: "apps/client/src/scrumbringer_client/api/tasks/active.gleam" }
+  - { module: "api/tasks/decoders", path: "apps/client/src/scrumbringer_client/api/tasks/decoders.gleam" }
+  - { module: "api/tasks/dependencies", path: "apps/client/src/scrumbringer_client/api/tasks/dependencies.gleam" }
+  - { module: "api/auth", path: "apps/client/src/scrumbringer_client/api/auth.gleam" }
+  - { module: "api/core", path: "apps/client/src/scrumbringer_client/api/core.gleam" }
+  - { module: "api/org", path: "apps/client/src/scrumbringer_client/api/org.gleam" }
+  - { module: "api/projects", path: "apps/client/src/scrumbringer_client/api/projects.gleam" }
+  - { module: "api/tasks", path: "apps/client/src/scrumbringer_client/api/tasks.gleam" }
+  - { module: "api/workflows", path: "apps/client/src/scrumbringer_client/api/workflows.gleam" }
+  - { module: "api/cards", path: "apps/client/src/scrumbringer_client/api/cards.gleam" }
+  - { module: "api/metrics", path: "apps/client/src/scrumbringer_client/api/metrics.gleam" }
+  - { module: "app/effects", path: "apps/client/src/scrumbringer_client/app/effects.gleam" }
+  - { module: "features/admin/member_add", path: "apps/client/src/scrumbringer_client/features/admin/member_add.gleam" }
+  - { module: "features/admin/member_remove", path: "apps/client/src/scrumbringer_client/features/admin/member_remove.gleam" }
+  - { module: "features/admin/org_settings", path: "apps/client/src/scrumbringer_client/features/admin/org_settings.gleam" }
+  - { module: "features/admin/rule_metrics", path: "apps/client/src/scrumbringer_client/features/admin/rule_metrics.gleam" }
+  - { module: "features/admin/search", path: "apps/client/src/scrumbringer_client/features/admin/search.gleam" }
+  - { module: "features/admin/update", path: "apps/client/src/scrumbringer_client/features/admin/update.gleam" }
+  - { module: "features/admin/views/members", path: "apps/client/src/scrumbringer_client/features/admin/views/members.gleam" }
+  - { module: "features/admin/views/workflows", path: "apps/client/src/scrumbringer_client/features/admin/views/workflows.gleam" }
+  - { module: "features/admin/workflows", path: "apps/client/src/scrumbringer_client/features/admin/workflows.gleam" }
+  - { module: "features/admin/cards", path: "apps/client/src/scrumbringer_client/features/admin/cards.gleam" }
+  - { module: "features/admin/view", path: "apps/client/src/scrumbringer_client/features/admin/view.gleam" }
+  - { module: "features/admin/member_release_all", path: "apps/client/src/scrumbringer_client/features/admin/member_release_all.gleam" }
+  - { module: "features/auth/helpers", path: "apps/client/src/scrumbringer_client/features/auth/helpers.gleam" }
+  - { module: "features/auth/update", path: "apps/client/src/scrumbringer_client/features/auth/update.gleam" }
+  - { module: "features/auth/view", path: "apps/client/src/scrumbringer_client/features/auth/view.gleam" }
+  - { module: "features/capabilities/update", path: "apps/client/src/scrumbringer_client/features/capabilities/update.gleam" }
+  - { module: "features/i18n/update", path: "apps/client/src/scrumbringer_client/features/i18n/update.gleam" }
+  - { module: "features/invites/update", path: "apps/client/src/scrumbringer_client/features/invites/update.gleam" }
+  - { module: "features/invites/view", path: "apps/client/src/scrumbringer_client/features/invites/view.gleam" }
+  - { module: "features/metrics/update", path: "apps/client/src/scrumbringer_client/features/metrics/update.gleam" }
+  - { module: "features/metrics/view", path: "apps/client/src/scrumbringer_client/features/metrics/view.gleam" }
+  - { module: "features/my_bar/view", path: "apps/client/src/scrumbringer_client/features/my_bar/view.gleam" }
+  - { module: "features/now_working/update", path: "apps/client/src/scrumbringer_client/features/now_working/update.gleam" }
+  - { module: "features/now_working/mobile", path: "apps/client/src/scrumbringer_client/features/now_working/mobile.gleam" }
+  - { module: "features/now_working/panel", path: "apps/client/src/scrumbringer_client/features/now_working/panel.gleam" }
+  - { module: "features/pool/filters", path: "apps/client/src/scrumbringer_client/features/pool/filters.gleam" }
+  - { module: "features/pool/dialogs", path: "apps/client/src/scrumbringer_client/features/pool/dialogs.gleam" }
+  - { module: "features/pool/update", path: "apps/client/src/scrumbringer_client/features/pool/update.gleam" }
+  - { module: "features/pool/view", path: "apps/client/src/scrumbringer_client/features/pool/view.gleam" }
+  - { module: "features/projects/update", path: "apps/client/src/scrumbringer_client/features/projects/update.gleam" }
+  - { module: "features/projects/view", path: "apps/client/src/scrumbringer_client/features/projects/view.gleam" }
+  - { module: "features/skills/update", path: "apps/client/src/scrumbringer_client/features/skills/update.gleam" }
+  - { module: "features/skills/view", path: "apps/client/src/scrumbringer_client/features/skills/view.gleam" }
+  - { module: "features/task_types/update", path: "apps/client/src/scrumbringer_client/features/task_types/update.gleam" }
+  - { module: "features/tasks/view", path: "apps/client/src/scrumbringer_client/features/tasks/view.gleam" }
+  - { module: "features/tasks/update", path: "apps/client/src/scrumbringer_client/features/tasks/update.gleam" }
+  - { module: "features/fichas/view", path: "apps/client/src/scrumbringer_client/features/fichas/view.gleam" }
+  - { module: "features/layout/responsive_drawer", path: "apps/client/src/scrumbringer_client/features/layout/responsive_drawer.gleam" }
+  - { module: "features/layout/sidebar_state", path: "apps/client/src/scrumbringer_client/features/layout/sidebar_state.gleam" }
+  - { module: "features/layout/three_panel_layout", path: "apps/client/src/scrumbringer_client/features/layout/three_panel_layout.gleam" }
+  - { module: "features/layout/view_mode_toggle", path: "apps/client/src/scrumbringer_client/features/layout/view_mode_toggle.gleam" }
+  - { module: "features/layout/center_panel", path: "apps/client/src/scrumbringer_client/features/layout/center_panel.gleam" }
+  - { module: "features/layout/left_panel", path: "apps/client/src/scrumbringer_client/features/layout/left_panel.gleam" }
+  - { module: "features/layout/right_panel", path: "apps/client/src/scrumbringer_client/features/layout/right_panel.gleam" }
+  - { module: "features/views/grouped_list", path: "apps/client/src/scrumbringer_client/features/views/grouped_list.gleam" }
+  - { module: "features/views/kanban_board", path: "apps/client/src/scrumbringer_client/features/views/kanban_board.gleam" }
+  - { module: "features/assignments/components/assignments_card", path: "apps/client/src/scrumbringer_client/features/assignments/components/assignments_card.gleam" }
+  - { module: "features/assignments/components/project_card", path: "apps/client/src/scrumbringer_client/features/assignments/components/project_card.gleam" }
+  - { module: "features/assignments/components/user_card", path: "apps/client/src/scrumbringer_client/features/assignments/components/user_card.gleam" }
+  - { module: "features/assignments/update", path: "apps/client/src/scrumbringer_client/features/assignments/update.gleam" }
+  - { module: "features/assignments/view", path: "apps/client/src/scrumbringer_client/features/assignments/view.gleam" }
+  - { module: "member_visuals", path: "apps/client/src/scrumbringer_client/member_visuals.gleam" }
+  - { module: "shared/i18n_helpers", path: "apps/client/src/scrumbringer_client/shared/i18n_helpers.gleam" }
+  - { module: "ui/layout", path: "apps/client/src/scrumbringer_client/ui/layout.gleam" }
+  - { module: "ui/loading", path: "apps/client/src/scrumbringer_client/ui/loading.gleam" }
+  - { module: "ui/badge", path: "apps/client/src/scrumbringer_client/ui/badge.gleam" }
+  - { module: "ui/color_picker", path: "apps/client/src/scrumbringer_client/ui/color_picker.gleam" }
+  - { module: "ui/card_state", path: "apps/client/src/scrumbringer_client/ui/card_state.gleam" }
+  - { module: "ui/card_tabs", path: "apps/client/src/scrumbringer_client/ui/card_tabs.gleam" }
+  - { module: "ui/copyable_input", path: "apps/client/src/scrumbringer_client/ui/copyable_input.gleam" }
+  - { module: "ui/dialog", path: "apps/client/src/scrumbringer_client/ui/dialog.gleam" }
+  - { module: "ui/expand_toggle", path: "apps/client/src/scrumbringer_client/ui/expand_toggle.gleam" }
+  - { module: "ui/icons", path: "apps/client/src/scrumbringer_client/ui/icons.gleam" }
+  - { module: "ui/modal_close_button", path: "apps/client/src/scrumbringer_client/ui/modal_close_button.gleam" }
+  - { module: "ui/note_dialog", path: "apps/client/src/scrumbringer_client/ui/note_dialog.gleam" }
+  - { module: "ui/notes_tabs", path: "apps/client/src/scrumbringer_client/ui/notes_tabs.gleam" }
+  - { module: "ui/tabs", path: "apps/client/src/scrumbringer_client/ui/tabs.gleam" }
+  - { module: "ui/task_item", path: "apps/client/src/scrumbringer_client/ui/task_item.gleam" }
+  - { module: "ui/task_tabs", path: "apps/client/src/scrumbringer_client/ui/task_tabs.gleam" }
+  - { module: "ui/confirm_dialog", path: "apps/client/src/scrumbringer_client/ui/confirm_dialog.gleam" }
+  - { module: "ui/task_status_utils", path: "apps/client/src/scrumbringer_client/ui/task_status_utils.gleam" }
+  - { module: "ui/task_blocked_badge", path: "apps/client/src/scrumbringer_client/ui/task_blocked_badge.gleam" }
+  - { module: "ui/card_badge", path: "apps/client/src/scrumbringer_client/ui/card_badge.gleam" }
+  - { module: "ui/css_class", path: "apps/client/src/scrumbringer_client/ui/css_class.gleam" }
+  - { module: "ui/empty_state", path: "apps/client/src/scrumbringer_client/ui/empty_state.gleam" }
+  - { module: "ui/error_banner", path: "apps/client/src/scrumbringer_client/ui/error_banner.gleam" }
+  - { module: "ui/event_decoders", path: "apps/client/src/scrumbringer_client/ui/event_decoders.gleam" }
+  - { module: "ui/icon_catalog", path: "apps/client/src/scrumbringer_client/ui/icon_catalog.gleam" }
+  - { module: "ui/icon_picker", path: "apps/client/src/scrumbringer_client/ui/icon_picker.gleam" }
+  - { module: "ui/toast", path: "apps/client/src/scrumbringer_client/ui/toast.gleam" }
+  - { module: "ui/task_type_icon", path: "apps/client/src/scrumbringer_client/ui/task_type_icon.gleam" }
+  - { module: "ui/task_color", path: "apps/client/src/scrumbringer_client/ui/task_color.gleam" }
+  - { module: "ui/section_header", path: "apps/client/src/scrumbringer_client/ui/section_header.gleam" }
+  - { module: "ui/notes_composer", path: "apps/client/src/scrumbringer_client/ui/notes_composer.gleam" }
+  - { module: "ui/tooltips/author_tooltip", path: "apps/client/src/scrumbringer_client/ui/tooltips/author_tooltip.gleam" }
+  - { module: "ui/tooltips/notes_preview_tooltip", path: "apps/client/src/scrumbringer_client/ui/tooltips/notes_preview_tooltip.gleam" }
+  - { module: "ui/tooltips/progress_tooltip", path: "apps/client/src/scrumbringer_client/ui/tooltips/progress_tooltip.gleam" }
+  - { module: "ui/tooltips/tab_badge", path: "apps/client/src/scrumbringer_client/ui/tooltips/tab_badge.gleam" }
+  - { module: "ui/tooltips/types", path: "apps/client/src/scrumbringer_client/ui/tooltips/types.gleam" }
+  - { module: "ui/action_buttons", path: "apps/client/src/scrumbringer_client/ui/action_buttons.gleam" }
+  - { module: "ui/card_detail_host", path: "apps/client/src/scrumbringer_client/ui/card_detail_host.gleam" }
+  - { module: "ui/card_meta", path: "apps/client/src/scrumbringer_client/ui/card_meta.gleam" }
+  - { module: "ui/card_progress", path: "apps/client/src/scrumbringer_client/ui/card_progress.gleam" }
+  - { module: "ui/card_section_header", path: "apps/client/src/scrumbringer_client/ui/card_section_header.gleam" }
+  - { module: "ui/card_state_badge", path: "apps/client/src/scrumbringer_client/ui/card_state_badge.gleam" }
+  - { module: "ui/card_title_meta", path: "apps/client/src/scrumbringer_client/ui/card_title_meta.gleam" }
+  - { module: "ui/data_table", path: "apps/client/src/scrumbringer_client/ui/data_table.gleam" }
+  - { module: "ui/error_notice", path: "apps/client/src/scrumbringer_client/ui/error_notice.gleam" }
+  - { module: "ui/form_field", path: "apps/client/src/scrumbringer_client/ui/form_field.gleam" }
+  - { module: "ui/info_callout", path: "apps/client/src/scrumbringer_client/ui/info_callout.gleam" }
+  - { module: "ui/modal_header", path: "apps/client/src/scrumbringer_client/ui/modal_header.gleam" }
+  - { module: "ui/notes_list", path: "apps/client/src/scrumbringer_client/ui/notes_list.gleam" }
+  - { module: "ui/remote", path: "apps/client/src/scrumbringer_client/ui/remote.gleam" }
+  - { module: "ui/task_actions", path: "apps/client/src/scrumbringer_client/ui/task_actions.gleam" }
+  - { module: "ui/task_state", path: "apps/client/src/scrumbringer_client/ui/task_state.gleam" }
+  - { module: "ui/search_select", path: "apps/client/src/scrumbringer_client/ui/search_select.gleam" }
+  - { module: "ui/task_hover_popup", path: "apps/client/src/scrumbringer_client/ui/task_hover_popup.gleam" }
+  - { module: "permissions", path: "apps/client/src/scrumbringer_client/permissions.gleam" }
+  - { module: "client_update_dispatch", path: "apps/client/src/scrumbringer_client/client_update_dispatch.gleam" }
+  - { module: "domain/ids", path: "apps/client/src/scrumbringer_client/domain/ids.gleam" }
+  - { module: "utils/text", path: "apps/client/src/scrumbringer_client/utils/text.gleam" }
+  - { module: "utils/format_date", path: "apps/client/src/scrumbringer_client/utils/format_date.gleam" }
+  - { module: "utils/card_queries", path: "apps/client/src/scrumbringer_client/utils/card_queries.gleam" }
+  - { module: "url_state", path: "apps/client/src/scrumbringer_client/url_state.gleam" }
+  - { module: "client_state", path: "apps/client/src/scrumbringer_client/client_state.gleam" }
+  - { module: "accept_invite", path: "apps/client/src/scrumbringer_client/accept_invite.gleam" }
+  - { module: "hydration", path: "apps/client/src/scrumbringer_client/hydration.gleam" }
+  - { module: "reset_password", path: "apps/client/src/scrumbringer_client/reset_password.gleam" }
+  - { module: "client_update", path: "apps/client/src/scrumbringer_client/client_update.gleam" }
+  - { module: "scrumbringer_client", path: "apps/client/src/scrumbringer_client.gleam" }
+  - { module: "domain/api_error", path: "shared/src/domain/api_error.gleam" }
+  - { module: "domain/capability", path: "shared/src/domain/capability.gleam" }
+  - { module: "domain/org", path: "shared/src/domain/org.gleam" }
+  - { module: "domain/org_role", path: "shared/src/domain/org_role.gleam" }
+  - { module: "domain/task_status", path: "shared/src/domain/task_status.gleam" }
+  - { module: "domain/user", path: "shared/src/domain/user.gleam" }
+  - { module: "domain/field_update", path: "shared/src/domain/field_update.gleam" }
+  - { module: "domain/project", path: "shared/src/domain/project.gleam" }
+  - { module: "domain/project_role", path: "shared/src/domain/project_role.gleam" }
+  - { module: "domain/task_type", path: "shared/src/domain/task_type.gleam" }
+  - { module: "domain/view_mode", path: "shared/src/domain/view_mode.gleam" }
+  - { module: "domain/workflow", path: "shared/src/domain/workflow.gleam" }
+  - { module: "domain/metrics", path: "shared/src/domain/metrics.gleam" }
+  - { module: "domain/card", path: "shared/src/domain/card.gleam" }
+  - { module: "domain/link_detection", path: "shared/src/domain/link_detection.gleam" }
+  - { module: "domain/remote", path: "shared/src/domain/remote.gleam" }
+  - { module: "domain/task", path: "shared/src/domain/task.gleam" }
+  - { module: "shared", path: "shared/src/shared.gleam" }
+  - { module: "helpers/json", path: "shared/src/helpers/json.gleam" }
+  - { module: "helpers/option", path: "shared/src/helpers/option.gleam" }
+
+mvu_topology:
+  present: yes
+  constructors:
+    - kind: application
+      module: "scrumbringer_client"
+      path: "apps/client/src/scrumbringer_client.gleam"
+      init: "init"
+      update: "client_update.update"
+      view: "client_view.view"
+      mount: "#app"
+      flags: no
+      notes: "SPA estándar sin paso de flags desde el host."
+  message_sources:
+    ui_events: ["GlobalKeyDown", "MemberDragStarted", "LoginSubmitted", "CardToggled"]
+    http: ["MeFetched", "ProjectsFetched", "MemberTaskCreated", "MemberNoteAdded"]
+    timers: ["NowWorkingTicked", "ToastTick"]
+    storage: ["ThemeSelected", "LocaleSelected"]
+    routing: ["UrlChanged"]
+    server_components: []
+  runtime_effects_summary:
+    uses_managed_effects: yes
+    standard_packages_detected: ["lustre/effect"]
+    custom_effects_modules: ["client_ffi", "app/effects", "api/*"]
+
+modules:
+  - module: "scrumbringer_client"
+    path: "apps/client/src/scrumbringer_client.gleam"
+    package: "scrumbringer_client"
+    layer: application
+    stability: stable
+    module_purpose: "Punto de entrada y orquestador principal de la SPA."
+    responsibilities:
+      primary: "Bootstrap de la aplicación Lustre."
+      secondary: ["Registro de Custom Elements.", "Inicialización del estado desde el contexto del navegador."]
+    public_api:
+      functions:
+        - { name: "main", visibility: pub, signature: "fn() -> Nil", capability: "bootstrap", effects: [ffi, dom], tags: [mvu] }
+        - { name: "app", visibility: pub, signature: "fn() -> lustre.App(Nil, Model, Msg)", capability: "constructor", effects: [pure], tags: [mvu] }
+    model_msg_snapshot:
+      model_types: ["Model"]
+      msg_types: ["Msg"]
+    refactor_signals:
+      - kind: god_module
+        severity: low
+        evidence: "La función init gestiona demasiadas fuentes de datos síncronas."
+        suggested_action: "Delegar carga de localStorage y detección de entorno a un módulo de bootstrap dedicado."
+        lustre_pattern: "init with flags"
+    decisions: ["Registro explícito de cada componente CRUD antes de iniciar el loop de Lustre."]
+    tests: { present: yes, notes: "i18n_smoke_test, hydration_test." }
+
+  - module: "client_state"
+    path: "apps/client/src/scrumbringer_client/client_state.gleam"
+    package: "scrumbringer_client"
+    layer: application
+    stability: evolving
+    module_purpose: "Definición centralizada del Modelo y Mensajes de la SPA."
+    responsibilities:
+      primary: "Estado global de la aplicación."
+      secondary: ["Tipos de navegación.", "Estados de carga remota (Remote)."]
+    public_api:
+      types:
+        - { name: "Model", kind: record, visibility: pub, role: "state", tags: [state-model] }
+        - { name: "Msg", kind: adt, visibility: pub, role: "protocol", tags: [msg-protocol] }
+    model_msg_snapshot:
+      model_types: ["CoreModel", "AuthModel", "AdminModel", "MemberModel", "UiModel"]
+      suspicious_state_shapes: ["MemberDrag usa offset_ready: Bool para validar coordenadas en lugar de variantes de ADT."]
+    refactor_signals:
+      - kind: god_module
+        severity: high
+        evidence: "1400+ líneas de tipos en un solo archivo."
+        suggested_action: "Fragmentar el Model en sub-records por feature (PageModel)."
+        lustre_pattern: "Sub-module Msg nesting"
+    tests: { present: yes, notes: "client_state_test." }
+
+  - module: "router"
+    path: "apps/client/src/scrumbringer_client/router.gleam"
+    package: "scrumbringer_client"
+    layer: application
+    stability: evolving
+    module_purpose: "Parsing de URLs y gestión de rutas de la SPA."
+    responsibilities:
+      primary: "Conversión de URL a Route ADT."
+      secondary: ["Generación de enlaces.", "Actualización del título de la página."]
+    refactor_signals:
+      - kind: manual_routing
+        severity: high
+        evidence: "Uso directo de FFI para History API y regex para parsing."
+        suggested_action: "Migrar a modem para un ruteo declarativo y tipado."
+        lustre_pattern: "modem Route ADT"
+
+lustre_example_alignment:
+  - example: "01-basics/01-hello-world"
+    teaches: "Estructura básica"
+    found_in_repo: yes
+    locations: ["scrumbringer_client.gleam"]
+    deviations_or_debt: "Ninguna."
+    minimization_opportunity: "Ninguna."
+  - example: "01-basics/02-attributes"
+    teaches: "Atributos HTML"
+    found_in_repo: yes
+    locations: ["ui/*.gleam"]
+    deviations_or_debt: "Uso extensivo de attributes.attribute para test-ids."
+    minimization_opportunity: "Ninguna."
+  - example: "01-basics/03-view-functions"
+    teaches: "Composición de vistas"
+    found_in_repo: yes
+    locations: ["ui/*.gleam"]
+    deviations_or_debt: "Patrones consistentes en todo el repo."
+    minimization_opportunity: "Ninguna."
+  - example: "01-basics/04-keyed-elements"
+    teaches: "Reconciliación eficiente"
+    found_in_repo: yes
+    locations: ["features/views/grouped_list.gleam"]
+    deviations_or_debt: "Listas dinámicas usan keyed correctamente."
+    minimization_opportunity: "Extender a KanbanBoard para evitar re-renders de tarjetas."
+  - example: "01-basics/05-fragments"
+    teaches: "Evitar divs innecesarios"
+    found_in_repo: yes
+    locations: ["ui/card_title_meta.gleam"]
+    deviations_or_debt: "Uso de element.fragment para metas dinámicos."
+    minimization_opportunity: "Ninguna."
+  - example: "01-basics/06-flags"
+    teaches: "Configuración inicial"
+    found_in_repo: no
+    locations: ["scrumbringer_client.init"]
+    deviations_or_debt: "Usa Nil flags; lee de localStorage dentro de init."
+    minimization_opportunity: "Pasar config inicial via flags para que init sea pura."
+  - example: "02-inputs/01-controlled-inputs"
+    teaches: "Inputs sincronizados"
+    found_in_repo: yes
+    locations: ["features/auth/view.gleam"]
+    deviations_or_debt: "Implementación estándar."
+    minimization_opportunity: "Ninguna."
+  - example: "02-inputs/02-decoding-events"
+    teaches: "Decodificación de eventos"
+    found_in_repo: yes
+    locations: ["ui/event_decoders.gleam"]
+    deviations_or_debt: "Decodificadores dispersos en algunos features."
+    minimization_opportunity: "Unificar en ui/event_decoders."
+  - example: "02-inputs/03-debouncing"
+    teaches: "Limitación de frecuencia"
+    found_in_repo: yes
+    locations: ["features/pool/update.gleam"]
+    deviations_or_debt: "Lógica de debouncing manual basada en ticks."
+    minimization_opportunity: "Usar un helper de efectos para debouncing genérico."
+  - example: "02-inputs/04-forms"
+    teaches: "Validación de formularios"
+    found_in_repo: yes
+    locations: ["components/card_crud_dialog.gleam"]
+    deviations_or_debt: "Validación campo a campo en el update."
+    minimization_opportunity: "Usar ADTs para estados del formulario (Valid/Invalid)."
+  - example: "03-effects/01-http-requests"
+    teaches: "HTTP gestionado"
+    found_in_repo: yes
+    locations: ["api/*.gleam"]
+    deviations_or_debt: "Wrappers propios sobre lustre/http."
+    minimization_opportunity: "Ninguna."
+  - example: "03-effects/02-random"
+    teaches: "Efectos aleatorios"
+    found_in_repo: no
+    locations: ["no encontrado"]
+    deviations_or_debt: "N/A (IDs generados en servidor)."
+    minimization_opportunity: "N/A."
+  - example: "03-effects/03-timers"
+    teaches: "Efectos de tiempo"
+    found_in_repo: yes
+    locations: ["features/now_working/update.gleam"]
+    deviations_or_debt: "Ticks para el contador de sesión."
+    minimization_opportunity: "Ninguna."
+  - example: "03-effects/04-local-storage"
+    teaches: "Persistencia"
+    found_in_repo: yes
+    locations: ["theme.gleam"]
+    deviations_or_debt: "FFI directo."
+    minimization_opportunity: "Usar plinth para LocalStorage."
+  - example: "03-effects/05-dom-effects"
+    teaches: "Mediciones del DOM"
+    found_in_repo: yes
+    locations: ["features/pool/update.gleam"]
+    deviations_or_debt: "Usado para rectángulos de colisión en D&D."
+    minimization_opportunity: "Asegurar uso de effect.after_paint."
+  - example: "03-effects/06-optimistic-requests"
+    teaches: "UI Optimista"
+    found_in_repo: yes
+    locations: ["features/pool/update.gleam"]
+    deviations_or_debt: "Cambios de estado de tareas."
+    minimization_opportunity: "Ninguna."
+  - example: "04-applications/01-routing"
+    teaches: "Gestión de URLs"
+    found_in_repo: yes
+    locations: ["router.gleam"]
+    deviations_or_debt: "Implementación manual compleja."
+    minimization_opportunity: "Migrar a modem."
+  - example: "04-applications/04-hydration"
+    teaches: "SSR a CSR"
+    found_in_repo: yes
+    locations: ["hydration.gleam"]
+    deviations_or_debt: "Planificación de carga de recursos basada en ruta."
+    minimization_opportunity: "Simplificar hydration.plan."
+  - example: "05-components/01-basic-setup"
+    teaches: "Web Components"
+    found_in_repo: yes
+    locations: ["components/*.gleam"]
+    deviations_or_debt: "Uso intensivo para diálogos."
+    minimization_opportunity: "Ninguna."
+  - example: "05-components/02-attributes-and-events"
+    teaches: "IO de componentes"
+    found_in_repo: yes
+    locations: ["components/*.gleam"]
+    deviations_or_debt: "Estándar."
+    minimization_opportunity: "Ninguna."
+  - example: "05-components/03-slots"
+    teaches: "Composición visual"
+    found_in_repo: yes
+    locations: ["components/crud_dialog_base.gleam"]
+    deviations_or_debt: "Uso de slots para contenido de diálogos."
+    minimization_opportunity: "Ninguna."
+  - example: "06-server-components/01-basic-setup"
+    teaches: "Componentes en servidor"
+    found_in_repo: no
+    locations: ["no encontrado"]
+    deviations_or_debt: "SPA estática."
+    minimization_opportunity: "Potencial para sincronización Kanban en tiempo real."
+  - example: "06-server-components/02-attributes-and-events"
+    teaches: "IO remota"
+    found_in_repo: no
+    locations: ["no encontrado"]
+    deviations_or_debt: "N/A."
+    minimization_opportunity: "N/A."
+  - example: "06-server-components/03-event-include"
+    teaches: "Sincronización selectiva"
+    found_in_repo: no
+    locations: ["no encontrado"]
+    deviations_or_debt: "N/A."
+    minimization_opportunity: "N/A."
+  - example: "06-server-components/04-multiple-clients"
+    teaches: "Presencia"
+    found_in_repo: no
+    locations: ["no encontrado"]
+    deviations_or_debt: "N/A."
+    minimization_opportunity: "N/A."
+  - example: "06-server-components/05-publish-subscribe"
+    teaches: "Bus de eventos"
+    found_in_repo: no
+    locations: ["no encontrado"]
+    deviations_or_debt: "N/A."
+    minimization_opportunity: "N/A."
+
+cross_module_analysis:
+  hotspots:
+    - theme: "Sincronización de Estado SPA"
+      tags: [state-model, mvu]
+      involved_modules: ["client_state", "client_update", "client_update_dispatch"]
+      why_it_matters: "El estado centralizado genera fricción en equipos paralelos."
+      consolidation_candidate: "Modelos fragmentados por sección (PageModel)."
+  overlaps:
+    - capability_theme: "Carga de Datos Remotos"
+      suspected_duplicates:
+        - module: "domain/remote"
+          symbols: ["Remote"]
+        - module: "client_state"
+          symbols: ["OperationState", "DialogState"]
+      recommended_resolution: "Estandarizar todo flujo asíncrono en Remote(a)."
+  simplification_opportunities:
+    - title: "Estandarización de Efectos de Navegador"
+      scope: ["client_ffi", "scrumbringer_client"]
+      change: "Reemplazar FFI custom por plinth/modem."
+      lustre_tooling_to_use: ["modem", "plinth"]
+      risk: medium
+
+type_safety_inventory:
+  domain_modules: ["shared/src/domain/*"]
+  codec_modules: ["shared/src/helpers/json", "scrumbringer_client/decoders"]
+  adapters_mappers_modules: ["scrumbringer_client/hydration", "scrumbringer_client/url_state"]
+  edge_boundaries:
+    - boundary: local-storage
+      modules: ["theme", "i18n/locale", "app/effects"]
+      raw_types_used: ["String"]
+      risks: ["Errores de parsing de JSON no validados."]
+      opportunities: ["Wrappers tipados para cada clave de storage."]
+    - boundary: routing
+      modules: ["router", "url_state"]
+      raw_types_used: ["String", "Option(String)"]
+      risks: ["Segmentos de ruta basados en strings sin validación."]
+      opportunities: ["modem Route ADT."]
+
+adt_opportunities:
+  - location:
+      module: "client_state"
+      path: "apps/client/src/scrumbringer_client/client_state.gleam"
+      type_or_function: "MemberDrag"
+    current_representation: "Record con offset_ready: Bool."
+    evidence: "El flag indica si las coordenadas x/y son válidas."
+    illegal_states_currently_possible: ["offset_ready: True con coordenadas 0.", "offset_ready: False pero se accede a coordenadas."]
+    proposed_adt:
+      name: "DragState"
+      definition: |
+        pub type DragState {
+          Idle
+          Pending(task_id: Int)
+          Active(task_id: Int, offset_x: Int, offset_y: Int)
+        }
+      replaces_or_wraps: "MemberDrag"
+    migration:
+      approach: ["Implementar ADT.", "Actualizar handlers en pool_workflow.", "Refactorizar vista con pattern matching."]
+      risk: low
+      impacted_modules: ["client_state", "pool_workflow"]
+    benefits: ["Previene errores de renderizado en D&D.", "Código de vista más limpio."]
+    tags: [performance, dom]
+
+  - location:
+      module: "client_state"
+      path: "apps/client/src/scrumbringer_client/client_state.gleam"
+      type_or_function: "ProjectDialogState"
+    current_representation: "Variantes redundantes con in_flight: Bool y error: Option(String)."
+    evidence: "Duplicidad en ProjectDialogCreate y ProjectDialogEdit."
+    illegal_states_currently_possible: ["DialogClosed con operation: InFlight."]
+    proposed_adt:
+      name: "ProjectDialog"
+      definition: |
+        pub type ProjectDialog {
+          ProjectDialog(mode: DialogMode, operation: OperationState)
+        }
+      replaces_or_wraps: "ProjectDialogState"
+    migration:
+      approach: ["Usar el patrón genérico DialogState(form)."]
+      risk: low
+      impacted_modules: ["client_state", "projects_workflow"]
+    benefits: ["Código más DRY.", "Estado de operación consistente."]
+    tags: [forms, validation]
+
+refactor_backlog_candidates:
+  - title: "Migración a modem para Ruteo"
+    scope: ["router", "scrumbringer_client", "client_ffi"]
+    why: "El ruteo manual es verboso y propenso a errores de parsing."
+    pattern: "04-applications/01-routing"
+    expected_code_reduction: medium
+    risk: high
+    prerequisites: ["Eliminación de History API FFI directa."]
+    tags: [routing, navigation]
+  - title: "Unificación de Decoders de Eventos de UI"
+    scope: ["ui/*"]
+    why: "Muchos decodificadores se redefinen inline."
+    pattern: "02-inputs/02-decoding-events"
+    expected_code_reduction: low
+    risk: low
+    prerequisites: ["Ninguno."]
+    tags: [event-decoding, view-composition]

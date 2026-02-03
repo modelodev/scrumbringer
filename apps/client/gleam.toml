@@ -4,8 +4,12 @@ target = "javascript"
 
 [dependencies]
 gleam_stdlib = "~> 0.68"
+gleam_javascript = "~> 1.0"
 gleam_json = "~> 3.0"
+gleam_http = "~> 4.3"
 lustre = "~> 5.0"
+lustre_http = { path = "../../packages/lustre_http" }
+plinth = "~> 0.9"
 shared = { path = "../../shared" }
 gleroglero = ">= 1.2.0 and < 2.0.0"
 modem = ">= 2.1.2 and < 3.0.0"

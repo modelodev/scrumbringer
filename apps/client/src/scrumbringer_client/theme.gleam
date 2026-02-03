@@ -5,6 +5,7 @@
 
 import gleam/list
 import gleam/string
+import plinth/javascript/storage as js_storage
 
 /// LocalStorage key for theme preference.
 pub const storage_key = "sb_theme"
@@ -52,29 +53,34 @@ pub fn decode_storage(value: String) -> ThemeStorage {
   }
 }
 
-@external(javascript, "./fetch.ffi.mjs", "local_storage_get")
-fn local_storage_get_ffi(_key: String) -> String {
-  ""
-}
-
-@external(javascript, "./fetch.ffi.mjs", "local_storage_set")
-fn local_storage_set_ffi(_key: String, _value: String) -> Nil {
-  Nil
-}
-
 /// Gets a value from localStorage (returns "" if not found).
 pub fn local_storage_get(key: String) -> String {
-  local_storage_get_ffi(key)
+  case js_storage.local() {
+    Ok(storage) ->
+      case js_storage.get_item(storage, key) {
+        Ok(value) -> value
+        Error(_) -> ""
+      }
+
+    Error(_) -> ""
+  }
 }
 
 /// Sets a value in localStorage.
 pub fn local_storage_set(key: String, value: String) -> Nil {
-  local_storage_set_ffi(key, value)
+  case js_storage.local() {
+    Ok(storage) -> {
+      let _ = js_storage.set_item(storage, key, value)
+      Nil
+    }
+
+    Error(_) -> Nil
+  }
 }
 
 /// Loads the theme preference from localStorage.
 pub fn load_from_storage() -> Theme {
-  case local_storage_get_ffi(storage_key) |> decode_storage {
+  case local_storage_get(storage_key) |> decode_storage {
     ThemeStored(theme) -> theme
     ThemeInvalid(_) -> Default
   }
@@ -82,7 +88,7 @@ pub fn load_from_storage() -> Theme {
 
 /// Saves the theme preference to localStorage.
 pub fn save_to_storage(theme: Theme) -> Nil {
-  local_storage_set_ffi(storage_key, encode_storage(theme))
+  local_storage_set(storage_key, encode_storage(theme))
 }
 
 /// Returns whether filters should be visible by default.

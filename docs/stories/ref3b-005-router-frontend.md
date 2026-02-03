@@ -54,7 +54,7 @@ Centralized all routing logic in `router.gleam`:
 - apps/client/src/scrumbringer_client/client_update.gleam (updated write_url, replace_url)
 - apps/client/src/scrumbringer_client/client_view.gleam (renamed page_title → admin_section_label)
 - apps/client/src/scrumbringer_client/client_ffi.gleam (added set_document_title)
-- apps/client/src/scrumbringer_client/fetch.ffi.mjs (added set_document_title)
+- apps/client/src/scrumbringer_client/client_ffi.gleam (added set_document_title)
 
 ### Test Results
 - gleam test: 82 passed

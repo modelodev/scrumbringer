@@ -62,6 +62,20 @@ Lustre UI application (Gleam → JavaScript). Recommended responsibilities:
 - Client-side state (filters, drag interactions, optimistic transitions)
 - API client and decoding of server responses
 
+Client FFI layout (isolated by domain, referenced via `client_ffi.gleam`):
+
+```
+apps/client/src/scrumbringer_client/
+├── client_ffi.gleam
+├── cookies.ffi.mjs
+├── date.ffi.mjs
+├── device.ffi.mjs
+├── dom.ffi.mjs
+├── keyboard.ffi.mjs
+├── navigation.ffi.mjs
+└── url.ffi.mjs
+```
+
 ### `apps/server/`
 
 Gleam HTTP API (Gleam → Erlang/BEAM). Recommended responsibilities:

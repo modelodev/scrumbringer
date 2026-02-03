@@ -44,7 +44,7 @@ pub fn normalize_language(language: String) -> Locale {
   }
 }
 
-@external(javascript, "../fetch.ffi.mjs", "navigator_language")
+@external(javascript, "../device.ffi.mjs", "navigator_language")
 fn navigator_language_ffi() -> String {
   ""
 }

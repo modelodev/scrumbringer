@@ -6,7 +6,7 @@
 //// - Expose browser APIs (history, location, DOM, clipboard)
 //// - Expose timing utilities (now_ms, set_timeout, parse_iso_ms)
 //// - Expose event registration (popstate, keydown)
-//// - Expose HTTP primitives (send, cookies, URL encoding)
+//// - Expose HTTP primitives (cookies, URL encoding)
 ////
 //// Non-responsibilities:
 //// - Lustre effects (see main client module)
@@ -16,9 +16,15 @@
 ////
 //// Relations:
 //// - Used by: scrumbringer_client (for effects and init), api (for HTTP)
-//// - Uses: fetch.ffi.mjs (JavaScript module)
+//// - Uses: cookies.ffi.mjs, date.ffi.mjs, dom.ffi.mjs, device.ffi.mjs,
+////   keyboard.ffi.mjs, navigation.ffi.mjs, url.ffi.mjs (JavaScript modules)
 
-import gleam/option.{type Option}
+import gleam/javascript/promise
+import plinth/browser/clipboard as js_clipboard
+import plinth/browser/document as js_document
+import plinth/browser/element as js_element
+import plinth/javascript/date as js_date
+import plinth/javascript/global as js_global
 
 // =============================================================================
 // Navigation APIs
@@ -34,7 +40,7 @@ import gleam/option.{type Option}
 ///
 /// Example:
 ///   history_push_state(...)
-@external(javascript, "./fetch.ffi.mjs", "history_push_state")
+@external(javascript, "./navigation.ffi.mjs", "history_push_state")
 pub fn history_push_state(_path: String) -> Nil {
   Nil
 }
@@ -49,7 +55,7 @@ pub fn history_push_state(_path: String) -> Nil {
 ///
 /// Example:
 ///   history_replace_state(...)
-@external(javascript, "./fetch.ffi.mjs", "history_replace_state")
+@external(javascript, "./navigation.ffi.mjs", "history_replace_state")
 pub fn history_replace_state(_path: String) -> Nil {
   Nil
 }
@@ -64,9 +70,8 @@ pub fn history_replace_state(_path: String) -> Nil {
 ///
 /// Example:
 ///   set_document_title(...)
-@external(javascript, "./fetch.ffi.mjs", "set_document_title")
-pub fn set_document_title(_title: String) -> Nil {
-  Nil
+pub fn set_document_title(title: String) -> Nil {
+  js_document.set_title(title)
 }
 
 // =============================================================================
@@ -78,7 +83,7 @@ pub fn set_document_title(_title: String) -> Nil {
 ///
 /// Example:
 ///   location_origin(...)
-@external(javascript, "./fetch.ffi.mjs", "location_origin")
+@external(javascript, "./navigation.ffi.mjs", "location_origin")
 pub fn location_origin() -> String {
   ""
 }
@@ -88,7 +93,7 @@ pub fn location_origin() -> String {
 ///
 /// Example:
 ///   location_pathname(...)
-@external(javascript, "./fetch.ffi.mjs", "location_pathname")
+@external(javascript, "./navigation.ffi.mjs", "location_pathname")
 pub fn location_pathname() -> String {
   ""
 }
@@ -98,7 +103,7 @@ pub fn location_pathname() -> String {
 ///
 /// Example:
 ///   location_hash(...)
-@external(javascript, "./fetch.ffi.mjs", "location_hash")
+@external(javascript, "./navigation.ffi.mjs", "location_hash")
 pub fn location_hash() -> String {
   ""
 }
@@ -108,7 +113,7 @@ pub fn location_hash() -> String {
 ///
 /// Example:
 ///   location_search(...)
-@external(javascript, "./fetch.ffi.mjs", "location_search")
+@external(javascript, "./navigation.ffi.mjs", "location_search")
 pub fn location_search() -> String {
   ""
 }
@@ -141,9 +146,11 @@ pub fn location_search() -> String {
 ///
 /// Example:
 ///   focus_element(...)
-@external(javascript, "./fetch.ffi.mjs", "focus_element")
-pub fn focus_element(_id: String) -> Nil {
-  Nil
+pub fn focus_element(id: String) -> Nil {
+  case js_document.get_element_by_id(id) {
+    Ok(element) -> js_element.focus(element)
+    Error(_) -> Nil
+  }
 }
 
 /// Get the value of an input element by ID.
@@ -160,9 +167,15 @@ pub fn focus_element(_id: String) -> Nil {
 ///
 /// Example:
 ///   input_value(...)
-@external(javascript, "./fetch.ffi.mjs", "input_value")
-pub fn input_value(_id: String) -> String {
-  ""
+pub fn input_value(id: String) -> String {
+  case js_document.get_element_by_id(id) {
+    Ok(element) ->
+      case js_element.value(element) {
+        Ok(value) -> value
+        Error(_) -> ""
+      }
+    Error(_) -> ""
+  }
 }
 
 /// Get the client offset (left, top) of an element by ID.
@@ -179,7 +192,7 @@ pub fn input_value(_id: String) -> String {
 ///
 /// Example:
 ///   element_client_offset(...)
-@external(javascript, "./fetch.ffi.mjs", "element_client_offset")
+@external(javascript, "./dom.ffi.mjs", "element_client_offset")
 pub fn element_client_offset(_id: String) -> #(Int, Int) {
   #(0, 0)
 }
@@ -198,7 +211,7 @@ pub fn element_client_offset(_id: String) -> #(Int, Int) {
 ///
 /// Example:
 ///   element_client_rect(...)
-@external(javascript, "./fetch.ffi.mjs", "element_client_rect")
+@external(javascript, "./dom.ffi.mjs", "element_client_rect")
 pub fn element_client_rect(_id: String) -> #(Int, Int, Int, Int) {
   #(0, 0, 0, 0)
 }
@@ -223,7 +236,7 @@ pub fn element_client_rect(_id: String) -> #(Int, Int, Int, Int) {
 ///
 /// Example:
 ///   register_keydown(...)
-@external(javascript, "./fetch.ffi.mjs", "register_keydown")
+@external(javascript, "./keyboard.ffi.mjs", "register_keydown")
 pub fn register_keydown(
   _cb: fn(#(String, Bool, Bool, Bool, Bool, Bool)) -> Nil,
 ) -> Nil {
@@ -246,8 +259,21 @@ pub fn register_keydown(
 ///
 /// Example:
 ///   copy_to_clipboard(...)
-@external(javascript, "./fetch.ffi.mjs", "copy_to_clipboard")
-pub fn copy_to_clipboard(_text: String, _cb: fn(Bool) -> Nil) -> Nil {
+pub fn copy_to_clipboard(text: String, cb: fn(Bool) -> Nil) -> Nil {
+  let _ =
+    js_clipboard.write_text(text)
+    |> promise.map(fn(result) {
+      case result {
+        Ok(_) -> cb(True)
+        Error(_) -> cb(False)
+      }
+      Nil
+    })
+    |> promise.rescue(fn(_) {
+      cb(False)
+      Nil
+    })
+
   Nil
 }
 
@@ -265,9 +291,8 @@ pub fn copy_to_clipboard(_text: String, _cb: fn(Bool) -> Nil) -> Nil {
 ///
 /// Example:
 ///   now_ms(...)
-@external(javascript, "./fetch.ffi.mjs", "now_ms")
 pub fn now_ms() -> Int {
-  0
+  js_date.now() |> js_date.get_time
 }
 
 /// Parse an ISO date string to milliseconds since epoch.
@@ -280,9 +305,8 @@ pub fn now_ms() -> Int {
 ///
 /// Example:
 ///   parse_iso_ms(...)
-@external(javascript, "./fetch.ffi.mjs", "parse_iso_ms")
-pub fn parse_iso_ms(_iso: String) -> Int {
-  0
+pub fn parse_iso_ms(iso: String) -> Int {
+  js_date.new(iso) |> js_date.get_time
 }
 
 /// Calculate days elapsed since an ISO date string.
@@ -295,9 +319,18 @@ pub fn parse_iso_ms(_iso: String) -> Int {
 ///
 /// Example:
 ///   days_since_iso(...)
-@external(javascript, "./fetch.ffi.mjs", "days_since_iso")
-pub fn days_since_iso(_iso: String) -> Int {
-  0
+pub fn days_since_iso(iso: String) -> Int {
+  case iso {
+    "" -> 0
+    _ -> {
+      let parsed = parse_iso_ms(iso)
+      let diff = now_ms() - parsed
+      case diff > 0 {
+        True -> diff / 86_400_000
+        False -> 0
+      }
+    }
+  }
 }
 
 /// Schedule a callback after a delay in milliseconds.
@@ -314,9 +347,8 @@ pub fn days_since_iso(_iso: String) -> Int {
 ///
 /// Example:
 ///   set_timeout(...)
-@external(javascript, "./fetch.ffi.mjs", "set_timeout")
-pub fn set_timeout(_ms: Int, _cb: fn(Nil) -> Nil) -> Int {
-  0
+pub fn set_timeout(ms: Int, cb: fn(Nil) -> Nil) -> js_global.TimerID {
+  js_global.set_timeout(ms, fn() { cb(Nil) })
 }
 
 // =============================================================================
@@ -336,7 +368,7 @@ pub fn set_timeout(_ms: Int, _cb: fn(Nil) -> Nil) -> Int {
 ///
 /// Example:
 ///   is_mobile(...)
-@external(javascript, "./fetch.ffi.mjs", "is_mobile")
+@external(javascript, "./device.ffi.mjs", "is_mobile")
 pub fn is_mobile() -> Bool {
   False
 }
@@ -359,37 +391,9 @@ pub fn is_mobile() -> Bool {
 ///
 /// Example:
 ///   read_cookie(...)
-@external(javascript, "./fetch.ffi.mjs", "read_cookie")
+@external(javascript, "./cookies.ffi.mjs", "read_cookie")
 pub fn read_cookie(_name: String) -> String {
   ""
-}
-
-/// Send an HTTP request with the specified method, URL, headers, and body.
-///
-/// The callback receives a tuple of (status_code, response_body).
-/// This is a low-level primitive; prefer using api.gleam for typed requests.
-///
-/// ## Example
-///
-/// ```gleam
-/// send("GET", "/api/users", [#("Accept", "application/json")], None, fn(response) {
-///   let #(status, body) = response
-///   // handle response
-/// })
-/// ```
-/// Provides send.
-///
-/// Example:
-///   send(...)
-@external(javascript, "./fetch.ffi.mjs", "send")
-pub fn send(
-  _method: String,
-  _url: String,
-  _headers: List(#(String, String)),
-  _body: Option(String),
-  _callback: fn(#(Int, String)) -> Nil,
-) -> Nil {
-  Nil
 }
 
 /// URL-encode a string component.
@@ -404,7 +408,7 @@ pub fn send(
 ///
 /// Example:
 ///   encode_uri_component(...)
-@external(javascript, "./fetch.ffi.mjs", "encode_uri_component")
+@external(javascript, "./url.ffi.mjs", "encode_uri_component")
 pub fn encode_uri_component(_value: String) -> String {
   ""
 }
@@ -418,7 +422,7 @@ pub fn encode_uri_component(_value: String) -> String {
 ///
 /// Example:
 ///   date_today(...)
-@external(javascript, "./fetch.ffi.mjs", "date_today")
+@external(javascript, "./date.ffi.mjs", "date_today")
 pub fn date_today() -> String {
   ""
 }
@@ -428,7 +432,7 @@ pub fn date_today() -> String {
 ///
 /// Example:
 ///   date_days_ago(...)
-@external(javascript, "./fetch.ffi.mjs", "date_days_ago")
+@external(javascript, "./date.ffi.mjs", "date_days_ago")
 pub fn date_days_ago(_days: Int) -> String {
   ""
 }

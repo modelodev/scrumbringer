@@ -28,6 +28,9 @@
 //// ```
 
 import gleam/dynamic/decode
+import gleam/http
+import gleam/http/request
+import gleam/http/response
 import gleam/json
 import gleam/list
 import gleam/option
@@ -35,6 +38,7 @@ import gleam/result
 import gleam/string
 
 import lustre/effect.{type Effect}
+import lustre_http as http_client
 
 import scrumbringer_client/client_ffi
 
@@ -162,6 +166,65 @@ pub fn decode_failure(status: Int, text: String) -> ApiError {
   }
 }
 
+fn normalize_url(url: String) -> String {
+  case string.starts_with(url, "/") {
+    True -> client_ffi.location_origin() <> url
+    False -> url
+  }
+}
+
+fn method_from_string(method: String) -> http.Method {
+  case string.uppercase(method) {
+    "POST" -> http.Post
+    "PUT" -> http.Put
+    "PATCH" -> http.Patch
+    "DELETE" -> http.Delete
+    "HEAD" -> http.Head
+    "OPTIONS" -> http.Options
+    _ -> http.Get
+  }
+}
+
+fn build_request(
+  method: String,
+  url: String,
+  headers: List(#(String, String)),
+  body: option.Option(String),
+) -> request.Request(String) {
+  let req = case request.to(normalize_url(url)) {
+    Ok(req) -> req
+    Error(_) -> request.new() |> request.set_path(url)
+  }
+
+  let req = request.set_method(req, method_from_string(method))
+
+  let req =
+    list.fold(headers, req, fn(req, header) {
+      let #(key, value) = header
+      request.set_header(req, string.lowercase(key), value)
+    })
+
+  case body {
+    option.Some(body_string) -> request.set_body(req, body_string)
+    option.None -> req
+  }
+}
+
+fn http_error_to_api_error(err: http_client.HttpError) -> ApiError {
+  case err {
+    http_client.BadUrl(url) ->
+      ApiError(status: 0, code: "BAD_URL", message: "Bad URL: " <> url)
+    http_client.NetworkError ->
+      ApiError(status: 0, code: "NETWORK_ERROR", message: "Network error")
+    http_client.JsonError(_) ->
+      ApiError(status: 0, code: "DECODE_ERROR", message: "Failed to decode")
+    http_client.NotFound -> decode_failure(404, "")
+    http_client.Unauthorized -> decode_failure(401, "")
+    http_client.InternalServerError(body) -> decode_failure(500, body)
+    http_client.OtherError(status, body) -> decode_failure(status, body)
+  }
+}
+
 // =============================================================================
 // Request Functions
 // =============================================================================
@@ -180,44 +243,46 @@ pub fn request(
   decoder: decode.Decoder(a),
   to_msg: fn(ApiResult(a)) -> msg,
 ) -> Effect(msg) {
-  effect.from(fn(dispatch) {
-    let csrf = read_cookie("sb_csrf")
+  let csrf = read_cookie("sb_csrf")
 
-    let base_headers = [#("Accept", "application/json")]
+  let base_headers = [#("accept", "application/json")]
 
-    let headers = case body {
-      option.Some(_) -> [#("Content-Type", "application/json"), ..base_headers]
-      option.None -> base_headers
-    }
+  let headers = case body {
+    option.Some(_) -> [#("content-type", "application/json"), ..base_headers]
+    option.None -> base_headers
+  }
 
-    let headers = list.append(headers, build_csrf_headers(method, csrf))
+  let headers = list.append(headers, build_csrf_headers(method, csrf))
 
-    let body_string = option.map(body, json.to_string)
+  let body_string = option.map(body, json.to_string)
 
-    client_ffi.send(method, url, headers, body_string, fn(result) {
-      let #(status, text) = result
+  let req = build_request(method, url, headers, body_string)
 
-      let msg = case status >= 200 && status < 300 {
-        True -> {
-          case status == 204 || string.length(text) == 0 {
-            True ->
-              to_msg(
+  http_client.send(
+    req,
+    http_client.expect_text_response(
+      fn(res: response.Response(String)) {
+        let response.Response(status: status, headers: _, body: text) = res
+
+        case status >= 200 && status < 300 {
+          True ->
+            case status == 204 || string.length(text) == 0 {
+              True ->
                 Error(ApiError(
                   status: status,
                   code: "EMPTY",
                   message: "Empty response",
-                )),
-              )
-            False -> decode_success(status, text, decoder) |> to_msg
-          }
+                ))
+              False -> decode_success(status, text, decoder)
+            }
+
+          False -> Error(decode_failure(status, text))
         }
-
-        False -> to_msg(Error(decode_failure(status, text)))
-      }
-
-      dispatch(msg)
-    })
-  })
+      },
+      http_error_to_api_error,
+      to_msg,
+    ),
+  )
 }
 
 /// Make an HTTP request expecting no response body (204 No Content).
@@ -233,29 +298,34 @@ pub fn request_nil(
   body: option.Option(json.Json),
   to_msg: fn(ApiResult(Nil)) -> msg,
 ) -> Effect(msg) {
-  effect.from(fn(dispatch) {
-    let csrf = read_cookie("sb_csrf")
+  let csrf = read_cookie("sb_csrf")
 
-    let base_headers = [#("Accept", "application/json")]
+  let base_headers = [#("accept", "application/json")]
 
-    let headers = case body {
-      option.Some(_) -> [#("Content-Type", "application/json"), ..base_headers]
-      option.None -> base_headers
-    }
+  let headers = case body {
+    option.Some(_) -> [#("content-type", "application/json"), ..base_headers]
+    option.None -> base_headers
+  }
 
-    let headers = list.append(headers, build_csrf_headers(method, csrf))
+  let headers = list.append(headers, build_csrf_headers(method, csrf))
 
-    let body_string = option.map(body, json.to_string)
+  let body_string = option.map(body, json.to_string)
 
-    client_ffi.send(method, url, headers, body_string, fn(result) {
-      let #(status, text) = result
+  let req = build_request(method, url, headers, body_string)
 
-      let msg = case status >= 200 && status < 300 {
-        True -> to_msg(Ok(Nil))
-        False -> to_msg(Error(decode_failure(status, text)))
-      }
+  http_client.send(
+    req,
+    http_client.expect_text_response(
+      fn(res: response.Response(String)) {
+        let response.Response(status: status, headers: _, body: text) = res
 
-      dispatch(msg)
-    })
-  })
+        case status >= 200 && status < 300 {
+          True -> Ok(Nil)
+          False -> Error(decode_failure(status, text))
+        }
+      },
+      http_error_to_api_error,
+      to_msg,
+    ),
+  )
 }
