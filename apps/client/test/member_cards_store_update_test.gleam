@@ -1,5 +1,6 @@
 import domain/api_error.{type ApiError, ApiError}
 import domain/card.{type Card, Card, Pendiente}
+import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import gleam/option
 import gleeunit/should
 import scrumbringer_client/client_state
@@ -42,7 +43,7 @@ fn base_model_with_store(
     client_state.MemberModel(
       ..member,
       member_cards_store: store,
-      member_cards: client_state.NotAsked,
+      member_cards: NotAsked,
     )
   })
 }
@@ -86,7 +87,7 @@ pub fn member_project_cards_error_preserves_store_test() {
 
   normalized_store.get_by_project(next.member.member_cards_store, 10)
   |> should.equal([card_a])
-  next.member.member_cards |> should.equal(client_state.Failed(api_error()))
+  next.member.member_cards |> should.equal(Failed(api_error()))
 }
 
 pub fn pending_never_below_zero_test() {
@@ -145,10 +146,7 @@ pub fn partial_error_keeps_global_loaded_test() {
   let model =
     base_model_with_store(store)
     |> client_state.update_member(fn(member) {
-      client_state.MemberModel(
-        ..member,
-        member_cards: client_state.Loaded([card_a]),
-      )
+      client_state.MemberModel(..member, member_cards: Loaded([card_a]))
     })
 
   let #(next, _fx) =
@@ -160,7 +158,7 @@ pub fn partial_error_keeps_global_loaded_test() {
       )),
     )
 
-  next.member.member_cards |> should.equal(client_state.Loaded([card_a]))
+  next.member.member_cards |> should.equal(Loaded([card_a]))
 }
 
 pub fn pending_counts_across_multi_project_refresh_test() {
@@ -189,5 +187,5 @@ pub fn pending_counts_across_multi_project_refresh_test() {
     )
 
   normalized_store.pending(next_b.member.member_cards_store) |> should.equal(0)
-  next_b.member.member_cards |> should.not_equal(client_state.Loading)
+  next_b.member.member_cards |> should.not_equal(Loading)
 }

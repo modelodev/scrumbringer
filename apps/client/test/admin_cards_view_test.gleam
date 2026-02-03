@@ -6,8 +6,9 @@ import lustre/element
 import domain/card.{Card, Pendiente}
 import domain/project.{Project}
 import domain/project_role.{Manager}
+import domain/remote.{Loaded}
 import scrumbringer_client/client_state.{
-  type Model, AdminModel, Loaded, MemberModel, default_model, update_admin,
+  type Model, AdminModel, MemberModel, default_model, update_admin,
   update_member,
 }
 import scrumbringer_client/features/admin/view as admin_view

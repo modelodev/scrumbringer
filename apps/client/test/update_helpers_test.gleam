@@ -1,10 +1,11 @@
 import domain/org.{OrgUser}
+import domain/org_role.{Admin}
+import domain/remote.{Loaded, NotAsked}
 import domain/task.{Task}
 import domain/task_status
 import domain/task_type.{TaskTypeInline}
 import gleam/option.{None}
 import gleeunit/should
-import scrumbringer_client/client_state.{Loaded, NotAsked}
 import scrumbringer_client/update_helpers
 
 pub fn empty_to_opt_trims_whitespace_test() {
@@ -64,7 +65,7 @@ pub fn resolve_org_user_returns_none_when_missing_test() {
     OrgUser(
       id: 1,
       email: "admin@example.com",
-      org_role: "admin",
+      org_role: Admin,
       created_at: "2026-01-01T00:00:00Z",
     ),
   ]

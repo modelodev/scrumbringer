@@ -1,9 +1,9 @@
 import gleeunit/should
 
 import domain/api_error.{ApiError}
+import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/client_state.{
-  Failed, Loaded, Loading, NotAsked, Rect, rect_contains_point,
-  remote_to_resource_state,
+  Rect, rect_contains_point, remote_to_resource_state,
 }
 import scrumbringer_client/hydration
 

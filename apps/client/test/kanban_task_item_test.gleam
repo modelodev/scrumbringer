@@ -1,5 +1,6 @@
 import domain/card.{Card, Pendiente}
 import domain/org.{OrgUser}
+import domain/org_role.{Admin}
 import domain/task.{type Task, Task}
 import domain/task_status
 import domain/task_type.{TaskTypeInline}
@@ -38,7 +39,7 @@ fn base_config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
       OrgUser(
         id: 1,
         email: "admin@example.com",
-        org_role: "admin",
+        org_role: Admin,
         created_at: "2026-01-01T00:00:00Z",
       ),
     ],

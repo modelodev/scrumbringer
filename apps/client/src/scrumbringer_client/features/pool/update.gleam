@@ -29,11 +29,13 @@ import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option as opt
+import gleam/string
 
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/task
+import domain/task_status
 import scrumbringer_client/api/tasks as api_tasks
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_ffi
@@ -60,9 +62,17 @@ pub fn handle_pool_status_changed(
   value: String,
   member_refresh: fn(Model) -> #(Model, Effect(Msg)),
 ) -> #(Model, Effect(Msg)) {
+  let next_status = case string.trim(value) {
+    "" -> opt.None
+    _ ->
+      case task_status.parse_task_status(value) {
+        Ok(status) -> opt.Some(status)
+        Error(_) -> opt.None
+      }
+  }
   let model =
     update_member(model, fn(member) {
-      MemberModel(..member, member_filters_status: value)
+      MemberModel(..member, member_filters_status: next_status)
     })
   member_refresh(model)
 }
@@ -73,9 +83,10 @@ pub fn handle_pool_type_changed(
   value: String,
   member_refresh: fn(Model) -> #(Model, Effect(Msg)),
 ) -> #(Model, Effect(Msg)) {
+  let next_type_id = update_helpers.empty_to_int_opt(value)
   let model =
     update_member(model, fn(member) {
-      MemberModel(..member, member_filters_type_id: value)
+      MemberModel(..member, member_filters_type_id: next_type_id)
     })
   member_refresh(model)
 }
@@ -86,9 +97,10 @@ pub fn handle_pool_capability_changed(
   value: String,
   member_refresh: fn(Model) -> #(Model, Effect(Msg)),
 ) -> #(Model, Effect(Msg)) {
+  let next_capability_id = update_helpers.empty_to_int_opt(value)
   let model =
     update_member(model, fn(member) {
-      MemberModel(..member, member_filters_capability_id: value)
+      MemberModel(..member, member_filters_capability_id: next_capability_id)
     })
   member_refresh(model)
 }
@@ -128,8 +140,9 @@ pub fn handle_clear_filters(
     update_member(model, fn(member) {
       MemberModel(
         ..member,
-        member_filters_type_id: "",
-        member_filters_capability_id: "",
+        member_filters_status: opt.None,
+        member_filters_type_id: opt.None,
+        member_filters_capability_id: opt.None,
         member_filters_q: "",
         member_quick_my_caps: False,
       )

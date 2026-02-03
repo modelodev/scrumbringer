@@ -1,9 +1,9 @@
 import domain/api_error.{ApiError}
+import domain/remote.{Failed, Loaded, NotAsked}
 import gleam/string
 import gleeunit/should
 import lustre/element
 import lustre/element/html.{text}
-import scrumbringer_client/client_state.{Failed, Loaded, NotAsked}
 import scrumbringer_client/ui/data_table
 
 fn base_config() -> data_table.DataTableConfig(String, msg) {

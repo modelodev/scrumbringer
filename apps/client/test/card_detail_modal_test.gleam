@@ -7,7 +7,7 @@ import gleam/option
 import gleeunit/should
 
 import domain/card.{type Card, Card, EnCurso, Pendiente}
-import scrumbringer_client/client_state.{Loaded, NotAsked}
+import domain/remote.{Loaded, NotAsked}
 import scrumbringer_client/components/card_detail_modal.{
   type Model, CardIdReceived, CardReceived, LocaleReceived, Model, TasksReceived,
 }

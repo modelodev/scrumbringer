@@ -9,10 +9,11 @@ import lustre/effect
 
 import domain/org.{type OrgUser, OrgUser}
 import domain/org_role
+import domain/remote.{Loaded}
 import domain/user.{type User, User}
 import scrumbringer_client/client_state.{
-  type Model, Admin, AdminModel, CoreModel, Loaded, UiModel, update_admin,
-  update_core, update_ui,
+  type Model, Admin, AdminModel, CoreModel, UiModel, update_admin, update_core,
+  update_ui,
 }
 import scrumbringer_client/features/admin/org_settings
 import scrumbringer_client/permissions
@@ -38,7 +39,7 @@ fn make_user(id: Int, role: org_role.OrgRole) -> User {
   )
 }
 
-fn make_org_user(id: Int, role: String) -> OrgUser {
+fn make_org_user(id: Int, role: org_role.OrgRole) -> OrgUser {
   OrgUser(
     id: id,
     email: "user" <> "@example.com",
@@ -64,7 +65,7 @@ pub fn saved_ok_updates_current_user_role_to_admin_test() {
     })
 
   // Action: admin updates user 42's role to admin
-  let updated_org_user = make_org_user(42, "admin")
+  let updated_org_user = make_org_user(42, org_role.Admin)
   let #(next, _effect) =
     org_settings.handle_org_settings_saved_ok(model, updated_org_user)
 
@@ -88,7 +89,7 @@ pub fn saved_ok_updates_current_user_role_to_member_test() {
     })
 
   // Action: admin updates user 42's role to member
-  let updated_org_user = make_org_user(42, "member")
+  let updated_org_user = make_org_user(42, org_role.Member)
   let #(next, _effect) =
     org_settings.handle_org_settings_saved_ok(model, updated_org_user)
 
@@ -112,7 +113,7 @@ pub fn saved_ok_does_not_change_user_when_different_id_test() {
     })
 
   // Action: admin updates a DIFFERENT user (id=99) to member
-  let updated_org_user = make_org_user(99, "member")
+  let updated_org_user = make_org_user(99, org_role.Member)
   let #(next, _effect) =
     org_settings.handle_org_settings_saved_ok(model, updated_org_user)
 
@@ -134,7 +135,7 @@ pub fn saved_ok_handles_none_user_gracefully_test() {
     })
 
   // Action: update some user's role
-  let updated_org_user = make_org_user(42, "admin")
+  let updated_org_user = make_org_user(42, org_role.Admin)
   let #(next, _effect) =
     org_settings.handle_org_settings_saved_ok(model, updated_org_user)
 
@@ -155,7 +156,7 @@ pub fn saved_ok_ignores_invalid_role_string_test() {
     })
 
   // Action: update with invalid role string (shouldn't happen, but defensive)
-  let updated_org_user = make_org_user(42, "invalid_role")
+  let updated_org_user = make_org_user(42, org_role.Member)
   let #(next, _effect) =
     org_settings.handle_org_settings_saved_ok(model, updated_org_user)
 
@@ -172,40 +173,40 @@ pub fn saved_ok_ignores_invalid_role_string_test() {
 
 pub fn saved_ok_updates_org_settings_users_list_test() {
   // Setup: org_settings_users has user 42 as member
-  let existing_user = make_org_user(42, "member")
+  let existing_user = make_org_user(42, org_role.Member)
   let model =
     update_admin(base_model(), fn(admin) {
       AdminModel(..admin, org_settings_users: Loaded([existing_user]))
     })
 
   // Action: update user 42 to admin
-  let updated_org_user = make_org_user(42, "admin")
+  let updated_org_user = make_org_user(42, org_role.Admin)
   let #(next, _effect) =
     org_settings.handle_org_settings_saved_ok(model, updated_org_user)
 
   // Assert: org_settings_users should have updated role
   case next.admin.org_settings_users {
-    Loaded([u]) -> u.org_role |> should.equal("admin")
+    Loaded([u]) -> u.org_role |> should.equal(org_role.Admin)
     _ -> should.fail()
   }
 }
 
 pub fn saved_ok_updates_org_users_cache_test() {
   // Setup: org_users_cache has user 42 as member
-  let existing_user = make_org_user(42, "member")
+  let existing_user = make_org_user(42, org_role.Member)
   let model =
     update_admin(base_model(), fn(admin) {
       AdminModel(..admin, org_users_cache: Loaded([existing_user]))
     })
 
   // Action: update user 42 to admin
-  let updated_org_user = make_org_user(42, "admin")
+  let updated_org_user = make_org_user(42, org_role.Admin)
   let #(next, _effect) =
     org_settings.handle_org_settings_saved_ok(model, updated_org_user)
 
   // Assert: org_users_cache should have updated role
   case next.admin.org_users_cache {
-    Loaded([u]) -> u.org_role |> should.equal("admin")
+    Loaded([u]) -> u.org_role |> should.equal(org_role.Admin)
     _ -> should.fail()
   }
 }
@@ -223,7 +224,7 @@ pub fn saved_ok_clears_in_flight_and_error_state_test() {
     })
 
   // Action: successful save
-  let updated_org_user = make_org_user(42, "admin")
+  let updated_org_user = make_org_user(42, org_role.Admin)
   let #(next, _effect) =
     org_settings.handle_org_settings_saved_ok(model, updated_org_user)
 
@@ -235,7 +236,7 @@ pub fn saved_ok_clears_in_flight_and_error_state_test() {
 
 pub fn saved_ok_returns_no_effect_test() {
   let model = base_model()
-  let updated_org_user = make_org_user(42, "admin")
+  let updated_org_user = make_org_user(42, org_role.Admin)
   let #(_next, fx) =
     org_settings.handle_org_settings_saved_ok(model, updated_org_user)
 
@@ -248,14 +249,14 @@ pub fn saved_ok_returns_no_effect_test() {
 // =============================================================================
 
 pub fn role_changed_triggers_save_when_role_diff_test() {
-  let user = make_org_user(1, "member")
+  let user = make_org_user(1, org_role.Member)
   let model =
     update_admin(base_model(), fn(admin) {
       AdminModel(..admin, org_settings_users: Loaded([user]))
     })
 
   let #(updated_model, fx) =
-    org_settings.handle_org_settings_role_changed(model, 1, "admin")
+    org_settings.handle_org_settings_role_changed(model, 1, org_role.Admin)
 
   updated_model.admin.org_settings_save_in_flight
   |> should.equal(True)
@@ -265,14 +266,14 @@ pub fn role_changed_triggers_save_when_role_diff_test() {
 }
 
 pub fn role_changed_noop_when_role_is_same_test() {
-  let user = make_org_user(1, "member")
+  let user = make_org_user(1, org_role.Member)
   let model =
     update_admin(base_model(), fn(admin) {
       AdminModel(..admin, org_settings_users: Loaded([user]))
     })
 
   let #(updated_model, fx) =
-    org_settings.handle_org_settings_role_changed(model, 1, "member")
+    org_settings.handle_org_settings_role_changed(model, 1, org_role.Member)
 
   updated_model.admin.org_settings_save_in_flight
   |> should.equal(False)
@@ -280,7 +281,7 @@ pub fn role_changed_noop_when_role_is_same_test() {
 }
 
 pub fn role_changed_ignored_when_in_flight_test() {
-  let user = make_org_user(1, "member")
+  let user = make_org_user(1, org_role.Member)
   let model =
     update_admin(base_model(), fn(admin) {
       AdminModel(
@@ -291,7 +292,7 @@ pub fn role_changed_ignored_when_in_flight_test() {
     })
 
   let #(updated_model, fx) =
-    org_settings.handle_org_settings_role_changed(model, 1, "admin")
+    org_settings.handle_org_settings_role_changed(model, 1, org_role.Admin)
 
   updated_model.admin.org_settings_save_in_flight
   |> should.equal(True)
@@ -299,7 +300,7 @@ pub fn role_changed_ignored_when_in_flight_test() {
 }
 
 pub fn saved_ok_shows_toast_test() {
-  let user = make_org_user(1, "admin")
+  let user = make_org_user(1, org_role.Admin)
   let model =
     update_ui(
       update_admin(base_model(), fn(admin) {

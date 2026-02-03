@@ -1,15 +1,15 @@
-import domain/api_error.{ApiError}
+import domain/api_error.{type ApiError, ApiError}
+import domain/remote as remote_state
 import gleam/string
 import gleeunit/should
 import lustre/element
 import lustre/element/html.{div, text}
-import scrumbringer_client/client_state.{Failed, Loaded, NotAsked}
 import scrumbringer_client/ui/remote
 
 pub fn view_remote_renders_loading_for_not_asked_test() {
   let rendered =
     remote.view_remote(
-      NotAsked,
+      remote_state.NotAsked,
       loading: fn() { div([], [text("Loading")]) },
       error: fn(_err) { div([], [text("Error")]) },
       loaded: fn(_data) { div([], [text("Loaded")]) },
@@ -24,9 +24,9 @@ pub fn view_remote_renders_error_for_failed_test() {
 
   let rendered =
     remote.view_remote(
-      Failed(err),
+      remote_state.Failed(err),
       loading: fn() { div([], [text("Loading")]) },
-      error: fn(e) { div([], [text(e.message)]) },
+      error: fn(e: ApiError) { div([], [text(e.message)]) },
       loaded: fn(_data) { div([], [text("Loaded")]) },
     )
 
@@ -37,7 +37,7 @@ pub fn view_remote_renders_error_for_failed_test() {
 pub fn view_remote_renders_loaded_for_loaded_test() {
   let rendered =
     remote.view_remote(
-      Loaded([1]),
+      remote_state.Loaded([1]),
       loading: fn() { div([], [text("Loading")]) },
       error: fn(_err) { div([], [text("Error")]) },
       loaded: fn(_data) { div([], [text("Loaded")]) },
@@ -50,7 +50,7 @@ pub fn view_remote_renders_loaded_for_loaded_test() {
 pub fn view_remote_panel_uses_loading_panel_test() {
   let rendered =
     remote.view_remote_panel(
-      remote: NotAsked,
+      remote: remote_state.NotAsked,
       title: "Metrics",
       loading_msg: "Loading metrics...",
       loaded: fn(_data) { div([], [text("Loaded")]) },
@@ -66,7 +66,7 @@ pub fn view_remote_inline_uses_error_view_test() {
 
   let rendered =
     remote.view_remote_inline(
-      remote: Failed(err),
+      remote: remote_state.Failed(err),
       loading_msg: "Loading...",
       loaded: fn(_data) { div([], [text("Loaded")]) },
     )

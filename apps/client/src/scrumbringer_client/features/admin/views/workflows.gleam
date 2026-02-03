@@ -34,27 +34,27 @@ import lustre/event
 import gleam/dynamic/decode
 
 import domain/project.{type Project}
+import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task_type.{type TaskType}
 import domain/workflow.{type Rule, type TaskTemplate, type Workflow, Workflow}
 
 import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, type Remote, AdminRuleMetricsDrilldownClicked,
+  type Model, type Msg, AdminRuleMetricsDrilldownClicked,
   AdminRuleMetricsDrilldownClosed, AdminRuleMetricsExecPageChanged,
   AdminRuleMetricsFromChangedAndRefresh, AdminRuleMetricsQuickRangeClicked,
   AdminRuleMetricsToChangedAndRefresh, AdminRuleMetricsWorkflowExpanded,
   AttachTemplateModalClosed, AttachTemplateModalOpened, AttachTemplateSelected,
   AttachTemplateSubmitted, CloseRuleDialog, CloseTaskTemplateDialog,
-  CloseWorkflowDialog, Failed, Loaded, Loading, NoOp, NotAsked, OpenRuleDialog,
-  OpenTaskTemplateDialog, OpenWorkflowDialog, RuleCrudCreated, RuleCrudDeleted,
-  RuleCrudUpdated, RuleDialogCreate, RuleDialogDelete, RuleDialogEdit,
-  RuleExpandToggled, RulesBackClicked, TaskTemplateCrudCreated,
-  TaskTemplateCrudDeleted, TaskTemplateCrudUpdated, TaskTemplateDialogCreate,
-  TaskTemplateDialogDelete, TaskTemplateDialogEdit, TemplateDetachClicked,
-  WorkflowCrudCreated, WorkflowCrudDeleted, WorkflowCrudUpdated,
-  WorkflowDialogCreate, WorkflowDialogDelete, WorkflowDialogEdit,
-  WorkflowRulesClicked, pool_msg,
+  CloseWorkflowDialog, NoOp, OpenRuleDialog, OpenTaskTemplateDialog,
+  OpenWorkflowDialog, RuleCrudCreated, RuleCrudDeleted, RuleCrudUpdated,
+  RuleDialogCreate, RuleDialogDelete, RuleDialogEdit, RuleExpandToggled,
+  RulesBackClicked, TaskTemplateCrudCreated, TaskTemplateCrudDeleted,
+  TaskTemplateCrudUpdated, TaskTemplateDialogCreate, TaskTemplateDialogDelete,
+  TaskTemplateDialogEdit, TemplateDetachClicked, WorkflowCrudCreated,
+  WorkflowCrudDeleted, WorkflowCrudUpdated, WorkflowDialogCreate,
+  WorkflowDialogDelete, WorkflowDialogEdit, WorkflowRulesClicked, pool_msg,
 }
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/i18n/text as i18n_text

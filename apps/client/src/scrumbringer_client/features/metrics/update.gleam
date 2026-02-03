@@ -29,9 +29,9 @@ import domain/metrics.{
   type MyMetrics, type OrgMetricsOverview, type OrgMetricsProjectTasksPayload,
   OrgMetricsProjectTasksPayload,
 }
+import domain/remote.{Failed, Loaded}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, AdminModel, Failed, Loaded, MemberModel, update_admin,
-  update_member,
+  type Model, type Msg, AdminModel, MemberModel, update_admin, update_member,
 }
 import scrumbringer_client/update_helpers
 

@@ -21,13 +21,13 @@ import gleam/option.{None, Some}
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError}
+import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
   type Model, type Msg, AdminModel, AdminRuleMetricsExecutionsFetched,
   AdminRuleMetricsFetched, AdminRuleMetricsRuleDetailsFetched,
-  AdminRuleMetricsWorkflowDetailsFetched, Failed, Loaded, Loading, NotAsked,
-  pool_msg, update_admin,
+  AdminRuleMetricsWorkflowDetailsFetched, pool_msg, update_admin,
 }
 import scrumbringer_client/update_helpers
 

@@ -6,11 +6,11 @@ import domain/api_error as domain_api_error
 import domain/org_role
 import domain/project.{Project}
 import domain/project_role
+import domain/remote.{Failed, Loaded}
 import domain/user.{type User, User}
 
 import scrumbringer_client/client_state.{
-  type Model, CoreModel, Failed, Loaded, MemberModel, default_model, update_core,
-  update_member,
+  type Model, CoreModel, MemberModel, default_model, update_core, update_member,
 }
 import scrumbringer_client/features/pool/view as pool_view
 

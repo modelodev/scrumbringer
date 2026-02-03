@@ -22,6 +22,7 @@ import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError}
 import domain/org.{type OrgUser, OrgUser}
+import domain/org_role
 import scrumbringer_client/client_state.{
   type Model, type Msg, AdminModel, MemberRemoved, admin_msg, update_admin,
 }
@@ -175,7 +176,7 @@ fn fallback_org_user(user_id: Int) -> OrgUser {
   OrgUser(
     id: user_id,
     email: "User #" <> int.to_string(user_id),
-    org_role: "",
+    org_role: org_role.Member,
     created_at: "",
   )
 }

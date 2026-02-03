@@ -24,10 +24,11 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiError}
 import domain/org.{type OrgUser, OrgUser}
 import domain/org_role
+import domain/remote.{Failed, Loaded}
 import domain/user.{User}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, AdminModel, CoreModel, Failed, Loaded,
-  OrgSettingsDeleted, OrgSettingsSaved, admin_msg, update_admin, update_core,
+  type Model, type Msg, AdminModel, CoreModel, OrgSettingsDeleted,
+  OrgSettingsSaved, admin_msg, update_admin, update_core,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -128,7 +129,7 @@ pub fn handle_org_settings_users_fetched_error(
 pub fn handle_org_settings_role_changed(
   model: Model,
   user_id: Int,
-  org_role: String,
+  org_role: org_role.OrgRole,
 ) -> #(Model, Effect(Msg)) {
   case model.admin.org_settings_save_in_flight {
     True -> #(model, effect.none())
@@ -136,31 +137,26 @@ pub fn handle_org_settings_role_changed(
     False -> {
       let current_role = get_current_user_role(model, user_id)
 
-      case org_role {
-        "admin" | "member" ->
-          case current_role == org_role {
-            True -> #(model, effect.none())
-            False -> {
-              let model =
-                update_admin(model, fn(admin) {
-                  AdminModel(
-                    ..admin,
-                    org_settings_save_in_flight: True,
-                    org_settings_error: opt.None,
-                    org_settings_error_user_id: opt.None,
-                  )
-                })
-
-              #(
-                model,
-                api_org.update_org_user_role(user_id, org_role, fn(result) {
-                  admin_msg(OrgSettingsSaved(user_id, result))
-                }),
+      case current_role == org_role {
+        True -> #(model, effect.none())
+        False -> {
+          let model =
+            update_admin(model, fn(admin) {
+              AdminModel(
+                ..admin,
+                org_settings_save_in_flight: True,
+                org_settings_error: opt.None,
+                org_settings_error_user_id: opt.None,
               )
-            }
-          }
+            })
 
-        _ -> #(model, effect.none())
+          #(
+            model,
+            api_org.update_org_user_role(user_id, org_role, fn(result) {
+              admin_msg(OrgSettingsSaved(user_id, result))
+            }),
+          )
+        }
       }
     }
   }
@@ -272,10 +268,7 @@ pub fn handle_org_settings_saved_ok(
   // If the updated user is the current user, update model.core.user with new role
   let user = case model.core.user {
     opt.Some(current_user) if current_user.id == updated.id ->
-      case org_role.parse(updated.org_role) {
-        Ok(new_role) -> opt.Some(User(..current_user, org_role: new_role))
-        Error(_) -> model.core.user
-      }
+      opt.Some(User(..current_user, org_role: updated.org_role))
     _ -> model.core.user
   }
 
@@ -441,14 +434,14 @@ pub fn handle_org_settings_saved_error(
 
 // Justification: nested case improves clarity for branching logic.
 /// Look up user's current role from org_settings_users.
-fn get_current_user_role(model: Model, user_id: Int) -> String {
+fn get_current_user_role(model: Model, user_id: Int) -> org_role.OrgRole {
   case model.admin.org_settings_users {
     Loaded(users) ->
       case list.find(users, fn(u) { u.id == user_id }) {
         Ok(u) -> u.org_role
-        Error(_) -> ""
+        Error(_) -> org_role.Member
       }
-    _ -> ""
+    _ -> org_role.Member
   }
 }
 
@@ -456,7 +449,7 @@ fn fallback_org_user(user_id: Int) -> OrgUser {
   OrgUser(
     id: user_id,
     email: "User #" <> int.to_string(user_id),
-    org_role: "",
+    org_role: org_role.Member,
     created_at: "",
   )
 }

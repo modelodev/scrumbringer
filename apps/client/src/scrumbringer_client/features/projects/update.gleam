@@ -33,11 +33,12 @@ import scrumbringer_client/api/tasks as api_tasks
 // Domain types
 import domain/api_error.{type ApiError}
 import domain/project.{type Project}
+import domain/remote.{Failed, Loaded, NotAsked}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Admin, AdminModel, CoreModel, Failed, Loaded, Login,
-  Member, MemberModel, ProjectCreated, ProjectDeleted, ProjectDialogClosed,
-  ProjectDialogCreate, ProjectDialogDelete, ProjectDialogEdit, ProjectUpdated,
-  admin_msg, pool_msg, update_admin, update_core, update_member,
+  type Model, type Msg, Admin, AdminModel, CoreModel, Login, Member, MemberModel,
+  ProjectCreated, ProjectDeleted, ProjectDialogClosed, ProjectDialogCreate,
+  ProjectDialogDelete, ProjectDialogEdit, ProjectUpdated, admin_msg, pool_msg,
+  update_admin, update_core, update_member,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -150,8 +151,8 @@ pub fn handle_project_selected(
         fn(member) {
           MemberModel(
             ..member,
-            member_filters_type_id: "",
-            member_task_types: client_state.NotAsked,
+            member_filters_type_id: opt.None,
+            member_task_types: NotAsked,
           )
         },
       )

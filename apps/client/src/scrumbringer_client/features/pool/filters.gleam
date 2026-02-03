@@ -23,6 +23,7 @@
 
 import gleam/int
 import gleam/list
+import gleam/option as opt
 import gleam/string
 
 import lustre/attribute
@@ -32,8 +33,9 @@ import lustre/element/html.{
 }
 import lustre/event
 
+import domain/remote.{Loaded}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Loaded, MemberClearFilters, MemberCreateDialogOpened,
+  type Model, type Msg, MemberClearFilters, MemberCreateDialogOpened,
   MemberPoolCapabilityChanged, MemberPoolSearchChanged,
   MemberPoolSearchDebounced, MemberPoolTypeChanged,
   MemberToggleMyCapabilitiesQuick, pool_msg,
@@ -44,15 +46,13 @@ import scrumbringer_client/update_helpers
 
 /// Counts how many filters are currently active.
 fn count_active_filters(model: Model) -> Int {
-  let type_active = case string.is_empty(model.member.member_filters_type_id) {
-    True -> 0
-    False -> 1
+  let type_active = case model.member.member_filters_type_id {
+    opt.None -> 0
+    opt.Some(_) -> 1
   }
-  let cap_active = case
-    string.is_empty(model.member.member_filters_capability_id)
-  {
-    True -> 0
-    False -> 1
+  let cap_active = case model.member.member_filters_capability_id {
+    opt.None -> 0
+    opt.Some(_) -> 1
   }
   let search_active = case string.is_empty(model.member.member_filters_q) {
     True -> 0
@@ -159,6 +159,7 @@ fn view_type_filter(
   model: Model,
   options: List(element.Element(Msg)),
 ) -> Element(Msg) {
+  let current_value = option_int_value(model.member.member_filters_type_id)
   div([attribute.class("field")], [
     span([attribute.class("filter-tooltip")], [
       text(update_helpers.i18n_t(model, i18n_text.TypeLabel)),
@@ -188,7 +189,7 @@ fn view_type_filter(
           "aria-label",
           update_helpers.i18n_t(model, i18n_text.TypeLabel),
         ),
-        attribute.value(model.member.member_filters_type_id),
+        attribute.value(current_value),
         event.on_input(fn(value) { pool_msg(MemberPoolTypeChanged(value)) }),
         attribute.disabled(case model.member.member_task_types {
           Loaded(_) -> False
@@ -204,6 +205,8 @@ fn view_capability_filter(
   model: Model,
   options: List(element.Element(Msg)),
 ) -> Element(Msg) {
+  let current_value =
+    option_int_value(model.member.member_filters_capability_id)
   div([attribute.class("field")], [
     span([attribute.class("filter-tooltip")], [
       text(update_helpers.i18n_t(model, i18n_text.CapabilityLabel)),
@@ -233,7 +236,7 @@ fn view_capability_filter(
           "aria-label",
           update_helpers.i18n_t(model, i18n_text.CapabilityLabel),
         ),
-        attribute.value(model.member.member_filters_capability_id),
+        attribute.value(current_value),
         event.on_input(fn(value) {
           pool_msg(MemberPoolCapabilityChanged(value))
         }),
@@ -336,6 +339,13 @@ fn view_search_filter(model: Model) -> Element(Msg) {
       )),
     ]),
   ])
+}
+
+fn option_int_value(value: opt.Option(Int)) -> String {
+  case value {
+    opt.Some(id) -> int.to_string(id)
+    opt.None -> ""
+  }
 }
 
 // =============================================================================

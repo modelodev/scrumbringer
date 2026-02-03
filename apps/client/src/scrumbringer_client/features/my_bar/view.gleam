@@ -43,6 +43,7 @@ import lustre/element/keyed
 import lustre/event
 
 import domain/metrics.{MyMetrics}
+import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import domain/task.{type Task, Task}
 import domain/task_status.{
   type TaskStatus, Available, Claimed, Completed, Ongoing, Taken,
@@ -50,10 +51,9 @@ import domain/task_status.{
 import domain/user.{type User}
 
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, Loading, MemberClaimClicked,
-  MemberCompleteClicked, MemberCreateDialogOpenedWithCard,
-  MemberNowWorkingPauseClicked, MemberNowWorkingStartClicked,
-  MemberReleaseClicked, NotAsked, pool_msg,
+  type Model, type Msg, MemberClaimClicked, MemberCompleteClicked,
+  MemberCreateDialogOpenedWithCard, MemberNowWorkingPauseClicked,
+  MemberNowWorkingStartClicked, MemberReleaseClicked, pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons

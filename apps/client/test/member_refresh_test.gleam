@@ -1,3 +1,4 @@
+import domain/remote.{Loading, NotAsked}
 import gleam/option as opt
 import gleeunit/should
 import lustre/effect
@@ -24,14 +25,14 @@ pub fn member_refresh_fichas_fetches_cards_test() {
       client_state.MemberModel(
         ..member,
         member_section: member_section.Fichas,
-        member_cards: client_state.NotAsked,
+        member_cards: NotAsked,
       )
     })
 
   let #(next, fx) =
     client_update.update(model, client_state.ProjectSelected("2"))
 
-  next.member.member_cards |> should.equal(client_state.Loading)
+  next.member.member_cards |> should.equal(Loading)
   normalized_store.pending(next.member.member_cards_store) |> should.equal(1)
   fx |> should.not_equal(effect.none())
 }
@@ -46,13 +47,13 @@ pub fn member_refresh_skills_fetches_capabilities_test() {
       client_state.MemberModel(
         ..member,
         member_section: member_section.MySkills,
-        member_capabilities: client_state.NotAsked,
+        member_capabilities: NotAsked,
       )
     })
 
   let #(next, fx) =
     client_update.update(model, client_state.ProjectSelected("2"))
 
-  next.member.member_capabilities |> should.equal(client_state.Loading)
+  next.member.member_capabilities |> should.equal(Loading)
   fx |> should.not_equal(effect.none())
 }

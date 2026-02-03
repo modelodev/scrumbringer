@@ -28,10 +28,11 @@ import lustre/element/html.{div, span, text}
 import lustre/event
 
 import domain/card.{type Card}
+import domain/remote.{Loaded}
 import domain/task as domain_task
 import scrumbringer_client/client_state.{
-  type Model, type Msg, CloseCardDetail, Loaded,
-  MemberCreateDialogOpenedWithCard, OpenCardDetail, pool_msg,
+  type Model, type Msg, CloseCardDetail, MemberCreateDialogOpenedWithCard,
+  OpenCardDetail, pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions

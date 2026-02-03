@@ -31,10 +31,12 @@ import scrumbringer_client/api/org as api_org
 // Domain types
 import domain/api_error.{type ApiError}
 import domain/org.{type InviteLink}
+import domain/remote.{Failed, Loaded}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, AdminModel, Failed, InviteLinkCopyFinished,
-  InviteLinkCreated, InviteLinkRegenerated, InviteLinksFetched, Loaded,
+  type DialogState, type InviteLinkForm, type Model, type Msg, AdminModel,
+  DialogClosed, DialogOpen, Error, Idle, InFlight, InviteLinkCopyFinished,
+  InviteLinkCreated, InviteLinkForm, InviteLinkRegenerated, InviteLinksFetched,
   admin_msg, update_admin,
 }
 import scrumbringer_client/i18n/text as i18n_text
@@ -82,9 +84,10 @@ pub fn handle_invite_create_dialog_opened(model: Model) -> #(Model, Effect(Msg))
     update_admin(model, fn(admin) {
       AdminModel(
         ..admin,
-        invite_create_dialog_open: True,
-        invite_link_email: "",
-        invite_link_error: opt.None,
+        invite_link_dialog: DialogOpen(
+          form: InviteLinkForm(email: ""),
+          operation: Idle,
+        ),
       )
     }),
     effect.none(),
@@ -95,11 +98,7 @@ pub fn handle_invite_create_dialog_opened(model: Model) -> #(Model, Effect(Msg))
 pub fn handle_invite_create_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        invite_create_dialog_open: False,
-        invite_link_error: opt.None,
-      )
+      AdminModel(..admin, invite_link_dialog: DialogClosed(operation: Idle))
     }),
     effect.none(),
   )
@@ -114,9 +113,15 @@ pub fn handle_invite_link_email_changed(
   model: Model,
   value: String,
 ) -> #(Model, Effect(Msg)) {
+  let dialog = case model.admin.invite_link_dialog {
+    DialogClosed(operation: operation) -> DialogClosed(operation: operation)
+    DialogOpen(form: InviteLinkForm(email: _), operation: operation) ->
+      DialogOpen(form: InviteLinkForm(email: value), operation: operation)
+  }
+
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, invite_link_email: value)
+      AdminModel(..admin, invite_link_dialog: dialog)
     }),
     effect.none(),
   )
@@ -127,43 +132,52 @@ pub fn handle_invite_link_email_changed(
 pub fn handle_invite_link_create_submitted(
   model: Model,
 ) -> #(Model, Effect(Msg)) {
-  case model.admin.invite_link_in_flight {
-    True -> #(model, effect.none())
-    False -> {
-      let email = string.trim(model.admin.invite_link_email)
+  case model.admin.invite_link_dialog {
+    DialogClosed(..) -> #(model, effect.none())
+    DialogOpen(form: InviteLinkForm(email: email), operation: operation) ->
+      case operation {
+        InFlight -> #(model, effect.none())
+        _ -> {
+          let email = string.trim(email)
 
-      case email == "" {
-        True -> #(
-          update_admin(model, fn(admin) {
-            AdminModel(
-              ..admin,
-              invite_link_error: opt.Some(update_helpers.i18n_t(
-                model,
-                i18n_text.EmailRequired,
-              )),
+          case email == "" {
+            True -> #(
+              update_admin(model, fn(admin) {
+                AdminModel(
+                  ..admin,
+                  invite_link_dialog: DialogOpen(
+                    form: InviteLinkForm(email: email),
+                    operation: Error(update_helpers.i18n_t(
+                      model,
+                      i18n_text.EmailRequired,
+                    )),
+                  ),
+                )
+              }),
+              effect.none(),
             )
-          }),
-          effect.none(),
-        )
-        False -> {
-          let model =
-            update_admin(model, fn(admin) {
-              AdminModel(
-                ..admin,
-                invite_link_in_flight: True,
-                invite_link_error: opt.None,
-                invite_link_copy_status: opt.None,
+            False -> {
+              let model =
+                update_admin(model, fn(admin) {
+                  AdminModel(
+                    ..admin,
+                    invite_link_dialog: DialogOpen(
+                      form: InviteLinkForm(email: email),
+                      operation: InFlight,
+                    ),
+                    invite_link_copy_status: opt.None,
+                  )
+                })
+              #(
+                model,
+                api_org.create_invite_link(email, fn(result) {
+                  admin_msg(InviteLinkCreated(result))
+                }),
               )
-            })
-          #(
-            model,
-            api_org.create_invite_link(email, fn(result) {
-              admin_msg(InviteLinkCreated(result))
-            }),
-          )
+            }
+          }
         }
       }
-    }
   }
 }
 
@@ -176,10 +190,9 @@ pub fn handle_invite_link_created_ok(
     update_admin(model, fn(admin) {
       AdminModel(
         ..admin,
-        invite_link_in_flight: False,
-        invite_create_dialog_open: False,
+        invite_link_dialog: DialogClosed(operation: Idle),
         invite_link_last: opt.Some(link),
-        invite_link_email: "",
+        invite_link_copy_status: opt.None,
       )
     })
   let toast_fx =
@@ -205,11 +218,10 @@ pub fn handle_invite_link_created_error(
         update_admin(model, fn(admin) {
           AdminModel(
             ..admin,
-            invite_link_in_flight: False,
-            invite_link_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NotPermitted,
-            )),
+            invite_link_dialog: update_invite_error_state(
+              model.admin.invite_link_dialog,
+              update_helpers.i18n_t(model, i18n_text.NotPermitted),
+            ),
           )
         }),
         update_helpers.toast_warning(update_helpers.i18n_t(
@@ -221,8 +233,10 @@ pub fn handle_invite_link_created_error(
         update_admin(model, fn(admin) {
           AdminModel(
             ..admin,
-            invite_link_in_flight: False,
-            invite_link_error: opt.Some(err.message),
+            invite_link_dialog: update_invite_error_state(
+              model.admin.invite_link_dialog,
+              err.message,
+            ),
           )
         }),
         effect.none(),
@@ -241,9 +255,12 @@ pub fn handle_invite_link_regenerate_clicked(
   model: Model,
   email: String,
 ) -> #(Model, Effect(Msg)) {
-  case model.admin.invite_link_in_flight {
-    True -> #(model, effect.none())
-    False -> {
+  case model.admin.invite_link_dialog {
+    DialogOpen(operation: InFlight, ..) | DialogClosed(operation: InFlight) -> #(
+      model,
+      effect.none(),
+    )
+    dialog -> {
       let email = string.trim(email)
 
       case email == "" {
@@ -251,10 +268,10 @@ pub fn handle_invite_link_regenerate_clicked(
           update_admin(model, fn(admin) {
             AdminModel(
               ..admin,
-              invite_link_error: opt.Some(update_helpers.i18n_t(
-                model,
-                i18n_text.EmailRequired,
-              )),
+              invite_link_dialog: update_invite_error_state(
+                dialog,
+                update_helpers.i18n_t(model, i18n_text.EmailRequired),
+              ),
             )
           }),
           effect.none(),
@@ -264,10 +281,8 @@ pub fn handle_invite_link_regenerate_clicked(
             update_admin(model, fn(admin) {
               AdminModel(
                 ..admin,
-                invite_link_in_flight: True,
-                invite_link_error: opt.None,
+                invite_link_dialog: update_invite_in_flight(dialog, email),
                 invite_link_copy_status: opt.None,
-                invite_link_email: email,
               )
             })
           #(
@@ -291,9 +306,9 @@ pub fn handle_invite_link_regenerated_ok(
     update_admin(model, fn(admin) {
       AdminModel(
         ..admin,
-        invite_link_in_flight: False,
+        invite_link_dialog: DialogClosed(operation: Idle),
         invite_link_last: opt.Some(link),
-        invite_link_email: "",
+        invite_link_copy_status: opt.None,
       )
     })
   let toast_fx =
@@ -319,11 +334,10 @@ pub fn handle_invite_link_regenerated_error(
         update_admin(model, fn(admin) {
           AdminModel(
             ..admin,
-            invite_link_in_flight: False,
-            invite_link_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NotPermitted,
-            )),
+            invite_link_dialog: update_invite_error_state(
+              model.admin.invite_link_dialog,
+              update_helpers.i18n_t(model, i18n_text.NotPermitted),
+            ),
           )
         }),
         update_helpers.toast_warning(update_helpers.i18n_t(
@@ -335,14 +349,38 @@ pub fn handle_invite_link_regenerated_error(
         update_admin(model, fn(admin) {
           AdminModel(
             ..admin,
-            invite_link_in_flight: False,
-            invite_link_error: opt.Some(err.message),
+            invite_link_dialog: update_invite_error_state(
+              model.admin.invite_link_dialog,
+              err.message,
+            ),
           )
         }),
         effect.none(),
       )
     }
   })
+}
+
+fn update_invite_error_state(
+  dialog: DialogState(InviteLinkForm),
+  message: String,
+) -> DialogState(InviteLinkForm) {
+  case dialog {
+    DialogOpen(form: form, ..) ->
+      DialogOpen(form: form, operation: Error(message))
+    DialogClosed(..) -> DialogClosed(operation: Error(message))
+  }
+}
+
+fn update_invite_in_flight(
+  dialog: DialogState(InviteLinkForm),
+  email: String,
+) -> DialogState(InviteLinkForm) {
+  case dialog {
+    DialogOpen(form: InviteLinkForm(email: _), ..) ->
+      DialogOpen(form: InviteLinkForm(email: email), operation: InFlight)
+    DialogClosed(..) -> DialogClosed(operation: InFlight)
+  }
 }
 
 // =============================================================================

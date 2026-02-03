@@ -2,6 +2,7 @@ import gleam/option
 import gleeunit/should
 
 import domain/card.{type Card, Card, Pendiente}
+import domain/remote.{NotAsked}
 import scrumbringer_client/client_state
 import scrumbringer_client/state/normalized_store
 import scrumbringer_client/utils/card_queries
@@ -40,7 +41,7 @@ pub fn find_card_uses_store_by_id_test() {
       client_state.MemberModel(
         ..member,
         member_cards_store: store,
-        member_cards: client_state.NotAsked,
+        member_cards: NotAsked,
       )
     })
 

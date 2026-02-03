@@ -32,11 +32,12 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiError}
 import domain/project.{type ProjectMember, ProjectMember}
 import domain/project_role.{type ProjectRole}
+import domain/remote.{Failed, Loaded}
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/client_state.{
   type Model, type Msg, AdminModel, CapabilityMembersFetched,
-  CapabilityMembersSaved, Failed, Loaded, MemberCapabilitiesFetched,
-  MemberCapabilitiesSaved, MemberRoleChanged, admin_msg, update_admin,
+  CapabilityMembersSaved, MemberCapabilitiesFetched, MemberCapabilitiesSaved,
+  MemberRoleChanged, admin_msg, update_admin,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers

@@ -34,13 +34,14 @@ import scrumbringer_client/api/tasks as api_tasks
 
 // Domain types
 import domain/api_error.{type ApiError}
+import domain/remote.{Failed, Loaded}
 import domain/task.{type WorkSessionsPayload, WorkSessionsPayload}
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, MemberModel,
-  MemberWorkSessionHeartbeated, MemberWorkSessionPaused,
-  MemberWorkSessionStarted, NowWorkingTicked, pool_msg, update_member,
+  type Model, type Msg, MemberModel, MemberWorkSessionHeartbeated,
+  MemberWorkSessionPaused, MemberWorkSessionStarted, NowWorkingTicked, pool_msg,
+  update_member,
 }
 import scrumbringer_client/update_helpers
 

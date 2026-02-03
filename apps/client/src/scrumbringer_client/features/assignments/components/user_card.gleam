@@ -14,6 +14,7 @@ import lustre/event
 import domain/org.{type OrgUser}
 import domain/project.{type Project}
 import domain/project_role.{Manager, Member, to_string}
+import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 
 import scrumbringer_client/client_state
 import scrumbringer_client/features/assignments/components/assignments_card
@@ -27,19 +28,19 @@ import scrumbringer_client/update_helpers
 pub fn view(
   model: client_state.Model,
   user: OrgUser,
-  projects_state: client_state.Remote(List(Project)),
+  projects_state: Remote(List(Project)),
   expanded: Bool,
 ) -> element.Element(client_state.Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
   let assignments = model.admin.assignments
 
   let projects = case projects_state {
-    client_state.Loaded(projects_list) -> projects_list
+    Loaded(projects_list) -> projects_list
     _ -> []
   }
 
   let no_projects = case projects_state {
-    client_state.Loaded(projects_list) -> projects_list == []
+    Loaded(projects_list) -> projects_list == []
     _ -> False
   }
 
@@ -54,7 +55,7 @@ pub fn view(
   }
 
   let projects_count = case projects_state {
-    client_state.Loaded(projects_list) -> list.length(projects_list)
+    Loaded(projects_list) -> list.length(projects_list)
     _ -> list.length(projects)
   }
   let projects_label = t(i18n_text.AssignmentsProjectsCount(projects_count))
@@ -79,12 +80,12 @@ pub fn view(
   let body =
     div([], [
       case projects_state {
-        client_state.NotAsked | client_state.Loading ->
+        NotAsked | Loading ->
           loading.loading(t(i18n_text.AssignmentsLoadingProjects))
 
-        client_state.Failed(err) -> error_notice.view(err.message)
+        Failed(err) -> error_notice.view(err.message)
 
-        client_state.Loaded(projects_list) ->
+        Loaded(projects_list) ->
           case projects_list == [] {
             True ->
               p([attribute.class("assignments-empty")], [
@@ -237,7 +238,7 @@ fn view_inline_add(
 
   let assigned_ids = list.map(assigned_projects, fn(project) { project.id })
   let options = case model.core.projects {
-    client_state.Loaded(projects) ->
+    Loaded(projects) ->
       projects
       |> list.filter(fn(project) { !list.contains(assigned_ids, project.id) })
       |> list.map(fn(project) {

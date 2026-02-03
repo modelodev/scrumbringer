@@ -19,8 +19,9 @@ import gleam/list
 import gleam/option
 
 import domain/card.{type Card}
+import domain/remote.{Loaded}
 import domain/task.{type Task, Task}
-import scrumbringer_client/client_state.{type Model, Loaded}
+import scrumbringer_client/client_state.{type Model}
 import scrumbringer_client/state/normalized_store
 
 /// Find a card by ID in the loaded cards list.
@@ -30,7 +31,7 @@ pub fn find_card(model: Model, card_id: Int) -> option.Option(Card) {
     option.None ->
       case model.admin.cards {
         Loaded(cards) ->
-          list.find(cards, fn(c) { c.id == card_id })
+          list.find(cards, fn(card) { card.id == card_id })
           |> option.from_result
         _ -> option.None
       }
@@ -51,7 +52,7 @@ pub fn get_project_cards(model: Model) -> List(Card) {
         True ->
           case model.admin.cards {
             Loaded(cards) ->
-              list.filter(cards, fn(c) { c.project_id == project_id })
+              list.filter(cards, fn(card) { card.project_id == project_id })
             _ -> []
           }
         False -> store_cards

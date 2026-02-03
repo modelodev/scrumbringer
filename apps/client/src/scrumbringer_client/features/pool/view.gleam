@@ -34,17 +34,17 @@ import lustre/element/html.{button, div, h2, h3, p, text}
 import lustre/element/keyed
 import lustre/event
 
+import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import domain/task.{type Task, Task, TaskNote}
 import domain/task_status.{Available, Claimed, Completed, Taken}
 import domain/user.{type User}
 
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, Loading, MemberClaimClicked,
-  MemberCompleteClicked, MemberCreateDialogOpened, MemberDragEnded,
-  MemberDragMoved, MemberDragStarted, MemberPoolTouchEnded,
-  MemberPoolTouchStarted, MemberReleaseClicked, MemberTaskDetailsOpened,
-  MemberTaskHoverOpened, NotAsked, PoolDragDragging, PoolDragIdle,
+  type Model, type Msg, MemberClaimClicked, MemberCompleteClicked,
+  MemberCreateDialogOpened, MemberDragEnded, MemberDragMoved, MemberDragStarted,
+  MemberPoolTouchEnded, MemberPoolTouchStarted, MemberReleaseClicked,
+  MemberTaskDetailsOpened, MemberTaskHoverOpened, PoolDragDragging, PoolDragIdle,
   PoolDragPendingRect, pool_msg,
 }
 import scrumbringer_client/features/my_bar/view as my_bar_view
@@ -102,8 +102,8 @@ fn get_available_tasks_state(model: Model) -> AvailableTasksState {
 
 /// Checks if any filters are active.
 fn has_active_filters(model: Model) -> Bool {
-  string.trim(model.member.member_filters_type_id) != ""
-  || string.trim(model.member.member_filters_capability_id) != ""
+  model.member.member_filters_type_id != opt.None
+  || model.member.member_filters_capability_id != opt.None
   || string.trim(model.member.member_filters_q) != ""
 }
 

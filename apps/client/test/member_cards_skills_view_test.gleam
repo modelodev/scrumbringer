@@ -1,3 +1,4 @@
+import domain/remote.{Loaded, NotAsked}
 import gleam/string
 import gleeunit/should
 import lustre/element
@@ -15,7 +16,7 @@ pub fn fichas_view_shows_empty_state_for_member_cards_test() {
       client_state.MemberModel(
         ..member,
         member_cards_store: normalized_store.new(),
-        member_cards: client_state.NotAsked,
+        member_cards: NotAsked,
       )
     })
 
@@ -31,10 +32,7 @@ pub fn skills_view_shows_empty_state_for_member_capabilities_test() {
   let model =
     client_state.default_model()
     |> client_state.update_member(fn(member) {
-      client_state.MemberModel(
-        ..member,
-        member_capabilities: client_state.Loaded([]),
-      )
+      client_state.MemberModel(..member, member_capabilities: Loaded([]))
     })
 
   let html =

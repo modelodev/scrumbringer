@@ -32,10 +32,11 @@ import scrumbringer_client/api/tasks as api_tasks
 
 // Domain types
 import domain/api_error.{type ApiError}
+import domain/remote.{Failed, Loaded}
 import domain/task_type.{type TaskType}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, type TaskTypeDialogMode, AdminModel, Failed, IconError,
-  IconIdle, IconOk, Loaded, TaskTypeCreated, admin_msg, update_admin,
+  type Model, type Msg, type TaskTypeDialogMode, AdminModel, IconError, IconIdle,
+  IconOk, TaskTypeCreated, admin_msg, update_admin,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers

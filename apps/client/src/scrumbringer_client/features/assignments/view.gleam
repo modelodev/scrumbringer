@@ -15,6 +15,7 @@ import lustre/event
 
 import domain/org.{type OrgUser, OrgUser}
 import domain/project.{type Project}
+import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import domain/user.{User}
 
 import scrumbringer_client/assignments_view_mode
@@ -117,12 +118,12 @@ fn view_by_project(
 ) -> element.Element(client_state.Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
   case model.core.projects {
-    client_state.NotAsked | client_state.Loading ->
+    NotAsked | Loading ->
       loading.loading(t(i18n_text.AssignmentsLoadingProjects))
 
-    client_state.Failed(err) -> error_notice.view(err.message)
+    Failed(err) -> error_notice.view(err.message)
 
-    client_state.Loaded(projects_list) ->
+    Loaded(projects_list) ->
       case projects_list == [] {
         True ->
           empty_state.no_projects(
@@ -143,7 +144,7 @@ fn view_by_project(
                 dict.get(model.admin.assignments.project_members, project.id)
               {
                 Ok(state) -> state
-                Error(_) -> client_state.NotAsked
+                Error(_) -> NotAsked
               }
               let expanded =
                 set.contains(
@@ -161,12 +162,11 @@ fn view_by_project(
 fn view_by_user(model: client_state.Model) -> element.Element(client_state.Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
   case model.admin.org_users_cache {
-    client_state.NotAsked | client_state.Loading ->
-      loading.loading(t(i18n_text.LoadingUsers))
+    NotAsked | Loading -> loading.loading(t(i18n_text.LoadingUsers))
 
-    client_state.Failed(err) -> error_notice.view(err.message)
+    Failed(err) -> error_notice.view(err.message)
 
-    client_state.Loaded(users_list) -> {
+    Loaded(users_list) -> {
       let only_current_user = case model.core.user, list.first(users_list) {
         opt.Some(User(id: user_id, ..)), Ok(OrgUser(id: org_user_id, ..)) ->
           list.length(users_list) == 1 && user_id == org_user_id
@@ -195,7 +195,7 @@ fn view_by_user(model: client_state.Model) -> element.Element(client_state.Msg) 
                 dict.get(model.admin.assignments.user_projects, user.id)
               {
                 Ok(state) -> state
-                Error(_) -> client_state.NotAsked
+                Error(_) -> NotAsked
               }
               let expanded =
                 set.contains(model.admin.assignments.expanded_users, user.id)
@@ -233,7 +233,7 @@ fn project_members_match(
   query: String,
 ) -> Bool {
   case dict.get(model.admin.assignments.project_members, project_id) {
-    Ok(client_state.Loaded(members)) ->
+    Ok(Loaded(members)) ->
       list.any(members, fn(member) {
         case
           update_helpers.resolve_org_user(
@@ -273,7 +273,7 @@ fn user_projects_match(
   query: String,
 ) -> Bool {
   case dict.get(model.admin.assignments.user_projects, user_id) {
-    Ok(client_state.Loaded(projects)) ->
+    Ok(Loaded(projects)) ->
       list.any(projects, fn(project) {
         string.contains(string.lowercase(project.name), query)
       })

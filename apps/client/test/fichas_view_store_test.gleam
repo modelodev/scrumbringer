@@ -4,6 +4,7 @@ import gleeunit/should
 import lustre/element
 
 import domain/card.{type Card, Card, Pendiente}
+import domain/remote.{Loading}
 import scrumbringer_client/client_state
 import scrumbringer_client/features/fichas/view as fichas_view
 import scrumbringer_client/i18n/text as i18n_text
@@ -46,7 +47,7 @@ pub fn fichas_uses_cache_when_available_test() {
       client_state.MemberModel(
         ..member,
         member_cards_store: store,
-        member_cards: client_state.Loading,
+        member_cards: Loading,
       )
     })
 

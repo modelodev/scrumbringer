@@ -25,6 +25,7 @@ import gleam/string
 import lustre/effect.{type Effect}
 
 import domain/task.{type Task, type TaskFilters, TaskFilters}
+import domain/task_status
 import scrumbringer_client/api/core
 import scrumbringer_client/api/tasks/decoders
 import scrumbringer_client/client_ffi
@@ -97,9 +98,14 @@ pub fn project_tasks_url(project_id: Int, filters: TaskFilters) -> String {
     blocked: blocked,
   ) = filters
 
+  let status_param = case status {
+    option.None -> option.None
+    option.Some(value) -> option.Some(task_status.task_status_to_string(value))
+  }
+
   let params =
     ""
-    |> add_param_string("status", status)
+    |> add_param_string("status", status_param)
     |> add_param_int("type_id", type_id)
     |> add_param_int("capability_id", capability_id)
     |> add_param_string("q", q)

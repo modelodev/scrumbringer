@@ -42,12 +42,14 @@ import gleam/dynamic/decode
 import domain/capability.{type Capability}
 import domain/card.{type Card}
 import domain/org.{type OrgUser}
+import domain/org_role
 import domain/project.{type Project}
+import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task.{type Task}
 import domain/task_type.{type TaskType}
 
 import scrumbringer_client/client_state.{
-  type Model, type Msg, type Remote, CapabilityCreateDialogClosed,
+  type Model, type Msg, CapabilityCreateDialogClosed,
   CapabilityCreateDialogOpened, CapabilityCreateNameChanged,
   CapabilityCreateSubmitted, CapabilityDeleteDialogClosed,
   CapabilityDeleteDialogOpened, CapabilityDeleteSubmitted,
@@ -56,12 +58,12 @@ import scrumbringer_client/client_state.{
   CardCrudDeleted, CardCrudUpdated, CardDialogCreate, CardDialogDelete,
   CardDialogEdit, CardsSearchChanged, CardsShowCompletedToggled,
   CardsShowEmptyToggled, CardsStateFilterChanged, CloseCardDetail,
-  CloseCardDialog, CloseTaskTypeDialog, Failed, Loaded, Loading,
-  MemberCreateDialogOpenedWithCard, NotAsked, OpenCardDetail, OpenCardDialog,
-  OpenTaskTypeDialog, OrgSettingsDeleteCancelled, OrgSettingsDeleteClicked,
-  OrgSettingsDeleteConfirmed, OrgSettingsRoleChanged, TaskTypeCrudCreated,
-  TaskTypeCrudDeleted, TaskTypeCrudUpdated, TaskTypeDialogCreate,
-  TaskTypeDialogDelete, TaskTypeDialogEdit, admin_msg, pool_msg,
+  CloseCardDialog, CloseTaskTypeDialog, MemberCreateDialogOpenedWithCard, NoOp,
+  OpenCardDetail, OpenCardDialog, OpenTaskTypeDialog, OrgSettingsDeleteCancelled,
+  OrgSettingsDeleteClicked, OrgSettingsDeleteConfirmed, OrgSettingsRoleChanged,
+  TaskTypeCrudCreated, TaskTypeCrudDeleted, TaskTypeCrudUpdated,
+  TaskTypeDialogCreate, TaskTypeDialogDelete, TaskTypeDialogEdit, admin_msg,
+  pool_msg,
 }
 import scrumbringer_client/decoders
 import scrumbringer_client/features/admin/views/members as members_view
@@ -221,6 +223,7 @@ fn view_org_role_cell(model: Model, u: OrgUser) -> Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
 
   let current_role = u.org_role
+  let current_role_string = org_role.to_string(current_role)
 
   let inline_error = case
     model.admin.org_settings_error_user_id,
@@ -233,24 +236,27 @@ fn view_org_role_cell(model: Model, u: OrgUser) -> Element(Msg) {
   element.fragment([
     select(
       [
-        attribute.value(current_role),
+        attribute.value(current_role_string),
         attribute.disabled(model.admin.org_settings_save_in_flight),
         event.on_input(fn(value) {
-          admin_msg(OrgSettingsRoleChanged(u.id, value))
+          case org_role.parse(value) {
+            Ok(role) -> admin_msg(OrgSettingsRoleChanged(u.id, role))
+            Error(_) -> NoOp
+          }
         }),
       ],
       [
         option(
           [
             attribute.value("admin"),
-            attribute.selected(current_role == "admin"),
+            attribute.selected(current_role == org_role.Admin),
           ],
           t(i18n_text.RoleAdmin),
         ),
         option(
           [
             attribute.value("member"),
-            attribute.selected(current_role == "member"),
+            attribute.selected(current_role == org_role.Member),
           ],
           t(i18n_text.RoleMember),
         ),

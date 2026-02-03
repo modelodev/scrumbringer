@@ -7,9 +7,10 @@
 //// ```gleam
 //// import shared/domain/org.{type OrgUser, type OrgInvite, type InviteLink}
 ////
-//// let user = OrgUser(id: 1, email: "user@example.com", org_role: "member", created_at: "2024-01-17T12:00:00Z")
+//// let user = OrgUser(id: 1, email: "user@example.com", org_role: Member, created_at: "2024-01-17T12:00:00Z")
 //// ```
 
+import domain/org_role.{type OrgRole}
 import gleam/option.{type Option}
 
 // =============================================================================
@@ -21,10 +22,10 @@ import gleam/option.{type Option}
 /// ## Example
 ///
 /// ```gleam
-/// OrgUser(id: 1, email: "admin@example.com", org_role: "admin", created_at: "2024-01-17T12:00:00Z")
+/// OrgUser(id: 1, email: "admin@example.com", org_role: Admin, created_at: "2024-01-17T12:00:00Z")
 /// ```
 pub type OrgUser {
-  OrgUser(id: Int, email: String, org_role: String, created_at: String)
+  OrgUser(id: Int, email: String, org_role: OrgRole, created_at: String)
 }
 
 /// An organization invite code.

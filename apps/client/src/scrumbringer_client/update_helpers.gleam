@@ -50,6 +50,7 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiError}
 import domain/org.{type OrgUser}
 import domain/project.{type Project}
+import domain/remote.{type Remote, Loaded}
 import domain/task.{
   type ActiveTask, type Task, type TaskPosition, type WorkSession, ActiveTask,
   Task, TaskPosition, WorkSessionsPayload,
@@ -57,7 +58,7 @@ import domain/task.{
 import domain/task_type.{type TaskType}
 import domain/user.{type User}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, type Remote, CoreModel, Loaded, ToastShow, update_core,
+  type Model, type Msg, CoreModel, ToastShow, update_core,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions.{type AdminSection}

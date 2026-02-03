@@ -24,6 +24,7 @@ import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError}
 import domain/card.{type Card}
+import domain/remote.{Failed, Loaded, Loading}
 import scrumbringer_client/client_state
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
@@ -41,7 +42,7 @@ pub fn handle_cards_fetched_ok(
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   #(
     client_state.update_admin(model, fn(admin) {
-      client_state.AdminModel(..admin, cards: client_state.Loaded(cards))
+      client_state.AdminModel(..admin, cards: Loaded(cards))
     }),
     effect.none(),
   )
@@ -55,7 +56,7 @@ pub fn handle_cards_fetched_error(
   update_helpers.handle_401_or(model, err, fn() {
     #(
       client_state.update_admin(model, fn(admin) {
-        client_state.AdminModel(..admin, cards: client_state.Failed(err))
+        client_state.AdminModel(..admin, cards: Failed(err))
       }),
       effect.none(),
     )
@@ -102,8 +103,8 @@ pub fn handle_card_crud_created(
   card: Card,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   let cards = case model.admin.cards {
-    client_state.Loaded(existing) -> client_state.Loaded([card, ..existing])
-    _ -> client_state.Loaded([card])
+    Loaded(existing) -> Loaded([card, ..existing])
+    _ -> Loaded([card])
   }
   let model =
     client_state.update_admin(model, fn(admin) {
@@ -128,8 +129,8 @@ pub fn handle_card_crud_updated(
   updated_card: Card,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   let cards = case model.admin.cards {
-    client_state.Loaded(existing) ->
-      client_state.Loaded(
+    Loaded(existing) ->
+      Loaded(
         list.map(existing, fn(c) {
           case c.id == updated_card.id {
             True -> updated_card
@@ -162,8 +163,7 @@ pub fn handle_card_crud_deleted(
   card_id: Int,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   let cards = case model.admin.cards {
-    client_state.Loaded(existing) ->
-      client_state.Loaded(list.filter(existing, fn(c) { c.id != card_id }))
+    Loaded(existing) -> Loaded(list.filter(existing, fn(c) { c.id != card_id }))
     other -> other
   }
   let model =
@@ -196,7 +196,7 @@ pub fn fetch_cards_for_project(
         client_state.update_admin(model, fn(admin) {
           client_state.AdminModel(
             ..admin,
-            cards: client_state.Loading,
+            cards: Loading,
             cards_project_id: opt.Some(project_id),
           )
         })

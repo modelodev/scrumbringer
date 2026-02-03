@@ -4,9 +4,10 @@ import gleeunit/should
 import lustre/element
 
 import domain/org.{OrgUser}
-import domain/org_role.{Admin}
+import domain/org_role.{Admin, Member}
 import domain/project.{type Project, Project, ProjectMember}
 import domain/project_role.{Manager}
+import domain/remote.{Loaded}
 import domain/user.{User}
 import gleam/option as opt
 import gleam/set
@@ -34,7 +35,7 @@ pub fn filter_projects_by_name_test() {
     |> client_state.update_core(fn(core) {
       client_state.CoreModel(
         ..core,
-        projects: client_state.Loaded([
+        projects: Loaded([
           sample_project(1, "Project Alpha"),
           sample_project(2, "Project Beta"),
         ]),
@@ -71,23 +72,23 @@ pub fn project_collapsed_hides_members_test() {
     OrgUser(
       id: 2,
       email: "member@example.com",
-      org_role: "member",
+      org_role: Member,
       created_at: "2026-01-01",
     )
 
   let model =
     base_model()
     |> client_state.update_core(fn(core) {
-      client_state.CoreModel(..core, projects: client_state.Loaded([project]))
+      client_state.CoreModel(..core, projects: Loaded([project]))
     })
     |> client_state.update_admin(fn(admin) {
       client_state.AdminModel(
         ..admin,
-        org_users_cache: client_state.Loaded([org_user]),
+        org_users_cache: Loaded([org_user]),
         assignments: client_state.AssignmentsModel(
           ..admin.assignments,
           project_members: dict.from_list([
-            #(project.id, client_state.Loaded([member])),
+            #(project.id, Loaded([member])),
           ]),
         ),
       )
@@ -112,23 +113,23 @@ pub fn project_expanded_shows_members_test() {
     OrgUser(
       id: 2,
       email: "member@example.com",
-      org_role: "member",
+      org_role: Member,
       created_at: "2026-01-01",
     )
 
   let model =
     base_model()
     |> client_state.update_core(fn(core) {
-      client_state.CoreModel(..core, projects: client_state.Loaded([project]))
+      client_state.CoreModel(..core, projects: Loaded([project]))
     })
     |> client_state.update_admin(fn(admin) {
       client_state.AdminModel(
         ..admin,
-        org_users_cache: client_state.Loaded([org_user]),
+        org_users_cache: Loaded([org_user]),
         assignments: client_state.AssignmentsModel(
           ..admin.assignments,
           project_members: dict.from_list([
-            #(project.id, client_state.Loaded([member])),
+            #(project.id, Loaded([member])),
           ]),
           expanded_projects: set.insert(
             admin.assignments.expanded_projects,
@@ -149,7 +150,7 @@ pub fn user_without_projects_shows_badge_test() {
     OrgUser(
       id: 9,
       email: "nuevo@example.com",
-      org_role: "member",
+      org_role: Member,
       created_at: "2026-01-01",
     )
 
@@ -158,15 +159,11 @@ pub fn user_without_projects_shows_badge_test() {
     |> client_state.update_admin(fn(admin) {
       client_state.AdminModel(
         ..admin,
-        org_users_cache: client_state.Loaded([user]),
+        org_users_cache: Loaded([user]),
         assignments: client_state.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByUser,
-          user_projects: dict.insert(
-            dict.new(),
-            user.id,
-            client_state.Loaded([]),
-          ),
+          user_projects: dict.insert(dict.new(), user.id, Loaded([])),
         ),
       )
     })
@@ -183,7 +180,7 @@ pub fn project_without_members_shows_badge_test() {
   let model =
     base_model()
     |> client_state.update_core(fn(core) {
-      client_state.CoreModel(..core, projects: client_state.Loaded([project]))
+      client_state.CoreModel(..core, projects: Loaded([project]))
     })
     |> client_state.update_admin(fn(admin) {
       client_state.AdminModel(
@@ -192,7 +189,7 @@ pub fn project_without_members_shows_badge_test() {
           ..admin.assignments,
           view_mode: assignments_view_mode.ByProject,
           project_members: dict.from_list([
-            #(project.id, client_state.Loaded([])),
+            #(project.id, Loaded([])),
           ]),
         ),
       )
@@ -208,7 +205,7 @@ pub fn empty_state_when_no_projects_test() {
   let model =
     base_model()
     |> client_state.update_core(fn(core) {
-      client_state.CoreModel(..core, projects: client_state.Loaded([]))
+      client_state.CoreModel(..core, projects: Loaded([]))
     })
     |> client_state.update_admin(fn(admin) {
       client_state.AdminModel(
@@ -233,7 +230,7 @@ pub fn empty_state_when_no_users_test() {
     |> client_state.update_admin(fn(admin) {
       client_state.AdminModel(
         ..admin,
-        org_users_cache: client_state.Loaded([]),
+        org_users_cache: Loaded([]),
         assignments: client_state.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByUser,
@@ -261,7 +258,7 @@ pub fn empty_state_when_only_admin_user_test() {
     OrgUser(
       id: 1,
       email: "admin@example.com",
-      org_role: "admin",
+      org_role: Admin,
       created_at: "2026-01-01",
     )
 
@@ -273,7 +270,7 @@ pub fn empty_state_when_only_admin_user_test() {
     |> client_state.update_admin(fn(admin_model) {
       client_state.AdminModel(
         ..admin_model,
-        org_users_cache: client_state.Loaded([admin_org_user]),
+        org_users_cache: Loaded([admin_org_user]),
         assignments: client_state.AssignmentsModel(
           ..admin_model.assignments,
           view_mode: assignments_view_mode.ByUser,
@@ -293,14 +290,14 @@ pub fn filter_users_by_email_test() {
     OrgUser(
       id: 1,
       email: "admin@example.com",
-      org_role: "admin",
+      org_role: Admin,
       created_at: "2026-01-01",
     )
   let user_member =
     OrgUser(
       id: 2,
       email: "member@example.com",
-      org_role: "member",
+      org_role: Member,
       created_at: "2026-01-01",
     )
 
@@ -309,14 +306,14 @@ pub fn filter_users_by_email_test() {
     |> client_state.update_admin(fn(admin) {
       client_state.AdminModel(
         ..admin,
-        org_users_cache: client_state.Loaded([user_admin, user_member]),
+        org_users_cache: Loaded([user_admin, user_member]),
         assignments: client_state.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByUser,
           search_query: "admin",
           user_projects: dict.from_list([
-            #(user_admin.id, client_state.Loaded([])),
-            #(user_member.id, client_state.Loaded([])),
+            #(user_admin.id, Loaded([])),
+            #(user_member.id, Loaded([])),
           ]),
         ),
       )

@@ -49,17 +49,17 @@ import scrumbringer_client/api/tasks as api_tasks
 
 // Domain types
 import domain/api_error.{type ApiError}
+import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task.{
   type Task, type TaskDependency, type TaskNote, Task, TaskFilters,
 }
 import domain/task_status.{Available, Claimed, Completed, Taken}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, type Remote, Failed, Loaded, Loading,
-  MemberDependenciesFetched, MemberDependencyAdded,
+  type Model, type Msg, MemberDependenciesFetched, MemberDependencyAdded,
   MemberDependencyCandidatesFetched, MemberDependencyRemoved, MemberModel,
   MemberNoteAdded, MemberNotesFetched, MemberTaskClaimed, MemberTaskCompleted,
-  MemberTaskCreated, MemberTaskReleased, MemberWorkSessionsFetched, NotAsked,
-  pool_msg, update_member,
+  MemberTaskCreated, MemberTaskReleased, MemberWorkSessionsFetched, pool_msg,
+  update_member,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/task_tabs

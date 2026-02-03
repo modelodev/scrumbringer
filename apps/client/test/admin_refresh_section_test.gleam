@@ -1,10 +1,11 @@
 //// Admin section refresh behavior tests.
 
+import domain/remote.{Loading}
 import gleam/option as opt
 import gleeunit/should
 import lustre/effect
 import scrumbringer_client/client_state.{
-  type Model, Admin, CoreModel, Loading, update_core,
+  type Model, Admin, CoreModel, update_core,
 }
 import scrumbringer_client/client_update
 import scrumbringer_client/permissions

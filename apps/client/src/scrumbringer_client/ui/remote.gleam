@@ -18,9 +18,7 @@
 import lustre/element.{type Element}
 
 import domain/api_error.{type ApiError}
-import scrumbringer_client/client_state.{
-  type Remote, Failed, Loaded, Loading, NotAsked,
-}
+import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/loading as ui_loading
 

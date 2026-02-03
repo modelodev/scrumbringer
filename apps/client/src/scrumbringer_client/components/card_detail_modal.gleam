@@ -38,12 +38,10 @@ import domain/card.{type Card, type CardNote, CardNote}
 import domain/task.{type Task}
 import domain/task_status.{Available, Completed}
 
+import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/api/core.{type ApiResult}
 import scrumbringer_client/api/tasks/decoders as task_decoders
-import scrumbringer_client/client_state.{
-  type Remote, Failed, Loaded, Loading, NotAsked,
-}
 import scrumbringer_client/decoders
 import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es

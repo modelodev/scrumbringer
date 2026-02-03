@@ -31,6 +31,7 @@ import domain/capability.{type Capability, Capability}
 import domain/org.{
   type InviteLink, type OrgInvite, type OrgUser, InviteLink, OrgInvite, OrgUser,
 }
+import domain/org_role
 
 // =============================================================================
 // Decoders
@@ -39,14 +40,22 @@ import domain/org.{
 fn org_user_decoder() -> decode.Decoder(OrgUser) {
   use id <- decode.field("id", decode.int)
   use email <- decode.field("email", decode.string)
-  use org_role <- decode.field("org_role", decode.string)
+  use org_role_value <- decode.field("org_role", org_role_decoder())
   use created_at <- decode.field("created_at", decode.string)
   decode.success(OrgUser(
     id: id,
     email: email,
-    org_role: org_role,
+    org_role: org_role_value,
     created_at: created_at,
   ))
+}
+
+fn org_role_decoder() -> decode.Decoder(org_role.OrgRole) {
+  use role_string <- decode.then(decode.string)
+  case org_role.parse(role_string) {
+    Ok(role) -> decode.success(role)
+    Error(_) -> decode.failure(org_role.Member, "OrgRole")
+  }
 }
 
 fn capability_decoder() -> decode.Decoder(Capability) {
@@ -134,10 +143,10 @@ pub fn list_org_users(
 /// Update an organization user's role.
 pub fn update_org_user_role(
   user_id: Int,
-  org_role: String,
+  role: org_role.OrgRole,
   to_msg: fn(ApiResult(OrgUser)) -> msg,
 ) -> Effect(msg) {
-  let body = json.object([#("org_role", json.string(org_role))])
+  let body = json.object([#("org_role", json.string(org_role.to_string(role)))])
 
   let decoder = decode.field("user", org_user_decoder(), decode.success)
 

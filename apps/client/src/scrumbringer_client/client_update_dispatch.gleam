@@ -10,6 +10,7 @@ import lustre/effect.{type Effect}
 
 import domain/card
 import domain/project_role.{Member as MemberRole}
+import domain/remote.{Failed, Loaded}
 
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/app/effects as app_effects
@@ -75,7 +76,7 @@ pub fn handle_admin(
         client_state.update_core(model, fn(core) {
           client_state.CoreModel(
             ..core,
-            projects: client_state.Loaded(projects),
+            projects: Loaded(projects),
             selected_project_id: selected,
           )
         })
@@ -127,7 +128,7 @@ pub fn handle_admin(
 
         False -> #(
           client_state.update_core(model, fn(core) {
-            client_state.CoreModel(..core, projects: client_state.Failed(err))
+            client_state.CoreModel(..core, projects: Failed(err))
           }),
           effect.none(),
         )
@@ -564,10 +565,10 @@ fn clear_card_new_notes(
 ) -> client_state.Model {
   client_state.update_admin(model, fn(admin) {
     case admin.cards {
-      client_state.Loaded(cards) ->
+      Loaded(cards) ->
         client_state.AdminModel(
           ..admin,
-          cards: client_state.Loaded(
+          cards: Loaded(
             list.map(cards, fn(card_item) {
               case card_item.id == card_id {
                 True -> card.Card(..card_item, has_new_notes: False)
@@ -769,7 +770,7 @@ pub fn handle_pool(
           client_state.update_member(model, fn(member) {
             client_state.MemberModel(
               ..member,
-              member_tasks: client_state.Loaded(update_helpers.flatten_tasks(
+              member_tasks: Loaded(update_helpers.flatten_tasks(
                 tasks_by_project,
               )),
             )
@@ -805,7 +806,7 @@ pub fn handle_pool(
           client_state.update_member(model, fn(member) {
             client_state.MemberModel(
               ..member,
-              member_tasks: client_state.Failed(err),
+              member_tasks: Failed(err),
               member_tasks_pending: 0,
             )
           }),
@@ -837,9 +838,9 @@ pub fn handle_pool(
           client_state.update_member(model, fn(member) {
             client_state.MemberModel(
               ..member,
-              member_task_types: client_state.Loaded(
-                update_helpers.flatten_task_types(task_types_by_project),
-              ),
+              member_task_types: Loaded(update_helpers.flatten_task_types(
+                task_types_by_project,
+              )),
             )
           }),
           effect.none(),
@@ -873,7 +874,7 @@ pub fn handle_pool(
           client_state.update_member(model, fn(member) {
             client_state.MemberModel(
               ..member,
-              member_task_types: client_state.Failed(err),
+              member_task_types: Failed(err),
               member_task_types_pending: 0,
             )
           }),
@@ -1052,16 +1053,13 @@ pub fn handle_pool(
       client_state.update_member(model, fn(member) {
         client_state.MemberModel(
           ..member,
-          member_capabilities: client_state.Loaded(capabilities),
+          member_capabilities: Loaded(capabilities),
         )
       })
       |> fn(next) { #(next, effect.none()) }
     client_state.MemberProjectCapabilitiesFetched(Error(err)) ->
       client_state.update_member(model, fn(member) {
-        client_state.MemberModel(
-          ..member,
-          member_capabilities: client_state.Failed(err),
-        )
+        client_state.MemberModel(..member, member_capabilities: Failed(err))
       })
       |> fn(next) { #(next, effect.none()) }
 
@@ -1173,7 +1171,7 @@ pub fn handle_pool(
         |> normalized_store.decrement_pending
 
       let next_cards = case normalized_store.is_ready(next_store) {
-        True -> client_state.Loaded(normalized_store.to_list(next_store))
+        True -> Loaded(normalized_store.to_list(next_store))
         False -> model.member.member_cards
       }
 
@@ -1192,8 +1190,8 @@ pub fn handle_pool(
         |> normalized_store.decrement_pending
 
       let next_cards = case model.member.member_cards {
-        client_state.Loaded(_) -> model.member.member_cards
-        _ -> client_state.Failed(err)
+        Loaded(_) -> model.member.member_cards
+        _ -> Failed(err)
       }
 
       client_state.update_member(model, fn(member) {

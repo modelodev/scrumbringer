@@ -33,17 +33,18 @@ import domain/org.{type OrgUser}
 import domain/org_role
 import domain/project.{type Project, type ProjectMember}
 import domain/project_role.{Manager, Member}
+import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 
 import scrumbringer_client/client_state.{
-  type Model, type Msg, type Remote, Failed, Loaded, Loading,
-  MemberAddDialogClosed, MemberAddDialogOpened, MemberAddRoleChanged,
-  MemberAddSubmitted, MemberAddUserSelected, MemberCapabilitiesDialogClosed,
-  MemberCapabilitiesDialogOpened, MemberCapabilitiesSaveClicked,
-  MemberCapabilitiesToggled, MemberReleaseAllCancelled, MemberReleaseAllClicked,
-  MemberReleaseAllConfirmed, MemberRemoveCancelled, MemberRemoveClicked,
-  MemberRemoveConfirmed, MemberRoleChangeRequested, NotAsked,
-  OrgUsersSearchChanged, OrgUsersSearchDebounced, OrgUsersSearchFailed,
-  OrgUsersSearchIdle, OrgUsersSearchLoaded, OrgUsersSearchLoading, admin_msg,
+  type Model, type Msg, MemberAddDialogClosed, MemberAddDialogOpened,
+  MemberAddRoleChanged, MemberAddSubmitted, MemberAddUserSelected,
+  MemberCapabilitiesDialogClosed, MemberCapabilitiesDialogOpened,
+  MemberCapabilitiesSaveClicked, MemberCapabilitiesToggled,
+  MemberReleaseAllCancelled, MemberReleaseAllClicked, MemberReleaseAllConfirmed,
+  MemberRemoveCancelled, MemberRemoveClicked, MemberRemoveConfirmed,
+  MemberRoleChangeRequested, OrgUsersSearchChanged, OrgUsersSearchDebounced,
+  OrgUsersSearchFailed, OrgUsersSearchIdle, OrgUsersSearchLoaded,
+  OrgUsersSearchLoading, admin_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
@@ -345,7 +346,7 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
           div([attribute.class("search-select-item")], [
             span([attribute.class("search-select-primary")], [text(u.email)]),
             span([attribute.class("search-select-secondary")], [
-              text(u.org_role),
+              text(org_role.to_string(u.org_role)),
             ]),
             button(
               [

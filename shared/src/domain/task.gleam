@@ -8,7 +8,7 @@
 //// import shared/domain/task.{type Task, type TaskFilters}
 //// import shared/domain/task_status.{type TaskStatus}
 ////
-//// let filters = TaskFilters(status: Some("available"), type_id: None, capability_id: None, q: None)
+//// let filters = TaskFilters(status: Some(Available), type_id: None, capability_id: None, q: None)
 //// ```
 
 import domain/task_status.{type OngoingBy, type TaskStatus, type WorkState}
@@ -185,11 +185,11 @@ pub type WorkSessionsPayload {
 /// ## Example
 ///
 /// ```gleam
-/// TaskFilters(status: Some("available"), type_id: None, capability_id: Some(1), q: None, blocked: None)
+/// TaskFilters(status: Some(Available), type_id: None, capability_id: Some(1), q: None, blocked: None)
 /// ```
 pub type TaskFilters {
   TaskFilters(
-    status: Option(String),
+    status: Option(TaskStatus),
     type_id: Option(Int),
     capability_id: Option(Int),
     q: Option(String),

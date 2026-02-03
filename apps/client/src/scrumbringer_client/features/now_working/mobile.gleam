@@ -26,14 +26,15 @@ import lustre/element.{type Element}
 import lustre/element/html.{div, h3, hr, span, text}
 import lustre/event
 
+import domain/remote.{Loaded}
 import domain/task.{type Task, ActiveTask, Task}
 import domain/task_status.{Claimed, Taken}
 
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Loaded, MemberCompleteClicked,
-  MemberNowWorkingPauseClicked, MemberNowWorkingStartClicked, MemberPanelToggled,
-  MemberReleaseClicked, pool_msg,
+  type Model, type Msg, MemberCompleteClicked, MemberNowWorkingPauseClicked,
+  MemberNowWorkingStartClicked, MemberPanelToggled, MemberReleaseClicked,
+  pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/empty_state

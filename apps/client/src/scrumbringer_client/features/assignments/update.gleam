@@ -14,6 +14,7 @@ import domain/api_error.{type ApiError}
 import domain/org.{type OrgUser}
 import domain/project.{type Project, type ProjectMember, Project, ProjectMember}
 import domain/project_role.{type ProjectRole, Member, parse}
+import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/assignments_view_mode
 import scrumbringer_client/client_state
 import scrumbringer_client/i18n/text as i18n_text
@@ -40,7 +41,7 @@ fn update_assignments(
 fn set_project_members_state(
   assignments: client_state.AssignmentsModel,
   project_id: Int,
-  state: client_state.Remote(List(ProjectMember)),
+  state: Remote(List(ProjectMember)),
 ) -> client_state.AssignmentsModel {
   let client_state.AssignmentsModel(project_members: project_members, ..) =
     assignments
@@ -53,7 +54,7 @@ fn set_project_members_state(
 fn set_user_projects_state(
   assignments: client_state.AssignmentsModel,
   user_id: Int,
-  state: client_state.Remote(List(Project)),
+  state: Remote(List(Project)),
 ) -> client_state.AssignmentsModel {
   let client_state.AssignmentsModel(user_projects: user_projects, ..) =
     assignments
@@ -93,13 +94,13 @@ fn update_project_role(project: Project, role: ProjectRole) -> Project {
 }
 
 fn update_project_members_role(
-  members: client_state.Remote(List(ProjectMember)),
+  members: Remote(List(ProjectMember)),
   user_id: Int,
   new_role: ProjectRole,
-) -> client_state.Remote(List(ProjectMember)) {
+) -> Remote(List(ProjectMember)) {
   case members {
-    client_state.Loaded(members_list) ->
-      client_state.Loaded(
+    Loaded(members_list) ->
+      Loaded(
         list.map(members_list, fn(member) {
           case member.user_id == user_id {
             True -> ProjectMember(..member, role: new_role)
@@ -112,13 +113,13 @@ fn update_project_members_role(
 }
 
 fn update_user_projects_role(
-  projects: client_state.Remote(List(Project)),
+  projects: Remote(List(Project)),
   project_id: Int,
   new_role: ProjectRole,
-) -> client_state.Remote(List(Project)) {
+) -> Remote(List(Project)) {
   case projects {
-    client_state.Loaded(projects_list) ->
-      client_state.Loaded(
+    Loaded(projects_list) ->
+      Loaded(
         list.map(projects_list, fn(project) {
           case project.id == project_id {
             True -> update_project_role(project, new_role)
@@ -142,14 +143,14 @@ fn current_role_for_assignment(
   ) = assignments
 
   case dict.get(project_members, project_id) {
-    Ok(client_state.Loaded(members)) ->
+    Ok(Loaded(members)) ->
       case list.find(members, fn(member) { member.user_id == user_id }) {
         Ok(member) -> opt.Some(member.role)
         Error(_) -> opt.None
       }
     _ ->
       case dict.get(user_projects, user_id) {
-        Ok(client_state.Loaded(projects)) ->
+        Ok(Loaded(projects)) ->
           case list.find(projects, fn(project) { project.id == project_id }) {
             Ok(project) -> opt.Some(project.my_role)
             Error(_) -> opt.None
@@ -300,11 +301,7 @@ pub fn handle_assignments_project_members_fetched(
   case result {
     Ok(members) -> #(
       update_assignments(model, fn(assignments) {
-        set_project_members_state(
-          assignments,
-          project_id,
-          client_state.Loaded(members),
-        )
+        set_project_members_state(assignments, project_id, Loaded(members))
       }),
       effect.none(),
     )
@@ -313,11 +310,7 @@ pub fn handle_assignments_project_members_fetched(
       update_helpers.handle_401_or(model, err, fn() {
         #(
           update_assignments(model, fn(assignments) {
-            set_project_members_state(
-              assignments,
-              project_id,
-              client_state.Failed(err),
-            )
+            set_project_members_state(assignments, project_id, Failed(err))
           }),
           effect.none(),
         )
@@ -333,11 +326,7 @@ pub fn handle_assignments_user_projects_fetched(
   case result {
     Ok(projects) -> #(
       update_assignments(model, fn(assignments) {
-        set_user_projects_state(
-          assignments,
-          user_id,
-          client_state.Loaded(projects),
-        )
+        set_user_projects_state(assignments, user_id, Loaded(projects))
       }),
       effect.none(),
     )
@@ -346,11 +335,7 @@ pub fn handle_assignments_user_projects_fetched(
       update_helpers.handle_401_or(model, err, fn() {
         #(
           update_assignments(model, fn(assignments) {
-            set_user_projects_state(
-              assignments,
-              user_id,
-              client_state.Failed(err),
-            )
+            set_user_projects_state(assignments, user_id, Failed(err))
           }),
           effect.none(),
         )
@@ -508,8 +493,8 @@ pub fn handle_assignments_project_member_added_ok(
   let model =
     update_assignments(model, fn(assignments) {
       assignments
-      |> set_project_members_state(project_id, client_state.Loading)
-      |> set_user_projects_state(member.user_id, client_state.Loading)
+      |> set_project_members_state(project_id, Loading)
+      |> set_user_projects_state(member.user_id, Loading)
     })
 
   let effects = [
@@ -549,8 +534,8 @@ pub fn handle_assignments_user_project_added_ok(
   let model =
     update_assignments(model, fn(assignments) {
       assignments
-      |> set_user_projects_state(user_id, client_state.Loading)
-      |> set_project_members_state(project.id, client_state.Loading)
+      |> set_user_projects_state(user_id, Loading)
+      |> set_project_members_state(project.id, Loading)
     })
 
   let effects = [
@@ -654,22 +639,22 @@ pub fn handle_assignments_remove_completed_ok(
         ..,
       ) = assignments
       let updated_project_members = case dict.get(project_members, project_id) {
-        Ok(client_state.Loaded(members)) ->
+        Ok(Loaded(members)) ->
           dict.insert(
             project_members,
             project_id,
-            client_state.Loaded(
+            Loaded(
               list.filter(members, fn(member) { member.user_id != user_id }),
             ),
           )
         _ -> project_members
       }
       let updated_user_projects = case dict.get(user_projects, user_id) {
-        Ok(client_state.Loaded(projects)) ->
+        Ok(Loaded(projects)) ->
           dict.insert(
             user_projects,
             user_id,
-            client_state.Loaded(
+            Loaded(
               list.filter(projects, fn(project) { project.id != project_id }),
             ),
           )
@@ -794,17 +779,16 @@ pub fn start_user_projects_fetch(
           let client_state.AssignmentsModel(user_projects: projects, ..) =
             current
           let should_fetch = case dict.get(projects, user.id) {
-            Ok(client_state.Loading) -> False
-            Ok(client_state.Loaded(_)) -> False
-            Ok(client_state.NotAsked) -> True
-            Ok(client_state.Failed(_)) -> True
+            Ok(Loading) -> False
+            Ok(Loaded(_)) -> False
+            Ok(NotAsked) -> True
+            Ok(Failed(_)) -> True
             Error(_) -> True
           }
           case should_fetch {
             False -> #(current, fx)
             True -> {
-              let updated =
-                set_user_projects_state(current, user.id, client_state.Loading)
+              let updated = set_user_projects_state(current, user.id, Loading)
               let effect =
                 api_org.list_user_projects(user.id, fn(result) {
                   client_state.admin_msg(

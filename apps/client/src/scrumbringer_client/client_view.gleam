@@ -41,6 +41,7 @@ import lustre/event
 
 import domain/org_role
 import domain/project.{type Project}
+import domain/remote.{Loaded}
 import domain/task_status
 import domain/user.{type User}
 import domain/view_mode
@@ -558,13 +559,12 @@ fn build_left_panel(
 ) -> Element(client_state.Msg) {
   // Story 4.5: Get badge counts for sidebar
   let pending_invites_count = case model.admin.invite_links {
-    client_state.Loaded(links) ->
-      list.count(links, fn(link) { link.used_at == opt.None })
+    Loaded(links) -> list.count(links, fn(link) { link.used_at == opt.None })
     _ -> 0
   }
 
   let users_count = case model.admin.org_users_cache {
-    client_state.Loaded(users) -> list.length(users)
+    Loaded(users) -> list.length(users)
     _ -> 0
   }
 
@@ -690,15 +690,15 @@ fn build_center_panel(
 ) -> Element(client_state.Msg) {
   // Get filtered tasks and available filters
   let tasks = case model.member.member_tasks {
-    client_state.Loaded(t) -> t
+    Loaded(t) -> t
     _ -> []
   }
   let task_types = case model.member.member_task_types {
-    client_state.Loaded(tt) -> tt
+    Loaded(tt) -> tt
     _ -> []
   }
   let capabilities = case model.admin.capabilities {
-    client_state.Loaded(caps) -> caps
+    Loaded(caps) -> caps
     _ -> []
   }
   let cards = card_queries.get_project_cards(model)
@@ -707,7 +707,7 @@ fn build_center_panel(
   let pool_content = pool_view.view_pool_main(model, user)
   // AC7: Extract org users for displaying claimed-by info
   let org_users = case model.admin.org_users_cache {
-    client_state.Loaded(users) -> users
+    Loaded(users) -> users
     _ -> []
   }
   let list_content =
@@ -787,10 +787,8 @@ fn build_center_panel(
     },
     task_types: task_types,
     capabilities: capabilities,
-    type_filter: parse_filter_id(model.member.member_filters_type_id),
-    capability_filter: parse_filter_id(
-      model.member.member_filters_capability_id,
-    ),
+    type_filter: model.member.member_filters_type_id,
+    capability_filter: model.member.member_filters_capability_id,
     search_query: model.member.member_filters_q,
     on_type_filter_change: fn(value) {
       client_state.pool_msg(client_state.MemberPoolTypeChanged(value))
@@ -820,7 +818,7 @@ fn build_right_panel(
 ) -> Element(client_state.Msg) {
   // Get claimed tasks for "my tasks" section
   let my_tasks = case model.member.member_tasks {
-    client_state.Loaded(tasks) ->
+    Loaded(tasks) ->
       list.filter(tasks, fn(t) {
         t.status == task_status.Claimed(task_status.Taken)
         && t.claimed_by == opt.Some(user.id)
@@ -834,7 +832,7 @@ fn build_right_panel(
     cards -> {
       // Get all tasks to compute progress
       let all_tasks = case model.member.member_tasks {
-        client_state.Loaded(tasks) -> tasks
+        Loaded(tasks) -> tasks
         _ -> []
       }
       // Find cards where user has claimed tasks
@@ -874,7 +872,7 @@ fn build_right_panel(
       ) = session
       // Find task title and type icon
       let #(title, type_icon, card_color) = case model.member.member_tasks {
-        client_state.Loaded(tasks) ->
+        Loaded(tasks) ->
           case list.find(tasks, fn(t) { t.id == id }) {
             Ok(t) -> {
               let #(_card_title_opt, resolved_color) =
@@ -928,7 +926,7 @@ fn build_right_panel(
     on_task_complete: fn(task_id) {
       // Find task version for complete action
       case model.member.member_tasks {
-        client_state.Loaded(tasks) ->
+        Loaded(tasks) ->
           case list.find(tasks, fn(t) { t.id == task_id }) {
             Ok(t) ->
               client_state.pool_msg(client_state.MemberCompleteClicked(
@@ -944,7 +942,7 @@ fn build_right_panel(
     on_task_release: fn(task_id) {
       // Find task version for release action
       case model.member.member_tasks {
-        client_state.Loaded(tasks) ->
+        Loaded(tasks) ->
           case list.find(tasks, fn(t) { t.id == task_id }) {
             Ok(t) ->
               client_state.pool_msg(client_state.MemberReleaseClicked(
@@ -973,16 +971,6 @@ fn build_right_panel(
     disable_actions: model.member.member_task_mutation_in_flight
       || model.member.member_now_working_in_flight,
   ))
-}
-
-/// Parses a filter ID string to Option(Int)
-fn parse_filter_id(s: String) -> opt.Option(Int) {
-  case s {
-    "" -> opt.None
-    _ ->
-      int.parse(s)
-      |> opt.from_result
-  }
 }
 
 // Story 4.5: Removed view_theme_switch, view_locale_switch, view_project_selector,
@@ -1018,7 +1006,7 @@ fn view_claimed_tasks_section(
   }
 
   let claimed_tasks = case model.member.member_tasks {
-    client_state.Loaded(tasks) ->
+    Loaded(tasks) ->
       tasks
       |> list.filter(fn(t) {
         let Task(status: status, claimed_by: claimed_by, ..) = t

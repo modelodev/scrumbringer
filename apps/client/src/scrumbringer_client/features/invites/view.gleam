@@ -26,8 +26,9 @@ import lustre/event
 import domain/org.{type InviteLink}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, InviteCreateDialogClosed, InviteCreateDialogOpened,
-  InviteLinkCopyClicked, InviteLinkCreateSubmitted, InviteLinkEmailChanged,
+  type Model, type Msg, DialogClosed, DialogOpen, Error, InFlight,
+  InviteCreateDialogClosed, InviteCreateDialogOpened, InviteLinkCopyClicked,
+  InviteLinkCreateSubmitted, InviteLinkEmailChanged, InviteLinkForm,
   InviteLinkRegenerateClicked, admin_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
@@ -108,6 +109,7 @@ fn view_latest_invite(model: Model, origin: String) -> Element(Msg) {
 
 fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let #(_open, _email, _error, in_flight) = invite_dialog_info(model)
 
   data_table.view_remote(
     model.admin.invite_links,
@@ -134,7 +136,7 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
               admin_msg(InviteLinkCopyClicked(full)),
               icons.Copy,
               action_buttons.SizeXs,
-              model.admin.invite_link_in_flight,
+              in_flight,
               "",
               opt.None,
               opt.None,
@@ -151,7 +153,7 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
               admin_msg(InviteLinkRegenerateClicked(link.email)),
               icons.Refresh,
               action_buttons.SizeXs,
-              model.admin.invite_link_in_flight,
+              in_flight,
               "",
               opt.None,
               opt.None,
@@ -166,6 +168,7 @@ fn view_invite_links_list(model: Model, origin: String) -> Element(Msg) {
 }
 
 fn view_create_dialog(model: Model) -> Element(Msg) {
+  let #(open, email, error, in_flight) = invite_dialog_info(model)
   dialog.view(
     dialog.DialogConfig(
       title: update_helpers.i18n_t(model, i18n_text.CreateInviteLink),
@@ -173,15 +176,15 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
       size: dialog.DialogMd,
       on_close: admin_msg(InviteCreateDialogClosed),
     ),
-    model.admin.invite_create_dialog_open,
-    model.admin.invite_link_error,
+    open,
+    error,
     [
       form([event.on_submit(fn(_) { admin_msg(InviteLinkCreateSubmitted) })], [
         form_field.view(
           update_helpers.i18n_t(model, i18n_text.EmailLabel),
           input([
             attribute.type_("email"),
-            attribute.value(model.admin.invite_link_email),
+            attribute.value(email),
             event.on_input(fn(value) {
               admin_msg(InviteLinkEmailChanged(value))
             }),
@@ -196,7 +199,7 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
           dialog.cancel_button(model, admin_msg(InviteCreateDialogClosed)),
           dialog.submit_button(
             model,
-            model.admin.invite_link_in_flight,
+            in_flight,
             False,
             i18n_text.Create,
             i18n_text.Creating,
@@ -206,6 +209,26 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
     ],
     [],
   )
+}
+
+fn invite_dialog_info(model: Model) -> #(Bool, String, opt.Option(String), Bool) {
+  let #(open, email, operation) = case model.admin.invite_link_dialog {
+    DialogOpen(form: InviteLinkForm(email: email), operation: operation) -> #(
+      True,
+      email,
+      operation,
+    )
+    DialogClosed(operation: operation) -> #(False, "", operation)
+  }
+
+  let error = case operation {
+    Error(message) -> opt.Some(message)
+    _ -> opt.None
+  }
+
+  let in_flight = operation == InFlight
+
+  #(open, email, error, in_flight)
 }
 
 fn build_full_url(origin: String, url_path: String) -> String {

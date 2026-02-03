@@ -32,22 +32,22 @@ import lustre/element/html.{button, div, form, input, option, select, span, text
 import lustre/event
 
 import domain/card.{type Card}
+import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import domain/task
 import domain/task_status
 
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Failed, Loaded, Loading, MemberClaimClicked,
-  MemberCompleteClicked, MemberCreateCardIdChanged,
-  MemberCreateDescriptionChanged, MemberCreateDialogClosed,
-  MemberCreatePriorityChanged, MemberCreateSubmitted, MemberCreateTitleChanged,
-  MemberCreateTypeIdChanged, MemberDependencyAddSubmitted,
-  MemberDependencyDialogClosed, MemberDependencyDialogOpened,
-  MemberDependencyRemoveClicked, MemberDependencySearchChanged,
-  MemberDependencySelected, MemberNoteContentChanged, MemberNoteDialogClosed,
-  MemberNoteDialogOpened, MemberNoteSubmitted, MemberPositionEditClosed,
-  MemberPositionEditSubmitted, MemberPositionEditXChanged,
-  MemberPositionEditYChanged, MemberReleaseClicked, MemberTaskDetailTabClicked,
-  MemberTaskDetailsClosed, NotAsked, pool_msg,
+  type Model, type Msg, MemberClaimClicked, MemberCompleteClicked,
+  MemberCreateCardIdChanged, MemberCreateDescriptionChanged,
+  MemberCreateDialogClosed, MemberCreatePriorityChanged, MemberCreateSubmitted,
+  MemberCreateTitleChanged, MemberCreateTypeIdChanged,
+  MemberDependencyAddSubmitted, MemberDependencyDialogClosed,
+  MemberDependencyDialogOpened, MemberDependencyRemoveClicked,
+  MemberDependencySearchChanged, MemberDependencySelected,
+  MemberNoteContentChanged, MemberNoteDialogClosed, MemberNoteDialogOpened,
+  MemberNoteSubmitted, MemberPositionEditClosed, MemberPositionEditSubmitted,
+  MemberPositionEditXChanged, MemberPositionEditYChanged, MemberReleaseClicked,
+  MemberTaskDetailTabClicked, MemberTaskDetailsClosed, pool_msg,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/card_section_header

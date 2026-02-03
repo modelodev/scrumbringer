@@ -24,16 +24,17 @@ import gleam/set
 import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError}
+import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import domain/workflow.{
   type Rule, type RuleTemplate, type TaskTemplate, type Workflow,
 }
 import scrumbringer_client/client_state.{
   type Model, type Msg, type TaskTemplateDialogMode, type WorkflowDialogMode,
-  AdminModel, AttachTemplateFailed, AttachTemplateSucceeded, Failed, Loaded,
-  Loading, NotAsked, RuleMetricsFetched, RuleTemplateAttached,
-  RuleTemplateDetached, RulesFetched, TaskTemplatesProjectFetched,
-  TaskTypesFetched, TemplateDetachFailed, TemplateDetachSucceeded,
-  WorkflowsProjectFetched, admin_msg, pool_msg, update_admin,
+  AdminModel, AttachTemplateFailed, AttachTemplateSucceeded, RuleMetricsFetched,
+  RuleTemplateAttached, RuleTemplateDetached, RulesFetched,
+  TaskTemplatesProjectFetched, TaskTypesFetched, TemplateDetachFailed,
+  TemplateDetachSucceeded, WorkflowsProjectFetched, admin_msg, pool_msg,
+  update_admin,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers

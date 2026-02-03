@@ -74,12 +74,15 @@ import domain/metrics.{
   type MyMetrics, type OrgMetricsOverview, type OrgMetricsProjectTasksPayload,
 }
 import domain/org.{type InviteLink, type OrgUser}
+import domain/org_role
 import domain/project.{type Project, type ProjectMember}
 import domain/project_role.{type ProjectRole, Member as MemberRole}
+import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task.{
   type Task, type TaskDependency, type TaskNote, type TaskPosition,
   type WorkSessionsPayload,
 }
+import domain/task_status
 import domain/task_type.{type TaskType}
 import domain/view_mode
 import domain/workflow.{
@@ -105,23 +108,15 @@ import scrumbringer_client/ui/toast
 // Remote data loading state
 // ----------------------------------------------------------------------------
 
-/// Represents the state of data that must be fetched from the server.
-///
-/// This type models the lifecycle of async data loading:
-/// - `NotAsked`: Initial state before any request is made
-/// - `Loading`: Request in progress
-/// - `Loaded(a)`: Request succeeded with data
-/// - `Failed(ApiError)`: Request failed with error details
-///
-/// Note: domain/remote.gleam provides an equivalent type with helpers.
-/// This client-side definition is kept for historical compatibility.
-pub type Remote(a) {
-  NotAsked
-  Loading
-  Loaded(a)
-  Failed(ApiError)
-}
-
+// Represents the state of data that must be fetched from the server.
+//
+// This type models the lifecycle of async data loading:
+// - `NotAsked`: Initial state before any request is made
+// - `Loading`: Request in progress
+// - `Loaded(a)`: Request succeeded with data
+// - `Failed(ApiError)`: Request failed with error details
+//
+// Note: remote type is imported from domain/remote.gleam to avoid duplication.
 // ----------------------------------------------------------------------------
 // Page navigation
 // ----------------------------------------------------------------------------
@@ -158,6 +153,24 @@ pub type IconPreview {
   IconLoading
   IconOk
   IconError
+}
+
+/// Represents a generic async operation state.
+pub type OperationState {
+  Idle
+  InFlight
+  Error(String)
+}
+
+/// Represents a dialog with form state and operation state.
+pub type DialogState(form) {
+  DialogClosed(operation: OperationState)
+  DialogOpen(form: form, operation: OperationState)
+}
+
+/// Form state for invite link dialog.
+pub type InviteLinkForm {
+  InviteLinkForm(email: String)
 }
 
 /// State during drag-and-drop of a task card.
@@ -400,10 +413,7 @@ pub type AssignmentsModel {
 pub type AdminModel {
   AdminModel(
     invite_links: Remote(List(InviteLink)),
-    invite_create_dialog_open: Bool,
-    invite_link_email: String,
-    invite_link_in_flight: Bool,
-    invite_link_error: Option(String),
+    invite_link_dialog: DialogState(InviteLinkForm),
     invite_link_last: Option(InviteLink),
     invite_link_copy_status: Option(String),
     projects_dialog: ProjectDialogState,
@@ -527,9 +537,9 @@ pub type MemberModel {
     member_task_mutation_in_flight: Bool,
     member_task_mutation_task_id: Option(Int),
     member_tasks_snapshot: Option(List(Task)),
-    member_filters_status: String,
-    member_filters_type_id: String,
-    member_filters_capability_id: String,
+    member_filters_status: Option(task_status.TaskStatus),
+    member_filters_type_id: Option(Int),
+    member_filters_capability_id: Option(Int),
     member_filters_q: String,
     member_quick_my_caps: Bool,
     member_pool_filters_visible: Bool,
@@ -658,7 +668,7 @@ pub type AdminMsg {
   MembersFetched(ApiResult(List(ProjectMember)))
   OrgUsersCacheFetched(ApiResult(List(OrgUser)))
   OrgSettingsUsersFetched(ApiResult(List(OrgUser)))
-  OrgSettingsRoleChanged(Int, String)
+  OrgSettingsRoleChanged(Int, org_role.OrgRole)
   OrgSettingsSaved(Int, ApiResult(OrgUser))
   OrgSettingsDeleteClicked(Int)
   OrgSettingsDeleteCancelled
@@ -1213,10 +1223,7 @@ pub fn default_model() -> Model {
     ),
     admin: AdminModel(
       invite_links: NotAsked,
-      invite_create_dialog_open: False,
-      invite_link_email: "",
-      invite_link_in_flight: False,
-      invite_link_error: option.None,
+      invite_link_dialog: DialogClosed(operation: Idle),
       invite_link_last: option.None,
       invite_link_copy_status: option.None,
       projects_dialog: ProjectDialogClosed,
@@ -1352,9 +1359,9 @@ pub fn default_model() -> Model {
       member_task_mutation_in_flight: False,
       member_task_mutation_task_id: option.None,
       member_tasks_snapshot: option.None,
-      member_filters_status: "",
-      member_filters_type_id: "",
-      member_filters_capability_id: "",
+      member_filters_status: option.None,
+      member_filters_type_id: option.None,
+      member_filters_capability_id: option.None,
       member_filters_q: "",
       member_quick_my_caps: True,
       member_pool_filters_visible: False,

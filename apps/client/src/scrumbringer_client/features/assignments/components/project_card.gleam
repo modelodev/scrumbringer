@@ -14,6 +14,7 @@ import lustre/event
 
 import domain/project.{type Project, type ProjectMember}
 import domain/project_role.{Manager, Member, to_string}
+import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 
 import scrumbringer_client/client_state
 import scrumbringer_client/features/assignments/components/assignments_card
@@ -27,14 +28,14 @@ import scrumbringer_client/update_helpers
 pub fn view(
   model: client_state.Model,
   project: Project,
-  members_state: client_state.Remote(List(ProjectMember)),
+  members_state: Remote(List(ProjectMember)),
   expanded: Bool,
 ) -> element.Element(client_state.Msg) {
   let t = fn(key) { update_helpers.i18n_t(model, key) }
   let assignments = model.admin.assignments
 
   let no_members = case members_state {
-    client_state.Loaded(members_list) ->
+    Loaded(members_list) ->
       case model.core.user {
         opt.Some(user) ->
           members_list == []
@@ -52,7 +53,7 @@ pub fn view(
   }
 
   let users_count = case members_state {
-    client_state.Loaded(members_list) -> list.length(members_list)
+    Loaded(members_list) -> list.length(members_list)
     _ -> project.members_count
   }
   let users_label = t(i18n_text.AssignmentsUsersCount(users_count))
@@ -77,12 +78,12 @@ pub fn view(
   let body =
     div([], [
       case members_state {
-        client_state.NotAsked | client_state.Loading ->
+        NotAsked | Loading ->
           loading.loading(t(i18n_text.AssignmentsLoadingMembers))
 
-        client_state.Failed(err) -> error_notice.view(err.message)
+        Failed(err) -> error_notice.view(err.message)
 
-        client_state.Loaded(members_list) ->
+        Loaded(members_list) ->
           case members_list == [] {
             True ->
               p([attribute.class("assignments-empty")], [
@@ -240,7 +241,7 @@ fn view_inline_add(
   let is_disabled = assignments.inline_add_in_flight
 
   let options = case model.admin.org_users_cache {
-    client_state.Loaded(users) ->
+    Loaded(users) ->
       users
       |> list.filter(fn(user) {
         let term = string.lowercase(string.trim(search))

@@ -23,6 +23,7 @@
 
 import domain/org_role
 import domain/project.{type Project}
+import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/user.{type User}
 import gleam/dict
 import gleam/int
@@ -44,6 +45,7 @@ import scrumbringer_client/api/tasks as api_tasks
 
 // Domain types
 import domain/task.{type TaskFilters, TaskFilters}
+import domain/task_status
 import scrumbringer_client/client_ffi
 import scrumbringer_client/hydration
 import scrumbringer_client/member_section
@@ -411,12 +413,12 @@ fn apply_route_fields(
   }
 }
 
-fn remote_state(remote: client_state.Remote(a)) -> hydration.ResourceState {
+fn remote_state(remote: Remote(a)) -> hydration.ResourceState {
   case remote {
-    client_state.NotAsked -> hydration.NotAsked
-    client_state.Loading -> hydration.Loading
-    client_state.Loaded(_) -> hydration.Loaded
-    client_state.Failed(_) -> hydration.Failed
+    NotAsked -> hydration.NotAsked
+    Loading -> hydration.Loading
+    Loaded(_) -> hydration.Loaded
+    Failed(_) -> hydration.Failed
   }
 }
 
@@ -465,7 +467,7 @@ fn build_snapshot(model: client_state.Model) -> hydration.Snapshot {
 /// ## Size Justification (259 lines)
 ///
 /// This function handles hydration commands for 12 resource types, each requiring:
-/// - State validation (client_state.Loading/client_state.Loaded check)
+/// - State validation (Loading/Loaded check)
 /// - Project ID validation where applicable
 /// - client_state.Model updates and effect batching
 ///
@@ -573,7 +575,7 @@ fn hydrate_fetch_projects(
   fx: List(Effect(client_state.Msg)),
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   case model.core.projects {
-    client_state.Loading | client_state.Loaded(_) -> #(model, fx)
+    Loading | Loaded(_) -> #(model, fx)
     _ -> hydrate_projects_request(model, fx)
   }
 }
@@ -584,7 +586,7 @@ fn hydrate_projects_request(
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   let model =
     client_state.update_core(model, fn(core) {
-      client_state.CoreModel(..core, projects: client_state.Loading)
+      client_state.CoreModel(..core, projects: Loading)
     })
 
   #(model, [
@@ -600,7 +602,7 @@ fn hydrate_fetch_invite_links(
   fx: List(Effect(client_state.Msg)),
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   case model.admin.invite_links {
-    client_state.Loading | client_state.Loaded(_) -> #(model, fx)
+    Loading | Loaded(_) -> #(model, fx)
     _ -> hydrate_invite_links_request(model, fx)
   }
 }
@@ -611,7 +613,7 @@ fn hydrate_invite_links_request(
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   let model =
     client_state.update_admin(model, fn(admin) {
-      client_state.AdminModel(..admin, invite_links: client_state.Loading)
+      client_state.AdminModel(..admin, invite_links: Loading)
     })
 
   #(model, [
@@ -627,7 +629,7 @@ fn hydrate_fetch_capabilities(
   fx: List(Effect(client_state.Msg)),
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   case model.admin.capabilities, model.core.selected_project_id {
-    client_state.Loading, _ | client_state.Loaded(_), _ -> #(model, fx)
+    Loading, _ | Loaded(_), _ -> #(model, fx)
     _, opt.Some(project_id) ->
       hydrate_capabilities_request(model, fx, project_id)
     _, opt.None -> #(model, fx)
@@ -641,7 +643,7 @@ fn hydrate_capabilities_request(
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   let model =
     client_state.update_admin(model, fn(admin) {
-      client_state.AdminModel(..admin, capabilities: client_state.Loading)
+      client_state.AdminModel(..admin, capabilities: Loading)
     })
 
   #(model, [
@@ -661,7 +663,7 @@ fn hydrate_fetch_me_capability_ids(
     model.core.selected_project_id,
     model.core.user
   {
-    client_state.Loading, _, _ | client_state.Loaded(_), _, _ -> #(model, fx)
+    Loading, _, _ | Loaded(_), _, _ -> #(model, fx)
     _, opt.Some(project_id), opt.Some(user) ->
       hydrate_me_capability_ids_request(model, fx, project_id, user)
     _, _, _ -> #(model, fx)
@@ -676,10 +678,7 @@ fn hydrate_me_capability_ids_request(
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   let model =
     client_state.update_member(model, fn(member) {
-      client_state.MemberModel(
-        ..member,
-        member_my_capability_ids: client_state.Loading,
-      )
+      client_state.MemberModel(..member, member_my_capability_ids: Loading)
     })
 
   #(model, [
@@ -695,7 +694,7 @@ fn hydrate_fetch_work_sessions(
   fx: List(Effect(client_state.Msg)),
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   case model.member.member_work_sessions {
-    client_state.Loading | client_state.Loaded(_) -> #(model, fx)
+    Loading | Loaded(_) -> #(model, fx)
     _ -> hydrate_work_sessions_request(model, fx)
   }
 }
@@ -706,10 +705,7 @@ fn hydrate_work_sessions_request(
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   let model =
     client_state.update_member(model, fn(member) {
-      client_state.MemberModel(
-        ..member,
-        member_work_sessions: client_state.Loading,
-      )
+      client_state.MemberModel(..member, member_work_sessions: Loading)
     })
 
   #(model, [
@@ -725,7 +721,7 @@ fn hydrate_fetch_me_metrics(
   fx: List(Effect(client_state.Msg)),
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   case model.member.member_metrics {
-    client_state.Loading | client_state.Loaded(_) -> #(model, fx)
+    Loading | Loaded(_) -> #(model, fx)
     _ -> hydrate_me_metrics_request(model, fx)
   }
 }
@@ -736,7 +732,7 @@ fn hydrate_me_metrics_request(
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   let model =
     client_state.update_member(model, fn(member) {
-      client_state.MemberModel(..member, member_metrics: client_state.Loading)
+      client_state.MemberModel(..member, member_metrics: Loading)
     })
 
   #(model, [
@@ -752,7 +748,7 @@ fn hydrate_fetch_org_metrics_overview(
   fx: List(Effect(client_state.Msg)),
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   case model.admin.admin_metrics_overview {
-    client_state.Loading | client_state.Loaded(_) -> #(model, fx)
+    Loading | Loaded(_) -> #(model, fx)
     _ -> hydrate_org_metrics_overview_request(model, fx)
   }
 }
@@ -763,10 +759,7 @@ fn hydrate_org_metrics_overview_request(
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   let model =
     client_state.update_admin(model, fn(admin) {
-      client_state.AdminModel(
-        ..admin,
-        admin_metrics_overview: client_state.Loading,
-      )
+      client_state.AdminModel(..admin, admin_metrics_overview: Loading)
     })
 
   #(model, [
@@ -797,8 +790,8 @@ fn hydrate_org_metrics_project_tasks_if_ready(
     model.admin.admin_metrics_project_tasks,
     model.admin.admin_metrics_project_id
   {
-    client_state.Loading, _ -> #(model, fx)
-    client_state.Loaded(_), opt.Some(pid) if pid == project_id -> #(model, fx)
+    Loading, _ -> #(model, fx)
+    Loaded(_), opt.Some(pid) if pid == project_id -> #(model, fx)
     _, _ -> hydrate_org_metrics_project_tasks_request(model, fx, project_id)
   }
 }
@@ -812,7 +805,7 @@ fn hydrate_org_metrics_project_tasks_request(
     client_state.update_admin(model, fn(admin) {
       client_state.AdminModel(
         ..admin,
-        admin_metrics_project_tasks: client_state.Loading,
+        admin_metrics_project_tasks: Loading,
         admin_metrics_project_id: opt.Some(project_id),
       )
     })
@@ -830,7 +823,7 @@ fn hydrate_fetch_org_settings_users(
   fx: List(Effect(client_state.Msg)),
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   case model.admin.org_settings_users {
-    client_state.Loading | client_state.Loaded(_) -> #(model, fx)
+    Loading | Loaded(_) -> #(model, fx)
     _ -> hydrate_org_settings_users_request(model, fx)
   }
 }
@@ -843,7 +836,7 @@ fn hydrate_org_settings_users_request(
     client_state.update_admin(model, fn(admin) {
       client_state.AdminModel(
         ..admin,
-        org_settings_users: client_state.Loading,
+        org_settings_users: Loading,
         org_settings_save_in_flight: False,
         org_settings_error: opt.None,
         org_settings_error_user_id: opt.None,
@@ -863,7 +856,7 @@ fn hydrate_fetch_org_users_cache(
   fx: List(Effect(client_state.Msg)),
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   case model.admin.org_users_cache {
-    client_state.Loading | client_state.Loaded(_) -> #(model, fx)
+    Loading | Loaded(_) -> #(model, fx)
     _ -> hydrate_org_users_cache_request(model, fx)
   }
 }
@@ -874,7 +867,7 @@ fn hydrate_org_users_cache_request(
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   let model =
     client_state.update_admin(model, fn(admin) {
-      client_state.AdminModel(..admin, org_users_cache: client_state.Loading)
+      client_state.AdminModel(..admin, org_users_cache: Loading)
     })
 
   #(model, [
@@ -902,7 +895,7 @@ fn hydrate_members_if_ready(
   project_id: Int,
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   case model.admin.members {
-    client_state.Loading -> #(model, fx)
+    Loading -> #(model, fx)
     _ -> hydrate_members_request(model, fx, project_id)
   }
 }
@@ -916,9 +909,9 @@ fn hydrate_members_request(
     client_state.update_admin(model, fn(admin) {
       client_state.AdminModel(
         ..admin,
-        members: client_state.Loading,
+        members: Loading,
         members_project_id: opt.Some(project_id),
-        org_users_cache: client_state.Loading,
+        org_users_cache: Loading,
       )
     })
 
@@ -951,7 +944,7 @@ fn hydrate_task_types_if_ready(
   project_id: Int,
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   case model.admin.task_types {
-    client_state.Loading -> #(model, fx)
+    Loading -> #(model, fx)
     _ -> hydrate_task_types_request(model, fx, project_id)
   }
 }
@@ -965,7 +958,7 @@ fn hydrate_task_types_request(
     client_state.update_admin(model, fn(admin) {
       client_state.AdminModel(
         ..admin,
-        task_types: client_state.Loading,
+        task_types: Loading,
         task_types_project_id: opt.Some(project_id),
       )
     })
@@ -983,7 +976,7 @@ fn hydrate_refresh_member(
   fx: List(Effect(client_state.Msg)),
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   case model.core.projects {
-    client_state.Loaded(_) -> {
+    Loaded(_) -> {
       let #(next, member_fx) = member_refresh(model)
       #(next, [member_fx, ..fx])
     }
@@ -993,8 +986,7 @@ fn hydrate_refresh_member(
 
 fn can_fetch_project(model: client_state.Model, project_id: Int) -> Bool {
   case model.core.projects {
-    client_state.Loaded(projects) ->
-      list.any(projects, fn(p) { p.id == project_id })
+    Loaded(projects) -> list.any(projects, fn(p) { p.id == project_id })
     _ -> False
   }
 }
@@ -1160,11 +1152,11 @@ fn bootstrap_admin(
   let model =
     client_state.update_admin(
       client_state.update_core(model, fn(core) {
-        client_state.CoreModel(..core, projects: client_state.Loading)
+        client_state.CoreModel(..core, projects: Loading)
       }),
       fn(admin) {
         client_state.AdminModel(..admin, invite_links: case is_admin {
-          True -> client_state.Loading
+          True -> Loading
           False -> admin.invite_links
         })
       },
@@ -1223,7 +1215,7 @@ pub fn refresh_section_for_test(
     permissions.Invites -> {
       let model =
         client_state.update_admin(model, fn(admin) {
-          client_state.AdminModel(..admin, invite_links: client_state.Loading)
+          client_state.AdminModel(..admin, invite_links: Loading)
         })
       #(
         model,
@@ -1238,7 +1230,7 @@ pub fn refresh_section_for_test(
         client_state.update_admin(model, fn(admin) {
           client_state.AdminModel(
             ..admin,
-            org_settings_users: client_state.Loading,
+            org_settings_users: Loading,
             org_settings_save_in_flight: False,
             org_settings_error: opt.None,
             org_settings_error_user_id: opt.None,
@@ -1268,10 +1260,7 @@ pub fn refresh_section_for_test(
     permissions.Metrics -> {
       let model =
         client_state.update_admin(model, fn(admin) {
-          client_state.AdminModel(
-            ..admin,
-            admin_metrics_overview: client_state.Loading,
-          )
+          client_state.AdminModel(..admin, admin_metrics_overview: Loading)
         })
 
       let overview_fx =
@@ -1287,7 +1276,7 @@ pub fn refresh_section_for_test(
             client_state.update_admin(model, fn(admin) {
               client_state.AdminModel(
                 ..admin,
-                admin_metrics_project_tasks: client_state.Loading,
+                admin_metrics_project_tasks: Loading,
                 admin_metrics_project_id: opt.Some(project_id),
               )
             })
@@ -1341,9 +1330,9 @@ pub fn refresh_section_for_test(
             client_state.update_admin(model, fn(admin) {
               client_state.AdminModel(
                 ..admin,
-                members: client_state.Loading,
+                members: Loading,
                 members_project_id: opt.Some(project_id),
-                org_users_cache: client_state.Loading,
+                org_users_cache: Loading,
               )
             })
           let #(model, right_panel_fx) = fetch_right_panel_data(model)
@@ -1370,7 +1359,7 @@ pub fn refresh_section_for_test(
             client_state.update_admin(model, fn(admin) {
               client_state.AdminModel(
                 ..admin,
-                task_types: client_state.Loading,
+                task_types: Loading,
                 task_types_project_id: opt.Some(project_id),
               )
             })
@@ -1407,11 +1396,11 @@ pub fn refresh_section_for_test(
         model.core.selected_project_id,
         model.admin.task_types
       {
-        opt.Some(project_id), client_state.NotAsked ->
+        opt.Some(project_id), NotAsked ->
           api_tasks.list_task_types(project_id, fn(result) {
             client_state.admin_msg(client_state.TaskTypesFetched(result))
           })
-        opt.Some(project_id), client_state.Failed(_) ->
+        opt.Some(project_id), Failed(_) ->
           api_tasks.list_task_types(project_id, fn(result) {
             client_state.admin_msg(client_state.TaskTypesFetched(result))
           })
@@ -1436,11 +1425,11 @@ fn refresh_assignments_projects(
   model: client_state.Model,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   case model.core.projects {
-    client_state.Loading | client_state.Loaded(_) -> #(model, effect.none())
+    Loading | Loaded(_) -> #(model, effect.none())
     _ -> {
       let model =
         client_state.update_core(model, fn(core) {
-          client_state.CoreModel(..core, projects: client_state.Loading)
+          client_state.CoreModel(..core, projects: Loading)
         })
       let fx =
         api_projects.list_projects(fn(result) {
@@ -1455,14 +1444,11 @@ fn refresh_assignments_org_users(
   model: client_state.Model,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   case model.admin.org_users_cache {
-    client_state.Loading | client_state.Loaded(_) -> #(model, effect.none())
+    Loading | Loaded(_) -> #(model, effect.none())
     _ -> {
       let model =
         client_state.update_admin(model, fn(admin) {
-          client_state.AdminModel(
-            ..admin,
-            org_users_cache: client_state.Loading,
-          )
+          client_state.AdminModel(..admin, org_users_cache: Loading)
         })
       let fx =
         api_org.list_org_users("", fn(result) {
@@ -1488,10 +1474,10 @@ fn refresh_assignments_project_members(
           let client_state.AssignmentsModel(project_members: members, ..) =
             current
           let should_fetch = case dict.get(members, project.id) {
-            Ok(client_state.Loading) -> False
-            Ok(client_state.Loaded(_)) -> False
-            Ok(client_state.NotAsked) -> True
-            Ok(client_state.Failed(_)) -> True
+            Ok(Loading) -> False
+            Ok(Loaded(_)) -> False
+            Ok(NotAsked) -> True
+            Ok(Failed(_)) -> True
             Error(_) -> True
           }
           case should_fetch {
@@ -1500,11 +1486,7 @@ fn refresh_assignments_project_members(
               let updated =
                 client_state.AssignmentsModel(
                   ..current,
-                  project_members: dict.insert(
-                    members,
-                    project.id,
-                    client_state.Loading,
-                  ),
+                  project_members: dict.insert(members, project.id, Loading),
                 )
               let effect =
                 api_projects.list_project_members(project.id, fn(result) {
@@ -1533,7 +1515,7 @@ fn refresh_assignments_user_projects(
   model: client_state.Model,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   case model.admin.org_users_cache {
-    client_state.Loaded(users) -> {
+    Loaded(users) -> {
       let assignments = model.admin.assignments
 
       let #(next_assignments, effects) =
@@ -1542,10 +1524,10 @@ fn refresh_assignments_user_projects(
           let client_state.AssignmentsModel(user_projects: projects, ..) =
             current
           let should_fetch = case dict.get(projects, user.id) {
-            Ok(client_state.Loading) -> False
-            Ok(client_state.Loaded(_)) -> False
-            Ok(client_state.NotAsked) -> True
-            Ok(client_state.Failed(_)) -> True
+            Ok(Loading) -> False
+            Ok(Loaded(_)) -> False
+            Ok(NotAsked) -> True
+            Ok(Failed(_)) -> True
             Error(_) -> True
           }
           case should_fetch {
@@ -1554,11 +1536,7 @@ fn refresh_assignments_user_projects(
               let updated =
                 client_state.AssignmentsModel(
                   ..current,
-                  user_projects: dict.insert(
-                    projects,
-                    user.id,
-                    client_state.Loading,
-                  ),
+                  user_projects: dict.insert(projects, user.id, Loading),
                 )
               let effect =
                 api_org.list_user_projects(user.id, fn(result) {
@@ -1629,7 +1607,7 @@ fn fetch_right_panel_data(
           fn(admin) {
             client_state.AdminModel(
               ..admin,
-              cards: client_state.Loading,
+              cards: Loading,
               cards_project_id: opt.Some(project_id),
             )
           },
@@ -1670,10 +1648,7 @@ fn refresh_member_capabilities(
   case model.core.selected_project_id {
     opt.Some(project_id) -> #(
       client_state.update_member(model, fn(member) {
-        client_state.MemberModel(
-          ..member,
-          member_capabilities: client_state.Loading,
-        )
+        client_state.MemberModel(..member, member_capabilities: Loading)
       }),
       api_org.list_project_capabilities(project_id, fn(result) {
         client_state.pool_msg(client_state.MemberProjectCapabilitiesFetched(
@@ -1683,10 +1658,7 @@ fn refresh_member_capabilities(
     )
     opt.None -> #(
       client_state.update_member(model, fn(member) {
-        client_state.MemberModel(
-          ..member,
-          member_capabilities: client_state.NotAsked,
-        )
+        client_state.MemberModel(..member, member_capabilities: NotAsked)
       }),
       effect.none(),
     )
@@ -1713,7 +1685,7 @@ fn reset_member_cards(
       client_state.MemberModel(
         ..member,
         member_cards_store: normalized_store.new(),
-        member_cards: client_state.NotAsked,
+        member_cards: NotAsked,
       )
     }),
     effect.none(),
@@ -1742,8 +1714,8 @@ fn refresh_member_cards_for_projects(
           list.length(project_ids),
         )
       let next_member_cards = case member.member_cards {
-        client_state.Loaded(_) -> member.member_cards
-        _ -> client_state.Loading
+        Loaded(_) -> member.member_cards
+        _ -> Loading
       }
       client_state.MemberModel(
         ..member,
@@ -1784,10 +1756,10 @@ fn reset_member_tasks(
     client_state.update_member(model, fn(member) {
       client_state.MemberModel(
         ..member,
-        member_tasks: client_state.NotAsked,
+        member_tasks: NotAsked,
         member_tasks_pending: 0,
         member_tasks_by_project: dict.new(),
-        member_task_types: client_state.NotAsked,
+        member_task_types: NotAsked,
         member_task_types_pending: 0,
         member_task_types_by_project: dict.new(),
       )
@@ -1850,10 +1822,10 @@ fn refresh_member_data(
     client_state.update_member(model, fn(member) {
       client_state.MemberModel(
         ..member,
-        member_tasks: client_state.Loading,
+        member_tasks: Loading,
         member_tasks_pending: list.length(project_ids),
         member_tasks_by_project: dict.new(),
-        member_task_types: client_state.Loading,
+        member_task_types: Loading,
         member_task_types_pending: list.length(project_ids),
         member_task_types_by_project: dict.new(),
         member_cards_store: normalized_store.with_pending(
@@ -1861,8 +1833,8 @@ fn refresh_member_data(
           list.length(project_ids),
         ),
         member_cards: case member.member_cards {
-          client_state.Loaded(_) -> member.member_cards
-          _ -> client_state.Loading
+          Loaded(_) -> member.member_cards
+          _ -> Loading
         },
       )
     })
@@ -1875,7 +1847,7 @@ fn task_filters_for_member_section(model: client_state.Model) -> TaskFilters {
   case model.member.member_section {
     member_section.MyBar ->
       TaskFilters(
-        status: opt.Some("claimed"),
+        status: opt.Some(task_status.Claimed(task_status.Taken)),
         type_id: opt.None,
         capability_id: opt.None,
         q: opt.None,
@@ -1885,25 +1857,17 @@ fn task_filters_for_member_section(model: client_state.Model) -> TaskFilters {
     member_section.Pool ->
       TaskFilters(
         status: opt.None,
-        type_id: update_helpers.empty_to_int_opt(
-          model.member.member_filters_type_id,
-        ),
-        capability_id: update_helpers.empty_to_int_opt(
-          model.member.member_filters_capability_id,
-        ),
+        type_id: model.member.member_filters_type_id,
+        capability_id: model.member.member_filters_capability_id,
         q: update_helpers.empty_to_opt(model.member.member_filters_q),
         blocked: opt.None,
       )
 
     _ ->
       TaskFilters(
-        status: update_helpers.empty_to_opt(model.member.member_filters_status),
-        type_id: update_helpers.empty_to_int_opt(
-          model.member.member_filters_type_id,
-        ),
-        capability_id: update_helpers.empty_to_int_opt(
-          model.member.member_filters_capability_id,
-        ),
+        status: model.member.member_filters_status,
+        type_id: model.member.member_filters_type_id,
+        capability_id: model.member.member_filters_capability_id,
         q: update_helpers.empty_to_opt(model.member.member_filters_q),
         blocked: opt.None,
       )
@@ -2212,8 +2176,8 @@ pub fn update(
             fn(member) {
               client_state.MemberModel(
                 ..member,
-                member_filters_type_id: "",
-                member_task_types: client_state.NotAsked,
+                member_filters_type_id: opt.None,
+                member_task_types: NotAsked,
               )
             },
           )
