@@ -26,10 +26,12 @@ import lustre/event
 import domain/org.{type InviteLink}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, DialogClosed, DialogOpen, Error, InFlight,
-  InviteCreateDialogClosed, InviteCreateDialogOpened, InviteLinkCopyClicked,
-  InviteLinkCreateSubmitted, InviteLinkEmailChanged, InviteLinkForm,
+  type Model, type Msg, InviteCreateDialogClosed, InviteCreateDialogOpened,
+  InviteLinkCopyClicked, InviteLinkCreateSubmitted, InviteLinkEmailChanged,
   InviteLinkRegenerateClicked, admin_msg,
+}
+import scrumbringer_client/client_state/types.{
+  DialogClosed, DialogOpen, Error, InFlight, InviteLinkForm,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons

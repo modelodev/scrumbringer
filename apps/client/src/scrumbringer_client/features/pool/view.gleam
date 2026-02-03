@@ -43,8 +43,10 @@ import scrumbringer_client/client_state.{
   type Model, type Msg, MemberClaimClicked, MemberCompleteClicked,
   MemberCreateDialogOpened, MemberDragEnded, MemberDragMoved, MemberDragStarted,
   MemberPoolTouchEnded, MemberPoolTouchStarted, MemberReleaseClicked,
-  MemberTaskDetailsOpened, MemberTaskHoverOpened, PoolDragDragging, PoolDragIdle,
-  PoolDragPendingRect, pool_msg,
+  MemberTaskDetailsOpened, MemberTaskHoverOpened, pool_msg,
+}
+import scrumbringer_client/client_state/types.{
+  PoolDragDragging, PoolDragIdle, PoolDragPendingRect,
 }
 import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/panel as now_working_panel

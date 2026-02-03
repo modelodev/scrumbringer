@@ -15,6 +15,9 @@ import domain/remote.{Failed, Loaded}
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
+import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/member as member_state
+import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/update as admin_workflow
 import scrumbringer_client/features/assignments/update as assignments_workflow
 import scrumbringer_client/features/capabilities/update as capabilities_workflow
@@ -116,10 +119,10 @@ pub fn handle_admin(
                 )
               }),
               fn(member) {
-                client_state.MemberModel(
+                member_state.MemberModel(
                   ..member,
-                  member_drag: client_state.DragIdle,
-                  member_pool_drag: client_state.PoolDragIdle,
+                  member_drag: state_types.DragIdle,
+                  member_pool_drag: state_types.PoolDragIdle,
                 )
               },
             )
@@ -566,7 +569,7 @@ fn clear_card_new_notes(
   client_state.update_admin(model, fn(admin) {
     case admin.cards {
       Loaded(cards) ->
-        client_state.AdminModel(
+        admin_state.AdminModel(
           ..admin,
           cards: Loaded(
             list.map(cards, fn(card_item) {
@@ -637,7 +640,7 @@ pub fn handle_pool(
       pool_workflow.handle_task_hover_notes_fetched(model, task_id, result)
     client_state.MemberListHideCompletedToggled -> #(
       client_state.update_member(model, fn(member) {
-        client_state.MemberModel(
+        member_state.MemberModel(
           ..member,
           member_list_hide_completed: !model.member.member_list_hide_completed,
         )
@@ -654,7 +657,7 @@ pub fn handle_pool(
         dict.insert(model.member.member_list_expanded_cards, card_id, !current)
       #(
         client_state.update_member(model, fn(member) {
-          client_state.MemberModel(
+          member_state.MemberModel(
             ..member,
             member_list_expanded_cards: new_cards,
           )
@@ -665,7 +668,7 @@ pub fn handle_pool(
     client_state.ViewModeChanged(mode) -> {
       let new_model =
         client_state.update_member(model, fn(member) {
-          client_state.MemberModel(..member, view_mode: mode)
+          member_state.MemberModel(..member, view_mode: mode)
         })
       let route =
         router.Member(
@@ -677,7 +680,7 @@ pub fn handle_pool(
     }
     client_state.MemberPanelToggled -> #(
       client_state.update_member(model, fn(member) {
-        client_state.MemberModel(
+        member_state.MemberModel(
           ..member,
           member_panel_expanded: !model.member.member_panel_expanded,
         )
@@ -758,7 +761,7 @@ pub fn handle_pool(
 
       let model =
         client_state.update_member(model, fn(member) {
-          client_state.MemberModel(
+          member_state.MemberModel(
             ..member,
             member_tasks_by_project: tasks_by_project,
             member_tasks_pending: pending,
@@ -768,7 +771,7 @@ pub fn handle_pool(
       case pending <= 0 {
         True -> #(
           client_state.update_member(model, fn(member) {
-            client_state.MemberModel(
+            member_state.MemberModel(
               ..member,
               member_tasks: Loaded(update_helpers.flatten_tasks(
                 tasks_by_project,
@@ -793,10 +796,10 @@ pub fn handle_pool(
               )
             }),
             fn(member) {
-              client_state.MemberModel(
+              member_state.MemberModel(
                 ..member,
-                member_drag: client_state.DragIdle,
-                member_pool_drag: client_state.PoolDragIdle,
+                member_drag: state_types.DragIdle,
+                member_pool_drag: state_types.PoolDragIdle,
               )
             },
           ),
@@ -804,7 +807,7 @@ pub fn handle_pool(
         )
         _ -> #(
           client_state.update_member(model, fn(member) {
-            client_state.MemberModel(
+            member_state.MemberModel(
               ..member,
               member_tasks: Failed(err),
               member_tasks_pending: 0,
@@ -826,7 +829,7 @@ pub fn handle_pool(
 
       let model =
         client_state.update_member(model, fn(member) {
-          client_state.MemberModel(
+          member_state.MemberModel(
             ..member,
             member_task_types_by_project: task_types_by_project,
             member_task_types_pending: pending,
@@ -836,7 +839,7 @@ pub fn handle_pool(
       case pending <= 0 {
         True -> #(
           client_state.update_member(model, fn(member) {
-            client_state.MemberModel(
+            member_state.MemberModel(
               ..member,
               member_task_types: Loaded(update_helpers.flatten_task_types(
                 task_types_by_project,
@@ -861,10 +864,10 @@ pub fn handle_pool(
               )
             }),
             fn(member) {
-              client_state.MemberModel(
+              member_state.MemberModel(
                 ..member,
-                member_drag: client_state.DragIdle,
-                member_pool_drag: client_state.PoolDragIdle,
+                member_drag: state_types.DragIdle,
+                member_pool_drag: state_types.PoolDragIdle,
               )
             },
           ),
@@ -872,7 +875,7 @@ pub fn handle_pool(
         )
         _ -> #(
           client_state.update_member(model, fn(member) {
-            client_state.MemberModel(
+            member_state.MemberModel(
               ..member,
               member_task_types: Failed(err),
               member_task_types_pending: 0,
@@ -1051,7 +1054,7 @@ pub fn handle_pool(
 
     client_state.MemberProjectCapabilitiesFetched(Ok(capabilities)) ->
       client_state.update_member(model, fn(member) {
-        client_state.MemberModel(
+        member_state.MemberModel(
           ..member,
           member_capabilities: Loaded(capabilities),
         )
@@ -1059,7 +1062,7 @@ pub fn handle_pool(
       |> fn(next) { #(next, effect.none()) }
     client_state.MemberProjectCapabilitiesFetched(Error(err)) ->
       client_state.update_member(model, fn(member) {
-        client_state.MemberModel(..member, member_capabilities: Failed(err))
+        member_state.MemberModel(..member, member_capabilities: Failed(err))
       })
       |> fn(next) { #(next, effect.none()) }
 
@@ -1176,7 +1179,7 @@ pub fn handle_pool(
       }
 
       client_state.update_member(model, fn(member) {
-        client_state.MemberModel(
+        member_state.MemberModel(
           ..member,
           member_cards_store: next_store,
           member_cards: next_cards,
@@ -1195,7 +1198,7 @@ pub fn handle_pool(
       }
 
       client_state.update_member(model, fn(member) {
-        client_state.MemberModel(
+        member_state.MemberModel(
           ..member,
           member_cards_store: next_store,
           member_cards: next_cards,
@@ -1217,7 +1220,7 @@ pub fn handle_pool(
     // Cards - filter changes (Story 4.9 AC7-8, UX improvements)
     client_state.CardsShowEmptyToggled -> #(
       client_state.update_admin(model, fn(admin) {
-        client_state.AdminModel(
+        admin_state.AdminModel(
           ..admin,
           cards_show_empty: !model.admin.cards_show_empty,
         )
@@ -1226,7 +1229,7 @@ pub fn handle_pool(
     )
     client_state.CardsShowCompletedToggled -> #(
       client_state.update_admin(model, fn(admin) {
-        client_state.AdminModel(
+        admin_state.AdminModel(
           ..admin,
           cards_show_completed: !model.admin.cards_show_completed,
         )
@@ -1243,14 +1246,14 @@ pub fn handle_pool(
       }
       #(
         client_state.update_admin(model, fn(admin) {
-          client_state.AdminModel(..admin, cards_state_filter: filter)
+          admin_state.AdminModel(..admin, cards_state_filter: filter)
         }),
         effect.none(),
       )
     }
     client_state.CardsSearchChanged(query) -> #(
       client_state.update_admin(model, fn(admin) {
-        client_state.AdminModel(..admin, cards_search: query)
+        admin_state.AdminModel(..admin, cards_search: query)
       }),
       effect.none(),
     )
@@ -1259,7 +1262,7 @@ pub fn handle_pool(
     client_state.OpenCardDetail(card_id) -> {
       let model =
         client_state.update_member(model, fn(member) {
-          client_state.MemberModel(
+          member_state.MemberModel(
             ..member,
             card_detail_open: opt.Some(card_id),
           )
@@ -1272,7 +1275,7 @@ pub fn handle_pool(
     }
     client_state.CloseCardDetail -> #(
       client_state.update_member(model, fn(member) {
-        client_state.MemberModel(..member, card_detail_open: opt.None)
+        member_state.MemberModel(..member, card_detail_open: opt.None)
       }),
       effect.none(),
     )

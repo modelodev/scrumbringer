@@ -24,8 +24,9 @@ import domain/api_error.{type ApiError}
 import domain/org.{type OrgUser, OrgUser}
 import domain/org_role
 import scrumbringer_client/client_state.{
-  type Model, type Msg, AdminModel, MemberRemoved, admin_msg, update_admin,
+  type Model, type Msg, MemberRemoved, admin_msg, update_admin,
 }
+import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
 
@@ -51,7 +52,7 @@ pub fn handle_member_remove_clicked(
 
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
+      admin_state.AdminModel(
         ..admin,
         members_remove_confirm: opt.Some(user),
         members_remove_error: opt.None,
@@ -65,7 +66,7 @@ pub fn handle_member_remove_clicked(
 pub fn handle_member_remove_cancelled(model: Model) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
+      admin_state.AdminModel(
         ..admin,
         members_remove_confirm: opt.None,
         members_remove_error: opt.None,
@@ -85,7 +86,7 @@ pub fn handle_member_remove_confirmed(model: Model) -> #(Model, Effect(Msg)) {
         opt.Some(project_id), opt.Some(user) -> {
           let model =
             update_admin(model, fn(admin) {
-              AdminModel(
+              admin_state.AdminModel(
                 ..admin,
                 members_remove_in_flight: True,
                 members_remove_error: opt.None,
@@ -115,7 +116,7 @@ pub fn handle_member_removed_ok(
 ) -> #(Model, Effect(Msg)) {
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(
+      admin_state.AdminModel(
         ..admin,
         members_remove_in_flight: False,
         members_remove_confirm: opt.None,
@@ -139,7 +140,7 @@ pub fn handle_member_removed_error(
     case err.status {
       403 -> #(
         update_admin(model, fn(admin) {
-          AdminModel(
+          admin_state.AdminModel(
             ..admin,
             members_remove_in_flight: False,
             members_remove_error: opt.Some(update_helpers.i18n_t(
@@ -155,7 +156,7 @@ pub fn handle_member_removed_error(
       )
       _ -> #(
         update_admin(model, fn(admin) {
-          AdminModel(
+          admin_state.AdminModel(
             ..admin,
             members_remove_in_flight: False,
             members_remove_error: opt.Some(err.message),

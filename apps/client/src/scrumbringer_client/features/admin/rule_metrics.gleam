@@ -25,10 +25,11 @@ import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, AdminModel, AdminRuleMetricsExecutionsFetched,
+  type Model, type Msg, AdminRuleMetricsExecutionsFetched,
   AdminRuleMetricsFetched, AdminRuleMetricsRuleDetailsFetched,
   AdminRuleMetricsWorkflowDetailsFetched, pool_msg, update_admin,
 }
+import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/update_helpers
 
 // =============================================================================
@@ -39,7 +40,7 @@ import scrumbringer_client/update_helpers
 pub fn handle_from_changed(model: Model, from: String) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, admin_rule_metrics_from: from)
+      admin_state.AdminModel(..admin, admin_rule_metrics_from: from)
     }),
     effect.none(),
   )
@@ -49,7 +50,7 @@ pub fn handle_from_changed(model: Model, from: String) -> #(Model, Effect(Msg)) 
 pub fn handle_to_changed(model: Model, to: String) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, admin_rule_metrics_to: to)
+      admin_state.AdminModel(..admin, admin_rule_metrics_to: to)
     }),
     effect.none(),
   )
@@ -65,14 +66,14 @@ pub fn handle_from_changed_and_refresh(
   case from == "" || to == "" {
     True -> #(
       update_admin(model, fn(admin) {
-        AdminModel(..admin, admin_rule_metrics_from: from)
+        admin_state.AdminModel(..admin, admin_rule_metrics_from: from)
       }),
       effect.none(),
     )
     False -> {
       let model =
         update_admin(model, fn(admin) {
-          AdminModel(
+          admin_state.AdminModel(
             ..admin,
             admin_rule_metrics_from: from,
             admin_rule_metrics: Loading,
@@ -98,14 +99,14 @@ pub fn handle_to_changed_and_refresh(
   case from == "" || to == "" {
     True -> #(
       update_admin(model, fn(admin) {
-        AdminModel(..admin, admin_rule_metrics_to: to)
+        admin_state.AdminModel(..admin, admin_rule_metrics_to: to)
       }),
       effect.none(),
     )
     False -> {
       let model =
         update_admin(model, fn(admin) {
-          AdminModel(
+          admin_state.AdminModel(
             ..admin,
             admin_rule_metrics_to: to,
             admin_rule_metrics: Loading,
@@ -132,7 +133,7 @@ pub fn handle_refresh_clicked(model: Model) -> #(Model, Effect(Msg)) {
     False -> {
       let model =
         update_admin(model, fn(admin) {
-          AdminModel(..admin, admin_rule_metrics: Loading)
+          admin_state.AdminModel(..admin, admin_rule_metrics: Loading)
         })
       // Use org-wide metrics (project filtering can be added later)
       #(
@@ -153,7 +154,7 @@ pub fn handle_quick_range_clicked(
 ) -> #(Model, Effect(Msg)) {
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(
+      admin_state.AdminModel(
         ..admin,
         admin_rule_metrics_from: from,
         admin_rule_metrics_to: to,
@@ -179,7 +180,7 @@ pub fn handle_fetched_ok(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, admin_rule_metrics: Loaded(metrics))
+      admin_state.AdminModel(..admin, admin_rule_metrics: Loaded(metrics))
     }),
     effect.none(),
   )
@@ -193,7 +194,7 @@ pub fn handle_fetched_error(
   update_helpers.handle_401_or(model, err, fn() {
     #(
       update_admin(model, fn(admin) {
-        AdminModel(..admin, admin_rule_metrics: Failed(err))
+        admin_state.AdminModel(..admin, admin_rule_metrics: Failed(err))
       }),
       effect.none(),
     )
@@ -212,7 +213,7 @@ pub fn init_tab(model: Model) -> #(Model, Effect(Msg)) {
       let from = client_ffi.date_days_ago(30)
       #(
         update_admin(model, fn(admin) {
-          AdminModel(
+          admin_state.AdminModel(
             ..admin,
             admin_rule_metrics_from: from,
             admin_rule_metrics_to: to,
@@ -238,7 +239,7 @@ pub fn handle_workflow_expanded(
     // Collapse if already expanded
     True -> #(
       update_admin(model, fn(admin) {
-        AdminModel(
+        admin_state.AdminModel(
           ..admin,
           admin_rule_metrics_expanded_workflow: None,
           admin_rule_metrics_workflow_details: NotAsked,
@@ -250,7 +251,7 @@ pub fn handle_workflow_expanded(
     False -> {
       let model =
         update_admin(model, fn(admin) {
-          AdminModel(
+          admin_state.AdminModel(
             ..admin,
             admin_rule_metrics_expanded_workflow: Some(workflow_id),
             admin_rule_metrics_workflow_details: Loading,
@@ -273,7 +274,10 @@ pub fn handle_workflow_details_fetched_ok(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, admin_rule_metrics_workflow_details: Loaded(details))
+      admin_state.AdminModel(
+        ..admin,
+        admin_rule_metrics_workflow_details: Loaded(details),
+      )
     }),
     effect.none(),
   )
@@ -287,7 +291,10 @@ pub fn handle_workflow_details_fetched_error(
   update_helpers.handle_401_or(model, err, fn() {
     #(
       update_admin(model, fn(admin) {
-        AdminModel(..admin, admin_rule_metrics_workflow_details: Failed(err))
+        admin_state.AdminModel(
+          ..admin,
+          admin_rule_metrics_workflow_details: Failed(err),
+        )
       }),
       effect.none(),
     )
@@ -305,7 +312,7 @@ pub fn handle_drilldown_clicked(
   // Fetch detailed metrics and executions for this rule
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(
+      admin_state.AdminModel(
         ..admin,
         admin_rule_metrics_drilldown_rule_id: Some(rule_id),
         admin_rule_metrics_rule_details: Loading,
@@ -331,7 +338,7 @@ pub fn handle_drilldown_clicked(
 pub fn handle_drilldown_closed(model: Model) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
+      admin_state.AdminModel(
         ..admin,
         admin_rule_metrics_drilldown_rule_id: None,
         admin_rule_metrics_rule_details: NotAsked,
@@ -350,7 +357,10 @@ pub fn handle_rule_details_fetched_ok(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, admin_rule_metrics_rule_details: Loaded(details))
+      admin_state.AdminModel(
+        ..admin,
+        admin_rule_metrics_rule_details: Loaded(details),
+      )
     }),
     effect.none(),
   )
@@ -364,7 +374,10 @@ pub fn handle_rule_details_fetched_error(
   update_helpers.handle_401_or(model, err, fn() {
     #(
       update_admin(model, fn(admin) {
-        AdminModel(..admin, admin_rule_metrics_rule_details: Failed(err))
+        admin_state.AdminModel(
+          ..admin,
+          admin_rule_metrics_rule_details: Failed(err),
+        )
       }),
       effect.none(),
     )
@@ -378,7 +391,10 @@ pub fn handle_executions_fetched_ok(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, admin_rule_metrics_executions: Loaded(response))
+      admin_state.AdminModel(
+        ..admin,
+        admin_rule_metrics_executions: Loaded(response),
+      )
     }),
     effect.none(),
   )
@@ -392,7 +408,10 @@ pub fn handle_executions_fetched_error(
   update_helpers.handle_401_or(model, err, fn() {
     #(
       update_admin(model, fn(admin) {
-        AdminModel(..admin, admin_rule_metrics_executions: Failed(err))
+        admin_state.AdminModel(
+          ..admin,
+          admin_rule_metrics_executions: Failed(err),
+        )
       }),
       effect.none(),
     )
@@ -411,7 +430,7 @@ pub fn handle_exec_page_changed(
       let to = model.admin.admin_rule_metrics_to
       let model =
         update_admin(model, fn(admin) {
-          AdminModel(
+          admin_state.AdminModel(
             ..admin,
             admin_rule_metrics_executions: Loading,
             admin_rule_metrics_exec_offset: offset,

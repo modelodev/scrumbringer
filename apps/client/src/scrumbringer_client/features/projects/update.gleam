@@ -35,11 +35,16 @@ import domain/api_error.{type ApiError}
 import domain/project.{type Project}
 import domain/remote.{Failed, Loaded, NotAsked}
 import scrumbringer_client/client_state.{
-  type DialogState, type Model, type Msg, type OperationState,
-  type ProjectDialogForm, Admin, AdminModel, CoreModel, DialogClosed, DialogOpen,
-  Error as OpError, Idle, InFlight, Login, Member, MemberModel, ProjectCreated,
-  ProjectDeleted, ProjectDialogCreate, ProjectDialogDelete, ProjectDialogEdit,
-  ProjectUpdated, admin_msg, pool_msg, update_admin, update_core, update_member,
+  type Model, type Msg, Admin, CoreModel, Login, Member, ProjectCreated,
+  ProjectDeleted, ProjectUpdated, admin_msg, pool_msg, update_admin, update_core,
+  update_member,
+}
+import scrumbringer_client/client_state/admin.{AdminModel}
+import scrumbringer_client/client_state/member.{MemberModel}
+import scrumbringer_client/client_state/types.{
+  type DialogState, type OperationState, type ProjectDialogForm, DialogClosed,
+  DialogOpen, Error as OpError, Idle, InFlight, ProjectDialogCreate,
+  ProjectDialogDelete, ProjectDialogEdit,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers

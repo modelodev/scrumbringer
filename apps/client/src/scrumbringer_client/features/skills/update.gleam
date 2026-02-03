@@ -31,9 +31,10 @@ import domain/api_error.{type ApiError}
 import domain/remote.{Failed, Loaded}
 import scrumbringer_client/api/tasks as api_tasks
 import scrumbringer_client/client_state.{
-  type Model, type Msg, MemberModel, MemberMyCapabilityIdsFetched,
-  MemberMyCapabilityIdsSaved, PoolMsg, update_member,
+  type Model, type Msg, MemberMyCapabilityIdsFetched, MemberMyCapabilityIdsSaved,
+  PoolMsg, update_member,
 }
+import scrumbringer_client/client_state/member.{MemberModel}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
 

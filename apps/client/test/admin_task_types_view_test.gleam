@@ -8,9 +8,8 @@ import domain/project.{Project}
 import domain/project_role.{Manager}
 import domain/remote.{Loaded}
 import domain/task_type.{TaskType}
-import scrumbringer_client/client_state.{
-  type Model, AdminModel, default_model, update_admin,
-}
+import scrumbringer_client/client_state.{type Model, default_model, update_admin}
+import scrumbringer_client/client_state/admin.{AdminModel}
 import scrumbringer_client/components/task_type_crud_dialog
 import scrumbringer_client/features/admin/view as admin_view
 import scrumbringer_client/i18n/locale.{En, Es}

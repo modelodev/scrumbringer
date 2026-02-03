@@ -57,7 +57,7 @@
 //// - **theme.gleam**: Provides `Theme` type
 //// - **i18n/locale.gleam**: Provides `Locale` type
 
-import gleam/dict.{type Dict}
+import gleam/dict
 import gleam/option.{type Option}
 import gleam/set
 import gleam/uri.{type Uri}
@@ -70,7 +70,7 @@ import scrumbringer_client/assignments_view_mode
 // API types from domain modules
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/capability.{type Capability}
-import domain/card.{type Card, type CardState}
+import domain/card.{type Card}
 import domain/metrics.{
   type MyMetrics, type OrgMetricsOverview, type OrgMetricsProjectTasksPayload,
 }
@@ -83,7 +83,6 @@ import domain/task.{
   type Task, type TaskDependency, type TaskNote, type TaskPosition,
   type WorkSessionsPayload,
 }
-import domain/task_status
 import domain/task_type.{type TaskType}
 import domain/view_mode
 import domain/workflow.{
@@ -92,6 +91,9 @@ import domain/workflow.{
 import scrumbringer_client/api/auth.{type PasswordReset}
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/member as member_state
+import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/domain/ids.{type ToastId}
 import scrumbringer_client/hydration
 import scrumbringer_client/i18n/locale as i18n_locale
@@ -142,135 +144,44 @@ pub type Page {
 // UI state types
 // ----------------------------------------------------------------------------
 
-/// State of icon URL preview in task type creation.
-///
-/// Tracks the loading state when validating an icon URL:
-/// - `IconIdle`: No preview attempted yet
-/// - `IconLoading`: Image loading in progress
-/// - `IconOk`: Image loaded successfully
-/// - `IconError`: Image failed to load
-pub type IconPreview {
-  IconIdle
-  IconLoading
-  IconOk
-  IconError
-}
+pub type IconPreview =
+  state_types.IconPreview
 
-/// Represents a generic async operation state.
-pub type OperationState {
-  Idle
-  InFlight
-  Error(String)
-}
+pub type OperationState =
+  state_types.OperationState
 
-/// Represents a dialog with form state and operation state.
-pub type DialogState(form) {
-  DialogClosed(operation: OperationState)
-  DialogOpen(form: form, operation: OperationState)
-}
+pub type DialogState(form) =
+  state_types.DialogState(form)
 
-/// Form state for invite link dialog.
-pub type InviteLinkForm {
-  InviteLinkForm(email: String)
-}
+pub type InviteLinkForm =
+  state_types.InviteLinkForm
 
-/// State during drag-and-drop of a task card.
-///
-/// Encodes the drag lifecycle to prevent invalid combinations of
-/// offsets and task identity.
-pub type DragState {
-  DragIdle
-  DragPending(task_id: Int)
-  DragActive(task_id: Int, offset_x: Int, offset_y: Int)
-}
+pub type DragState =
+  state_types.DragState
 
-/// Drag-to-claim state for pool interactions.
-///
-/// Tracks the dropzone rect when available and whether the drag is over it.
-pub type PoolDragState {
-  PoolDragIdle
-  PoolDragPendingRect
-  PoolDragDragging(over_my_tasks: Bool, rect: Rect)
-}
+pub type PoolDragState =
+  state_types.PoolDragState
 
-/// Rectangle geometry for hit testing.
-///
-/// Used for detecting when a dragged card is over a drop target
-/// like the "My Tasks" zone.
-pub type Rect {
-  Rect(left: Int, top: Int, width: Int, height: Int)
-}
+pub type Rect =
+  state_types.Rect
 
-/// Tests if a point (x, y) is inside the rectangle (inclusive bounds).
-/// Justification: large function kept intact to preserve cohesive UI logic.
+pub type CardDialogMode =
+  state_types.CardDialogMode
+
+pub type WorkflowDialogMode =
+  state_types.WorkflowDialogMode
+
+pub type TaskTemplateDialogMode =
+  state_types.TaskTemplateDialogMode
+
+pub type RuleDialogMode =
+  state_types.RuleDialogMode
+
+pub type TaskTypeDialogMode =
+  state_types.TaskTypeDialogMode
+
 pub fn rect_contains_point(rect: Rect, x: Int, y: Int) -> Bool {
-  let Rect(left: left, top: top, width: width, height: height) = rect
-  x >= left && x <= left + width && y >= top && y <= top + height
-}
-
-/// Dialog mode for Card CRUD operations.
-///
-/// Used by the parent to control which dialog the card-crud-dialog
-/// component should display:
-/// - `CardDialogCreate`: Show create new card form
-/// - `CardDialogEdit(Int)`: Show edit form for card with given ID
-/// - `CardDialogDelete(Int)`: Show delete confirmation for card with given ID
-pub type CardDialogMode {
-  CardDialogCreate
-  CardDialogEdit(Int)
-  CardDialogDelete(Int)
-}
-
-/// Dialog mode for Workflow CRUD operations.
-///
-/// Used by the parent to control which dialog the workflow-crud-dialog
-/// component should display:
-/// - `WorkflowDialogCreate`: Show create new workflow form
-/// - `WorkflowDialogEdit(Workflow)`: Show edit form for given workflow
-/// - `WorkflowDialogDelete(Workflow)`: Show delete confirmation for given workflow
-pub type WorkflowDialogMode {
-  WorkflowDialogCreate
-  WorkflowDialogEdit(Workflow)
-  WorkflowDialogDelete(Workflow)
-}
-
-/// Dialog mode for Task Template CRUD operations.
-///
-/// Used by the parent to control which dialog the task-template-crud-dialog
-/// component should display:
-/// - `TaskTemplateDialogCreate`: Show create new template form
-/// - `TaskTemplateDialogEdit(TaskTemplate)`: Show edit form for given template
-/// - `TaskTemplateDialogDelete(TaskTemplate)`: Show delete confirmation for given template
-pub type TaskTemplateDialogMode {
-  TaskTemplateDialogCreate
-  TaskTemplateDialogEdit(TaskTemplate)
-  TaskTemplateDialogDelete(TaskTemplate)
-}
-
-/// Dialog mode for Rule CRUD operations.
-///
-/// Used by the parent to control which dialog the rule-crud-dialog
-/// component should display:
-/// - `RuleDialogCreate`: Show create new rule form
-/// - `RuleDialogEdit(Rule)`: Show edit form for given rule
-/// - `RuleDialogDelete(Rule)`: Show delete confirmation for given rule
-pub type RuleDialogMode {
-  RuleDialogCreate
-  RuleDialogEdit(Rule)
-  RuleDialogDelete(Rule)
-}
-
-/// Dialog mode for Task Type CRUD operations.
-///
-/// Used by the parent to control which dialog the task-type-crud-dialog
-/// component should display:
-/// - `TaskTypeDialogCreate`: Show create new task type form
-/// - `TaskTypeDialogEdit(TaskType)`: Show edit form for given task type
-/// - `TaskTypeDialogDelete(TaskType)`: Show delete confirmation for given task type
-pub type TaskTypeDialogMode {
-  TaskTypeDialogCreate
-  TaskTypeDialogEdit(TaskType)
-  TaskTypeDialogDelete(TaskType)
+  state_types.rect_contains_point(rect, x, y)
 }
 
 // ----------------------------------------------------------------------------
@@ -359,239 +270,26 @@ pub type SidebarCollapse {
   BothCollapsed
 }
 
-/// Represents OrgUsersSearchState.
-pub type OrgUsersSearchState {
-  OrgUsersSearchIdle(query: String, token: Int)
-  OrgUsersSearchLoading(query: String, token: Int)
-  OrgUsersSearchLoaded(query: String, token: Int, results: List(OrgUser))
-  OrgUsersSearchFailed(query: String, token: Int, error: ApiError)
-}
+pub type OrgUsersSearchState =
+  state_types.OrgUsersSearchState
 
-/// Represents the form payload for the projects dialog.
-pub type ProjectDialogForm {
-  ProjectDialogCreate(name: String)
-  ProjectDialogEdit(id: Int, name: String)
-  ProjectDialogDelete(id: Int, name: String)
-}
+pub type ProjectDialogForm =
+  state_types.ProjectDialogForm
 
-/// Inline add context for assignments.
-pub type AssignmentsAddContext {
-  AddUserToProject(project_id: Int)
-  AddProjectToUser(user_id: Int)
-}
+pub type AssignmentsAddContext =
+  state_types.AssignmentsAddContext
 
-/// Represents the release-all confirmation target.
-pub type ReleaseAllTarget {
-  ReleaseAllTarget(user: OrgUser, claimed_count: Int)
-}
+pub type ReleaseAllTarget =
+  state_types.ReleaseAllTarget
 
-/// Assignments UI state.
-pub type AssignmentsModel {
-  AssignmentsModel(
-    view_mode: assignments_view_mode.AssignmentsViewMode,
-    search_input: String,
-    search_query: String,
-    project_members: Dict(Int, Remote(List(ProjectMember))),
-    user_projects: Dict(Int, Remote(List(Project))),
-    expanded_projects: set.Set(Int),
-    expanded_users: set.Set(Int),
-    inline_add_context: Option(AssignmentsAddContext),
-    inline_add_selection: Option(Int),
-    inline_add_search: String,
-    inline_add_role: ProjectRole,
-    inline_add_in_flight: Bool,
-    inline_remove_confirm: Option(#(Int, Int)),
-    role_change_in_flight: Option(#(Int, Int)),
-    role_change_previous: Option(#(Int, Int, ProjectRole)),
-  )
-}
+pub type AssignmentsModel =
+  state_types.AssignmentsModel
 
-/// Represents AdminModel.
-pub type AdminModel {
-  AdminModel(
-    invite_links: Remote(List(InviteLink)),
-    invite_link_dialog: DialogState(InviteLinkForm),
-    invite_link_last: Option(InviteLink),
-    invite_link_copy_status: Option(String),
-    projects_dialog: DialogState(ProjectDialogForm),
-    capabilities: Remote(List(Capability)),
-    capabilities_create_dialog_open: Bool,
-    capabilities_create_name: String,
-    capabilities_create_in_flight: Bool,
-    capabilities_create_error: Option(String),
-    capability_delete_dialog_id: Option(Int),
-    capability_delete_in_flight: Bool,
-    capability_delete_error: Option(String),
-    members: Remote(List(ProjectMember)),
-    members_project_id: Option(Int),
-    org_users_cache: Remote(List(OrgUser)),
-    org_settings_users: Remote(List(OrgUser)),
-    admin_metrics_overview: Remote(OrgMetricsOverview),
-    admin_metrics_project_tasks: Remote(OrgMetricsProjectTasksPayload),
-    admin_metrics_project_id: Option(Int),
-    admin_rule_metrics: Remote(List(api_workflows.OrgWorkflowMetricsSummary)),
-    admin_rule_metrics_from: String,
-    admin_rule_metrics_to: String,
-    admin_rule_metrics_expanded_workflow: Option(Int),
-    admin_rule_metrics_workflow_details: Remote(api_workflows.WorkflowMetrics),
-    admin_rule_metrics_drilldown_rule_id: Option(Int),
-    admin_rule_metrics_rule_details: Remote(api_workflows.RuleMetricsDetailed),
-    admin_rule_metrics_executions: Remote(api_workflows.RuleExecutionsResponse),
-    admin_rule_metrics_exec_offset: Int,
-    org_settings_save_in_flight: Bool,
-    org_settings_error: Option(String),
-    org_settings_error_user_id: Option(Int),
-    org_settings_delete_confirm: Option(OrgUser),
-    org_settings_delete_in_flight: Bool,
-    org_settings_delete_error: Option(String),
-    members_add_dialog_open: Bool,
-    members_add_selected_user: Option(OrgUser),
-    members_add_role: ProjectRole,
-    members_add_in_flight: Bool,
-    members_add_error: Option(String),
-    members_remove_confirm: Option(OrgUser),
-    members_remove_in_flight: Bool,
-    members_remove_error: Option(String),
-    members_release_confirm: Option(ReleaseAllTarget),
-    members_release_in_flight: Option(Int),
-    members_release_error: Option(String),
-    member_capabilities_dialog_user_id: Option(Int),
-    member_capabilities_loading: Bool,
-    member_capabilities_saving: Bool,
-    member_capabilities_cache: Dict(Int, List(Int)),
-    member_capabilities_selected: List(Int),
-    member_capabilities_error: Option(String),
-    capability_members_dialog_capability_id: Option(Int),
-    capability_members_loading: Bool,
-    capability_members_saving: Bool,
-    capability_members_cache: Dict(Int, List(Int)),
-    capability_members_selected: List(Int),
-    capability_members_error: Option(String),
-    org_users_search: OrgUsersSearchState,
-    task_types: Remote(List(TaskType)),
-    task_types_project_id: Option(Int),
-    task_types_dialog_mode: Option(TaskTypeDialogMode),
-    task_types_create_dialog_open: Bool,
-    task_types_create_name: String,
-    task_types_create_icon: String,
-    task_types_create_icon_search: String,
-    task_types_create_icon_category: String,
-    task_types_create_capability_id: Option(String),
-    task_types_create_in_flight: Bool,
-    task_types_create_error: Option(String),
-    task_types_icon_preview: IconPreview,
-    cards: Remote(List(Card)),
-    cards_project_id: Option(Int),
-    cards_dialog_mode: Option(CardDialogMode),
-    cards_show_empty: Bool,
-    cards_show_completed: Bool,
-    cards_state_filter: Option(CardState),
-    cards_search: String,
-    workflows_org: Remote(List(Workflow)),
-    workflows_project: Remote(List(Workflow)),
-    workflows_dialog_mode: Option(WorkflowDialogMode),
-    rules_workflow_id: Option(Int),
-    rules: Remote(List(Rule)),
-    rules_dialog_mode: Option(RuleDialogMode),
-    rules_templates: Remote(List(RuleTemplate)),
-    rules_attach_template_id: Option(Int),
-    rules_attach_in_flight: Bool,
-    rules_attach_error: Option(String),
-    rules_expanded: set.Set(Int),
-    attach_template_modal: Option(Int),
-    attach_template_selected: Option(Int),
-    attach_template_loading: Bool,
-    detaching_templates: set.Set(#(Int, Int)),
-    rules_metrics: Remote(api_workflows.WorkflowMetrics),
-    task_templates_org: Remote(List(TaskTemplate)),
-    task_templates_project: Remote(List(TaskTemplate)),
-    task_templates_dialog_mode: Option(TaskTemplateDialogMode),
-    assignments: AssignmentsModel,
-  )
-}
+pub type AdminModel =
+  admin_state.AdminModel
 
-/// Represents MemberModel.
-pub type MemberModel {
-  MemberModel(
-    member_section: member_section.MemberSection,
-    view_mode: view_mode.ViewMode,
-    member_work_sessions: Remote(WorkSessionsPayload),
-    member_metrics: Remote(MyMetrics),
-    member_now_working_in_flight: Bool,
-    member_now_working_error: Option(String),
-    now_working_tick: Int,
-    now_working_tick_running: Bool,
-    now_working_server_offset_ms: Int,
-    member_tasks: Remote(List(Task)),
-    member_tasks_pending: Int,
-    member_tasks_by_project: Dict(Int, List(Task)),
-    member_task_types: Remote(List(TaskType)),
-    member_task_types_pending: Int,
-    member_task_types_by_project: Dict(Int, List(TaskType)),
-    member_cards_store: normalized_store.NormalizedStore(Int, Card),
-    member_cards: Remote(List(Card)),
-    member_capabilities: Remote(List(Capability)),
-    member_task_mutation_in_flight: Bool,
-    member_task_mutation_task_id: Option(Int),
-    member_tasks_snapshot: Option(List(Task)),
-    member_filters_status: Option(task_status.TaskStatus),
-    member_filters_type_id: Option(Int),
-    member_filters_capability_id: Option(Int),
-    member_filters_q: String,
-    member_quick_my_caps: Bool,
-    member_pool_filters_visible: Bool,
-    member_pool_view_mode: pool_prefs.ViewMode,
-    member_list_hide_completed: Bool,
-    member_list_expanded_cards: dict.Dict(Int, Bool),
-    member_panel_expanded: Bool,
-    member_create_dialog_open: Bool,
-    member_create_title: String,
-    member_create_description: String,
-    member_create_priority: String,
-    member_create_type_id: String,
-    member_create_card_id: Option(Int),
-    member_create_in_flight: Bool,
-    member_create_error: Option(String),
-    member_my_capability_ids: Remote(List(Int)),
-    member_my_capability_ids_edit: Dict(Int, Bool),
-    member_my_capabilities_in_flight: Bool,
-    member_my_capabilities_error: Option(String),
-    member_positions_by_task: Dict(Int, #(Int, Int)),
-    member_drag: DragState,
-    member_canvas_left: Int,
-    member_canvas_top: Int,
-    member_pool_drag: PoolDragState,
-    member_pool_touch_task_id: Option(Int),
-    member_pool_touch_longpress: Option(Int),
-    member_pool_touch_client_x: Int,
-    member_pool_touch_client_y: Int,
-    member_pool_preview_task_id: Option(Int),
-    member_hover_notes_cache: Dict(Int, List(TaskNote)),
-    member_hover_notes_pending: Dict(Int, Bool),
-    member_position_edit_task: Option(Int),
-    member_position_edit_x: String,
-    member_position_edit_y: String,
-    member_position_edit_in_flight: Bool,
-    member_position_edit_error: Option(String),
-    member_notes_task_id: Option(Int),
-    member_notes: Remote(List(TaskNote)),
-    member_note_content: String,
-    member_note_in_flight: Bool,
-    member_note_error: Option(String),
-    member_note_dialog_open: Bool,
-    card_detail_open: Option(Int),
-    member_task_detail_tab: task_tabs.Tab,
-    member_dependencies: Remote(List(TaskDependency)),
-    member_dependency_dialog_open: Bool,
-    member_dependency_search_query: String,
-    member_dependency_candidates: Remote(List(Task)),
-    member_dependency_selected_task_id: Option(Int),
-    member_dependency_add_in_flight: Bool,
-    member_dependency_add_error: Option(String),
-    member_dependency_remove_in_flight: Option(Int),
-    member_blocked_claim_task: Option(#(Int, Int)),
-  )
-}
+pub type MemberModel =
+  member_state.MemberModel
 
 /// Represents Model.
 pub type Model {
@@ -1218,12 +916,12 @@ pub fn default_model() -> Model {
         submit_error: option.None,
       ),
     ),
-    admin: AdminModel(
+    admin: admin_state.AdminModel(
       invite_links: NotAsked,
-      invite_link_dialog: DialogClosed(operation: Idle),
+      invite_link_dialog: state_types.DialogClosed(operation: state_types.Idle),
       invite_link_last: option.None,
       invite_link_copy_status: option.None,
-      projects_dialog: DialogClosed(operation: Idle),
+      projects_dialog: state_types.DialogClosed(operation: state_types.Idle),
       capabilities: NotAsked,
       capabilities_create_dialog_open: False,
       capabilities_create_name: "",
@@ -1277,7 +975,7 @@ pub fn default_model() -> Model {
       capability_members_cache: dict.new(),
       capability_members_selected: [],
       capability_members_error: option.None,
-      org_users_search: OrgUsersSearchIdle("", 0),
+      org_users_search: state_types.OrgUsersSearchIdle("", 0),
       task_types: NotAsked,
       task_types_project_id: option.None,
       task_types_dialog_mode: option.None,
@@ -1289,7 +987,7 @@ pub fn default_model() -> Model {
       task_types_create_capability_id: option.None,
       task_types_create_in_flight: False,
       task_types_create_error: option.None,
-      task_types_icon_preview: IconIdle,
+      task_types_icon_preview: state_types.IconIdle,
       cards: NotAsked,
       cards_project_id: option.None,
       cards_dialog_mode: option.None,
@@ -1316,7 +1014,7 @@ pub fn default_model() -> Model {
       task_templates_org: NotAsked,
       task_templates_project: NotAsked,
       task_templates_dialog_mode: option.None,
-      assignments: AssignmentsModel(
+      assignments: state_types.AssignmentsModel(
         view_mode: assignments_view_mode.ByProject,
         search_input: "",
         search_query: "",
@@ -1334,7 +1032,7 @@ pub fn default_model() -> Model {
         role_change_previous: option.None,
       ),
     ),
-    member: MemberModel(
+    member: member_state.MemberModel(
       member_section: member_section.Pool,
       view_mode: view_mode.Pool,
       member_work_sessions: NotAsked,
@@ -1379,10 +1077,10 @@ pub fn default_model() -> Model {
       member_my_capabilities_in_flight: False,
       member_my_capabilities_error: option.None,
       member_positions_by_task: dict.new(),
-      member_drag: DragIdle,
+      member_drag: state_types.DragIdle,
       member_canvas_left: 0,
       member_canvas_top: 0,
-      member_pool_drag: PoolDragIdle,
+      member_pool_drag: state_types.PoolDragIdle,
       member_pool_touch_task_id: option.None,
       member_pool_touch_longpress: option.None,
       member_pool_touch_client_x: 0,

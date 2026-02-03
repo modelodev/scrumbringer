@@ -43,9 +43,9 @@ import scrumbringer_client/client_state.{
   MemberReleaseAllCancelled, MemberReleaseAllClicked, MemberReleaseAllConfirmed,
   MemberRemoveCancelled, MemberRemoveClicked, MemberRemoveConfirmed,
   MemberRoleChangeRequested, OrgUsersSearchChanged, OrgUsersSearchDebounced,
-  OrgUsersSearchFailed, OrgUsersSearchIdle, OrgUsersSearchLoaded,
-  OrgUsersSearchLoading, admin_msg,
+  admin_msg,
 }
+import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/badge
@@ -302,17 +302,17 @@ fn view_member_role_cell(
 
 fn view_add_member_dialog(model: Model) -> Element(Msg) {
   let search_query = case model.admin.org_users_search {
-    OrgUsersSearchIdle(query, _)
-    | OrgUsersSearchLoading(query, _)
-    | OrgUsersSearchLoaded(query, _, _)
-    | OrgUsersSearchFailed(query, _, _) -> query
+    state_types.OrgUsersSearchIdle(query, _)
+    | state_types.OrgUsersSearchLoading(query, _)
+    | state_types.OrgUsersSearchLoaded(query, _, _)
+    | state_types.OrgUsersSearchFailed(query, _, _) -> query
   }
 
   let search_results = case model.admin.org_users_search {
-    OrgUsersSearchIdle(_, _) -> NotAsked
-    OrgUsersSearchLoading(_, _) -> Loading
-    OrgUsersSearchLoaded(_, _, users) -> Loaded(users)
-    OrgUsersSearchFailed(_, _, err) -> Failed(err)
+    state_types.OrgUsersSearchIdle(_, _) -> NotAsked
+    state_types.OrgUsersSearchLoading(_, _) -> Loading
+    state_types.OrgUsersSearchLoaded(_, _, users) -> Loaded(users)
+    state_types.OrgUsersSearchFailed(_, _, err) -> Failed(err)
   }
 
   dialog.view(
@@ -444,9 +444,9 @@ fn view_remove_member_dialog(
 fn view_release_all_dialog(
   model: Model,
   project_name: String,
-  target: client_state.ReleaseAllTarget,
+  target: state_types.ReleaseAllTarget,
 ) -> Element(Msg) {
-  let client_state.ReleaseAllTarget(user: user, claimed_count: claimed_count) =
+  let state_types.ReleaseAllTarget(user: user, claimed_count: claimed_count) =
     target
   let _ = project_name
 

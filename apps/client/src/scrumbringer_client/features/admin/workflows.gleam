@@ -30,12 +30,13 @@ import domain/workflow.{
 }
 import scrumbringer_client/client_state.{
   type Model, type Msg, type TaskTemplateDialogMode, type WorkflowDialogMode,
-  AdminModel, AttachTemplateFailed, AttachTemplateSucceeded, RuleMetricsFetched,
+  AttachTemplateFailed, AttachTemplateSucceeded, RuleMetricsFetched,
   RuleTemplateAttached, RuleTemplateDetached, RulesFetched,
   TaskTemplatesProjectFetched, TaskTypesFetched, TemplateDetachFailed,
   TemplateDetachSucceeded, WorkflowsProjectFetched, admin_msg, pool_msg,
   update_admin,
 }
+import scrumbringer_client/client_state/admin.{AdminModel}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
 

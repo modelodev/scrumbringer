@@ -2,15 +2,17 @@ import gleeunit/should
 
 import scrumbringer_client/assignments_view_mode
 import scrumbringer_client/client_state
+import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/assignments/update as assignments_update
 
 pub fn view_mode_change_preserves_search_test() {
   let model =
     client_state.default_model()
     |> client_state.update_admin(fn(admin) {
-      client_state.AdminModel(
+      admin_state.AdminModel(
         ..admin,
-        assignments: client_state.AssignmentsModel(
+        assignments: state_types.AssignmentsModel(
           ..admin.assignments,
           search_input: "alpha",
           search_query: "alpha",
@@ -24,7 +26,7 @@ pub fn view_mode_change_preserves_search_test() {
       assignments_view_mode.ByUser,
     )
 
-  let client_state.AssignmentsModel(
+  let state_types.AssignmentsModel(
     view_mode: view_mode,
     search_input: search_input,
     search_query: search_query,

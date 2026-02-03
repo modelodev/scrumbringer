@@ -27,9 +27,10 @@ import domain/project.{type ProjectMember, ProjectMember}
 import domain/remote.{Loaded}
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/client_state.{
-  type Model, type Msg, AdminModel, MemberReleaseAllResult, ReleaseAllTarget,
-  admin_msg, update_admin,
+  type Model, type Msg, MemberReleaseAllResult, admin_msg, update_admin,
 }
+import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
 
@@ -53,9 +54,9 @@ pub fn handle_member_release_all_clicked(
 
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
+      admin_state.AdminModel(
         ..admin,
-        members_release_confirm: opt.Some(ReleaseAllTarget(
+        members_release_confirm: opt.Some(state_types.ReleaseAllTarget(
           user: user,
           claimed_count: claimed_count,
         )),
@@ -72,7 +73,7 @@ pub fn handle_member_release_all_cancelled(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
+      admin_state.AdminModel(
         ..admin,
         members_release_confirm: opt.None,
         members_release_error: opt.None,
@@ -90,10 +91,12 @@ pub fn handle_member_release_all_confirmed(
     opt.Some(_) -> #(model, effect.none())
     opt.None ->
       case model.core.selected_project_id, model.admin.members_release_confirm {
-        opt.Some(project_id), opt.Some(ReleaseAllTarget(user: user, ..)) -> {
+        opt.Some(project_id),
+          opt.Some(state_types.ReleaseAllTarget(user: user, ..))
+        -> {
           let model =
             update_admin(model, fn(admin) {
-              AdminModel(
+              admin_state.AdminModel(
                 ..admin,
                 members_release_in_flight: opt.Some(user.id),
                 members_release_error: opt.None,
@@ -125,11 +128,10 @@ pub fn handle_member_release_all_ok(
   let #(user_name, user_id, _claimed_count) = case
     model.admin.members_release_confirm
   {
-    opt.Some(ReleaseAllTarget(user: user, claimed_count: claimed_count)) -> #(
-      user.email,
-      user.id,
-      claimed_count,
-    )
+    opt.Some(state_types.ReleaseAllTarget(
+      user: user,
+      claimed_count: claimed_count,
+    )) -> #(user.email, user.id, claimed_count)
     opt.None -> #("", 0, 0)
   }
 
@@ -150,7 +152,7 @@ pub fn handle_member_release_all_ok(
 
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(
+      admin_state.AdminModel(
         ..admin,
         members_release_confirm: opt.None,
         members_release_in_flight: opt.None,
@@ -181,7 +183,7 @@ pub fn handle_member_release_all_error(
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
   let user_name = case model.admin.members_release_confirm {
-    opt.Some(ReleaseAllTarget(user: user, ..)) -> user.email
+    opt.Some(state_types.ReleaseAllTarget(user: user, ..)) -> user.email
     opt.None -> ""
   }
 
@@ -196,7 +198,7 @@ pub fn handle_member_release_all_error(
 
     #(
       update_admin(model, fn(admin) {
-        AdminModel(
+        admin_state.AdminModel(
           ..admin,
           members_release_in_flight: opt.None,
           members_release_error: opt.Some(message),

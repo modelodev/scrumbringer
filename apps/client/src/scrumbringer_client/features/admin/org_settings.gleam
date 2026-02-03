@@ -27,9 +27,10 @@ import domain/org_role
 import domain/remote.{Failed, Loaded}
 import domain/user.{User}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, AdminModel, CoreModel, OrgSettingsDeleted,
-  OrgSettingsSaved, admin_msg, update_admin, update_core,
+  type Model, type Msg, CoreModel, OrgSettingsDeleted, OrgSettingsSaved,
+  admin_msg, update_admin, update_core,
 }
+import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
 
@@ -47,7 +48,7 @@ pub fn handle_org_users_cache_fetched_ok(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, org_users_cache: Loaded(users))
+      admin_state.AdminModel(..admin, org_users_cache: Loaded(users))
     }),
     effect.none(),
   )
@@ -61,7 +62,7 @@ pub fn handle_org_users_cache_fetched_error(
   update_helpers.handle_401_or(model, err, fn() {
     #(
       update_admin(model, fn(admin) {
-        AdminModel(..admin, org_users_cache: Failed(err))
+        admin_state.AdminModel(..admin, org_users_cache: Failed(err))
       }),
       effect.none(),
     )
@@ -79,7 +80,7 @@ pub fn handle_org_settings_users_fetched_ok(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
+      admin_state.AdminModel(
         ..admin,
         org_settings_users: Loaded(users),
         org_settings_save_in_flight: False,
@@ -101,7 +102,7 @@ pub fn handle_org_settings_users_fetched_error(
       403 -> {
         let model =
           update_admin(model, fn(admin) {
-            AdminModel(..admin, org_settings_users: Failed(err))
+            admin_state.AdminModel(..admin, org_settings_users: Failed(err))
           })
         let toast_fx =
           update_helpers.toast_warning(update_helpers.i18n_t(
@@ -113,7 +114,7 @@ pub fn handle_org_settings_users_fetched_error(
 
       _ -> #(
         update_admin(model, fn(admin) {
-          AdminModel(..admin, org_settings_users: Failed(err))
+          admin_state.AdminModel(..admin, org_settings_users: Failed(err))
         }),
         effect.none(),
       )
@@ -142,7 +143,7 @@ pub fn handle_org_settings_role_changed(
         False -> {
           let model =
             update_admin(model, fn(admin) {
-              AdminModel(
+              admin_state.AdminModel(
                 ..admin,
                 org_settings_save_in_flight: True,
                 org_settings_error: opt.None,
@@ -181,7 +182,7 @@ pub fn handle_org_settings_delete_clicked(
 
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
+      admin_state.AdminModel(
         ..admin,
         org_settings_delete_confirm: opt.Some(user),
         org_settings_delete_error: opt.None,
@@ -197,7 +198,7 @@ pub fn handle_org_settings_delete_cancelled(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
+      admin_state.AdminModel(
         ..admin,
         org_settings_delete_confirm: opt.None,
         org_settings_delete_error: opt.None,
@@ -219,7 +220,7 @@ pub fn handle_org_settings_delete_confirmed(
         opt.Some(user) -> {
           let model =
             update_admin(model, fn(admin) {
-              AdminModel(
+              admin_state.AdminModel(
                 ..admin,
                 org_settings_delete_in_flight: True,
                 org_settings_delete_error: opt.None,
@@ -274,7 +275,7 @@ pub fn handle_org_settings_saved_ok(
 
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(
+      admin_state.AdminModel(
         ..admin,
         org_settings_users: org_settings_users,
         org_users_cache: org_users_cache,
@@ -315,7 +316,7 @@ pub fn handle_org_settings_deleted_ok(model: Model) -> #(Model, Effect(Msg)) {
 
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(
+      admin_state.AdminModel(
         ..admin,
         org_settings_users: org_settings_users,
         org_users_cache: org_users_cache,
@@ -342,7 +343,7 @@ pub fn handle_org_settings_deleted_error(
     case err.status {
       403 -> #(
         update_admin(model, fn(admin) {
-          AdminModel(
+          admin_state.AdminModel(
             ..admin,
             org_settings_delete_in_flight: False,
             org_settings_delete_error: opt.Some(update_helpers.i18n_t(
@@ -358,7 +359,7 @@ pub fn handle_org_settings_deleted_error(
       )
       409 -> #(
         update_admin(model, fn(admin) {
-          AdminModel(
+          admin_state.AdminModel(
             ..admin,
             org_settings_delete_in_flight: False,
             org_settings_delete_error: opt.Some(err.message),
@@ -368,7 +369,7 @@ pub fn handle_org_settings_deleted_error(
       )
       _ -> #(
         update_admin(model, fn(admin) {
-          AdminModel(
+          admin_state.AdminModel(
             ..admin,
             org_settings_delete_in_flight: False,
             org_settings_delete_error: opt.Some(err.message),
@@ -391,7 +392,7 @@ pub fn handle_org_settings_saved_error(
       403 -> {
         let model =
           update_admin(model, fn(admin) {
-            AdminModel(..admin, org_settings_save_in_flight: False)
+            admin_state.AdminModel(..admin, org_settings_save_in_flight: False)
           })
         let toast_fx =
           update_helpers.toast_warning(update_helpers.i18n_t(
@@ -403,7 +404,7 @@ pub fn handle_org_settings_saved_error(
 
       409 -> #(
         update_admin(model, fn(admin) {
-          AdminModel(
+          admin_state.AdminModel(
             ..admin,
             org_settings_save_in_flight: False,
             org_settings_error_user_id: opt.Some(user_id),
@@ -415,7 +416,7 @@ pub fn handle_org_settings_saved_error(
 
       _ -> #(
         update_admin(model, fn(admin) {
-          AdminModel(
+          admin_state.AdminModel(
             ..admin,
             org_settings_save_in_flight: False,
             org_settings_error_user_id: opt.Some(user_id),

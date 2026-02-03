@@ -34,10 +34,13 @@ import domain/org.{type InviteLink}
 import domain/remote.{Failed, Loaded}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type DialogState, type InviteLinkForm, type Model, type Msg, AdminModel,
-  DialogClosed, DialogOpen, Error, Idle, InFlight, InviteLinkCopyFinished,
-  InviteLinkCreated, InviteLinkForm, InviteLinkRegenerated, InviteLinksFetched,
-  admin_msg, update_admin,
+  type Model, type Msg, InviteLinkCopyFinished, InviteLinkCreated,
+  InviteLinkRegenerated, InviteLinksFetched, admin_msg, update_admin,
+}
+import scrumbringer_client/client_state/admin.{AdminModel}
+import scrumbringer_client/client_state/types.{
+  type DialogState, type InviteLinkForm, DialogClosed, DialogOpen, Error, Idle,
+  InFlight, InviteLinkForm,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers

@@ -4,6 +4,8 @@ import domain/user.{User}
 import gleam/option.{None, Some}
 import gleeunit/should
 import scrumbringer_client/client_state
+import scrumbringer_client/client_state/member as member_state
+import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/auth/helpers
 
 pub fn reset_to_login_clears_user_and_drag_state_test() {
@@ -23,12 +25,12 @@ pub fn reset_to_login_clears_user_and_drag_state_test() {
       )
     })
     |> client_state.update_member(fn(member) {
-      client_state.MemberModel(
+      member_state.MemberModel(
         ..member,
-        member_drag: client_state.DragActive(1, 5, 5),
-        member_pool_drag: client_state.PoolDragDragging(
+        member_drag: state_types.DragActive(1, 5, 5),
+        member_pool_drag: state_types.PoolDragDragging(
           over_my_tasks: True,
-          rect: client_state.Rect(left: 0, top: 0, width: 10, height: 10),
+          rect: state_types.Rect(left: 0, top: 0, width: 10, height: 10),
         ),
       )
     })
@@ -37,7 +39,7 @@ pub fn reset_to_login_clears_user_and_drag_state_test() {
 
   let client_state.Model(core: core, member: member, ..) = next_model
   let client_state.CoreModel(page: page, user: user, ..) = core
-  let client_state.MemberModel(
+  let member_state.MemberModel(
     member_drag: member_drag,
     member_pool_drag: member_pool_drag,
     ..,
@@ -45,8 +47,8 @@ pub fn reset_to_login_clears_user_and_drag_state_test() {
 
   page |> should.equal(client_state.Login)
   user |> should.equal(None)
-  member_drag |> should.equal(client_state.DragIdle)
-  member_pool_drag |> should.equal(client_state.PoolDragIdle)
+  member_drag |> should.equal(state_types.DragIdle)
+  member_pool_drag |> should.equal(state_types.PoolDragIdle)
 }
 
 pub fn handle_auth_error_returns_login_for_401_test() {

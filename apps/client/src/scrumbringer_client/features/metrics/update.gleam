@@ -31,8 +31,10 @@ import domain/metrics.{
 }
 import domain/remote.{Failed, Loaded}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, AdminModel, MemberModel, update_admin, update_member,
+  type Model, type Msg, update_admin, update_member,
 }
+import scrumbringer_client/client_state/admin.{AdminModel}
+import scrumbringer_client/client_state/member.{MemberModel}
 import scrumbringer_client/update_helpers
 
 // =============================================================================

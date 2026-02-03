@@ -4,6 +4,7 @@ import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import gleam/option
 import gleeunit/should
 import scrumbringer_client/client_state
+import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_update
 import scrumbringer_client/state/normalized_store
 
@@ -40,7 +41,7 @@ fn base_model_with_store(
     client_state.CoreModel(..core, selected_project_id: option.Some(10))
   })
   |> client_state.update_member(fn(member) {
-    client_state.MemberModel(
+    member_state.MemberModel(
       ..member,
       member_cards_store: store,
       member_cards: NotAsked,
@@ -146,7 +147,7 @@ pub fn partial_error_keeps_global_loaded_test() {
   let model =
     base_model_with_store(store)
     |> client_state.update_member(fn(member) {
-      client_state.MemberModel(..member, member_cards: Loaded([card_a]))
+      member_state.MemberModel(..member, member_cards: Loaded([card_a]))
     })
 
   let #(next, _fx) =

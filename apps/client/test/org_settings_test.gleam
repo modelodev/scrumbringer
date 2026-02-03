@@ -12,9 +12,9 @@ import domain/org_role
 import domain/remote.{Loaded}
 import domain/user.{type User, User}
 import scrumbringer_client/client_state.{
-  type Model, Admin, AdminModel, CoreModel, UiModel, update_admin, update_core,
-  update_ui,
+  type Model, Admin, CoreModel, UiModel, update_admin, update_core, update_ui,
 }
+import scrumbringer_client/client_state/admin.{AdminModel}
 import scrumbringer_client/features/admin/org_settings
 import scrumbringer_client/permissions
 import scrumbringer_client/ui/toast

@@ -17,6 +17,7 @@ import domain/project_role.{Manager, Member, to_string}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 
 import scrumbringer_client/client_state
+import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/assignments/components/assignments_card
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/badge
@@ -61,7 +62,7 @@ pub fn view(
   let projects_label = t(i18n_text.AssignmentsProjectsCount(projects_count))
 
   let is_inline_add = case assignments.inline_add_context {
-    opt.Some(client_state.AddProjectToUser(id)) -> id == user.id
+    opt.Some(state_types.AddProjectToUser(id)) -> id == user.id
     _ -> False
   }
 
@@ -109,7 +110,7 @@ pub fn view(
               event.on_click(
                 client_state.admin_msg(
                   client_state.AssignmentsInlineAddStarted(
-                    client_state.AddProjectToUser(user.id),
+                    state_types.AddProjectToUser(user.id),
                   ),
                 ),
               ),

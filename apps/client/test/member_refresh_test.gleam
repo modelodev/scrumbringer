@@ -4,6 +4,7 @@ import gleeunit/should
 import lustre/effect
 
 import scrumbringer_client/client_state
+import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_update
 import scrumbringer_client/member_section
 import scrumbringer_client/state/normalized_store
@@ -22,7 +23,7 @@ pub fn member_refresh_fichas_fetches_cards_test() {
       client_state.CoreModel(..core, selected_project_id: opt.None)
     })
     |> client_state.update_member(fn(member) {
-      client_state.MemberModel(
+      member_state.MemberModel(
         ..member,
         member_section: member_section.Fichas,
         member_cards: NotAsked,
@@ -44,7 +45,7 @@ pub fn member_refresh_skills_fetches_capabilities_test() {
       client_state.CoreModel(..core, selected_project_id: opt.None)
     })
     |> client_state.update_member(fn(member) {
-      client_state.MemberModel(
+      member_state.MemberModel(
         ..member,
         member_section: member_section.MySkills,
         member_capabilities: NotAsked,

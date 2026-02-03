@@ -56,11 +56,11 @@ import domain/task.{
 import domain/task_status.{Available, Claimed, Completed, Taken}
 import scrumbringer_client/client_state.{
   type Model, type Msg, MemberDependenciesFetched, MemberDependencyAdded,
-  MemberDependencyCandidatesFetched, MemberDependencyRemoved, MemberModel,
-  MemberNoteAdded, MemberNotesFetched, MemberTaskClaimed, MemberTaskCompleted,
-  MemberTaskCreated, MemberTaskReleased, MemberWorkSessionsFetched, pool_msg,
-  update_member,
+  MemberDependencyCandidatesFetched, MemberDependencyRemoved, MemberNoteAdded,
+  MemberNotesFetched, MemberTaskClaimed, MemberTaskCompleted, MemberTaskCreated,
+  MemberTaskReleased, MemberWorkSessionsFetched, pool_msg, update_member,
 }
+import scrumbringer_client/client_state/member.{MemberModel}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/task_tabs
 import scrumbringer_client/update_helpers

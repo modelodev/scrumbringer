@@ -40,3 +40,14 @@ pub fn touch_client_position(to_msg: fn(Int, Int) -> msg) -> decode.Decoder(msg)
 pub fn message(msg: msg) -> decode.Decoder(msg) {
   decode.success(msg)
 }
+
+/// Provides a decoder for CustomEvent detail payloads.
+///
+/// Example:
+///   custom_detail(user_decoder)
+pub fn custom_detail(
+  decoder: decode.Decoder(a),
+  next: fn(a) -> decode.Decoder(b),
+) -> decode.Decoder(b) {
+  decode.field("detail", decoder, next)
+}

@@ -23,6 +23,7 @@ import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError}
 import scrumbringer_client/client_state as client_state_module
+import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/toast
@@ -39,11 +40,7 @@ pub fn clear_drag_state(
   model: client_state_module.Model,
 ) -> client_state_module.Model {
   client_state_module.update_member(model, fn(member) {
-    client_state_module.MemberModel(
-      ..member,
-      member_drag: client_state_module.DragIdle,
-      member_pool_drag: client_state_module.PoolDragIdle,
-    )
+    member_state.reset_drag_state(member)
   })
 }
 

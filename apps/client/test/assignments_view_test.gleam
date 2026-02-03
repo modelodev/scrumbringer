@@ -13,6 +13,8 @@ import gleam/option as opt
 import gleam/set
 import scrumbringer_client/assignments_view_mode
 import scrumbringer_client/client_state
+import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/assignments/view as assignments_view
 
 fn base_model() -> client_state.Model {
@@ -42,9 +44,9 @@ pub fn filter_projects_by_name_test() {
       )
     })
     |> client_state.update_admin(fn(admin) {
-      client_state.AdminModel(
+      admin_state.AdminModel(
         ..admin,
-        assignments: client_state.AssignmentsModel(
+        assignments: state_types.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByProject,
           search_query: "alpha",
@@ -82,10 +84,10 @@ pub fn project_collapsed_hides_members_test() {
       client_state.CoreModel(..core, projects: Loaded([project]))
     })
     |> client_state.update_admin(fn(admin) {
-      client_state.AdminModel(
+      admin_state.AdminModel(
         ..admin,
         org_users_cache: Loaded([org_user]),
-        assignments: client_state.AssignmentsModel(
+        assignments: state_types.AssignmentsModel(
           ..admin.assignments,
           project_members: dict.from_list([
             #(project.id, Loaded([member])),
@@ -123,10 +125,10 @@ pub fn project_expanded_shows_members_test() {
       client_state.CoreModel(..core, projects: Loaded([project]))
     })
     |> client_state.update_admin(fn(admin) {
-      client_state.AdminModel(
+      admin_state.AdminModel(
         ..admin,
         org_users_cache: Loaded([org_user]),
-        assignments: client_state.AssignmentsModel(
+        assignments: state_types.AssignmentsModel(
           ..admin.assignments,
           project_members: dict.from_list([
             #(project.id, Loaded([member])),
@@ -157,10 +159,10 @@ pub fn user_without_projects_shows_badge_test() {
   let model =
     base_model()
     |> client_state.update_admin(fn(admin) {
-      client_state.AdminModel(
+      admin_state.AdminModel(
         ..admin,
         org_users_cache: Loaded([user]),
-        assignments: client_state.AssignmentsModel(
+        assignments: state_types.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByUser,
           user_projects: dict.insert(dict.new(), user.id, Loaded([])),
@@ -183,9 +185,9 @@ pub fn project_without_members_shows_badge_test() {
       client_state.CoreModel(..core, projects: Loaded([project]))
     })
     |> client_state.update_admin(fn(admin) {
-      client_state.AdminModel(
+      admin_state.AdminModel(
         ..admin,
-        assignments: client_state.AssignmentsModel(
+        assignments: state_types.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByProject,
           project_members: dict.from_list([
@@ -208,9 +210,9 @@ pub fn empty_state_when_no_projects_test() {
       client_state.CoreModel(..core, projects: Loaded([]))
     })
     |> client_state.update_admin(fn(admin) {
-      client_state.AdminModel(
+      admin_state.AdminModel(
         ..admin,
-        assignments: client_state.AssignmentsModel(
+        assignments: state_types.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByProject,
         ),
@@ -228,10 +230,10 @@ pub fn empty_state_when_no_users_test() {
   let model =
     base_model()
     |> client_state.update_admin(fn(admin) {
-      client_state.AdminModel(
+      admin_state.AdminModel(
         ..admin,
         org_users_cache: Loaded([]),
-        assignments: client_state.AssignmentsModel(
+        assignments: state_types.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByUser,
         ),
@@ -268,10 +270,10 @@ pub fn empty_state_when_only_admin_user_test() {
       client_state.CoreModel(..core, user: opt.Some(admin))
     })
     |> client_state.update_admin(fn(admin_model) {
-      client_state.AdminModel(
+      admin_state.AdminModel(
         ..admin_model,
         org_users_cache: Loaded([admin_org_user]),
-        assignments: client_state.AssignmentsModel(
+        assignments: state_types.AssignmentsModel(
           ..admin_model.assignments,
           view_mode: assignments_view_mode.ByUser,
         ),
@@ -304,10 +306,10 @@ pub fn filter_users_by_email_test() {
   let model =
     base_model()
     |> client_state.update_admin(fn(admin) {
-      client_state.AdminModel(
+      admin_state.AdminModel(
         ..admin,
         org_users_cache: Loaded([user_admin, user_member]),
-        assignments: client_state.AssignmentsModel(
+        assignments: state_types.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByUser,
           search_query: "admin",

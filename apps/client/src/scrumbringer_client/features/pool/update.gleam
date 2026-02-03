@@ -40,11 +40,14 @@ import scrumbringer_client/api/tasks as api_tasks
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, type PoolDragState, DragActive, DragIdle, DragPending,
-  MemberCanvasRectFetched, MemberDragOffsetResolved, MemberModel,
+  type Model, type Msg, MemberCanvasRectFetched, MemberDragOffsetResolved,
   MemberPoolLongPressCheck, MemberPoolMyTasksRectFetched, MemberPositionSaved,
-  MemberTaskClaimed, MemberTaskHoverNotesFetched, PoolDragDragging, PoolDragIdle,
-  PoolDragPendingRect, Rect, pool_msg, rect_contains_point, update_member,
+  MemberTaskClaimed, MemberTaskHoverNotesFetched, pool_msg, update_member,
+}
+import scrumbringer_client/client_state/member.{MemberModel}
+import scrumbringer_client/client_state/types.{
+  type PoolDragState, DragActive, DragIdle, DragPending, PoolDragDragging,
+  PoolDragIdle, PoolDragPendingRect, Rect, rect_contains_point,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/member_section

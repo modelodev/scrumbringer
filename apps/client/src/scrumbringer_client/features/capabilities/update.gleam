@@ -35,9 +35,10 @@ import domain/api_error.{type ApiError}
 import domain/capability.{type Capability}
 import domain/remote.{Failed, Loaded}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, AdminModel, CapabilityCreated, CapabilityMembersFetched,
-  admin_msg, update_admin,
+  type Model, type Msg, CapabilityCreated, CapabilityMembersFetched, admin_msg,
+  update_admin,
 }
+import scrumbringer_client/client_state/admin.{AdminModel}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
 

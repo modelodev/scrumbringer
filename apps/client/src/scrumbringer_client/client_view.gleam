@@ -47,6 +47,7 @@ import domain/user.{type User}
 import domain/view_mode
 
 import scrumbringer_client/client_state
+import scrumbringer_client/client_state/types as state_types
 
 // Story 4.8 UX: Collapse/expand card groups in Lista view
 // Story 4.8 UX: Preferences popup toggle and theme/locale
@@ -598,7 +599,7 @@ fn build_left_panel(
     on_project_change: client_state.ProjectSelected,
     on_new_task: client_state.pool_msg(client_state.MemberCreateDialogOpened),
     on_new_card: client_state.pool_msg(client_state.OpenCardDialog(
-      client_state.CardDialogCreate,
+      state_types.CardDialogCreate,
     )),
     // Navigation to work views (AC2)
     on_navigate_pool: client_state.NavigateTo(
@@ -753,16 +754,16 @@ fn build_center_panel(
       },
       on_card_edit: fn(card_id) {
         client_state.pool_msg(
-          client_state.OpenCardDialog(client_state.CardDialogEdit(card_id)),
+          client_state.OpenCardDialog(state_types.CardDialogEdit(card_id)),
         )
       },
       on_card_delete: fn(card_id) {
         client_state.pool_msg(
-          client_state.OpenCardDialog(client_state.CardDialogDelete(card_id)),
+          client_state.OpenCardDialog(state_types.CardDialogDelete(card_id)),
         )
       },
       on_new_card: client_state.pool_msg(client_state.OpenCardDialog(
-        client_state.CardDialogCreate,
+        state_types.CardDialogCreate,
       )),
       // Story 4.8 UX: Task interaction handlers for consistency with Lista view
       on_task_click: fn(task_id) {
@@ -1063,9 +1064,9 @@ fn view_claimed_tasks_section(
 
 fn pool_drag_flags(model: client_state.Model) -> #(Bool, Bool) {
   case model.member.member_pool_drag {
-    client_state.PoolDragDragging(over_my_tasks: over, ..) -> #(True, over)
-    client_state.PoolDragPendingRect -> #(True, False)
-    client_state.PoolDragIdle -> #(False, False)
+    state_types.PoolDragDragging(over_my_tasks: over, ..) -> #(True, over)
+    state_types.PoolDragPendingRect -> #(True, False)
+    state_types.PoolDragIdle -> #(False, False)
   }
 }
 

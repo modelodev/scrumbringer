@@ -8,9 +8,10 @@ import domain/project.{Project}
 import domain/project_role.{Manager}
 import domain/remote.{Loaded}
 import scrumbringer_client/client_state.{
-  type Model, AdminModel, MemberModel, default_model, update_admin,
-  update_member,
+  type Model, default_model, update_admin, update_member,
 }
+import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/features/admin/view as admin_view
 
 fn base_model() -> Model {
@@ -47,7 +48,7 @@ pub fn cards_view_renders_detail_button_test() {
   let model =
     base_model()
     |> update_admin(fn(admin) {
-      AdminModel(..admin, cards: Loaded([sample_card()]))
+      admin_state.AdminModel(..admin, cards: Loaded([sample_card()]))
     })
 
   let html =
@@ -62,10 +63,10 @@ pub fn cards_view_renders_detail_modal_when_open_test() {
   let model =
     base_model()
     |> update_admin(fn(admin) {
-      AdminModel(..admin, cards: Loaded([sample_card()]))
+      admin_state.AdminModel(..admin, cards: Loaded([sample_card()]))
     })
     |> update_member(fn(member) {
-      MemberModel(..member, card_detail_open: opt.Some(1))
+      member_state.MemberModel(..member, card_detail_open: opt.Some(1))
     })
 
   let html =

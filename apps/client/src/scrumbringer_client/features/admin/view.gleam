@@ -55,16 +55,15 @@ import scrumbringer_client/client_state.{
   CapabilityDeleteDialogOpened, CapabilityDeleteSubmitted,
   CapabilityMembersDialogClosed, CapabilityMembersDialogOpened,
   CapabilityMembersSaveClicked, CapabilityMembersToggled, CardCrudCreated,
-  CardCrudDeleted, CardCrudUpdated, CardDialogCreate, CardDialogDelete,
-  CardDialogEdit, CardsSearchChanged, CardsShowCompletedToggled,
-  CardsShowEmptyToggled, CardsStateFilterChanged, CloseCardDetail,
-  CloseCardDialog, CloseTaskTypeDialog, MemberCreateDialogOpenedWithCard, NoOp,
-  OpenCardDetail, OpenCardDialog, OpenTaskTypeDialog, OrgSettingsDeleteCancelled,
-  OrgSettingsDeleteClicked, OrgSettingsDeleteConfirmed, OrgSettingsRoleChanged,
-  TaskTypeCrudCreated, TaskTypeCrudDeleted, TaskTypeCrudUpdated,
-  TaskTypeDialogCreate, TaskTypeDialogDelete, TaskTypeDialogEdit, admin_msg,
-  pool_msg,
+  CardCrudDeleted, CardCrudUpdated, CardsSearchChanged,
+  CardsShowCompletedToggled, CardsShowEmptyToggled, CardsStateFilterChanged,
+  CloseCardDetail, CloseCardDialog, CloseTaskTypeDialog,
+  MemberCreateDialogOpenedWithCard, NoOp, OpenCardDetail, OpenCardDialog,
+  OpenTaskTypeDialog, OrgSettingsDeleteCancelled, OrgSettingsDeleteClicked,
+  OrgSettingsDeleteConfirmed, OrgSettingsRoleChanged, TaskTypeCrudCreated,
+  TaskTypeCrudDeleted, TaskTypeCrudUpdated, admin_msg, pool_msg,
 }
+import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/decoders
 import scrumbringer_client/features/admin/views/members as members_view
 import scrumbringer_client/features/admin/views/workflows as workflows_view
@@ -89,6 +88,7 @@ import scrumbringer_client/ui/card_title_meta
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/error_notice
+import scrumbringer_client/ui/event_decoders
 import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/icon_catalog
 import scrumbringer_client/ui/icons
@@ -452,7 +452,7 @@ pub fn view_task_types(
           dialog.add_button(
             model,
             i18n_text.CreateTaskType,
-            admin_msg(OpenTaskTypeDialog(TaskTypeDialogCreate)),
+            admin_msg(OpenTaskTypeDialog(state_types.TaskTypeDialogCreate)),
           ),
         ),
         // Task types list
@@ -469,15 +469,15 @@ fn view_task_type_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
     opt.None -> element.none()
     opt.Some(mode) -> {
       let #(mode_str, type_json) = case mode {
-        TaskTypeDialogCreate -> #("create", attribute.none())
-        TaskTypeDialogEdit(task_type) -> #(
+        state_types.TaskTypeDialogCreate -> #("create", attribute.none())
+        state_types.TaskTypeDialogEdit(task_type) -> #(
           "edit",
           attribute.property(
             "task-type",
             task_type_to_property_json(task_type, "edit"),
           ),
         )
-        TaskTypeDialogDelete(task_type) -> #(
+        state_types.TaskTypeDialogDelete(task_type) -> #(
           "delete",
           attribute.property(
             "task-type",
@@ -536,23 +536,24 @@ fn task_type_to_property_json(task_type: TaskType, mode: String) -> json.Json {
 
 /// Decoder for type-created event.
 fn decode_task_type_created_event() -> decode.Decoder(Msg) {
-  use task_type <- decode.field("detail", task_type_decoder())
-  decode.success(admin_msg(TaskTypeCrudCreated(task_type)))
+  event_decoders.custom_detail(task_type_decoder(), fn(task_type) {
+    decode.success(admin_msg(TaskTypeCrudCreated(task_type)))
+  })
 }
 
 /// Decoder for type-updated event.
 fn decode_task_type_updated_event() -> decode.Decoder(Msg) {
-  use task_type <- decode.field("detail", task_type_decoder())
-  decode.success(admin_msg(TaskTypeCrudUpdated(task_type)))
+  event_decoders.custom_detail(task_type_decoder(), fn(task_type) {
+    decode.success(admin_msg(TaskTypeCrudUpdated(task_type)))
+  })
 }
 
 /// Decoder for type-deleted event.
 fn decode_task_type_deleted_event() -> decode.Decoder(Msg) {
-  use id <- decode.field(
-    "detail",
+  event_decoders.custom_detail(
     decode.field("id", decode.int, decode.success),
+    fn(id) { decode.success(admin_msg(TaskTypeCrudDeleted(id))) },
   )
-  decode.success(admin_msg(TaskTypeCrudDeleted(id)))
 }
 
 /// Decoder for close-requested event.
@@ -899,9 +900,11 @@ fn view_task_types_list(
           update_helpers.i18n_t(model, i18n_text.Actions),
           fn(tt: TaskType) {
             let edit_click: Msg =
-              admin_msg(OpenTaskTypeDialog(TaskTypeDialogEdit(tt)))
+              admin_msg(OpenTaskTypeDialog(state_types.TaskTypeDialogEdit(tt)))
             let delete_click: Msg =
-              admin_msg(OpenTaskTypeDialog(TaskTypeDialogDelete(tt)))
+              admin_msg(
+                OpenTaskTypeDialog(state_types.TaskTypeDialogDelete(tt)),
+              )
             action_buttons.edit_delete_row_with_testid(
               edit_title: update_helpers.i18n_t(model, i18n_text.EditTaskType),
               edit_click: edit_click,
@@ -960,7 +963,7 @@ pub fn view_cards(
           dialog.add_button(
             model,
             i18n_text.CreateCard,
-            pool_msg(OpenCardDialog(CardDialogCreate)),
+            pool_msg(OpenCardDialog(state_types.CardDialogCreate)),
           ),
         ),
         // Story 4.9 AC7-8: Filters bar
@@ -982,8 +985,8 @@ pub fn view_card_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
     opt.None -> element.none()
     opt.Some(mode) -> {
       let #(mode_str, card_json) = case mode {
-        CardDialogCreate -> #("create", attribute.none())
-        CardDialogEdit(card_id) ->
+        state_types.CardDialogCreate -> #("create", attribute.none())
+        state_types.CardDialogEdit(card_id) ->
           case card_queries.find_card(model, card_id) {
             opt.Some(card) -> #(
               "edit",
@@ -991,7 +994,7 @@ pub fn view_card_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
             )
             opt.None -> #("edit", attribute.none())
           }
-        CardDialogDelete(card_id) ->
+        state_types.CardDialogDelete(card_id) ->
           case card_queries.find_card(model, card_id) {
             opt.Some(card) -> #(
               "delete",
@@ -1024,23 +1027,24 @@ pub fn view_card_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
 
 /// Decoder for card-created event.
 fn decode_card_created_event() -> decode.Decoder(Msg) {
-  use card <- decode.field("detail", card_decoder())
-  decode.success(pool_msg(CardCrudCreated(card)))
+  event_decoders.custom_detail(card_decoder(), fn(card) {
+    decode.success(pool_msg(CardCrudCreated(card)))
+  })
 }
 
 /// Decoder for card-updated event.
 fn decode_card_updated_event() -> decode.Decoder(Msg) {
-  use card <- decode.field("detail", card_decoder())
-  decode.success(pool_msg(CardCrudUpdated(card)))
+  event_decoders.custom_detail(card_decoder(), fn(card) {
+    decode.success(pool_msg(CardCrudUpdated(card)))
+  })
 }
 
 /// Decoder for card-deleted event.
 fn decode_card_deleted_event() -> decode.Decoder(Msg) {
-  use id <- decode.field(
-    "detail",
+  event_decoders.custom_detail(
     decode.field("id", decode.int, decode.success),
+    fn(id) { decode.success(pool_msg(CardCrudDeleted(id))) },
   )
-  decode.success(pool_msg(CardCrudDeleted(id)))
 }
 
 /// Decoder for close-requested event.
@@ -1328,12 +1332,12 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
               ),
               action_buttons.edit_button_with_testid(
                 update_helpers.i18n_t(model, i18n_text.EditCard),
-                pool_msg(OpenCardDialog(CardDialogEdit(c.id))),
+                pool_msg(OpenCardDialog(state_types.CardDialogEdit(c.id))),
                 "card-edit-btn",
               ),
               action_buttons.delete_button_with_testid(
                 update_helpers.i18n_t(model, i18n_text.DeleteCard),
-                pool_msg(OpenCardDialog(CardDialogDelete(c.id))),
+                pool_msg(OpenCardDialog(state_types.CardDialogDelete(c.id))),
                 "card-delete-btn",
               ),
             ])

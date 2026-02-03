@@ -17,6 +17,8 @@ import domain/project_role.{type ProjectRole, Member, parse}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/assignments_view_mode
 import scrumbringer_client/client_state
+import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/router
@@ -31,62 +33,62 @@ import scrumbringer_client/api/projects as api_projects
 
 fn update_assignments(
   model: client_state.Model,
-  updater: fn(client_state.AssignmentsModel) -> client_state.AssignmentsModel,
+  updater: fn(state_types.AssignmentsModel) -> state_types.AssignmentsModel,
 ) -> client_state.Model {
   client_state.update_admin(model, fn(admin) {
-    client_state.AdminModel(..admin, assignments: updater(admin.assignments))
+    admin_state.AdminModel(..admin, assignments: updater(admin.assignments))
   })
 }
 
 fn set_project_members_state(
-  assignments: client_state.AssignmentsModel,
+  assignments: state_types.AssignmentsModel,
   project_id: Int,
   state: Remote(List(ProjectMember)),
-) -> client_state.AssignmentsModel {
-  let client_state.AssignmentsModel(project_members: project_members, ..) =
+) -> state_types.AssignmentsModel {
+  let state_types.AssignmentsModel(project_members: project_members, ..) =
     assignments
-  client_state.AssignmentsModel(
+  state_types.AssignmentsModel(
     ..assignments,
     project_members: dict.insert(project_members, project_id, state),
   )
 }
 
 fn set_user_projects_state(
-  assignments: client_state.AssignmentsModel,
+  assignments: state_types.AssignmentsModel,
   user_id: Int,
   state: Remote(List(Project)),
-) -> client_state.AssignmentsModel {
-  let client_state.AssignmentsModel(user_projects: user_projects, ..) =
+) -> state_types.AssignmentsModel {
+  let state_types.AssignmentsModel(user_projects: user_projects, ..) =
     assignments
-  client_state.AssignmentsModel(
+  state_types.AssignmentsModel(
     ..assignments,
     user_projects: dict.insert(user_projects, user_id, state),
   )
 }
 
 fn toggle_expanded_project(
-  assignments: client_state.AssignmentsModel,
+  assignments: state_types.AssignmentsModel,
   project_id: Int,
-) -> client_state.AssignmentsModel {
-  let client_state.AssignmentsModel(expanded_projects: expanded, ..) =
+) -> state_types.AssignmentsModel {
+  let state_types.AssignmentsModel(expanded_projects: expanded, ..) =
     assignments
   let next = case set.contains(expanded, project_id) {
     True -> set.delete(expanded, project_id)
     False -> set.insert(expanded, project_id)
   }
-  client_state.AssignmentsModel(..assignments, expanded_projects: next)
+  state_types.AssignmentsModel(..assignments, expanded_projects: next)
 }
 
 fn toggle_expanded_user(
-  assignments: client_state.AssignmentsModel,
+  assignments: state_types.AssignmentsModel,
   user_id: Int,
-) -> client_state.AssignmentsModel {
-  let client_state.AssignmentsModel(expanded_users: expanded, ..) = assignments
+) -> state_types.AssignmentsModel {
+  let state_types.AssignmentsModel(expanded_users: expanded, ..) = assignments
   let next = case set.contains(expanded, user_id) {
     True -> set.delete(expanded, user_id)
     False -> set.insert(expanded, user_id)
   }
-  client_state.AssignmentsModel(..assignments, expanded_users: next)
+  state_types.AssignmentsModel(..assignments, expanded_users: next)
 }
 
 fn update_project_role(project: Project, role: ProjectRole) -> Project {
@@ -132,11 +134,11 @@ fn update_user_projects_role(
 }
 
 fn current_role_for_assignment(
-  assignments: client_state.AssignmentsModel,
+  assignments: state_types.AssignmentsModel,
   project_id: Int,
   user_id: Int,
 ) -> opt.Option(ProjectRole) {
-  let client_state.AssignmentsModel(
+  let state_types.AssignmentsModel(
     project_members: project_members,
     user_projects: user_projects,
     ..,
@@ -161,9 +163,9 @@ fn current_role_for_assignment(
 }
 
 fn clear_inline_add(
-  assignments: client_state.AssignmentsModel,
-) -> client_state.AssignmentsModel {
-  client_state.AssignmentsModel(
+  assignments: state_types.AssignmentsModel,
+) -> state_types.AssignmentsModel {
+  state_types.AssignmentsModel(
     ..assignments,
     inline_add_context: opt.None,
     inline_add_selection: opt.None,
@@ -173,12 +175,12 @@ fn clear_inline_add(
 }
 
 fn apply_role_change(
-  assignments: client_state.AssignmentsModel,
+  assignments: state_types.AssignmentsModel,
   project_id: Int,
   user_id: Int,
   new_role: ProjectRole,
-) -> client_state.AssignmentsModel {
-  let client_state.AssignmentsModel(
+) -> state_types.AssignmentsModel {
+  let state_types.AssignmentsModel(
     project_members: project_members,
     user_projects: user_projects,
     ..,
@@ -201,7 +203,7 @@ fn apply_role_change(
       )
     Error(_) -> user_projects
   }
-  client_state.AssignmentsModel(
+  state_types.AssignmentsModel(
     ..assignments,
     project_members: updated_project_members,
     user_projects: updated_user_projects,
@@ -236,7 +238,7 @@ pub fn handle_assignments_view_mode_changed(
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   let model =
     update_assignments(model, fn(assignments) {
-      client_state.AssignmentsModel(..assignments, view_mode: view_mode)
+      state_types.AssignmentsModel(..assignments, view_mode: view_mode)
     })
   #(model, router.replace_assignments_view(view_mode))
 }
@@ -247,7 +249,7 @@ pub fn handle_assignments_search_changed(
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   #(
     update_assignments(model, fn(assignments) {
-      client_state.AssignmentsModel(..assignments, search_input: value)
+      state_types.AssignmentsModel(..assignments, search_input: value)
     }),
     effect.none(),
   )
@@ -259,7 +261,7 @@ pub fn handle_assignments_search_debounced(
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   #(
     update_assignments(model, fn(assignments) {
-      client_state.AssignmentsModel(..assignments, search_query: value)
+      state_types.AssignmentsModel(..assignments, search_query: value)
     }),
     effect.none(),
   )
@@ -353,7 +355,7 @@ pub fn handle_assignments_inline_add_started(
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   let model =
     update_assignments(model, fn(assignments) {
-      client_state.AssignmentsModel(
+      state_types.AssignmentsModel(
         ..assignments,
         inline_add_context: opt.Some(context),
         inline_add_selection: opt.None,
@@ -371,7 +373,7 @@ pub fn handle_assignments_inline_add_search_changed(
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   #(
     update_assignments(model, fn(assignments) {
-      client_state.AssignmentsModel(..assignments, inline_add_search: value)
+      state_types.AssignmentsModel(..assignments, inline_add_search: value)
     }),
     effect.none(),
   )
@@ -387,7 +389,7 @@ pub fn handle_assignments_inline_add_selection_changed(
   }
   #(
     update_assignments(model, fn(assignments) {
-      client_state.AssignmentsModel(
+      state_types.AssignmentsModel(
         ..assignments,
         inline_add_selection: selection,
       )
@@ -406,7 +408,7 @@ pub fn handle_assignments_inline_add_role_changed(
   }
   #(
     update_assignments(model, fn(assignments) {
-      client_state.AssignmentsModel(..assignments, inline_add_role: role)
+      state_types.AssignmentsModel(..assignments, inline_add_role: role)
     }),
     effect.none(),
   )
@@ -416,7 +418,7 @@ pub fn handle_assignments_inline_add_submitted(
   model: client_state.Model,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   let assignments = model.admin.assignments
-  let client_state.AssignmentsModel(
+  let state_types.AssignmentsModel(
     inline_add_context: context,
     inline_add_selection: selection,
     inline_add_role: role,
@@ -428,10 +430,10 @@ pub fn handle_assignments_inline_add_submitted(
     True -> #(model, effect.none())
     False ->
       case context, selection {
-        opt.Some(client_state.AddUserToProject(project_id)), opt.Some(user_id) -> {
+        opt.Some(state_types.AddUserToProject(project_id)), opt.Some(user_id) -> {
           let model =
             update_assignments(model, fn(assignments) {
-              client_state.AssignmentsModel(
+              state_types.AssignmentsModel(
                 ..assignments,
                 inline_add_in_flight: True,
               )
@@ -450,10 +452,10 @@ pub fn handle_assignments_inline_add_submitted(
           #(model, fx)
         }
 
-        opt.Some(client_state.AddProjectToUser(user_id)), opt.Some(project_id) -> {
+        opt.Some(state_types.AddProjectToUser(user_id)), opt.Some(project_id) -> {
           let model =
             update_assignments(model, fn(assignments) {
-              client_state.AssignmentsModel(
+              state_types.AssignmentsModel(
                 ..assignments,
                 inline_add_in_flight: True,
               )
@@ -577,7 +579,7 @@ pub fn handle_assignments_remove_clicked(
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   #(
     update_assignments(model, fn(assignments) {
-      client_state.AssignmentsModel(
+      state_types.AssignmentsModel(
         ..assignments,
         inline_remove_confirm: opt.Some(#(project_id, user_id)),
       )
@@ -591,7 +593,7 @@ pub fn handle_assignments_remove_cancelled(
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   #(
     update_assignments(model, fn(assignments) {
-      client_state.AssignmentsModel(
+      state_types.AssignmentsModel(
         ..assignments,
         inline_remove_confirm: opt.None,
       )
@@ -607,7 +609,7 @@ pub fn handle_assignments_remove_confirmed(
     opt.Some(#(project_id, user_id)) -> {
       let model =
         update_assignments(model, fn(assignments) {
-          client_state.AssignmentsModel(
+          state_types.AssignmentsModel(
             ..assignments,
             inline_remove_confirm: opt.None,
           )
@@ -633,7 +635,7 @@ pub fn handle_assignments_remove_completed_ok(
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   let model =
     update_assignments(model, fn(assignments) {
-      let client_state.AssignmentsModel(
+      let state_types.AssignmentsModel(
         project_members: project_members,
         user_projects: user_projects,
         ..,
@@ -660,7 +662,7 @@ pub fn handle_assignments_remove_completed_ok(
           )
         _ -> user_projects
       }
-      client_state.AssignmentsModel(
+      state_types.AssignmentsModel(
         ..assignments,
         project_members: updated_project_members,
         user_projects: updated_user_projects,
@@ -692,7 +694,7 @@ pub fn handle_assignments_role_changed(
       assignments
       |> apply_role_change(project_id, user_id, new_role)
       |> fn(updated) {
-        client_state.AssignmentsModel(
+        state_types.AssignmentsModel(
           ..updated,
           role_change_in_flight: opt.Some(#(project_id, user_id)),
           role_change_previous: case previous_role {
@@ -725,7 +727,7 @@ pub fn handle_assignments_role_change_completed_ok(
     update_assignments(model, fn(assignments) {
       let updated =
         apply_role_change(assignments, project_id, user_id, result.role)
-      client_state.AssignmentsModel(
+      state_types.AssignmentsModel(
         ..updated,
         role_change_in_flight: opt.None,
         role_change_previous: opt.None,
@@ -753,7 +755,7 @@ pub fn handle_assignments_role_change_completed_error(
   }
   let model =
     update_assignments(model, fn(_) {
-      client_state.AssignmentsModel(
+      state_types.AssignmentsModel(
         ..updated,
         role_change_in_flight: opt.None,
         role_change_previous: opt.None,
@@ -776,7 +778,7 @@ pub fn start_user_projects_fetch(
       let #(next_assignments, effects) =
         list.fold(users, #(assignments, []), fn(state, user) {
           let #(current, fx) = state
-          let client_state.AssignmentsModel(user_projects: projects, ..) =
+          let state_types.AssignmentsModel(user_projects: projects, ..) =
             current
           let should_fetch = case dict.get(projects, user.id) {
             Ok(Loading) -> False

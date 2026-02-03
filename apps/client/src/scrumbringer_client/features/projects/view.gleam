@@ -27,13 +27,15 @@ import lustre/event
 import domain/project.{type Project}
 import domain/project_role
 import scrumbringer_client/client_state.{
-  type Model, type Msg, type OperationState, DialogOpen, Error as OpError,
-  InFlight, ProjectCreateDialogClosed, ProjectCreateDialogOpened,
+  type Model, type Msg, ProjectCreateDialogClosed, ProjectCreateDialogOpened,
   ProjectCreateNameChanged, ProjectCreateSubmitted, ProjectDeleteConfirmClosed,
-  ProjectDeleteConfirmOpened, ProjectDeleteSubmitted, ProjectDialogCreate,
-  ProjectDialogDelete, ProjectDialogEdit, ProjectEditDialogClosed,
+  ProjectDeleteConfirmOpened, ProjectDeleteSubmitted, ProjectEditDialogClosed,
   ProjectEditDialogOpened, ProjectEditNameChanged, ProjectEditSubmitted,
   admin_msg,
+}
+import scrumbringer_client/client_state/types.{
+  type OperationState, DialogOpen, Error as OpError, InFlight,
+  ProjectDialogCreate, ProjectDialogDelete, ProjectDialogEdit,
 }
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons

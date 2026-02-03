@@ -25,9 +25,10 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiError}
 import domain/project_role.{type ProjectRole}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, AdminModel, MemberAdded, OrgUsersSearchIdle,
-  OrgUsersSearchLoaded, admin_msg, update_admin,
+  type Model, type Msg, MemberAdded, admin_msg, update_admin,
 }
+import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
 
@@ -42,12 +43,12 @@ import scrumbringer_client/api/projects as api_projects
 pub fn handle_member_add_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
+      admin_state.AdminModel(
         ..admin,
         members_add_dialog_open: True,
         members_add_selected_user: opt.None,
         members_add_error: opt.None,
-        org_users_search: OrgUsersSearchIdle("", 0),
+        org_users_search: state_types.OrgUsersSearchIdle("", 0),
       )
     }),
     effect.none(),
@@ -58,12 +59,12 @@ pub fn handle_member_add_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
 pub fn handle_member_add_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
+      admin_state.AdminModel(
         ..admin,
         members_add_dialog_open: False,
         members_add_selected_user: opt.None,
         members_add_error: opt.None,
-        org_users_search: OrgUsersSearchIdle("", 0),
+        org_users_search: state_types.OrgUsersSearchIdle("", 0),
       )
     }),
     effect.none(),
@@ -81,7 +82,7 @@ pub fn handle_member_add_role_changed(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, members_add_role: role)
+      admin_state.AdminModel(..admin, members_add_role: role)
     }),
     effect.none(),
   )
@@ -93,7 +94,7 @@ pub fn handle_member_add_user_selected(
   user_id: Int,
 ) -> #(Model, Effect(Msg)) {
   let selected = case model.admin.org_users_search {
-    OrgUsersSearchLoaded(_, _, users) ->
+    state_types.OrgUsersSearchLoaded(_, _, users) ->
       case list.find(users, fn(u) { u.id == user_id }) {
         Ok(user) -> opt.Some(user)
         Error(_) -> opt.None
@@ -104,7 +105,7 @@ pub fn handle_member_add_user_selected(
 
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, members_add_selected_user: selected)
+      admin_state.AdminModel(..admin, members_add_selected_user: selected)
     }),
     effect.none(),
   )
@@ -127,7 +128,7 @@ pub fn handle_member_add_submitted(model: Model) -> #(Model, Effect(Msg)) {
         opt.Some(project_id), opt.Some(user) -> {
           let model =
             update_admin(model, fn(admin) {
-              AdminModel(
+              admin_state.AdminModel(
                 ..admin,
                 members_add_in_flight: True,
                 members_add_error: opt.None,
@@ -146,7 +147,7 @@ pub fn handle_member_add_submitted(model: Model) -> #(Model, Effect(Msg)) {
 
         _, _ -> #(
           update_admin(model, fn(admin) {
-            AdminModel(
+            admin_state.AdminModel(
               ..admin,
               members_add_error: opt.Some(update_helpers.i18n_t(
                 model,
@@ -172,7 +173,7 @@ pub fn handle_member_added_ok(
 ) -> #(Model, Effect(Msg)) {
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(
+      admin_state.AdminModel(
         ..admin,
         members_add_in_flight: False,
         members_add_dialog_open: False,
@@ -196,7 +197,7 @@ pub fn handle_member_added_error(
     case err.status {
       403 -> #(
         update_admin(model, fn(admin) {
-          AdminModel(
+          admin_state.AdminModel(
             ..admin,
             members_add_in_flight: False,
             members_add_error: opt.Some(update_helpers.i18n_t(
@@ -212,7 +213,7 @@ pub fn handle_member_added_error(
       )
       _ -> #(
         update_admin(model, fn(admin) {
-          AdminModel(
+          admin_state.AdminModel(
             ..admin,
             members_add_in_flight: False,
             members_add_error: opt.Some(err.message),

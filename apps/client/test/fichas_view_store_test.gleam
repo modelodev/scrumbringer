@@ -6,6 +6,7 @@ import lustre/element
 import domain/card.{type Card, Card, Pendiente}
 import domain/remote.{Loading}
 import scrumbringer_client/client_state
+import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/features/fichas/view as fichas_view
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/state/normalized_store
@@ -44,7 +45,7 @@ pub fn fichas_uses_cache_when_available_test() {
       client_state.CoreModel(..core, selected_project_id: option.Some(10))
     })
     |> client_state.update_member(fn(member) {
-      client_state.MemberModel(
+      member_state.MemberModel(
         ..member,
         member_cards_store: store,
         member_cards: Loading,
@@ -67,7 +68,7 @@ pub fn fichas_shows_loading_only_without_cache_test() {
       client_state.CoreModel(..core, selected_project_id: option.Some(10))
     })
     |> client_state.update_member(fn(member) {
-      client_state.MemberModel(..member, member_cards_store: store)
+      member_state.MemberModel(..member, member_cards_store: store)
     })
 
   let html =
@@ -85,7 +86,7 @@ pub fn fichas_shows_empty_without_cache_or_pending_test() {
       client_state.CoreModel(..core, selected_project_id: option.Some(10))
     })
     |> client_state.update_member(fn(member) {
-      client_state.MemberModel(
+      member_state.MemberModel(
         ..member,
         member_cards_store: normalized_store.new(),
       )

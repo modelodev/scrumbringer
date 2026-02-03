@@ -62,6 +62,9 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/toast
 
 import scrumbringer_client/client_state
+import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/member as member_state
+import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/client_update_dispatch as update_dispatch
 
 // Story 4.10: Rule template attachment UI
@@ -209,10 +212,10 @@ fn apply_route_fields(
             )
           }),
           fn(member) {
-            client_state.MemberModel(
+            member_state.MemberModel(
               ..member,
-              member_drag: client_state.DragIdle,
-              member_pool_drag: client_state.PoolDragIdle,
+              member_drag: state_types.DragIdle,
+              member_pool_drag: state_types.PoolDragIdle,
             )
           },
         )
@@ -236,10 +239,10 @@ fn apply_route_fields(
             },
           ),
           fn(member) {
-            client_state.MemberModel(
+            member_state.MemberModel(
               ..member,
-              member_drag: client_state.DragIdle,
-              member_pool_drag: client_state.PoolDragIdle,
+              member_drag: state_types.DragIdle,
+              member_pool_drag: state_types.PoolDragIdle,
             )
           },
         )
@@ -264,10 +267,10 @@ fn apply_route_fields(
             },
           ),
           fn(member) {
-            client_state.MemberModel(
+            member_state.MemberModel(
               ..member,
-              member_drag: client_state.DragIdle,
-              member_pool_drag: client_state.PoolDragIdle,
+              member_drag: state_types.DragIdle,
+              member_pool_drag: state_types.PoolDragIdle,
             )
           },
         )
@@ -288,10 +291,10 @@ fn apply_route_fields(
             )
           }),
           fn(member) {
-            client_state.MemberModel(
+            member_state.MemberModel(
               ..member,
-              member_drag: client_state.DragIdle,
-              member_pool_drag: client_state.PoolDragIdle,
+              member_drag: state_types.DragIdle,
+              member_pool_drag: state_types.PoolDragIdle,
             )
           },
         )
@@ -312,10 +315,10 @@ fn apply_route_fields(
             )
           }),
           fn(member) {
-            client_state.MemberModel(
+            member_state.MemberModel(
               ..member,
-              member_drag: client_state.DragIdle,
-              member_pool_drag: client_state.PoolDragIdle,
+              member_drag: state_types.DragIdle,
+              member_pool_drag: state_types.PoolDragIdle,
             )
           },
         )
@@ -323,7 +326,7 @@ fn apply_route_fields(
       let model = case section {
         permissions.Assignments ->
           client_state.update_admin(model, fn(admin) {
-            let client_state.AssignmentsModel(
+            let state_types.AssignmentsModel(
               view_mode: _,
               search_input: search_input,
               search_query: search_query,
@@ -340,9 +343,9 @@ fn apply_route_fields(
               role_change_in_flight: _,
               role_change_previous: _,
             ) = admin.assignments
-            client_state.AdminModel(
+            admin_state.AdminModel(
               ..admin,
-              assignments: client_state.AssignmentsModel(
+              assignments: state_types.AssignmentsModel(
                 view_mode: assignments_view_mode.ByProject,
                 search_input: search_input,
                 search_query: search_query,
@@ -389,12 +392,12 @@ fn apply_route_fields(
             )
           }),
           fn(member) {
-            client_state.MemberModel(
+            member_state.MemberModel(
               ..member,
               member_section: section,
               view_mode: new_view,
-              member_drag: client_state.DragIdle,
-              member_pool_drag: client_state.PoolDragIdle,
+              member_drag: state_types.DragIdle,
+              member_pool_drag: state_types.PoolDragIdle,
             )
           },
         ),
@@ -604,7 +607,7 @@ fn hydrate_invite_links_request(
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   let model =
     client_state.update_admin(model, fn(admin) {
-      client_state.AdminModel(..admin, invite_links: Loading)
+      admin_state.AdminModel(..admin, invite_links: Loading)
     })
 
   #(model, [
@@ -634,7 +637,7 @@ fn hydrate_capabilities_request(
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   let model =
     client_state.update_admin(model, fn(admin) {
-      client_state.AdminModel(..admin, capabilities: Loading)
+      admin_state.AdminModel(..admin, capabilities: Loading)
     })
 
   #(model, [
@@ -669,7 +672,7 @@ fn hydrate_me_capability_ids_request(
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   let model =
     client_state.update_member(model, fn(member) {
-      client_state.MemberModel(..member, member_my_capability_ids: Loading)
+      member_state.MemberModel(..member, member_my_capability_ids: Loading)
     })
 
   #(model, [
@@ -696,7 +699,7 @@ fn hydrate_work_sessions_request(
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   let model =
     client_state.update_member(model, fn(member) {
-      client_state.MemberModel(..member, member_work_sessions: Loading)
+      member_state.MemberModel(..member, member_work_sessions: Loading)
     })
 
   #(model, [
@@ -723,7 +726,7 @@ fn hydrate_me_metrics_request(
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   let model =
     client_state.update_member(model, fn(member) {
-      client_state.MemberModel(..member, member_metrics: Loading)
+      member_state.MemberModel(..member, member_metrics: Loading)
     })
 
   #(model, [
@@ -750,7 +753,7 @@ fn hydrate_org_metrics_overview_request(
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   let model =
     client_state.update_admin(model, fn(admin) {
-      client_state.AdminModel(..admin, admin_metrics_overview: Loading)
+      admin_state.AdminModel(..admin, admin_metrics_overview: Loading)
     })
 
   #(model, [
@@ -794,7 +797,7 @@ fn hydrate_org_metrics_project_tasks_request(
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   let model =
     client_state.update_admin(model, fn(admin) {
-      client_state.AdminModel(
+      admin_state.AdminModel(
         ..admin,
         admin_metrics_project_tasks: Loading,
         admin_metrics_project_id: opt.Some(project_id),
@@ -825,7 +828,7 @@ fn hydrate_org_settings_users_request(
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   let model =
     client_state.update_admin(model, fn(admin) {
-      client_state.AdminModel(
+      admin_state.AdminModel(
         ..admin,
         org_settings_users: Loading,
         org_settings_save_in_flight: False,
@@ -858,7 +861,7 @@ fn hydrate_org_users_cache_request(
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   let model =
     client_state.update_admin(model, fn(admin) {
-      client_state.AdminModel(..admin, org_users_cache: Loading)
+      admin_state.AdminModel(..admin, org_users_cache: Loading)
     })
 
   #(model, [
@@ -898,7 +901,7 @@ fn hydrate_members_request(
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   let model =
     client_state.update_admin(model, fn(admin) {
-      client_state.AdminModel(
+      admin_state.AdminModel(
         ..admin,
         members: Loading,
         members_project_id: opt.Some(project_id),
@@ -947,7 +950,7 @@ fn hydrate_task_types_request(
 ) -> #(client_state.Model, List(Effect(client_state.Msg))) {
   let model =
     client_state.update_admin(model, fn(admin) {
-      client_state.AdminModel(
+      admin_state.AdminModel(
         ..admin,
         task_types: Loading,
         task_types_project_id: opt.Some(project_id),
@@ -1046,7 +1049,7 @@ fn apply_assignments_view_from_url(
       case router.assignments_view_from_uri(uri) {
         opt.Some(view_mode) ->
           client_state.update_admin(model, fn(admin) {
-            let client_state.AssignmentsModel(
+            let state_types.AssignmentsModel(
               view_mode: _,
               search_input: search_input,
               search_query: search_query,
@@ -1063,9 +1066,9 @@ fn apply_assignments_view_from_url(
               role_change_in_flight: role_change_in_flight,
               role_change_previous: role_change_previous,
             ) = admin.assignments
-            client_state.AdminModel(
+            admin_state.AdminModel(
               ..admin,
-              assignments: client_state.AssignmentsModel(
+              assignments: state_types.AssignmentsModel(
                 view_mode: view_mode,
                 search_input: search_input,
                 search_query: search_query,
@@ -1144,7 +1147,7 @@ fn bootstrap_admin(
         client_state.CoreModel(..core, projects: Loading)
       }),
       fn(admin) {
-        client_state.AdminModel(..admin, invite_links: case is_admin {
+        admin_state.AdminModel(..admin, invite_links: case is_admin {
           True -> Loading
           False -> admin.invite_links
         })
@@ -1204,7 +1207,7 @@ pub fn refresh_section_for_test(
     permissions.Invites -> {
       let model =
         client_state.update_admin(model, fn(admin) {
-          client_state.AdminModel(..admin, invite_links: Loading)
+          admin_state.AdminModel(..admin, invite_links: Loading)
         })
       #(
         model,
@@ -1217,7 +1220,7 @@ pub fn refresh_section_for_test(
     permissions.OrgSettings -> {
       let model =
         client_state.update_admin(model, fn(admin) {
-          client_state.AdminModel(
+          admin_state.AdminModel(
             ..admin,
             org_settings_users: Loading,
             org_settings_save_in_flight: False,
@@ -1249,7 +1252,7 @@ pub fn refresh_section_for_test(
     permissions.Metrics -> {
       let model =
         client_state.update_admin(model, fn(admin) {
-          client_state.AdminModel(..admin, admin_metrics_overview: Loading)
+          admin_state.AdminModel(..admin, admin_metrics_overview: Loading)
         })
 
       let overview_fx =
@@ -1263,7 +1266,7 @@ pub fn refresh_section_for_test(
         opt.Some(project_id) -> {
           let model =
             client_state.update_admin(model, fn(admin) {
-              client_state.AdminModel(
+              admin_state.AdminModel(
                 ..admin,
                 admin_metrics_project_tasks: Loading,
                 admin_metrics_project_id: opt.Some(project_id),
@@ -1317,7 +1320,7 @@ pub fn refresh_section_for_test(
         opt.Some(project_id) -> {
           let model =
             client_state.update_admin(model, fn(admin) {
-              client_state.AdminModel(
+              admin_state.AdminModel(
                 ..admin,
                 members: Loading,
                 members_project_id: opt.Some(project_id),
@@ -1346,7 +1349,7 @@ pub fn refresh_section_for_test(
         opt.Some(project_id) -> {
           let model =
             client_state.update_admin(model, fn(admin) {
-              client_state.AdminModel(
+              admin_state.AdminModel(
                 ..admin,
                 task_types: Loading,
                 task_types_project_id: opt.Some(project_id),
@@ -1437,7 +1440,7 @@ fn refresh_assignments_org_users(
     _ -> {
       let model =
         client_state.update_admin(model, fn(admin) {
-          client_state.AdminModel(..admin, org_users_cache: Loading)
+          admin_state.AdminModel(..admin, org_users_cache: Loading)
         })
       let fx =
         api_org.list_org_users("", fn(result) {
@@ -1460,7 +1463,7 @@ fn refresh_assignments_project_members(
       let #(next_assignments, effects) =
         list.fold(projects, #(assignments, []), fn(state, project) {
           let #(current, fx) = state
-          let client_state.AssignmentsModel(project_members: members, ..) =
+          let state_types.AssignmentsModel(project_members: members, ..) =
             current
           let should_fetch = case dict.get(members, project.id) {
             Ok(Loading) -> False
@@ -1473,7 +1476,7 @@ fn refresh_assignments_project_members(
             False -> #(current, fx)
             True -> {
               let updated =
-                client_state.AssignmentsModel(
+                state_types.AssignmentsModel(
                   ..current,
                   project_members: dict.insert(members, project.id, Loading),
                 )
@@ -1493,7 +1496,7 @@ fn refresh_assignments_project_members(
 
       let model =
         client_state.update_admin(model, fn(admin) {
-          client_state.AdminModel(..admin, assignments: next_assignments)
+          admin_state.AdminModel(..admin, assignments: next_assignments)
         })
       #(model, effect.batch(list.reverse(effects)))
     }
@@ -1510,7 +1513,7 @@ fn refresh_assignments_user_projects(
       let #(next_assignments, effects) =
         list.fold(users, #(assignments, []), fn(state, user) {
           let #(current, fx) = state
-          let client_state.AssignmentsModel(user_projects: projects, ..) =
+          let state_types.AssignmentsModel(user_projects: projects, ..) =
             current
           let should_fetch = case dict.get(projects, user.id) {
             Ok(Loading) -> False
@@ -1523,7 +1526,7 @@ fn refresh_assignments_user_projects(
             False -> #(current, fx)
             True -> {
               let updated =
-                client_state.AssignmentsModel(
+                state_types.AssignmentsModel(
                   ..current,
                   user_projects: dict.insert(projects, user.id, Loading),
                 )
@@ -1540,7 +1543,7 @@ fn refresh_assignments_user_projects(
 
       let model =
         client_state.update_admin(model, fn(admin) {
-          client_state.AdminModel(..admin, assignments: next_assignments)
+          admin_state.AdminModel(..admin, assignments: next_assignments)
         })
       #(model, effect.batch(list.reverse(effects)))
     }
@@ -1587,14 +1590,14 @@ fn fetch_right_panel_data(
       let model =
         client_state.update_admin(
           client_state.update_member(model, fn(member) {
-            client_state.MemberModel(
+            member_state.MemberModel(
               ..member,
               member_tasks_pending: 1,
               member_tasks_by_project: dict.new(),
             )
           }),
           fn(admin) {
-            client_state.AdminModel(
+            admin_state.AdminModel(
               ..admin,
               cards: Loading,
               cards_project_id: opt.Some(project_id),
@@ -1637,7 +1640,7 @@ fn refresh_member_capabilities(
   case model.core.selected_project_id {
     opt.Some(project_id) -> #(
       client_state.update_member(model, fn(member) {
-        client_state.MemberModel(..member, member_capabilities: Loading)
+        member_state.MemberModel(..member, member_capabilities: Loading)
       }),
       api_org.list_project_capabilities(project_id, fn(result) {
         client_state.pool_msg(client_state.MemberProjectCapabilitiesFetched(
@@ -1647,7 +1650,7 @@ fn refresh_member_capabilities(
     )
     opt.None -> #(
       client_state.update_member(model, fn(member) {
-        client_state.MemberModel(..member, member_capabilities: NotAsked)
+        member_state.MemberModel(..member, member_capabilities: NotAsked)
       }),
       effect.none(),
     )
@@ -1671,7 +1674,7 @@ fn reset_member_cards(
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   #(
     client_state.update_member(model, fn(member) {
-      client_state.MemberModel(
+      member_state.MemberModel(
         ..member,
         member_cards_store: normalized_store.new(),
         member_cards: NotAsked,
@@ -1706,7 +1709,7 @@ fn refresh_member_cards_for_projects(
         Loaded(_) -> member.member_cards
         _ -> Loading
       }
-      client_state.MemberModel(
+      member_state.MemberModel(
         ..member,
         member_cards_store: next_store,
         member_cards: next_member_cards,
@@ -1743,7 +1746,7 @@ fn reset_member_tasks(
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   #(
     client_state.update_member(model, fn(member) {
-      client_state.MemberModel(
+      member_state.MemberModel(
         ..member,
         member_tasks: NotAsked,
         member_tasks_pending: 0,
@@ -1809,7 +1812,7 @@ fn refresh_member_data(
 
   let next =
     client_state.update_member(model, fn(member) {
-      client_state.MemberModel(
+      member_state.MemberModel(
         ..member,
         member_tasks: Loading,
         member_tasks_pending: list.length(project_ids),
@@ -2163,7 +2166,7 @@ pub fn update(
               client_state.CoreModel(..core, selected_project_id: selected)
             }),
             fn(member) {
-              client_state.MemberModel(
+              member_state.MemberModel(
                 ..member,
                 member_filters_type_id: opt.None,
                 member_task_types: NotAsked,

@@ -49,13 +49,12 @@ import scrumbringer_client/client_state.{
   AttachTemplateSubmitted, CloseRuleDialog, CloseTaskTemplateDialog,
   CloseWorkflowDialog, NoOp, OpenRuleDialog, OpenTaskTemplateDialog,
   OpenWorkflowDialog, RuleCrudCreated, RuleCrudDeleted, RuleCrudUpdated,
-  RuleDialogCreate, RuleDialogDelete, RuleDialogEdit, RuleExpandToggled,
-  RulesBackClicked, TaskTemplateCrudCreated, TaskTemplateCrudDeleted,
-  TaskTemplateCrudUpdated, TaskTemplateDialogCreate, TaskTemplateDialogDelete,
-  TaskTemplateDialogEdit, TemplateDetachClicked, WorkflowCrudCreated,
-  WorkflowCrudDeleted, WorkflowCrudUpdated, WorkflowDialogCreate,
-  WorkflowDialogDelete, WorkflowDialogEdit, WorkflowRulesClicked, pool_msg,
+  RuleExpandToggled, RulesBackClicked, TaskTemplateCrudCreated,
+  TaskTemplateCrudDeleted, TaskTemplateCrudUpdated, TemplateDetachClicked,
+  WorkflowCrudCreated, WorkflowCrudDeleted, WorkflowCrudUpdated,
+  WorkflowRulesClicked, pool_msg,
 }
+import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
@@ -64,6 +63,7 @@ import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_notice
+import scrumbringer_client/ui/event_decoders
 import scrumbringer_client/ui/expand_toggle
 import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/icons
@@ -114,7 +114,7 @@ fn view_workflows_list(
           dialog.add_button(
             model,
             i18n_text.CreateWorkflow,
-            pool_msg(OpenWorkflowDialog(WorkflowDialogCreate)),
+            pool_msg(OpenWorkflowDialog(state_types.WorkflowDialogCreate)),
           ),
         ),
         // Story 4.9 AC21: Contextual hint with link to Templates
@@ -161,7 +161,7 @@ fn view_workflow_crud_dialog(model: Model) -> Element(Msg) {
     opt.None -> element.none()
     opt.Some(mode) -> {
       let #(mode_str, workflow_json, project_id_attr) = case mode {
-        WorkflowDialogCreate -> #(
+        state_types.WorkflowDialogCreate -> #(
           "create",
           attribute.none(),
           case model.core.selected_project_id {
@@ -169,7 +169,7 @@ fn view_workflow_crud_dialog(model: Model) -> Element(Msg) {
             opt.None -> attribute.none()
           },
         )
-        WorkflowDialogEdit(workflow) -> #(
+        state_types.WorkflowDialogEdit(workflow) -> #(
           "edit",
           attribute.property(
             "workflow",
@@ -180,7 +180,7 @@ fn view_workflow_crud_dialog(model: Model) -> Element(Msg) {
             opt.None -> attribute.none()
           },
         )
-        WorkflowDialogDelete(workflow) -> #(
+        state_types.WorkflowDialogDelete(workflow) -> #(
           "delete",
           attribute.property(
             "workflow",
@@ -238,23 +238,24 @@ fn workflow_to_property_json(workflow: Workflow, mode: String) -> json.Json {
 
 /// Decoder for workflow-created event.
 fn decode_workflow_created_event() -> decode.Decoder(Msg) {
-  use workflow <- decode.field("detail", workflow_decoder())
-  decode.success(pool_msg(WorkflowCrudCreated(workflow)))
+  event_decoders.custom_detail(workflow_decoder(), fn(workflow) {
+    decode.success(pool_msg(WorkflowCrudCreated(workflow)))
+  })
 }
 
 /// Decoder for workflow-updated event.
 fn decode_workflow_updated_event() -> decode.Decoder(Msg) {
-  use workflow <- decode.field("detail", workflow_decoder())
-  decode.success(pool_msg(WorkflowCrudUpdated(workflow)))
+  event_decoders.custom_detail(workflow_decoder(), fn(workflow) {
+    decode.success(pool_msg(WorkflowCrudUpdated(workflow)))
+  })
 }
 
 /// Decoder for workflow-deleted event.
 fn decode_workflow_deleted_event() -> decode.Decoder(Msg) {
-  use id <- decode.field(
-    "detail",
+  event_decoders.custom_detail(
     decode.field("id", decode.int, decode.success),
+    fn(id) { decode.success(pool_msg(WorkflowCrudDeleted(id))) },
   )
-  decode.success(pool_msg(WorkflowCrudDeleted(id)))
 }
 
 /// Decoder for Workflow from JSON (used in custom events).
@@ -343,12 +344,12 @@ fn view_workflow_actions(model: Model, w: Workflow) -> Element(Msg) {
     // Edit button
     action_buttons.edit_button(
       t(i18n_text.EditWorkflow),
-      pool_msg(OpenWorkflowDialog(WorkflowDialogEdit(w))),
+      pool_msg(OpenWorkflowDialog(state_types.WorkflowDialogEdit(w))),
     ),
     // Delete button
     action_buttons.delete_button(
       t(i18n_text.DeleteWorkflow),
-      pool_msg(OpenWorkflowDialog(WorkflowDialogDelete(w))),
+      pool_msg(OpenWorkflowDialog(state_types.WorkflowDialogDelete(w))),
     ),
   ])
 }
@@ -377,7 +378,7 @@ fn view_workflow_rules(model: Model, workflow_id: Int) -> Element(Msg) {
       dialog.add_button(
         model,
         i18n_text.CreateRule,
-        pool_msg(OpenRuleDialog(RuleDialogCreate)),
+        pool_msg(OpenRuleDialog(state_types.RuleDialogCreate)),
       ),
     ),
     view_rules_table(model, model.admin.rules, model.admin.rules_metrics),
@@ -538,9 +539,13 @@ fn view_rule_row_expandable(
         td([attribute.class("cell-actions cell-no-expand")], [
           action_buttons.edit_delete_row(
             edit_title: t(i18n_text.EditRule),
-            edit_click: pool_msg(OpenRuleDialog(RuleDialogEdit(rule))),
+            edit_click: pool_msg(
+              OpenRuleDialog(state_types.RuleDialogEdit(rule)),
+            ),
             delete_title: t(i18n_text.DeleteRule),
-            delete_click: pool_msg(OpenRuleDialog(RuleDialogDelete(rule))),
+            delete_click: pool_msg(
+              OpenRuleDialog(state_types.RuleDialogDelete(rule)),
+            ),
           ),
         ]),
       ],
@@ -944,16 +949,16 @@ fn view_rule_crud_dialog(model: Model, workflow_id: Int) -> Element(Msg) {
   // Build mode attribute based on dialog mode
   let mode_attr = case model.admin.rules_dialog_mode {
     opt.None -> "closed"
-    opt.Some(RuleDialogCreate) -> "create"
-    opt.Some(RuleDialogEdit(_)) -> "edit"
-    opt.Some(RuleDialogDelete(_)) -> "delete"
+    opt.Some(state_types.RuleDialogCreate) -> "create"
+    opt.Some(state_types.RuleDialogEdit(_)) -> "edit"
+    opt.Some(state_types.RuleDialogDelete(_)) -> "delete"
   }
 
   // Build rule property for edit/delete modes (includes _mode field for component)
   let rule_prop = case model.admin.rules_dialog_mode {
-    opt.Some(RuleDialogEdit(rule)) ->
+    opt.Some(state_types.RuleDialogEdit(rule)) ->
       attribute.property("rule", rule_to_json(rule, "edit"))
-    opt.Some(RuleDialogDelete(rule)) ->
+    opt.Some(state_types.RuleDialogDelete(rule)) ->
       attribute.property("rule", rule_to_json(rule, "delete"))
     _ -> attribute.none()
   }
@@ -1088,7 +1093,7 @@ pub fn view_task_templates(
       dialog.add_button(
         model,
         i18n_text.CreateTaskTemplate,
-        pool_msg(OpenTaskTemplateDialog(TaskTemplateDialogCreate)),
+        pool_msg(OpenTaskTemplateDialog(state_types.TaskTemplateDialogCreate)),
       ),
     ),
     // Story 4.9: Unified hint with rules link and variables info
@@ -1135,7 +1140,7 @@ fn view_task_template_crud_dialog(model: Model) -> Element(Msg) {
     opt.None -> element.none()
     opt.Some(mode) -> {
       let #(mode_str, template_json, project_id_attr) = case mode {
-        TaskTemplateDialogCreate -> #(
+        state_types.TaskTemplateDialogCreate -> #(
           "create",
           attribute.none(),
           case model.core.selected_project_id {
@@ -1143,7 +1148,7 @@ fn view_task_template_crud_dialog(model: Model) -> Element(Msg) {
             opt.None -> attribute.none()
           },
         )
-        TaskTemplateDialogEdit(template) -> #(
+        state_types.TaskTemplateDialogEdit(template) -> #(
           "edit",
           attribute.property(
             "template",
@@ -1154,7 +1159,7 @@ fn view_task_template_crud_dialog(model: Model) -> Element(Msg) {
             opt.None -> attribute.none()
           },
         )
-        TaskTemplateDialogDelete(template) -> #(
+        state_types.TaskTemplateDialogDelete(template) -> #(
           "delete",
           attribute.property(
             "template",
@@ -1248,23 +1253,24 @@ fn task_types_to_property_json(task_types: Remote(List(TaskType))) -> json.Json 
 
 /// Decoder for task-template-created event.
 fn decode_task_template_created_event() -> decode.Decoder(Msg) {
-  use template <- decode.field("detail", task_template_decoder())
-  decode.success(pool_msg(TaskTemplateCrudCreated(template)))
+  event_decoders.custom_detail(task_template_decoder(), fn(template) {
+    decode.success(pool_msg(TaskTemplateCrudCreated(template)))
+  })
 }
 
 /// Decoder for task-template-updated event.
 fn decode_task_template_updated_event() -> decode.Decoder(Msg) {
-  use template <- decode.field("detail", task_template_decoder())
-  decode.success(pool_msg(TaskTemplateCrudUpdated(template)))
+  event_decoders.custom_detail(task_template_decoder(), fn(template) {
+    decode.success(pool_msg(TaskTemplateCrudUpdated(template)))
+  })
 }
 
 /// Decoder for task-template-deleted event.
 fn decode_task_template_deleted_event() -> decode.Decoder(Msg) {
-  use id <- decode.field(
-    "detail",
+  event_decoders.custom_detail(
     decode.field("id", decode.int, decode.success),
+    fn(id) { decode.success(pool_msg(TaskTemplateCrudDeleted(id))) },
   )
-  decode.success(pool_msg(TaskTemplateCrudDeleted(id)))
 }
 
 /// Decoder for close-requested event from task template component.
@@ -1339,12 +1345,14 @@ fn view_task_templates_table(
             action_buttons.edit_delete_row_with_testid(
               edit_title: t(i18n_text.EditTaskTemplate),
               edit_click: pool_msg(
-                OpenTaskTemplateDialog(TaskTemplateDialogEdit(tmpl)),
+                OpenTaskTemplateDialog(state_types.TaskTemplateDialogEdit(tmpl)),
               ),
               edit_testid: "template-edit-btn",
               delete_title: t(i18n_text.Delete),
               delete_click: pool_msg(
-                OpenTaskTemplateDialog(TaskTemplateDialogDelete(tmpl)),
+                OpenTaskTemplateDialog(state_types.TaskTemplateDialogDelete(
+                  tmpl,
+                )),
               ),
               delete_testid: "template-delete-btn",
             )

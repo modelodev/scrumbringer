@@ -239,12 +239,14 @@ fn view_task_list(config: KanbanConfig(msg), tasks: List(Task)) -> Element(msg) 
   case list.length(tasks) {
     0 -> element.none()
     _ ->
-      div(
+      keyed.div(
         [
           attribute.class("kanban-card-tasks"),
           attribute.attribute("data-testid", "card-tasks"),
         ],
-        list.map(list.take(tasks, 5), fn(t) { view_task_item(config, t) }),
+        list.map(list.take(tasks, 5), fn(t) {
+          #(int.to_string(t.id), view_task_item(config, t))
+        }),
       )
   }
 }

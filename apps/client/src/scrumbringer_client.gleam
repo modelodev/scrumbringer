@@ -79,10 +79,11 @@ import scrumbringer_client/i18n/locale as i18n_locale
 
 import scrumbringer_client/client_state.{
   type Model, type Msg, AcceptInvite as AcceptInvitePage, Admin, AuthModel,
-  CoreModel, Login, MeFetched, Member, MemberModel, Replace,
+  CoreModel, Login, MeFetched, Member, Replace,
   ResetPassword as ResetPasswordPage, UiModel, update_auth, update_core,
   update_member, update_ui,
 }
+import scrumbringer_client/client_state/member.{MemberModel}
 
 import scrumbringer_client/client_update
 import scrumbringer_client/client_view
