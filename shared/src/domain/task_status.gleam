@@ -161,6 +161,38 @@ pub fn parse_work_state(value: String) -> WorkState {
   }
 }
 
+/// Convert TaskStatus into a WorkState for UI display.
+///
+/// ## Example
+///
+/// ```gleam
+/// to_work_state(Claimed(Ongoing)) // -> WorkOngoing
+/// ```
+pub fn to_work_state(status: TaskStatus) -> WorkState {
+  case status {
+    Available -> WorkAvailable
+    Claimed(Taken) -> WorkClaimed
+    Claimed(Ongoing) -> WorkOngoing
+    Completed -> WorkCompleted
+  }
+}
+
+/// Convert WorkState into a TaskStatus.
+///
+/// ## Example
+///
+/// ```gleam
+/// from_work_state(WorkClaimed) // -> Claimed(Taken)
+/// ```
+pub fn from_work_state(state: WorkState) -> TaskStatus {
+  case state {
+    WorkAvailable -> Available
+    WorkClaimed -> Claimed(Taken)
+    WorkOngoing -> Claimed(Ongoing)
+    WorkCompleted -> Completed
+  }
+}
+
 // =============================================================================
 // Database Conversion (Server-only helpers)
 // =============================================================================

@@ -194,22 +194,24 @@ fn decode_email_payload(data: dynamic.Dynamic) -> Result(String, wisp.Response) 
   }
 }
 
-
 fn invite_link_json(link: org_invite_links_db.OrgInviteLink) -> json.Json {
   let org_invite_links_db.OrgInviteLink(
     email: email,
     token: token,
-    state: state,
-    created_at: created_at,
-    used_at: used_at,
-    invalidated_at: invalidated_at,
+    lifecycle: lifecycle,
   ) = link
+  let created_at = org_invite_links_db.lifecycle_created_at(lifecycle)
+  let used_at = org_invite_links_db.lifecycle_used_at(lifecycle)
+  let invalidated_at = org_invite_links_db.lifecycle_invalidated_at(lifecycle)
 
   json.object([
     #("email", json.string(email)),
     #("token", json.string(token)),
     #("url_path", json.string(org_invite_links_db.url_path(token))),
-    #("state", json.string(org_invite_links_db.state_to_string(state))),
+    #(
+      "state",
+      json.string(org_invite_links_db.lifecycle_state_to_string(lifecycle)),
+    ),
     #("created_at", json.string(created_at)),
     #("used_at", json_helpers.option_string_json(used_at)),
     #("invalidated_at", json_helpers.option_string_json(invalidated_at)),

@@ -102,16 +102,6 @@ pub type TaskFilters {
 pub type TaskStatus =
   task_status.TaskStatus
 
-/// Parse filter status into TaskStatus for compatibility.
-pub fn parse_task_status(value: String) -> Result(TaskStatus, Nil) {
-  task_status.parse_filter(value)
-}
-
-/// Convert TaskStatus to database status string.
-pub fn task_status_to_db(status: TaskStatus) -> String {
-  task_status.to_db_status(status)
-}
-
 /// Task update fields (ADT-based, no sentinels).
 pub type TaskUpdates {
   TaskUpdates(

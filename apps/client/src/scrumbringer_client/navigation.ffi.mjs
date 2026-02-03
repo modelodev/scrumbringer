@@ -18,17 +18,6 @@ export function location_search() {
   return window.location?.search || ""
 }
 
-export function location_query_param(name) {
-  if (typeof window === "undefined") return ""
-  try {
-    const search = window.location?.search || ""
-    const params = new URLSearchParams(search)
-    return params.get(String(name)) || ""
-  } catch {
-    return ""
-  }
-}
-
 export function history_push_state(path) {
   if (typeof window === "undefined") return undefined
   try {
@@ -43,16 +32,6 @@ export function history_replace_state(path) {
   if (typeof window === "undefined") return undefined
   try {
     window.history?.replaceState(null, "", String(path))
-  } catch {
-    // ignore
-  }
-  return undefined
-}
-
-export function register_popstate(callback) {
-  if (typeof window === "undefined") return undefined
-  try {
-    window.addEventListener("popstate", () => callback(undefined))
   } catch {
     // ignore
   }

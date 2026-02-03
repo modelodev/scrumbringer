@@ -15,10 +15,10 @@ import gleam/io
 import gleam/list
 import gleam/option
 import gleam/result
-import gleam/string
 import helpers/option as option_helpers
 import pog
 import scrumbringer_server/services/rules_target
+import scrumbringer_server/services/rules_templates
 import scrumbringer_server/sql
 
 // =============================================================================
@@ -526,12 +526,28 @@ fn create_task_from_template(
   project_name: String,
   user_name: String,
 ) -> Result(Int, RuleEngineError) {
+  let father =
+    rules_templates.format_father_link(
+      event_resource_type(event),
+      event_resource_id(event),
+    )
+  let from_state = option.unwrap(event_from_state_string(event), "(created)")
+  let to_state = event_to_state_string(event)
   let title =
-    substitute_variables(template.name, event, project_name, user_name)
+    rules_templates.substitute(
+      template.name,
+      father,
+      from_state,
+      to_state,
+      project_name,
+      user_name,
+    )
   let description =
-    substitute_variables(
+    rules_templates.substitute(
       option.unwrap(template.description, ""),
-      event,
+      father,
+      from_state,
+      to_state,
       project_name,
       user_name,
     )
@@ -580,43 +596,6 @@ fn create_task_from_template(
       log("    Error creating task: " <> debug_error(DbError(e)))
       Error(DbError(e))
     }
-  }
-}
-
-fn substitute_variables(
-  text: String,
-  event: StateChange,
-  project_name: String,
-  user_name: String,
-) -> String {
-  let father = format_father_link(event)
-  let from_state = option.unwrap(event_from_state_string(event), "(created)")
-  let to_state = event_to_state_string(event)
-
-  text
-  |> string.replace("{{father}}", father)
-  |> string.replace("{{from_state}}", from_state)
-  |> string.replace("{{to_state}}", to_state)
-  |> string.replace("{{project}}", project_name)
-  |> string.replace("{{user}}", user_name)
-}
-
-fn format_father_link(event: StateChange) -> String {
-  let resource_id = event_resource_id(event)
-
-  case event_resource_type(event) {
-    "task" ->
-      "[Task #"
-      <> int.to_string(resource_id)
-      <> "](/tasks/"
-      <> int.to_string(resource_id)
-      <> ")"
-    _ ->
-      "[Card #"
-      <> int.to_string(resource_id)
-      <> "](/cards/"
-      <> int.to_string(resource_id)
-      <> ")"
   }
 }
 

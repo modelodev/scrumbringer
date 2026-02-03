@@ -24,18 +24,18 @@ import gleam/bit_array
 import gleam/crypto
 import gleam/dynamic/decode
 import gleam/list
-import gleam/option.{type Option}
+import gleam/option as gleam_option
 import gleam/result
 import gleam/string
 import helpers/option as option_helpers
 import pog
 import scrumbringer_server/sql
 
-/// State of an invite link token.
-pub type InviteLinkState {
-  Active
-  Used
-  Invalidated
+/// Lifecycle state of an invite link token with timestamps.
+pub type InviteLinkLifecycle {
+  Active(created_at: String)
+  Used(created_at: String, used_at: String)
+  Invalidated(created_at: String, invalidated_at: String)
 }
 
 /// Status returned when looking up a token.
@@ -46,28 +46,50 @@ pub type TokenStatus {
   TokenActive(org_id: Int, email: String)
 }
 
-/// Converts an invite link state to its DB string.
+/// Converts an invite link lifecycle to its string state.
 ///
 /// Example:
-///   state_to_string(Active)
-pub fn state_to_string(state: InviteLinkState) -> String {
-  case state {
-    Active -> "active"
-    Used -> "used"
-    Invalidated -> "invalidated"
+///   lifecycle_state_to_string(Active("2024-01-01T00:00:00Z"))
+pub fn lifecycle_state_to_string(lifecycle: InviteLinkLifecycle) -> String {
+  case lifecycle {
+    Active(..) -> "active"
+    Used(..) -> "used"
+    Invalidated(..) -> "invalidated"
+  }
+}
+
+/// Returns the creation timestamp from the invite lifecycle.
+pub fn lifecycle_created_at(lifecycle: InviteLinkLifecycle) -> String {
+  case lifecycle {
+    Active(created_at) -> created_at
+    Used(created_at, ..) -> created_at
+    Invalidated(created_at, ..) -> created_at
+  }
+}
+
+/// Returns the used timestamp when the invite was consumed.
+pub fn lifecycle_used_at(
+  lifecycle: InviteLinkLifecycle,
+) -> gleam_option.Option(String) {
+  case lifecycle {
+    Used(_, used_at) -> gleam_option.Some(used_at)
+    _ -> gleam_option.None
+  }
+}
+
+/// Returns the invalidated timestamp when the invite was revoked.
+pub fn lifecycle_invalidated_at(
+  lifecycle: InviteLinkLifecycle,
+) -> gleam_option.Option(String) {
+  case lifecycle {
+    Invalidated(_, invalidated_at) -> gleam_option.Some(invalidated_at)
+    _ -> gleam_option.None
   }
 }
 
 /// Invite link record returned by persistence.
 pub type OrgInviteLink {
-  OrgInviteLink(
-    email: String,
-    token: String,
-    state: InviteLinkState,
-    created_at: String,
-    used_at: Option(String),
-    invalidated_at: Option(String),
-  )
+  OrgInviteLink(email: String, token: String, lifecycle: InviteLinkLifecycle)
 }
 
 /// Errors returned when upserting an invite link.
@@ -103,10 +125,12 @@ fn upsert_with_retry(
       Ok(OrgInviteLink(
         email: row.email,
         token: row.token,
-        state: parse_state(row.state),
-        created_at: row.created_at,
-        used_at: option_helpers.string_to_option(row.used_at),
-        invalidated_at: option_helpers.string_to_option(row.invalidated_at),
+        lifecycle: parse_lifecycle(
+          row.state,
+          row.created_at,
+          option_helpers.string_to_option(row.used_at),
+          option_helpers.string_to_option(row.invalidated_at),
+        ),
       ))
 
     Ok(pog.Returned(rows: [], ..)) -> Error(NoRowReturned)
@@ -173,10 +197,12 @@ pub fn list_invite_links(
     OrgInviteLink(
       email: row.email,
       token: row.token,
-      state: parse_state(row.state),
-      created_at: row.created_at,
-      used_at: option_helpers.string_to_option(row.used_at),
-      invalidated_at: option_helpers.string_to_option(row.invalidated_at),
+      lifecycle: parse_lifecycle(
+        row.state,
+        row.created_at,
+        option_helpers.string_to_option(row.used_at),
+        option_helpers.string_to_option(row.invalidated_at),
+      ),
     )
   })
   |> Ok
@@ -190,11 +216,17 @@ pub fn url_path(token: String) -> String {
   "/accept-invite?token=" <> token
 }
 
-fn parse_state(raw: String) -> InviteLinkState {
+fn parse_lifecycle(
+  raw: String,
+  created_at: String,
+  used_at: gleam_option.Option(String),
+  invalidated_at: gleam_option.Option(String),
+) -> InviteLinkLifecycle {
   case raw {
-    "used" -> Used
-    "invalidated" -> Invalidated
-    _ -> Active
+    "used" -> Used(created_at, gleam_option.unwrap(used_at, created_at))
+    "invalidated" ->
+      Invalidated(created_at, gleam_option.unwrap(invalidated_at, created_at))
+    _ -> Active(created_at)
   }
 }
 

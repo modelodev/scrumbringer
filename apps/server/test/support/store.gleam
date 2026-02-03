@@ -1,8 +1,7 @@
-//// In-memory store actor for auth state (test-only helper).
+//// In-memory store actor for auth state (test helper).
 ////
 //// Provides an OTP actor-based store for user registration, login,
 //// and invite handling without requiring a real database.
-//// State is volatile and not supervised; do not use in production.
 
 import gleam/erlang/process
 import gleam/option.{type Option}
@@ -41,12 +40,6 @@ type Message {
 }
 
 /// Starts a new store actor with empty initial state.
-///
-/// ## Example
-///
-/// ```gleam
-/// let store = start()
-/// ```
 pub fn start() -> Store {
   let assert Ok(started) =
     actor.new(ss.initial())
@@ -57,12 +50,6 @@ pub fn start() -> Store {
 }
 
 /// Registers a new user in the store.
-///
-/// ## Example
-///
-/// ```gleam
-/// register(store, "user@example.com", "password123", None, None, "2024-01-01T00:00:00Z", 1704067200)
-/// ```
 pub fn register(
   store: Store,
   email: String,
@@ -86,12 +73,6 @@ pub fn register(
 }
 
 /// Authenticates a user by email and password.
-///
-/// ## Example
-///
-/// ```gleam
-/// login(store, "user@example.com", "password123")
-/// ```
 pub fn login(
   store: Store,
   email: String,

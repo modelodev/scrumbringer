@@ -28,6 +28,7 @@ tag_catalog_used:
   - dto
   - validation
   - persistence
+  - db-query
   - http-server
   - http-client
   - auth
@@ -40,13 +41,8 @@ tag_catalog_used:
   - i18n
   - testing
   - ui
+  - presenter
   - state-machine
-
-tag_catalog_proposed:
-  - tag: db-query
-    reason: "Módulos que encapsulan SQL crudo o lógica de pog."
-  - tag: presenter
-    reason: "Módulos que transforman modelos de dominio para respuestas HTTP/UI."
 
 module_index:
   - module: scrumbringer_server/http/tasks
@@ -167,8 +163,10 @@ module_index:
     path: apps/server/src/scrumbringer_server/services/workflows/handlers.gleam
   - module: scrumbringer_server/services/rules_engine
     path: apps/server/src/scrumbringer_server/services/rules_engine.gleam
-  - module: scrumbringer_server/services/store
-    path: apps/server/src/scrumbringer_server/services/store.gleam
+  - module: scrumbringer_server/services/rules_templates
+    path: apps/server/src/scrumbringer_server/services/rules_templates.gleam
+  - module: support/store
+    path: apps/server/test/support/store.gleam
   - module: scrumbringer_server/services/task_events_db
     path: apps/server/src/scrumbringer_server/services/task_events_db.gleam
   - module: scrumbringer_server/services/task_types_db
@@ -632,10 +630,10 @@ modules:
       present: unknown
       notes: "Probablemente cubierto por tests de integración."
 
-  - module: scrumbringer_server/services/store
-    path: apps/server/src/scrumbringer_server/services/store.gleam
+  - module: support/store
+    path: apps/server/test/support/store.gleam
     package: scrumbringer_server
-    layer: application
+    layer: test-support
     stability: experimental
     module_purpose: "Actor en memoria volátil para estado de auth en tests."
     responsibilities:
@@ -742,8 +740,8 @@ cross_module_analysis:
       recommended_resolution: "Centralizar todo el parseo/mapeo de estados en shared/domain/task_status."
   simplification_opportunities:
     - title: "ADT-based Persistence"
-      scope: [scrumbringer_server/services/org_invite_links_db, scrumbringer_server/services/password_resets_db]
-      change: "Reemplazar campos Option correlacionados por ADTs de estado explícitos (ej. state: Used(at: String))."
+      scope: [scrumbringer_server/services/password_resets_db]
+      change: "Reemplazar campos Option correlacionados por ADTs de estado explícitos en resets de password."
       risk: medium
 
 adt_opportunities:
@@ -751,26 +749,23 @@ adt_opportunities:
       module: scrumbringer_server/services/org_invite_links_db
       path: apps/server/src/scrumbringer_server/services/org_invite_links_db.gleam
       type_or_function: OrgInviteLink
-    current_representation: "record con state: InviteLinkState y used_at: Option(String), invalidated_at: Option(String)"
+    current_representation: "OrgInviteLink con lifecycle: InviteLinkLifecycle (Active/Used/Invalidated con timestamps)."
     evidence:
-      - "Líneas 62-71: state y timestamps son campos independientes."
-    illegal_states_currently_possible:
-      - "Estado Used con used_at = None"
-      - "Estado Active con used_at = Some(...)"
+      - "Refactor aplicado: lifecycle encapsula timestamps y estado."
+    illegal_states_currently_possible: []
     proposed_adt:
       name: InviteLinkLifecycle
       definition: |
         pub type InviteLinkLifecycle {
           Active(created_at: String)
-          Used(created_at: String, used_at: String, used_by: Int)
+          Used(created_at: String, used_at: String)
           Invalidated(created_at: String, invalidated_at: String)
         }
       replaces_or_wraps: OrgInviteLink
     migration:
       approach:
-        - "Definir ADT Lifecycle."
-        - "Actualizar parse_state para devolver el ADT."
-        - "Refactorizar handlers dependientes."
+        - "Implementado: parse_lifecycle y helpers de lifecycle."
+        - "Refactorizados handlers dependientes."
       risk: low
       impacted_modules: [scrumbringer_server/http/org_invite_links]
     benefits: ["Eliminar Options correlacionados.", "Pattern matching exhaustivo sobre el estado del link."]
@@ -798,8 +793,8 @@ otp_topology:
       children_dynamic: []
   workers:
     - name: "StoreActor"
-      module: scrumbringer_server/services/store
-      path: apps/server/src/scrumbringer_server/services/store.gleam
+      module: support/store
+      path: apps/server/test/support/store.gleam
       purpose: "Almacén de auth mock para tests."
       process_style: gen_server_like
       registered_as: none
@@ -822,7 +817,7 @@ otp_topology:
 otp_adt_opportunities:
   - location:
       worker: StoreActor
-      module: scrumbringer_server/services/store
+      module: support/store
     illegal_states:
       - "Mensaje Register con now_iso y now_unix inconsistentes."
     proposed_adt:
