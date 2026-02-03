@@ -12,7 +12,6 @@
 //// - Individual view implementations (delegated to view modules)
 //// - State management (handled by parent)
 
-import gleam/dynamic/decode
 import gleam/option.{type Option, None, Some}
 import lustre/attribute
 import lustre/element.{type Element}
@@ -166,8 +165,8 @@ fn view_content(config: CenterPanelConfig(msg)) -> Element(msg) {
         "mousemove",
         event_decoders.mouse_client_position(config.on_drag_move),
       ),
-      event.on("mouseup", decode.success(config.on_drag_end)),
-      event.on("mouseleave", decode.success(config.on_drag_end)),
+      event.on("mouseup", event_decoders.message(config.on_drag_end)),
+      event.on("mouseleave", event_decoders.message(config.on_drag_end)),
     ]
     _ -> [
       attribute.class("center-content"),

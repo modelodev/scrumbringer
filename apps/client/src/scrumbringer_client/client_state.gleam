@@ -13,7 +13,7 @@
 //// - Define page variants (`Page`) for client-side routing
 //// - Define remote data loading states (`Remote`) for async operations
 //// - Define all message variants (`Msg`) for the Lustre update cycle
-//// - Define UI state types (`IconPreview`, `MemberDrag`, `Rect`)
+//// - Define UI state types (`IconPreview`, `DragState`, `Rect`)
 //// - Define navigation mode (`NavMode`) for history management
 //// - Provide smart constructors (`default_model`) for state initialization
 //// - Provide geometry helpers tied to state types (e.g., `rect_contains_point`)
@@ -175,10 +175,12 @@ pub type InviteLinkForm {
 
 /// State during drag-and-drop of a task card.
 ///
-/// Captures the task being dragged and the offset from the cursor
-/// to the card's origin, enabling smooth visual feedback.
-pub type MemberDrag {
-  MemberDrag(task_id: Int, offset_x: Int, offset_y: Int, offset_ready: Bool)
+/// Encodes the drag lifecycle to prevent invalid combinations of
+/// offsets and task identity.
+pub type DragState {
+  DragIdle
+  DragPending(task_id: Int)
+  DragActive(task_id: Int, offset_x: Int, offset_y: Int)
 }
 
 /// Drag-to-claim state for pool interactions.
@@ -364,17 +366,11 @@ pub type OrgUsersSearchState {
   OrgUsersSearchFailed(query: String, token: Int, error: ApiError)
 }
 
-/// Represents ProjectDialogState.
-pub type ProjectDialogState {
-  ProjectDialogClosed
-  ProjectDialogCreate(name: String, in_flight: Bool, error: Option(String))
-  ProjectDialogEdit(
-    id: Int,
-    name: String,
-    in_flight: Bool,
-    error: Option(String),
-  )
-  ProjectDialogDelete(id: Int, name: String, in_flight: Bool)
+/// Represents the form payload for the projects dialog.
+pub type ProjectDialogForm {
+  ProjectDialogCreate(name: String)
+  ProjectDialogEdit(id: Int, name: String)
+  ProjectDialogDelete(id: Int, name: String)
 }
 
 /// Inline add context for assignments.
@@ -416,7 +412,7 @@ pub type AdminModel {
     invite_link_dialog: DialogState(InviteLinkForm),
     invite_link_last: Option(InviteLink),
     invite_link_copy_status: Option(String),
-    projects_dialog: ProjectDialogState,
+    projects_dialog: DialogState(ProjectDialogForm),
     capabilities: Remote(List(Capability)),
     capabilities_create_dialog_open: Bool,
     capabilities_create_name: String,
@@ -560,7 +556,7 @@ pub type MemberModel {
     member_my_capabilities_in_flight: Bool,
     member_my_capabilities_error: Option(String),
     member_positions_by_task: Dict(Int, #(Int, Int)),
-    member_drag: Option(MemberDrag),
+    member_drag: DragState,
     member_canvas_left: Int,
     member_canvas_top: Int,
     member_pool_drag: PoolDragState,
@@ -1226,7 +1222,7 @@ pub fn default_model() -> Model {
       invite_link_dialog: DialogClosed(operation: Idle),
       invite_link_last: option.None,
       invite_link_copy_status: option.None,
-      projects_dialog: ProjectDialogClosed,
+      projects_dialog: DialogClosed(operation: Idle),
       capabilities: NotAsked,
       capabilities_create_dialog_open: False,
       capabilities_create_name: "",
@@ -1382,7 +1378,7 @@ pub fn default_model() -> Model {
       member_my_capabilities_in_flight: False,
       member_my_capabilities_error: option.None,
       member_positions_by_task: dict.new(),
-      member_drag: option.None,
+      member_drag: DragIdle,
       member_canvas_left: 0,
       member_canvas_top: 0,
       member_pool_drag: PoolDragIdle,

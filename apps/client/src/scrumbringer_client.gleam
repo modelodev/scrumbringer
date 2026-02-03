@@ -29,8 +29,8 @@
 ////
 //// ## Flags Decision
 ////
-//// The application uses `Nil` for Lustre flags rather than a typed `Flags`
-//// record. This is intentional:
+//// The application uses typed `Flags` for Lustre initialization to keep
+//// `init` deterministic and testable:
 ////
 //// 1. **No base_url needed**: API uses relative URLs (`/api/...`), allowing
 ////    the client to work with any deployment origin without configuration.
@@ -38,13 +38,11 @@
 //// 2. **No feature_flags needed**: Single deployment target with no runtime
 ////    feature toggling requirements at this stage.
 ////
-//// 3. **Runtime config via localStorage**: User preferences (theme, locale,
-////    pool view mode) are loaded from localStorage in `init`, not passed as
-////    flags from the host page.
+//// 3. **Runtime config via host flags**: User preferences (theme, locale)
+////    are passed into `init` as flags to avoid JS reads during init.
 ////
-//// If future requirements need external configuration (e.g., multi-tenant
-//// base URLs, A/B testing flags), add a `type Flags` record and update
-//// `lustre.application(init, ...)` to `lustre.application(init_with_flags, ...)`.
+//// If future requirements need additional external configuration (e.g.,
+//// multi-tenant base URLs, A/B testing flags), extend the `Flags` record.
 ////
 //// ## Relations
 ////
@@ -69,6 +67,7 @@ import scrumbringer_client/permissions
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/reset_password
 import scrumbringer_client/router
+import scrumbringer_client/storage
 import scrumbringer_client/theme
 import scrumbringer_client/ui/toast
 
@@ -95,6 +94,11 @@ import scrumbringer_client/components/workflow_crud_dialog
 // Application Entry Point
 // =============================================================================
 
+/// Flags passed from the host to keep init deterministic.
+pub type Flags {
+  Flags(theme: theme.Theme, locale: i18n_locale.Locale)
+}
+
 /// Create the Lustre application with init, update, and view functions.
 ///
 /// ## Example
@@ -103,7 +107,7 @@ import scrumbringer_client/components/workflow_crud_dialog
 /// let application = app()
 /// lustre.start(application, "#app", Nil)
 /// ```
-pub fn app() -> lustre.App(Nil, Model, Msg) {
+pub fn app() -> lustre.App(Flags, Model, Msg) {
   lustre.application(init, client_update.update, client_view.view)
 }
 
@@ -138,8 +142,10 @@ pub fn main() {
     Error(_) -> Nil
   }
 
+  let flags = Flags(theme: storage.load_theme(), locale: storage.load_locale())
+
   // Start the main application
-  case lustre.start(app(), "#app", Nil) {
+  case lustre.start(app(), "#app", flags) {
     Ok(_) -> Nil
     Error(_) -> Nil
   }
@@ -170,7 +176,7 @@ pub fn main() {
 /// route context, localStorage, and sub-modules. Splitting would require
 /// either partial Model construction (not type-safe) or complex builder
 /// patterns that add indirection without clarity.
-fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
+fn init(flags: Flags) -> #(Model, Effect(Msg)) {
   let pathname = client_ffi.location_pathname()
   let search = client_ffi.location_search()
   let hash = client_ffi.location_hash()
@@ -229,25 +235,16 @@ fn init(_flags: Nil) -> #(Model, Effect(Msg)) {
   let #(accept_model, accept_action) = accept_invite.init(accept_token)
   let #(reset_model, reset_action) = reset_password.init(reset_token)
 
-  let active_theme = theme.load_from_storage()
-  let active_locale = i18n_locale.load()
+  let active_theme = flags.theme
+  let active_locale = flags.locale
 
   let pool_filters_default_visible = theme.filters_default_visible(active_theme)
 
   let pool_filters_visible =
-    theme.local_storage_get(pool_prefs.filters_visible_storage_key)
-    |> pool_prefs.decode_filters_visibility
-    |> opt.unwrap(pool_prefs.visibility_from_bool(pool_filters_default_visible))
+    storage.load_pool_filters_visibility(pool_filters_default_visible)
     |> pool_prefs.visibility_to_bool
 
-  let pool_view_mode = case
-    pool_prefs.decode_view_mode_storage(theme.local_storage_get(
-      pool_prefs.view_mode_storage_key,
-    ))
-  {
-    pool_prefs.ViewModeStored(mode) -> mode
-    pool_prefs.ViewModeInvalid(_) -> pool_prefs.Canvas
-  }
+  let pool_view_mode = storage.load_pool_view_mode()
 
   // Load sidebar collapse state from localStorage
   let sidebar_collapse = app_effects.load_sidebar_state()

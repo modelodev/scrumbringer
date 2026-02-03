@@ -27,7 +27,8 @@ import lustre/event
 import domain/project.{type Project}
 import domain/project_role
 import scrumbringer_client/client_state.{
-  type Model, type Msg, ProjectCreateDialogClosed, ProjectCreateDialogOpened,
+  type Model, type Msg, type OperationState, DialogOpen, Error as OpError,
+  InFlight, ProjectCreateDialogClosed, ProjectCreateDialogOpened,
   ProjectCreateNameChanged, ProjectCreateSubmitted, ProjectDeleteConfirmClosed,
   ProjectDeleteConfirmOpened, ProjectDeleteSubmitted, ProjectDialogCreate,
   ProjectDialogDelete, ProjectDialogEdit, ProjectEditDialogClosed,
@@ -84,11 +85,11 @@ pub fn view_project_dialogs(model: Model) -> element.Element(Msg) {
 /// Dialog for creating a new project.
 fn view_projects_create_dialog(model: Model) -> element.Element(Msg) {
   let #(is_open, name, in_flight, error) = case model.admin.projects_dialog {
-    ProjectDialogCreate(name, in_flight, error) -> #(
+    DialogOpen(form: ProjectDialogCreate(name: name), operation: op) -> #(
       True,
       name,
-      in_flight,
-      error,
+      operation_in_flight(op),
+      operation_error(op),
     )
     _ -> #(False, "", False, opt.None)
   }
@@ -152,11 +153,11 @@ fn view_projects_create_dialog(model: Model) -> element.Element(Msg) {
 /// Dialog for editing a project (Story 4.8 AC39).
 fn view_projects_edit_dialog(model: Model) -> element.Element(Msg) {
   let #(is_open, name, in_flight, error) = case model.admin.projects_dialog {
-    ProjectDialogEdit(_id, name, in_flight, error) -> #(
+    DialogOpen(form: ProjectDialogEdit(id: _, name: name), operation: op) -> #(
       True,
       name,
-      in_flight,
-      error,
+      operation_in_flight(op),
+      operation_error(op),
     )
     _ -> #(False, "", False, opt.None)
   }
@@ -220,7 +221,11 @@ fn view_projects_edit_dialog(model: Model) -> element.Element(Msg) {
 /// Delete confirmation dialog (Story 4.8 AC39).
 fn view_projects_delete_confirm(model: Model) -> element.Element(Msg) {
   let #(is_open, name, in_flight) = case model.admin.projects_dialog {
-    ProjectDialogDelete(_id, name, in_flight) -> #(True, name, in_flight)
+    DialogOpen(form: ProjectDialogDelete(id: _, name: name), operation: op) -> #(
+      True,
+      name,
+      operation_in_flight(op),
+    )
     _ -> #(False, "", False)
   }
 
@@ -260,6 +265,20 @@ fn view_projects_delete_confirm(model: Model) -> element.Element(Msg) {
       ),
     ],
   )
+}
+
+fn operation_in_flight(operation: OperationState) -> Bool {
+  case operation {
+    InFlight -> True
+    _ -> False
+  }
+}
+
+fn operation_error(operation: OperationState) -> opt.Option(String) {
+  case operation {
+    OpError(message) -> opt.Some(message)
+    _ -> opt.None
+  }
 }
 
 fn view_projects_list(model: Model) -> element.Element(Msg) {

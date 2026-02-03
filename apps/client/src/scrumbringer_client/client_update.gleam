@@ -220,7 +220,7 @@ fn apply_route_fields(
           fn(member) {
             client_state.MemberModel(
               ..member,
-              member_drag: opt.None,
+              member_drag: client_state.DragIdle,
               member_pool_drag: client_state.PoolDragIdle,
             )
           },
@@ -247,7 +247,7 @@ fn apply_route_fields(
           fn(member) {
             client_state.MemberModel(
               ..member,
-              member_drag: opt.None,
+              member_drag: client_state.DragIdle,
               member_pool_drag: client_state.PoolDragIdle,
             )
           },
@@ -275,7 +275,7 @@ fn apply_route_fields(
           fn(member) {
             client_state.MemberModel(
               ..member,
-              member_drag: opt.None,
+              member_drag: client_state.DragIdle,
               member_pool_drag: client_state.PoolDragIdle,
             )
           },
@@ -299,7 +299,7 @@ fn apply_route_fields(
           fn(member) {
             client_state.MemberModel(
               ..member,
-              member_drag: opt.None,
+              member_drag: client_state.DragIdle,
               member_pool_drag: client_state.PoolDragIdle,
             )
           },
@@ -323,7 +323,7 @@ fn apply_route_fields(
           fn(member) {
             client_state.MemberModel(
               ..member,
-              member_drag: opt.None,
+              member_drag: client_state.DragIdle,
               member_pool_drag: client_state.PoolDragIdle,
             )
           },
@@ -402,7 +402,7 @@ fn apply_route_fields(
               ..member,
               member_section: section,
               view_mode: new_view,
-              member_drag: opt.None,
+              member_drag: client_state.DragIdle,
               member_pool_drag: client_state.PoolDragIdle,
             )
           },

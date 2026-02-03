@@ -35,3 +35,8 @@ pub fn touch_client_position(to_msg: fn(Int, Int) -> msg) -> decode.Decoder(msg)
     decode.success(to_msg(x, y))
   })
 }
+
+/// Provides a constant message decoder.
+pub fn message(msg: msg) -> decode.Decoder(msg) {
+  decode.success(msg)
+}

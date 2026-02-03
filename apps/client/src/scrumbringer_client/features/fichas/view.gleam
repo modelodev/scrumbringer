@@ -44,6 +44,7 @@ import scrumbringer_client/ui/card_state_badge
 import scrumbringer_client/ui/card_title_meta
 import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/empty_state
+import scrumbringer_client/ui/event_decoders
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/loading
 import scrumbringer_client/ui/section_header
@@ -213,12 +214,12 @@ pub fn view_card_detail_modal(model: Model) -> Element(Msg) {
 /// Decoder for create-task-requested event.
 /// Opens the main task creation dialog with card_id pre-filled.
 fn decode_create_task_event(card_id: Int) -> decode.Decoder(Msg) {
-  decode.success(pool_msg(MemberCreateDialogOpenedWithCard(card_id)))
+  event_decoders.message(pool_msg(MemberCreateDialogOpenedWithCard(card_id)))
 }
 
 /// Decoder for close-requested event.
 fn decode_close_detail_event() -> decode.Decoder(Msg) {
-  decode.success(pool_msg(CloseCardDetail))
+  event_decoders.message(pool_msg(CloseCardDetail))
 }
 
 // Justification: nested case improves clarity for branching logic.

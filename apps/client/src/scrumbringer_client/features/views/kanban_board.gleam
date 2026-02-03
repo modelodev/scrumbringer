@@ -20,6 +20,7 @@ import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{button, div, h4, span, text}
+import lustre/element/keyed
 import lustre/event
 
 import domain/card.{type Card, type CardState, Cerrada, EnCurso, Pendiente}
@@ -133,9 +134,12 @@ fn view_column(
         text(int.to_string(list.length(cards))),
       ]),
     ]),
-    div([attribute.class("kanban-column-content")], case cards {
-      [] -> [view_empty_column(config, column_state)]
-      _ -> list.map(cards, fn(cwp) { view_card(config, cwp) })
+    keyed.div([attribute.class("kanban-column-content")], case cards {
+      [] -> [#("empty", view_empty_column(config, column_state))]
+      _ ->
+        list.map(cards, fn(cwp) {
+          #(int.to_string(cwp.card.id), view_card(config, cwp))
+        })
     }),
   ])
 }

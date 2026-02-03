@@ -22,7 +22,6 @@
 //// - **features/pool/update.gleam**: State management
 
 import gleam/dict
-import gleam/dynamic/decode
 import gleam/int
 import gleam/list
 import gleam/option as opt
@@ -216,10 +215,10 @@ pub fn view_pool_body(model: Model, user: User) -> Element(Msg) {
           pool_msg(MemberDragMoved(x, y))
         }),
       ),
-      event.on("mouseup", decode.success(pool_msg(MemberDragEnded))),
-      event.on("mouseleave", decode.success(pool_msg(MemberDragEnded))),
-      event.on("touchend", decode.success(pool_msg(MemberDragEnded))),
-      event.on("touchcancel", decode.success(pool_msg(MemberDragEnded))),
+      event.on("mouseup", event_decoders.message(pool_msg(MemberDragEnded))),
+      event.on("mouseleave", event_decoders.message(pool_msg(MemberDragEnded))),
+      event.on("touchend", event_decoders.message(pool_msg(MemberDragEnded))),
+      event.on("touchcancel", event_decoders.message(pool_msg(MemberDragEnded))),
     ],
     [
       div([attribute.class("content pool-main")], [
@@ -540,7 +539,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
       attribute.attribute("tabindex", "0"),
       event.on(
         "mouseenter",
-        decode.success(pool_msg(MemberTaskHoverOpened(id))),
+        event_decoders.message(pool_msg(MemberTaskHoverOpened(id))),
       ),
       event.on(
         "touchstart",
@@ -548,10 +547,13 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
           pool_msg(MemberPoolTouchStarted(id, x, y))
         }),
       ),
-      event.on("touchend", decode.success(pool_msg(MemberPoolTouchEnded(id)))),
+      event.on(
+        "touchend",
+        event_decoders.message(pool_msg(MemberPoolTouchEnded(id))),
+      ),
       event.on(
         "touchcancel",
-        decode.success(pool_msg(MemberPoolTouchEnded(id))),
+        event_decoders.message(pool_msg(MemberPoolTouchEnded(id))),
       ),
     ],
     [

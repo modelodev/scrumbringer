@@ -41,7 +41,7 @@ pub fn clear_drag_state(
   client_state_module.update_member(model, fn(member) {
     client_state_module.MemberModel(
       ..member,
-      member_drag: None,
+      member_drag: client_state_module.DragIdle,
       member_pool_drag: client_state_module.PoolDragIdle,
     )
   })

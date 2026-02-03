@@ -31,6 +31,7 @@ import lustre/effect.{type Effect}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state
 import scrumbringer_client/pool_prefs
+import scrumbringer_client/storage
 import scrumbringer_client/theme.{type Theme}
 
 // =============================================================================
@@ -41,7 +42,7 @@ import scrumbringer_client/theme.{type Theme}
 ///
 /// Persists the user's theme choice for future sessions.
 pub fn save_theme(t: Theme) -> Effect(msg) {
-  effect.from(fn(_dispatch) { theme.save_to_storage(t) })
+  effect.from(fn(_dispatch) { storage.save_theme(t) })
 }
 
 // =============================================================================
@@ -51,23 +52,15 @@ pub fn save_theme(t: Theme) -> Effect(msg) {
 /// Save pool filters visibility preference to localStorage.
 pub fn save_pool_filters_visible(visible: Bool) -> Effect(msg) {
   effect.from(fn(_dispatch) {
-    theme.local_storage_set(
-      pool_prefs.filters_visible_storage_key,
-      pool_prefs.encode_filters_visibility(pool_prefs.visibility_from_bool(
-        visible,
-      )),
-    )
+    storage.save_pool_filters_visibility(pool_prefs.visibility_from_bool(
+      visible,
+    ))
   })
 }
 
 /// Save pool view mode preference to localStorage.
 pub fn save_pool_view_mode(mode: pool_prefs.ViewMode) -> Effect(msg) {
-  effect.from(fn(_dispatch) {
-    theme.local_storage_set(
-      pool_prefs.view_mode_storage_key,
-      pool_prefs.encode_view_mode_storage(mode),
-    )
-  })
+  effect.from(fn(_dispatch) { storage.save_pool_view_mode(mode) })
 }
 
 // =============================================================================
@@ -112,22 +105,11 @@ pub fn schedule_timeout(ms: Int, make_msg: fn() -> msg) -> Effect(msg) {
 // Sidebar Preferences Persistence Effects
 // =============================================================================
 
-/// localStorage key for sidebar collapse state
-const sidebar_storage_key = "scrumbringer:sidebar-collapsed"
-
 /// Save sidebar collapse state to localStorage.
 ///
 /// Persists both config and org section collapsed states as "config,org" format.
 pub fn save_sidebar_state(state: client_state.SidebarCollapse) -> Effect(msg) {
-  effect.from(fn(_dispatch) {
-    let value = case state {
-      client_state.NoneCollapsed -> "0,0"
-      client_state.ConfigCollapsed -> "1,0"
-      client_state.OrgCollapsed -> "0,1"
-      client_state.BothCollapsed -> "1,1"
-    }
-    theme.local_storage_set(sidebar_storage_key, value)
-  })
+  effect.from(fn(_dispatch) { storage.save_sidebar_state(state) })
 }
 
 // Justification: nested case improves clarity for branching logic.
@@ -136,15 +118,5 @@ pub fn save_sidebar_state(state: client_state.SidebarCollapse) -> Effect(msg) {
 /// Returns the persisted SidebarCollapse value.
 /// Defaults to NoneCollapsed if not found or invalid.
 pub fn load_sidebar_state() -> client_state.SidebarCollapse {
-  case theme.local_storage_get(sidebar_storage_key) {
-    "" -> client_state.NoneCollapsed
-    val -> {
-      case val {
-        "1,1" -> client_state.BothCollapsed
-        "1,0" -> client_state.ConfigCollapsed
-        "0,1" -> client_state.OrgCollapsed
-        _ -> client_state.NoneCollapsed
-      }
-    }
-  }
+  storage.load_sidebar_state()
 }

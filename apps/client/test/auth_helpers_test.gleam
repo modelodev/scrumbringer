@@ -25,12 +25,7 @@ pub fn reset_to_login_clears_user_and_drag_state_test() {
     |> client_state.update_member(fn(member) {
       client_state.MemberModel(
         ..member,
-        member_drag: Some(client_state.MemberDrag(
-          task_id: 1,
-          offset_x: 5,
-          offset_y: 5,
-          offset_ready: True,
-        )),
+        member_drag: client_state.DragActive(1, 5, 5),
         member_pool_drag: client_state.PoolDragDragging(
           over_my_tasks: True,
           rect: client_state.Rect(left: 0, top: 0, width: 10, height: 10),
@@ -50,7 +45,7 @@ pub fn reset_to_login_clears_user_and_drag_state_test() {
 
   page |> should.equal(client_state.Login)
   user |> should.equal(None)
-  member_drag |> should.equal(None)
+  member_drag |> should.equal(client_state.DragIdle)
   member_pool_drag |> should.equal(client_state.PoolDragIdle)
 }
 

@@ -40,10 +40,10 @@ import scrumbringer_client/api/tasks as api_tasks
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, type PoolDragState, MemberCanvasRectFetched, MemberDrag,
-  MemberDragOffsetResolved, MemberModel, MemberPoolLongPressCheck,
-  MemberPoolMyTasksRectFetched, MemberPositionSaved, MemberTaskClaimed,
-  MemberTaskHoverNotesFetched, PoolDragDragging, PoolDragIdle,
+  type Model, type Msg, type PoolDragState, DragActive, DragIdle, DragPending,
+  MemberCanvasRectFetched, MemberDragOffsetResolved, MemberModel,
+  MemberPoolLongPressCheck, MemberPoolMyTasksRectFetched, MemberPositionSaved,
+  MemberTaskClaimed, MemberTaskHoverNotesFetched, PoolDragDragging, PoolDragIdle,
   PoolDragPendingRect, Rect, pool_msg, rect_contains_point, update_member,
 }
 import scrumbringer_client/i18n/text as i18n_text
@@ -464,9 +464,8 @@ pub fn handle_pool_my_tasks_rect_fetched(
   let next_drag = case model.member.member_pool_drag, model.member.member_drag {
     PoolDragDragging(over_my_tasks: over, ..), _ ->
       PoolDragDragging(over_my_tasks: over, rect: rect)
-    PoolDragPendingRect, opt.Some(_) ->
-      PoolDragDragging(over_my_tasks: False, rect: rect)
-    PoolDragPendingRect, opt.None -> PoolDragIdle
+    PoolDragPendingRect, DragIdle -> PoolDragIdle
+    PoolDragPendingRect, _ -> PoolDragDragging(over_my_tasks: False, rect: rect)
     PoolDragIdle, _ -> PoolDragIdle
   }
 
@@ -503,12 +502,7 @@ pub fn handle_drag_started(
     update_member(model, fn(member) {
       MemberModel(
         ..member,
-        member_drag: opt.Some(MemberDrag(
-          task_id: task_id,
-          offset_x: 0,
-          offset_y: 0,
-          offset_ready: False,
-        )),
+        member_drag: DragPending(task_id),
         member_pool_drag: PoolDragPendingRect,
       )
     })
@@ -546,16 +540,24 @@ pub fn handle_drag_moved(
   client_y: Int,
 ) -> #(Model, Effect(Msg)) {
   case model.member.member_drag {
-    opt.None -> #(model, effect.none())
-
-    opt.Some(drag) -> {
-      let MemberDrag(
-        task_id: task_id,
-        offset_x: ox,
-        offset_y: oy,
-        offset_ready: offset_ready,
-      ) = drag
-
+    DragIdle -> #(model, effect.none())
+    DragPending(_) -> #(
+      update_member(model, fn(member) {
+        MemberModel(
+          ..member,
+          member_pool_drag: next_pool_drag_state(
+            model.member.member_pool_drag,
+            pool_drag_over_my_tasks(
+              model.member.member_pool_drag,
+              client_x,
+              client_y,
+            ),
+          ),
+        )
+      }),
+      effect.none(),
+    )
+    DragActive(task_id, ox, oy) -> {
       let over_my_tasks =
         pool_drag_over_my_tasks(
           model.member.member_pool_drag,
@@ -565,33 +567,23 @@ pub fn handle_drag_moved(
       let next_drag =
         next_pool_drag_state(model.member.member_pool_drag, over_my_tasks)
 
-      case offset_ready {
-        False -> #(
-          update_member(model, fn(member) {
-            MemberModel(..member, member_pool_drag: next_drag)
-          }),
-          effect.none(),
-        )
-        True -> {
-          let x = client_x - model.member.member_canvas_left - ox
-          let y = client_y - model.member.member_canvas_top - oy
+      let x = client_x - model.member.member_canvas_left - ox
+      let y = client_y - model.member.member_canvas_top - oy
 
-          #(
-            update_member(model, fn(member) {
-              MemberModel(
-                ..member,
-                member_positions_by_task: dict.insert(
-                  model.member.member_positions_by_task,
-                  task_id,
-                  #(x, y),
-                ),
-                member_pool_drag: next_drag,
-              )
-            }),
-            effect.none(),
+      #(
+        update_member(model, fn(member) {
+          MemberModel(
+            ..member,
+            member_positions_by_task: dict.insert(
+              model.member.member_positions_by_task,
+              task_id,
+              #(x, y),
+            ),
+            member_pool_drag: next_drag,
           )
-        }
-      }
+        }),
+        effect.none(),
+      )
     }
   }
 }
@@ -603,20 +595,13 @@ pub fn handle_drag_offset_resolved(
   offset_y: Int,
 ) -> #(Model, Effect(Msg)) {
   let updated = case model.member.member_drag {
-    opt.Some(drag) -> {
-      let MemberDrag(task_id: drag_task_id, ..) = drag
+    DragPending(drag_task_id) ->
       case drag_task_id == task_id {
-        True ->
-          opt.Some(MemberDrag(
-            task_id: task_id,
-            offset_x: offset_x,
-            offset_y: offset_y,
-            offset_ready: True,
-          ))
-        False -> opt.Some(drag)
+        True -> DragActive(task_id, offset_x, offset_y)
+        False -> model.member.member_drag
       }
-    }
-    opt.None -> opt.None
+    DragActive(_, _, _) -> model.member.member_drag
+    DragIdle -> DragIdle
   }
 
   #(
@@ -708,12 +693,9 @@ fn take_last_notes(
 /// Handle drag end event.
 pub fn handle_drag_ended(model: Model) -> #(Model, Effect(Msg)) {
   case model.member.member_drag {
-    opt.None -> #(model, effect.none())
-
-    opt.Some(drag) -> {
-      let MemberDrag(task_id: task_id, ..) = drag
-      handle_drag_end_for_task(model, task_id)
-    }
+    DragIdle -> #(model, effect.none())
+    DragPending(task_id) -> handle_drag_end_for_task(model, task_id)
+    DragActive(task_id, _, _) -> handle_drag_end_for_task(model, task_id)
   }
 }
 
@@ -760,7 +742,7 @@ fn is_over_my_tasks(drag_state: PoolDragState) -> Bool {
 
 fn clear_pool_drag_state(model: Model) -> Model {
   update_member(model, fn(member) {
-    MemberModel(..member, member_drag: opt.None, member_pool_drag: PoolDragIdle)
+    MemberModel(..member, member_drag: DragIdle, member_pool_drag: PoolDragIdle)
   })
 }
 

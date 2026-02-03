@@ -118,7 +118,7 @@ pub fn handle_admin(
               fn(member) {
                 client_state.MemberModel(
                   ..member,
-                  member_drag: opt.None,
+                  member_drag: client_state.DragIdle,
                   member_pool_drag: client_state.PoolDragIdle,
                 )
               },
@@ -795,7 +795,7 @@ pub fn handle_pool(
             fn(member) {
               client_state.MemberModel(
                 ..member,
-                member_drag: opt.None,
+                member_drag: client_state.DragIdle,
                 member_pool_drag: client_state.PoolDragIdle,
               )
             },
@@ -863,7 +863,7 @@ pub fn handle_pool(
             fn(member) {
               client_state.MemberModel(
                 ..member,
-                member_drag: opt.None,
+                member_drag: client_state.DragIdle,
                 member_pool_drag: client_state.PoolDragIdle,
               )
             },
