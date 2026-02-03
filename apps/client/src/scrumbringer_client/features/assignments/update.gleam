@@ -14,7 +14,9 @@ import domain/api_error.{type ApiError}
 import domain/org.{type OrgUser}
 import domain/project.{type Project, type ProjectMember, Project, ProjectMember}
 import domain/project_role.{type ProjectRole, Member, parse}
-import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
+import domain/remote.{
+  type Remote, Failed, Loaded, Loading, NotAsked, from_result,
+}
 import scrumbringer_client/assignments_view_mode
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
@@ -300,10 +302,11 @@ pub fn handle_assignments_project_members_fetched(
   project_id: Int,
   result: Result(List(ProjectMember), ApiError),
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
+  let remote_state = from_result(result)
   case result {
-    Ok(members) -> #(
+    Ok(_members) -> #(
       update_assignments(model, fn(assignments) {
-        set_project_members_state(assignments, project_id, Loaded(members))
+        set_project_members_state(assignments, project_id, remote_state)
       }),
       effect.none(),
     )
@@ -312,7 +315,7 @@ pub fn handle_assignments_project_members_fetched(
       update_helpers.handle_401_or(model, err, fn() {
         #(
           update_assignments(model, fn(assignments) {
-            set_project_members_state(assignments, project_id, Failed(err))
+            set_project_members_state(assignments, project_id, remote_state)
           }),
           effect.none(),
         )
@@ -325,10 +328,11 @@ pub fn handle_assignments_user_projects_fetched(
   user_id: Int,
   result: Result(List(Project), ApiError),
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
+  let remote_state = from_result(result)
   case result {
-    Ok(projects) -> #(
+    Ok(_projects) -> #(
       update_assignments(model, fn(assignments) {
-        set_user_projects_state(assignments, user_id, Loaded(projects))
+        set_user_projects_state(assignments, user_id, remote_state)
       }),
       effect.none(),
     )
@@ -337,7 +341,7 @@ pub fn handle_assignments_user_projects_fetched(
       update_helpers.handle_401_or(model, err, fn() {
         #(
           update_assignments(model, fn(assignments) {
-            set_user_projects_state(assignments, user_id, Failed(err))
+            set_user_projects_state(assignments, user_id, remote_state)
           }),
           effect.none(),
         )

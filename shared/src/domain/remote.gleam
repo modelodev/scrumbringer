@@ -44,6 +44,14 @@ pub fn map(remote: Remote(a), f: fn(a) -> b) -> Remote(b) {
   }
 }
 
+/// Convert an API Result into a Remote state.
+pub fn from_result(result: Result(a, ApiError)) -> Remote(a) {
+  case result {
+    Ok(value) -> Loaded(value)
+    Error(err) -> Failed(err)
+  }
+}
+
 /// Get the loaded value or a default.
 pub fn unwrap(remote: Remote(a), default: a) -> a {
   case remote {
