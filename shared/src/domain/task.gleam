@@ -11,6 +11,7 @@
 //// let filters = TaskFilters(status: Some(Available), type_id: None, capability_id: None, q: None)
 //// ```
 
+import domain/task_state
 import domain/task_status.{type OngoingBy, type TaskStatus, type WorkState}
 import domain/task_type.{type TaskTypeInline}
 import gleam/option.{type Option}
@@ -55,12 +56,10 @@ pub type Task {
     title: String,
     description: Option(String),
     priority: Int,
+    state: task_state.TaskState,
     status: TaskStatus,
     work_state: WorkState,
     created_by: Int,
-    claimed_by: Option(Int),
-    claimed_at: Option(String),
-    completed_at: Option(String),
     created_at: String,
     version: Int,
     // Card (ficha) association
@@ -195,4 +194,29 @@ pub type TaskFilters {
     q: Option(String),
     blocked: Option(Bool),
   )
+}
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+pub fn with_state(task: Task, state: task_state.TaskState) -> Task {
+  Task(
+    ..task,
+    state: state,
+    status: task_state.to_status(state),
+    work_state: task_state.to_work_state(state),
+  )
+}
+
+pub fn claimed_by(task: Task) -> Option(Int) {
+  task_state.claimed_by(task.state)
+}
+
+pub fn claimed_at(task: Task) -> Option(String) {
+  task_state.claimed_at(task.state)
+}
+
+pub fn completed_at(task: Task) -> Option(String) {
+  task_state.completed_at(task.state)
 }

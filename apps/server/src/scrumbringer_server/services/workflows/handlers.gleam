@@ -25,6 +25,7 @@
 //// - **authorization.gleam**: Authorization checks
 
 import domain/field_update
+import domain/task_state
 import domain/task_status.{Available, Claimed, Completed, task_status_to_string}
 import gleam/option.{type Option, None, Some}
 import pog
@@ -398,7 +399,7 @@ fn update_task_for_claimed(
   updates: TaskUpdates,
   current: task_mappers.Task,
 ) -> Result(Response, Error) {
-  case current.claimed_by {
+  case task_state.claimed_by(current.state) {
     Some(id) if id == user_id ->
       update_task_for_owner(db, task_id, user_id, version, updates, current)
     _ -> Error(NotAuthorized)
@@ -587,7 +588,7 @@ fn release_task_for_claimed(
   version: Int,
   current: task_mappers.Task,
 ) -> Result(Response, Error) {
-  case current.claimed_by {
+  case task_state.claimed_by(current.state) {
     Some(id) if id == user_id ->
       release_task_for_owner(db, task_id, user_id, org_id, version, current)
     _ -> Error(NotAuthorized)
@@ -702,7 +703,7 @@ fn complete_task_for_claimed(
   version: Int,
   current: task_mappers.Task,
 ) -> Result(Response, Error) {
-  case current.claimed_by {
+  case task_state.claimed_by(current.state) {
     Some(id) if id == user_id ->
       complete_task_for_owner(db, task_id, user_id, org_id, version, current)
     _ -> Error(NotAuthorized)
@@ -797,7 +798,8 @@ fn detect_conflict(
 
 fn conflict_from_task(current: task_mappers.Task) -> Result(Response, Error) {
   case current.status {
-    Claimed(_) -> Error(ClaimOwnershipConflict(current.claimed_by))
+    Claimed(_) ->
+      Error(ClaimOwnershipConflict(task_state.claimed_by(current.state)))
     _ -> Error(VersionConflict)
   }
 }

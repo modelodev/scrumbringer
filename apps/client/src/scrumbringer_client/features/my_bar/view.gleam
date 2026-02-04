@@ -42,9 +42,10 @@ import lustre/element/html.{button, div, h2, h3, p, span, text}
 import lustre/element/keyed
 import lustre/event
 
-import domain/metrics.{MyMetrics}
+import domain/metrics.{MyMetrics, window_days_value}
 import domain/remote.{Failed, Loaded, Loading, NotAsked}
-import domain/task.{type Task, Task}
+import domain/task.{type Task, Task, claimed_by}
+import domain/task_state
 import domain/task_status.{
   type TaskStatus, Available, Claimed, Completed, Ongoing, Taken,
 }
@@ -97,8 +98,11 @@ pub fn view_bar(model: Model, user: User) -> Element(Msg) {
           let mine =
             tasks
             |> list.filter(fn(t) {
-              let Task(claimed_by: claimed_by, ..) = t
-              claimed_by == opt.Some(user.id)
+              case t.state {
+                task_state.Claimed(claimed_by: claimed_by, ..) ->
+                  claimed_by == user.id
+                _ -> False
+              }
             })
             |> list.sort(by: compare_member_bar_tasks)
 
@@ -228,10 +232,7 @@ fn view_card_group(model: Model, user: User, group: CardGroup) -> Element(Msg) {
 
   let total = list.length(tasks)
   let completed =
-    list.count(tasks, fn(t) {
-      let Task(status: status, ..) = t
-      status == Completed
-    })
+    list.count(tasks, fn(t) { task_state.to_status(t.state) == Completed })
 
   let header_title = case card_title {
     opt.Some(title) -> title
@@ -313,7 +314,7 @@ pub fn view_member_metrics_panel(model: Model) -> Element(Msg) {
       div([attribute.class("panel")], [
         h3([], [text(t(i18n_text.MyMetrics))]),
         p([], [
-          text(t(i18n_text.WindowDays(window_days))),
+          text(t(i18n_text.WindowDays(window_days_value(window_days)))),
         ]),
         data_table.new()
           |> data_table.with_columns([
@@ -350,14 +351,13 @@ pub fn view_member_bar_task_row(
     status: status,
     created_at: _created_at,
     version: version,
-    claimed_by: claimed_by,
     card_id: card_id,
     card_title: card_title,
     card_color: card_color,
     ..,
   ) = task
 
-  let is_mine = claimed_by == opt.Some(user.id)
+  let is_mine = claimed_by(task) == opt.Some(user.id)
 
   let type_label = task_type.name
 

@@ -33,6 +33,7 @@ import scrumbringer_server/http/me_metrics
 import scrumbringer_server/http/org_invite_links
 import scrumbringer_server/http/org_invites
 import scrumbringer_server/http/org_metrics
+import scrumbringer_server/http/org_metrics_users
 import scrumbringer_server/http/org_users
 import scrumbringer_server/http/password_resets
 import scrumbringer_server/http/projects
@@ -162,6 +163,8 @@ fn route_org(
         auth_ctx,
         project_id,
       ))
+    ["api", "v1", "org", "metrics", "users"] ->
+      Some(org_metrics_users.handle_org_metrics_users(req, auth_ctx))
     _ -> None
   }
 }

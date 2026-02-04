@@ -993,6 +993,11 @@ pub fn handle_pool(
     client_state.AdminMetricsProjectTasksFetched(Error(err)) ->
       metrics_workflow.handle_admin_project_tasks_fetched_error(model, err)
 
+    client_state.AdminMetricsUsersFetched(Ok(users)) ->
+      metrics_workflow.handle_admin_users_fetched_ok(model, users)
+    client_state.AdminMetricsUsersFetched(Error(err)) ->
+      metrics_workflow.handle_admin_users_fetched_error(model, err)
+
     // Rule metrics tab
     client_state.AdminRuleMetricsFetched(Ok(metrics)) ->
       admin_workflow.handle_rule_metrics_tab_fetched_ok(model, metrics)

@@ -34,6 +34,7 @@ import lustre/event
 import domain/card.{type Card}
 import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import domain/task
+import domain/task_state as task_state_domain
 import domain/task_status
 
 import scrumbringer_client/client_state.{
@@ -343,7 +344,7 @@ fn view_task_header(model: Model, task: opt.Option(task.Task)) -> Element(Msg) {
 
 /// Assignee display
 fn view_assignee(model: Model, t: task.Task) -> Element(Msg) {
-  case t.claimed_by {
+  case task.claimed_by(t) {
     opt.Some(_user_id) ->
       span([attribute.class("task-meta-chip task-meta-assignee")], [
         icons.nav_icon(icons.UserCircle, icons.Small),
@@ -787,10 +788,11 @@ fn view_task_footer(model: Model, task: opt.Option(task.Task)) -> Element(Msg) {
         opt.Some(u) -> u.id
         opt.None -> 0
       }
-      let is_mine = t.claimed_by == opt.Some(current_user_id)
+      let is_mine = task.claimed_by(t) == opt.Some(current_user_id)
       let disable_actions = model.member.member_task_mutation_in_flight
 
-      let actions = case t.work_state {
+      let work_state = task_state_domain.to_work_state(t.state)
+      let actions = case work_state {
         task_status.WorkAvailable -> [
           button(
             [

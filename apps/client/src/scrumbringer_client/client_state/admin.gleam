@@ -8,6 +8,7 @@ import domain/capability.{type Capability}
 import domain/card.{type Card, type CardState}
 import domain/metrics.{
   type OrgMetricsOverview, type OrgMetricsProjectTasksPayload,
+  type OrgMetricsUserOverview,
 }
 import domain/org.{type InviteLink, type OrgUser}
 import domain/project.{type ProjectMember}
@@ -44,6 +45,7 @@ pub type AdminModel {
     admin_metrics_overview: Remote(OrgMetricsOverview),
     admin_metrics_project_tasks: Remote(OrgMetricsProjectTasksPayload),
     admin_metrics_project_id: Option(Int),
+    admin_metrics_users: Remote(List(OrgMetricsUserOverview)),
     admin_rule_metrics: Remote(List(api_workflows.OrgWorkflowMetricsSummary)),
     admin_rule_metrics_from: String,
     admin_rule_metrics_to: String,

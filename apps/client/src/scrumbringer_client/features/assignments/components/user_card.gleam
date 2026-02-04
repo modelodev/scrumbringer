@@ -11,6 +11,7 @@ import lustre/element
 import lustre/element/html.{button, div, option, p, select, text}
 import lustre/event
 
+import domain/metrics.{type OrgMetricsUserOverview, OrgMetricsUserOverview}
 import domain/org.{type OrgUser}
 import domain/project.{type Project}
 import domain/project_role.{Manager, Member, to_string}
@@ -60,6 +61,7 @@ pub fn view(
     _ -> list.length(projects)
   }
   let projects_label = t(i18n_text.AssignmentsProjectsCount(projects_count))
+  let metrics_summary = view_user_metrics_summary(model, user.id)
 
   let is_inline_add = case assignments.inline_add_context {
     opt.Some(state_types.AddProjectToUser(id)) -> id == user.id
@@ -80,6 +82,10 @@ pub fn view(
   }
   let body =
     div([], [
+      case metrics_summary {
+        opt.Some(summary) -> summary
+        opt.None -> element.none()
+      },
       case projects_state {
         NotAsked | Loading ->
           loading.loading(t(i18n_text.AssignmentsLoadingProjects))
@@ -132,6 +138,60 @@ pub fn view(
     )),
     body: body,
   ))
+}
+
+fn view_user_metrics_summary(
+  model: client_state.Model,
+  user_id: Int,
+) -> opt.Option(element.Element(client_state.Msg)) {
+  case model.admin.admin_metrics_users {
+    Loaded(users) ->
+      case list.find(users, fn(user) { user.user_id == user_id }) {
+        Ok(metrics) -> opt.Some(user_metrics_view(model, metrics))
+        Error(_) -> opt.None
+      }
+    _ -> opt.None
+  }
+}
+
+fn user_metrics_view(
+  model: client_state.Model,
+  metrics: OrgMetricsUserOverview,
+) -> element.Element(client_state.Msg) {
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let OrgMetricsUserOverview(
+    claimed_count: claimed_count,
+    released_count: released_count,
+    completed_count: completed_count,
+    ongoing_count: ongoing_count,
+    last_claim_at: last_claim_at,
+    ..,
+  ) = metrics
+
+  div([attribute.class("assignments-metrics")], [
+    div([attribute.class("assignments-metrics-item")], [
+      text(t(i18n_text.Claimed) <> ": " <> int.to_string(claimed_count)),
+    ]),
+    div([attribute.class("assignments-metrics-item")], [
+      text(t(i18n_text.Released) <> ": " <> int.to_string(released_count)),
+    ]),
+    div([attribute.class("assignments-metrics-item")], [
+      text(t(i18n_text.Completed) <> ": " <> int.to_string(completed_count)),
+    ]),
+    div([attribute.class("assignments-metrics-item")], [
+      text(t(i18n_text.OngoingCount) <> ": " <> int.to_string(ongoing_count)),
+    ]),
+    div([attribute.class("assignments-metrics-item")], [
+      text(t(i18n_text.LastClaim) <> ": " <> option_string_label(last_claim_at)),
+    ]),
+  ])
+}
+
+fn option_string_label(value: opt.Option(String)) -> String {
+  case value {
+    opt.Some(v) -> v
+    opt.None -> "-"
+  }
 }
 
 fn view_project_row(

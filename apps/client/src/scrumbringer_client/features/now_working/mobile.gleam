@@ -27,7 +27,7 @@ import lustre/element/html.{div, h3, hr, span, text}
 import lustre/event
 
 import domain/remote.{Loaded}
-import domain/task.{type Task, ActiveTask, Task}
+import domain/task.{type Task, ActiveTask, Task, claimed_by}
 import domain/task_status.{Claimed, Taken}
 
 import scrumbringer_client/client_ffi
@@ -340,9 +340,9 @@ fn get_claimed_not_working(
     Loaded(tasks) ->
       tasks
       |> list.filter(fn(t) {
-        let Task(id: id, status: status, claimed_by: claimed_by, ..) = t
+        let Task(id: id, status: status, ..) = t
         status == Claimed(Taken)
-        && claimed_by == opt.Some(user_id)
+        && claimed_by(t) == opt.Some(user_id)
         && !list.contains(active_ids, id)
       })
     _ -> []

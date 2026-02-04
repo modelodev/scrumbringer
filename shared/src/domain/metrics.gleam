@@ -17,6 +17,50 @@ import gleam/option.{type Option}
 // Types
 // =============================================================================
 
+/// Health status for flow metrics.
+pub type Health {
+  OkHealth
+  Attention
+  Alert
+}
+
+/// Health-tagged metric value with label.
+pub type HealthMetric {
+  HealthMetric(value: Int, status: Health, label: String)
+}
+
+/// Sampled metric values with explicit no-sample state.
+pub type SampledMetric {
+  Sampled(value_ms: Int, sample_size: Int)
+  NoSample
+}
+
+/// Window days with validation.
+pub type WindowDays {
+  WindowDays(Int)
+}
+
+pub type WindowDaysError {
+  BelowMin
+  AboveMax
+}
+
+pub fn window_days_from_int(value: Int) -> Result(WindowDays, WindowDaysError) {
+  case value < 1 {
+    True -> Error(BelowMin)
+    False ->
+      case value > 90 {
+        True -> Error(AboveMax)
+        False -> Ok(WindowDays(value))
+      }
+  }
+}
+
+pub fn window_days_value(window: WindowDays) -> Int {
+  let WindowDays(value) = window
+  value
+}
+
 /// Personal metrics for the current user.
 ///
 /// ## Example
@@ -26,7 +70,7 @@ import gleam/option.{type Option}
 /// ```
 pub type MyMetrics {
   MyMetrics(
-    window_days: Int,
+    window_days: WindowDays,
     claimed_count: Int,
     released_count: Int,
     completed_count: Int,
@@ -63,11 +107,17 @@ pub type OrgMetricsProjectOverview {
   OrgMetricsProjectOverview(
     project_id: Int,
     project_name: String,
+    available_count: Int,
     claimed_count: Int,
+    ongoing_count: Int,
     released_count: Int,
     completed_count: Int,
     release_rate_percent: Option(Int),
     pool_flow_ratio_percent: Option(Int),
+    wip_count: Int,
+    avg_claim_to_complete_ms: Option(Int),
+    avg_time_in_claimed_ms: Option(Int),
+    stale_claims_count: Int,
   )
 }
 
@@ -92,16 +142,21 @@ pub type OrgMetricsProjectOverview {
 /// ```
 pub type OrgMetricsOverview {
   OrgMetricsOverview(
-    window_days: Int,
+    window_days: WindowDays,
+    available_count: Int,
     claimed_count: Int,
+    ongoing_count: Int,
     released_count: Int,
     completed_count: Int,
     release_rate_percent: Option(Int),
     pool_flow_ratio_percent: Option(Int),
-    time_to_first_claim_p50_ms: Option(Int),
-    time_to_first_claim_sample_size: Int,
+    time_to_first_claim: SampledMetric,
     time_to_first_claim_buckets: List(OrgMetricsBucket),
     release_rate_buckets: List(OrgMetricsBucket),
+    wip_count: Int,
+    avg_claim_to_complete_ms: Option(Int),
+    avg_time_in_claimed_ms: Option(Int),
+    stale_claims_count: Int,
     by_project: List(OrgMetricsProjectOverview),
   )
 }
@@ -138,8 +193,21 @@ pub type MetricsProjectTask {
 /// ```
 pub type OrgMetricsProjectTasksPayload {
   OrgMetricsProjectTasksPayload(
-    window_days: Int,
+    window_days: WindowDays,
     project_id: Int,
     tasks: List(MetricsProjectTask),
+  )
+}
+
+/// Per-user metrics overview for admin assignments.
+pub type OrgMetricsUserOverview {
+  OrgMetricsUserOverview(
+    user_id: Int,
+    email: String,
+    claimed_count: Int,
+    released_count: Int,
+    completed_count: Int,
+    ongoing_count: Int,
+    last_claim_at: Option(String),
   )
 }

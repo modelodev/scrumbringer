@@ -27,7 +27,7 @@ pub fn task_decoder_falls_back_on_invalid_status_and_work_state_test() {
   let Task(status: status, work_state: work_state, ..) = task
 
   status |> should.equal(task_status.Available)
-  work_state |> should.equal(task_status.WorkClaimed)
+  work_state |> should.equal(task_status.WorkAvailable)
 }
 
 pub fn task_decoder_rejects_missing_id_test() {

@@ -35,7 +35,8 @@ import lustre/element/html.{div, span, text}
 import lustre/event
 
 import domain/card.{type Card, type CardNote, CardNote}
-import domain/task.{type Task}
+import domain/task.{type Task, claimed_by}
+import domain/task_state
 import domain/task_status.{Available, Completed}
 
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
@@ -219,8 +220,7 @@ fn task_decoder() -> Decoder(Task) {
     decode.optional(decode.string),
   )
   use priority <- decode.field("priority", decode.int)
-  use status <- decode.field("status", task_status_decoder())
-  use work_state <- decode.field("work_state", decode.string)
+  use status_raw <- decode.field("status", decode.string)
   use created_by <- decode.field("created_by", decode.int)
   use claimed_by <- decode.optional_field(
     "claimed_by",
@@ -261,6 +261,22 @@ fn task_decoder() -> Decoder(Task) {
     decode.list(task_decoders.task_dependency_decoder()),
   )
 
+  let is_ongoing = status_raw == "ongoing"
+  let state = case
+    task_state.from_db(
+      status_raw,
+      is_ongoing,
+      claimed_by,
+      claimed_at,
+      completed_at,
+    )
+  {
+    Ok(s) -> s
+    Error(_) -> task_state.Available
+  }
+  let status = task_state.to_status(state)
+  let work_state = task_state.to_work_state(state)
+
   decode.success(task.Task(
     id: id,
     project_id: project_id,
@@ -270,12 +286,10 @@ fn task_decoder() -> Decoder(Task) {
     title: title,
     description: description,
     priority: priority,
+    state: state,
     status: status,
-    work_state: work_state_from_string(work_state),
+    work_state: work_state,
     created_by: created_by,
-    claimed_by: claimed_by,
-    claimed_at: claimed_at,
-    completed_at: completed_at,
     created_at: created_at,
     version: version,
     card_id: card_id,
@@ -286,24 +300,6 @@ fn task_decoder() -> Decoder(Task) {
     blocked_count: blocked_count,
     dependencies: dependencies,
   ))
-}
-
-fn task_status_decoder() -> Decoder(task_status.TaskStatus) {
-  use status_str <- decode.then(decode.string)
-  case task_status.parse_task_status(status_str) {
-    Ok(s) -> decode.success(s)
-    Error(_) -> decode.success(Available)
-  }
-}
-
-fn work_state_from_string(s: String) -> task_status.WorkState {
-  case s {
-    "available" -> task_status.WorkAvailable
-    "claimed" -> task_status.WorkClaimed
-    "ongoing" -> task_status.WorkOngoing
-    "completed" -> task_status.WorkCompleted
-    _ -> task_status.WorkClaimed
-  }
 }
 
 // =============================================================================
@@ -783,7 +779,7 @@ fn view_task_item(task: Task) -> Element(Msg) {
     // white circle
   }
 
-  let claimed_text = case task.claimed_by {
+  let claimed_text = case claimed_by(task) {
     option.Some(_id) -> " (claimed)"
     option.None -> ""
   }

@@ -25,7 +25,7 @@ import lustre/event
 
 import domain/card.{type Card, type CardState, Cerrada, EnCurso, Pendiente}
 import domain/org.{type OrgUser}
-import domain/task.{type Task}
+import domain/task.{type Task, claimed_by}
 import domain/task_status.{Available, Claimed, Completed}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -272,7 +272,7 @@ fn view_task_item(config: KanbanConfig(msg), task: Task) -> Element(msg) {
   // Secondary info: claimed by for taken/ongoing tasks
   let secondary_info = case task.status {
     Claimed(_) -> {
-      let claimed_name = case task.claimed_by {
+      let claimed_name = case claimed_by(task) {
         Some(user_id) ->
           list.find(config.org_users, fn(u) { u.id == user_id })
           |> option.from_result

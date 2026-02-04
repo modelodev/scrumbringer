@@ -14,6 +14,7 @@
 //// conflict_handlers.handle_version_or_claim_conflict(db, task_id, user_id)
 //// ```
 
+import domain/task_state
 import domain/task_status.{Available, Claimed, Completed}
 import gleam/option.{type Option, Some}
 import pog
@@ -86,7 +87,11 @@ pub fn handle_version_or_claim_conflict(
     Ok(current) ->
       // Justification: nested case maps task status into conflict responses.
       case current.status {
-        Claimed(_) -> claimed_conflict_response(current.claimed_by, user_id)
+        Claimed(_) ->
+          claimed_conflict_response(
+            task_state.claimed_by(current.state),
+            user_id,
+          )
         Available | Completed ->
           api.error(422, "VALIDATION_ERROR", "Invalid transition")
       }

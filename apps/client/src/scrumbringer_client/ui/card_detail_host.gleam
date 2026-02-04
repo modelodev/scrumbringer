@@ -8,7 +8,7 @@ import lustre/element
 import lustre/event
 
 import domain/card.{type Card, type CardState, Cerrada, EnCurso, Pendiente}
-import domain/task.{type Task}
+import domain/task as task_domain
 import domain/task_status as domain_task_status
 
 import scrumbringer_client/i18n/locale
@@ -16,7 +16,7 @@ import scrumbringer_client/i18n/locale
 pub type Config(msg) {
   Config(
     card: Card,
-    tasks: List(Task),
+    tasks: List(task_domain.Task),
     locale: locale.Locale,
     current_user_id: Int,
     can_manage_notes: Bool,
@@ -80,11 +80,11 @@ fn card_state_to_string(state: CardState) -> String {
   }
 }
 
-fn tasks_to_json(tasks: List(Task)) -> json.Json {
+fn tasks_to_json(tasks: List(task_domain.Task)) -> json.Json {
   json.array(tasks, task_to_json)
 }
 
-fn task_to_json(task: Task) -> json.Json {
+fn task_to_json(task: task_domain.Task) -> json.Json {
   json.object([
     #("id", json.int(task.id)),
     #("project_id", json.int(task.project_id)),
@@ -113,15 +113,15 @@ fn task_to_json(task: Task) -> json.Json {
     ),
     #("work_state", json.string(work_state_to_string(task.work_state))),
     #("created_by", json.int(task.created_by)),
-    #("claimed_by", case task.claimed_by {
+    #("claimed_by", case task_domain.claimed_by(task) {
       opt.Some(id) -> json.int(id)
       opt.None -> json.null()
     }),
-    #("claimed_at", case task.claimed_at {
+    #("claimed_at", case task_domain.claimed_at(task) {
       opt.Some(at) -> json.string(at)
       opt.None -> json.null()
     }),
-    #("completed_at", case task.completed_at {
+    #("completed_at", case task_domain.completed_at(task) {
       opt.Some(at) -> json.string(at)
       opt.None -> json.null()
     }),

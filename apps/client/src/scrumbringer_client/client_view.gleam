@@ -42,6 +42,7 @@ import lustre/event
 import domain/org_role
 import domain/project.{type Project}
 import domain/remote.{Loaded}
+import domain/task_state
 import domain/task_status
 import domain/user.{type User}
 import domain/view_mode
@@ -79,7 +80,7 @@ import scrumbringer_client/ui/confirm_dialog
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_actions
-import scrumbringer_client/ui/task_state
+import scrumbringer_client/ui/task_state as ui_task_state
 
 // Story 4.5: ui_layout no longer directly imported (used via panels)
 import scrumbringer_client/client_ffi
@@ -507,7 +508,7 @@ fn view_member_blocked_claim_modal(
         update_helpers.i18n_t(model, i18n_text.BlockedTaskWarning(count))
       let list_items =
         list.map(blocking, fn(dep) {
-          let status_label = task_state.label(model.ui.locale, dep.status)
+          let status_label = ui_task_state.label(model.ui.locale, dep.status)
           let status_text = case dep.status {
             task_status.Claimed(_) ->
               case dep.claimed_by {
@@ -840,8 +841,14 @@ fn build_right_panel(
   let my_tasks = case model.member.member_tasks {
     Loaded(tasks) ->
       list.filter(tasks, fn(t) {
-        t.status == task_status.Claimed(task_status.Taken)
-        && t.claimed_by == opt.Some(user.id)
+        case t.state {
+          task_state.Claimed(
+            claimed_by: claimed_by,
+            mode: task_status.Taken,
+            ..,
+          ) -> claimed_by == user.id
+          _ -> False
+        }
       })
     _ -> []
   }
@@ -861,12 +868,20 @@ fn build_right_panel(
         let card_tasks =
           list.filter(all_tasks, fn(t) { t.card_id == opt.Some(card.id) })
         let my_card_tasks =
-          list.filter(card_tasks, fn(t) { t.claimed_by == opt.Some(user.id) })
+          list.filter(card_tasks, fn(t) {
+            case t.state {
+              task_state.Claimed(claimed_by: claimed_by, ..) ->
+                claimed_by == user.id
+              _ -> False
+            }
+          })
         case my_card_tasks {
           [] -> Error(Nil)
           _ -> {
             let completed =
-              list.count(card_tasks, fn(t) { t.status == task_status.Completed })
+              list.count(card_tasks, fn(t) {
+                task_state.to_status(t.state) == task_status.Completed
+              })
             let total = list.length(card_tasks)
             Ok(right_panel.MyCardProgress(
               card_id: card.id,
@@ -1029,9 +1044,14 @@ fn view_claimed_tasks_section(
     Loaded(tasks) ->
       tasks
       |> list.filter(fn(t) {
-        let Task(status: status, claimed_by: claimed_by, ..) = t
-        status == task_status.Claimed(task_status.Taken)
-        && claimed_by == opt.Some(user.id)
+        case t.state {
+          task_state.Claimed(
+            claimed_by: claimed_by,
+            mode: task_status.Taken,
+            ..,
+          ) -> claimed_by == user.id
+          _ -> False
+        }
       })
       |> list.sort(by: my_bar_view.compare_member_bar_tasks)
     _ -> []

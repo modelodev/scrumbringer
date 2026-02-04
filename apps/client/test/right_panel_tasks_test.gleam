@@ -1,4 +1,5 @@
 import domain/task.{type Task, Task}
+import domain/task_state
 import domain/task_status
 import domain/task_type.{TaskTypeInline}
 import gleam/option.{None, Some}
@@ -40,10 +41,7 @@ fn base_config(
   )
 }
 
-fn sample_task(
-  status: task_status.TaskStatus,
-  work_state: task_status.WorkState,
-) -> Task {
+fn sample_task(state: task_state.TaskState) -> Task {
   Task(
     id: 1,
     project_id: 1,
@@ -53,12 +51,10 @@ fn sample_task(
     title: "Fix login",
     description: None,
     priority: 3,
-    status: status,
-    work_state: work_state,
+    state: state,
+    status: task_state.to_status(state),
+    work_state: task_state.to_work_state(state),
     created_by: 1,
-    claimed_by: Some(1),
-    claimed_at: None,
-    completed_at: None,
     created_at: "2026-01-01T00:00:00Z",
     version: 1,
     card_id: Some(1),
@@ -93,7 +89,11 @@ pub fn right_panel_active_task_renders_border_and_icon_test() {
 
 pub fn right_panel_my_task_renders_border_and_actions_test() {
   let task =
-    sample_task(task_status.Claimed(task_status.Taken), task_status.WorkClaimed)
+    sample_task(task_state.Claimed(
+      claimed_by: 1,
+      claimed_at: "2026-01-01T00:00:00Z",
+      mode: task_status.Taken,
+    ))
 
   let html =
     base_config([task], [], [])

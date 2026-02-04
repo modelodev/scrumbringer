@@ -28,19 +28,44 @@ import scrumbringer_client/api/tasks/decoders as task_decoders
 import domain/metrics.{
   type MetricsProjectTask, type MyMetrics, type OrgMetricsBucket,
   type OrgMetricsOverview, type OrgMetricsProjectOverview,
-  type OrgMetricsProjectTasksPayload, MetricsProjectTask, MyMetrics,
+  type OrgMetricsProjectTasksPayload, type OrgMetricsUserOverview,
+  type SampledMetric, type WindowDays, MetricsProjectTask, MyMetrics, NoSample,
   OrgMetricsBucket, OrgMetricsOverview, OrgMetricsProjectOverview,
-  OrgMetricsProjectTasksPayload,
+  OrgMetricsProjectTasksPayload, OrgMetricsUserOverview, Sampled, WindowDays,
+  window_days_from_int,
 }
 import domain/task.{Task}
-import domain/task_status.{type TaskStatus, Available, parse_task_status}
+import domain/task_state
 
 // =============================================================================
 // Decoders
 // =============================================================================
 
+fn window_days_decoder() -> decode.Decoder(WindowDays) {
+  use value <- decode.then(decode.int)
+  case window_days_from_int(value) {
+    Ok(window) -> decode.success(window)
+    Error(_) -> decode.failure(WindowDays(30), "WindowDays")
+  }
+}
+
+fn sampled_metric_decoder() -> decode.Decoder(SampledMetric) {
+  use p50_ms <- decode.optional_field(
+    "p50_ms",
+    option.None,
+    decode.optional(decode.int),
+  )
+  use sample_size <- decode.field("sample_size", decode.int)
+
+  case p50_ms, sample_size {
+    option.Some(value_ms), size if size > 0 ->
+      decode.success(Sampled(value_ms: value_ms, sample_size: size))
+    _, _ -> decode.success(NoSample)
+  }
+}
+
 fn my_metrics_decoder() -> decode.Decoder(MyMetrics) {
-  use window_days <- decode.field("window_days", decode.int)
+  use window_days <- decode.field("window_days", window_days_decoder())
   use claimed_count <- decode.field("claimed_count", decode.int)
   use released_count <- decode.field("released_count", decode.int)
   use completed_count <- decode.field("completed_count", decode.int)
@@ -64,7 +89,9 @@ fn org_metrics_project_overview_decoder() -> decode.Decoder(
 ) {
   use project_id <- decode.field("project_id", decode.int)
   use project_name <- decode.field("project_name", decode.string)
+  use available_count <- decode.field("available_count", decode.int)
   use claimed_count <- decode.field("claimed_count", decode.int)
+  use ongoing_count <- decode.field("ongoing_count", decode.int)
   use released_count <- decode.field("released_count", decode.int)
   use completed_count <- decode.field("completed_count", decode.int)
   use release_rate_percent <- decode.optional_field(
@@ -77,27 +104,53 @@ fn org_metrics_project_overview_decoder() -> decode.Decoder(
     option.None,
     decode.optional(decode.int),
   )
+  use wip_count <- decode.field("wip_count", decode.int)
+  use avg_claim_to_complete_ms <- decode.optional_field(
+    "avg_claim_to_complete_ms",
+    option.None,
+    decode.optional(decode.int),
+  )
+  use avg_time_in_claimed_ms <- decode.optional_field(
+    "avg_time_in_claimed_ms",
+    option.None,
+    decode.optional(decode.int),
+  )
+  use stale_claims_count <- decode.field("stale_claims_count", decode.int)
 
   decode.success(OrgMetricsProjectOverview(
     project_id: project_id,
     project_name: project_name,
+    available_count: available_count,
     claimed_count: claimed_count,
+    ongoing_count: ongoing_count,
     released_count: released_count,
     completed_count: completed_count,
     release_rate_percent: release_rate_percent,
     pool_flow_ratio_percent: pool_flow_ratio_percent,
+    wip_count: wip_count,
+    avg_claim_to_complete_ms: avg_claim_to_complete_ms,
+    avg_time_in_claimed_ms: avg_time_in_claimed_ms,
+    stale_claims_count: stale_claims_count,
   ))
 }
 
 fn org_metrics_overview_decoder() -> decode.Decoder(OrgMetricsOverview) {
   let totals_decoder = {
+    use available_count <- decode.field("available_count", decode.int)
     use claimed_count <- decode.field("claimed_count", decode.int)
+    use ongoing_count <- decode.field("ongoing_count", decode.int)
     use released_count <- decode.field("released_count", decode.int)
     use completed_count <- decode.field("completed_count", decode.int)
-    decode.success(#(claimed_count, released_count, completed_count))
+    decode.success(#(
+      available_count,
+      claimed_count,
+      ongoing_count,
+      released_count,
+      completed_count,
+    ))
   }
 
-  use window_days <- decode.field("window_days", decode.int)
+  use window_days <- decode.field("window_days", window_days_decoder())
   use totals <- decode.field("totals", totals_decoder)
   use release_rate_percent <- decode.optional_field(
     "release_rate_percent",
@@ -109,14 +162,9 @@ fn org_metrics_overview_decoder() -> decode.Decoder(OrgMetricsOverview) {
     option.None,
     decode.optional(decode.int),
   )
-  use time_to_first_claim_p50_ms <- decode.optional_field(
-    "time_to_first_claim_p50_ms",
-    option.None,
-    decode.optional(decode.int),
-  )
-  use time_to_first_claim_sample_size <- decode.field(
-    "time_to_first_claim_sample_size",
-    decode.int,
+  use time_to_first_claim <- decode.field(
+    "time_to_first_claim",
+    sampled_metric_decoder(),
   )
   use time_to_first_claim_buckets <- decode.field(
     "time_to_first_claim_buckets",
@@ -126,24 +174,47 @@ fn org_metrics_overview_decoder() -> decode.Decoder(OrgMetricsOverview) {
     "release_rate_buckets",
     decode.list(org_metrics_bucket_decoder()),
   )
+  use wip_count <- decode.field("wip_count", decode.int)
+  use avg_claim_to_complete_ms <- decode.optional_field(
+    "avg_claim_to_complete_ms",
+    option.None,
+    decode.optional(decode.int),
+  )
+  use avg_time_in_claimed_ms <- decode.optional_field(
+    "avg_time_in_claimed_ms",
+    option.None,
+    decode.optional(decode.int),
+  )
+  use stale_claims_count <- decode.field("stale_claims_count", decode.int)
   use by_project <- decode.field(
     "by_project",
     decode.list(org_metrics_project_overview_decoder()),
   )
 
-  let #(claimed_count, released_count, completed_count) = totals
+  let #(
+    available_count,
+    claimed_count,
+    ongoing_count,
+    released_count,
+    completed_count,
+  ) = totals
 
   decode.success(OrgMetricsOverview(
     window_days: window_days,
+    available_count: available_count,
     claimed_count: claimed_count,
+    ongoing_count: ongoing_count,
     released_count: released_count,
     completed_count: completed_count,
     release_rate_percent: release_rate_percent,
     pool_flow_ratio_percent: pool_flow_ratio_percent,
-    time_to_first_claim_p50_ms: time_to_first_claim_p50_ms,
-    time_to_first_claim_sample_size: time_to_first_claim_sample_size,
+    time_to_first_claim: time_to_first_claim,
     time_to_first_claim_buckets: time_to_first_claim_buckets,
     release_rate_buckets: release_rate_buckets,
+    wip_count: wip_count,
+    avg_claim_to_complete_ms: avg_claim_to_complete_ms,
+    avg_time_in_claimed_ms: avg_time_in_claimed_ms,
+    stale_claims_count: stale_claims_count,
     by_project: by_project,
   ))
 }
@@ -162,11 +233,6 @@ fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
 
   use priority <- decode.field("priority", decode.int)
   use status_raw <- decode.field("status", decode.string)
-
-  let status: TaskStatus = case parse_task_status(status_raw) {
-    Ok(s) -> s
-    Error(_) -> Available
-  }
 
   use created_by <- decode.field("created_by", decode.int)
 
@@ -209,10 +275,21 @@ fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
     option.None,
     decode.optional(task_decoders.ongoing_by_decoder()),
   )
-  use work_state <- decode.field(
-    "work_state",
-    task_decoders.work_state_decoder(),
-  )
+  let is_ongoing = status_raw == "ongoing"
+  let state = case
+    task_state.from_db(
+      status_raw,
+      is_ongoing,
+      claimed_by,
+      claimed_at,
+      completed_at,
+    )
+  {
+    Ok(s) -> s
+    Error(_) -> task_state.Available
+  }
+  let status = task_state.to_status(state)
+  let work_state = task_state.to_work_state(state)
 
   let task =
     Task(
@@ -224,12 +301,10 @@ fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
       title: title,
       description: description,
       priority: priority,
+      state: state,
       status: status,
       work_state: work_state,
       created_by: created_by,
-      claimed_by: claimed_by,
-      claimed_at: claimed_at,
-      completed_at: completed_at,
       created_at: created_at,
       version: version,
       // Card fields not available in metrics endpoint
@@ -251,10 +326,34 @@ fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
   ))
 }
 
+fn org_metrics_user_overview_decoder() -> decode.Decoder(OrgMetricsUserOverview) {
+  use user_id <- decode.field("user_id", decode.int)
+  use email <- decode.field("email", decode.string)
+  use claimed_count <- decode.field("claimed_count", decode.int)
+  use released_count <- decode.field("released_count", decode.int)
+  use completed_count <- decode.field("completed_count", decode.int)
+  use ongoing_count <- decode.field("ongoing_count", decode.int)
+  use last_claim_at <- decode.optional_field(
+    "last_claim_at",
+    option.None,
+    decode.optional(decode.string),
+  )
+
+  decode.success(OrgMetricsUserOverview(
+    user_id: user_id,
+    email: email,
+    claimed_count: claimed_count,
+    released_count: released_count,
+    completed_count: completed_count,
+    ongoing_count: ongoing_count,
+    last_claim_at: last_claim_at,
+  ))
+}
+
 fn org_metrics_project_tasks_payload_decoder() -> decode.Decoder(
   OrgMetricsProjectTasksPayload,
 ) {
-  use window_days <- decode.field("window_days", decode.int)
+  use window_days <- decode.field("window_days", window_days_decoder())
   use project_id <- decode.field("project_id", decode.int)
   use tasks <- decode.field(
     "tasks",
@@ -318,6 +417,26 @@ pub fn get_org_metrics_project_tasks(
       <> int.to_string(window_days),
     option.None,
     org_metrics_project_tasks_payload_decoder(),
+    to_msg,
+  )
+}
+
+/// Get org metrics per user (admin-only).
+pub fn get_org_metrics_users(
+  window_days: Int,
+  to_msg: fn(ApiResult(List(OrgMetricsUserOverview))) -> msg,
+) -> Effect(msg) {
+  let decoder =
+    decode.field(
+      "users",
+      decode.list(org_metrics_user_overview_decoder()),
+      decode.success,
+    )
+  core.request(
+    "GET",
+    "/api/v1/org/metrics/users?window_days=" <> int.to_string(window_days),
+    option.None,
+    decoder,
     to_msg,
   )
 }

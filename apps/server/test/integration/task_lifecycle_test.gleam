@@ -86,13 +86,14 @@ pub fn full_lifecycle_create_claim_complete_test() {
     ])
   status3 |> should.equal("completed")
 
-  // Verify claimed_by is the user who completed it (task is claimed before completion)
-  let assert Ok(user_id) = fixtures.get_user_id(db, "admin@example.com")
-  let assert Ok(claimed_by) =
-    fixtures.query_int(db, "SELECT claimed_by FROM tasks WHERE id = $1", [
-      pog.int(task_id),
-    ])
-  claimed_by |> should.equal(user_id)
+  // Verify claimed_by is cleared on completion
+  let assert Ok(claimed_by_cleared) =
+    fixtures.query_int(
+      db,
+      "SELECT CASE WHEN claimed_by IS NULL THEN 1 ELSE 0 END FROM tasks WHERE id = $1",
+      [pog.int(task_id)],
+    )
+  claimed_by_cleared |> should.equal(1)
 
   // Verify completed_at is set
   let assert Ok(completed_at_check) =

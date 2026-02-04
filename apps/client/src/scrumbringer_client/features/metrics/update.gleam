@@ -27,7 +27,7 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiError}
 import domain/metrics.{
   type MyMetrics, type OrgMetricsOverview, type OrgMetricsProjectTasksPayload,
-  OrgMetricsProjectTasksPayload,
+  type OrgMetricsUserOverview, OrgMetricsProjectTasksPayload,
 }
 import domain/remote.{Failed, Loaded}
 import scrumbringer_client/client_state.{
@@ -133,6 +133,36 @@ pub fn handle_admin_project_tasks_fetched_error(
     #(
       update_admin(model, fn(admin) {
         AdminModel(..admin, admin_metrics_project_tasks: Failed(err))
+      }),
+      effect.none(),
+    )
+  })
+}
+
+// =============================================================================
+// Admin Metrics Users Handlers
+// =============================================================================
+
+pub fn handle_admin_users_fetched_ok(
+  model: Model,
+  users: List(OrgMetricsUserOverview),
+) -> #(Model, Effect(Msg)) {
+  #(
+    update_admin(model, fn(admin) {
+      AdminModel(..admin, admin_metrics_users: Loaded(users))
+    }),
+    effect.none(),
+  )
+}
+
+pub fn handle_admin_users_fetched_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  update_helpers.handle_401_or(model, err, fn() {
+    #(
+      update_admin(model, fn(admin) {
+        AdminModel(..admin, admin_metrics_users: Failed(err))
       }),
       effect.none(),
     )

@@ -12,6 +12,9 @@ import lustre/element
 import lustre/element/html.{button, div, input, option, p, select, span, text}
 import lustre/event
 
+import domain/metrics.{
+  type OrgMetricsProjectOverview, OrgMetricsOverview, OrgMetricsProjectOverview,
+}
 import domain/project.{type Project, type ProjectMember}
 import domain/project_role.{Manager, Member, to_string}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
@@ -58,6 +61,7 @@ pub fn view(
     _ -> project.members_count
   }
   let users_label = t(i18n_text.AssignmentsUsersCount(users_count))
+  let metrics_summary = view_project_metrics_summary(model, project.id)
 
   let is_inline_add = case assignments.inline_add_context {
     opt.Some(state_types.AddUserToProject(id)) -> id == project.id
@@ -78,6 +82,10 @@ pub fn view(
   }
   let body =
     div([], [
+      case metrics_summary {
+        opt.Some(summary) -> summary
+        opt.None -> element.none()
+      },
       case members_state {
         NotAsked | Loading ->
           loading.loading(t(i18n_text.AssignmentsLoadingMembers))
@@ -130,6 +138,66 @@ pub fn view(
     )),
     body: body,
   ))
+}
+
+fn view_project_metrics_summary(
+  model: client_state.Model,
+  project_id: Int,
+) -> opt.Option(element.Element(client_state.Msg)) {
+  case model.admin.admin_metrics_overview {
+    Loaded(OrgMetricsOverview(by_project: projects, ..)) ->
+      case list.find(projects, fn(p) { p.project_id == project_id }) {
+        Ok(metrics) -> opt.Some(project_metrics_view(model, metrics))
+        Error(_) -> opt.None
+      }
+    _ -> opt.None
+  }
+}
+
+fn project_metrics_view(
+  model: client_state.Model,
+  metrics: OrgMetricsProjectOverview,
+) -> element.Element(client_state.Msg) {
+  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let OrgMetricsProjectOverview(
+    available_count: available_count,
+    claimed_count: claimed_count,
+    ongoing_count: ongoing_count,
+    completed_count: completed_count,
+    release_rate_percent: release_rate_percent,
+    ..,
+  ) = metrics
+
+  div([attribute.class("assignments-metrics")], [
+    div([attribute.class("assignments-metrics-item")], [
+      text(
+        t(i18n_text.AvailableCount) <> ": " <> int.to_string(available_count),
+      ),
+    ]),
+    div([attribute.class("assignments-metrics-item")], [
+      text(t(i18n_text.Claimed) <> ": " <> int.to_string(claimed_count)),
+    ]),
+    div([attribute.class("assignments-metrics-item")], [
+      text(t(i18n_text.OngoingCount) <> ": " <> int.to_string(ongoing_count)),
+    ]),
+    div([attribute.class("assignments-metrics-item")], [
+      text(t(i18n_text.Completed) <> ": " <> int.to_string(completed_count)),
+    ]),
+    div([attribute.class("assignments-metrics-item")], [
+      text(
+        t(i18n_text.ReleasePercent)
+        <> ": "
+        <> option_percent_label(release_rate_percent),
+      ),
+    ]),
+  ])
+}
+
+fn option_percent_label(value: opt.Option(Int)) -> String {
+  case value {
+    opt.Some(v) -> int.to_string(v) <> "%"
+    opt.None -> "-"
+  }
 }
 
 fn view_member_row(

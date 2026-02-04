@@ -34,7 +34,7 @@ import wisp
 
 const default_window_days = 30
 
-const max_window_days = 365
+const max_window_days = 90
 
 // =============================================================================
 // Public Handlers

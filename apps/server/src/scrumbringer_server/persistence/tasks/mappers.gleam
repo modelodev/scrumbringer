@@ -23,6 +23,7 @@
 //// - **domain/task_status**: Provides TaskStatus ADT
 
 import domain/task.{type TaskDependency, TaskDependency}
+import domain/task_state
 import domain/task_status
 import gleam/dynamic/decode
 import gleam/json
@@ -44,12 +45,10 @@ pub type Task {
     title: String,
     description: Option(String),
     priority: Int,
+    state: task_state.TaskState,
     status: task_status.TaskStatus,
     ongoing_by_user_id: Option(Int),
     created_by: Int,
-    claimed_by: Option(Int),
-    claimed_at: Option(String),
-    completed_at: Option(String),
     created_at: String,
     version: Int,
     card_id: Option(Int),
@@ -293,6 +292,23 @@ fn from_fields(
   blocked_count blocked_count: Int,
   dependencies dependencies: List(TaskDependency),
 ) -> Task {
+  let claimed_by_option = option_helpers.int_to_option(claimed_by)
+  let claimed_at_option = option_helpers.string_to_option(claimed_at)
+  let completed_at_option = option_helpers.string_to_option(completed_at)
+
+  let state = case
+    task_state.from_db(
+      status,
+      is_ongoing,
+      claimed_by_option,
+      claimed_at_option,
+      completed_at_option,
+    )
+  {
+    Ok(state) -> state
+    Error(_) -> task_state.Available
+  }
+
   Task(
     id: id,
     project_id: project_id,
@@ -302,12 +318,10 @@ fn from_fields(
     title: title,
     description: option_helpers.string_to_option(description),
     priority: priority,
-    status: task_status.from_db(status, is_ongoing),
+    state: state,
+    status: task_state.to_status(state),
     ongoing_by_user_id: option_helpers.int_to_option(ongoing_by_user_id),
     created_by: created_by,
-    claimed_by: option_helpers.int_to_option(claimed_by),
-    claimed_at: option_helpers.string_to_option(claimed_at),
-    completed_at: option_helpers.string_to_option(completed_at),
     created_at: created_at,
     version: version,
     card_id: option_helpers.int_to_option(card_id),

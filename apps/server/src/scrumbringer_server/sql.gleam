@@ -5,6 +5,7 @@
 ////
 
 import gleam/dynamic/decode
+import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
 import pog
 
@@ -1035,6 +1036,12 @@ pub type MetricsOrgOverviewRow {
     claimed_count: Int,
     released_count: Int,
     completed_count: Int,
+    available_count: Int,
+    ongoing_count: Int,
+    wip_count: Int,
+    avg_claim_to_complete_ms: Option(Int),
+    avg_time_in_claimed_ms: Option(Int),
+    stale_claims_count: Int,
   )
 }
 
@@ -1052,21 +1059,72 @@ pub fn metrics_org_overview(
     use claimed_count <- decode.field(0, decode.int)
     use released_count <- decode.field(1, decode.int)
     use completed_count <- decode.field(2, decode.int)
+    use available_count <- decode.field(3, decode.int)
+    use ongoing_count <- decode.field(4, decode.int)
+    use wip_count <- decode.field(5, decode.int)
+    use avg_claim_to_complete_ms <- decode.field(6, decode.optional(decode.int))
+    use avg_time_in_claimed_ms <- decode.field(7, decode.optional(decode.int))
+    use stale_claims_count <- decode.field(8, decode.int)
     decode.success(MetricsOrgOverviewRow(
       claimed_count:,
       released_count:,
       completed_count:,
+      available_count:,
+      ongoing_count:,
+      wip_count:,
+      avg_claim_to_complete_ms:,
+      avg_time_in_claimed_ms:,
+      stale_claims_count:,
     ))
   }
 
   "-- name: metrics_org_overview
+with event_counts as (
+  select
+    coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
+    coalesce(sum(case when event_type = 'task_released' then 1 else 0 end), 0) as released_count,
+    coalesce(sum(case when event_type = 'task_completed' then 1 else 0 end), 0) as completed_count
+  from task_events
+  where org_id = $1
+    and created_at >= now() - ($2 || ' days')::interval
+), task_counts as (
+  select
+    coalesce(sum(case when t.status = 'available' then 1 else 0 end), 0) as available_count,
+    coalesce(sum(case when t.status = 'claimed' then 1 else 0 end), 0) as wip_count,
+    coalesce(sum(case
+      when t.status = 'claimed'
+        and exists(
+          select 1 from user_task_work_session ws
+          where ws.task_id = t.id and ws.ended_at is null
+        )
+      then 1 else 0 end), 0) as ongoing_count
+  from tasks t
+  join projects p on p.id = t.project_id
+  where p.org_id = $1
+), time_stats as (
+  select
+    avg(extract(epoch from (t.completed_at - t.claimed_at)) * 1000)::bigint
+      as avg_claim_to_complete_ms,
+    avg(extract(epoch from (now() - t.claimed_at)) * 1000)::bigint
+      as avg_time_in_claimed_ms,
+    coalesce(sum(case
+      when t.status = 'claimed' and t.claimed_at < now() - interval '48 hours'
+      then 1 else 0 end), 0) as stale_claims_count
+  from tasks t
+  join projects p on p.id = t.project_id
+  where p.org_id = $1
+)
 select
-  coalesce(sum(case when event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
-  coalesce(sum(case when event_type = 'task_released' then 1 else 0 end), 0) as released_count,
-  coalesce(sum(case when event_type = 'task_completed' then 1 else 0 end), 0) as completed_count
-from task_events
-where org_id = $1
-  and created_at >= now() - ($2 || ' days')::interval;
+  event_counts.claimed_count,
+  event_counts.released_count,
+  event_counts.completed_count,
+  task_counts.available_count,
+  task_counts.ongoing_count,
+  task_counts.wip_count,
+  time_stats.avg_claim_to_complete_ms,
+  time_stats.avg_time_in_claimed_ms,
+  time_stats.stale_claims_count
+from event_counts, task_counts, time_stats;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -1088,6 +1146,12 @@ pub type MetricsOrgOverviewByProjectRow {
     claimed_count: Int,
     released_count: Int,
     completed_count: Int,
+    available_count: Int,
+    ongoing_count: Int,
+    wip_count: Int,
+    avg_claim_to_complete_ms: Option(Int),
+    avg_time_in_claimed_ms: Option(Int),
+    stale_claims_count: Int,
   )
 }
 
@@ -1107,29 +1171,178 @@ pub fn metrics_org_overview_by_project(
     use claimed_count <- decode.field(2, decode.int)
     use released_count <- decode.field(3, decode.int)
     use completed_count <- decode.field(4, decode.int)
+    use available_count <- decode.field(5, decode.int)
+    use ongoing_count <- decode.field(6, decode.int)
+    use wip_count <- decode.field(7, decode.int)
+    use avg_claim_to_complete_ms <- decode.field(8, decode.optional(decode.int))
+    use avg_time_in_claimed_ms <- decode.field(9, decode.optional(decode.int))
+    use stale_claims_count <- decode.field(10, decode.int)
     decode.success(MetricsOrgOverviewByProjectRow(
       project_id:,
       project_name:,
       claimed_count:,
       released_count:,
       completed_count:,
+      available_count:,
+      ongoing_count:,
+      wip_count:,
+      avg_claim_to_complete_ms:,
+      avg_time_in_claimed_ms:,
+      stale_claims_count:,
     ))
   }
 
   "-- name: metrics_org_overview_by_project
+with event_counts as (
+  select
+    e.project_id,
+    coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
+    coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as released_count,
+    coalesce(sum(case when e.event_type = 'task_completed' then 1 else 0 end), 0) as completed_count
+  from task_events e
+  where e.org_id = $1
+    and e.created_at >= now() - ($2 || ' days')::interval
+  group by e.project_id
+), task_counts as (
+  select
+    t.project_id,
+    coalesce(sum(case when t.status = 'available' then 1 else 0 end), 0) as available_count,
+    coalesce(sum(case when t.status = 'claimed' then 1 else 0 end), 0) as wip_count,
+    coalesce(sum(case
+      when t.status = 'claimed'
+        and exists(
+          select 1 from user_task_work_session ws
+          where ws.task_id = t.id and ws.ended_at is null
+        )
+      then 1 else 0 end), 0) as ongoing_count
+  from tasks t
+  join projects p on p.id = t.project_id
+  where p.org_id = $1
+  group by t.project_id
+), time_stats as (
+  select
+    t.project_id,
+    avg(extract(epoch from (t.completed_at - t.claimed_at)) * 1000)::bigint
+      as avg_claim_to_complete_ms,
+    avg(extract(epoch from (now() - t.claimed_at)) * 1000)::bigint
+      as avg_time_in_claimed_ms,
+    coalesce(sum(case
+      when t.status = 'claimed' and t.claimed_at < now() - interval '48 hours'
+      then 1 else 0 end), 0) as stale_claims_count
+  from tasks t
+  join projects p on p.id = t.project_id
+  where p.org_id = $1
+  group by t.project_id
+)
 select
   p.id as project_id,
   p.name as project_name,
-  coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
-  coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as released_count,
-  coalesce(sum(case when e.event_type = 'task_completed' then 1 else 0 end), 0) as completed_count
+  coalesce(ec.claimed_count, 0) as claimed_count,
+  coalesce(ec.released_count, 0) as released_count,
+  coalesce(ec.completed_count, 0) as completed_count,
+  coalesce(tc.available_count, 0) as available_count,
+  coalesce(tc.ongoing_count, 0) as ongoing_count,
+  coalesce(tc.wip_count, 0) as wip_count,
+  ts.avg_claim_to_complete_ms,
+  ts.avg_time_in_claimed_ms,
+  coalesce(ts.stale_claims_count, 0) as stale_claims_count
 from projects p
-left join task_events e
-  on e.project_id = p.id
-  and e.created_at >= now() - ($2 || ' days')::interval
+left join event_counts ec on ec.project_id = p.id
+left join task_counts tc on tc.project_id = p.id
+left join time_stats ts on ts.project_id = p.id
 where p.org_id = $1
-group by p.id, p.name
 order by p.name asc;
+"
+  |> pog.query
+  |> pog.parameter(pog.int(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+/// A row you get from running the `metrics_users_overview` query
+/// defined in `./src/scrumbringer_server/sql/metrics_users_overview.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type MetricsUsersOverviewRow {
+  MetricsUsersOverviewRow(
+    user_id: Int,
+    email: String,
+    claimed_count: Int,
+    released_count: Int,
+    completed_count: Int,
+    ongoing_count: Int,
+    last_claim_at: String,
+  )
+}
+
+/// name: metrics_users_overview
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn metrics_users_overview(
+  db: pog.Connection,
+  arg_1: Int,
+  arg_2: String,
+) -> Result(pog.Returned(MetricsUsersOverviewRow), pog.QueryError) {
+  let decoder = {
+    use user_id <- decode.field(0, decode.int)
+    use email <- decode.field(1, decode.string)
+    use claimed_count <- decode.field(2, decode.int)
+    use released_count <- decode.field(3, decode.int)
+    use completed_count <- decode.field(4, decode.int)
+    use ongoing_count <- decode.field(5, decode.int)
+    use last_claim_at <- decode.field(6, decode.string)
+    decode.success(MetricsUsersOverviewRow(
+      user_id:,
+      email:,
+      claimed_count:,
+      released_count:,
+      completed_count:,
+      ongoing_count:,
+      last_claim_at:,
+    ))
+  }
+
+  "-- name: metrics_users_overview
+with event_counts as (
+  select
+    e.actor_user_id as user_id,
+    coalesce(sum(case when e.event_type = 'task_claimed' then 1 else 0 end), 0) as claimed_count,
+    coalesce(sum(case when e.event_type = 'task_released' then 1 else 0 end), 0) as released_count,
+    coalesce(sum(case when e.event_type = 'task_completed' then 1 else 0 end), 0) as completed_count,
+    max(case when e.event_type = 'task_claimed' then e.created_at else null end) as last_claim_at
+  from task_events e
+  where e.org_id = $1
+    and e.created_at >= now() - ($2 || ' days')::interval
+  group by e.actor_user_id
+), ongoing as (
+  select
+    ws.user_id,
+    count(*)::int as ongoing_count
+  from user_task_work_session ws
+  join tasks t on t.id = ws.task_id
+  join projects p on p.id = t.project_id
+  where ws.ended_at is null
+    and p.org_id = $1
+  group by ws.user_id
+)
+select
+  u.id as user_id,
+  u.email,
+  coalesce(ec.claimed_count, 0) as claimed_count,
+  coalesce(ec.released_count, 0) as released_count,
+  coalesce(ec.completed_count, 0) as completed_count,
+  coalesce(o.ongoing_count, 0) as ongoing_count,
+  coalesce(to_char(ec.last_claim_at at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '') as last_claim_at
+from users u
+left join event_counts ec on ec.user_id = u.id
+left join ongoing o on o.user_id = u.id
+where u.org_id = $1
+order by u.email asc;
 "
   |> pog.query
   |> pog.parameter(pog.int(arg_1))
@@ -5524,6 +5737,8 @@ with updated as (
   update tasks
   set
     status = 'completed',
+    claimed_by = null,
+    claimed_at = null,
     completed_at = now(),
     version = version + 1
   where id = $1

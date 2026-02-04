@@ -2,7 +2,7 @@ import domain/org.{OrgUser}
 import domain/org_role.{Admin}
 import domain/remote.{Loaded, NotAsked}
 import domain/task.{Task}
-import domain/task_status
+import domain/task_state
 import domain/task_type.{TaskTypeInline}
 import gleam/option.{None}
 import gleeunit/should
@@ -24,6 +24,7 @@ pub fn find_task_by_id_returns_none_when_not_loaded_test() {
 }
 
 pub fn find_task_by_id_returns_none_when_missing_test() {
+  let state = task_state.Available
   let tasks = [
     Task(
       id: 1,
@@ -34,12 +35,10 @@ pub fn find_task_by_id_returns_none_when_missing_test() {
       title: "T",
       description: None,
       priority: 3,
-      status: task_status.Available,
-      work_state: task_status.WorkAvailable,
+      state: state,
+      status: task_state.to_status(state),
+      work_state: task_state.to_work_state(state),
       created_by: 1,
-      claimed_by: None,
-      claimed_at: None,
-      completed_at: None,
       created_at: "2026-01-01T00:00:00Z",
       version: 1,
       card_id: None,

@@ -22,7 +22,7 @@ import gleam/option.{type Option, None, Some}
 import helpers/json as json_helpers
 import scrumbringer_server/http/metrics_service.{
   type MetricsOverview, type ProjectMetricsRow, type ProjectTask,
-  type TimeToFirstClaimBucket, work_state_to_string,
+  type TimeToFirstClaimBucket, type UserMetricsRow, work_state_to_string,
 }
 
 // =============================================================================
@@ -39,7 +39,9 @@ pub fn overview_json(overview: MetricsOverview) -> json.Json {
         #(
           "totals",
           json.object([
+            #("available_count", json.int(overview.available_count)),
             #("claimed_count", json.int(overview.claimed_count)),
+            #("ongoing_count", json.int(overview.ongoing_count)),
             #("released_count", json.int(overview.released_count)),
             #("completed_count", json.int(overview.completed_count)),
           ]),
@@ -53,12 +55,11 @@ pub fn overview_json(overview: MetricsOverview) -> json.Json {
           option_int_json(overview.pool_flow_ratio_percent),
         ),
         #(
-          "time_to_first_claim_p50_ms",
-          option_int_json(overview.time_to_first_claim_p50_ms),
-        ),
-        #(
-          "time_to_first_claim_sample_size",
-          json.int(overview.time_to_first_claim_sample_size),
+          "time_to_first_claim",
+          json.object([
+            #("p50_ms", option_int_json(overview.time_to_first_claim_p50_ms)),
+            #("sample_size", json.int(overview.time_to_first_claim_sample_size)),
+          ]),
         ),
         #(
           "time_to_first_claim_buckets",
@@ -68,6 +69,16 @@ pub fn overview_json(overview: MetricsOverview) -> json.Json {
           "release_rate_buckets",
           json.array(overview.release_rate_buckets, of: bucket_json),
         ),
+        #("wip_count", json.int(overview.wip_count)),
+        #(
+          "avg_claim_to_complete_ms",
+          option_int_json(overview.avg_claim_to_complete_ms),
+        ),
+        #(
+          "avg_time_in_claimed_ms",
+          option_int_json(overview.avg_time_in_claimed_ms),
+        ),
+        #("stale_claims_count", json.int(overview.stale_claims_count)),
         #(
           "by_project",
           json.array(overview.by_project, of: project_metrics_json),
@@ -88,11 +99,17 @@ fn project_metrics_json(row: ProjectMetricsRow) -> json.Json {
   json.object([
     #("project_id", json.int(row.project_id)),
     #("project_name", json.string(row.project_name)),
+    #("available_count", json.int(row.available_count)),
     #("claimed_count", json.int(row.claimed_count)),
+    #("ongoing_count", json.int(row.ongoing_count)),
     #("released_count", json.int(row.released_count)),
     #("completed_count", json.int(row.completed_count)),
     #("release_rate_percent", option_int_json(row.release_rate_percent)),
     #("pool_flow_ratio_percent", option_int_json(row.pool_flow_ratio_percent)),
+    #("wip_count", json.int(row.wip_count)),
+    #("avg_claim_to_complete_ms", option_int_json(row.avg_claim_to_complete_ms)),
+    #("avg_time_in_claimed_ms", option_int_json(row.avg_time_in_claimed_ms)),
+    #("stale_claims_count", json.int(row.stale_claims_count)),
   ])
 }
 
@@ -142,6 +159,28 @@ fn project_task_json(task: ProjectTask) -> json.Json {
     #("release_count", json.int(task.release_count)),
     #("complete_count", json.int(task.complete_count)),
     #("first_claim_at", option_string_json(task.first_claim_at)),
+  ])
+}
+
+// =============================================================================
+// User Metrics Presenters
+// =============================================================================
+
+pub fn users_overview_json(users: List(UserMetricsRow)) -> json.Json {
+  json.object([
+    #("users", json.array(users, of: user_metrics_json)),
+  ])
+}
+
+fn user_metrics_json(row: UserMetricsRow) -> json.Json {
+  json.object([
+    #("user_id", json.int(row.user_id)),
+    #("email", json.string(row.email)),
+    #("claimed_count", json.int(row.claimed_count)),
+    #("released_count", json.int(row.released_count)),
+    #("completed_count", json.int(row.completed_count)),
+    #("ongoing_count", json.int(row.ongoing_count)),
+    #("last_claim_at", option_string_json(row.last_claim_at)),
   ])
 }
 

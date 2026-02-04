@@ -73,6 +73,7 @@ import domain/capability.{type Capability}
 import domain/card.{type Card}
 import domain/metrics.{
   type MyMetrics, type OrgMetricsOverview, type OrgMetricsProjectTasksPayload,
+  type OrgMetricsUserOverview,
 }
 import domain/org.{type InviteLink, type OrgUser}
 import domain/org_role
@@ -541,6 +542,7 @@ pub type PoolMsg {
   MemberNoteAdded(ApiResult(TaskNote))
   AdminMetricsOverviewFetched(ApiResult(OrgMetricsOverview))
   AdminMetricsProjectTasksFetched(ApiResult(OrgMetricsProjectTasksPayload))
+  AdminMetricsUsersFetched(ApiResult(List(OrgMetricsUserOverview)))
   AdminRuleMetricsFetched(
     ApiResult(List(api_workflows.OrgWorkflowMetricsSummary)),
   )
@@ -937,6 +939,7 @@ pub fn default_model() -> Model {
       admin_metrics_overview: NotAsked,
       admin_metrics_project_tasks: NotAsked,
       admin_metrics_project_id: option.None,
+      admin_metrics_users: NotAsked,
       admin_rule_metrics: NotAsked,
       admin_rule_metrics_from: "",
       admin_rule_metrics_to: "",

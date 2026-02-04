@@ -38,11 +38,17 @@ pub type ProjectMetricsRow {
   ProjectMetricsRow(
     project_id: Int,
     project_name: String,
+    available_count: Int,
     claimed_count: Int,
+    ongoing_count: Int,
     released_count: Int,
     completed_count: Int,
     release_rate_percent: Option(Int),
     pool_flow_ratio_percent: Option(Int),
+    wip_count: Int,
+    avg_claim_to_complete_ms: Option(Int),
+    avg_time_in_claimed_ms: Option(Int),
+    stale_claims_count: Int,
   )
 }
 
@@ -50,7 +56,9 @@ pub type ProjectMetricsRow {
 pub type MetricsOverview {
   MetricsOverview(
     window_days: Int,
+    available_count: Int,
     claimed_count: Int,
+    ongoing_count: Int,
     released_count: Int,
     completed_count: Int,
     release_rate_percent: Option(Int),
@@ -59,7 +67,24 @@ pub type MetricsOverview {
     time_to_first_claim_sample_size: Int,
     time_to_first_claim_buckets: List(TimeToFirstClaimBucket),
     release_rate_buckets: List(TimeToFirstClaimBucket),
+    wip_count: Int,
+    avg_claim_to_complete_ms: Option(Int),
+    avg_time_in_claimed_ms: Option(Int),
+    stale_claims_count: Int,
     by_project: List(ProjectMetricsRow),
+  )
+}
+
+/// Per-user metrics row.
+pub type UserMetricsRow {
+  UserMetricsRow(
+    user_id: Int,
+    email: String,
+    claimed_count: Int,
+    released_count: Int,
+    completed_count: Int,
+    ongoing_count: Int,
+    last_claim_at: Option(String),
   )
 }
 
@@ -131,6 +156,9 @@ pub fn get_org_overview(
       let claimed = totals_row.claimed_count
       let released = totals_row.released_count
       let completed = totals_row.completed_count
+      let available = totals_row.available_count
+      let ongoing = totals_row.ongoing_count
+      let wip_count = totals_row.wip_count
 
       let release_rate_percent = percent(released, claimed)
       let pool_flow_ratio_percent = percent(completed, claimed)
@@ -154,7 +182,9 @@ pub fn get_org_overview(
 
       Ok(MetricsOverview(
         window_days: window_days,
+        available_count: available,
         claimed_count: claimed,
+        ongoing_count: ongoing,
         released_count: released,
         completed_count: completed,
         release_rate_percent: release_rate_percent,
@@ -163,6 +193,10 @@ pub fn get_org_overview(
         time_to_first_claim_sample_size: p50_row.sample_size,
         time_to_first_claim_buckets: ttf_buckets_mapped,
         release_rate_buckets: rr_buckets_mapped,
+        wip_count: wip_count,
+        avg_claim_to_complete_ms: totals_row.avg_claim_to_complete_ms,
+        avg_time_in_claimed_ms: totals_row.avg_time_in_claimed_ms,
+        stale_claims_count: totals_row.stale_claims_count,
         by_project: project_rows_mapped,
       ))
     }
@@ -184,6 +218,18 @@ pub fn get_project_tasks(
 ) -> Result(List(ProjectTask), MetricsError) {
   case sql.metrics_project_tasks(db, project_id, int.to_string(window_days)) {
     Ok(pog.Returned(rows: rows, ..)) -> Ok(rows |> map_project_tasks)
+    Error(e) -> Error(DbError(e))
+  }
+}
+
+/// Fetch per-user metrics overview for org.
+pub fn get_users_overview(
+  db: pog.Connection,
+  org_id: Int,
+  window_days: Int,
+) -> Result(List(UserMetricsRow), MetricsError) {
+  case sql.metrics_users_overview(db, org_id, int.to_string(window_days)) {
+    Ok(pog.Returned(rows: rows, ..)) -> Ok(rows |> map_user_rows)
     Error(e) -> Error(DbError(e))
   }
 }
@@ -270,11 +316,48 @@ fn do_map_project_rows(
         ProjectMetricsRow(
           project_id: row.project_id,
           project_name: row.project_name,
+          available_count: row.available_count,
           claimed_count: row.claimed_count,
+          ongoing_count: row.ongoing_count,
           released_count: row.released_count,
           completed_count: row.completed_count,
           release_rate_percent: project_release_rate_percent,
           pool_flow_ratio_percent: project_pool_flow_ratio_percent,
+          wip_count: row.wip_count,
+          avg_claim_to_complete_ms: row.avg_claim_to_complete_ms,
+          avg_time_in_claimed_ms: row.avg_time_in_claimed_ms,
+          stale_claims_count: row.stale_claims_count,
+        ),
+        ..acc
+      ])
+    }
+  }
+}
+
+fn map_user_rows(
+  rows: List(sql.MetricsUsersOverviewRow),
+) -> List(UserMetricsRow) {
+  rows
+  |> do_map_user_rows([])
+}
+
+fn do_map_user_rows(
+  rows: List(sql.MetricsUsersOverviewRow),
+  acc: List(UserMetricsRow),
+) -> List(UserMetricsRow) {
+  case rows {
+    [] -> reverse(acc)
+    [row, ..rest] -> {
+      let last_claim_at = empty_string_to_option(row.last_claim_at)
+      do_map_user_rows(rest, [
+        UserMetricsRow(
+          user_id: row.user_id,
+          email: row.email,
+          claimed_count: row.claimed_count,
+          released_count: row.released_count,
+          completed_count: row.completed_count,
+          ongoing_count: row.ongoing_count,
+          last_claim_at: last_claim_at,
         ),
         ..acc
       ])

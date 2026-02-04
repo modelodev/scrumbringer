@@ -25,6 +25,7 @@ import domain/task.{
   type WorkSession, type WorkSessionsPayload, Task, TaskDependency, TaskNote,
   TaskPosition, WorkSession, WorkSessionsPayload,
 }
+import domain/task_state
 import domain/task_status.{
   type OngoingBy, type WorkState, Available, OngoingBy, WorkAvailable,
   WorkClaimed, WorkCompleted, WorkOngoing,
@@ -113,20 +114,28 @@ pub fn task_decoder() -> decode.Decoder(Task) {
   use priority <- decode.field("priority", decode.int)
 
   use status_raw <- decode.field("status", decode.string)
-  let status = case parse_task_status(status_raw) {
-    Ok(s) -> s
-    Error(_) -> Available
-  }
-
-  use work_state <- decode.field("work_state", work_state_decoder())
 
   use created_by <- decode.field("created_by", decode.int)
 
   use claimed_by <- optional_field("claimed_by", decode.int)
-
   use claimed_at <- optional_field("claimed_at", decode.string)
-
   use completed_at <- optional_field("completed_at", decode.string)
+
+  let is_ongoing = status_raw == "ongoing"
+  let state = case
+    task_state.from_db(
+      status_raw,
+      is_ongoing,
+      claimed_by,
+      claimed_at,
+      completed_at,
+    )
+  {
+    Ok(s) -> s
+    Error(_) -> task_state.Available
+  }
+  let status = task_state.to_status(state)
+  let work_state = task_state.to_work_state(state)
 
   use created_at <- decode.field("created_at", decode.string)
   use version <- decode.field("version", decode.int)
@@ -160,12 +169,10 @@ pub fn task_decoder() -> decode.Decoder(Task) {
     title: title,
     description: description,
     priority: priority,
+    state: state,
     status: status,
     work_state: work_state,
     created_by: created_by,
-    claimed_by: claimed_by,
-    claimed_at: claimed_at,
-    completed_at: completed_at,
     created_at: created_at,
     version: version,
     card_id: card_id,

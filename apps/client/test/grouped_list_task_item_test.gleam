@@ -2,6 +2,7 @@ import domain/card.{type Card, Card, EnCurso}
 import domain/org.{OrgUser}
 import domain/org_role.{Admin}
 import domain/task.{type Task, Task}
+import domain/task_state
 import domain/task_status
 import domain/task_type.{TaskTypeInline}
 import gleam/dict
@@ -57,6 +58,13 @@ fn sample_card() -> Card {
 }
 
 fn claimed_task() -> Task {
+  let state =
+    task_state.Claimed(
+      claimed_by: 1,
+      claimed_at: "2026-01-01T00:00:00Z",
+      mode: task_status.Ongoing,
+    )
+
   Task(
     id: 1,
     project_id: 1,
@@ -66,12 +74,10 @@ fn claimed_task() -> Task {
     title: "Fix login",
     description: None,
     priority: 3,
-    status: task_status.Claimed(task_status.Ongoing),
-    work_state: task_status.WorkOngoing,
+    state: state,
+    status: task_state.to_status(state),
+    work_state: task_state.to_work_state(state),
     created_by: 1,
-    claimed_by: Some(1),
-    claimed_at: None,
-    completed_at: None,
     created_at: "2026-01-01T00:00:00Z",
     version: 1,
     card_id: Some(1),
@@ -84,6 +90,8 @@ fn claimed_task() -> Task {
 }
 
 fn available_task() -> Task {
+  let state = task_state.Available
+
   Task(
     id: 2,
     project_id: 1,
@@ -93,12 +101,10 @@ fn available_task() -> Task {
     title: "Review copy",
     description: None,
     priority: 2,
-    status: task_status.Available,
-    work_state: task_status.WorkAvailable,
+    state: state,
+    status: task_state.to_status(state),
+    work_state: task_state.to_work_state(state),
     created_by: 1,
-    claimed_by: None,
-    claimed_at: None,
-    completed_at: None,
     created_at: "2026-01-01T00:00:00Z",
     version: 2,
     card_id: Some(1),

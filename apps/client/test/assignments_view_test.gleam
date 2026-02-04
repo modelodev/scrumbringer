@@ -3,6 +3,10 @@ import gleam/string
 import gleeunit/should
 import lustre/element
 
+import domain/metrics.{
+  NoSample, OrgMetricsOverview, OrgMetricsProjectOverview,
+  OrgMetricsUserOverview, WindowDays,
+}
 import domain/org.{OrgUser}
 import domain/org_role.{Admin, Member}
 import domain/project.{type Project, Project, ProjectMember}
@@ -201,6 +205,118 @@ pub fn project_without_members_shows_badge_test() {
     assignments_view.view_assignments(model) |> element.to_document_string
 
   string.contains(html, "NO MEMBERS") |> should.be_true
+}
+
+pub fn project_metrics_summary_renders_counts_test() {
+  let project = sample_project(1, "Project Alpha")
+  let overview =
+    OrgMetricsOverview(
+      window_days: WindowDays(30),
+      available_count: 3,
+      claimed_count: 2,
+      ongoing_count: 1,
+      released_count: 1,
+      completed_count: 2,
+      release_rate_percent: opt.Some(50),
+      pool_flow_ratio_percent: opt.Some(80),
+      time_to_first_claim: NoSample,
+      time_to_first_claim_buckets: [],
+      release_rate_buckets: [],
+      wip_count: 2,
+      avg_claim_to_complete_ms: opt.None,
+      avg_time_in_claimed_ms: opt.None,
+      stale_claims_count: 0,
+      by_project: [
+        OrgMetricsProjectOverview(
+          project_id: project.id,
+          project_name: project.name,
+          available_count: 3,
+          claimed_count: 2,
+          ongoing_count: 1,
+          released_count: 1,
+          completed_count: 2,
+          release_rate_percent: opt.Some(50),
+          pool_flow_ratio_percent: opt.Some(80),
+          wip_count: 2,
+          avg_claim_to_complete_ms: opt.None,
+          avg_time_in_claimed_ms: opt.None,
+          stale_claims_count: 0,
+        ),
+      ],
+    )
+
+  let model =
+    base_model()
+    |> client_state.update_core(fn(core) {
+      client_state.CoreModel(..core, projects: Loaded([project]))
+    })
+    |> client_state.update_admin(fn(admin) {
+      admin_state.AdminModel(
+        ..admin,
+        admin_metrics_overview: Loaded(overview),
+        assignments: state_types.AssignmentsModel(
+          ..admin.assignments,
+          view_mode: assignments_view_mode.ByProject,
+          expanded_projects: set.insert(
+            admin.assignments.expanded_projects,
+            project.id,
+          ),
+        ),
+      )
+    })
+
+  let html =
+    assignments_view.view_assignments(model) |> element.to_document_string
+
+  string.contains(html, "Available: 3") |> should.be_true
+  string.contains(html, "Ongoing: 1") |> should.be_true
+  string.contains(html, "Completed: 2") |> should.be_true
+  string.contains(html, "Release %: 50%") |> should.be_true
+}
+
+pub fn user_metrics_summary_renders_counts_test() {
+  let user =
+    OrgUser(
+      id: 9,
+      email: "member@example.com",
+      org_role: Member,
+      created_at: "2026-01-01",
+    )
+  let metrics =
+    OrgMetricsUserOverview(
+      user_id: user.id,
+      email: user.email,
+      claimed_count: 4,
+      released_count: 1,
+      completed_count: 2,
+      ongoing_count: 1,
+      last_claim_at: opt.Some("2026-01-02"),
+    )
+
+  let model =
+    base_model()
+    |> client_state.update_admin(fn(admin) {
+      admin_state.AdminModel(
+        ..admin,
+        org_users_cache: Loaded([user]),
+        admin_metrics_users: Loaded([metrics]),
+        assignments: state_types.AssignmentsModel(
+          ..admin.assignments,
+          view_mode: assignments_view_mode.ByUser,
+          user_projects: dict.insert(dict.new(), user.id, Loaded([])),
+          expanded_users: set.insert(admin.assignments.expanded_users, user.id),
+        ),
+      )
+    })
+
+  let html =
+    assignments_view.view_assignments(model) |> element.to_document_string
+
+  string.contains(html, "Claimed: 4") |> should.be_true
+  string.contains(html, "Released: 1") |> should.be_true
+  string.contains(html, "Completed: 2") |> should.be_true
+  string.contains(html, "Ongoing: 1") |> should.be_true
+  string.contains(html, "Last claim: 2026-01-02") |> should.be_true
 }
 
 pub fn empty_state_when_no_projects_test() {

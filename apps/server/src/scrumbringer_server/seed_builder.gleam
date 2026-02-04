@@ -76,6 +76,18 @@ pub type SeedResult {
   )
 }
 
+/// Seed metadata for task event generation.
+pub type TaskSeedInfo {
+  TaskSeedInfo(
+    task_id: Int,
+    project_id: Int,
+    status: String,
+    created_at: String,
+    created_by: Int,
+    claimed_by: Option(Int),
+  )
+}
+
 /// Internal state during seed building.
 type BuildState {
   BuildState(
@@ -93,6 +105,7 @@ type BuildState {
     workflow_ids_by_project: List(#(Int, List(Int))),
     rule_ids: List(Int),
     task_ids: List(Int),
+    task_seeds: List(TaskSeedInfo),
     template_ids: List(Int),
     task_events_count: Int,
     rule_executions_count: Int,
@@ -110,12 +123,12 @@ pub fn realistic_config() -> SeedConfig {
     inactive_user_count: 2,
     project_count: 3,
     empty_project_count: 1,
-    tasks_per_project: 9,
+    tasks_per_project: 18,
     priority_distribution: [1, 2, 3, 3, 3, 4, 5],
     status_distribution: StatusDistribution(
-      available: 25,
-      claimed: 45,
-      completed: 30,
+      available: 35,
+      claimed: 40,
+      completed: 25,
     ),
     cards_per_project: 4,
     empty_card_count: 1,
@@ -214,6 +227,7 @@ pub fn build_seed(
       workflow_ids_by_project: [],
       rule_ids: [],
       task_ids: [],
+      task_seeds: [],
       template_ids: [],
       task_events_count: 0,
       rule_executions_count: 0,
@@ -703,9 +717,10 @@ fn build_tasks(
 ) -> Result(BuildState, String) {
   let titles = task_title_pool()
   let priorities = config.priority_distribution
+  let status_pool = status_pool_from(config.status_distribution)
 
   let active_task_types = task_types_for_active_projects(state)
-  use task_ids_nested <- result.try(
+  use task_results_nested <- result.try(
     list.index_map(active_task_types, fn(types, proj_idx) {
       let #(project_id, bug_id, feature_id, task_id) = types
       let cards_for_project =
@@ -733,6 +748,8 @@ fn build_tasks(
 
       let creator_id = list_at_int(state.user_ids, proj_idx, state.admin_id)
       let claimed_user_id = claimed_member_id(state, project_id, creator_id)
+      let members = members_for_project(state.project_member_ids, project_id)
+      let base_days = int.max(1, config.date_range_days - { proj_idx * 3 })
 
       let tasks = [
         #(
@@ -769,21 +786,54 @@ fn build_tasks(
         #(title_for(base_idx + 6, "Task G"), feature_id, "available", None),
       ]
 
-      list.index_map(tasks, fn(task_def, idx) {
+      let extra_count =
+        int.max(0, config.tasks_per_project - list.length(tasks))
+      let extra_indexes = case extra_count > 0 {
+        True -> list.range(0, extra_count - 1)
+        False -> []
+      }
+      let extra_tasks =
+        extra_indexes
+        |> list.map(fn(extra_idx) {
+          let idx = base_idx + list.length(tasks) + extra_idx
+          let type_id = case extra_idx % 3 {
+            0 -> bug_id
+            1 -> feature_id
+            _ -> task_id
+          }
+          let status = status_from_pool(status_pool, idx)
+          let card_id = case extra_idx % 4 {
+            0 -> Some(card_mixed)
+            1 -> Some(card_single)
+            _ -> None
+          }
+          #(title_for(idx, "Task Extra"), type_id, status, card_id)
+        })
+
+      let all_tasks = list.append(tasks, extra_tasks)
+
+      list.index_map(all_tasks, fn(task_def, idx) {
         let #(title, type_id, status, card_id) = task_def
         let priority = list_at_int(priorities, idx % list.length(priorities), 3)
+        let creator_for = list_at_int(state.user_ids, idx, state.admin_id)
+        let claimed_user_for = member_for_index(members, idx, claimed_user_id)
         let claimed_by = case status {
-          "claimed" -> Some(claimed_user_id)
+          "claimed" -> Some(claimed_user_for)
           _ -> None
         }
         let claimed_at = case status {
-          "claimed" -> Some(days_ago_timestamp(config.date_range_days / 2))
+          "claimed" ->
+            Some(days_ago_timestamp(int.max(1, base_days - { idx % 7 })))
           _ -> None
         }
         let completed_at = case status {
-          "completed" -> Some(days_ago_timestamp(config.date_range_days / 4))
+          "completed" ->
+            Some(days_ago_timestamp(int.max(1, base_days - { idx % 11 })))
           _ -> None
         }
+
+        let created_at =
+          days_ago_timestamp(int.max(1, base_days - { idx % 13 }))
 
         seed_db.insert_task(
           db,
@@ -794,49 +844,82 @@ fn build_tasks(
             description: "Seeded task",
             priority: priority,
             status: status,
-            created_by: creator_id,
+            created_by: creator_for,
             claimed_by: claimed_by,
             card_id: card_id,
-            created_at: Some(days_ago_timestamp(config.date_range_days - idx)),
+            created_at: Some(created_at),
             claimed_at: claimed_at,
             completed_at: completed_at,
           ),
         )
+        |> result.map(fn(task_id) {
+          TaskSeedInfo(
+            task_id: task_id,
+            project_id: project_id,
+            status: status,
+            created_at: created_at,
+            created_by: creator_for,
+            claimed_by: claimed_by,
+          )
+        })
       })
       |> result.all
     })
     |> result.all,
   )
 
-  Ok(BuildState(..state, task_ids: list.flatten(task_ids_nested)))
+  let task_seeds = list.flatten(task_results_nested)
+  let task_ids =
+    task_seeds
+    |> list.map(fn(seed) { seed.task_id })
+
+  Ok(BuildState(..state, task_ids: task_ids, task_seeds: task_seeds))
 }
 
 fn build_task_events(
   db: pog.Connection,
   state: BuildState,
-  _config: SeedConfig,
+  config: SeedConfig,
 ) -> Result(BuildState, String) {
-  let active_projects = active_project_ids(state)
-
-  case active_projects {
+  case state.task_seeds {
     [] -> Ok(state)
-    [project_id, ..] -> {
-      // Create task_created events for all tasks
-      use _ <- result.try(
-        list.try_map(state.task_ids, fn(task_id) {
-          seed_db.insert_task_event_simple(
-            db,
-            state.org_id,
-            project_id,
-            task_id,
-            state.admin_id,
-            task_events_db.event_type_to_string(task_events_db.TaskCreated),
+    seeds -> {
+      let created_events =
+        seeds
+        |> list.map(fn(seed) {
+          seed_db.TaskEventInsertOptions(
+            org_id: state.org_id,
+            project_id: seed.project_id,
+            task_id: seed.task_id,
+            actor_user_id: seed.created_by,
+            event_type: task_events_db.event_type_to_string(
+              task_events_db.TaskCreated,
+            ),
+            created_at: Some(seed.created_at),
           )
+        })
+
+      let per_task_events =
+        seeds
+        |> list.index_map(fn(seed, idx) {
+          task_event_options_for_seed(seed, idx, state, config)
+        })
+        |> list.flatten
+
+      let per_user_events = first_claim_events_for_users(state, seeds, config)
+
+      let all_events =
+        created_events
+        |> list.append(per_task_events)
+        |> list.append(per_user_events)
+
+      use _ <- result.try(
+        list.try_map(all_events, fn(opts) {
+          seed_db.insert_task_event(db, opts)
         }),
       )
 
-      let events_count = list.length(state.task_ids)
-      Ok(BuildState(..state, task_events_count: events_count))
+      Ok(BuildState(..state, task_events_count: list.length(all_events)))
     }
   }
 }
@@ -873,7 +956,16 @@ fn build_work_sessions(
   state: BuildState,
   _config: SeedConfig,
 ) -> Result(BuildState, String) {
-  let tasks = list.take(state.task_ids, 6)
+  let claimed_tasks =
+    state.task_seeds
+    |> list.filter(fn(seed) { seed.status == "claimed" })
+    |> list.map(fn(seed) { seed.task_id })
+  let completed_tasks =
+    state.task_seeds
+    |> list.filter(fn(seed) { seed.status == "completed" })
+    |> list.map(fn(seed) { seed.task_id })
+  let tasks = list.append(claimed_tasks, completed_tasks)
+  let tasks = list.take(tasks, 8)
   let users = state.user_ids
 
   case tasks, users {
@@ -1048,6 +1140,197 @@ fn list_at_helper(items: List(a), idx: Int, default: a) -> a {
     0, [first, ..] -> first
     n, [_, ..rest] -> list_at_helper(rest, n - 1, default)
   }
+}
+
+fn repeat_value(value: a, count: Int) -> List(a) {
+  case count <= 0 {
+    True -> []
+    False -> [value, ..repeat_value(value, count - 1)]
+  }
+}
+
+fn status_pool_from(distribution: StatusDistribution) -> List(String) {
+  let StatusDistribution(
+    available: available,
+    claimed: claimed,
+    completed: completed,
+  ) = distribution
+  list.append(
+    repeat_value("available", available),
+    list.append(
+      repeat_value("claimed", claimed),
+      repeat_value("completed", completed),
+    ),
+  )
+}
+
+fn status_from_pool(pool: List(String), idx: Int) -> String {
+  case pool {
+    [] -> "available"
+    _ -> list_at(pool, idx % list.length(pool), "available")
+  }
+}
+
+fn member_for_index(members: List(Int), idx: Int, fallback: Int) -> Int {
+  list_at_int(members, idx % int.max(1, list.length(members)), fallback)
+}
+
+fn timestamp_days_hours(days: Int, hours: Int) -> String {
+  "NOW() - INTERVAL '"
+  <> int.to_string(days)
+  <> " days' + INTERVAL '"
+  <> int.to_string(hours)
+  <> " hours'"
+}
+
+fn compact_options(items: List(Option(a))) -> List(a) {
+  items
+  |> list.fold([], fn(acc, item) {
+    case item {
+      Some(value) -> [value, ..acc]
+      None -> acc
+    }
+  })
+  |> list.reverse
+}
+
+fn task_seed_at(
+  items: List(TaskSeedInfo),
+  idx: Int,
+  default: TaskSeedInfo,
+) -> TaskSeedInfo {
+  list_at_helper(items, idx, default)
+}
+
+fn task_event_options_for_seed(
+  seed: TaskSeedInfo,
+  idx: Int,
+  state: BuildState,
+  config: SeedConfig,
+) -> List(seed_db.TaskEventInsertOptions) {
+  let actor_id = case seed.claimed_by {
+    Some(user_id) -> user_id
+    None -> seed.created_by
+  }
+  let days_ago = int.max(1, { idx % config.date_range_days } + 1)
+  let claim_time = timestamp_days_hours(days_ago, 2 + { idx % 4 })
+  let release_time = timestamp_days_hours(days_ago, 6 + { idx % 5 })
+  let reclaim_time = timestamp_days_hours(days_ago, 10 + { idx % 6 })
+  let complete_time = timestamp_days_hours(days_ago, 14 + { idx % 8 })
+
+  let claim_event = case seed.status {
+    "claimed" ->
+      Some(seed_db.TaskEventInsertOptions(
+        org_id: state.org_id,
+        project_id: seed.project_id,
+        task_id: seed.task_id,
+        actor_user_id: actor_id,
+        event_type: task_events_db.event_type_to_string(
+          task_events_db.TaskClaimed,
+        ),
+        created_at: Some(claim_time),
+      ))
+    "completed" ->
+      Some(seed_db.TaskEventInsertOptions(
+        org_id: state.org_id,
+        project_id: seed.project_id,
+        task_id: seed.task_id,
+        actor_user_id: actor_id,
+        event_type: task_events_db.event_type_to_string(
+          task_events_db.TaskClaimed,
+        ),
+        created_at: Some(claim_time),
+      ))
+    _ -> None
+  }
+
+  let release_event = case idx % 4 == 0 {
+    True ->
+      Some(seed_db.TaskEventInsertOptions(
+        org_id: state.org_id,
+        project_id: seed.project_id,
+        task_id: seed.task_id,
+        actor_user_id: actor_id,
+        event_type: task_events_db.event_type_to_string(
+          task_events_db.TaskReleased,
+        ),
+        created_at: Some(release_time),
+      ))
+    False -> None
+  }
+
+  let reclaim_event = case idx % 6 == 0 {
+    True ->
+      Some(seed_db.TaskEventInsertOptions(
+        org_id: state.org_id,
+        project_id: seed.project_id,
+        task_id: seed.task_id,
+        actor_user_id: actor_id,
+        event_type: task_events_db.event_type_to_string(
+          task_events_db.TaskClaimed,
+        ),
+        created_at: Some(reclaim_time),
+      ))
+    False -> None
+  }
+
+  let complete_event = case seed.status {
+    "completed" ->
+      Some(seed_db.TaskEventInsertOptions(
+        org_id: state.org_id,
+        project_id: seed.project_id,
+        task_id: seed.task_id,
+        actor_user_id: actor_id,
+        event_type: task_events_db.event_type_to_string(
+          task_events_db.TaskCompleted,
+        ),
+        created_at: Some(complete_time),
+      ))
+    _ -> None
+  }
+
+  compact_options([claim_event, release_event, reclaim_event, complete_event])
+}
+
+fn first_claim_events_for_users(
+  state: BuildState,
+  seeds: List(TaskSeedInfo),
+  config: SeedConfig,
+) -> List(seed_db.TaskEventInsertOptions) {
+  let active_count = config.user_count - 1 - config.inactive_user_count
+  let active_users =
+    list.drop(state.user_ids, 1)
+    |> list.take(active_count)
+  let login_days = config.date_range_days / 2
+  let offsets = [1, 2, 8, 30]
+
+  active_users
+  |> list.index_map(fn(user_id, idx) {
+    let seed: TaskSeedInfo =
+      task_seed_at(
+        seeds,
+        idx,
+        TaskSeedInfo(
+          task_id: list_at_int(state.task_ids, 0, 0),
+          project_id: state.org_id,
+          status: "claimed",
+          created_at: timestamp_days_hours(login_days, 0),
+          created_by: state.admin_id,
+          claimed_by: Some(user_id),
+        ),
+      )
+    let hours = list_at_int(offsets, idx, 2)
+    seed_db.TaskEventInsertOptions(
+      org_id: state.org_id,
+      project_id: seed.project_id,
+      task_id: seed.task_id,
+      actor_user_id: user_id,
+      event_type: task_events_db.event_type_to_string(
+        task_events_db.TaskClaimed,
+      ),
+      created_at: Some(timestamp_days_hours(login_days, hours)),
+    )
+  })
 }
 
 fn active_project_ids(state: BuildState) -> List(Int) {

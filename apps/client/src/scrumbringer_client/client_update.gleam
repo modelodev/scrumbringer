@@ -1414,7 +1414,57 @@ fn refresh_assignments(
   let #(model, users_fx) = refresh_assignments_org_users(model)
   let #(model, members_fx) = refresh_assignments_project_members(model)
   let #(model, user_projects_fx) = refresh_assignments_user_projects(model)
-  #(model, effect.batch([projects_fx, users_fx, members_fx, user_projects_fx]))
+  let #(model, metrics_fx) = refresh_assignments_metrics(model)
+  let #(model, metrics_users_fx) = refresh_assignments_metrics_users(model)
+  #(
+    model,
+    effect.batch([
+      projects_fx,
+      users_fx,
+      members_fx,
+      user_projects_fx,
+      metrics_fx,
+      metrics_users_fx,
+    ]),
+  )
+}
+
+fn refresh_assignments_metrics(
+  model: client_state.Model,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  case model.admin.admin_metrics_overview {
+    Loading | Loaded(_) -> #(model, effect.none())
+    _ -> {
+      let model =
+        client_state.update_admin(model, fn(admin) {
+          admin_state.AdminModel(..admin, admin_metrics_overview: Loading)
+        })
+      let fx =
+        api_metrics.get_org_metrics_overview(30, fn(result) {
+          client_state.pool_msg(client_state.AdminMetricsOverviewFetched(result))
+        })
+      #(model, fx)
+    }
+  }
+}
+
+fn refresh_assignments_metrics_users(
+  model: client_state.Model,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  case model.admin.admin_metrics_users {
+    Loading | Loaded(_) -> #(model, effect.none())
+    _ -> {
+      let model =
+        client_state.update_admin(model, fn(admin) {
+          admin_state.AdminModel(..admin, admin_metrics_users: Loading)
+        })
+      let fx =
+        api_metrics.get_org_metrics_users(30, fn(result) {
+          client_state.pool_msg(client_state.AdminMetricsUsersFetched(result))
+        })
+      #(model, fx)
+    }
+  }
 }
 
 fn refresh_assignments_projects(

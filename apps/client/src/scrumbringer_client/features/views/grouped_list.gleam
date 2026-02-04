@@ -24,7 +24,7 @@ import lustre/event
 
 import domain/card.{type Card}
 import domain/org.{type OrgUser}
-import domain/task.{type Task}
+import domain/task.{type Task, claimed_by}
 import domain/task_status.{Available, Claimed, Completed}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
@@ -200,7 +200,7 @@ fn view_task_item(
   let status_display = case task.status {
     Claimed(_) -> {
       // Task is claimed - try to find who claimed it
-      let claimed_email = case task.claimed_by {
+      let claimed_email = case claimed_by(task) {
         Some(user_id) ->
           list.find(config.org_users, fn(u) { u.id == user_id })
           |> option.from_result

@@ -1389,6 +1389,99 @@ pub fn org_metrics_project_tasks_returns_metrics_shape_test() {
   }
 }
 
+pub fn org_metrics_users_requires_org_admin_and_returns_shape_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_member_user(handler, db, "member@example.com", "inv_member")
+
+  let member_login_res =
+    login_as(handler, "member@example.com", "passwordpassword")
+  let member_session = find_cookie_value(member_login_res.headers, "sb_session")
+  let member_csrf = find_cookie_value(member_login_res.headers, "sb_csrf")
+
+  let member_req =
+    simulate.request(http.Get, "/api/v1/org/metrics/users")
+    |> request.set_cookie("sb_session", member_session)
+    |> request.set_cookie("sb_csrf", member_csrf)
+
+  let member_res = handler(member_req)
+  member_res.status |> should.equal(403)
+
+  let admin_req =
+    simulate.request(http.Get, "/api/v1/org/metrics/users")
+    |> request.set_cookie("sb_session", admin_session)
+    |> request.set_cookie("sb_csrf", admin_csrf)
+
+  let admin_res = handler(admin_req)
+  admin_res.status |> should.equal(200)
+
+  let body = simulate.read_body(admin_res)
+  let assert Ok(dynamic) = json.parse(body, decode.dynamic)
+
+  let user_decoder: decode.Decoder(#(Int, String, Int, Int, Int, Int)) = {
+    use user_id <- decode.field("user_id", decode.int)
+    use email <- decode.field("email", decode.string)
+    use claimed_count <- decode.field("claimed_count", decode.int)
+    use released_count <- decode.field("released_count", decode.int)
+    use completed_count <- decode.field("completed_count", decode.int)
+    use ongoing_count <- decode.field("ongoing_count", decode.int)
+    use _last_claim_at <- decode.field(
+      "last_claim_at",
+      decode.optional(decode.string),
+    )
+    decode.success(#(
+      user_id,
+      email,
+      claimed_count,
+      released_count,
+      completed_count,
+      ongoing_count,
+    ))
+  }
+
+  let data_decoder = {
+    use users <- decode.field("users", decode.list(user_decoder))
+    decode.success(users)
+  }
+
+  let response_decoder = decode.field("data", data_decoder, decode.success)
+
+  let assert Ok(users) = decode.run(dynamic, response_decoder)
+
+  case users {
+    [#(_user_id, email, _claimed, _released, _completed, _ongoing), ..] -> {
+      email |> should.equal("admin@example.com")
+      Nil
+    }
+    _ -> False |> should.be_true
+  }
+}
+
+pub fn org_metrics_users_invalid_window_days_returns_422_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  let req =
+    simulate.request(http.Get, "/api/v1/org/metrics/users?window_days=999")
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+
+  let res = handler(req)
+  res.status |> should.equal(422)
+}
+
 pub fn tasks_list_requires_membership_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app

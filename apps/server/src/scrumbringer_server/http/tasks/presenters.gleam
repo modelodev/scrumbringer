@@ -15,6 +15,7 @@
 //// ```
 
 import domain/task.{type TaskDependency, TaskDependency}
+import domain/task_state
 import domain/task_status.{
   type TaskStatus, Available, Claimed, Completed, Ongoing, Taken,
 }
@@ -78,12 +79,10 @@ pub fn task_json(task: Task) -> json.Json {
     title: title,
     description: description,
     priority: priority,
+    state: state,
     status: status,
     ongoing_by_user_id: ongoing_by_user_id,
     created_by: created_by,
-    claimed_by: claimed_by,
-    claimed_at: claimed_at,
-    completed_at: completed_at,
     created_at: created_at,
     version: version,
     card_id: card_id,
@@ -93,6 +92,10 @@ pub fn task_json(task: Task) -> json.Json {
     blocked_count: blocked_count,
     dependencies: dependencies,
   ) = task
+
+  let claimed_by = task_state.claimed_by(state)
+  let claimed_at = task_state.claimed_at(state)
+  let completed_at = task_state.completed_at(state)
 
   json.object([
     #("id", json.int(id)),

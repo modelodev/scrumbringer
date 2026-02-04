@@ -53,6 +53,13 @@ Los equipos usan herramientas con modelo "push" (asignación directa) que genera
 | Listas estáticas | Pool visual con decay |
 | Cualquiera edita | Solo quien tiene la tarea |
 
+### Diferenciador core
+
+- Pull real: sin asignación directa, el equipo auto-selecciona y asume responsabilidad.
+- Pool vivo: prioridad + decay visual evita backlog muerto y mantiene foco en flujo.
+- Trabajo real visible: separa “en curso” vs “claimed” vs “disponible” para claridad operativa.
+- Minimalismo documental: tarjetas y tareas con texto breve y/o enlaces para forzar uso de sistemas externos.
+
 ---
 
 ## Target Users
@@ -151,6 +158,13 @@ Los equipos usan herramientas con modelo "push" (asignación directa) que genera
 | **time_to_first_claim** | < 4h (P50) |
 | **pool_flow_ratio** | > 0.8 |
 | **release_rate** | < 15% |
+
+### Diferencial de métricas por diseño del flujo
+
+- **Pull medible**: claim/release/complete capturan el comportamiento real de auto-selección.
+- **Trabajo real vs asignado**: sesiones activas permiten distinguir “en curso” de “claimed”.
+- **Diagnóstico granular**: métricas por proyecto y por tarea (claim_count, release_count, first_claim_at).
+- **Calidad del flujo**: time_to_first_claim y pool_flow_ratio como señales directas de salud del pool.
 
 ---
 

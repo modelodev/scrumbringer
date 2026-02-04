@@ -255,6 +255,21 @@ pub type Text {
   LoadingOverview
   ReleasePercent
   FlowPercent
+  AvailableCount
+  OngoingCount
+  WipCount
+  HealthPanel
+  HealthFlow
+  HealthRelease
+  HealthTimeToFirstClaim
+  HealthOk
+  HealthAttention
+  HealthAlert
+  NoSample
+  AvgClaimToComplete
+  AvgTimeInClaimed
+  StaleClaims
+  LastClaim
   TimeToFirstClaim
   TimeToFirstClaimP50(p50: String, sample_size: Int)
   ReleaseRateDistribution

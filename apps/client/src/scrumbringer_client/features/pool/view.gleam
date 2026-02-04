@@ -35,6 +35,7 @@ import lustre/event
 
 import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import domain/task.{type Task, Task, TaskNote}
+import domain/task_state
 import domain/task_status.{Available, Claimed, Completed, Taken}
 import domain/user.{type User}
 
@@ -146,8 +147,11 @@ pub fn view_right_panel(model: Model, user: User) -> Element(Msg) {
     Loaded(tasks) ->
       tasks
       |> list.filter(fn(t) {
-        let Task(status: status, claimed_by: claimed_by, ..) = t
-        status == Claimed(Taken) && claimed_by == opt.Some(user.id)
+        case t.state {
+          task_state.Claimed(claimed_by: claimed_by, mode: Taken, ..) ->
+            claimed_by == user.id
+          _ -> False
+        }
       })
       |> list.sort(by: my_bar_view.compare_member_bar_tasks)
 
@@ -380,7 +384,6 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     title: title,
     priority: _priority,
     status: status,
-    claimed_by: claimed_by,
     blocked_count: blocked_count,
     created_at: created_at,
     description: description,
@@ -393,7 +396,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     opt.None -> 0
   }
 
-  let is_mine = claimed_by == opt.Some(current_user_id)
+  let is_mine = task_state.claimed_by(task.state) == opt.Some(current_user_id)
 
   let type_icon = task_type.icon
 

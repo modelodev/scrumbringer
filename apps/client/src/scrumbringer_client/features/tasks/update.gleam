@@ -51,9 +51,10 @@ import scrumbringer_client/api/tasks as api_tasks
 import domain/api_error.{type ApiError}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task.{
-  type Task, type TaskDependency, type TaskNote, Task, TaskFilters,
+  type Task, type TaskDependency, type TaskNote, Task, TaskFilters, with_state,
 }
-import domain/task_status.{Available, Claimed, Completed, Taken}
+import domain/task_state
+import domain/task_status.{Completed, Taken}
 import scrumbringer_client/client_state.{
   type Model, type Msg, MemberDependenciesFetched, MemberDependencyAdded,
   MemberDependencyCandidatesFetched, MemberDependencyRemoved, MemberNoteAdded,
@@ -576,12 +577,18 @@ fn apply_optimistic_claim(model: Model, task_id: Int) -> Model {
         list.map(tasks, fn(t) {
           case t.id == task_id {
             True ->
-              Task(
-                ..t,
-                status: Claimed(Taken),
-                claimed_by: model.core.user
-                  |> opt.map(fn(u) { u.id }),
-              )
+              case model.core.user {
+                opt.Some(user) ->
+                  with_state(
+                    t,
+                    task_state.Claimed(
+                      claimed_by: user.id,
+                      claimed_at: "",
+                      mode: Taken,
+                    ),
+                  )
+                opt.None -> t
+              }
             False -> t
           }
         })
@@ -601,7 +608,7 @@ fn apply_optimistic_release(model: Model, task_id: Int) -> Model {
       let updated =
         list.map(tasks, fn(t) {
           case t.id == task_id {
-            True -> Task(..t, status: Available, claimed_by: opt.None)
+            True -> with_state(t, task_state.Available)
             False -> t
           }
         })
@@ -621,7 +628,7 @@ fn apply_optimistic_complete(model: Model, task_id: Int) -> Model {
       let updated =
         list.map(tasks, fn(t) {
           case t.id == task_id {
-            True -> Task(..t, status: Completed)
+            True -> with_state(t, task_state.Completed(completed_at: ""))
             False -> t
           }
         })
