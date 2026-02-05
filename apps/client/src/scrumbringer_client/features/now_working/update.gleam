@@ -23,7 +23,7 @@
 //// - **client_state.gleam**: Provides Model, Msg types
 //// - **client_update.gleam**: Delegates now_working messages here
 //// - **api/tasks.gleam**: Provides work session API functions
-//// - **update_helpers.gleam**: Provides now_working_active_task helper
+//// - **helpers/selection.gleam**: Provides now_working_active_task helper
 
 import gleam/option as opt
 
@@ -42,8 +42,12 @@ import scrumbringer_client/client_state.{
   type Model, type Msg, pool_msg, update_member,
 }
 import scrumbringer_client/client_state/member.{MemberModel}
+import scrumbringer_client/client_state/member/metrics as member_metrics
+import scrumbringer_client/client_state/member/now_working as member_now_working
 import scrumbringer_client/features/pool/msg as pool_messages
-import scrumbringer_client/update_helpers
+import scrumbringer_client/helpers/auth as helpers_auth
+import scrumbringer_client/helpers/selection as helpers_selection
+import scrumbringer_client/helpers/toast as helpers_toast
 
 // =============================================================================
 // Message Handlers
@@ -51,13 +55,13 @@ import scrumbringer_client/update_helpers
 
 /// Handle start button click - begins tracking time on a task.
 pub fn handle_start_clicked(model: Model, task_id: Int) -> #(Model, Effect(Msg)) {
-  case model.member.member_now_working_in_flight {
+  case model.member.now_working.member_now_working_in_flight {
     True -> #(model, effect.none())
     False -> {
       let model =
-        update_member(model, fn(member) {
-          MemberModel(
-            ..member,
+        update_now_working(model, fn(now_working) {
+          member_now_working.Model(
+            ..now_working,
             member_now_working_in_flight: True,
             member_now_working_error: opt.None,
           )
@@ -75,7 +79,7 @@ pub fn handle_start_clicked(model: Model, task_id: Int) -> #(Model, Effect(Msg))
 // Justification: nested case improves clarity for branching logic.
 /// Handle pause button click - stops tracking time.
 pub fn handle_pause_clicked(model: Model) -> #(Model, Effect(Msg)) {
-  case model.member.member_now_working_in_flight {
+  case model.member.now_working.member_now_working_in_flight {
     True -> #(model, effect.none())
     False -> {
       // Get active task_id from work sessions
@@ -83,9 +87,9 @@ pub fn handle_pause_clicked(model: Model) -> #(Model, Effect(Msg)) {
         opt.None -> #(model, effect.none())
         opt.Some(task_id) -> {
           let model =
-            update_member(model, fn(member) {
-              MemberModel(
-                ..member,
+            update_now_working(model, fn(now_working) {
+              member_now_working.Model(
+                ..now_working,
                 member_now_working_in_flight: True,
                 member_now_working_error: opt.None,
               )
@@ -104,7 +108,7 @@ pub fn handle_pause_clicked(model: Model) -> #(Model, Effect(Msg)) {
 
 /// Get task_id of first active work session.
 fn get_first_active_session_task_id(model: Model) -> opt.Option(Int) {
-  case model.member.member_work_sessions {
+  case model.member.metrics.member_work_sessions {
     Loaded(WorkSessionsPayload(active_sessions: [first, ..], ..)) ->
       opt.Some(first.task_id)
     _ -> opt.None
@@ -113,10 +117,10 @@ fn get_first_active_session_task_id(model: Model) -> opt.Option(Int) {
 
 /// Handle timer tick - updates tick counter and sends heartbeat every 60 ticks.
 pub fn handle_ticked(model: Model) -> #(Model, Effect(Msg)) {
-  let next_tick = model.member.now_working_tick + 1
+  let next_tick = model.member.now_working.now_working_tick + 1
   let model =
-    update_member(model, fn(member) {
-      MemberModel(..member, now_working_tick: next_tick)
+    update_now_working(model, fn(now_working) {
+      member_now_working.Model(..now_working, now_working_tick: next_tick)
     })
 
   // Check if there's an active work session
@@ -124,7 +128,7 @@ pub fn handle_ticked(model: Model) -> #(Model, Effect(Msg)) {
 
   let heartbeat_fx = case
     next_tick % 60 == 0
-    && model.member.member_now_working_in_flight == False
+    && model.member.now_working.member_now_working_in_flight == False
     && active_task_id != opt.None
   {
     True ->
@@ -141,8 +145,8 @@ pub fn handle_ticked(model: Model) -> #(Model, Effect(Msg)) {
   case active_task_id {
     opt.Some(_) -> #(model, effect.batch([tick_effect(), heartbeat_fx]))
     opt.None -> #(
-      update_member(model, fn(member) {
-        MemberModel(..member, now_working_tick_running: False)
+      update_now_working(model, fn(now_working) {
+        member_now_working.Model(..now_working, now_working_tick_running: False)
       }),
       effect.none(),
     )
@@ -163,14 +167,14 @@ pub fn tick_effect() -> Effect(Msg) {
 // Justification: nested case improves clarity for branching logic.
 /// Start tick timer if not already running and there's an active task.
 pub fn start_tick_if_needed(model: Model) -> #(Model, Effect(Msg)) {
-  case model.member.now_working_tick_running {
+  case model.member.now_working.now_working_tick_running {
     True -> #(model, effect.none())
 
     False ->
-      case update_helpers.now_working_active_task(model) {
+      case helpers_selection.now_working_active_task(model) {
         opt.Some(_) -> #(
-          update_member(model, fn(member) {
-            MemberModel(..member, now_working_tick_running: True)
+          update_now_working(model, fn(now_working) {
+            member_now_working.Model(..now_working, now_working_tick_running: True)
           }),
           tick_effect(),
         )
@@ -205,8 +209,8 @@ pub fn handle_session_started_ok(
   model: Model,
   payload: WorkSessionsPayload,
 ) -> #(Model, Effect(Msg)) {
-  update_member(apply_sessions_payload(model, payload), fn(member) {
-    MemberModel(..member, member_now_working_in_flight: False)
+  update_now_working(apply_sessions_payload(model, payload), fn(now_working) {
+    member_now_working.Model(..now_working, member_now_working_in_flight: False)
   })
   |> start_tick_if_sessions_needed
 }
@@ -227,15 +231,18 @@ pub fn handle_session_paused_ok(
   let WorkSessionsPayload(active_sessions: sessions, ..) = payload
 
   let model =
-    update_member(apply_sessions_payload(model, payload), fn(member) {
-      MemberModel(..member, member_now_working_in_flight: False)
+    update_now_working(apply_sessions_payload(model, payload), fn(now_working) {
+      member_now_working.Model(
+        ..now_working,
+        member_now_working_in_flight: False,
+      )
     })
 
   // Stop tick if no more active sessions
   case sessions {
     [] -> #(
-      update_member(model, fn(member) {
-        MemberModel(..member, now_working_tick_running: False)
+      update_now_working(model, fn(now_working) {
+        member_now_working.Model(..now_working, now_working_tick_running: False)
       }),
       effect.none(),
     )
@@ -274,19 +281,28 @@ fn apply_sessions_payload(model: Model, payload: WorkSessionsPayload) -> Model {
   let offset = client_ffi.now_ms() - server_ms
 
   update_member(model, fn(member) {
+    let metrics = member.metrics
+    let now_working = member.now_working
+
     MemberModel(
       ..member,
-      member_work_sessions: Loaded(payload),
-      now_working_server_offset_ms: offset,
+      metrics: member_metrics.Model(
+        ..metrics,
+        member_work_sessions: Loaded(payload),
+      ),
+      now_working: member_now_working.Model(
+        ..now_working,
+        now_working_server_offset_ms: offset,
+      ),
     )
   })
 }
 
 fn handle_sessions_error(model: Model, err: ApiError) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
-      update_member(model, fn(member) {
-        MemberModel(..member, member_work_sessions: Failed(err))
+      update_member_metrics(model, fn(metrics) {
+        member_metrics.Model(..metrics, member_work_sessions: Failed(err))
       }),
       effect.none(),
     )
@@ -298,16 +314,19 @@ fn handle_sessions_toast_error(
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
   let model =
-    update_member(model, fn(member) {
-      MemberModel(..member, member_now_working_in_flight: False)
+    update_now_working(model, fn(now_working) {
+      member_now_working.Model(..now_working, member_now_working_in_flight: False)
     })
 
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
-      update_member(model, fn(member) {
-        MemberModel(..member, member_now_working_error: opt.Some(err.message))
+      update_now_working(model, fn(now_working) {
+        member_now_working.Model(
+          ..now_working,
+          member_now_working_error: opt.Some(err.message),
+        )
       }),
-      update_helpers.toast_error(err.message),
+      helpers_toast.toast_error(err.message),
     )
   })
 }
@@ -316,24 +335,44 @@ fn handle_sessions_noop_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() { #(model, effect.none()) })
+  helpers_auth.handle_401_or(model, err, fn() { #(model, effect.none()) })
 }
 
 // Justification: nested case improves clarity for branching logic.
 /// Start tick timer if not already running and there are active sessions.
 fn start_tick_if_sessions_needed(model: Model) -> #(Model, Effect(Msg)) {
-  case model.member.now_working_tick_running {
+  case model.member.now_working.now_working_tick_running {
     True -> #(model, effect.none())
 
     False ->
-      case model.member.member_work_sessions {
+      case model.member.metrics.member_work_sessions {
         Loaded(WorkSessionsPayload(active_sessions: [_, ..], ..)) -> #(
-          update_member(model, fn(member) {
-            MemberModel(..member, now_working_tick_running: True)
+          update_now_working(model, fn(now_working) {
+            member_now_working.Model(..now_working, now_working_tick_running: True)
           }),
           tick_effect(),
         )
         _ -> #(model, effect.none())
       }
   }
+}
+
+fn update_now_working(
+  model: Model,
+  f: fn(member_now_working.Model) -> member_now_working.Model,
+) -> Model {
+  update_member(model, fn(member) {
+    let now_working = member.now_working
+    MemberModel(..member, now_working: f(now_working))
+  })
+}
+
+fn update_member_metrics(
+  model: Model,
+  f: fn(member_metrics.Model) -> member_metrics.Model,
+) -> Model {
+  update_member(model, fn(member) {
+    let metrics = member.metrics
+    MemberModel(..member, metrics: f(metrics))
+  })
 }

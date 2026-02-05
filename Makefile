@@ -1,4 +1,4 @@
-.PHONY: help deps migrate squirrel test verify fmt
+.PHONY: help deps migrate squirrel test verify fmt format
 
 # Default local DB URL. CI should override `DATABASE_URL`.
 # Note: `dbmate migrate` does NOT create the database.
@@ -19,6 +19,7 @@ help:
 	@echo "  make test       # run tests (DATABASE_URL=... for server)"
 	@echo "  make verify     # migrate + squirrel + test"
 	@echo "  make fmt        # format Gleam code"
+	@echo "  make format     # format Gleam code"
 
 # ---- Dependencies ----
 
@@ -65,3 +66,5 @@ fmt:
 	@cd apps/client && $(GLEAN_BIN) format
 	@cd shared && $(GLEAN_BIN) format
 	@cd packages/birl && $(GLEAN_BIN) format
+
+format: fmt

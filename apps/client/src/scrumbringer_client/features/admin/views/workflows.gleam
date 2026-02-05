@@ -43,6 +43,7 @@ import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{type Model, type Msg, NoOp, pool_msg}
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
@@ -60,7 +61,6 @@ import scrumbringer_client/ui/loading
 import scrumbringer_client/ui/modal_header
 import scrumbringer_client/ui/remote as ui_remote
 import scrumbringer_client/ui/section_header
-import scrumbringer_client/update_helpers
 
 // =============================================================================
 // Workflows Views
@@ -72,7 +72,7 @@ pub fn view_workflows(
   selected_project: opt.Option(Project),
 ) -> Element(Msg) {
   // If we're viewing rules for a specific workflow, show rules view
-  case model.admin.rules_workflow_id {
+  case model.admin.rules.rules_workflow_id {
     opt.Some(workflow_id) -> view_workflow_rules(model, workflow_id)
     opt.None -> view_workflows_list(model, selected_project)
   }
@@ -87,7 +87,7 @@ fn view_workflows_list(
     opt.None ->
       div([attribute.class("section")], [
         div([attribute.class("empty")], [
-          text(update_helpers.i18n_t(model, i18n_text.SelectProjectForWorkflows)),
+          text(helpers_i18n.i18n_t(model, i18n_text.SelectProjectForWorkflows)),
         ]),
       ])
     opt.Some(project) ->
@@ -95,7 +95,7 @@ fn view_workflows_list(
         // Section header with add button (Story 4.8: consistent icons)
         section_header.view_with_action(
           icons.Workflows,
-          update_helpers.i18n_t(
+          helpers_i18n.i18n_t(
             model,
             i18n_text.WorkflowsProjectTitle(project.name),
           ),
@@ -112,7 +112,7 @@ fn view_workflows_list(
         // Project workflows table (AC23)
         view_workflows_table(
           model,
-          model.admin.workflows_project,
+          model.admin.workflows.workflows_project,
           opt.Some(project),
         ),
         // Workflow CRUD dialog component (handles create, edit, delete)
@@ -126,7 +126,7 @@ fn view_rules_hint(model: Model) -> Element(Msg) {
   info_callout.view_with_content(
     opt.None,
     span([], [
-      text(update_helpers.i18n_t(model, i18n_text.RulesHintTemplates)),
+      text(helpers_i18n.i18n_t(model, i18n_text.RulesHintTemplates)),
       a(
         [
           attribute.href("/config/templates"),
@@ -134,7 +134,7 @@ fn view_rules_hint(model: Model) -> Element(Msg) {
         ],
         [
           text(
-            update_helpers.i18n_t(model, i18n_text.RulesHintTemplatesLink)
+            helpers_i18n.i18n_t(model, i18n_text.RulesHintTemplatesLink)
             <> " \u{2192}",
           ),
         ],
@@ -147,7 +147,7 @@ fn view_rules_hint(model: Model) -> Element(Msg) {
 
 /// Render the workflow-crud-dialog Lustre component.
 fn view_workflow_crud_dialog(model: Model) -> Element(Msg) {
-  case model.admin.workflows_dialog_mode {
+  case model.admin.workflows.workflows_dialog_mode {
     opt.None -> element.none()
     opt.Some(mode) -> {
       let #(mode_str, workflow_json, project_id_attr) = case mode {
@@ -282,7 +282,7 @@ fn view_workflows_table(
   workflows: Remote(List(Workflow)),
   _project: opt.Option(Project),
 ) -> Element(Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
 
   data_table.view_remote_with_forbidden(
     workflows,
@@ -319,7 +319,7 @@ fn view_workflows_table(
 }
 
 fn view_workflow_actions(model: Model, w: Workflow) -> Element(Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
 
   div([attribute.class("btn-group")], [
     // Rules button - navigate to rules view
@@ -355,27 +355,27 @@ fn view_workflow_actions(model: Model, w: Workflow) -> Element(Msg) {
 fn view_workflow_rules(model: Model, workflow_id: Int) -> Element(Msg) {
   // Find the workflow name
   let workflow_name =
-    find_workflow_name(model.admin.workflows_org, workflow_id)
+    find_workflow_name(model.admin.workflows.workflows_org, workflow_id)
     |> opt.lazy_or(fn() {
-      find_workflow_name(model.admin.workflows_project, workflow_id)
+      find_workflow_name(model.admin.workflows.workflows_project, workflow_id)
     })
     |> opt.unwrap("Workflow #" <> int.to_string(workflow_id))
 
   div([attribute.class("section")], [
     button([event.on_click(pool_msg(pool_messages.RulesBackClicked))], [
-      text(update_helpers.i18n_t(model, i18n_text.BackToWorkflows)),
+      text(helpers_i18n.i18n_t(model, i18n_text.BackToWorkflows)),
     ]),
     // Section header with add button (Story 4.8: consistent icons)
     section_header.view_with_action(
       icons.Rules,
-      update_helpers.i18n_t(model, i18n_text.RulesTitle(workflow_name)),
+      helpers_i18n.i18n_t(model, i18n_text.RulesTitle(workflow_name)),
       dialog.add_button(
         model,
         i18n_text.CreateRule,
         pool_msg(pool_messages.OpenRuleDialog(state_types.RuleDialogCreate)),
       ),
     ),
-    view_rules_table(model, model.admin.rules, model.admin.rules_metrics),
+    view_rules_table(model, model.admin.rules.rules, model.admin.rules.rules_metrics),
     // Rule CRUD dialog component (handles create/edit/delete internally)
     view_rule_crud_dialog(model, workflow_id),
   ])
@@ -401,7 +401,7 @@ fn view_rules_table(
   rules: Remote(List(Rule)),
   metrics: Remote(api_workflows.WorkflowMetrics),
 ) -> Element(Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
 
   ui_remote.view_remote(
     rules,
@@ -461,8 +461,8 @@ fn view_rule_row_expandable(
   rule: Rule,
   rule_metrics: #(Int, Int),
 ) -> List(#(String, Element(Msg))) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
-  let is_expanded = set.contains(model.admin.rules_expanded, rule.id)
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
+  let is_expanded = set.contains(model.admin.rules.rules_expanded, rule.id)
   let _expand_title = case is_expanded {
     True -> t(i18n_text.CollapseRule)
     False -> t(i18n_text.ExpandRule)
@@ -555,7 +555,7 @@ fn view_rule_row_expandable(
 // Justification: nested case keeps resource type rendering readable with optional
 // task type lookup and a fallback for missing types.
 fn view_rule_resource_type(model: Model, rule: Rule) -> Element(Msg) {
-  let task_label = update_helpers.i18n_t(model, i18n_text.ResourceTypeTask)
+  let task_label = helpers_i18n.i18n_t(model, i18n_text.ResourceTypeTask)
   case rule.resource_type, rule.task_type_id {
     "task", opt.Some(type_id) ->
       case find_task_type(model, type_id) {
@@ -581,7 +581,7 @@ fn view_rule_active_status(
   is_active: Bool,
   template_count: Int,
 ) -> Element(Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
 
   case is_active {
     True ->
@@ -611,7 +611,7 @@ fn view_rule_templates_expansion(
   model: Model,
   rule: Rule,
 ) -> #(String, Element(Msg)) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
 
   let content =
     div([attribute.class("templates-expansion")], [
@@ -675,9 +675,9 @@ fn view_attached_template_item(
   rule_id: Int,
   tmpl: workflow.RuleTemplate,
 ) -> Element(Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
   let is_detaching =
-    set.contains(model.admin.detaching_templates, #(rule_id, tmpl.id))
+    set.contains(model.admin.rules.detaching_templates, #(rule_id, tmpl.id))
 
   // Find task type info for icon (if available)
   let task_type_info = find_task_type(model, tmpl.type_id)
@@ -726,9 +726,9 @@ fn view_attached_template_item(
 /// AC12: Radio buttons for selection
 /// AC14-15: Empty state with link to Templates
 fn view_attach_template_modal(model: Model) -> Element(Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
 
-  case model.admin.attach_template_modal {
+  case model.admin.rules.attach_template_modal {
     opt.None -> element.none()
     opt.Some(rule_id) -> {
       // Get available templates (exclude already attached ones)
@@ -757,7 +757,7 @@ fn view_attach_template_modal(model: Model) -> Element(Msg) {
 
 // Justification: nested case keeps rule lookup and template extraction explicit.
 fn attached_template_ids(model: Model, rule_id: Int) -> List(Int) {
-  case model.admin.rules {
+  case model.admin.rules.rules {
     Loaded(rules) ->
       case list.find(rules, fn(r) { r.id == rule_id }) {
         Ok(rule) -> list.map(rule.templates, fn(tmpl) { tmpl.id })
@@ -771,7 +771,7 @@ fn available_templates_for_modal(
   model: Model,
   attached_ids: List(Int),
 ) -> List(TaskTemplate) {
-  case model.admin.task_templates_org, model.admin.task_templates_project {
+  case model.admin.task_templates.task_templates_org, model.admin.task_templates.task_templates_project {
     Loaded(org), Loaded(proj) ->
       list.filter(list.append(org, proj), fn(tmpl) {
         !list.contains(attached_ids, tmpl.id)
@@ -789,7 +789,7 @@ fn view_attach_template_modal_body(
   attached_ids: List(Int),
   available_templates: List(TaskTemplate),
 ) -> Element(Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
 
   div([attribute.class("modal-body")], [
     case available_templates {
@@ -831,7 +831,7 @@ fn view_attach_template_modal_body(
 }
 
 fn view_attach_template_modal_footer(model: Model) -> Element(Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
 
   div([attribute.class("modal-footer")], [
     button(
@@ -842,7 +842,7 @@ fn view_attach_template_modal_footer(model: Model) -> Element(Msg) {
       [text(t(i18n_text.Cancel))],
     ),
     // AC20: Loading state on submit button
-    case model.admin.attach_template_loading {
+    case model.admin.rules.attach_template_loading {
       True ->
         button([attribute.class("btn btn-primary"), attribute.disabled(True)], [
           text(t(i18n_text.Attaching)),
@@ -851,7 +851,7 @@ fn view_attach_template_modal_footer(model: Model) -> Element(Msg) {
         button(
           [
             attribute.class("btn btn-primary"),
-            attribute.disabled(opt.is_none(model.admin.attach_template_selected)),
+            attribute.disabled(opt.is_none(model.admin.rules.attach_template_selected)),
             event.on_click(pool_msg(pool_messages.AttachTemplateSubmitted)),
           ],
           [text(t(i18n_text.Attach))],
@@ -863,8 +863,9 @@ fn view_attach_template_modal_footer(model: Model) -> Element(Msg) {
 /// Render a radio button option for template selection.
 /// AC12: Radio buttons with template name, type icon, and priority.
 fn view_template_radio_option(model: Model, tmpl: TaskTemplate) -> Element(Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
-  let is_selected = model.admin.attach_template_selected == opt.Some(tmpl.id)
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
+  let is_selected =
+    model.admin.rules.attach_template_selected == opt.Some(tmpl.id)
   let radio_id = "template-radio-" <> int.to_string(tmpl.id)
 
   // Find task type info for icon
@@ -911,7 +912,7 @@ fn view_template_radio_option(model: Model, tmpl: TaskTemplate) -> Element(Msg) 
 }
 
 fn find_task_type(model: Model, type_id: Int) -> opt.Option(TaskType) {
-  case model.admin.task_types {
+  case model.admin.task_types.task_types {
     Loaded(types) ->
       list.find(types, fn(tt) { tt.id == type_id }) |> opt.from_result
     _ -> opt.None
@@ -944,7 +945,7 @@ fn rule_metrics_for_loaded(
 /// The component handles create/edit/delete internally and emits events.
 fn view_rule_crud_dialog(model: Model, workflow_id: Int) -> Element(Msg) {
   // Build mode attribute based on dialog mode
-  let mode_attr = case model.admin.rules_dialog_mode {
+  let mode_attr = case model.admin.rules.rules_dialog_mode {
     opt.None -> "closed"
     opt.Some(state_types.RuleDialogCreate) -> "create"
     opt.Some(state_types.RuleDialogEdit(_)) -> "edit"
@@ -952,7 +953,7 @@ fn view_rule_crud_dialog(model: Model, workflow_id: Int) -> Element(Msg) {
   }
 
   // Build rule property for edit/delete modes (includes _mode field for component)
-  let rule_prop = case model.admin.rules_dialog_mode {
+  let rule_prop = case model.admin.rules.rules_dialog_mode {
     opt.Some(state_types.RuleDialogEdit(rule)) ->
       attribute.property("rule", rule_to_json(rule, "edit"))
     opt.Some(state_types.RuleDialogDelete(rule)) ->
@@ -961,7 +962,7 @@ fn view_rule_crud_dialog(model: Model, workflow_id: Int) -> Element(Msg) {
   }
 
   // Build task types property (include icon for decoder)
-  let task_types_json = case model.admin.task_types {
+  let task_types_json = case model.admin.task_types.task_types {
     Loaded(types) ->
       json.array(types, fn(tt) {
         json.object([
@@ -1084,11 +1085,11 @@ pub fn view_task_templates(
   // Get title with project name
   let title = case selected_project {
     opt.Some(project) ->
-      update_helpers.i18n_t(
+      helpers_i18n.i18n_t(
         model,
         i18n_text.TaskTemplatesProjectTitle(project.name),
       )
-    opt.None -> update_helpers.i18n_t(model, i18n_text.TaskTemplatesTitle)
+    opt.None -> helpers_i18n.i18n_t(model, i18n_text.TaskTemplatesTitle)
   }
 
   div([attribute.class("section")], [
@@ -1107,7 +1108,7 @@ pub fn view_task_templates(
     // Story 4.9: Unified hint with rules link and variables info
     view_templates_hint(model),
     // Templates table (project-scoped)
-    view_task_templates_table(model, model.admin.task_templates_project),
+    view_task_templates_table(model, model.admin.task_templates.task_templates_project),
     // Task template CRUD dialog component
     view_task_template_crud_dialog(model),
   ])
@@ -1119,7 +1120,7 @@ fn view_templates_hint(model: Model) -> Element(Msg) {
     opt.None,
     div([], [
       span([], [
-        text(update_helpers.i18n_t(model, i18n_text.TemplatesHintRules)),
+        text(helpers_i18n.i18n_t(model, i18n_text.TemplatesHintRules)),
         a(
           [
             attribute.href("/config/workflows"),
@@ -1127,14 +1128,14 @@ fn view_templates_hint(model: Model) -> Element(Msg) {
           ],
           [
             text(
-              update_helpers.i18n_t(model, i18n_text.TemplatesHintRulesLink)
+              helpers_i18n.i18n_t(model, i18n_text.TemplatesHintRulesLink)
               <> " \u{2192}",
             ),
           ],
         ),
       ]),
       div([attribute.class("info-callout-variables")], [
-        text(update_helpers.i18n_t(model, i18n_text.TaskTemplateVariablesHelp)),
+        text(helpers_i18n.i18n_t(model, i18n_text.TaskTemplateVariablesHelp)),
       ]),
     ]),
   )
@@ -1144,7 +1145,7 @@ fn view_templates_hint(model: Model) -> Element(Msg) {
 
 /// Render the task-template-crud-dialog Lustre component.
 fn view_task_template_crud_dialog(model: Model) -> Element(Msg) {
-  case model.admin.task_templates_dialog_mode {
+  case model.admin.task_templates.task_templates_dialog_mode {
     opt.None -> element.none()
     opt.Some(mode) -> {
       let #(mode_str, template_json, project_id_attr) = case mode {
@@ -1192,7 +1193,7 @@ fn view_task_template_crud_dialog(model: Model) -> Element(Msg) {
           // Property for task types list
           attribute.property(
             "task-types",
-            task_types_to_property_json(model.admin.task_types),
+            task_types_to_property_json(model.admin.task_types.task_types),
           ),
           // Event listeners for component events
           event.on(
@@ -1321,7 +1322,7 @@ fn view_task_templates_table(
   model: Model,
   templates: Remote(List(TaskTemplate)),
 ) -> Element(Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
 
   data_table.view_remote_with_forbidden(
     templates,
@@ -1383,8 +1384,8 @@ fn view_task_templates_table(
 
 /// Rule metrics tab view.
 pub fn view_rule_metrics(model: Model) -> Element(Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
-  let is_loading = case model.admin.admin_rule_metrics {
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
+  let is_loading = case model.admin.metrics.admin_rule_metrics {
     Loading -> True
     _ -> False
   }
@@ -1414,7 +1415,7 @@ pub fn view_rule_metrics(model: Model) -> Element(Msg) {
           t(i18n_text.RuleMetricsFrom),
           input([
             attribute.type_("date"),
-            attribute.value(model.admin.admin_rule_metrics_from),
+            attribute.value(model.admin.metrics.admin_rule_metrics_from),
             // Auto-refresh on date change
             event.on_input(fn(value) {
               pool_msg(pool_messages.AdminRuleMetricsFromChangedAndRefresh(
@@ -1428,7 +1429,7 @@ pub fn view_rule_metrics(model: Model) -> Element(Msg) {
           t(i18n_text.RuleMetricsTo),
           input([
             attribute.type_("date"),
-            attribute.value(model.admin.admin_rule_metrics_to),
+            attribute.value(model.admin.metrics.admin_rule_metrics_to),
             // Auto-refresh on date change
             event.on_input(fn(value) {
               pool_msg(pool_messages.AdminRuleMetricsToChangedAndRefresh(value))
@@ -1463,8 +1464,8 @@ fn view_quick_range_button(
 
   // Check if this range is currently active
   let is_active =
-    model.admin.admin_rule_metrics_from == from
-    && model.admin.admin_rule_metrics_to == today
+    model.admin.metrics.admin_rule_metrics_from == from
+    && model.admin.metrics.admin_rule_metrics_to == today
 
   let class = case is_active {
     True -> "btn-chip btn-chip-active"
@@ -1488,7 +1489,7 @@ fn view_quick_range_button(
 
 /// Results section with improved empty state (T5).
 fn view_rule_metrics_results(model: Model) -> Element(Msg) {
-  case model.admin.admin_rule_metrics {
+  case model.admin.metrics.admin_rule_metrics {
     NotAsked ->
       empty_state.simple(
         icons.Lightbulb,
@@ -1511,17 +1512,15 @@ fn view_rule_metrics_loaded(
     [] ->
       empty_state.simple(
         icons.Inbox,
-        update_helpers.i18n_t(model, i18n_text.RuleMetricsNoExecutions),
+        helpers_i18n.i18n_t(model, i18n_text.RuleMetricsNoExecutions),
       )
     _ ->
       div([attribute.class("admin-card")], [
         div([attribute.class("admin-card-header")], [
           span([], [icons.nav_icon(icons.ClipboardDoc, icons.Small)]),
-          text(
-            " " <> update_helpers.i18n_t(model, i18n_text.RuleMetricsResults),
-          ),
+          text(" " <> helpers_i18n.i18n_t(model, i18n_text.RuleMetricsResults)),
         ]),
-        view_rule_metrics_table(model, model.admin.admin_rule_metrics),
+        view_rule_metrics_table(model, model.admin.metrics.admin_rule_metrics),
       ])
   }
 }
@@ -1533,12 +1532,12 @@ fn view_rule_metrics_table(
   case metrics {
     NotAsked ->
       div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.RuleMetricsSelectRange)),
+        text(helpers_i18n.i18n_t(model, i18n_text.RuleMetricsSelectRange)),
       ])
 
     Loading ->
       div([attribute.class("loading")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+        text(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)),
       ])
 
     Failed(err) -> error_notice.view(err.message)
@@ -1554,7 +1553,7 @@ fn view_rule_metrics_table_loaded(
   case workflows {
     [] ->
       div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.RuleMetricsNoData)),
+        text(helpers_i18n.i18n_t(model, i18n_text.RuleMetricsNoData)),
       ])
     _ ->
       element.fragment([
@@ -1563,28 +1562,19 @@ fn view_rule_metrics_table_loaded(
             tr([], [
               th([], []),
               th([], [
-                text(update_helpers.i18n_t(model, i18n_text.WorkflowName)),
+                text(helpers_i18n.i18n_t(model, i18n_text.WorkflowName)),
               ]),
               th([], [
-                text(update_helpers.i18n_t(
-                  model,
-                  i18n_text.RuleMetricsRuleCount,
-                )),
+                text(helpers_i18n.i18n_t(model, i18n_text.RuleMetricsRuleCount)),
               ]),
               th([], [
-                text(update_helpers.i18n_t(
-                  model,
-                  i18n_text.RuleMetricsEvaluated,
-                )),
+                text(helpers_i18n.i18n_t(model, i18n_text.RuleMetricsEvaluated)),
               ]),
               th([], [
-                text(update_helpers.i18n_t(model, i18n_text.RuleMetricsApplied)),
+                text(helpers_i18n.i18n_t(model, i18n_text.RuleMetricsApplied)),
               ]),
               th([], [
-                text(update_helpers.i18n_t(
-                  model,
-                  i18n_text.RuleMetricsSuppressed,
-                )),
+                text(helpers_i18n.i18n_t(model, i18n_text.RuleMetricsSuppressed)),
               ]),
             ]),
           ]),
@@ -1605,7 +1595,7 @@ fn view_workflow_row(
   w: api_workflows.OrgWorkflowMetricsSummary,
 ) -> List(#(String, Element(Msg))) {
   let is_expanded =
-    model.admin.admin_rule_metrics_expanded_workflow == opt.Some(w.workflow_id)
+    model.admin.metrics.admin_rule_metrics_expanded_workflow == opt.Some(w.workflow_id)
   let main_row = #(
     "wf-" <> int.to_string(w.workflow_id),
     tr(
@@ -1648,7 +1638,7 @@ fn view_workflow_rules_expansion(
   let content =
     view_workflow_rules_expansion_content(
       model,
-      model.admin.admin_rule_metrics_workflow_details,
+      model.admin.metrics.admin_rule_metrics_workflow_details,
     )
 
   #(
@@ -1668,7 +1658,7 @@ fn view_workflow_rules_expansion_content(
   case details {
     NotAsked | Loading ->
       div([attribute.class("loading")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+        text(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)),
       ])
     Failed(err) -> error_notice.view(err.message)
     Loaded(loaded) -> view_workflow_rules_expansion_loaded(model, loaded)
@@ -1682,21 +1672,21 @@ fn view_workflow_rules_expansion_loaded(
   case details.rules {
     [] ->
       div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.RuleMetricsNoRules)),
+        text(helpers_i18n.i18n_t(model, i18n_text.RuleMetricsNoRules)),
       ])
     rules ->
       table([attribute.class("table nested-table")], [
         thead([], [
           tr([], [
-            th([], [text(update_helpers.i18n_t(model, i18n_text.RuleName))]),
+            th([], [text(helpers_i18n.i18n_t(model, i18n_text.RuleName))]),
             th([], [
-              text(update_helpers.i18n_t(model, i18n_text.RuleMetricsEvaluated)),
+              text(helpers_i18n.i18n_t(model, i18n_text.RuleMetricsEvaluated)),
             ]),
             th([], [
-              text(update_helpers.i18n_t(model, i18n_text.RuleMetricsApplied)),
+              text(helpers_i18n.i18n_t(model, i18n_text.RuleMetricsApplied)),
             ]),
             th([], [
-              text(update_helpers.i18n_t(model, i18n_text.RuleMetricsSuppressed)),
+              text(helpers_i18n.i18n_t(model, i18n_text.RuleMetricsSuppressed)),
             ]),
             th([], []),
           ]),
@@ -1738,7 +1728,7 @@ fn view_workflow_rule_metrics_row(
               )),
             ),
           ],
-          [text(update_helpers.i18n_t(model, i18n_text.ViewDetails))],
+          [text(helpers_i18n.i18n_t(model, i18n_text.ViewDetails))],
         ),
       ]),
     ]),
@@ -1747,14 +1737,14 @@ fn view_workflow_rule_metrics_row(
 
 /// Render the drill-down modal for rule details and executions.
 fn view_rule_drilldown_modal(model: Model) -> Element(Msg) {
-  case model.admin.admin_rule_metrics_drilldown_rule_id {
+  case model.admin.metrics.admin_rule_metrics_drilldown_rule_id {
     opt.None -> element.none()
     opt.Some(_rule_id) ->
       div([attribute.class("modal drilldown-modal")], [
         div([attribute.class("modal-content")], [
           div([attribute.class("modal-header")], [
             h3([], [
-              text(update_helpers.i18n_t(model, i18n_text.RuleMetricsDrilldown)),
+              text(helpers_i18n.i18n_t(model, i18n_text.RuleMetricsDrilldown)),
             ]),
             button(
               [
@@ -1778,10 +1768,10 @@ fn view_rule_drilldown_modal(model: Model) -> Element(Msg) {
 
 /// Render the suppression breakdown in the drill-down modal.
 fn view_drilldown_details(model: Model) -> Element(Msg) {
-  case model.admin.admin_rule_metrics_rule_details {
+  case model.admin.metrics.admin_rule_metrics_rule_details {
     NotAsked | Loading ->
       div([attribute.class("loading")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+        text(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)),
       ])
 
     Failed(err) -> error_notice.view(err.message)
@@ -1792,7 +1782,7 @@ fn view_drilldown_details(model: Model) -> Element(Msg) {
         div([attribute.class("metrics-summary")], [
           div([attribute.class("metric-box")], [
             span([attribute.class("metric-label")], [
-              text(update_helpers.i18n_t(model, i18n_text.RuleMetricsEvaluated)),
+              text(helpers_i18n.i18n_t(model, i18n_text.RuleMetricsEvaluated)),
             ]),
             span([attribute.class("metric-value")], [
               text(int.to_string(details.evaluated_count)),
@@ -1800,7 +1790,7 @@ fn view_drilldown_details(model: Model) -> Element(Msg) {
           ]),
           div([attribute.class("metric-box applied")], [
             span([attribute.class("metric-label")], [
-              text(update_helpers.i18n_t(model, i18n_text.RuleMetricsApplied)),
+              text(helpers_i18n.i18n_t(model, i18n_text.RuleMetricsApplied)),
             ]),
             span([attribute.class("metric-value")], [
               text(int.to_string(details.applied_count)),
@@ -1808,7 +1798,7 @@ fn view_drilldown_details(model: Model) -> Element(Msg) {
           ]),
           div([attribute.class("metric-box suppressed")], [
             span([attribute.class("metric-label")], [
-              text(update_helpers.i18n_t(model, i18n_text.RuleMetricsSuppressed)),
+              text(helpers_i18n.i18n_t(model, i18n_text.RuleMetricsSuppressed)),
             ]),
             span([attribute.class("metric-value")], [
               text(int.to_string(details.suppressed_count)),
@@ -1817,12 +1807,12 @@ fn view_drilldown_details(model: Model) -> Element(Msg) {
         ]),
         // Suppression breakdown
         h3([], [
-          text(update_helpers.i18n_t(model, i18n_text.SuppressionBreakdown)),
+          text(helpers_i18n.i18n_t(model, i18n_text.SuppressionBreakdown)),
         ]),
         div([attribute.class("suppression-breakdown")], [
           div([attribute.class("breakdown-item")], [
             span([attribute.class("breakdown-label")], [
-              text(update_helpers.i18n_t(model, i18n_text.SuppressionIdempotent)),
+              text(helpers_i18n.i18n_t(model, i18n_text.SuppressionIdempotent)),
             ]),
             span([attribute.class("breakdown-value")], [
               text(int.to_string(details.suppression_breakdown.idempotent)),
@@ -1830,7 +1820,7 @@ fn view_drilldown_details(model: Model) -> Element(Msg) {
           ]),
           div([attribute.class("breakdown-item")], [
             span([attribute.class("breakdown-label")], [
-              text(update_helpers.i18n_t(
+              text(helpers_i18n.i18n_t(
                 model,
                 i18n_text.SuppressionNotUserTriggered,
               )),
@@ -1843,10 +1833,7 @@ fn view_drilldown_details(model: Model) -> Element(Msg) {
           ]),
           div([attribute.class("breakdown-item")], [
             span([attribute.class("breakdown-label")], [
-              text(update_helpers.i18n_t(
-                model,
-                i18n_text.SuppressionNotMatching,
-              )),
+              text(helpers_i18n.i18n_t(model, i18n_text.SuppressionNotMatching)),
             ]),
             span([attribute.class("breakdown-value")], [
               text(int.to_string(details.suppression_breakdown.not_matching)),
@@ -1854,7 +1841,7 @@ fn view_drilldown_details(model: Model) -> Element(Msg) {
           ]),
           div([attribute.class("breakdown-item")], [
             span([attribute.class("breakdown-label")], [
-              text(update_helpers.i18n_t(model, i18n_text.SuppressionInactive)),
+              text(helpers_i18n.i18n_t(model, i18n_text.SuppressionInactive)),
             ]),
             span([attribute.class("breakdown-value")], [
               text(int.to_string(details.suppression_breakdown.inactive)),
@@ -1867,10 +1854,10 @@ fn view_drilldown_details(model: Model) -> Element(Msg) {
 
 /// Render the executions list in the drill-down modal.
 fn view_drilldown_executions(model: Model) -> Element(Msg) {
-  case model.admin.admin_rule_metrics_executions {
+  case model.admin.metrics.admin_rule_metrics_executions {
     NotAsked | Loading ->
       div([attribute.class("loading")], [
-        text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+        text(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)),
       ])
 
     Failed(err) -> error_notice.view(err.message)
@@ -1909,12 +1896,12 @@ fn view_drilldown_executions_loaded(
 
   div([attribute.class("drilldown-executions")], [
     h3([], [
-      text(update_helpers.i18n_t(model, i18n_text.RecentExecutions)),
+      text(helpers_i18n.i18n_t(model, i18n_text.RecentExecutions)),
     ]),
     case response.executions {
       [] ->
         div([attribute.class("empty")], [
-          text(update_helpers.i18n_t(model, i18n_text.NoExecutions)),
+          text(helpers_i18n.i18n_t(model, i18n_text.NoExecutions)),
         ])
       executions ->
         element.fragment([
@@ -1922,19 +1909,19 @@ fn view_drilldown_executions_loaded(
             |> data_table.with_class("executions-table")
             |> data_table.with_columns([
               data_table.column(
-                update_helpers.i18n_t(model, i18n_text.Origin),
+                helpers_i18n.i18n_t(model, i18n_text.Origin),
                 origin_cell,
               ),
               data_table.column(
-                update_helpers.i18n_t(model, i18n_text.Outcome),
+                helpers_i18n.i18n_t(model, i18n_text.Outcome),
                 outcome_cell,
               ),
               data_table.column(
-                update_helpers.i18n_t(model, i18n_text.User),
+                helpers_i18n.i18n_t(model, i18n_text.User),
                 user_cell,
               ),
               data_table.column(
-                update_helpers.i18n_t(model, i18n_text.Timestamp),
+                helpers_i18n.i18n_t(model, i18n_text.Timestamp),
                 timestamp_cell,
               ),
             ])
@@ -1957,9 +1944,9 @@ fn outcome_class_for(outcome: String) -> String {
 
 fn outcome_text_for(model: Model, exec: api_workflows.RuleExecution) -> String {
   case exec.outcome {
-    "applied" -> update_helpers.i18n_t(model, i18n_text.OutcomeApplied)
+    "applied" -> helpers_i18n.i18n_t(model, i18n_text.OutcomeApplied)
     "suppressed" ->
-      update_helpers.i18n_t(model, i18n_text.OutcomeSuppressed)
+      helpers_i18n.i18n_t(model, i18n_text.OutcomeSuppressed)
       <> suppression_reason_suffix(exec.suppression_reason)
     _ -> exec.outcome
   }

@@ -32,6 +32,7 @@ import scrumbringer_client/client_state/types.{
   ProjectDialogCreate, ProjectDialogDelete, ProjectDialogEdit,
 }
 import scrumbringer_client/features/admin/msg as admin_messages
+import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/data_table
@@ -39,7 +40,6 @@ import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/section_header
-import scrumbringer_client/update_helpers
 import scrumbringer_client/utils/format_date
 
 // =============================================================================
@@ -52,7 +52,7 @@ pub fn view_projects(model: Model) -> element.Element(Msg) {
     // Section header with add button (Story 4.8: consistent icons)
     section_header.view_with_action(
       icons.Projects,
-      update_helpers.i18n_t(model, i18n_text.Projects),
+      helpers_i18n.i18n_t(model, i18n_text.Projects),
       dialog.add_button(
         model,
         i18n_text.CreateProject,
@@ -81,7 +81,7 @@ pub fn view_project_dialogs(model: Model) -> element.Element(Msg) {
 
 /// Dialog for creating a new project.
 fn view_projects_create_dialog(model: Model) -> element.Element(Msg) {
-  let #(is_open, name, in_flight, error) = case model.admin.projects_dialog {
+  let #(is_open, name, in_flight, error) = case model.admin.projects.projects_dialog {
     DialogOpen(form: ProjectDialogCreate(name: name), operation: op) -> #(
       True,
       name,
@@ -93,7 +93,7 @@ fn view_projects_create_dialog(model: Model) -> element.Element(Msg) {
 
   dialog.view(
     dialog.DialogConfig(
-      title: update_helpers.i18n_t(model, i18n_text.CreateProject),
+      title: helpers_i18n.i18n_t(model, i18n_text.CreateProject),
       icon: opt.None,
       size: dialog.DialogSm,
       on_close: admin_msg(admin_messages.ProjectCreateDialogClosed),
@@ -111,7 +111,7 @@ fn view_projects_create_dialog(model: Model) -> element.Element(Msg) {
         ],
         [
           form_field.view(
-            update_helpers.i18n_t(model, i18n_text.Name),
+            helpers_i18n.i18n_t(model, i18n_text.Name),
             input([
               attribute.type_("text"),
               attribute.value(name),
@@ -143,8 +143,8 @@ fn view_projects_create_dialog(model: Model) -> element.Element(Msg) {
         ],
         [
           text(case in_flight {
-            True -> update_helpers.i18n_t(model, i18n_text.Creating)
-            False -> update_helpers.i18n_t(model, i18n_text.Create)
+            True -> helpers_i18n.i18n_t(model, i18n_text.Creating)
+            False -> helpers_i18n.i18n_t(model, i18n_text.Create)
           }),
         ],
       ),
@@ -154,7 +154,7 @@ fn view_projects_create_dialog(model: Model) -> element.Element(Msg) {
 
 /// Dialog for editing a project (Story 4.8 AC39).
 fn view_projects_edit_dialog(model: Model) -> element.Element(Msg) {
-  let #(is_open, name, in_flight, error) = case model.admin.projects_dialog {
+  let #(is_open, name, in_flight, error) = case model.admin.projects.projects_dialog {
     DialogOpen(form: ProjectDialogEdit(id: _, name: name), operation: op) -> #(
       True,
       name,
@@ -166,7 +166,7 @@ fn view_projects_edit_dialog(model: Model) -> element.Element(Msg) {
 
   dialog.view(
     dialog.DialogConfig(
-      title: update_helpers.i18n_t(model, i18n_text.EditProject),
+      title: helpers_i18n.i18n_t(model, i18n_text.EditProject),
       icon: opt.None,
       size: dialog.DialogSm,
       on_close: admin_msg(admin_messages.ProjectEditDialogClosed),
@@ -184,7 +184,7 @@ fn view_projects_edit_dialog(model: Model) -> element.Element(Msg) {
         ],
         [
           form_field.view(
-            update_helpers.i18n_t(model, i18n_text.Name),
+            helpers_i18n.i18n_t(model, i18n_text.Name),
             input([
               attribute.type_("text"),
               attribute.value(name),
@@ -216,8 +216,8 @@ fn view_projects_edit_dialog(model: Model) -> element.Element(Msg) {
         ],
         [
           text(case in_flight {
-            True -> update_helpers.i18n_t(model, i18n_text.Saving)
-            False -> update_helpers.i18n_t(model, i18n_text.Save)
+            True -> helpers_i18n.i18n_t(model, i18n_text.Saving)
+            False -> helpers_i18n.i18n_t(model, i18n_text.Save)
           }),
         ],
       ),
@@ -227,7 +227,7 @@ fn view_projects_edit_dialog(model: Model) -> element.Element(Msg) {
 
 /// Delete confirmation dialog (Story 4.8 AC39).
 fn view_projects_delete_confirm(model: Model) -> element.Element(Msg) {
-  let #(is_open, name, in_flight) = case model.admin.projects_dialog {
+  let #(is_open, name, in_flight) = case model.admin.projects.projects_dialog {
     DialogOpen(form: ProjectDialogDelete(id: _, name: name), operation: op) -> #(
       True,
       name,
@@ -238,7 +238,7 @@ fn view_projects_delete_confirm(model: Model) -> element.Element(Msg) {
 
   dialog.view(
     dialog.DialogConfig(
-      title: update_helpers.i18n_t(model, i18n_text.DeleteProjectTitle),
+      title: helpers_i18n.i18n_t(model, i18n_text.DeleteProjectTitle),
       icon: opt.None,
       size: dialog.DialogSm,
       on_close: admin_msg(admin_messages.ProjectDeleteConfirmClosed),
@@ -248,10 +248,10 @@ fn view_projects_delete_confirm(model: Model) -> element.Element(Msg) {
     // Content
     [
       p([attribute.class("dialog-message")], [
-        text(update_helpers.i18n_t(model, i18n_text.DeleteProjectConfirm(name))),
+        text(helpers_i18n.i18n_t(model, i18n_text.DeleteProjectConfirm(name))),
       ]),
       p([attribute.class("dialog-warning")], [
-        text(update_helpers.i18n_t(model, i18n_text.DeleteProjectWarning)),
+        text(helpers_i18n.i18n_t(model, i18n_text.DeleteProjectWarning)),
       ]),
     ],
     // Footer buttons
@@ -268,8 +268,8 @@ fn view_projects_delete_confirm(model: Model) -> element.Element(Msg) {
         ],
         [
           text(case in_flight {
-            True -> update_helpers.i18n_t(model, i18n_text.Deleting)
-            False -> update_helpers.i18n_t(model, i18n_text.Delete)
+            True -> helpers_i18n.i18n_t(model, i18n_text.Deleting)
+            False -> helpers_i18n.i18n_t(model, i18n_text.Delete)
           }),
         ],
       ),
@@ -292,7 +292,7 @@ fn operation_error(operation: OperationState) -> opt.Option(String) {
 }
 
 fn view_projects_list(model: Model) -> element.Element(Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
 
   data_table.view_remote_with_forbidden(
     model.core.projects,
@@ -338,9 +338,9 @@ fn view_projects_list(model: Model) -> element.Element(Msg) {
 
 fn view_project_actions(model: Model, p: Project) -> element.Element(Msg) {
   action_buttons.edit_delete_row(
-    edit_title: update_helpers.i18n_t(model, i18n_text.EditProject),
+    edit_title: helpers_i18n.i18n_t(model, i18n_text.EditProject),
     edit_click: admin_msg(admin_messages.ProjectEditDialogOpened(p.id, p.name)),
-    delete_title: update_helpers.i18n_t(model, i18n_text.DeleteProject),
+    delete_title: helpers_i18n.i18n_t(model, i18n_text.DeleteProject),
     delete_click: admin_msg(admin_messages.ProjectDeleteConfirmOpened(
       p.id,
       p.name,

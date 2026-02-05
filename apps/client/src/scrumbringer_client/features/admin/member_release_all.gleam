@@ -30,10 +30,14 @@ import scrumbringer_client/client_state.{
   type Model, type Msg, admin_msg, update_admin,
 }
 import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/msg as admin_messages
+import scrumbringer_client/helpers/auth as helpers_auth
+import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/helpers/lookup as helpers_lookup
+import scrumbringer_client/helpers/toast as helpers_toast
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/update_helpers
 
 // =============================================================================
 // Confirmation Handlers
@@ -46,7 +50,7 @@ pub fn handle_member_release_all_clicked(
   claimed_count: Int,
 ) -> #(Model, Effect(Msg)) {
   let maybe_user =
-    update_helpers.resolve_org_user(model.admin.org_users_cache, user_id)
+    helpers_lookup.resolve_org_user(model.admin.members.org_users_cache, user_id)
 
   let user = case maybe_user {
     opt.Some(user) -> user
@@ -55,14 +59,16 @@ pub fn handle_member_release_all_clicked(
 
   #(
     update_admin(model, fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        members_release_confirm: opt.Some(state_types.ReleaseAllTarget(
-          user: user,
-          claimed_count: claimed_count,
-        )),
-        members_release_error: opt.None,
-      )
+      update_members(admin, fn(members_state) {
+        admin_members.Model(
+          ..members_state,
+          members_release_confirm: opt.Some(state_types.ReleaseAllTarget(
+            user: user,
+            claimed_count: claimed_count,
+          )),
+          members_release_error: opt.None,
+        )
+      })
     }),
     effect.none(),
   )
@@ -74,11 +80,13 @@ pub fn handle_member_release_all_cancelled(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        members_release_confirm: opt.None,
-        members_release_error: opt.None,
-      )
+      update_members(admin, fn(members_state) {
+        admin_members.Model(
+          ..members_state,
+          members_release_confirm: opt.None,
+          members_release_error: opt.None,
+        )
+      })
     }),
     effect.none(),
   )
@@ -88,20 +96,22 @@ pub fn handle_member_release_all_cancelled(
 pub fn handle_member_release_all_confirmed(
   model: Model,
 ) -> #(Model, Effect(Msg)) {
-  case model.admin.members_release_in_flight {
+  case model.admin.members.members_release_in_flight {
     opt.Some(_) -> #(model, effect.none())
     opt.None ->
-      case model.core.selected_project_id, model.admin.members_release_confirm {
+      case model.core.selected_project_id, model.admin.members.members_release_confirm {
         opt.Some(project_id),
           opt.Some(state_types.ReleaseAllTarget(user: user, ..))
         -> {
           let model =
             update_admin(model, fn(admin) {
-              admin_state.AdminModel(
-                ..admin,
-                members_release_in_flight: opt.Some(user.id),
-                members_release_error: opt.None,
-              )
+              update_members(admin, fn(members_state) {
+                admin_members.Model(
+                  ..members_state,
+                  members_release_in_flight: opt.Some(user.id),
+                  members_release_error: opt.None,
+                )
+              })
             })
           #(
             model,
@@ -129,7 +139,7 @@ pub fn handle_member_release_all_ok(
   result: api_projects.ReleaseAllResult,
 ) -> #(Model, Effect(Msg)) {
   let #(user_name, user_id, _claimed_count) = case
-    model.admin.members_release_confirm
+    model.admin.members.members_release_confirm
   {
     opt.Some(state_types.ReleaseAllTarget(
       user: user,
@@ -140,7 +150,7 @@ pub fn handle_member_release_all_ok(
 
   let api_projects.ReleaseAllResult(released_count: released_count, ..) = result
 
-  let updated_members = case model.admin.members {
+  let updated_members = case model.admin.members.members {
     Loaded(members) ->
       Loaded(
         list.map(members, fn(m: ProjectMember) {
@@ -155,23 +165,25 @@ pub fn handle_member_release_all_ok(
 
   let model =
     update_admin(model, fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        members_release_confirm: opt.None,
-        members_release_in_flight: opt.None,
-        members_release_error: opt.None,
-        members: updated_members,
-      )
+      update_members(admin, fn(members_state) {
+        admin_members.Model(
+          ..members_state,
+          members_release_confirm: opt.None,
+          members_release_in_flight: opt.None,
+          members_release_error: opt.None,
+          members: updated_members,
+        )
+      })
     })
 
   let toast_fx = case released_count == 0 {
     True ->
-      update_helpers.toast_warning(update_helpers.i18n_t(
+      helpers_toast.toast_warning(helpers_i18n.i18n_t(
         model,
         i18n_text.ReleaseAllNone(user_name),
       ))
     False ->
-      update_helpers.toast_success(update_helpers.i18n_t(
+      helpers_toast.toast_success(helpers_i18n.i18n_t(
         model,
         i18n_text.ReleaseAllSuccess(released_count, user_name),
       ))
@@ -185,29 +197,31 @@ pub fn handle_member_release_all_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  let user_name = case model.admin.members_release_confirm {
+  let user_name = case model.admin.members.members_release_confirm {
     opt.Some(state_types.ReleaseAllTarget(user: user, ..)) -> user.email
     opt.None -> ""
   }
 
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     let message = case err.code {
-      "FORBIDDEN" -> update_helpers.i18n_t(model, i18n_text.NotPermitted)
+      "FORBIDDEN" -> helpers_i18n.i18n_t(model, i18n_text.NotPermitted)
       "SELF_RELEASE" ->
-        update_helpers.i18n_t(model, i18n_text.ReleaseAllSelfError)
+        helpers_i18n.i18n_t(model, i18n_text.ReleaseAllSelfError)
       "NOT_FOUND" -> err.message
-      _ -> update_helpers.i18n_t(model, i18n_text.ReleaseAllError(user_name))
+      _ -> helpers_i18n.i18n_t(model, i18n_text.ReleaseAllError(user_name))
     }
 
     #(
       update_admin(model, fn(admin) {
-        admin_state.AdminModel(
-          ..admin,
-          members_release_in_flight: opt.None,
-          members_release_error: opt.Some(message),
-        )
+        update_members(admin, fn(members_state) {
+          admin_members.Model(
+            ..members_state,
+            members_release_in_flight: opt.None,
+            members_release_error: opt.Some(message),
+          )
+        })
       }),
-      update_helpers.toast_warning(message),
+      helpers_toast.toast_warning(message),
     )
   })
 }
@@ -223,4 +237,11 @@ fn fallback_org_user(user_id: Int) -> OrgUser {
     org_role: org_role.Member,
     created_at: "",
   )
+}
+
+fn update_members(
+  admin: admin_state.AdminModel,
+  f: fn(admin_members.Model) -> admin_members.Model,
+) -> admin_state.AdminModel {
+  admin_state.AdminModel(..admin, members: f(admin.members))
 }

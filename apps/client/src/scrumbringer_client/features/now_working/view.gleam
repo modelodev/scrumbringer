@@ -13,7 +13,17 @@ pub fn view_panel(model: Model) -> Element(Msg) {
   now_working_panel.view(model)
 }
 
-/// Mobile view for Now Working.
-pub fn view_mobile(model: Model) -> Element(Msg) {
-  now_working_mobile.view(model)
+/// Mobile mini-bar view for Now Working.
+pub fn view_mini_bar(model: Model) -> Element(Msg) {
+  now_working_mobile.view_mini_bar(model)
+}
+
+/// Mobile overlay view for Now Working.
+pub fn view_overlay(model: Model) -> Element(Msg) {
+  now_working_mobile.view_overlay(model)
+}
+
+/// Mobile panel sheet view for Now Working.
+pub fn view_panel_sheet(model: Model, user_id: Int) -> Element(Msg) {
+  now_working_mobile.view_panel_sheet(model, user_id)
 }

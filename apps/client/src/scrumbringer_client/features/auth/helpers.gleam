@@ -13,7 +13,7 @@
 ////
 //// ## Relations
 ////
-//// - **update_helpers.gleam**: Delegates to i18n_t for error messages
+//// - **helpers/i18n.gleam**: Delegates to i18n_t for error messages
 //// - **features/*/update.gleam**: All update modules use these for auth errors
 //// - **client_state.gleam**: Uses Model, Msg, Login page
 

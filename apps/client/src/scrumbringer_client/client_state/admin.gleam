@@ -1,128 +1,91 @@
 //// Admin-specific client state model.
 
-import gleam/dict.{type Dict}
-import gleam/option.{type Option}
-import gleam/set
+import scrumbringer_client/client_state/admin/assignments as admin_assignments
+import scrumbringer_client/client_state/admin/cards as admin_cards
+import scrumbringer_client/client_state/admin/capabilities as admin_capabilities
+import scrumbringer_client/client_state/admin/invites as admin_invites
+import scrumbringer_client/client_state/admin/members as admin_members
+import scrumbringer_client/client_state/admin/metrics as admin_metrics
+import scrumbringer_client/client_state/admin/projects as admin_projects
+import scrumbringer_client/client_state/admin/rules as admin_rules
+import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
+import scrumbringer_client/client_state/admin/task_types as admin_task_types
+import scrumbringer_client/client_state/admin/workflows as admin_workflows
 
-import domain/capability.{type Capability}
-import domain/card.{type Card, type CardState}
-import domain/metrics.{
-  type OrgMetricsOverview, type OrgMetricsProjectTasksPayload,
-  type OrgMetricsUserOverview,
-}
-import domain/org.{type InviteLink, type OrgUser}
-import domain/project.{type ProjectMember}
-import domain/project_role.{type ProjectRole}
-import domain/remote.{type Remote}
-import domain/task_type.{type TaskType}
-import domain/workflow.{
-  type Rule, type RuleTemplate, type TaskTemplate, type Workflow,
-}
+/// Represents invites admin slice.
+pub type InvitesModel =
+  admin_invites.Model
 
-import scrumbringer_client/api/workflows as api_workflows
-import scrumbringer_client/client_state/types as state_types
+/// Represents projects admin slice.
+pub type ProjectsModel =
+  admin_projects.Model
+
+/// Represents capabilities admin slice.
+pub type CapabilitiesModel =
+  admin_capabilities.Model
+
+/// Represents members admin slice.
+pub type MembersModel =
+  admin_members.Model
+
+/// Represents metrics admin slice.
+pub type MetricsModel =
+  admin_metrics.Model
+
+/// Represents workflows admin slice.
+pub type WorkflowsModel =
+  admin_workflows.Model
+
+/// Represents rules admin slice.
+pub type RulesModel =
+  admin_rules.Model
+
+/// Represents task templates admin slice.
+pub type TaskTemplatesModel =
+  admin_task_templates.Model
+
+/// Represents task types admin slice.
+pub type TaskTypesModel =
+  admin_task_types.Model
+
+/// Represents cards admin slice.
+pub type CardsModel =
+  admin_cards.Model
+
+/// Represents assignments admin slice.
+pub type AssignmentsModel =
+  admin_assignments.Model
 
 /// Represents AdminModel.
 pub type AdminModel {
   AdminModel(
-    invite_links: Remote(List(InviteLink)),
-    invite_link_dialog: state_types.DialogState(state_types.InviteLinkForm),
-    invite_link_last: Option(InviteLink),
-    invite_link_copy_status: Option(String),
-    projects_dialog: state_types.DialogState(state_types.ProjectDialogForm),
-    capabilities: Remote(List(Capability)),
-    capabilities_create_dialog_open: Bool,
-    capabilities_create_name: String,
-    capabilities_create_in_flight: Bool,
-    capabilities_create_error: Option(String),
-    capability_delete_dialog_id: Option(Int),
-    capability_delete_in_flight: Bool,
-    capability_delete_error: Option(String),
-    members: Remote(List(ProjectMember)),
-    members_project_id: Option(Int),
-    org_users_cache: Remote(List(OrgUser)),
-    org_settings_users: Remote(List(OrgUser)),
-    admin_metrics_overview: Remote(OrgMetricsOverview),
-    admin_metrics_project_tasks: Remote(OrgMetricsProjectTasksPayload),
-    admin_metrics_project_id: Option(Int),
-    admin_metrics_users: Remote(List(OrgMetricsUserOverview)),
-    admin_rule_metrics: Remote(List(api_workflows.OrgWorkflowMetricsSummary)),
-    admin_rule_metrics_from: String,
-    admin_rule_metrics_to: String,
-    admin_rule_metrics_expanded_workflow: Option(Int),
-    admin_rule_metrics_workflow_details: Remote(api_workflows.WorkflowMetrics),
-    admin_rule_metrics_drilldown_rule_id: Option(Int),
-    admin_rule_metrics_rule_details: Remote(api_workflows.RuleMetricsDetailed),
-    admin_rule_metrics_executions: Remote(api_workflows.RuleExecutionsResponse),
-    admin_rule_metrics_exec_offset: Int,
-    org_settings_save_in_flight: Bool,
-    org_settings_error: Option(String),
-    org_settings_error_user_id: Option(Int),
-    org_settings_delete_confirm: Option(OrgUser),
-    org_settings_delete_in_flight: Bool,
-    org_settings_delete_error: Option(String),
-    members_add_dialog_open: Bool,
-    members_add_selected_user: Option(OrgUser),
-    members_add_role: ProjectRole,
-    members_add_in_flight: Bool,
-    members_add_error: Option(String),
-    members_remove_confirm: Option(OrgUser),
-    members_remove_in_flight: Bool,
-    members_remove_error: Option(String),
-    members_release_confirm: Option(state_types.ReleaseAllTarget),
-    members_release_in_flight: Option(Int),
-    members_release_error: Option(String),
-    member_capabilities_dialog_user_id: Option(Int),
-    member_capabilities_loading: Bool,
-    member_capabilities_saving: Bool,
-    member_capabilities_cache: Dict(Int, List(Int)),
-    member_capabilities_selected: List(Int),
-    member_capabilities_error: Option(String),
-    capability_members_dialog_capability_id: Option(Int),
-    capability_members_loading: Bool,
-    capability_members_saving: Bool,
-    capability_members_cache: Dict(Int, List(Int)),
-    capability_members_selected: List(Int),
-    capability_members_error: Option(String),
-    org_users_search: state_types.OrgUsersSearchState,
-    task_types: Remote(List(TaskType)),
-    task_types_project_id: Option(Int),
-    task_types_dialog_mode: Option(state_types.TaskTypeDialogMode),
-    task_types_create_dialog_open: Bool,
-    task_types_create_name: String,
-    task_types_create_icon: String,
-    task_types_create_icon_search: String,
-    task_types_create_icon_category: String,
-    task_types_create_capability_id: Option(String),
-    task_types_create_in_flight: Bool,
-    task_types_create_error: Option(String),
-    task_types_icon_preview: state_types.IconPreview,
-    cards: Remote(List(Card)),
-    cards_project_id: Option(Int),
-    cards_dialog_mode: Option(state_types.CardDialogMode),
-    cards_show_empty: Bool,
-    cards_show_completed: Bool,
-    cards_state_filter: Option(CardState),
-    cards_search: String,
-    workflows_org: Remote(List(Workflow)),
-    workflows_project: Remote(List(Workflow)),
-    workflows_dialog_mode: Option(state_types.WorkflowDialogMode),
-    rules_workflow_id: Option(Int),
-    rules: Remote(List(Rule)),
-    rules_dialog_mode: Option(state_types.RuleDialogMode),
-    rules_templates: Remote(List(RuleTemplate)),
-    rules_attach_template_id: Option(Int),
-    rules_attach_in_flight: Bool,
-    rules_attach_error: Option(String),
-    rules_expanded: set.Set(Int),
-    attach_template_modal: Option(Int),
-    attach_template_selected: Option(Int),
-    attach_template_loading: Bool,
-    detaching_templates: set.Set(#(Int, Int)),
-    rules_metrics: Remote(api_workflows.WorkflowMetrics),
-    task_templates_org: Remote(List(TaskTemplate)),
-    task_templates_project: Remote(List(TaskTemplate)),
-    task_templates_dialog_mode: Option(state_types.TaskTemplateDialogMode),
-    assignments: state_types.AssignmentsModel,
+    invites: InvitesModel,
+    projects: ProjectsModel,
+    capabilities: CapabilitiesModel,
+    members: MembersModel,
+    metrics: MetricsModel,
+    workflows: WorkflowsModel,
+    rules: RulesModel,
+    task_templates: TaskTemplatesModel,
+    task_types: TaskTypesModel,
+    cards: CardsModel,
+    assignments: AssignmentsModel,
+  )
+}
+
+/// Provides default admin state.
+pub fn default_model() -> AdminModel {
+  AdminModel(
+    invites: admin_invites.default_model(),
+    projects: admin_projects.default_model(),
+    capabilities: admin_capabilities.default_model(),
+    members: admin_members.default_model(),
+    metrics: admin_metrics.default_model(),
+    workflows: admin_workflows.default_model(),
+    rules: admin_rules.default_model(),
+    task_templates: admin_task_templates.default_model(),
+    task_types: admin_task_types.default_model(),
+    cards: admin_cards.default_model(),
+    assignments: admin_assignments.default_model(),
   )
 }

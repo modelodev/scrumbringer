@@ -5,6 +5,7 @@
 import gleam/option
 
 import scrumbringer_client/client_state
+import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/theme
@@ -65,23 +66,23 @@ pub fn save_pool_view_mode(mode: pool_prefs.ViewMode) -> Nil {
 // Default: BothCollapsed - Config and Org sections start collapsed
 pub fn load_sidebar_state() -> client_state.SidebarCollapse {
   case theme.local_storage_get(sidebar_storage_key) {
-    "" -> client_state.BothCollapsed
+    "" -> ui_state.BothCollapsed
     val ->
       case val {
-        "1,1" -> client_state.BothCollapsed
-        "1,0" -> client_state.ConfigCollapsed
-        "0,1" -> client_state.OrgCollapsed
-        _ -> client_state.BothCollapsed
+        "1,1" -> ui_state.BothCollapsed
+        "1,0" -> ui_state.ConfigCollapsed
+        "0,1" -> ui_state.OrgCollapsed
+        _ -> ui_state.BothCollapsed
       }
   }
 }
 
 pub fn save_sidebar_state(state: client_state.SidebarCollapse) -> Nil {
   let value = case state {
-    client_state.NoneCollapsed -> "0,0"
-    client_state.ConfigCollapsed -> "1,0"
-    client_state.OrgCollapsed -> "0,1"
-    client_state.BothCollapsed -> "1,1"
+    ui_state.NoneCollapsed -> "0,0"
+    ui_state.ConfigCollapsed -> "1,0"
+    ui_state.OrgCollapsed -> "0,1"
+    ui_state.BothCollapsed -> "1,1"
   }
 
   theme.local_storage_set(sidebar_storage_key, value)

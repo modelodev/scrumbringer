@@ -27,12 +27,16 @@ import scrumbringer_client/client_state.{
   type Model, type Msg, admin_msg, update_admin,
 }
 import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/update_helpers
 
 // API modules
 import scrumbringer_client/api/projects as api_projects
+import scrumbringer_client/helpers/auth as helpers_auth
+import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/helpers/lookup as helpers_lookup
+import scrumbringer_client/helpers/toast as helpers_toast
 
 // =============================================================================
 // Confirmation Handlers
@@ -44,7 +48,7 @@ pub fn handle_member_remove_clicked(
   user_id: Int,
 ) -> #(Model, Effect(Msg)) {
   let maybe_user =
-    update_helpers.resolve_org_user(model.admin.org_users_cache, user_id)
+    helpers_lookup.resolve_org_user(model.admin.members.org_users_cache, user_id)
 
   let user = case maybe_user {
     opt.Some(user) -> user
@@ -53,11 +57,13 @@ pub fn handle_member_remove_clicked(
 
   #(
     update_admin(model, fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        members_remove_confirm: opt.Some(user),
-        members_remove_error: opt.None,
-      )
+      update_members(admin, fn(members_state) {
+        admin_members.Model(
+          ..members_state,
+          members_remove_confirm: opt.Some(user),
+          members_remove_error: opt.None,
+        )
+      })
     }),
     effect.none(),
   )
@@ -67,11 +73,13 @@ pub fn handle_member_remove_clicked(
 pub fn handle_member_remove_cancelled(model: Model) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        members_remove_confirm: opt.None,
-        members_remove_error: opt.None,
-      )
+      update_members(admin, fn(members_state) {
+        admin_members.Model(
+          ..members_state,
+          members_remove_confirm: opt.None,
+          members_remove_error: opt.None,
+        )
+      })
     }),
     effect.none(),
   )
@@ -80,18 +88,20 @@ pub fn handle_member_remove_cancelled(model: Model) -> #(Model, Effect(Msg)) {
 // Justification: nested case improves clarity for branching logic.
 /// Handle member remove confirmation.
 pub fn handle_member_remove_confirmed(model: Model) -> #(Model, Effect(Msg)) {
-  case model.admin.members_remove_in_flight {
+  case model.admin.members.members_remove_in_flight {
     True -> #(model, effect.none())
     False -> {
-      case model.core.selected_project_id, model.admin.members_remove_confirm {
+      case model.core.selected_project_id, model.admin.members.members_remove_confirm {
         opt.Some(project_id), opt.Some(user) -> {
           let model =
             update_admin(model, fn(admin) {
-              admin_state.AdminModel(
-                ..admin,
-                members_remove_in_flight: True,
-                members_remove_error: opt.None,
-              )
+              update_members(admin, fn(members_state) {
+                admin_members.Model(
+                  ..members_state,
+                  members_remove_in_flight: True,
+                  members_remove_error: opt.None,
+                )
+              })
             })
           #(
             model,
@@ -117,15 +127,17 @@ pub fn handle_member_removed_ok(
 ) -> #(Model, Effect(Msg)) {
   let model =
     update_admin(model, fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        members_remove_in_flight: False,
-        members_remove_confirm: opt.None,
-      )
+      update_members(admin, fn(members_state) {
+        admin_members.Model(
+          ..members_state,
+          members_remove_in_flight: False,
+          members_remove_confirm: opt.None,
+        )
+      })
     })
   let #(model, refresh_fx) = refresh_fn(model)
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.MemberRemoved,
     ))
@@ -137,31 +149,35 @@ pub fn handle_member_removed_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     case err.status {
       403 -> #(
         update_admin(model, fn(admin) {
-          admin_state.AdminModel(
-            ..admin,
-            members_remove_in_flight: False,
-            members_remove_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NotPermitted,
-            )),
-          )
+          update_members(admin, fn(members_state) {
+            admin_members.Model(
+              ..members_state,
+              members_remove_in_flight: False,
+              members_remove_error: opt.Some(helpers_i18n.i18n_t(
+                model,
+                i18n_text.NotPermitted,
+              )),
+            )
+          })
         }),
-        update_helpers.toast_warning(update_helpers.i18n_t(
+        helpers_toast.toast_warning(helpers_i18n.i18n_t(
           model,
           i18n_text.NotPermitted,
         )),
       )
       _ -> #(
         update_admin(model, fn(admin) {
-          admin_state.AdminModel(
-            ..admin,
-            members_remove_in_flight: False,
-            members_remove_error: opt.Some(err.message),
-          )
+          update_members(admin, fn(members_state) {
+            admin_members.Model(
+              ..members_state,
+              members_remove_in_flight: False,
+              members_remove_error: opt.Some(err.message),
+            )
+          })
         }),
         effect.none(),
       )
@@ -181,4 +197,11 @@ fn fallback_org_user(user_id: Int) -> OrgUser {
     org_role: org_role.Member,
     created_at: "",
   )
+}
+
+fn update_members(
+  admin: admin_state.AdminModel,
+  f: fn(admin_members.Model) -> admin_members.Model,
+) -> admin_state.AdminModel {
+  admin_state.AdminModel(..admin, members: f(admin.members))
 }

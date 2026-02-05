@@ -31,12 +31,13 @@ import scrumbringer_client/client_state.{
   type Model, type Msg, admin_msg, update_admin,
 }
 import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/msg as admin_messages
-import scrumbringer_client/update_helpers
 
 // API modules
 import scrumbringer_client/api/org as api_org
+import scrumbringer_client/helpers/auth as helpers_auth
 
 // =============================================================================
 // Search Input Handlers
@@ -47,7 +48,7 @@ pub fn handle_org_users_search_changed(
   model: Model,
   query: String,
 ) -> #(Model, Effect(Msg)) {
-  let next_state = case model.admin.org_users_search {
+  let next_state = case model.admin.members.org_users_search {
     state_types.OrgUsersSearchIdle(_, token) ->
       state_types.OrgUsersSearchIdle(query, token)
     state_types.OrgUsersSearchLoading(_, token) ->
@@ -59,7 +60,9 @@ pub fn handle_org_users_search_changed(
   }
   #(
     update_admin(model, fn(admin) {
-      admin_state.AdminModel(..admin, org_users_search: next_state)
+      update_members(admin, fn(members_state) {
+        admin_members.Model(..members_state, org_users_search: next_state)
+      })
     }),
     effect.none(),
   )
@@ -71,7 +74,7 @@ pub fn handle_org_users_search_debounced(
   model: Model,
   query: String,
 ) -> #(Model, Effect(Msg)) {
-  let current_token = case model.admin.org_users_search {
+  let current_token = case model.admin.members.org_users_search {
     state_types.OrgUsersSearchIdle(_, token)
     | state_types.OrgUsersSearchLoading(_, token)
     | state_types.OrgUsersSearchLoaded(_, token, _)
@@ -81,10 +84,12 @@ pub fn handle_org_users_search_debounced(
   case string.trim(query) == "" {
     True -> #(
       update_admin(model, fn(admin) {
-        admin_state.AdminModel(
-          ..admin,
-          org_users_search: state_types.OrgUsersSearchIdle(query, current_token),
-        )
+        update_members(admin, fn(members_state) {
+          admin_members.Model(
+            ..members_state,
+            org_users_search: state_types.OrgUsersSearchIdle(query, current_token),
+          )
+        })
       }),
       effect.none(),
     )
@@ -93,10 +98,12 @@ pub fn handle_org_users_search_debounced(
       let token = current_token + 1
       let model =
         update_admin(model, fn(admin) {
-          admin_state.AdminModel(
-            ..admin,
-            org_users_search: state_types.OrgUsersSearchLoading(query, token),
-          )
+          update_members(admin, fn(members_state) {
+            admin_members.Model(
+              ..members_state,
+              org_users_search: state_types.OrgUsersSearchLoading(query, token),
+            )
+          })
         })
       // Pass token to API call so it's included in the response message
       #(
@@ -120,19 +127,21 @@ pub fn handle_org_users_search_results_ok(
   token: Int,
   users: List(OrgUser),
 ) -> #(Model, Effect(Msg)) {
-  case model.admin.org_users_search {
+  case model.admin.members.org_users_search {
     state_types.OrgUsersSearchLoading(query, current_token)
       if token == current_token
     -> #(
       update_admin(model, fn(admin) {
-        admin_state.AdminModel(
-          ..admin,
-          org_users_search: state_types.OrgUsersSearchLoaded(
-            query,
-            current_token,
-            users,
-          ),
-        )
+        update_members(admin, fn(members_state) {
+          admin_members.Model(
+            ..members_state,
+            org_users_search: state_types.OrgUsersSearchLoaded(
+              query,
+              current_token,
+              users,
+            ),
+          )
+        })
       }),
       effect.none(),
     )
@@ -148,25 +157,34 @@ pub fn handle_org_users_search_results_error(
   token: Int,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  case model.admin.org_users_search {
+  case model.admin.members.org_users_search {
     state_types.OrgUsersSearchLoading(query, current_token)
       if token == current_token
     ->
-      update_helpers.handle_401_or(model, err, fn() {
+      helpers_auth.handle_401_or(model, err, fn() {
         #(
           update_admin(model, fn(admin) {
-            admin_state.AdminModel(
-              ..admin,
-              org_users_search: state_types.OrgUsersSearchFailed(
-                query,
-                current_token,
-                err,
-              ),
-            )
+            update_members(admin, fn(members_state) {
+              admin_members.Model(
+                ..members_state,
+                org_users_search: state_types.OrgUsersSearchFailed(
+                  query,
+                  current_token,
+                  err,
+                ),
+              )
+            })
           }),
           effect.none(),
         )
       })
     _ -> #(model, effect.none())
   }
+}
+
+fn update_members(
+  admin: admin_state.AdminModel,
+  f: fn(admin_members.Model) -> admin_members.Model,
+) -> admin_state.AdminModel {
+  admin_state.AdminModel(..admin, members: f(admin.members))
 }

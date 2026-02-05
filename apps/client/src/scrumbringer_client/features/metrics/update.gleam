@@ -33,9 +33,11 @@ import domain/remote.{Failed, Loaded}
 import scrumbringer_client/client_state.{
   type Model, type Msg, update_admin, update_member,
 }
-import scrumbringer_client/client_state/admin.{AdminModel}
-import scrumbringer_client/client_state/member.{MemberModel}
-import scrumbringer_client/update_helpers
+import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/member as member_state
+import scrumbringer_client/client_state/admin/metrics as admin_metrics
+import scrumbringer_client/client_state/member/metrics as member_metrics
+import scrumbringer_client/helpers/auth as helpers_auth
 
 // =============================================================================
 // Member Metrics Handlers
@@ -48,7 +50,12 @@ pub fn handle_member_metrics_fetched_ok(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_member(model, fn(member) {
-      MemberModel(..member, member_metrics: Loaded(metrics))
+      update_member_metrics(member, fn(metrics_state) {
+        member_metrics.Model(
+          ..metrics_state,
+          member_metrics: Loaded(metrics),
+        )
+      })
     }),
     effect.none(),
   )
@@ -59,10 +66,15 @@ pub fn handle_member_metrics_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
       update_member(model, fn(member) {
-        MemberModel(..member, member_metrics: Failed(err))
+        update_member_metrics(member, fn(metrics_state) {
+          member_metrics.Model(
+            ..metrics_state,
+            member_metrics: Failed(err),
+          )
+        })
       }),
       effect.none(),
     )
@@ -80,7 +92,12 @@ pub fn handle_admin_overview_fetched_ok(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, admin_metrics_overview: Loaded(overview))
+      update_admin_metrics(admin, fn(metrics_state) {
+        admin_metrics.Model(
+          ..metrics_state,
+          admin_metrics_overview: Loaded(overview),
+        )
+      })
     }),
     effect.none(),
   )
@@ -91,10 +108,15 @@ pub fn handle_admin_overview_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
       update_admin(model, fn(admin) {
-        AdminModel(..admin, admin_metrics_overview: Failed(err))
+        update_admin_metrics(admin, fn(metrics_state) {
+          admin_metrics.Model(
+            ..metrics_state,
+            admin_metrics_overview: Failed(err),
+          )
+        })
       }),
       effect.none(),
     )
@@ -114,11 +136,13 @@ pub fn handle_admin_project_tasks_fetched_ok(
 
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        admin_metrics_project_tasks: Loaded(payload),
-        admin_metrics_project_id: opt.Some(project_id),
-      )
+      update_admin_metrics(admin, fn(metrics_state) {
+        admin_metrics.Model(
+          ..metrics_state,
+          admin_metrics_project_tasks: Loaded(payload),
+          admin_metrics_project_id: opt.Some(project_id),
+        )
+      })
     }),
     effect.none(),
   )
@@ -129,10 +153,15 @@ pub fn handle_admin_project_tasks_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
       update_admin(model, fn(admin) {
-        AdminModel(..admin, admin_metrics_project_tasks: Failed(err))
+        update_admin_metrics(admin, fn(metrics_state) {
+          admin_metrics.Model(
+            ..metrics_state,
+            admin_metrics_project_tasks: Failed(err),
+          )
+        })
       }),
       effect.none(),
     )
@@ -149,7 +178,12 @@ pub fn handle_admin_users_fetched_ok(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, admin_metrics_users: Loaded(users))
+      update_admin_metrics(admin, fn(metrics_state) {
+        admin_metrics.Model(
+          ..metrics_state,
+          admin_metrics_users: Loaded(users),
+        )
+      })
     }),
     effect.none(),
   )
@@ -159,12 +193,31 @@ pub fn handle_admin_users_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
       update_admin(model, fn(admin) {
-        AdminModel(..admin, admin_metrics_users: Failed(err))
+        update_admin_metrics(admin, fn(metrics_state) {
+          admin_metrics.Model(
+            ..metrics_state,
+            admin_metrics_users: Failed(err),
+          )
+        })
       }),
       effect.none(),
     )
   })
+}
+
+fn update_admin_metrics(
+  admin: admin_state.AdminModel,
+  f: fn(admin_metrics.Model) -> admin_metrics.Model,
+) -> admin_state.AdminModel {
+  admin_state.AdminModel(..admin, metrics: f(admin.metrics))
+}
+
+fn update_member_metrics(
+  member: member_state.MemberModel,
+  f: fn(member_metrics.Model) -> member_metrics.Model,
+) -> member_state.MemberModel {
+  member_state.MemberModel(..member, metrics: f(member.metrics))
 }

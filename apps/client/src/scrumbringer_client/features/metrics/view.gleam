@@ -36,13 +36,13 @@ import domain/task_status.{
 
 import scrumbringer_client/client_state.{type Model, type Msg}
 import scrumbringer_client/features/metrics/types as metrics_types
+import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/remote as ui_remote
 import scrumbringer_client/ui/section_header
-import scrumbringer_client/update_helpers
 
 /// Renders the metrics section with overview and project panels.
 pub fn view_metrics(model: Model, selected: opt.Option(Project)) -> Element(Msg) {
@@ -50,7 +50,7 @@ pub fn view_metrics(model: Model, selected: opt.Option(Project)) -> Element(Msg)
     // Section header (Story 4.8: consistent icons)
     section_header.view(
       icons.OrgMetrics,
-      update_helpers.i18n_t(model, i18n_text.OrgMetrics),
+      helpers_i18n.i18n_t(model, i18n_text.OrgMetrics),
     ),
     view_overview_panel(model),
     view_project_panel(model, selected),
@@ -60,9 +60,9 @@ pub fn view_metrics(model: Model, selected: opt.Option(Project)) -> Element(Msg)
 /// Renders the org-wide metrics overview panel.
 fn view_overview_panel(model: Model) -> Element(Msg) {
   ui_remote.view_remote_panel(
-    remote: model.admin.admin_metrics_overview,
-    title: update_helpers.i18n_t(model, i18n_text.MetricsOverview),
-    loading_msg: update_helpers.i18n_t(model, i18n_text.LoadingOverview),
+    remote: model.admin.metrics.admin_metrics_overview,
+    title: helpers_i18n.i18n_t(model, i18n_text.MetricsOverview),
+    loading_msg: helpers_i18n.i18n_t(model, i18n_text.LoadingOverview),
     loaded: fn(overview) { view_overview_loaded(model, overview) },
   )
 }
@@ -91,9 +91,9 @@ fn view_overview_loaded(
   ) = overview
 
   div([attribute.class("panel")], [
-    h2([], [text(update_helpers.i18n_t(model, i18n_text.MetricsOverview))]),
+    h2([], [text(helpers_i18n.i18n_t(model, i18n_text.MetricsOverview))]),
     p([], [
-      text(update_helpers.i18n_t(
+      text(helpers_i18n.i18n_t(
         model,
         i18n_text.WindowDays(window_days_value(window_days)),
       )),
@@ -156,46 +156,40 @@ fn view_summary_table(
   data_table.new()
   |> data_table.with_columns([
     data_table.column(
-      update_helpers.i18n_t(model, i18n_text.AvailableCount),
+      helpers_i18n.i18n_t(model, i18n_text.AvailableCount),
       fn(r) {
         let #(available, _, _, _, _, _, _, _) = r
         text(int.to_string(available))
       },
     ),
-    data_table.column(update_helpers.i18n_t(model, i18n_text.Claimed), fn(r) {
+    data_table.column(helpers_i18n.i18n_t(model, i18n_text.Claimed), fn(r) {
       let #(_, claimed, _, _, _, _, _, _) = r
       text(int.to_string(claimed))
     }),
-    data_table.column(
-      update_helpers.i18n_t(model, i18n_text.OngoingCount),
-      fn(r) {
-        let #(_, _, ongoing, _, _, _, _, _) = r
-        text(int.to_string(ongoing))
-      },
-    ),
-    data_table.column(update_helpers.i18n_t(model, i18n_text.Released), fn(r) {
+    data_table.column(helpers_i18n.i18n_t(model, i18n_text.OngoingCount), fn(r) {
+      let #(_, _, ongoing, _, _, _, _, _) = r
+      text(int.to_string(ongoing))
+    }),
+    data_table.column(helpers_i18n.i18n_t(model, i18n_text.Released), fn(r) {
       let #(_, _, _, released, _, _, _, _) = r
       text(int.to_string(released))
     }),
-    data_table.column(update_helpers.i18n_t(model, i18n_text.Completed), fn(r) {
+    data_table.column(helpers_i18n.i18n_t(model, i18n_text.Completed), fn(r) {
       let #(_, _, _, _, completed, _, _, _) = r
       text(int.to_string(completed))
     }),
     data_table.column(
-      update_helpers.i18n_t(model, i18n_text.ReleasePercent),
+      helpers_i18n.i18n_t(model, i18n_text.ReleasePercent),
       fn(r) {
         let #(_, _, _, _, _, release_rate, _, _) = r
         text(option_percent_label(release_rate))
       },
     ),
-    data_table.column(
-      update_helpers.i18n_t(model, i18n_text.FlowPercent),
-      fn(r) {
-        let #(_, _, _, _, _, _, flow_rate, _) = r
-        text(option_percent_label(flow_rate))
-      },
-    ),
-    data_table.column(update_helpers.i18n_t(model, i18n_text.WipCount), fn(r) {
+    data_table.column(helpers_i18n.i18n_t(model, i18n_text.FlowPercent), fn(r) {
+      let #(_, _, _, _, _, _, flow_rate, _) = r
+      text(option_percent_label(flow_rate))
+    }),
+    data_table.column(helpers_i18n.i18n_t(model, i18n_text.WipCount), fn(r) {
       let #(_, _, _, _, _, _, _, wip) = r
       text(int.to_string(wip))
     }),
@@ -211,26 +205,26 @@ fn view_health_panel(
   time_to_first_claim: SampledMetric,
 ) -> Element(Msg) {
   div([attribute.class("metrics-health")], [
-    h3([], [text(update_helpers.i18n_t(model, i18n_text.HealthPanel))]),
+    h3([], [text(helpers_i18n.i18n_t(model, i18n_text.HealthPanel))]),
     div([attribute.class("metrics-health-items")], [
       view_health_item(
         model,
-        update_helpers.i18n_t(model, i18n_text.HealthFlow),
+        helpers_i18n.i18n_t(model, i18n_text.HealthFlow),
         option_percent_label(flow_percent),
         metrics_types.health_for_flow(flow_percent),
       ),
       view_health_item(
         model,
-        update_helpers.i18n_t(model, i18n_text.HealthRelease),
+        helpers_i18n.i18n_t(model, i18n_text.HealthRelease),
         option_percent_label(release_percent),
         metrics_types.health_for_release(release_percent),
       ),
       view_health_item(
         model,
-        update_helpers.i18n_t(model, i18n_text.HealthTimeToFirstClaim),
+        helpers_i18n.i18n_t(model, i18n_text.HealthTimeToFirstClaim),
         metrics_types.sampled_time_label(
           time_to_first_claim,
-          update_helpers.i18n_t(model, i18n_text.NoSample),
+          helpers_i18n.i18n_t(model, i18n_text.NoSample),
         ),
         metrics_types.health_for_time(time_to_first_claim),
       ),
@@ -245,9 +239,9 @@ fn view_health_item(
   health: Health,
 ) -> Element(Msg) {
   let badge_label = case health {
-    OkHealth -> update_helpers.i18n_t(model, i18n_text.HealthOk)
-    Attention -> update_helpers.i18n_t(model, i18n_text.HealthAttention)
-    Alert -> update_helpers.i18n_t(model, i18n_text.HealthAlert)
+    OkHealth -> helpers_i18n.i18n_t(model, i18n_text.HealthOk)
+    Attention -> helpers_i18n.i18n_t(model, i18n_text.HealthAttention)
+    Alert -> helpers_i18n.i18n_t(model, i18n_text.HealthAlert)
   }
   let badge_variant = case health {
     OkHealth -> badge.Success
@@ -292,7 +286,7 @@ fn view_stat(
 ) -> Element(Msg) {
   div([attribute.class("metrics-overview-stat")], [
     div([attribute.class("metrics-overview-label")], [
-      text(update_helpers.i18n_t(model, label_key)),
+      text(helpers_i18n.i18n_t(model, label_key)),
     ]),
     div([attribute.class("metrics-overview-value")], [text(value)]),
   ])
@@ -304,11 +298,11 @@ fn view_time_to_first_claim(
   buckets: List(OrgMetricsBucket),
 ) -> Element(Msg) {
   div([], [
-    h3([], [text(update_helpers.i18n_t(model, i18n_text.TimeToFirstClaim))]),
+    h3([], [text(helpers_i18n.i18n_t(model, i18n_text.TimeToFirstClaim))]),
     p([], [
       text(metrics_types.sampled_time_label(
         time_to_first_claim,
-        update_helpers.i18n_t(model, i18n_text.NoSample),
+        helpers_i18n.i18n_t(model, i18n_text.NoSample),
       )),
     ]),
     div([attribute.class("buckets")], [
@@ -323,7 +317,7 @@ fn view_release_rate_buckets(
 ) -> Element(Msg) {
   div([], [
     h3([], [
-      text(update_helpers.i18n_t(model, i18n_text.ReleaseRateDistribution)),
+      text(helpers_i18n.i18n_t(model, i18n_text.ReleaseRateDistribution)),
     ]),
     view_bucket_table(model, buckets),
   ])
@@ -335,11 +329,11 @@ fn view_bucket_table(
 ) -> Element(Msg) {
   data_table.new()
   |> data_table.with_columns([
-    data_table.column(update_helpers.i18n_t(model, i18n_text.Bucket), fn(b) {
+    data_table.column(helpers_i18n.i18n_t(model, i18n_text.Bucket), fn(b) {
       let OrgMetricsBucket(bucket: bucket, ..) = b
       text(bucket)
     }),
-    data_table.column(update_helpers.i18n_t(model, i18n_text.Count), fn(b) {
+    data_table.column(helpers_i18n.i18n_t(model, i18n_text.Count), fn(b) {
       let OrgMetricsBucket(count: count, ..) = b
       text(int.to_string(count))
     }),
@@ -356,73 +350,64 @@ fn view_by_project_table(
   by_project: List(OrgMetricsProjectOverview),
 ) -> Element(Msg) {
   div([], [
-    h3([], [text(update_helpers.i18n_t(model, i18n_text.ByProject))]),
+    h3([], [text(helpers_i18n.i18n_t(model, i18n_text.ByProject))]),
     data_table.new()
       |> data_table.with_columns([
         data_table.column(
-          update_helpers.i18n_t(model, i18n_text.ProjectLabel),
+          helpers_i18n.i18n_t(model, i18n_text.ProjectLabel),
           fn(p) {
             let OrgMetricsProjectOverview(project_name: project_name, ..) = p
             text(project_name)
           },
         ),
         data_table.column(
-          update_helpers.i18n_t(model, i18n_text.AvailableCount),
+          helpers_i18n.i18n_t(model, i18n_text.AvailableCount),
           fn(p) {
             let OrgMetricsProjectOverview(available_count: count, ..) = p
             text(int.to_string(count))
           },
         ),
+        data_table.column(helpers_i18n.i18n_t(model, i18n_text.Claimed), fn(p) {
+          let OrgMetricsProjectOverview(claimed_count: claimed, ..) = p
+          text(int.to_string(claimed))
+        }),
         data_table.column(
-          update_helpers.i18n_t(model, i18n_text.Claimed),
-          fn(p) {
-            let OrgMetricsProjectOverview(claimed_count: claimed, ..) = p
-            text(int.to_string(claimed))
-          },
-        ),
-        data_table.column(
-          update_helpers.i18n_t(model, i18n_text.OngoingCount),
+          helpers_i18n.i18n_t(model, i18n_text.OngoingCount),
           fn(p) {
             let OrgMetricsProjectOverview(ongoing_count: count, ..) = p
             text(int.to_string(count))
           },
         ),
+        data_table.column(helpers_i18n.i18n_t(model, i18n_text.Released), fn(p) {
+          let OrgMetricsProjectOverview(released_count: released, ..) = p
+          text(int.to_string(released))
+        }),
         data_table.column(
-          update_helpers.i18n_t(model, i18n_text.Released),
-          fn(p) {
-            let OrgMetricsProjectOverview(released_count: released, ..) = p
-            text(int.to_string(released))
-          },
-        ),
-        data_table.column(
-          update_helpers.i18n_t(model, i18n_text.Completed),
+          helpers_i18n.i18n_t(model, i18n_text.Completed),
           fn(p) {
             let OrgMetricsProjectOverview(completed_count: completed, ..) = p
             text(int.to_string(completed))
           },
         ),
         data_table.column(
-          update_helpers.i18n_t(model, i18n_text.ReleasePercent),
+          helpers_i18n.i18n_t(model, i18n_text.ReleasePercent),
           fn(p) {
             let OrgMetricsProjectOverview(release_rate_percent: rrp, ..) = p
             text(option_percent_label(rrp))
           },
         ),
         data_table.column(
-          update_helpers.i18n_t(model, i18n_text.FlowPercent),
+          helpers_i18n.i18n_t(model, i18n_text.FlowPercent),
           fn(p) {
             let OrgMetricsProjectOverview(pool_flow_ratio_percent: pfrp, ..) = p
             text(option_percent_label(pfrp))
           },
         ),
-        data_table.column(
-          update_helpers.i18n_t(model, i18n_text.WipCount),
-          fn(p) {
-            let OrgMetricsProjectOverview(wip_count: wip, ..) = p
-            text(int.to_string(wip))
-          },
-        ),
-        data_table.column(update_helpers.i18n_t(model, i18n_text.Drill), fn(p) {
+        data_table.column(helpers_i18n.i18n_t(model, i18n_text.WipCount), fn(p) {
+          let OrgMetricsProjectOverview(wip_count: wip, ..) = p
+          text(int.to_string(wip))
+        }),
+        data_table.column(helpers_i18n.i18n_t(model, i18n_text.Drill), fn(p) {
           let OrgMetricsProjectOverview(project_id: project_id, ..) = p
           button(
             [
@@ -431,7 +416,7 @@ fn view_by_project_table(
                 client_state.ProjectSelected(int.to_string(project_id)),
               ),
             ],
-            [text(update_helpers.i18n_t(model, i18n_text.View))],
+            [text(helpers_i18n.i18n_t(model, i18n_text.View))],
           )
         }),
       ])
@@ -450,12 +435,9 @@ fn view_project_panel(
   case selected {
     opt.None ->
       div([attribute.class("panel")], [
-        h3([], [text(update_helpers.i18n_t(model, i18n_text.ProjectDrillDown))]),
+        h3([], [text(helpers_i18n.i18n_t(model, i18n_text.ProjectDrillDown))]),
         p([], [
-          text(update_helpers.i18n_t(
-            model,
-            i18n_text.SelectProjectToInspectTasks,
-          )),
+          text(helpers_i18n.i18n_t(model, i18n_text.SelectProjectToInspectTasks)),
         ]),
       ])
 
@@ -467,14 +449,14 @@ fn view_project_panel(
 fn view_project_tasks_panel(model: Model, project_name: String) -> Element(Msg) {
   let body =
     ui_remote.view_remote_inline(
-      remote: model.admin.admin_metrics_project_tasks,
-      loading_msg: update_helpers.i18n_t(model, i18n_text.LoadingTasks),
+      remote: model.admin.metrics.admin_metrics_project_tasks,
+      loading_msg: helpers_i18n.i18n_t(model, i18n_text.LoadingTasks),
       loaded: fn(payload) { view_project_tasks_table(model, payload) },
     )
 
   div([attribute.class("panel")], [
     h3([], [
-      text(update_helpers.i18n_t(model, i18n_text.ProjectTasks(project_name))),
+      text(helpers_i18n.i18n_t(model, i18n_text.ProjectTasks(project_name))),
     ]),
     body,
   ])
@@ -488,34 +470,31 @@ fn view_project_tasks_table(
 
   data_table.new()
   |> data_table.with_columns([
-    data_table.column(update_helpers.i18n_t(model, i18n_text.Title), fn(t) {
+    data_table.column(helpers_i18n.i18n_t(model, i18n_text.Title), fn(t) {
       let MetricsProjectTask(task: Task(title: title, ..), ..) = t
       text(title)
     }),
-    data_table.column(update_helpers.i18n_t(model, i18n_text.Status), fn(t) {
+    data_table.column(helpers_i18n.i18n_t(model, i18n_text.Status), fn(t) {
       let MetricsProjectTask(task: Task(state: state, ..), ..) = t
       text(task_status_to_string(task_state.to_status(state)))
     }),
-    data_table.column(
-      update_helpers.i18n_t(model, i18n_text.OngoingCount),
-      fn(t) {
-        let MetricsProjectTask(task: Task(state: state, ..), ..) = t
-        text(work_state_label(model, task_state.to_work_state(state)))
-      },
-    ),
-    data_table.column(update_helpers.i18n_t(model, i18n_text.Claims), fn(t) {
+    data_table.column(helpers_i18n.i18n_t(model, i18n_text.OngoingCount), fn(t) {
+      let MetricsProjectTask(task: Task(state: state, ..), ..) = t
+      text(work_state_label(model, task_state.to_work_state(state)))
+    }),
+    data_table.column(helpers_i18n.i18n_t(model, i18n_text.Claims), fn(t) {
       let MetricsProjectTask(claim_count: claim_count, ..) = t
       text(int.to_string(claim_count))
     }),
-    data_table.column(update_helpers.i18n_t(model, i18n_text.Releases), fn(t) {
+    data_table.column(helpers_i18n.i18n_t(model, i18n_text.Releases), fn(t) {
       let MetricsProjectTask(release_count: release_count, ..) = t
       text(int.to_string(release_count))
     }),
-    data_table.column(update_helpers.i18n_t(model, i18n_text.Completes), fn(t) {
+    data_table.column(helpers_i18n.i18n_t(model, i18n_text.Completes), fn(t) {
       let MetricsProjectTask(complete_count: complete_count, ..) = t
       text(int.to_string(complete_count))
     }),
-    data_table.column(update_helpers.i18n_t(model, i18n_text.FirstClaim), fn(t) {
+    data_table.column(helpers_i18n.i18n_t(model, i18n_text.FirstClaim), fn(t) {
       let MetricsProjectTask(first_claim_at: first_claim_at, ..) = t
       text(option_string_label(first_claim_at))
     }),
@@ -539,16 +518,16 @@ fn option_percent_label(value: opt.Option(Int)) -> String {
 fn option_ms_human_label(model: Model, value: opt.Option(Int)) -> String {
   case value {
     opt.Some(v) -> metrics_types.format_ms_human(v)
-    opt.None -> update_helpers.i18n_t(model, i18n_text.NoSample)
+    opt.None -> helpers_i18n.i18n_t(model, i18n_text.NoSample)
   }
 }
 
 fn work_state_label(model: Model, state: WorkState) -> String {
   case state {
-    WorkAvailable -> update_helpers.i18n_t(model, i18n_text.AvailableCount)
-    WorkClaimed -> update_helpers.i18n_t(model, i18n_text.Claimed)
-    WorkOngoing -> update_helpers.i18n_t(model, i18n_text.OngoingCount)
-    WorkCompleted -> update_helpers.i18n_t(model, i18n_text.Completed)
+    WorkAvailable -> helpers_i18n.i18n_t(model, i18n_text.AvailableCount)
+    WorkClaimed -> helpers_i18n.i18n_t(model, i18n_text.Claimed)
+    WorkOngoing -> helpers_i18n.i18n_t(model, i18n_text.OngoingCount)
+    WorkCompleted -> helpers_i18n.i18n_t(model, i18n_text.Completed)
   }
 }
 

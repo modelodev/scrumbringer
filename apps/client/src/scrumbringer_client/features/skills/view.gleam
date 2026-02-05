@@ -17,10 +17,9 @@ import lustre/element.{type Element}
 import lustre/element/html.{button, div, input, span, text}
 import lustre/event
 
-import scrumbringer_client/client_state.{
-  type Model, type Msg, MemberSaveCapabilitiesClicked, MemberToggleCapability,
-  pool_msg,
-}
+import scrumbringer_client/client_state.{type Model, type Msg, pool_msg}
+import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_notice
@@ -29,18 +28,17 @@ import scrumbringer_client/ui/info_callout
 import scrumbringer_client/ui/loading
 import scrumbringer_client/ui/remote as ui_remote
 import scrumbringer_client/ui/section_header
-import scrumbringer_client/update_helpers
 
 /// Renders the My Skills section.
 pub fn view_skills(model: Model) -> Element(Msg) {
   div([attribute.class("section")], [
     section_header.view(
       icons.Crosshairs,
-      update_helpers.i18n_t(model, i18n_text.MySkills),
+      helpers_i18n.i18n_t(model, i18n_text.MySkills),
     ),
     // MS01: Helper text explaining the section
-    info_callout.simple(update_helpers.i18n_t(model, i18n_text.MySkillsHelp)),
-    case model.member.member_my_capabilities_error {
+    info_callout.simple(helpers_i18n.i18n_t(model, i18n_text.MySkillsHelp)),
+    case model.member.skills.member_my_capabilities_error {
       opt.Some(err) -> error_notice.view(err)
       opt.None -> element.none()
     },
@@ -48,17 +46,17 @@ pub fn view_skills(model: Model) -> Element(Msg) {
     button(
       [
         attribute.type_("submit"),
-        event.on_click(pool_msg(MemberSaveCapabilitiesClicked)),
-        attribute.disabled(model.member.member_my_capabilities_in_flight),
-        attribute.class(case model.member.member_my_capabilities_in_flight {
+        event.on_click(pool_msg(pool_messages.MemberSaveCapabilitiesClicked)),
+        attribute.disabled(model.member.skills.member_my_capabilities_in_flight),
+        attribute.class(case model.member.skills.member_my_capabilities_in_flight {
           True -> "btn-loading"
           False -> ""
         }),
       ],
       [
-        text(case model.member.member_my_capabilities_in_flight {
-          True -> update_helpers.i18n_t(model, i18n_text.Saving)
-          False -> update_helpers.i18n_t(model, i18n_text.Save)
+        text(case model.member.skills.member_my_capabilities_in_flight {
+          True -> helpers_i18n.i18n_t(model, i18n_text.Saving)
+          False -> helpers_i18n.i18n_t(model, i18n_text.Save)
         }),
       ],
     ),
@@ -68,9 +66,9 @@ pub fn view_skills(model: Model) -> Element(Msg) {
 /// Renders the list of capabilities with checkboxes.
 fn view_skills_list(model: Model) -> Element(Msg) {
   ui_remote.view_remote(
-    model.member.member_capabilities,
+    model.member.skills.member_capabilities,
     loading: fn() {
-      loading.loading(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis))
+      loading.loading(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis))
     },
     error: fn(err) { error_notice.view(err.message) },
     loaded: fn(capabilities) {
@@ -78,14 +76,14 @@ fn view_skills_list(model: Model) -> Element(Msg) {
         True ->
           empty_state.simple(
             icons.UsersEmoji,
-            update_helpers.i18n_t(model, i18n_text.NoCapabilitiesYet),
+            helpers_i18n.i18n_t(model, i18n_text.NoCapabilitiesYet),
           )
         False ->
           div(
             [attribute.class("skills-list")],
             list.map(capabilities, fn(c) {
               let selected = case
-                dict.get(model.member.member_my_capability_ids_edit, c.id)
+                dict.get(model.member.skills.member_my_capability_ids_edit, c.id)
               {
                 Ok(v) -> v
                 Error(_) -> False
@@ -99,7 +97,9 @@ fn view_skills_list(model: Model) -> Element(Msg) {
                     True -> "true"
                     False -> "false"
                   }),
-                  event.on_click(pool_msg(MemberToggleCapability(c.id))),
+                  event.on_click(pool_msg(
+                    pool_messages.MemberToggleCapability(c.id),
+                  )),
                 ]),
               ])
             }),

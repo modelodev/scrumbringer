@@ -26,10 +26,10 @@ import scrumbringer_client/state/normalized_store
 
 /// Find a card by ID in the loaded cards list.
 pub fn find_card(model: Model, card_id: Int) -> option.Option(Card) {
-  case normalized_store.get_by_id(model.member.member_cards_store, card_id) {
+  case normalized_store.get_by_id(model.member.pool.member_cards_store, card_id) {
     option.Some(card) -> option.Some(card)
     option.None ->
-      case model.admin.cards {
+      case model.admin.cards.cards {
         Loaded(cards) ->
           list.find(cards, fn(card) { card.id == card_id })
           |> option.from_result
@@ -44,13 +44,13 @@ pub fn get_project_cards(model: Model) -> List(Card) {
     option.Some(project_id) -> {
       let store_cards =
         normalized_store.get_by_project(
-          model.member.member_cards_store,
+          model.member.pool.member_cards_store,
           project_id,
         )
 
       case list.is_empty(store_cards) {
         True ->
-          case model.admin.cards {
+          case model.admin.cards.cards {
             Loaded(cards) ->
               list.filter(cards, fn(card) { card.project_id == project_id })
             _ -> []

@@ -7,10 +7,11 @@ import domain/card.{type Card, Card, Pendiente}
 import domain/remote.{Loading}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
+import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/fichas/view as fichas_view
+import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/state/normalized_store
-import scrumbringer_client/update_helpers
 
 fn make_card(id: Int, project_id: Int, title: String) -> Card {
   Card(
@@ -45,10 +46,15 @@ pub fn fichas_uses_cache_when_available_test() {
       client_state.CoreModel(..core, selected_project_id: option.Some(10))
     })
     |> client_state.update_member(fn(member) {
+      let pool = member.pool
+
       member_state.MemberModel(
         ..member,
-        member_cards_store: store,
-        member_cards: Loading,
+        pool: member_pool.Model(
+          ..pool,
+          member_cards_store: store,
+          member_cards: Loading,
+        ),
       )
     })
 
@@ -68,14 +74,19 @@ pub fn fichas_shows_loading_only_without_cache_test() {
       client_state.CoreModel(..core, selected_project_id: option.Some(10))
     })
     |> client_state.update_member(fn(member) {
-      member_state.MemberModel(..member, member_cards_store: store)
+      let pool = member.pool
+
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(..pool, member_cards_store: store),
+      )
     })
 
   let html =
     fichas_view.view_fichas(model)
     |> element.to_document_string
 
-  let expected = update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)
+  let expected = helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)
   string.contains(html, expected) |> should.be_true
 }
 
@@ -86,9 +97,11 @@ pub fn fichas_shows_empty_without_cache_or_pending_test() {
       client_state.CoreModel(..core, selected_project_id: option.Some(10))
     })
     |> client_state.update_member(fn(member) {
+      let pool = member.pool
+
       member_state.MemberModel(
         ..member,
-        member_cards_store: normalized_store.new(),
+        pool: member_pool.Model(..pool, member_cards_store: normalized_store.new()),
       )
     })
 
@@ -96,6 +109,6 @@ pub fn fichas_shows_empty_without_cache_or_pending_test() {
     fichas_view.view_fichas(model)
     |> element.to_document_string
 
-  let expected = update_helpers.i18n_t(model, i18n_text.MemberFichasEmpty)
+  let expected = helpers_i18n.i18n_t(model, i18n_text.MemberFichasEmpty)
   string.contains(html, expected) |> should.be_true
 }

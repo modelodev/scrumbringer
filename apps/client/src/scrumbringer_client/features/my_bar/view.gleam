@@ -22,7 +22,7 @@
 ////
 //// - **client_view.gleam**: Main view imports this for member section
 //// - **client_state.gleam**: Provides Model and Msg types
-//// - **update_helpers.gleam**: Provides helper functions
+//// - **helpers/**: Provides shared helper functions
 ////
 //// ## Line Count Justification
 ////
@@ -51,11 +51,10 @@ import domain/task_status.{
 }
 import domain/user.{type User}
 
-import scrumbringer_client/client_state.{
-  type Model, type Msg, MemberClaimClicked, MemberCompleteClicked,
-  MemberCreateDialogOpenedWithCard, MemberNowWorkingPauseClicked,
-  MemberNowWorkingStartClicked, MemberReleaseClicked, pool_msg,
-}
+import scrumbringer_client/client_state.{type Model, type Msg, pool_msg}
+import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/helpers/selection as helpers_selection
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/card_badge
@@ -68,7 +67,6 @@ import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_type_icon
-import scrumbringer_client/update_helpers
 import scrumbringer_client/utils/card_queries
 
 // Re-export view_task_type_icon_inline from client_view for internal use
@@ -77,18 +75,18 @@ import scrumbringer_client/utils/card_queries
 // Justification: nested case improves clarity for branching logic.
 /// Renders the My Bar section with claimed tasks and metrics.
 pub fn view_bar(model: Model, user: User) -> Element(Msg) {
-  case update_helpers.active_projects(model) {
+  case helpers_selection.active_projects(model) {
     [] ->
       div([attribute.class("empty")], [
-        h2([], [text(update_helpers.i18n_t(model, i18n_text.NoProjectsYet))]),
-        p([], [text(update_helpers.i18n_t(model, i18n_text.NoProjectsBody))]),
+        h2([], [text(helpers_i18n.i18n_t(model, i18n_text.NoProjectsYet))]),
+        p([], [text(helpers_i18n.i18n_t(model, i18n_text.NoProjectsBody))]),
       ])
 
     _ ->
-      case model.member.member_tasks {
+      case model.member.pool.member_tasks {
         NotAsked | Loading ->
           div([attribute.class("empty")], [
-            text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+            text(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)),
           ])
 
         // MB01: Error display with banner
@@ -113,8 +111,8 @@ pub fn view_bar(model: Model, user: User) -> Element(Msg) {
               [] ->
                 empty_state.new(
                   icons.Backpack,
-                  update_helpers.i18n_t(model, i18n_text.NoClaimedTasks),
-                  update_helpers.i18n_t(model, i18n_text.GoToPoolToClaimTasks),
+                  helpers_i18n.i18n_t(model, i18n_text.NoClaimedTasks),
+                  helpers_i18n.i18n_t(model, i18n_text.GoToPoolToClaimTasks),
                 )
                 |> empty_state.view
 
@@ -236,7 +234,7 @@ fn view_card_group(model: Model, user: User, group: CardGroup) -> Element(Msg) {
 
   let header_title = case card_title {
     opt.Some(title) -> title
-    opt.None -> update_helpers.i18n_t(model, i18n_text.UngroupedTasks)
+    opt.None -> helpers_i18n.i18n_t(model, i18n_text.UngroupedTasks)
   }
 
   div([attribute.class("my-bar-card-group " <> border_class)], [
@@ -251,7 +249,7 @@ fn view_card_group(model: Model, user: User, group: CardGroup) -> Element(Msg) {
       span([attribute.class("my-bar-card-title")], [text(header_title)]),
       // Progress count
       span([attribute.class("my-bar-card-progress")], [
-        text(update_helpers.i18n_t(
+        text(helpers_i18n.i18n_t(
           model,
           i18n_text.CardProgressCount(completed, total),
         )),
@@ -264,9 +262,11 @@ fn view_card_group(model: Model, user: User, group: CardGroup) -> Element(Msg) {
               attribute.class("btn-icon btn-sm my-bar-add-task"),
               attribute.attribute(
                 "title",
-                update_helpers.i18n_t(model, i18n_text.NewTaskInCard(title)),
+                helpers_i18n.i18n_t(model, i18n_text.NewTaskInCard(title)),
               ),
-              event.on_click(pool_msg(MemberCreateDialogOpenedWithCard(id))),
+              event.on_click(pool_msg(
+                pool_messages.MemberCreateDialogOpenedWithCard(id),
+              )),
             ],
             [text("+")],
           )
@@ -286,9 +286,9 @@ fn view_card_group(model: Model, user: User, group: CardGroup) -> Element(Msg) {
 
 /// Renders the personal metrics panel.
 pub fn view_member_metrics_panel(model: Model) -> Element(Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
 
-  case model.member.member_metrics {
+  case model.member.metrics.member_metrics {
     NotAsked | Loading ->
       div([attribute.class("panel")], [
         h3([], [text(t(i18n_text.MyMetrics))]),
@@ -407,13 +407,13 @@ pub fn view_member_bar_task_row(
   }
 
   let disable_actions =
-    model.member.member_task_mutation_in_flight
-    || model.member.member_now_working_in_flight
+    model.member.pool.member_task_mutation_in_flight
+    || model.member.now_working.member_now_working_in_flight
 
   let claim_action =
     task_actions.claim_only(
-      update_helpers.i18n_t(model, i18n_text.Claim),
-      pool_msg(MemberClaimClicked(id, version)),
+      helpers_i18n.i18n_t(model, i18n_text.Claim),
+      pool_msg(pool_messages.MemberClaimClicked(id, version)),
       action_buttons.SizeXs,
       disable_actions,
       "",
@@ -423,24 +423,24 @@ pub fn view_member_bar_task_row(
 
   let start_action =
     task_actions.text_action(
-      update_helpers.i18n_t(model, i18n_text.Start),
-      pool_msg(MemberNowWorkingStartClicked(id)),
+      helpers_i18n.i18n_t(model, i18n_text.Start),
+      pool_msg(pool_messages.MemberNowWorkingStartClicked(id)),
       "btn-xs",
-      update_helpers.i18n_t(model, i18n_text.StartNowWorking),
+      helpers_i18n.i18n_t(model, i18n_text.StartNowWorking),
       disable_actions,
     )
 
   let pause_action =
     task_actions.text_action(
-      update_helpers.i18n_t(model, i18n_text.Pause),
-      pool_msg(MemberNowWorkingPauseClicked),
+      helpers_i18n.i18n_t(model, i18n_text.Pause),
+      pool_msg(pool_messages.MemberNowWorkingPauseClicked),
       "btn-xs",
-      update_helpers.i18n_t(model, i18n_text.PauseNowWorking),
+      helpers_i18n.i18n_t(model, i18n_text.PauseNowWorking),
       disable_actions,
     )
 
   let is_active =
-    update_helpers.now_working_active_task_id(model) == opt.Some(id)
+    helpers_selection.now_working_active_task_id(model) == opt.Some(id)
 
   let now_working_action = case is_active {
     True -> pause_action
@@ -452,16 +452,16 @@ pub fn view_member_bar_task_row(
     Claimed(_), True -> [
       now_working_action,
       ..task_actions.release_and_complete(
-        update_helpers.i18n_t(model, i18n_text.Release),
-        pool_msg(MemberReleaseClicked(id, version)),
-        update_helpers.i18n_t(model, i18n_text.Complete),
-        pool_msg(MemberCompleteClicked(id, version)),
+        helpers_i18n.i18n_t(model, i18n_text.Release),
+        pool_msg(pool_messages.MemberReleaseClicked(id, version)),
+        helpers_i18n.i18n_t(model, i18n_text.Complete),
+        pool_msg(pool_messages.MemberCompleteClicked(id, version)),
         action_buttons.SizeXs,
         disable_actions,
         "",
         "",
-        opt.Some(update_helpers.i18n_t(model, i18n_text.Release)),
-        opt.Some(update_helpers.i18n_t(model, i18n_text.Complete)),
+        opt.Some(helpers_i18n.i18n_t(model, i18n_text.Release)),
+        opt.Some(helpers_i18n.i18n_t(model, i18n_text.Complete)),
         opt.None,
         opt.None,
       )
@@ -483,7 +483,7 @@ pub fn view_member_bar_task_row(
         span([attribute.attribute("style", "margin-right:4px;")], [
           task_type_icon.view(type_icon, 16, model.ui.theme),
         ]),
-        text(update_helpers.i18n_t(model, i18n_text.PriorityShort(priority))),
+        text(helpers_i18n.i18n_t(model, i18n_text.PriorityShort(priority))),
         text(" · "),
         text(type_label),
       ]),

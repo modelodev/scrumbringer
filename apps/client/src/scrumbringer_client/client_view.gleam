@@ -48,6 +48,7 @@ import domain/user.{type User}
 import domain/view_mode
 
 import scrumbringer_client/client_state
+import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/auth/msg as auth_messages
 import scrumbringer_client/features/i18n/msg as i18n_messages
@@ -65,8 +66,7 @@ import scrumbringer_client/features/fichas/view as fichas_view
 import scrumbringer_client/features/invites/view as invites_view
 import scrumbringer_client/features/metrics/view as metrics_view
 import scrumbringer_client/features/my_bar/view as my_bar_view
-import scrumbringer_client/features/now_working/mobile as now_working_mobile
-import scrumbringer_client/features/now_working/panel as now_working_panel
+import scrumbringer_client/features/now_working/view as now_working_view
 import scrumbringer_client/features/pool/dialogs as pool_dialogs
 import scrumbringer_client/features/pool/view as pool_view
 import scrumbringer_client/features/projects/view as projects_view
@@ -74,7 +74,7 @@ import scrumbringer_client/features/skills/view as skills_view
 import scrumbringer_client/features/task_types/view as task_types_view
 import scrumbringer_client/features/workflows/view as workflows_view
 
-// Story 4.5: i18n module no longer imported directly, using i18n_text via update_helpers
+// Story 4.5: i18n module no longer imported directly; use helpers/i18n wrapper
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/member_section
 import scrumbringer_client/permissions
@@ -93,7 +93,6 @@ import scrumbringer_client/ui/task_state as ui_task_state
 // Story 4.5: ui_layout no longer directly imported (used via panels)
 import scrumbringer_client/client_ffi
 import scrumbringer_client/ui/toast as ui_toast
-import scrumbringer_client/update_helpers
 import scrumbringer_client/utils/card_queries
 
 import domain/task.{type Task, ActiveTask, Task, WorkSession}
@@ -102,9 +101,13 @@ import scrumbringer_client/features/layout/center_panel
 import scrumbringer_client/features/layout/left_panel
 import scrumbringer_client/features/layout/responsive_drawer
 import scrumbringer_client/features/layout/right_panel
-import scrumbringer_client/features/layout/three_panel_layout
+import scrumbringer_client/features/layout/view as layout_view
 import scrumbringer_client/features/views/grouped_list
 import scrumbringer_client/features/views/kanban_board
+import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/helpers/lookup as helpers_lookup
+import scrumbringer_client/helpers/selection as helpers_selection
+import scrumbringer_client/helpers/time as helpers_time
 
 // =============================================================================
 // Main View
@@ -133,7 +136,7 @@ fn view_skip_link(model: client_state.Model) -> Element(client_state.Msg) {
       attribute.href("#main-content"),
       attribute.class("skip-link"),
     ],
-    [text(update_helpers.i18n_t(model, i18n_text.SkipToContent))],
+    [text(helpers_i18n.i18n_t(model, i18n_text.SkipToContent))],
   )
 }
 
@@ -144,23 +147,23 @@ fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) 
       client_state.ToastDismiss(id)
     }),
     // Global card dialog (Story 4.8 UX: renders on any page when open)
-    case model.core.selected_project_id, model.admin.cards_dialog_mode {
+    case model.core.selected_project_id, model.admin.cards.cards_dialog_mode {
       opt.Some(project_id), opt.Some(_) ->
         admin_view.view_card_crud_dialog(model, project_id)
       _, _ -> element.none()
     },
     // Global task creation dialog (Story 4.8 UX: renders on any page when open)
-    case model.member.member_create_dialog_open {
-      True -> pool_dialogs.view_create_dialog(model)
-      False -> element.none()
+    case model.member.pool.member_create_dialog_mode {
+      dialog_mode.DialogCreate -> pool_dialogs.view_create_dialog(model)
+      _ -> element.none()
     },
     // Global task detail dialog (renders from list/canvas/pool)
-    case model.member.member_notes_task_id {
+    case model.member.notes.member_notes_task_id {
       opt.Some(task_id) -> pool_dialogs.view_task_details(model, task_id)
       opt.None -> element.none()
     },
     // Global position edit dialog (renders from list/canvas/pool)
-    case model.member.member_position_edit_task {
+    case model.member.positions.member_position_edit_task {
       opt.Some(task_id) -> pool_dialogs.view_position_edit(model, task_id)
       opt.None -> element.none()
     },
@@ -183,7 +186,7 @@ pub fn now_working_elapsed_from_ms_for_test(
   started_ms: Int,
   server_now_ms: Int,
 ) -> String {
-  update_helpers.now_working_elapsed_from_ms(
+  helpers_time.now_working_elapsed_from_ms(
     accumulated_s,
     started_ms,
     server_now_ms,
@@ -223,8 +226,8 @@ fn view_admin_three_panel(
   model: client_state.Model,
   user: User,
 ) -> Element(client_state.Msg) {
-  let projects = update_helpers.active_projects(model)
-  let is_pm = case update_helpers.selected_project(model) {
+  let projects = helpers_selection.active_projects(model)
+  let is_pm = case helpers_selection.selected_project(model) {
     opt.Some(project) -> permissions.is_project_manager(project)
     opt.None -> False
   }
@@ -236,12 +239,12 @@ fn view_admin_three_panel(
   let center_content = build_admin_center_panel(model, user)
   let right_content = build_right_panel(model, user)
 
-  three_panel_layout.view_i18n(
+  layout_view.view_i18n(
     left_content,
     center_content,
     right_content,
-    update_helpers.i18n_t(model, i18n_text.MainNavigation),
-    update_helpers.i18n_t(model, i18n_text.MyActivity),
+    helpers_i18n.i18n_t(model, i18n_text.MainNavigation),
+    helpers_i18n.i18n_t(model, i18n_text.MyActivity),
   )
 }
 
@@ -264,8 +267,8 @@ fn view_admin_section_content(
   model: client_state.Model,
   user: User,
 ) -> Element(client_state.Msg) {
-  let projects = update_helpers.active_projects(model)
-  let selected = update_helpers.selected_project(model)
+  let projects = helpers_selection.active_projects(model)
+  let selected = helpers_selection.selected_project(model)
   view_section(model, user, projects, selected)
 }
 
@@ -290,8 +293,8 @@ fn view_section(
   case allowed {
     False ->
       div([attribute.class("not-permitted")], [
-        h2([], [text(update_helpers.i18n_t(model, i18n_text.NotPermitted))]),
-        p([], [text(update_helpers.i18n_t(model, i18n_text.NotPermittedBody))]),
+        h2([], [text(helpers_i18n.i18n_t(model, i18n_text.NotPermitted))]),
+        p([], [text(helpers_i18n.i18n_t(model, i18n_text.NotPermittedBody))]),
       ])
 
     True ->
@@ -355,7 +358,7 @@ fn view_mobile_topbar(
     ),
     div([attribute.class("topbar-title-mobile")], [
       text(
-        update_helpers.i18n_t(model, case model.member.member_section {
+        helpers_i18n.i18n_t(model, case model.member.pool.member_section {
           member_section.Pool -> i18n_text.Pool
           member_section.MyBar -> i18n_text.MyBar
           member_section.MySkills -> i18n_text.MySkills
@@ -394,11 +397,11 @@ fn view_mobile_shell(
       [main_content],
     ),
     // Mobile mini-bar (sticky bottom)
-    now_working_mobile.view_mini_bar(model),
+    now_working_view.view_mini_bar(model),
     // Overlay when sheet is open
-    now_working_mobile.view_overlay(model),
+    now_working_view.view_overlay(model),
     // Bottom sheet
-    now_working_mobile.view_panel_sheet(model, user.id),
+    now_working_view.view_panel_sheet(model, user.id),
     // Left drawer (navigation)
     view_mobile_left_drawer(model, user),
     // Right drawer (my activity)
@@ -411,8 +414,8 @@ fn view_mobile_left_drawer(
   model: client_state.Model,
   user: User,
 ) -> Element(client_state.Msg) {
-  let projects = update_helpers.active_projects(model)
-  let is_pm = case update_helpers.selected_project(model) {
+  let projects = helpers_selection.active_projects(model)
+  let is_pm = case helpers_selection.selected_project(model) {
     opt.Some(project) -> permissions.is_project_manager(project)
     opt.None -> False
   }
@@ -448,7 +451,7 @@ fn view_member_section(
   model: client_state.Model,
   user: User,
 ) -> Element(client_state.Msg) {
-  case model.member.member_section {
+  case model.member.pool.member_section {
     member_section.Pool -> pool_view.view_pool_main(model, user)
     member_section.MyBar -> my_bar_view.view_bar(model, user)
     member_section.MySkills -> skills_view.view_skills(model)
@@ -465,8 +468,8 @@ fn view_member_three_panel(
   model: client_state.Model,
   user: User,
 ) -> Element(client_state.Msg) {
-  let projects = update_helpers.active_projects(model)
-  let is_pm = case update_helpers.selected_project(model) {
+  let projects = helpers_selection.active_projects(model)
+  let is_pm = case helpers_selection.selected_project(model) {
     opt.Some(project) -> permissions.is_project_manager(project)
     opt.None -> False
   }
@@ -479,12 +482,12 @@ fn view_member_three_panel(
   let right_content = build_right_panel(model, user)
 
   element.fragment([
-    three_panel_layout.view_i18n(
+    layout_view.view_i18n(
       left_content,
       center_content,
       right_content,
-      update_helpers.i18n_t(model, i18n_text.MainNavigation),
-      update_helpers.i18n_t(model, i18n_text.MyActivity),
+      helpers_i18n.i18n_t(model, i18n_text.MainNavigation),
+      helpers_i18n.i18n_t(model, i18n_text.MyActivity),
     ),
     // Story 5.3: Card detail modal for Pool/Lista/Kanban views
     view_member_card_detail_modal(model, user),
@@ -495,14 +498,17 @@ fn view_member_three_panel(
 fn view_member_blocked_claim_modal(
   model: client_state.Model,
 ) -> Element(client_state.Msg) {
-  case model.member.member_blocked_claim_task {
+  case model.member.pool.member_blocked_claim_task {
     opt.None -> element.none()
     opt.Some(#(task_id, _version)) -> {
       let task_opt =
-        update_helpers.find_task_by_id(model.member.member_tasks, task_id)
+        helpers_lookup.find_task_by_id(
+          model.member.pool.member_tasks,
+          task_id,
+        )
       let task_title = case task_opt {
         opt.Some(t) -> t.title
-        opt.None -> update_helpers.i18n_t(model, i18n_text.TaskNumber(task_id))
+        opt.None -> helpers_i18n.i18n_t(model, i18n_text.TaskNumber(task_id))
       }
       let blocking = case task_opt {
         opt.Some(t) ->
@@ -513,7 +519,7 @@ fn view_member_blocked_claim_modal(
       }
       let count = list.length(blocking)
       let warning =
-        update_helpers.i18n_t(model, i18n_text.BlockedTaskWarning(count))
+        helpers_i18n.i18n_t(model, i18n_text.BlockedTaskWarning(count))
       let list_items =
         list.map(blocking, fn(dep) {
           let status_label = ui_task_state.label(model.ui.locale, dep.status)
@@ -521,7 +527,7 @@ fn view_member_blocked_claim_modal(
             task_status.Claimed(_) ->
               case dep.claimed_by {
                 opt.Some(email) ->
-                  update_helpers.i18n_t(model, i18n_text.ClaimedBy)
+                  helpers_i18n.i18n_t(model, i18n_text.ClaimedBy)
                   <> " "
                   <> email
                 opt.None -> status_label
@@ -532,7 +538,7 @@ fn view_member_blocked_claim_modal(
         })
 
       confirm_dialog.view(confirm_dialog.ConfirmConfig(
-        title: update_helpers.i18n_t(model, i18n_text.BlockedTaskTitle),
+        title: helpers_i18n.i18n_t(model, i18n_text.BlockedTaskTitle),
         body: [
           p([attribute.class("blocked-claim-title")], [text(task_title)]),
           p([attribute.class("blocked-claim-warning")], [text(warning)]),
@@ -541,8 +547,8 @@ fn view_member_blocked_claim_modal(
             _ -> ul([attribute.class("blocked-claim-list")], list_items)
           },
         ],
-        confirm_label: update_helpers.i18n_t(model, i18n_text.Claim),
-        cancel_label: update_helpers.i18n_t(model, i18n_text.Cancel),
+        confirm_label: helpers_i18n.i18n_t(model, i18n_text.Claim),
+        cancel_label: helpers_i18n.i18n_t(model, i18n_text.Cancel),
         on_confirm: client_state.pool_msg(
           pool_messages.MemberBlockedClaimConfirmed,
         ),
@@ -568,12 +574,12 @@ fn build_left_panel(
   is_org_admin: Bool,
 ) -> Element(client_state.Msg) {
   // Story 4.5: Get badge counts for sidebar
-  let pending_invites_count = case model.admin.invite_links {
+  let pending_invites_count = case model.admin.invites.invite_links {
     Loaded(links) -> list.count(links, fn(link) { link.used_at == opt.None })
     _ -> 0
   }
 
-  let users_count = case model.admin.org_users_cache {
+  let users_count = case model.admin.members.org_users_cache {
     Loaded(users) -> list.length(users)
     _ -> 0
   }
@@ -586,7 +592,7 @@ fn build_left_panel(
       opt.Some(router.Member(
         member_section.Pool,
         model.core.selected_project_id,
-        opt.Some(model.member.view_mode),
+        opt.Some(model.member.pool.view_mode),
       ))
     client_state.Admin ->
       // Determine if it's a Config or Org section based on active_section
@@ -720,15 +726,15 @@ fn build_center_panel(
   user: User,
 ) -> Element(client_state.Msg) {
   // Get filtered tasks and available filters
-  let tasks = case model.member.member_tasks {
+  let tasks = case model.member.pool.member_tasks {
     Loaded(t) -> t
     _ -> []
   }
-  let task_types = case model.member.member_task_types {
+  let task_types = case model.member.pool.member_task_types {
     Loaded(tt) -> tt
     _ -> []
   }
-  let capabilities = case model.admin.capabilities {
+  let capabilities = case model.admin.capabilities.capabilities {
     Loaded(caps) -> caps
     _ -> []
   }
@@ -737,7 +743,7 @@ fn build_center_panel(
   // Build view-specific content
   let pool_content = pool_view.view_pool_main(model, user)
   // AC7: Extract org users for displaying claimed-by info
-  let org_users = case model.admin.org_users_cache {
+  let org_users = case model.admin.members.org_users_cache {
     Loaded(users) -> users
     _ -> []
   }
@@ -749,8 +755,8 @@ fn build_center_panel(
       cards: cards,
       org_users: org_users,
       // Story 4.8 UX: Use model state for collapse/expand
-      expanded_cards: model.member.member_list_expanded_cards,
-      hide_completed: model.member.member_list_hide_completed,
+      expanded_cards: model.member.pool.member_list_expanded_cards,
+      hide_completed: model.member.pool.member_list_hide_completed,
       on_toggle_card: fn(card_id) {
         client_state.pool_msg(pool_messages.MemberListCardToggled(card_id))
       },
@@ -773,7 +779,7 @@ fn build_center_panel(
       // Story 4.8 UX: Added org_users for claimed_by display in task items
       org_users: org_users,
       is_pm_or_admin: {
-        let is_pm = case update_helpers.selected_project(model) {
+        let is_pm = case helpers_selection.selected_project(model) {
           opt.Some(project) -> permissions.is_project_manager(project)
           opt.None -> False
         }
@@ -812,15 +818,15 @@ fn build_center_panel(
 
   center_panel.view(center_panel.CenterPanelConfig(
     locale: model.ui.locale,
-    view_mode: model.member.view_mode,
+    view_mode: model.member.pool.view_mode,
     on_view_mode_change: fn(mode) {
       client_state.pool_msg(pool_messages.ViewModeChanged(mode))
     },
     task_types: task_types,
     capabilities: capabilities,
-    type_filter: model.member.member_filters_type_id,
-    capability_filter: model.member.member_filters_capability_id,
-    search_query: model.member.member_filters_q,
+    type_filter: model.member.pool.member_filters_type_id,
+    capability_filter: model.member.pool.member_filters_capability_id,
+    search_query: model.member.pool.member_filters_q,
     on_type_filter_change: fn(value) {
       client_state.pool_msg(pool_messages.MemberPoolTypeChanged(value))
     },
@@ -848,7 +854,7 @@ fn build_right_panel(
   user: User,
 ) -> Element(client_state.Msg) {
   // Get claimed tasks for "my tasks" section
-  let my_tasks = case model.member.member_tasks {
+  let my_tasks = case model.member.pool.member_tasks {
     Loaded(tasks) ->
       list.filter(tasks, fn(t) {
         case t.state {
@@ -868,7 +874,7 @@ fn build_right_panel(
     [] -> []
     cards -> {
       // Get all tasks to compute progress
-      let all_tasks = case model.member.member_tasks {
+      let all_tasks = case model.member.pool.member_tasks {
         Loaded(tasks) -> tasks
         _ -> []
       }
@@ -908,7 +914,7 @@ fn build_right_panel(
 
   // Build active tasks list (supports multiple concurrent tasks)
   let active_tasks_info =
-    update_helpers.now_working_all_sessions(model)
+    helpers_selection.now_working_all_sessions(model)
     |> list.map(fn(session) {
       let WorkSession(
         task_id: id,
@@ -916,7 +922,7 @@ fn build_right_panel(
         accumulated_s: accumulated_s,
       ) = session
       // Find task title and type icon
-      let #(title, type_icon, card_color) = case model.member.member_tasks {
+      let #(title, type_icon, card_color) = case model.member.pool.member_tasks {
         Loaded(tasks) ->
           case list.find(tasks, fn(t) { t.id == id }) {
             Ok(t) -> {
@@ -936,9 +942,9 @@ fn build_right_panel(
       let started_ms = client_ffi.parse_iso_ms(started_at)
       let local_now_ms = client_ffi.now_ms()
       let server_now_ms =
-        local_now_ms - model.member.now_working_server_offset_ms
+        local_now_ms - model.member.now_working.now_working_server_offset_ms
       let elapsed =
-        update_helpers.now_working_elapsed_from_ms(
+        helpers_time.now_working_elapsed_from_ms(
           accumulated_s,
           started_ms,
           server_now_ms,
@@ -970,7 +976,7 @@ fn build_right_panel(
     },
     on_task_complete: fn(task_id) {
       // Find task version for complete action
-      case model.member.member_tasks {
+      case model.member.pool.member_tasks {
         Loaded(tasks) ->
           case list.find(tasks, fn(t) { t.id == task_id }) {
             Ok(t) ->
@@ -986,7 +992,7 @@ fn build_right_panel(
     on_logout: client_state.auth_msg(auth_messages.LogoutClicked),
     on_task_release: fn(task_id) {
       // Find task version for release action
-      case model.member.member_tasks {
+      case model.member.pool.member_tasks {
         Loaded(tasks) ->
           case list.find(tasks, fn(t) { t.id == task_id }) {
             Ok(t) ->
@@ -1015,8 +1021,8 @@ fn build_right_panel(
     on_locale_change: fn(value) {
       client_state.i18n_msg(i18n_messages.LocaleSelected(value))
     },
-    disable_actions: model.member.member_task_mutation_in_flight
-      || model.member.member_now_working_in_flight,
+    disable_actions: model.member.pool.member_task_mutation_in_flight
+      || model.member.now_working.member_now_working_in_flight,
   ))
 }
 
@@ -1035,7 +1041,7 @@ pub fn view_member_right_panel(
   user: User,
 ) -> Element(client_state.Msg) {
   div([attribute.class("pool-right")], [
-    now_working_panel.view(model),
+    now_working_view.view_panel(model),
     view_claimed_tasks_section(model, user),
   ])
 }
@@ -1047,12 +1053,12 @@ fn view_claimed_tasks_section(
   user: User,
 ) -> Element(client_state.Msg) {
   let #(drag_armed, drag_over_my_tasks) = pool_drag_flags(model)
-  let active_task_id = case update_helpers.now_working_active_task(model) {
+  let active_task_id = case helpers_selection.now_working_active_task(model) {
     opt.Some(ActiveTask(task_id: id, ..)) -> opt.Some(id)
     opt.None -> opt.None
   }
 
-  let claimed_tasks = case model.member.member_tasks {
+  let claimed_tasks = case model.member.pool.member_tasks {
     Loaded(tasks) ->
       tasks
       |> list.filter(fn(t) {
@@ -1087,19 +1093,19 @@ fn view_claimed_tasks_section(
         True ->
           div([attribute.class("dropzone-hint")], [
             text(
-              update_helpers.i18n_t(model, i18n_text.Claim)
+              helpers_i18n.i18n_t(model, i18n_text.Claim)
               <> ": "
-              <> update_helpers.i18n_t(model, i18n_text.MyTasks),
+              <> helpers_i18n.i18n_t(model, i18n_text.MyTasks),
             ),
           ])
         False -> element.none()
       },
-      h3([], [text(update_helpers.i18n_t(model, i18n_text.MyTasks))]),
+      h3([], [text(helpers_i18n.i18n_t(model, i18n_text.MyTasks))]),
       case claimed_tasks {
         [] ->
           empty_state.simple(
             icons.Hand,
-            update_helpers.i18n_t(model, i18n_text.NoClaimedTasks),
+            helpers_i18n.i18n_t(model, i18n_text.NoClaimedTasks),
           )
         _ ->
           div(
@@ -1114,7 +1120,7 @@ fn view_claimed_tasks_section(
 }
 
 fn pool_drag_flags(model: client_state.Model) -> #(Bool, Bool) {
-  case model.member.member_pool_drag {
+  case model.member.pool.member_pool_drag {
     state_types.PoolDragDragging(over_my_tasks: over, ..) -> #(True, over)
     state_types.PoolDragPendingRect -> #(True, False)
     state_types.PoolDragIdle -> #(False, False)
@@ -1132,13 +1138,13 @@ fn view_claimed_task_row(
     task
   let is_active = active_task_id == opt.Some(id)
   let disable_actions =
-    model.member.member_task_mutation_in_flight
-    || model.member.member_now_working_in_flight
+    model.member.pool.member_task_mutation_in_flight
+    || model.member.now_working.member_now_working_in_flight
 
   let start_or_pause = case is_active {
     True ->
       task_actions.pause_icon(
-        update_helpers.i18n_t(model, i18n_text.Pause),
+        helpers_i18n.i18n_t(model, i18n_text.Pause),
         client_state.pool_msg(pool_messages.MemberNowWorkingPauseClicked),
         action_buttons.SizeXs,
         disable_actions,
@@ -1148,7 +1154,7 @@ fn view_claimed_task_row(
       )
     False ->
       task_actions.icon_action(
-        update_helpers.i18n_t(model, i18n_text.Start),
+        helpers_i18n.i18n_t(model, i18n_text.Start),
         client_state.pool_msg(pool_messages.MemberNowWorkingStartClicked(id)),
         icons.Play,
         action_buttons.SizeXs,
@@ -1180,7 +1186,7 @@ fn view_claimed_task_row(
     div([attribute.class("task-row-actions")], [
       start_or_pause,
       task_actions.complete_icon(
-        update_helpers.i18n_t(model, i18n_text.Complete),
+        helpers_i18n.i18n_t(model, i18n_text.Complete),
         client_state.pool_msg(pool_messages.MemberCompleteClicked(id, version)),
         action_buttons.SizeXs,
         disable_actions,
@@ -1189,7 +1195,7 @@ fn view_claimed_task_row(
         opt.None,
       ),
       task_actions.release_icon(
-        update_helpers.i18n_t(model, i18n_text.Release),
+        helpers_i18n.i18n_t(model, i18n_text.Release),
         client_state.pool_msg(pool_messages.MemberReleaseClicked(id, version)),
         action_buttons.SizeXs,
         disable_actions,

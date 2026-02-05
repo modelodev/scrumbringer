@@ -24,6 +24,8 @@ import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/assignments/components/project_card
 import scrumbringer_client/features/assignments/components/user_card
 import scrumbringer_client/features/projects/view as projects_view
+import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/router
@@ -32,12 +34,11 @@ import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/loading
 import scrumbringer_client/ui/section_header
-import scrumbringer_client/update_helpers
 
 pub fn view_assignments(
   model: client_state.Model,
 ) -> element.Element(client_state.Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
 
   div([attribute.class("section")], [
     section_header.view(icons.Team, t(i18n_text.Assignments)),
@@ -51,7 +52,7 @@ pub fn view_assignments(
 }
 
 fn view_toolbar(model: client_state.Model) -> element.Element(client_state.Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
   let assignments = model.admin.assignments
   let is_projects = assignments.view_mode == assignments_view_mode.ByProject
   let is_users = assignments.view_mode == assignments_view_mode.ByUser
@@ -117,7 +118,7 @@ fn view_toolbar(model: client_state.Model) -> element.Element(client_state.Msg) 
 fn view_by_project(
   model: client_state.Model,
 ) -> element.Element(client_state.Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
   case model.core.projects {
     NotAsked | Loading ->
       loading.loading(t(i18n_text.AssignmentsLoadingProjects))
@@ -161,8 +162,8 @@ fn view_by_project(
 }
 
 fn view_by_user(model: client_state.Model) -> element.Element(client_state.Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
-  case model.admin.org_users_cache {
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
+  case model.admin.members.org_users_cache {
     NotAsked | Loading -> loading.loading(t(i18n_text.LoadingUsers))
 
     Failed(err) -> error_notice.view(err.message)
@@ -237,8 +238,8 @@ fn project_members_match(
     Ok(Loaded(members)) ->
       list.any(members, fn(member) {
         case
-          update_helpers.resolve_org_user(
-            model.admin.org_users_cache,
+          helpers_lookup.resolve_org_user(
+            model.admin.members.org_users_cache,
             member.user_id,
           )
         {

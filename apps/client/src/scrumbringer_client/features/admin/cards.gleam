@@ -27,11 +27,14 @@ import domain/card.{type Card}
 import domain/remote.{Failed, Loaded, Loading}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/update_helpers
 
 import scrumbringer_client/api/cards as api_cards
+import scrumbringer_client/helpers/auth as helpers_auth
+import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/helpers/toast as helpers_toast
 
 // =============================================================================
 // Fetch Handlers
@@ -44,7 +47,9 @@ pub fn handle_cards_fetched_ok(
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   #(
     client_state.update_admin(model, fn(admin) {
-      admin_state.AdminModel(..admin, cards: Loaded(cards))
+      update_cards(admin, fn(cards_state) {
+        admin_cards.Model(..cards_state, cards: Loaded(cards))
+      })
     }),
     effect.none(),
   )
@@ -55,10 +60,12 @@ pub fn handle_cards_fetched_error(
   model: client_state.Model,
   err: ApiError,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
       client_state.update_admin(model, fn(admin) {
-        admin_state.AdminModel(..admin, cards: Failed(err))
+        update_cards(admin, fn(cards_state) {
+          admin_cards.Model(..cards_state, cards: Failed(err))
+        })
       }),
       effect.none(),
     )
@@ -76,7 +83,9 @@ pub fn handle_open_card_dialog(
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   #(
     client_state.update_admin(model, fn(admin) {
-      admin_state.AdminModel(..admin, cards_dialog_mode: opt.Some(mode))
+      update_cards(admin, fn(cards_state) {
+        admin_cards.Model(..cards_state, cards_dialog_mode: opt.Some(mode))
+      })
     }),
     effect.none(),
   )
@@ -88,7 +97,9 @@ pub fn handle_close_card_dialog(
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   #(
     client_state.update_admin(model, fn(admin) {
-      admin_state.AdminModel(..admin, cards_dialog_mode: opt.None)
+      update_cards(admin, fn(cards_state) {
+        admin_cards.Model(..cards_state, cards_dialog_mode: opt.None)
+      })
     }),
     effect.none(),
   )
@@ -104,16 +115,22 @@ pub fn handle_card_crud_created(
   model: client_state.Model,
   card: Card,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let cards = case model.admin.cards {
+  let cards = case model.admin.cards.cards {
     Loaded(existing) -> Loaded([card, ..existing])
     _ -> Loaded([card])
   }
   let model =
     client_state.update_admin(model, fn(admin) {
-      admin_state.AdminModel(..admin, cards: cards, cards_dialog_mode: opt.None)
+      update_cards(admin, fn(cards_state) {
+        admin_cards.Model(
+          ..cards_state,
+          cards: cards,
+          cards_dialog_mode: opt.None,
+        )
+      })
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.CardCreated,
     ))
@@ -126,7 +143,7 @@ pub fn handle_card_crud_updated(
   model: client_state.Model,
   updated_card: Card,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let cards = case model.admin.cards {
+  let cards = case model.admin.cards.cards {
     Loaded(existing) ->
       Loaded(
         list.map(existing, fn(c) {
@@ -140,10 +157,16 @@ pub fn handle_card_crud_updated(
   }
   let model =
     client_state.update_admin(model, fn(admin) {
-      admin_state.AdminModel(..admin, cards: cards, cards_dialog_mode: opt.None)
+      update_cards(admin, fn(cards_state) {
+        admin_cards.Model(
+          ..cards_state,
+          cards: cards,
+          cards_dialog_mode: opt.None,
+        )
+      })
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.CardUpdated,
     ))
@@ -156,16 +179,22 @@ pub fn handle_card_crud_deleted(
   model: client_state.Model,
   card_id: Int,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let cards = case model.admin.cards {
+  let cards = case model.admin.cards.cards {
     Loaded(existing) -> Loaded(list.filter(existing, fn(c) { c.id != card_id }))
     other -> other
   }
   let model =
     client_state.update_admin(model, fn(admin) {
-      admin_state.AdminModel(..admin, cards: cards, cards_dialog_mode: opt.None)
+      update_cards(admin, fn(cards_state) {
+        admin_cards.Model(
+          ..cards_state,
+          cards: cards,
+          cards_dialog_mode: opt.None,
+        )
+      })
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.CardDeleted,
     ))
@@ -184,11 +213,13 @@ pub fn fetch_cards_for_project(
     opt.Some(project_id) -> {
       let model =
         client_state.update_admin(model, fn(admin) {
-          admin_state.AdminModel(
-            ..admin,
-            cards: Loading,
-            cards_project_id: opt.Some(project_id),
-          )
+          update_cards(admin, fn(cards_state) {
+            admin_cards.Model(
+              ..cards_state,
+              cards: Loading,
+              cards_project_id: opt.Some(project_id),
+            )
+          })
         })
       #(
         model,
@@ -199,4 +230,11 @@ pub fn fetch_cards_for_project(
     }
     opt.None -> #(model, effect.none())
   }
+}
+
+fn update_cards(
+  admin: admin_state.AdminModel,
+  f: fn(admin_cards.Model) -> admin_cards.Model,
+) -> admin_state.AdminModel {
+  admin_state.AdminModel(..admin, cards: f(admin.cards))
 }

@@ -36,25 +36,25 @@ import lustre/event
 import domain/remote.{Loaded}
 import scrumbringer_client/client_state.{type Model, type Msg, pool_msg}
 import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/icons
-import scrumbringer_client/update_helpers
 
 /// Counts how many filters are currently active.
 fn count_active_filters(model: Model) -> Int {
-  let type_active = case model.member.member_filters_type_id {
+  let type_active = case model.member.pool.member_filters_type_id {
     opt.None -> 0
     opt.Some(_) -> 1
   }
-  let cap_active = case model.member.member_filters_capability_id {
+  let cap_active = case model.member.pool.member_filters_capability_id {
     opt.None -> 0
     opt.Some(_) -> 1
   }
-  let search_active = case string.is_empty(model.member.member_filters_q) {
+  let search_active = case string.is_empty(model.member.pool.member_filters_q) {
     True -> 0
     False -> 1
   }
-  let my_caps_active = case model.member.member_quick_my_caps {
+  let my_caps_active = case model.member.pool.member_quick_my_caps {
     True -> 1
     False -> 0
   }
@@ -63,11 +63,11 @@ fn count_active_filters(model: Model) -> Int {
 
 /// Renders the filter panel with type, capability, and search filters.
 pub fn view(model: Model) -> Element(Msg) {
-  let type_options = case model.member.member_task_types {
+  let type_options = case model.member.pool.member_task_types {
     Loaded(task_types) -> [
       option(
         [attribute.value("")],
-        update_helpers.i18n_t(model, i18n_text.AllOption),
+        helpers_i18n.i18n_t(model, i18n_text.AllOption),
       ),
       ..list.map(task_types, fn(tt) {
         option([attribute.value(int.to_string(tt.id))], tt.name)
@@ -77,16 +77,16 @@ pub fn view(model: Model) -> Element(Msg) {
     _ -> [
       option(
         [attribute.value("")],
-        update_helpers.i18n_t(model, i18n_text.AllOption),
+        helpers_i18n.i18n_t(model, i18n_text.AllOption),
       ),
     ]
   }
 
-  let capability_options = case model.admin.capabilities {
+  let capability_options = case model.admin.capabilities.capabilities {
     Loaded(caps) -> [
       option(
         [attribute.value("")],
-        update_helpers.i18n_t(model, i18n_text.AllOption),
+        helpers_i18n.i18n_t(model, i18n_text.AllOption),
       ),
       ..list.map(caps, fn(c) {
         option([attribute.value(int.to_string(c.id))], c.name)
@@ -96,12 +96,12 @@ pub fn view(model: Model) -> Element(Msg) {
     _ -> [
       option(
         [attribute.value("")],
-        update_helpers.i18n_t(model, i18n_text.AllOption),
+        helpers_i18n.i18n_t(model, i18n_text.AllOption),
       ),
     ]
   }
 
-  let my_caps_active = model.member.member_quick_my_caps
+  let my_caps_active = model.member.pool.member_quick_my_caps
 
   let my_caps_class = case my_caps_active {
     True -> "btn-xs btn-icon"
@@ -130,7 +130,7 @@ fn view_filter_actions(model: Model, active_count: Int) -> Element(Msg) {
             attribute.class("filter-badge"),
             attribute.attribute(
               "aria-label",
-              update_helpers.i18n_t(model, i18n_text.ActiveFilters(count)),
+              helpers_i18n.i18n_t(model, i18n_text.ActiveFilters(count)),
             ),
           ],
           [text(int.to_string(count))],
@@ -141,11 +141,11 @@ fn view_filter_actions(model: Model, active_count: Int) -> Element(Msg) {
             attribute.attribute("data-testid", "clear-filters-btn"),
             attribute.attribute(
               "title",
-              update_helpers.i18n_t(model, i18n_text.ClearFilters),
+              helpers_i18n.i18n_t(model, i18n_text.ClearFilters),
             ),
             event.on_click(pool_msg(pool_messages.MemberClearFilters)),
           ],
-          [text(update_helpers.i18n_t(model, i18n_text.ClearFilters))],
+          [text(helpers_i18n.i18n_t(model, i18n_text.ClearFilters))],
         ),
       ])
   }
@@ -155,17 +155,18 @@ fn view_type_filter(
   model: Model,
   options: List(element.Element(Msg)),
 ) -> Element(Msg) {
-  let current_value = option_int_value(model.member.member_filters_type_id)
+  let current_value =
+    option_int_value(model.member.pool.member_filters_type_id)
   div([attribute.class("field")], [
     span([attribute.class("filter-tooltip")], [
-      text(update_helpers.i18n_t(model, i18n_text.TypeLabel)),
+      text(helpers_i18n.i18n_t(model, i18n_text.TypeLabel)),
     ]),
     span(
       [
         attribute.class("filter-icon"),
         attribute.attribute(
           "title",
-          update_helpers.i18n_t(model, i18n_text.TypeLabel),
+          helpers_i18n.i18n_t(model, i18n_text.TypeLabel),
         ),
         attribute.attribute("aria-hidden", "true"),
       ],
@@ -176,20 +177,20 @@ fn view_type_filter(
         attribute.class("filter-label"),
         attribute.attribute("for", "pool-filter-type"),
       ],
-      [text(update_helpers.i18n_t(model, i18n_text.TypeLabel))],
+      [text(helpers_i18n.i18n_t(model, i18n_text.TypeLabel))],
     ),
     select(
       [
         attribute.attribute("id", "pool-filter-type"),
         attribute.attribute(
           "aria-label",
-          update_helpers.i18n_t(model, i18n_text.TypeLabel),
+          helpers_i18n.i18n_t(model, i18n_text.TypeLabel),
         ),
         attribute.value(current_value),
         event.on_input(fn(value) {
           pool_msg(pool_messages.MemberPoolTypeChanged(value))
         }),
-        attribute.disabled(case model.member.member_task_types {
+        attribute.disabled(case model.member.pool.member_task_types {
           Loaded(_) -> False
           _ -> True
         }),
@@ -204,17 +205,17 @@ fn view_capability_filter(
   options: List(element.Element(Msg)),
 ) -> Element(Msg) {
   let current_value =
-    option_int_value(model.member.member_filters_capability_id)
+    option_int_value(model.member.pool.member_filters_capability_id)
   div([attribute.class("field")], [
     span([attribute.class("filter-tooltip")], [
-      text(update_helpers.i18n_t(model, i18n_text.CapabilityLabel)),
+      text(helpers_i18n.i18n_t(model, i18n_text.CapabilityLabel)),
     ]),
     span(
       [
         attribute.class("filter-icon"),
         attribute.attribute(
           "title",
-          update_helpers.i18n_t(model, i18n_text.CapabilityLabel),
+          helpers_i18n.i18n_t(model, i18n_text.CapabilityLabel),
         ),
         attribute.attribute("aria-hidden", "true"),
       ],
@@ -225,14 +226,14 @@ fn view_capability_filter(
         attribute.class("filter-label"),
         attribute.attribute("for", "pool-filter-capability"),
       ],
-      [text(update_helpers.i18n_t(model, i18n_text.CapabilityLabel))],
+      [text(helpers_i18n.i18n_t(model, i18n_text.CapabilityLabel))],
     ),
     select(
       [
         attribute.attribute("id", "pool-filter-capability"),
         attribute.attribute(
           "aria-label",
-          update_helpers.i18n_t(model, i18n_text.CapabilityLabel),
+          helpers_i18n.i18n_t(model, i18n_text.CapabilityLabel),
         ),
         attribute.value(current_value),
         event.on_input(fn(value) {
@@ -251,36 +252,36 @@ fn view_my_capabilities_toggle(
 ) -> Element(Msg) {
   div([attribute.class("field")], [
     span([attribute.class("filter-tooltip")], [
-      text(update_helpers.i18n_t(model, i18n_text.MyCapabilitiesLabel)),
+      text(helpers_i18n.i18n_t(model, i18n_text.MyCapabilitiesLabel)),
     ]),
     span(
       [
         attribute.class("filter-icon"),
         attribute.attribute(
           "title",
-          update_helpers.i18n_t(model, i18n_text.MyCapabilitiesLabel),
+          helpers_i18n.i18n_t(model, i18n_text.MyCapabilitiesLabel),
         ),
         attribute.attribute("aria-hidden", "true"),
       ],
       [icons.nav_icon(icons.Star, icons.Small)],
     ),
     label([attribute.class("filter-label")], [
-      text(update_helpers.i18n_t(model, i18n_text.MyCapabilitiesLabel)),
+      text(helpers_i18n.i18n_t(model, i18n_text.MyCapabilitiesLabel)),
     ]),
     button(
       [
         attribute.class(button_class),
         attribute.attribute(
           "title",
-          update_helpers.i18n_t(model, i18n_text.MyCapabilitiesHint),
+          helpers_i18n.i18n_t(model, i18n_text.MyCapabilitiesHint),
         ),
         attribute.attribute(
           "aria-label",
-          update_helpers.i18n_t(model, i18n_text.MyCapabilitiesLabel)
+          helpers_i18n.i18n_t(model, i18n_text.MyCapabilitiesLabel)
             <> ": "
             <> case is_active {
-            True -> update_helpers.i18n_t(model, i18n_text.MyCapabilitiesOn)
-            False -> update_helpers.i18n_t(model, i18n_text.MyCapabilitiesOff)
+            True -> helpers_i18n.i18n_t(model, i18n_text.MyCapabilitiesOn)
+            False -> helpers_i18n.i18n_t(model, i18n_text.MyCapabilitiesOff)
           },
         ),
         event.on_click(pool_msg(pool_messages.MemberToggleMyCapabilitiesQuick)),
@@ -298,14 +299,14 @@ fn view_my_capabilities_toggle(
 fn view_search_filter(model: Model) -> Element(Msg) {
   div([attribute.class("field filter-q")], [
     span([attribute.class("filter-tooltip")], [
-      text(update_helpers.i18n_t(model, i18n_text.SearchLabel)),
+      text(helpers_i18n.i18n_t(model, i18n_text.SearchLabel)),
     ]),
     span(
       [
         attribute.class("filter-icon"),
         attribute.attribute(
           "title",
-          update_helpers.i18n_t(model, i18n_text.SearchLabel),
+          helpers_i18n.i18n_t(model, i18n_text.SearchLabel),
         ),
         attribute.attribute("aria-hidden", "true"),
       ],
@@ -316,16 +317,16 @@ fn view_search_filter(model: Model) -> Element(Msg) {
         attribute.class("filter-label"),
         attribute.attribute("for", "pool-filter-q"),
       ],
-      [text(update_helpers.i18n_t(model, i18n_text.SearchLabel))],
+      [text(helpers_i18n.i18n_t(model, i18n_text.SearchLabel))],
     ),
     input([
       attribute.attribute("id", "pool-filter-q"),
       attribute.attribute(
         "aria-label",
-        update_helpers.i18n_t(model, i18n_text.SearchLabel),
+        helpers_i18n.i18n_t(model, i18n_text.SearchLabel),
       ),
       attribute.type_("text"),
-      attribute.value(model.member.member_filters_q),
+      attribute.value(model.member.pool.member_filters_q),
       event.on_input(fn(value) {
         pool_msg(pool_messages.MemberPoolSearchChanged(value))
       }),
@@ -335,7 +336,7 @@ fn view_search_filter(model: Model) -> Element(Msg) {
         }),
         350,
       ),
-      attribute.placeholder(update_helpers.i18n_t(
+      attribute.placeholder(helpers_i18n.i18n_t(
         model,
         i18n_text.SearchPlaceholder,
       )),
@@ -372,7 +373,7 @@ pub fn view_unified_toolbar(model: Model) -> Element(Msg) {
         ],
         [
           span([attribute.class("btn-icon-left")], [text("+")]),
-          text(update_helpers.i18n_t(model, i18n_text.NewTask)),
+          text(helpers_i18n.i18n_t(model, i18n_text.NewTask)),
         ],
       ),
     ]),

@@ -1,7 +1,7 @@
 import gleam/option.{None, Some}
 import gleeunit/should
 import scrumbringer_client/client_state
-import scrumbringer_client/features/auth/state as auth_state
+import scrumbringer_client/client_state/auth as auth_state
 import scrumbringer_client/features/auth/update as auth_update
 
 pub fn handle_login_submitted_ignores_when_in_flight_test() {

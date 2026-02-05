@@ -51,6 +51,7 @@ import domain/task_type.{type TaskType}
 import scrumbringer_client/client_state.{
   type Model, type Msg, NoOp, admin_msg, pool_msg,
 }
+import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/decoders
 import scrumbringer_client/features/admin/msg as admin_messages
@@ -65,6 +66,9 @@ import scrumbringer_client/utils/card_queries
 // Workflows
 // Task Templates
 // Rule Metrics Tab
+import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/helpers/lookup as helpers_lookup
+import scrumbringer_client/helpers/selection as helpers_selection
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/theme
@@ -83,7 +87,6 @@ import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/icon_catalog
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/section_header
-import scrumbringer_client/update_helpers
 
 // =============================================================================
 // =============================================================================
@@ -92,7 +95,7 @@ import scrumbringer_client/update_helpers
 
 /// Organization settings view - manage user roles.
 pub fn view_org_settings(model: Model) -> Element(Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
 
   div([attribute.class("section")], [
     // Section header with subtitle (Story 4.8: consistent icons + help text)
@@ -108,9 +111,9 @@ pub fn view_org_settings(model: Model) -> Element(Msg) {
 }
 
 fn view_org_settings_table(model: Model) -> Element(Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
 
-  case model.admin.org_settings_users {
+  case model.admin.members.org_settings_users {
     NotAsked ->
       div([attribute.class("empty")], [
         text(t(i18n_text.OpenThisSectionToLoadUsers)),
@@ -149,7 +152,7 @@ fn view_org_settings_table(model: Model) -> Element(Msg) {
                 admin_msg(admin_messages.OrgSettingsDeleteClicked(u.id)),
                 icons.Trash,
                 icons.Small,
-                is_self || model.admin.org_settings_delete_in_flight,
+                is_self || model.admin.members.org_settings_delete_in_flight,
                 "btn-icon btn-xs btn-danger-icon",
                 opt.None,
                 opt.Some("org-user-delete-btn"),
@@ -168,21 +171,21 @@ fn view_org_settings_table(model: Model) -> Element(Msg) {
 
 /// Dialog for deleting an org user.
 fn view_org_settings_delete_dialog(model: Model) -> Element(Msg) {
-  case model.admin.org_settings_delete_confirm {
+  case model.admin.members.org_settings_delete_confirm {
     opt.None -> element.none()
     opt.Some(user) ->
       dialog.view(
         dialog.DialogConfig(
-          title: update_helpers.i18n_t(model, i18n_text.DeleteUser),
+          title: helpers_i18n.i18n_t(model, i18n_text.DeleteUser),
           icon: opt.None,
           size: dialog.DialogSm,
           on_close: admin_msg(admin_messages.OrgSettingsDeleteCancelled),
         ),
         True,
-        model.admin.org_settings_delete_error,
+        model.admin.members.org_settings_delete_error,
         [
           p([], [
-            text(update_helpers.i18n_t(
+            text(helpers_i18n.i18n_t(
               model,
               i18n_text.ConfirmDeleteUser(user.email),
             )),
@@ -197,15 +200,15 @@ fn view_org_settings_delete_dialog(model: Model) -> Element(Msg) {
             [
               attribute.type_("button"),
               attribute.class("btn btn-danger"),
-              attribute.disabled(model.admin.org_settings_delete_in_flight),
+              attribute.disabled(model.admin.members.org_settings_delete_in_flight),
               event.on_click(admin_msg(
                 admin_messages.OrgSettingsDeleteConfirmed,
               )),
             ],
             [
-              text(case model.admin.org_settings_delete_in_flight {
-                True -> update_helpers.i18n_t(model, i18n_text.Deleting)
-                False -> update_helpers.i18n_t(model, i18n_text.Delete)
+              text(case model.admin.members.org_settings_delete_in_flight {
+                True -> helpers_i18n.i18n_t(model, i18n_text.Deleting)
+                False -> helpers_i18n.i18n_t(model, i18n_text.Delete)
               }),
             ],
           ),
@@ -215,14 +218,14 @@ fn view_org_settings_delete_dialog(model: Model) -> Element(Msg) {
 }
 
 fn view_org_role_cell(model: Model, u: OrgUser) -> Element(Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
 
   let current_role = u.org_role
   let current_role_string = org_role.to_string(current_role)
 
   let inline_error = case
-    model.admin.org_settings_error_user_id,
-    model.admin.org_settings_error
+    model.admin.members.org_settings_error_user_id,
+    model.admin.members.org_settings_error
   {
     opt.Some(id), opt.Some(message) if id == u.id -> message
     _, _ -> ""
@@ -232,7 +235,7 @@ fn view_org_role_cell(model: Model, u: OrgUser) -> Element(Msg) {
     select(
       [
         attribute.value(current_role_string),
-        attribute.disabled(model.admin.org_settings_save_in_flight),
+        attribute.disabled(model.admin.members.org_settings_save_in_flight),
         event.on_input(fn(value) {
           case org_role.parse(value) {
             Ok(role) ->
@@ -269,7 +272,7 @@ fn view_org_role_cell(model: Model, u: OrgUser) -> Element(Msg) {
 /// Capabilities management view.
 pub fn view_capabilities(model: Model) -> Element(Msg) {
   // Get project name for dialog titles (Story 4.8 AC24)
-  let project_name = case update_helpers.selected_project(model) {
+  let project_name = case helpers_selection.selected_project(model) {
     opt.Some(project) -> project.name
     opt.None -> ""
   }
@@ -278,7 +281,7 @@ pub fn view_capabilities(model: Model) -> Element(Msg) {
     // Section header with add button (Story 4.8: consistent icons)
     section_header.view_with_action(
       icons.Crosshairs,
-      update_helpers.i18n_t(model, i18n_text.Capabilities),
+      helpers_i18n.i18n_t(model, i18n_text.Capabilities),
       dialog.add_button(
         model,
         i18n_text.CreateCapability,
@@ -286,11 +289,11 @@ pub fn view_capabilities(model: Model) -> Element(Msg) {
       ),
     ),
     // Capabilities list
-    view_capabilities_list(model, model.admin.capabilities),
+    view_capabilities_list(model, model.admin.capabilities.capabilities),
     // Create capability dialog
     view_capabilities_create_dialog(model),
     // Capability members dialog (AC17, Story 4.8 AC24)
-    case model.admin.capability_members_dialog_capability_id {
+    case model.admin.capabilities.capability_members_dialog_capability_id {
       opt.Some(capability_id) ->
         view_capability_members_dialog(model, capability_id, project_name)
       opt.None -> element.none()
@@ -302,15 +305,20 @@ pub fn view_capabilities(model: Model) -> Element(Msg) {
 
 /// Dialog for creating a new capability.
 fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
+  let is_open = case model.admin.capabilities.capabilities_dialog_mode {
+    dialog_mode.DialogCreate -> True
+    _ -> False
+  }
+
   dialog.view(
     dialog.DialogConfig(
-      title: update_helpers.i18n_t(model, i18n_text.CreateCapability),
+      title: helpers_i18n.i18n_t(model, i18n_text.CreateCapability),
       icon: opt.None,
       size: dialog.DialogSm,
       on_close: admin_msg(admin_messages.CapabilityCreateDialogClosed),
     ),
-    model.admin.capabilities_create_dialog_open,
-    model.admin.capabilities_create_error,
+    is_open,
+    model.admin.capabilities.capabilities_create_error,
     // Form content
     [
       form(
@@ -322,15 +330,15 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
         ],
         [
           form_field.view(
-            update_helpers.i18n_t(model, i18n_text.Name),
+            helpers_i18n.i18n_t(model, i18n_text.Name),
             input([
               attribute.type_("text"),
-              attribute.value(model.admin.capabilities_create_name),
+              attribute.value(model.admin.capabilities.capabilities_create_name),
               event.on_input(fn(value) {
                 admin_msg(admin_messages.CapabilityCreateNameChanged(value))
               }),
               attribute.required(True),
-              attribute.placeholder(update_helpers.i18n_t(
+              attribute.placeholder(helpers_i18n.i18n_t(
                 model,
                 i18n_text.CapabilityNamePlaceholder,
               )),
@@ -350,16 +358,16 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
         [
           attribute.type_("submit"),
           attribute.form("capability-create-form"),
-          attribute.disabled(model.admin.capabilities_create_in_flight),
-          attribute.class(case model.admin.capabilities_create_in_flight {
+          attribute.disabled(model.admin.capabilities.capabilities_create_in_flight),
+          attribute.class(case model.admin.capabilities.capabilities_create_in_flight {
             True -> "btn-loading"
             False -> ""
           }),
         ],
         [
-          text(case model.admin.capabilities_create_in_flight {
-            True -> update_helpers.i18n_t(model, i18n_text.Creating)
-            False -> update_helpers.i18n_t(model, i18n_text.Create)
+          text(case model.admin.capabilities.capabilities_create_in_flight {
+            True -> helpers_i18n.i18n_t(model, i18n_text.Creating)
+            False -> helpers_i18n.i18n_t(model, i18n_text.Create)
           }),
         ],
       ),
@@ -370,9 +378,9 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
 /// Dialog for deleting a capability (Story 4.9 AC9).
 fn view_capability_delete_dialog(model: Model) -> Element(Msg) {
   // Get capability name for the confirmation message
-  let capability_name = case model.admin.capability_delete_dialog_id {
+  let capability_name = case model.admin.capabilities.capability_delete_dialog_id {
     opt.Some(id) ->
-      case model.admin.capabilities {
+      case model.admin.capabilities.capabilities {
         Loaded(caps) ->
           caps
           |> list.find(fn(c) { c.id == id })
@@ -385,17 +393,17 @@ fn view_capability_delete_dialog(model: Model) -> Element(Msg) {
 
   dialog.view(
     dialog.DialogConfig(
-      title: update_helpers.i18n_t(model, i18n_text.DeleteCapability),
+      title: helpers_i18n.i18n_t(model, i18n_text.DeleteCapability),
       icon: opt.None,
       size: dialog.DialogSm,
       on_close: admin_msg(admin_messages.CapabilityDeleteDialogClosed),
     ),
-    opt.is_some(model.admin.capability_delete_dialog_id),
-    model.admin.capability_delete_error,
+    opt.is_some(model.admin.capabilities.capability_delete_dialog_id),
+    model.admin.capabilities.capability_delete_error,
     // Confirmation content
     [
       p([], [
-        text(update_helpers.i18n_t(
+        text(helpers_i18n.i18n_t(
           model,
           i18n_text.ConfirmDeleteCapability(capability_name),
         )),
@@ -411,13 +419,13 @@ fn view_capability_delete_dialog(model: Model) -> Element(Msg) {
         [
           attribute.type_("button"),
           attribute.class("btn btn-danger"),
-          attribute.disabled(model.admin.capability_delete_in_flight),
+          attribute.disabled(model.admin.capabilities.capability_delete_in_flight),
           event.on_click(admin_msg(admin_messages.CapabilityDeleteSubmitted)),
         ],
         [
-          text(case model.admin.capability_delete_in_flight {
-            True -> update_helpers.i18n_t(model, i18n_text.Deleting)
-            False -> update_helpers.i18n_t(model, i18n_text.Delete)
+          text(case model.admin.capabilities.capability_delete_in_flight {
+            True -> helpers_i18n.i18n_t(model, i18n_text.Deleting)
+            False -> helpers_i18n.i18n_t(model, i18n_text.Delete)
           }),
         ],
       ),
@@ -441,7 +449,7 @@ pub fn view_task_types(
   case selected_project {
     opt.None ->
       div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(
+        text(helpers_i18n.i18n_t(
           model,
           i18n_text.SelectProjectToManageTaskTypes,
         )),
@@ -452,7 +460,7 @@ pub fn view_task_types(
         // Section header with add button (Story 4.8: consistent icons)
         section_header.view_with_action(
           icons.TaskTypes,
-          update_helpers.i18n_t(model, i18n_text.TaskTypesTitle(project.name)),
+          helpers_i18n.i18n_t(model, i18n_text.TaskTypesTitle(project.name)),
           dialog.add_button(
             model,
             i18n_text.CreateTaskType,
@@ -462,7 +470,7 @@ pub fn view_task_types(
           ),
         ),
         // Task types list
-        view_task_types_list(model, model.admin.task_types, model.ui.theme),
+        view_task_types_list(model, model.admin.task_types.task_types, model.ui.theme),
         // Task type CRUD dialog component (handles create, edit, delete)
         view_task_type_crud_dialog(model, project.id),
       ])
@@ -471,7 +479,7 @@ pub fn view_task_types(
 
 /// Render the task-type-crud-dialog Lustre component.
 fn view_task_type_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
-  case model.admin.task_types_dialog_mode {
+  case model.admin.task_types.task_types_dialog_mode {
     opt.None -> element.none()
     opt.Some(mode) -> {
       let #(mode_str, type_json) = case mode {
@@ -493,7 +501,7 @@ fn view_task_type_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
       }
 
       // Convert capabilities to JSON for property passing
-      let capabilities_json = case model.admin.capabilities {
+      let capabilities_json = case model.admin.capabilities.capabilities {
         Loaded(caps) ->
           attribute.property(
             "capabilities",
@@ -600,11 +608,11 @@ fn view_capabilities_list(
   model: Model,
   capabilities: Remote(List(Capability)),
 ) -> Element(Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
 
   // Helper to get member count from cache
   let get_member_count = fn(cap_id: Int) -> Int {
-    case dict.get(model.admin.capability_members_cache, cap_id) {
+    case dict.get(model.admin.capabilities.capability_members_cache, cap_id) {
       Ok(ids) -> list.length(ids)
       Error(_) -> 0
     }
@@ -675,9 +683,9 @@ fn view_capability_members_dialog(
   capability_id: Int,
   project_name: String,
 ) -> Element(Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
   // Get capability name for display
-  let capability_name = case model.admin.capabilities {
+  let capability_name = case model.admin.capabilities.capabilities {
     Loaded(caps) ->
       case list.find(caps, fn(c) { c.id == capability_id }) {
         Ok(cap) -> cap.name
@@ -687,7 +695,7 @@ fn view_capability_members_dialog(
   }
 
   // Get project members for the checkbox list
-  let members = case model.admin.members {
+  let members = case model.admin.members.members {
     Loaded(ms) -> ms
     _ -> []
   }
@@ -700,10 +708,10 @@ fn view_capability_members_dialog(
       on_close: admin_msg(admin_messages.CapabilityMembersDialogClosed),
     ),
     True,
-    model.admin.capability_members_error,
+    model.admin.capabilities.capability_members_error,
     [
       div([attribute.class("members-dialog")], [
-        case model.admin.capability_members_loading {
+        case model.admin.capabilities.capability_members_loading {
           True ->
             div([attribute.class("loading")], [
               text(t(i18n_text.LoadingEllipsis)),
@@ -724,8 +732,8 @@ fn view_capability_members_dialog(
                   list.map(members, fn(member) {
                     // Get member email from cache
                     let email = case
-                      update_helpers.resolve_org_user(
-                        model.admin.org_users_cache,
+                      helpers_lookup.resolve_org_user(
+                        model.admin.members.org_users_cache,
                         member.user_id,
                       )
                     {
@@ -734,7 +742,7 @@ fn view_capability_members_dialog(
                     }
                     let is_selected =
                       list.contains(
-                        model.admin.capability_members_selected,
+                        model.admin.capabilities.capability_members_selected,
                         member.user_id,
                       )
                     label(
@@ -774,12 +782,12 @@ fn view_capability_members_dialog(
           attribute.class("btn-primary"),
           event.on_click(admin_msg(admin_messages.CapabilityMembersSaveClicked)),
           attribute.disabled(
-            model.admin.capability_members_saving
-            || model.admin.capability_members_loading,
+            model.admin.capabilities.capability_members_saving
+            || model.admin.capabilities.capability_members_loading,
           ),
         ],
         [
-          text(case model.admin.capability_members_saving {
+          text(case model.admin.capabilities.capability_members_saving {
             True -> t(i18n_text.Saving)
             False -> t(i18n_text.Save)
           }),
@@ -866,31 +874,31 @@ fn view_task_types_list(
   // Story 4.9: Refactored to use data_table.view_remote_with_forbidden
   let empty_state =
     div([attribute.class("empty")], [
-      h2([], [text(update_helpers.i18n_t(model, i18n_text.NoTaskTypesYet))]),
-      p([], [text(update_helpers.i18n_t(model, i18n_text.TaskTypesExplain))]),
+      h2([], [text(helpers_i18n.i18n_t(model, i18n_text.NoTaskTypesYet))]),
+      p([], [text(helpers_i18n.i18n_t(model, i18n_text.TaskTypesExplain))]),
       p([], [
-        text(update_helpers.i18n_t(model, i18n_text.CreateFirstTaskTypeHint)),
+        text(helpers_i18n.i18n_t(model, i18n_text.CreateFirstTaskTypeHint)),
       ]),
     ])
 
   data_table.view_remote_with_forbidden(
     task_types,
-    loading_msg: update_helpers.i18n_t(model, i18n_text.LoadingEllipsis),
+    loading_msg: helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis),
     empty_msg: "",
-    forbidden_msg: update_helpers.i18n_t(model, i18n_text.NotPermitted),
+    forbidden_msg: helpers_i18n.i18n_t(model, i18n_text.NotPermitted),
     config: data_table.new()
       |> data_table.with_empty_state(empty_state)
       |> data_table.with_columns([
         data_table.column(
-          update_helpers.i18n_t(model, i18n_text.Name),
+          helpers_i18n.i18n_t(model, i18n_text.Name),
           fn(tt: TaskType) { text(tt.name) },
         ),
         data_table.column(
-          update_helpers.i18n_t(model, i18n_text.Icon),
+          helpers_i18n.i18n_t(model, i18n_text.Icon),
           fn(tt: TaskType) { view_task_type_icon_inline(tt.icon, 20, theme) },
         ),
         data_table.column(
-          update_helpers.i18n_t(model, i18n_text.CapabilityLabel),
+          helpers_i18n.i18n_t(model, i18n_text.CapabilityLabel),
           fn(tt: TaskType) {
             case tt.capability_id {
               opt.Some(id) ->
@@ -898,19 +906,18 @@ fn view_task_types_list(
                   opt.Some(name) -> text(name)
                   opt.None -> text("-")
                 }
-              opt.None ->
-                text(update_helpers.i18n_t(model, i18n_text.NoneOption))
+              opt.None -> text(helpers_i18n.i18n_t(model, i18n_text.NoneOption))
             }
           },
         ),
         data_table.column_with_class(
-          update_helpers.i18n_t(model, i18n_text.CardTasks),
+          helpers_i18n.i18n_t(model, i18n_text.CardTasks),
           fn(tt: TaskType) { text(int.to_string(tt.tasks_count)) },
           "col-number",
           "cell-number",
         ),
         data_table.column_with_class(
-          update_helpers.i18n_t(model, i18n_text.Actions),
+          helpers_i18n.i18n_t(model, i18n_text.Actions),
           fn(tt: TaskType) {
             let edit_click: Msg =
               admin_msg(
@@ -925,13 +932,10 @@ fn view_task_types_list(
                 ),
               )
             action_buttons.edit_delete_row_with_testid(
-              edit_title: update_helpers.i18n_t(model, i18n_text.EditTaskType),
+              edit_title: helpers_i18n.i18n_t(model, i18n_text.EditTaskType),
               edit_click: edit_click,
               edit_testid: "task-type-edit-btn",
-              delete_title: update_helpers.i18n_t(
-                model,
-                i18n_text.DeleteTaskType,
-              ),
+              delete_title: helpers_i18n.i18n_t(model, i18n_text.DeleteTaskType),
               delete_click: delete_click,
               delete_testid: "task-type-delete-btn",
             )
@@ -948,7 +952,7 @@ fn resolve_capability_name(
   model: Model,
   capability_id: Int,
 ) -> opt.Option(String) {
-  case model.admin.capabilities {
+  case model.admin.capabilities.capabilities {
     Loaded(caps) ->
       list.find(caps, fn(cap: Capability) { cap.id == capability_id })
       |> opt.from_result
@@ -970,7 +974,7 @@ pub fn view_cards(
   case selected_project {
     opt.None ->
       div([attribute.class("empty")], [
-        text(update_helpers.i18n_t(model, i18n_text.SelectProjectToManageCards)),
+        text(helpers_i18n.i18n_t(model, i18n_text.SelectProjectToManageCards)),
       ])
 
     opt.Some(project) ->
@@ -978,7 +982,7 @@ pub fn view_cards(
         // Section header with add button (Story 4.8: consistent icons)
         section_header.view_with_action(
           icons.Cards,
-          update_helpers.i18n_t(model, i18n_text.CardsTitle(project.name)),
+          helpers_i18n.i18n_t(model, i18n_text.CardsTitle(project.name)),
           dialog.add_button(
             model,
             i18n_text.CreateCard,
@@ -1000,7 +1004,7 @@ pub fn view_cards(
 /// Render the card-crud-dialog Lustre component.
 /// Made public for use in client_view.gleam (Story 4.8 UX: global dialog rendering)
 pub fn view_card_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
-  case model.admin.cards_dialog_mode {
+  case model.admin.cards.cards_dialog_mode {
     opt.None -> element.none()
     opt.Some(mode) -> {
       let #(mode_str, card_json) = case mode {
@@ -1141,11 +1145,11 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
       div([attribute.class("filter-group filter-search")], [
         input([
           attribute.type_("search"),
-          attribute.placeholder(update_helpers.i18n_t(
+          attribute.placeholder(helpers_i18n.i18n_t(
             model,
             i18n_text.SearchPlaceholder,
           )),
-          attribute.value(model.admin.cards_search),
+          attribute.value(model.admin.cards.cards_search),
           event.on_input(fn(value) {
             pool_msg(pool_messages.CardsSearchChanged(value))
           }),
@@ -1153,7 +1157,7 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
       ]),
       // State filter dropdown (AC8)
       div([attribute.class("filter-group")], [
-        label([], [text(update_helpers.i18n_t(model, i18n_text.CardState))]),
+        label([], [text(helpers_i18n.i18n_t(model, i18n_text.CardState))]),
         select(
           [
             attribute.class("filter-select"),
@@ -1166,36 +1170,36 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
             option(
               [
                 attribute.value(""),
-                attribute.selected(model.admin.cards_state_filter == opt.None),
+                attribute.selected(model.admin.cards.cards_state_filter == opt.None),
               ],
-              update_helpers.i18n_t(model, i18n_text.AllOption),
+              helpers_i18n.i18n_t(model, i18n_text.AllOption),
             ),
             option(
               [
                 attribute.value("pendiente"),
                 attribute.selected(
-                  model.admin.cards_state_filter == opt.Some(card.Pendiente),
+                  model.admin.cards.cards_state_filter == opt.Some(card.Pendiente),
                 ),
               ],
-              update_helpers.i18n_t(model, i18n_text.CardStatePendiente),
+              helpers_i18n.i18n_t(model, i18n_text.CardStatePendiente),
             ),
             option(
               [
                 attribute.value("en_curso"),
                 attribute.selected(
-                  model.admin.cards_state_filter == opt.Some(card.EnCurso),
+                  model.admin.cards.cards_state_filter == opt.Some(card.EnCurso),
                 ),
               ],
-              update_helpers.i18n_t(model, i18n_text.CardStateEnCurso),
+              helpers_i18n.i18n_t(model, i18n_text.CardStateEnCurso),
             ),
             option(
               [
                 attribute.value("cerrada"),
                 attribute.selected(
-                  model.admin.cards_state_filter == opt.Some(card.Cerrada),
+                  model.admin.cards.cards_state_filter == opt.Some(card.Cerrada),
                 ),
               ],
-              update_helpers.i18n_t(model, i18n_text.CardStateCerrada),
+              helpers_i18n.i18n_t(model, i18n_text.CardStateCerrada),
             ),
           ],
         ),
@@ -1205,13 +1209,13 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
         label([attribute.class("checkbox-label")], [
           input([
             attribute.type_("checkbox"),
-            attribute.checked(model.admin.cards_show_empty),
+            attribute.checked(model.admin.cards.cards_show_empty),
             attribute.attribute("data-testid", "show-empty-cards"),
             event.on_check(fn(_) {
               pool_msg(pool_messages.CardsShowEmptyToggled)
             }),
           ]),
-          text(update_helpers.i18n_t(model, i18n_text.ShowEmptyCards)),
+          text(helpers_i18n.i18n_t(model, i18n_text.ShowEmptyCards)),
         ]),
       ]),
       // Show completed checkbox - unchecked by default
@@ -1219,13 +1223,13 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
         label([attribute.class("checkbox-label")], [
           input([
             attribute.type_("checkbox"),
-            attribute.checked(model.admin.cards_show_completed),
+            attribute.checked(model.admin.cards.cards_show_completed),
             attribute.attribute("data-testid", "show-completed-cards"),
             event.on_check(fn(_) {
               pool_msg(pool_messages.CardsShowCompletedToggled)
             }),
           ]),
-          text(update_helpers.i18n_t(model, i18n_text.ShowCompletedCards)),
+          text(helpers_i18n.i18n_t(model, i18n_text.ShowCompletedCards)),
         ]),
       ]),
     ],
@@ -1234,33 +1238,33 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
 
 /// Story 4.9: Filter cards based on model filters (UX improved)
 fn filter_cards(model: Model) -> Remote(List(Card)) {
-  case model.admin.cards {
+  case model.admin.cards.cards {
     Loaded(cards) -> {
       let filtered =
         cards
         |> list.filter(fn(c) {
           // Filter by state dropdown
-          let state_match = case model.admin.cards_state_filter {
+          let state_match = case model.admin.cards.cards_state_filter {
             opt.None -> True
             opt.Some(state) -> c.state == state
           }
           // Filter by empty (show_empty = False by default = hide cards with 0 tasks)
-          let empty_match = case model.admin.cards_show_empty {
+          let empty_match = case model.admin.cards.cards_show_empty {
             True -> True
             False -> c.task_count > 0
           }
           // Filter by completed (show_completed = False by default = hide Cerrada cards)
-          let completed_match = case model.admin.cards_show_completed {
+          let completed_match = case model.admin.cards.cards_show_completed {
             True -> True
             False -> c.state != card.Cerrada
           }
           // Filter by search
-          let search_match = case string.is_empty(model.admin.cards_search) {
+          let search_match = case string.is_empty(model.admin.cards.cards_search) {
             True -> True
             False ->
               string.contains(
                 string.lowercase(c.title),
-                string.lowercase(model.admin.cards_search),
+                string.lowercase(model.admin.cards.cards_search),
               )
           }
           state_match && empty_match && completed_match && search_match
@@ -1279,7 +1283,7 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
         icons.nav_icon(icons.ClipboardDoc, icons.Large),
       ]),
       div([attribute.class("empty-state-title")], [
-        text(update_helpers.i18n_t(model, i18n_text.NoCardsYet)),
+        text(helpers_i18n.i18n_t(model, i18n_text.NoCardsYet)),
       ]),
       div([attribute.class("empty-state-description")], [
         text(
@@ -1290,18 +1294,17 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
 
   data_table.view_remote_with_forbidden(
     cards,
-    loading_msg: update_helpers.i18n_t(model, i18n_text.LoadingEllipsis),
+    loading_msg: helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis),
     empty_msg: "",
-    forbidden_msg: update_helpers.i18n_t(model, i18n_text.NotPermitted),
+    forbidden_msg: helpers_i18n.i18n_t(model, i18n_text.NotPermitted),
     config: data_table.new()
       |> data_table.with_empty_state(empty_state)
       |> data_table.with_columns([
         // UX: Título con indicador de color (círculo) y [!] para notas nuevas
         data_table.column_with_class(
-          update_helpers.i18n_t(model, i18n_text.CardTitle),
+          helpers_i18n.i18n_t(model, i18n_text.CardTitle),
           fn(c: Card) {
-            let tooltip =
-              update_helpers.i18n_t(model, i18n_text.NewNotesTooltip)
+            let tooltip = helpers_i18n.i18n_t(model, i18n_text.NewNotesTooltip)
             card_title_meta.view_with_class(
               "card-title-with-color",
               button(
@@ -1324,7 +1327,7 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
         ),
         // UX: Estado con badge de color semántico
         data_table.column(
-          update_helpers.i18n_t(model, i18n_text.CardState),
+          helpers_i18n.i18n_t(model, i18n_text.CardState),
           fn(c: Card) {
             card_state_badge.view(
               c.state,
@@ -1335,7 +1338,7 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
         ),
         // UX: Progreso con mini barra + texto
         data_table.column(
-          update_helpers.i18n_t(model, i18n_text.CardTasks),
+          helpers_i18n.i18n_t(model, i18n_text.CardTasks),
           fn(c: Card) {
             card_progress.view(
               c.completed_count,
@@ -1347,23 +1350,23 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
         // UX: Acciones con iconos (como Task Types)
         // Story 4.12: Añadido botón [+] para crear tarea en tarjeta
         data_table.column_with_class(
-          update_helpers.i18n_t(model, i18n_text.Actions),
+          helpers_i18n.i18n_t(model, i18n_text.Actions),
           fn(c: Card) {
             div([], [
               // [+] Nueva tarea
               action_buttons.create_task_in_card_button(
-                update_helpers.i18n_t(model, i18n_text.NewTaskInCard(c.title)),
+                helpers_i18n.i18n_t(model, i18n_text.NewTaskInCard(c.title)),
                 pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(c.id)),
               ),
               action_buttons.edit_button_with_testid(
-                update_helpers.i18n_t(model, i18n_text.EditCard),
+                helpers_i18n.i18n_t(model, i18n_text.EditCard),
                 pool_msg(
                   pool_messages.OpenCardDialog(state_types.CardDialogEdit(c.id)),
                 ),
                 "card-edit-btn",
               ),
               action_buttons.delete_button_with_testid(
-                update_helpers.i18n_t(model, i18n_text.DeleteCard),
+                helpers_i18n.i18n_t(model, i18n_text.DeleteCard),
                 pool_msg(
                   pool_messages.OpenCardDialog(state_types.CardDialogDelete(
                     c.id,
@@ -1386,7 +1389,7 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
 // =============================================================================
 
 fn view_card_detail_modal(model: Model, project: Project) -> Element(Msg) {
-  case model.member.card_detail_open {
+  case model.member.pool.card_detail_open {
     opt.None -> element.none()
     opt.Some(card_id) -> {
       let card_opt = card_queries.find_card(model, card_id)
@@ -1437,7 +1440,7 @@ fn decode_card_detail_close_event() -> decode.Decoder(Msg) {
 }
 
 fn admin_get_card_tasks(model: Model, card_id: Int) -> List(Task) {
-  case model.member.member_tasks {
+  case model.member.pool.member_tasks {
     Loaded(tasks) ->
       list.filter(tasks, fn(t) {
         case t.card_id {

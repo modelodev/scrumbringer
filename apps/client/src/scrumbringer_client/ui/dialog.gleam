@@ -15,8 +15,8 @@
 ////     size: DialogMd,
 ////     on_close: CapabilityCreateDialogClosed,
 ////   ),
-////   model.admin.capabilities_create_dialog_open,
-////   model.admin.capabilities_create_error,
+////   model.admin.capabilities.capabilities_dialog_mode == dialog_mode.DialogCreate,
+////   model.admin.capabilities.capabilities_create_error,
 ////   [
 ////     // form fields...
 ////   ],
@@ -35,9 +35,9 @@ import lustre/element/html.{button, div, h3, span, text}
 import lustre/event
 
 import scrumbringer_client/client_state.{type Model, type Msg}
+import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/modal_close_button
-import scrumbringer_client/update_helpers
 
 // =============================================================================
 // Types
@@ -156,7 +156,7 @@ fn size_to_class(size: DialogSize) -> String {
 /// Create a cancel button for dialog footer.
 pub fn cancel_button(model: Model, on_click: Msg) -> Element(Msg) {
   button([attribute.type_("button"), event.on_click(on_click)], [
-    text(update_helpers.i18n_t(model, i18n_text.Cancel)),
+    text(helpers_i18n.i18n_t(model, i18n_text.Cancel)),
   ])
 }
 
@@ -179,8 +179,8 @@ pub fn submit_button(
     ],
     [
       text(case is_loading {
-        True -> update_helpers.i18n_t(model, loading_label)
-        False -> update_helpers.i18n_t(model, label)
+        True -> helpers_i18n.i18n_t(model, loading_label)
+        False -> helpers_i18n.i18n_t(model, label)
       }),
     ],
   )
@@ -193,6 +193,6 @@ pub fn add_button(
   on_click: Msg,
 ) -> Element(Msg) {
   button([attribute.class("btn-add"), event.on_click(on_click)], [
-    text(update_helpers.i18n_t(model, label)),
+    text(helpers_i18n.i18n_t(model, label)),
   ])
 }

@@ -24,8 +24,8 @@ import lustre/element/html.{div, span, text}
 import lustre/event
 
 import scrumbringer_client/client_state.{type Model, type Msg}
+import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/update_helpers
 
 // =============================================================================
 // Types
@@ -173,8 +173,8 @@ pub fn view(
   }
 
   let selected_label = case selected {
-    None -> update_helpers.i18n_t(model, i18n_text.ColorNone)
-    Some(c) -> update_helpers.i18n_t(model, color_i18n_key(c))
+    None -> helpers_i18n.i18n_t(model, i18n_text.ColorNone)
+    Some(c) -> helpers_i18n.i18n_t(model, color_i18n_key(c))
   }
 
   div(
@@ -193,7 +193,7 @@ pub fn view(
           }),
           attribute.attribute(
             "aria-label",
-            update_helpers.i18n_t(model, i18n_text.ColorLabel),
+            helpers_i18n.i18n_t(model, i18n_text.ColorLabel),
           ),
           event.on_click(on_toggle),
         ],
@@ -231,8 +231,8 @@ fn view_color_option(
   let is_selected = color == selected
 
   let label = case color {
-    None -> update_helpers.i18n_t(model, i18n_text.ColorNone)
-    Some(c) -> update_helpers.i18n_t(model, color_i18n_key(c))
+    None -> helpers_i18n.i18n_t(model, i18n_text.ColorNone)
+    Some(c) -> helpers_i18n.i18n_t(model, color_i18n_key(c))
   }
 
   let selected_class = case is_selected {

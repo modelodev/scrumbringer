@@ -13,6 +13,7 @@ import scrumbringer_client/client_state.{
   type Model, CoreModel, default_model, update_core, update_member,
 }
 import scrumbringer_client/client_state/member.{MemberModel}
+import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/view as pool_view
 
 fn base_model() -> Model {
@@ -51,13 +52,18 @@ pub fn view_pool_main_shows_tasks_error_test() {
     base_model()
     |> update_core(fn(core) { CoreModel(..core, projects: Loaded([project])) })
     |> update_member(fn(member) {
+      let pool = member.pool
+
       MemberModel(
         ..member,
-        member_tasks: Failed(domain_api_error.ApiError(
-          status: 500,
-          code: "SERVER_ERROR",
-          message: "Boom",
-        )),
+        pool: member_pool.Model(
+          ..pool,
+          member_tasks: Failed(domain_api_error.ApiError(
+            status: 500,
+            code: "SERVER_ERROR",
+            message: "Boom",
+          )),
+        ),
       )
     })
 

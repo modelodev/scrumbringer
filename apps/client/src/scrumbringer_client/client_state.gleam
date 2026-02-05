@@ -57,42 +57,29 @@
 //// - **theme.gleam**: Provides `Theme` type
 //// - **i18n/locale.gleam**: Provides `Locale` type
 
-import gleam/dict
 import gleam/option.{type Option}
-import gleam/set
 import gleam/uri.{type Uri}
 
 import domain/user.{type User}
 
-import scrumbringer_client/accept_invite
-import scrumbringer_client/assignments_view_mode
-
 // API types from domain modules
 import domain/api_error.{type ApiResult}
 import domain/project.{type Project}
-import domain/project_role
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
-import domain/view_mode
+import scrumbringer_client/client_state/auth as auth_state
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/domain/ids.{type ToastId}
 import scrumbringer_client/features/admin/msg as admin_msg
 import scrumbringer_client/features/auth/msg as auth_msg
-import scrumbringer_client/features/auth/state as auth_state
 import scrumbringer_client/features/i18n/msg as i18n_msg
 import scrumbringer_client/features/layout/msg as layout_msg
 import scrumbringer_client/features/pool/msg as pool_msg
 import scrumbringer_client/hydration
-import scrumbringer_client/i18n/locale as i18n_locale
-import scrumbringer_client/member_section
 import scrumbringer_client/permissions
-import scrumbringer_client/pool_prefs
-import scrumbringer_client/reset_password
 import scrumbringer_client/router
-import scrumbringer_client/state/normalized_store
-import scrumbringer_client/theme
-import scrumbringer_client/ui/task_tabs
 import scrumbringer_client/ui/toast
 
 // ----------------------------------------------------------------------------
@@ -217,32 +204,16 @@ pub type AuthModel =
   auth_state.AuthModel
 
 /// Represents UiModel.
-pub type UiModel {
-  UiModel(
-    is_mobile: Bool,
-    toast_state: toast.ToastState,
-    theme: theme.Theme,
-    locale: i18n_locale.Locale,
-    mobile_drawer: MobileDrawerState,
-    sidebar_collapse: SidebarCollapse,
-    preferences_popup_open: Bool,
-  )
-}
+pub type UiModel =
+  ui_state.UiModel
 
 /// Represents MobileDrawerState.
-pub type MobileDrawerState {
-  DrawerClosed
-  DrawerLeftOpen
-  DrawerRightOpen
-}
+pub type MobileDrawerState =
+  ui_state.MobileDrawerState
 
 /// Represents SidebarCollapse.
-pub type SidebarCollapse {
-  NoneCollapsed
-  ConfigCollapsed
-  OrgCollapsed
-  BothCollapsed
-}
+pub type SidebarCollapse =
+  ui_state.SidebarCollapse
 
 pub type OrgUsersSearchState =
   state_types.OrgUsersSearchState
@@ -409,10 +380,10 @@ pub fn update_ui(model: Model, f: fn(UiModel) -> UiModel) -> Model {
 ///   sidebar_collapse_from_bools(...)
 pub fn sidebar_collapse_from_bools(config: Bool, org: Bool) -> SidebarCollapse {
   case config, org {
-    True, True -> BothCollapsed
-    True, False -> ConfigCollapsed
-    False, True -> OrgCollapsed
-    False, False -> NoneCollapsed
+    True, True -> ui_state.BothCollapsed
+    True, False -> ui_state.ConfigCollapsed
+    False, True -> ui_state.OrgCollapsed
+    False, False -> ui_state.NoneCollapsed
   }
 }
 
@@ -422,10 +393,10 @@ pub fn sidebar_collapse_from_bools(config: Bool, org: Bool) -> SidebarCollapse {
 ///   sidebar_collapse_to_bools(...)
 pub fn sidebar_collapse_to_bools(state: SidebarCollapse) -> #(Bool, Bool) {
   case state {
-    NoneCollapsed -> #(False, False)
-    ConfigCollapsed -> #(True, False)
-    OrgCollapsed -> #(False, True)
-    BothCollapsed -> #(True, True)
+    ui_state.NoneCollapsed -> #(False, False)
+    ui_state.ConfigCollapsed -> #(True, False)
+    ui_state.OrgCollapsed -> #(False, True)
+    ui_state.BothCollapsed -> #(True, True)
   }
 }
 
@@ -471,7 +442,7 @@ pub fn toggle_sidebar_org(state: SidebarCollapse) -> SidebarCollapse {
 ///   mobile_drawer_left_open(...)
 pub fn mobile_drawer_left_open(state: MobileDrawerState) -> Bool {
   case state {
-    DrawerLeftOpen -> True
+    ui_state.DrawerLeftOpen -> True
     _ -> False
   }
 }
@@ -482,7 +453,7 @@ pub fn mobile_drawer_left_open(state: MobileDrawerState) -> Bool {
 ///   mobile_drawer_right_open(...)
 pub fn mobile_drawer_right_open(state: MobileDrawerState) -> Bool {
   case state {
-    DrawerRightOpen -> True
+    ui_state.DrawerRightOpen -> True
     _ -> False
   }
 }
@@ -493,8 +464,8 @@ pub fn mobile_drawer_right_open(state: MobileDrawerState) -> Bool {
 ///   toggle_left_drawer(...)
 pub fn toggle_left_drawer(state: MobileDrawerState) -> MobileDrawerState {
   case state {
-    DrawerLeftOpen -> DrawerClosed
-    _ -> DrawerLeftOpen
+    ui_state.DrawerLeftOpen -> ui_state.DrawerClosed
+    _ -> ui_state.DrawerLeftOpen
   }
 }
 
@@ -504,8 +475,8 @@ pub fn toggle_left_drawer(state: MobileDrawerState) -> MobileDrawerState {
 ///   toggle_right_drawer(...)
 pub fn toggle_right_drawer(state: MobileDrawerState) -> MobileDrawerState {
   case state {
-    DrawerRightOpen -> DrawerClosed
-    _ -> DrawerRightOpen
+    ui_state.DrawerRightOpen -> ui_state.DrawerClosed
+    _ -> ui_state.DrawerRightOpen
   }
 }
 
@@ -514,7 +485,7 @@ pub fn toggle_right_drawer(state: MobileDrawerState) -> MobileDrawerState {
 /// Example:
 ///   close_drawers(...)
 pub fn close_drawers(_state: MobileDrawerState) -> MobileDrawerState {
-  DrawerClosed
+  ui_state.DrawerClosed
 }
 
 // ----------------------------------------------------------------------------
@@ -589,236 +560,9 @@ pub fn default_model() -> Model {
       projects: NotAsked,
       selected_project_id: option.None,
     ),
-    auth: auth_state.AuthModel(
-      login_email: "",
-      login_password: "",
-      login_error: option.None,
-      login_in_flight: False,
-      forgot_password_open: False,
-      forgot_password_email: "",
-      forgot_password_in_flight: False,
-      forgot_password_result: option.None,
-      forgot_password_error: option.None,
-      forgot_password_copy_status: option.None,
-      accept_invite: accept_invite.Model(
-        token: "",
-        state: accept_invite.NoToken,
-        password: "",
-        password_error: option.None,
-        submit_error: option.None,
-      ),
-      reset_password: reset_password.Model(
-        token: "",
-        state: reset_password.NoToken,
-        password: "",
-        password_error: option.None,
-        submit_error: option.None,
-      ),
-    ),
-    admin: admin_state.AdminModel(
-      invite_links: NotAsked,
-      invite_link_dialog: state_types.DialogClosed(operation: state_types.Idle),
-      invite_link_last: option.None,
-      invite_link_copy_status: option.None,
-      projects_dialog: state_types.DialogClosed(operation: state_types.Idle),
-      capabilities: NotAsked,
-      capabilities_create_dialog_open: False,
-      capabilities_create_name: "",
-      capabilities_create_in_flight: False,
-      capabilities_create_error: option.None,
-      capability_delete_dialog_id: option.None,
-      capability_delete_in_flight: False,
-      capability_delete_error: option.None,
-      members: NotAsked,
-      members_project_id: option.None,
-      org_users_cache: NotAsked,
-      org_settings_users: NotAsked,
-      admin_metrics_overview: NotAsked,
-      admin_metrics_project_tasks: NotAsked,
-      admin_metrics_project_id: option.None,
-      admin_metrics_users: NotAsked,
-      admin_rule_metrics: NotAsked,
-      admin_rule_metrics_from: "",
-      admin_rule_metrics_to: "",
-      admin_rule_metrics_expanded_workflow: option.None,
-      admin_rule_metrics_workflow_details: NotAsked,
-      admin_rule_metrics_drilldown_rule_id: option.None,
-      admin_rule_metrics_rule_details: NotAsked,
-      admin_rule_metrics_executions: NotAsked,
-      admin_rule_metrics_exec_offset: 0,
-      org_settings_save_in_flight: False,
-      org_settings_error: option.None,
-      org_settings_error_user_id: option.None,
-      org_settings_delete_confirm: option.None,
-      org_settings_delete_in_flight: False,
-      org_settings_delete_error: option.None,
-      members_add_dialog_open: False,
-      members_add_selected_user: option.None,
-      members_add_role: project_role.Member,
-      members_add_in_flight: False,
-      members_add_error: option.None,
-      members_remove_confirm: option.None,
-      members_remove_in_flight: False,
-      members_remove_error: option.None,
-      members_release_confirm: option.None,
-      members_release_in_flight: option.None,
-      members_release_error: option.None,
-      member_capabilities_dialog_user_id: option.None,
-      member_capabilities_loading: False,
-      member_capabilities_saving: False,
-      member_capabilities_cache: dict.new(),
-      member_capabilities_selected: [],
-      member_capabilities_error: option.None,
-      capability_members_dialog_capability_id: option.None,
-      capability_members_loading: False,
-      capability_members_saving: False,
-      capability_members_cache: dict.new(),
-      capability_members_selected: [],
-      capability_members_error: option.None,
-      org_users_search: state_types.OrgUsersSearchIdle("", 0),
-      task_types: NotAsked,
-      task_types_project_id: option.None,
-      task_types_dialog_mode: option.None,
-      task_types_create_dialog_open: False,
-      task_types_create_name: "",
-      task_types_create_icon: "",
-      task_types_create_icon_search: "",
-      task_types_create_icon_category: "all",
-      task_types_create_capability_id: option.None,
-      task_types_create_in_flight: False,
-      task_types_create_error: option.None,
-      task_types_icon_preview: state_types.IconIdle,
-      cards: NotAsked,
-      cards_project_id: option.None,
-      cards_dialog_mode: option.None,
-      cards_show_empty: False,
-      cards_show_completed: False,
-      cards_state_filter: option.None,
-      cards_search: "",
-      workflows_org: NotAsked,
-      workflows_project: NotAsked,
-      workflows_dialog_mode: option.None,
-      rules_workflow_id: option.None,
-      rules: NotAsked,
-      rules_dialog_mode: option.None,
-      rules_templates: NotAsked,
-      rules_attach_template_id: option.None,
-      rules_attach_in_flight: False,
-      rules_attach_error: option.None,
-      rules_expanded: set.new(),
-      attach_template_modal: option.None,
-      attach_template_selected: option.None,
-      attach_template_loading: False,
-      detaching_templates: set.new(),
-      rules_metrics: NotAsked,
-      task_templates_org: NotAsked,
-      task_templates_project: NotAsked,
-      task_templates_dialog_mode: option.None,
-      assignments: state_types.AssignmentsModel(
-        view_mode: assignments_view_mode.ByProject,
-        search_input: "",
-        search_query: "",
-        project_members: dict.new(),
-        user_projects: dict.new(),
-        expanded_projects: set.new(),
-        expanded_users: set.new(),
-        inline_add_context: option.None,
-        inline_add_selection: option.None,
-        inline_add_search: "",
-        inline_add_role: project_role.Member,
-        inline_add_in_flight: False,
-        inline_remove_confirm: option.None,
-        role_change_in_flight: option.None,
-        role_change_previous: option.None,
-      ),
-    ),
-    member: member_state.MemberModel(
-      member_section: member_section.Pool,
-      view_mode: view_mode.Pool,
-      member_work_sessions: NotAsked,
-      member_metrics: NotAsked,
-      member_now_working_in_flight: False,
-      member_now_working_error: option.None,
-      now_working_tick: 0,
-      now_working_tick_running: False,
-      now_working_server_offset_ms: 0,
-      member_tasks: NotAsked,
-      member_tasks_pending: 0,
-      member_tasks_by_project: dict.new(),
-      member_task_types: NotAsked,
-      member_task_types_pending: 0,
-      member_task_types_by_project: dict.new(),
-      member_cards_store: normalized_store.new(),
-      member_cards: NotAsked,
-      member_capabilities: NotAsked,
-      member_task_mutation_in_flight: False,
-      member_task_mutation_task_id: option.None,
-      member_tasks_snapshot: option.None,
-      member_filters_status: option.None,
-      member_filters_type_id: option.None,
-      member_filters_capability_id: option.None,
-      member_filters_q: "",
-      member_quick_my_caps: True,
-      member_pool_filters_visible: False,
-      member_pool_view_mode: pool_prefs.Canvas,
-      member_list_hide_completed: True,
-      member_list_expanded_cards: dict.new(),
-      member_panel_expanded: False,
-      member_create_dialog_open: False,
-      member_create_title: "",
-      member_create_description: "",
-      member_create_priority: "3",
-      member_create_type_id: "",
-      member_create_card_id: option.None,
-      member_create_in_flight: False,
-      member_create_error: option.None,
-      member_my_capability_ids: NotAsked,
-      member_my_capability_ids_edit: dict.new(),
-      member_my_capabilities_in_flight: False,
-      member_my_capabilities_error: option.None,
-      member_positions_by_task: dict.new(),
-      member_drag: state_types.DragIdle,
-      member_canvas_left: 0,
-      member_canvas_top: 0,
-      member_pool_drag: state_types.PoolDragIdle,
-      member_pool_touch_task_id: option.None,
-      member_pool_touch_longpress: option.None,
-      member_pool_touch_client_x: 0,
-      member_pool_touch_client_y: 0,
-      member_pool_preview_task_id: option.None,
-      member_hover_notes_cache: dict.new(),
-      member_hover_notes_pending: dict.new(),
-      member_position_edit_task: option.None,
-      member_position_edit_x: "",
-      member_position_edit_y: "",
-      member_position_edit_in_flight: False,
-      member_position_edit_error: option.None,
-      member_notes_task_id: option.None,
-      member_notes: NotAsked,
-      member_note_content: "",
-      member_note_in_flight: False,
-      member_note_error: option.None,
-      member_note_dialog_open: False,
-      card_detail_open: option.None,
-      member_task_detail_tab: task_tabs.DetailsTab,
-      member_dependencies: NotAsked,
-      member_dependency_dialog_open: False,
-      member_dependency_search_query: "",
-      member_dependency_candidates: NotAsked,
-      member_dependency_selected_task_id: option.None,
-      member_dependency_add_in_flight: False,
-      member_dependency_add_error: option.None,
-      member_dependency_remove_in_flight: option.None,
-      member_blocked_claim_task: option.None,
-    ),
-    ui: UiModel(
-      is_mobile: False,
-      toast_state: toast.init(),
-      theme: theme.Default,
-      locale: i18n_locale.En,
-      mobile_drawer: DrawerClosed,
-      sidebar_collapse: BothCollapsed,
-      preferences_popup_open: False,
-    ),
+    auth: auth_state.default_model(),
+    admin: admin_state.default_model(),
+    member: member_state.default_model(),
+    ui: ui_state.default_model(),
   )
 }

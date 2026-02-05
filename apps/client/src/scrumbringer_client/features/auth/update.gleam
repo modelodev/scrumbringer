@@ -40,11 +40,13 @@ import scrumbringer_client/client_state.{
   auth_msg, update_auth, update_core,
 }
 import scrumbringer_client/features/auth/msg as auth_messages
-import scrumbringer_client/features/auth/state as auth_state
+import scrumbringer_client/client_state/auth as auth_state
+import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/helpers/toast as helpers_toast
+import scrumbringer_client/helpers/validation as helpers_validation
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/reset_password
 import scrumbringer_client/ui/toast
-import scrumbringer_client/update_helpers
 
 // =============================================================================
 // Login Handlers
@@ -101,13 +103,13 @@ pub fn handle_login_dom_values_read(
   raw_password: String,
 ) -> #(Model, Effect(Msg)) {
   let email_result =
-    update_helpers.validate_required_string(
+    helpers_validation.validate_required_string(
       model,
       raw_email,
       i18n_text.EmailAndPasswordRequired,
     )
   let password_result =
-    update_helpers.validate_required_string_raw(
+    helpers_validation.validate_required_string_raw(
       model,
       raw_password,
       i18n_text.EmailAndPasswordRequired,
@@ -115,8 +117,8 @@ pub fn handle_login_dom_values_read(
 
   case email_result, password_result {
     Ok(email), Ok(password) -> {
-      let email = update_helpers.non_empty_string_value(email)
-      let password = update_helpers.non_empty_string_value(password)
+      let email = helpers_validation.non_empty_string_value(email)
+      let password = helpers_validation.non_empty_string_value(password)
       let model =
         update_auth(model, fn(auth) {
           auth_state.AuthModel(
@@ -182,7 +184,7 @@ pub fn handle_login_finished_ok(
   let #(model, hyd_fx) = hydrate_fn(model)
 
   // Story 4.8: Use new toast system with auto-dismiss
-  let toast_message = update_helpers.i18n_t(model, i18n_text.LoggedIn)
+  let toast_message = helpers_i18n.i18n_t(model, i18n_text.LoggedIn)
   let toast_effect =
     effect.from(fn(dispatch) {
       dispatch(ToastShow(toast_message, toast.Success))
@@ -197,7 +199,7 @@ pub fn handle_login_finished_error(
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
   let message = case err.status {
-    401 | 403 -> update_helpers.i18n_t(model, i18n_text.InvalidCredentials)
+    401 | 403 -> helpers_i18n.i18n_t(model, i18n_text.InvalidCredentials)
     _ -> err.message
   }
 
@@ -262,7 +264,7 @@ pub fn handle_forgot_password_submitted(model: Model) -> #(Model, Effect(Msg)) {
 
     False -> {
       case
-        update_helpers.validate_required_string(
+        helpers_validation.validate_required_string(
           model,
           model.auth.forgot_password_email,
           i18n_text.EmailRequired,
@@ -276,7 +278,7 @@ pub fn handle_forgot_password_submitted(model: Model) -> #(Model, Effect(Msg)) {
         )
 
         Ok(email) -> {
-          let email = update_helpers.non_empty_string_value(email)
+          let email = helpers_validation.non_empty_string_value(email)
           let model =
             update_auth(model, fn(auth) {
               auth_state.AuthModel(
@@ -351,7 +353,7 @@ pub fn handle_forgot_password_copy_clicked(
         update_auth(model, fn(auth) {
           auth_state.AuthModel(
             ..auth,
-            forgot_password_copy_status: opt.Some(update_helpers.i18n_t(
+            forgot_password_copy_status: opt.Some(helpers_i18n.i18n_t(
               model,
               i18n_text.Copying,
             )),
@@ -371,8 +373,8 @@ pub fn handle_forgot_password_copy_finished(
   ok: Bool,
 ) -> #(Model, Effect(Msg)) {
   let message = case ok {
-    True -> update_helpers.i18n_t(model, i18n_text.Copied)
-    False -> update_helpers.i18n_t(model, i18n_text.CopyFailed)
+    True -> helpers_i18n.i18n_t(model, i18n_text.Copied)
+    False -> helpers_i18n.i18n_t(model, i18n_text.CopyFailed)
   }
 
   #(
@@ -425,10 +427,7 @@ pub fn handle_logout_finished_ok(
       CoreModel(..core, page: Login, user: opt.None, auth_checked: False)
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
-      model,
-      i18n_text.LoggedOut,
-    ))
+    helpers_toast.toast_success(helpers_i18n.i18n_t(model, i18n_text.LoggedOut))
 
   #(model, effect.batch([replace_url_fn(model), toast_fx]))
 }
@@ -450,7 +449,7 @@ pub fn handle_logout_finished_error(
 
     False -> #(
       model,
-      update_helpers.toast_error(update_helpers.i18n_t(
+      helpers_toast.toast_error(helpers_i18n.i18n_t(
         model,
         i18n_text.LogoutFailed,
       )),
@@ -501,7 +500,7 @@ fn handle_accept_invite_authed(
     })
 
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(model, i18n_text.Welcome))
+    helpers_toast.toast_success(helpers_i18n.i18n_t(model, i18n_text.Welcome))
 
   let #(model, boot) = bootstrap_fn(model)
   let #(model, hyd_fx) = hydrate_fn(model)
@@ -592,7 +591,7 @@ fn handle_reset_password_msg(
           },
         )
       let toast_fx =
-        update_helpers.toast_success(update_helpers.i18n_t(
+        helpers_toast.toast_success(helpers_i18n.i18n_t(
           model,
           i18n_text.PasswordUpdated,
         ))

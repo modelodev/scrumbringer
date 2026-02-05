@@ -11,7 +11,9 @@ import scrumbringer_client/client_state.{
   type Model, default_model, update_admin, update_member,
 }
 import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/member as member_state
+import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/admin/view as admin_view
 
 fn base_model() -> Model {
@@ -48,7 +50,11 @@ pub fn cards_view_renders_detail_button_test() {
   let model =
     base_model()
     |> update_admin(fn(admin) {
-      admin_state.AdminModel(..admin, cards: Loaded([sample_card()]))
+      let cards = admin.cards
+      admin_state.AdminModel(
+        ..admin,
+        cards: admin_cards.Model(..cards, cards: Loaded([sample_card()])),
+      )
     })
 
   let html =
@@ -63,10 +69,18 @@ pub fn cards_view_renders_detail_modal_when_open_test() {
   let model =
     base_model()
     |> update_admin(fn(admin) {
-      admin_state.AdminModel(..admin, cards: Loaded([sample_card()]))
+      let cards = admin.cards
+      admin_state.AdminModel(
+        ..admin,
+        cards: admin_cards.Model(..cards, cards: Loaded([sample_card()])),
+      )
     })
     |> update_member(fn(member) {
-      member_state.MemberModel(..member, card_detail_open: opt.Some(1))
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(..pool, card_detail_open: opt.Some(1)),
+      )
     })
 
   let html =

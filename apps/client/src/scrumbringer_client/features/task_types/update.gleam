@@ -37,11 +37,14 @@ import domain/task_type.{type TaskType}
 import scrumbringer_client/client_state.{
   type Model, type Msg, type TaskTypeDialogMode, admin_msg, update_admin,
 }
-import scrumbringer_client/client_state/admin.{AdminModel}
-import scrumbringer_client/client_state/types.{IconError, IconIdle, IconOk}
+import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/admin/task_types as admin_task_types
+import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/msg as admin_messages
+import scrumbringer_client/helpers/auth as helpers_auth
+import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/helpers/toast as helpers_toast
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/update_helpers
 
 // =============================================================================
 // Task Types Fetch Handlers
@@ -54,7 +57,12 @@ pub fn handle_task_types_fetched_ok(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, task_types: Loaded(task_types))
+      update_task_types(admin, fn(task_types_state) {
+        admin_task_types.Model(
+          ..task_types_state,
+          task_types: Loaded(task_types),
+        )
+      })
     }),
     effect.none(),
   )
@@ -65,10 +73,15 @@ pub fn handle_task_types_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
       update_admin(model, fn(admin) {
-        AdminModel(..admin, task_types: Failed(err))
+        update_task_types(admin, fn(task_types_state) {
+          admin_task_types.Model(
+            ..task_types_state,
+            task_types: Failed(err),
+          )
+        })
       }),
       effect.none(),
     )
@@ -83,7 +96,12 @@ pub fn handle_task_types_fetched_error(
 pub fn handle_task_type_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, task_types_create_dialog_open: True)
+      update_task_types(admin, fn(task_types_state) {
+        admin_task_types.Model(
+          ..task_types_state,
+          task_types_dialog_mode: opt.Some(state_types.TaskTypeDialogCreate),
+        )
+      })
     }),
     effect.none(),
   )
@@ -93,15 +111,17 @@ pub fn handle_task_type_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
 pub fn handle_task_type_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        task_types_create_dialog_open: False,
-        task_types_create_name: "",
-        task_types_create_icon: "",
-        task_types_create_capability_id: opt.None,
-        task_types_create_error: opt.None,
-        task_types_icon_preview: IconIdle,
-      )
+      update_task_types(admin, fn(task_types_state) {
+        admin_task_types.Model(
+          ..task_types_state,
+          task_types_dialog_mode: opt.None,
+          task_types_create_name: "",
+          task_types_create_icon: "",
+          task_types_create_capability_id: opt.None,
+          task_types_create_error: opt.None,
+          task_types_icon_preview: state_types.IconIdle,
+        )
+      })
     }),
     effect.none(),
   )
@@ -118,7 +138,12 @@ pub fn handle_task_type_create_name_changed(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, task_types_create_name: name)
+      update_task_types(admin, fn(task_types_state) {
+        admin_task_types.Model(
+          ..task_types_state,
+          task_types_create_name: name,
+        )
+      })
     }),
     effect.none(),
   )
@@ -132,17 +157,19 @@ pub fn handle_task_type_create_icon_changed(
 ) -> #(Model, Effect(Msg)) {
   // Import icon_catalog for validation
   let preview_state = case icon == "" {
-    True -> IconIdle
-    False -> IconOk
+    True -> state_types.IconIdle
+    False -> state_types.IconOk
     // All icons from picker are valid catalog icons
   }
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        task_types_create_icon: icon,
-        task_types_icon_preview: preview_state,
-      )
+      update_task_types(admin, fn(task_types_state) {
+        admin_task_types.Model(
+          ..task_types_state,
+          task_types_create_icon: icon,
+          task_types_icon_preview: preview_state,
+        )
+      })
     }),
     effect.none(),
   )
@@ -152,7 +179,12 @@ pub fn handle_task_type_create_icon_changed(
 pub fn handle_task_type_icon_loaded(model: Model) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, task_types_icon_preview: IconOk)
+      update_task_types(admin, fn(task_types_state) {
+        admin_task_types.Model(
+          ..task_types_state,
+          task_types_icon_preview: state_types.IconOk,
+        )
+      })
     }),
     effect.none(),
   )
@@ -162,7 +194,12 @@ pub fn handle_task_type_icon_loaded(model: Model) -> #(Model, Effect(Msg)) {
 pub fn handle_task_type_icon_errored(model: Model) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, task_types_icon_preview: IconError)
+      update_task_types(admin, fn(task_types_state) {
+        admin_task_types.Model(
+          ..task_types_state,
+          task_types_icon_preview: state_types.IconError,
+        )
+      })
     }),
     effect.none(),
   )
@@ -175,7 +212,12 @@ pub fn handle_task_type_create_icon_search_changed(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, task_types_create_icon_search: search)
+      update_task_types(admin, fn(task_types_state) {
+        admin_task_types.Model(
+          ..task_types_state,
+          task_types_create_icon_search: search,
+        )
+      })
     }),
     effect.none(),
   )
@@ -188,7 +230,12 @@ pub fn handle_task_type_create_icon_category_changed(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, task_types_create_icon_category: category)
+      update_task_types(admin, fn(task_types_state) {
+        admin_task_types.Model(
+          ..task_types_state,
+          task_types_create_icon_category: category,
+        )
+      })
     }),
     effect.none(),
   )
@@ -202,13 +249,23 @@ pub fn handle_task_type_create_capability_changed(
   case string.trim(value) == "" {
     True -> #(
       update_admin(model, fn(admin) {
-        AdminModel(..admin, task_types_create_capability_id: opt.None)
+        update_task_types(admin, fn(task_types_state) {
+          admin_task_types.Model(
+            ..task_types_state,
+            task_types_create_capability_id: opt.None,
+          )
+        })
       }),
       effect.none(),
     )
     False -> #(
       update_admin(model, fn(admin) {
-        AdminModel(..admin, task_types_create_capability_id: opt.Some(value))
+        update_task_types(admin, fn(task_types_state) {
+          admin_task_types.Model(
+            ..task_types_state,
+            task_types_create_capability_id: opt.Some(value),
+          )
+        })
       }),
       effect.none(),
     )
@@ -217,7 +274,7 @@ pub fn handle_task_type_create_capability_changed(
 
 /// Handle task type create form submission.
 pub fn handle_task_type_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.admin.task_types_create_in_flight {
+  case model.admin.task_types.task_types_create_in_flight {
     True -> #(model, effect.none())
     False -> validate_and_submit_task_type(model)
   }
@@ -236,8 +293,8 @@ fn validate_task_type_fields(
   model: Model,
   project_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  let name = string.trim(model.admin.task_types_create_name)
-  let icon = string.trim(model.admin.task_types_create_icon)
+  let name = string.trim(model.admin.task_types.task_types_create_name)
+  let icon = string.trim(model.admin.task_types.task_types_create_icon)
 
   case name == "" || icon == "" {
     True -> set_task_type_error(model, i18n_text.NameAndIconRequired)
@@ -265,10 +322,12 @@ fn set_task_type_error(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        task_types_create_error: opt.Some(update_helpers.i18n_t(model, message)),
-      )
+      update_task_types(admin, fn(task_types_state) {
+        admin_task_types.Model(
+          ..task_types_state,
+          task_types_create_error: opt.Some(helpers_i18n.i18n_t(model, message)),
+        )
+      })
     }),
     effect.none(),
   )
@@ -280,7 +339,7 @@ fn submit_task_type(
   name: String,
   icon: String,
 ) -> #(Model, Effect(Msg)) {
-  let capability_id = case model.admin.task_types_create_capability_id {
+  let capability_id = case model.admin.task_types.task_types_create_capability_id {
     opt.None -> opt.None
     opt.Some(id_str) ->
       case int.parse(id_str) {
@@ -291,11 +350,13 @@ fn submit_task_type(
 
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        task_types_create_in_flight: True,
-        task_types_create_error: opt.None,
-      )
+      update_task_types(admin, fn(task_types_state) {
+        admin_task_types.Model(
+          ..task_types_state,
+          task_types_create_in_flight: True,
+          task_types_create_error: opt.None,
+        )
+      })
     })
 
   #(
@@ -317,18 +378,20 @@ pub fn handle_task_type_created_ok(
 ) -> #(Model, Effect(Msg)) {
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        task_types_create_dialog_open: False,
-        task_types_create_in_flight: False,
-        task_types_create_name: "",
-        task_types_create_icon: "",
-        task_types_create_capability_id: opt.None,
-        task_types_icon_preview: IconIdle,
-      )
+      update_task_types(admin, fn(task_types_state) {
+        admin_task_types.Model(
+          ..task_types_state,
+          task_types_dialog_mode: opt.None,
+          task_types_create_in_flight: False,
+          task_types_create_name: "",
+          task_types_create_icon: "",
+          task_types_create_capability_id: opt.None,
+          task_types_icon_preview: state_types.IconIdle,
+        )
+      })
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.TaskTypeCreated,
     ))
@@ -342,31 +405,35 @@ pub fn handle_task_type_created_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     case err.status {
       403 -> #(
         update_admin(model, fn(admin) {
-          AdminModel(
-            ..admin,
-            task_types_create_in_flight: False,
-            task_types_create_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NotPermitted,
-            )),
-          )
+          update_task_types(admin, fn(task_types_state) {
+            admin_task_types.Model(
+              ..task_types_state,
+              task_types_create_in_flight: False,
+              task_types_create_error: opt.Some(helpers_i18n.i18n_t(
+                model,
+                i18n_text.NotPermitted,
+              )),
+            )
+          })
         }),
-        update_helpers.toast_warning(update_helpers.i18n_t(
+        helpers_toast.toast_warning(helpers_i18n.i18n_t(
           model,
           i18n_text.NotPermitted,
         )),
       )
       _ -> #(
         update_admin(model, fn(admin) {
-          AdminModel(
-            ..admin,
-            task_types_create_in_flight: False,
-            task_types_create_error: opt.Some(err.message),
-          )
+          update_task_types(admin, fn(task_types_state) {
+            admin_task_types.Model(
+              ..task_types_state,
+              task_types_create_in_flight: False,
+              task_types_create_error: opt.Some(err.message),
+            )
+          })
         }),
         effect.none(),
       )
@@ -385,7 +452,12 @@ pub fn handle_open_task_type_dialog(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, task_types_dialog_mode: opt.Some(mode))
+      update_task_types(admin, fn(task_types_state) {
+        admin_task_types.Model(
+          ..task_types_state,
+          task_types_dialog_mode: opt.Some(mode),
+        )
+      })
     }),
     effect.none(),
   )
@@ -395,7 +467,12 @@ pub fn handle_open_task_type_dialog(
 pub fn handle_close_task_type_dialog(model: Model) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, task_types_dialog_mode: opt.None)
+      update_task_types(admin, fn(task_types_state) {
+        admin_task_types.Model(
+          ..task_types_state,
+          task_types_dialog_mode: opt.None,
+        )
+      })
     }),
     effect.none(),
   )
@@ -409,10 +486,15 @@ pub fn handle_task_type_crud_created(
 ) -> #(Model, Effect(Msg)) {
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(..admin, task_types_dialog_mode: opt.None)
+      update_task_types(admin, fn(task_types_state) {
+        admin_task_types.Model(
+          ..task_types_state,
+          task_types_dialog_mode: opt.None,
+        )
+      })
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.TaskTypeCreated,
     ))
@@ -427,7 +509,7 @@ pub fn handle_task_type_crud_updated(
   task_type: TaskType,
 ) -> #(Model, Effect(Msg)) {
   // Update task type in the list
-  let updated_list = case model.admin.task_types {
+  let updated_list = case model.admin.task_types.task_types {
     Loaded(task_types) ->
       Loaded(
         task_types
@@ -442,14 +524,16 @@ pub fn handle_task_type_crud_updated(
   }
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        task_types: updated_list,
-        task_types_dialog_mode: opt.None,
-      )
+      update_task_types(admin, fn(task_types_state) {
+        admin_task_types.Model(
+          ..task_types_state,
+          task_types: updated_list,
+          task_types_dialog_mode: opt.None,
+        )
+      })
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.TaskTypeUpdated,
     ))
@@ -462,23 +546,32 @@ pub fn handle_task_type_crud_deleted(
   type_id: Int,
 ) -> #(Model, Effect(Msg)) {
   // Remove task type from the list
-  let updated_list = case model.admin.task_types {
+  let updated_list = case model.admin.task_types.task_types {
     Loaded(task_types) ->
       Loaded(list.filter(task_types, fn(tt) { tt.id != type_id }))
     other -> other
   }
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        task_types: updated_list,
-        task_types_dialog_mode: opt.None,
-      )
+      update_task_types(admin, fn(task_types_state) {
+        admin_task_types.Model(
+          ..task_types_state,
+          task_types: updated_list,
+          task_types_dialog_mode: opt.None,
+        )
+      })
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.TaskTypeDeleted,
     ))
   #(model, toast_fx)
+}
+
+fn update_task_types(
+  admin: admin_state.AdminModel,
+  f: fn(admin_task_types.Model) -> admin_task_types.Model,
+) -> admin_state.AdminModel {
+  admin_state.AdminModel(..admin, task_types: f(admin.task_types))
 }

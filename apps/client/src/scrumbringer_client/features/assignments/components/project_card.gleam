@@ -23,12 +23,13 @@ import scrumbringer_client/client_state
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/assignments/components/assignments_card
+import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/loading
-import scrumbringer_client/update_helpers
 
 pub fn view(
   model: client_state.Model,
@@ -36,7 +37,7 @@ pub fn view(
   members_state: Remote(List(ProjectMember)),
   expanded: Bool,
 ) -> element.Element(client_state.Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
   let assignments = model.admin.assignments
 
   let no_members = case members_state {
@@ -145,7 +146,7 @@ fn view_project_metrics_summary(
   model: client_state.Model,
   project_id: Int,
 ) -> opt.Option(element.Element(client_state.Msg)) {
-  case model.admin.admin_metrics_overview {
+  case model.admin.metrics.admin_metrics_overview {
     Loaded(OrgMetricsOverview(by_project: projects, ..)) ->
       case list.find(projects, fn(p) { p.project_id == project_id }) {
         Ok(metrics) -> opt.Some(project_metrics_view(model, metrics))
@@ -159,7 +160,7 @@ fn project_metrics_view(
   model: client_state.Model,
   metrics: OrgMetricsProjectOverview,
 ) -> element.Element(client_state.Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
   let OrgMetricsProjectOverview(
     available_count: available_count,
     claimed_count: claimed_count,
@@ -207,9 +208,12 @@ fn view_member_row(
   member: ProjectMember,
   inline_confirm: opt.Option(#(Int, Int)),
 ) -> element.Element(client_state.Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
   let email = case
-    update_helpers.resolve_org_user(model.admin.org_users_cache, member.user_id)
+    helpers_lookup.resolve_org_user(
+      model.admin.members.org_users_cache,
+      member.user_id,
+    )
   {
     opt.Some(user) -> user.email
     opt.None -> t(i18n_text.UserNumber(member.user_id))
@@ -304,13 +308,13 @@ fn view_member_row(
 fn view_inline_add(
   model: client_state.Model,
 ) -> element.Element(client_state.Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
   let assignments = model.admin.assignments
   let search = assignments.inline_add_search
   let selected = assignments.inline_add_selection
   let is_disabled = assignments.inline_add_in_flight
 
-  let options = case model.admin.org_users_cache {
+  let options = case model.admin.members.org_users_cache {
     Loaded(users) ->
       users
       |> list.filter(fn(user) {

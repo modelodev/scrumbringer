@@ -37,10 +37,14 @@ import domain/remote.{Failed, Loaded}
 import scrumbringer_client/client_state.{
   type Model, type Msg, admin_msg, update_admin,
 }
-import scrumbringer_client/client_state/admin.{AdminModel}
+import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/admin/capabilities as admin_capabilities
+import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/features/admin/msg as admin_messages
+import scrumbringer_client/helpers/auth as helpers_auth
+import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/helpers/toast as helpers_toast
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/update_helpers
 
 // =============================================================================
 // Capabilities Fetch Handlers
@@ -67,7 +71,12 @@ pub fn handle_capabilities_fetched_ok(
 
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, capabilities: Loaded(capabilities))
+      update_capabilities(admin, fn(capabilities_state) {
+        admin_capabilities.Model(
+          ..capabilities_state,
+          capabilities: Loaded(capabilities),
+        )
+      })
     }),
     preload_fx,
   )
@@ -78,10 +87,15 @@ pub fn handle_capabilities_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
       update_admin(model, fn(admin) {
-        AdminModel(..admin, capabilities: Failed(err))
+        update_capabilities(admin, fn(capabilities_state) {
+          admin_capabilities.Model(
+            ..capabilities_state,
+            capabilities: Failed(err),
+          )
+        })
       }),
       effect.none(),
     )
@@ -96,7 +110,12 @@ pub fn handle_capabilities_fetched_error(
 pub fn handle_capability_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, capabilities_create_dialog_open: True)
+      update_capabilities(admin, fn(capabilities_state) {
+        admin_capabilities.Model(
+          ..capabilities_state,
+          capabilities_dialog_mode: dialog_mode.DialogCreate,
+        )
+      })
     }),
     effect.none(),
   )
@@ -106,12 +125,14 @@ pub fn handle_capability_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
 pub fn handle_capability_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        capabilities_create_dialog_open: False,
-        capabilities_create_name: "",
-        capabilities_create_error: opt.None,
-      )
+      update_capabilities(admin, fn(capabilities_state) {
+        admin_capabilities.Model(
+          ..capabilities_state,
+          capabilities_dialog_mode: dialog_mode.DialogClosed,
+          capabilities_create_name: "",
+          capabilities_create_error: opt.None,
+        )
+      })
     }),
     effect.none(),
   )
@@ -128,7 +149,12 @@ pub fn handle_capability_create_name_changed(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, capabilities_create_name: name)
+      update_capabilities(admin, fn(capabilities_state) {
+        admin_capabilities.Model(
+          ..capabilities_state,
+          capabilities_create_name: name,
+        )
+      })
     }),
     effect.none(),
   )
@@ -137,21 +163,23 @@ pub fn handle_capability_create_name_changed(
 // Justification: nested case improves clarity for branching logic.
 /// Handle capability create form submission.
 pub fn handle_capability_create_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.admin.capabilities_create_in_flight {
+  case model.admin.capabilities.capabilities_create_in_flight {
     True -> #(model, effect.none())
     False -> {
-      let name = string.trim(model.admin.capabilities_create_name)
+      let name = string.trim(model.admin.capabilities.capabilities_create_name)
 
       case name == "", model.core.selected_project_id {
         True, _ -> #(
           update_admin(model, fn(admin) {
-            AdminModel(
-              ..admin,
-              capabilities_create_error: opt.Some(update_helpers.i18n_t(
-                model,
-                i18n_text.NameRequired,
-              )),
-            )
+            update_capabilities(admin, fn(capabilities_state) {
+              admin_capabilities.Model(
+                ..capabilities_state,
+                capabilities_create_error: opt.Some(helpers_i18n.i18n_t(
+                  model,
+                  i18n_text.NameRequired,
+                )),
+              )
+            })
           }),
           effect.none(),
         )
@@ -159,11 +187,13 @@ pub fn handle_capability_create_submitted(model: Model) -> #(Model, Effect(Msg))
         False, opt.Some(project_id) -> {
           let model =
             update_admin(model, fn(admin) {
-              AdminModel(
-                ..admin,
-                capabilities_create_in_flight: True,
-                capabilities_create_error: opt.None,
-              )
+              update_capabilities(admin, fn(capabilities_state) {
+                admin_capabilities.Model(
+                  ..capabilities_state,
+                  capabilities_create_in_flight: True,
+                  capabilities_create_error: opt.None,
+                )
+              })
             })
           #(
             model,
@@ -182,23 +212,25 @@ pub fn handle_capability_created_ok(
   model: Model,
   capability: Capability,
 ) -> #(Model, Effect(Msg)) {
-  let updated = case model.admin.capabilities {
+  let updated = case model.admin.capabilities.capabilities {
     Loaded(capabilities) -> [capability, ..capabilities]
     _ -> [capability]
   }
 
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        capabilities: Loaded(updated),
-        capabilities_create_dialog_open: False,
-        capabilities_create_in_flight: False,
-        capabilities_create_name: "",
-      )
+      update_capabilities(admin, fn(capabilities_state) {
+        admin_capabilities.Model(
+          ..capabilities_state,
+          capabilities: Loaded(updated),
+          capabilities_dialog_mode: dialog_mode.DialogClosed,
+          capabilities_create_in_flight: False,
+          capabilities_create_name: "",
+        )
+      })
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.CapabilityCreated,
     ))
@@ -210,31 +242,35 @@ pub fn handle_capability_created_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     case err.status {
       403 -> #(
         update_admin(model, fn(admin) {
-          AdminModel(
-            ..admin,
-            capabilities_create_in_flight: False,
-            capabilities_create_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NotPermitted,
-            )),
-          )
+          update_capabilities(admin, fn(capabilities_state) {
+            admin_capabilities.Model(
+              ..capabilities_state,
+              capabilities_create_in_flight: False,
+              capabilities_create_error: opt.Some(helpers_i18n.i18n_t(
+                model,
+                i18n_text.NotPermitted,
+              )),
+            )
+          })
         }),
-        update_helpers.toast_warning(update_helpers.i18n_t(
+        helpers_toast.toast_warning(helpers_i18n.i18n_t(
           model,
           i18n_text.NotPermitted,
         )),
       )
       _ -> #(
         update_admin(model, fn(admin) {
-          AdminModel(
-            ..admin,
-            capabilities_create_in_flight: False,
-            capabilities_create_error: opt.Some(err.message),
-          )
+          update_capabilities(admin, fn(capabilities_state) {
+            admin_capabilities.Model(
+              ..capabilities_state,
+              capabilities_create_in_flight: False,
+              capabilities_create_error: opt.Some(err.message),
+            )
+          })
         }),
         effect.none(),
       )
@@ -253,12 +289,15 @@ pub fn handle_capability_delete_dialog_opened(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        capability_delete_dialog_id: opt.Some(capability_id),
-        capability_delete_in_flight: False,
-        capability_delete_error: opt.None,
-      )
+      update_capabilities(admin, fn(capabilities_state) {
+        admin_capabilities.Model(
+          ..capabilities_state,
+          capabilities_dialog_mode: dialog_mode.DialogDelete,
+          capability_delete_dialog_id: opt.Some(capability_id),
+          capability_delete_in_flight: False,
+          capability_delete_error: opt.None,
+        )
+      })
     }),
     effect.none(),
   )
@@ -270,12 +309,15 @@ pub fn handle_capability_delete_dialog_closed(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        capability_delete_dialog_id: opt.None,
-        capability_delete_in_flight: False,
-        capability_delete_error: opt.None,
-      )
+      update_capabilities(admin, fn(capabilities_state) {
+        admin_capabilities.Model(
+          ..capabilities_state,
+          capabilities_dialog_mode: dialog_mode.DialogClosed,
+          capability_delete_dialog_id: opt.None,
+          capability_delete_in_flight: False,
+          capability_delete_error: opt.None,
+        )
+      })
     }),
     effect.none(),
   )
@@ -284,8 +326,8 @@ pub fn handle_capability_delete_dialog_closed(
 /// Handle capability delete form submission.
 pub fn handle_capability_delete_submitted(model: Model) -> #(Model, Effect(Msg)) {
   case
-    model.admin.capability_delete_in_flight,
-    model.admin.capability_delete_dialog_id,
+    model.admin.capabilities.capability_delete_in_flight,
+    model.admin.capabilities.capability_delete_dialog_id,
     model.core.selected_project_id
   {
     True, _, _ -> #(model, effect.none())
@@ -294,11 +336,13 @@ pub fn handle_capability_delete_submitted(model: Model) -> #(Model, Effect(Msg))
     False, opt.Some(capability_id), opt.Some(project_id) -> {
       let model =
         update_admin(model, fn(admin) {
-          AdminModel(
-            ..admin,
-            capability_delete_in_flight: True,
-            capability_delete_error: opt.None,
-          )
+          update_capabilities(admin, fn(capabilities_state) {
+            admin_capabilities.Model(
+              ..capabilities_state,
+              capability_delete_in_flight: True,
+              capability_delete_error: opt.None,
+            )
+          })
         })
       #(
         model,
@@ -315,7 +359,7 @@ pub fn handle_capability_deleted_ok(
   model: Model,
   deleted_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  let updated = case model.admin.capabilities {
+  let updated = case model.admin.capabilities.capabilities {
     Loaded(capabilities) ->
       Loaded(list.filter(capabilities, fn(c) { c.id != deleted_id }))
     other -> other
@@ -323,16 +367,19 @@ pub fn handle_capability_deleted_ok(
 
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        capabilities: updated,
-        capability_delete_dialog_id: opt.None,
-        capability_delete_in_flight: False,
-        capability_delete_error: opt.None,
-      )
+      update_capabilities(admin, fn(capabilities_state) {
+        admin_capabilities.Model(
+          ..capabilities_state,
+          capabilities: updated,
+          capabilities_dialog_mode: dialog_mode.DialogClosed,
+          capability_delete_dialog_id: opt.None,
+          capability_delete_in_flight: False,
+          capability_delete_error: opt.None,
+        )
+      })
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.CapabilityDeleted,
     ))
@@ -344,31 +391,42 @@ pub fn handle_capability_deleted_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     case err.status {
       403 -> #(
         update_admin(model, fn(admin) {
-          AdminModel(
-            ..admin,
-            capability_delete_in_flight: False,
-            capability_delete_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NotPermitted,
-            )),
-          )
+          update_capabilities(admin, fn(capabilities_state) {
+            admin_capabilities.Model(
+              ..capabilities_state,
+              capability_delete_in_flight: False,
+              capability_delete_error: opt.Some(helpers_i18n.i18n_t(
+                model,
+                i18n_text.NotPermitted,
+              )),
+            )
+          })
         }),
         effect.none(),
       )
       _ -> #(
         update_admin(model, fn(admin) {
-          AdminModel(
-            ..admin,
-            capability_delete_in_flight: False,
-            capability_delete_error: opt.Some(err.message),
-          )
+          update_capabilities(admin, fn(capabilities_state) {
+            admin_capabilities.Model(
+              ..capabilities_state,
+              capability_delete_in_flight: False,
+              capability_delete_error: opt.Some(err.message),
+            )
+          })
         }),
         effect.none(),
       )
     }
   })
+}
+
+fn update_capabilities(
+  admin: admin_state.AdminModel,
+  f: fn(admin_capabilities.Model) -> admin_capabilities.Model,
+) -> admin_state.AdminModel {
+  admin_state.AdminModel(..admin, capabilities: f(admin.capabilities))
 }

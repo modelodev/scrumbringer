@@ -21,12 +21,12 @@ import scrumbringer_client/client_state
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/assignments/components/assignments_card
+import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/loading
-import scrumbringer_client/update_helpers
 
 pub fn view(
   model: client_state.Model,
@@ -34,7 +34,7 @@ pub fn view(
   projects_state: Remote(List(Project)),
   expanded: Bool,
 ) -> element.Element(client_state.Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
   let assignments = model.admin.assignments
 
   let projects = case projects_state {
@@ -145,7 +145,7 @@ fn view_user_metrics_summary(
   model: client_state.Model,
   user_id: Int,
 ) -> opt.Option(element.Element(client_state.Msg)) {
-  case model.admin.admin_metrics_users {
+  case model.admin.metrics.admin_metrics_users {
     Loaded(users) ->
       case list.find(users, fn(user) { user.user_id == user_id }) {
         Ok(metrics) -> opt.Some(user_metrics_view(model, metrics))
@@ -159,7 +159,7 @@ fn user_metrics_view(
   model: client_state.Model,
   metrics: OrgMetricsUserOverview,
 ) -> element.Element(client_state.Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
   let OrgMetricsUserOverview(
     claimed_count: claimed_count,
     released_count: released_count,
@@ -201,7 +201,7 @@ fn view_project_row(
   project: Project,
   inline_confirm: opt.Option(#(Int, Int)),
 ) -> element.Element(client_state.Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
   let is_confirming = case inline_confirm {
     opt.Some(#(pid, uid)) -> pid == project.id && uid == user_id
     _ -> False
@@ -293,7 +293,7 @@ fn view_inline_add(
   _user_id: Int,
   assigned_projects: List(Project),
 ) -> element.Element(client_state.Msg) {
-  let t = fn(key) { update_helpers.i18n_t(model, key) }
+  let t = fn(key) { helpers_i18n.i18n_t(model, key) }
   let assignments = model.admin.assignments
   let selected = assignments.inline_add_selection
   let is_disabled = assignments.inline_add_in_flight

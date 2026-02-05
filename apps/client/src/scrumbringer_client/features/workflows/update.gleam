@@ -2,6 +2,7 @@
 ////
 //// Re-exported from admin workflows handlers (Phase 1 modularization).
 
+import scrumbringer_client/features/admin/rule_metrics
 import scrumbringer_client/features/admin/workflows as admin_workflows
 
 pub const handle_workflows_project_fetched_ok = admin_workflows.handle_workflows_project_fetched_ok
@@ -95,3 +96,41 @@ pub const handle_task_template_crud_deleted = admin_workflows.handle_task_templa
 pub const fetch_workflows = admin_workflows.fetch_workflows
 
 pub const fetch_task_templates = admin_workflows.fetch_task_templates
+
+pub const handle_rule_metrics_tab_init = rule_metrics.init_tab
+
+pub const handle_rule_metrics_tab_from_changed = rule_metrics.handle_from_changed
+
+pub const handle_rule_metrics_tab_to_changed = rule_metrics.handle_to_changed
+
+pub const handle_rule_metrics_tab_from_changed_and_refresh = rule_metrics.handle_from_changed_and_refresh
+
+pub const handle_rule_metrics_tab_to_changed_and_refresh = rule_metrics.handle_to_changed_and_refresh
+
+pub const handle_rule_metrics_tab_refresh_clicked = rule_metrics.handle_refresh_clicked
+
+pub const handle_rule_metrics_tab_quick_range_clicked = rule_metrics.handle_quick_range_clicked
+
+pub const handle_rule_metrics_tab_fetched_ok = rule_metrics.handle_fetched_ok
+
+pub const handle_rule_metrics_tab_fetched_error = rule_metrics.handle_fetched_error
+
+pub const handle_rule_metrics_workflow_expanded = rule_metrics.handle_workflow_expanded
+
+pub const handle_rule_metrics_workflow_details_fetched_ok = rule_metrics.handle_workflow_details_fetched_ok
+
+pub const handle_rule_metrics_workflow_details_fetched_error = rule_metrics.handle_workflow_details_fetched_error
+
+pub const handle_rule_metrics_drilldown_clicked = rule_metrics.handle_drilldown_clicked
+
+pub const handle_rule_metrics_drilldown_closed = rule_metrics.handle_drilldown_closed
+
+pub const handle_rule_metrics_rule_details_fetched_ok = rule_metrics.handle_rule_details_fetched_ok
+
+pub const handle_rule_metrics_rule_details_fetched_error = rule_metrics.handle_rule_details_fetched_error
+
+pub const handle_rule_metrics_executions_fetched_ok = rule_metrics.handle_executions_fetched_ok
+
+pub const handle_rule_metrics_executions_fetched_error = rule_metrics.handle_executions_fetched_error
+
+pub const handle_rule_metrics_exec_page_changed = rule_metrics.handle_exec_page_changed

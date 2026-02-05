@@ -37,19 +37,10 @@ import domain/task
 import domain/task_state as task_state_domain
 import domain/task_status
 
-import scrumbringer_client/client_state.{
-  type Model, type Msg, MemberClaimClicked, MemberCompleteClicked,
-  MemberCreateCardIdChanged, MemberCreateDescriptionChanged,
-  MemberCreateDialogClosed, MemberCreatePriorityChanged, MemberCreateSubmitted,
-  MemberCreateTitleChanged, MemberCreateTypeIdChanged,
-  MemberDependencyAddSubmitted, MemberDependencyDialogClosed,
-  MemberDependencyDialogOpened, MemberDependencyRemoveClicked,
-  MemberDependencySearchChanged, MemberDependencySelected,
-  MemberNoteContentChanged, MemberNoteDialogClosed, MemberNoteDialogOpened,
-  MemberNoteSubmitted, MemberPositionEditClosed, MemberPositionEditSubmitted,
-  MemberPositionEditXChanged, MemberPositionEditYChanged, MemberReleaseClicked,
-  MemberTaskDetailTabClicked, MemberTaskDetailsClosed, pool_msg,
-}
+import scrumbringer_client/client_state.{type Model, type Msg, pool_msg}
+import scrumbringer_client/client_state/dialog_mode
+import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/card_section_header
 import scrumbringer_client/ui/color_picker
@@ -64,7 +55,6 @@ import scrumbringer_client/ui/search_select
 import scrumbringer_client/ui/task_state
 import scrumbringer_client/ui/task_tabs
 import scrumbringer_client/ui/tooltips/types as notes_list_types
-import scrumbringer_client/update_helpers
 import scrumbringer_client/utils/card_queries
 
 // =============================================================================
@@ -76,65 +66,65 @@ import scrumbringer_client/utils/card_queries
 pub fn view_create_dialog(model: Model) -> Element(Msg) {
   dialog.view(
     dialog.DialogConfig(
-      title: update_helpers.i18n_t(model, i18n_text.NewTask),
+      title: helpers_i18n.i18n_t(model, i18n_text.NewTask),
       icon: opt.Some(icons.nav_icon(icons.ClipboardDoc, icons.Medium)),
       size: dialog.DialogMd,
-      on_close: pool_msg(MemberCreateDialogClosed),
+      on_close: pool_msg(pool_messages.MemberCreateDialogClosed),
     ),
     True,
-    model.member.member_create_error,
+    model.member.pool.member_create_error,
     [
       form(
         [
-          event.on_submit(fn(_) { pool_msg(MemberCreateSubmitted) }),
+          event.on_submit(fn(_) { pool_msg(pool_messages.MemberCreateSubmitted) }),
           attribute.id("task-create-form"),
         ],
         [
           form_field.view(
-            update_helpers.i18n_t(model, i18n_text.Title),
+            helpers_i18n.i18n_t(model, i18n_text.Title),
             input([
               attribute.type_("text"),
               attribute.attribute("maxlength", "56"),
-              attribute.value(model.member.member_create_title),
+              attribute.value(model.member.pool.member_create_title),
               event.on_input(fn(value) {
-                pool_msg(MemberCreateTitleChanged(value))
+                pool_msg(pool_messages.MemberCreateTitleChanged(value))
               }),
             ]),
           ),
           form_field.view(
-            update_helpers.i18n_t(model, i18n_text.Description),
+            helpers_i18n.i18n_t(model, i18n_text.Description),
             input([
               attribute.type_("text"),
-              attribute.value(model.member.member_create_description),
+              attribute.value(model.member.pool.member_create_description),
               event.on_input(fn(value) {
-                pool_msg(MemberCreateDescriptionChanged(value))
+                pool_msg(pool_messages.MemberCreateDescriptionChanged(value))
               }),
             ]),
           ),
           form_field.view(
-            update_helpers.i18n_t(model, i18n_text.Priority),
+            helpers_i18n.i18n_t(model, i18n_text.Priority),
             input([
               attribute.type_("number"),
-              attribute.value(model.member.member_create_priority),
+              attribute.value(model.member.pool.member_create_priority),
               event.on_input(fn(value) {
-                pool_msg(MemberCreatePriorityChanged(value))
+                pool_msg(pool_messages.MemberCreatePriorityChanged(value))
               }),
             ]),
           ),
           form_field.view(
-            update_helpers.i18n_t(model, i18n_text.TypeLabel),
+            helpers_i18n.i18n_t(model, i18n_text.TypeLabel),
             select(
               [
-                attribute.value(model.member.member_create_type_id),
+                attribute.value(model.member.pool.member_create_type_id),
                 event.on_input(fn(value) {
-                  pool_msg(MemberCreateTypeIdChanged(value))
+                  pool_msg(pool_messages.MemberCreateTypeIdChanged(value))
                 }),
               ],
-              case model.member.member_task_types {
+              case model.member.pool.member_task_types {
                 Loaded(task_types) -> [
                   option(
                     [attribute.value("")],
-                    update_helpers.i18n_t(model, i18n_text.SelectType),
+                    helpers_i18n.i18n_t(model, i18n_text.SelectType),
                   ),
                   ..list.map(task_types, fn(tt) {
                     option([attribute.value(int.to_string(tt.id))], tt.name)
@@ -143,7 +133,7 @@ pub fn view_create_dialog(model: Model) -> Element(Msg) {
                 _ -> [
                   option(
                     [attribute.value("")],
-                    update_helpers.i18n_t(model, i18n_text.LoadingEllipsis),
+                    helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis),
                   ),
                 ]
               },
@@ -155,21 +145,21 @@ pub fn view_create_dialog(model: Model) -> Element(Msg) {
       ),
     ],
     [
-      dialog.cancel_button(model, pool_msg(MemberCreateDialogClosed)),
+      dialog.cancel_button(model, pool_msg(pool_messages.MemberCreateDialogClosed)),
       button(
         [
           attribute.type_("submit"),
           attribute.form("task-create-form"),
-          attribute.disabled(model.member.member_create_in_flight),
-          attribute.class(case model.member.member_create_in_flight {
+          attribute.disabled(model.member.pool.member_create_in_flight),
+          attribute.class(case model.member.pool.member_create_in_flight {
             True -> "btn-loading"
             False -> ""
           }),
         ],
         [
-          text(case model.member.member_create_in_flight {
-            True -> update_helpers.i18n_t(model, i18n_text.Creating)
-            False -> update_helpers.i18n_t(model, i18n_text.Create)
+          text(case model.member.pool.member_create_in_flight {
+            True -> helpers_i18n.i18n_t(model, i18n_text.Creating)
+            False -> helpers_i18n.i18n_t(model, i18n_text.Create)
           }),
         ],
       ),
@@ -187,20 +177,20 @@ fn view_card_selector(model: Model) -> Element(Msg) {
   let cards = card_queries.get_project_cards(model)
 
   form_field.view(
-    update_helpers.i18n_t(model, i18n_text.ParentCardLabel),
+    helpers_i18n.i18n_t(model, i18n_text.ParentCardLabel),
     select(
       [
-        attribute.value(card_id_to_string(model.member.member_create_card_id)),
-        event.on_input(fn(value) { pool_msg(MemberCreateCardIdChanged(value)) }),
+        attribute.value(card_id_to_string(model.member.pool.member_create_card_id)),
+        event.on_input(fn(value) { pool_msg(pool_messages.MemberCreateCardIdChanged(value)) }),
       ],
       [
         // "No card" option (AC2)
         option(
           [
             attribute.value(""),
-            attribute.selected(opt.is_none(model.member.member_create_card_id)),
+            attribute.selected(opt.is_none(model.member.pool.member_create_card_id)),
           ],
-          update_helpers.i18n_t(model, i18n_text.NoCard),
+          helpers_i18n.i18n_t(model, i18n_text.NoCard),
         ),
         // Cards with color indicators (AC3, AC15)
         ..list.map(cards, fn(c) { view_card_option(model, c) })
@@ -220,7 +210,7 @@ fn view_card_option(model: Model, c: Card) -> Element(Msg) {
     opt.None -> ""
   }
 
-  let is_selected = model.member.member_create_card_id == opt.Some(c.id)
+  let is_selected = model.member.pool.member_create_card_id == opt.Some(c.id)
 
   option(
     [attribute.value(int.to_string(c.id)), attribute.selected(is_selected)],
@@ -253,7 +243,7 @@ pub fn view_task_details(model: Model, task_id: Int) -> Element(Msg) {
     div(
       [
         attribute.class("modal-backdrop"),
-        event.on_click(pool_msg(MemberTaskDetailsClosed)),
+        event.on_click(pool_msg(pool_messages.MemberTaskDetailsClosed)),
       ],
       [],
     ),
@@ -284,7 +274,7 @@ pub fn view_task_details(model: Model, task_id: Int) -> Element(Msg) {
 
 /// Find a task by ID from the model.
 fn find_task(model: Model, task_id: Int) -> opt.Option(task.Task) {
-  case model.member.member_tasks {
+  case model.member.pool.member_tasks {
     Loaded(tasks) ->
       list.find(tasks, fn(t) { t.id == task_id }) |> opt.from_result
     NotAsked -> opt.None
@@ -320,7 +310,7 @@ fn view_task_header(model: Model, task: opt.Option(task.Task)) -> Element(Msg) {
           ]),
         ),
         progress: opt.None,
-        on_close: pool_msg(MemberTaskDetailsClosed),
+        on_close: pool_msg(pool_messages.MemberTaskDetailsClosed),
         header_class: "task-detail-header",
         title_row_class: "task-detail-title-row",
         title_class: "task-detail-title",
@@ -329,14 +319,14 @@ fn view_task_header(model: Model, task: opt.Option(task.Task)) -> Element(Msg) {
       ))
     opt.None ->
       modal_header.view_extended(modal_header.ExtendedConfig(
-        title: update_helpers.i18n_t(model, i18n_text.LoadingEllipsis),
+        title: helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis),
         title_element: modal_header.TitleH2,
         close_position: modal_header.CloseBeforeTitle,
         icon: opt.None,
         badges: [],
         meta: opt.None,
         progress: opt.None,
-        on_close: pool_msg(MemberTaskDetailsClosed),
+        on_close: pool_msg(pool_messages.MemberTaskDetailsClosed),
         header_class: "task-detail-header",
         title_row_class: "task-detail-title-row",
         title_class: "task-detail-title",
@@ -352,25 +342,25 @@ fn view_assignee(model: Model, t: task.Task) -> Element(Msg) {
     opt.Some(_user_id) ->
       span([attribute.class("task-meta-chip task-meta-assignee")], [
         icons.nav_icon(icons.UserCircle, icons.Small),
-        text(update_helpers.i18n_t(model, i18n_text.Assigned)),
+        text(helpers_i18n.i18n_t(model, i18n_text.Assigned)),
       ])
     opt.None ->
       span([attribute.class("task-meta-chip task-meta-assignee muted")], [
-        text(update_helpers.i18n_t(model, i18n_text.Unassigned)),
+        text(helpers_i18n.i18n_t(model, i18n_text.Unassigned)),
       ])
   }
 }
 
 /// Tab system for task detail (AC2)
 fn view_task_tabs(model: Model) -> Element(Msg) {
-  let notes_count = case model.member.member_notes {
+  let notes_count = case model.member.notes.member_notes {
     Loaded(notes) -> list.length(notes)
     NotAsked -> 0
     Loading -> 0
     Failed(_) -> 0
   }
 
-  let dependencies_count = case model.member.member_dependencies {
+  let dependencies_count = case model.member.dependencies.member_dependencies {
     Loaded(deps) -> list.length(deps)
     NotAsked -> 0
     Loading -> 0
@@ -379,16 +369,16 @@ fn view_task_tabs(model: Model) -> Element(Msg) {
 
   task_tabs.view(
     task_tabs.Config(
-      active_tab: model.member.member_task_detail_tab,
+      active_tab: model.member.pool.member_task_detail_tab,
       dependencies_count: dependencies_count,
       notes_count: notes_count,
       has_new_notes: False,
       labels: task_tabs.Labels(
-        details: update_helpers.i18n_t(model, i18n_text.TabDetails),
-        dependencies: update_helpers.i18n_t(model, i18n_text.TabDependencies),
-        notes: update_helpers.i18n_t(model, i18n_text.TabNotes),
+        details: helpers_i18n.i18n_t(model, i18n_text.TabDetails),
+        dependencies: helpers_i18n.i18n_t(model, i18n_text.TabDependencies),
+        notes: helpers_i18n.i18n_t(model, i18n_text.TabNotes),
       ),
-      on_tab_click: fn(tab) { pool_msg(MemberTaskDetailTabClicked(tab)) },
+      on_tab_click: fn(tab) { pool_msg(pool_messages.MemberTaskDetailTabClicked(tab)) },
     ),
   )
 }
@@ -399,7 +389,7 @@ fn view_task_tab_content(
   task_id: Int,
   task: opt.Option(task.Task),
 ) -> Element(Msg) {
-  case model.member.member_task_detail_tab {
+  case model.member.pool.member_task_detail_tab {
     task_tabs.DetailsTab -> view_task_details_tab(model, task)
     task_tabs.DependenciesTab -> view_dependencies(model, task_id, task)
     task_tabs.NotesTab -> view_notes(model, task_id)
@@ -412,7 +402,7 @@ fn view_dependencies(
   task_id: Int,
   task: opt.Option(task.Task),
 ) -> Element(Msg) {
-  let dependencies = case model.member.member_dependencies {
+  let dependencies = case model.member.dependencies.member_dependencies {
     Loaded(deps) -> deps
     _ -> []
   }
@@ -422,11 +412,11 @@ fn view_dependencies(
 
   let header_title = case incomplete > 0 {
     True ->
-      update_helpers.i18n_t(model, i18n_text.Dependencies)
+      helpers_i18n.i18n_t(model, i18n_text.Dependencies)
       <> " ("
       <> int.to_string(incomplete)
       <> ")"
-    False -> update_helpers.i18n_t(model, i18n_text.Dependencies)
+    False -> helpers_i18n.i18n_t(model, i18n_text.Dependencies)
   }
 
   div([attribute.class("task-dependencies-section")], [
@@ -435,18 +425,18 @@ fn view_dependencies(
       card_section_header.Config(
         title: header_title,
         button_label: "+ "
-          <> update_helpers.i18n_t(model, i18n_text.AddDependency),
+          <> helpers_i18n.i18n_t(model, i18n_text.AddDependency),
         button_disabled: opt.is_none(task),
-        on_button_click: pool_msg(MemberDependencyDialogOpened),
+        on_button_click: pool_msg(pool_messages.MemberDependencyDialogOpened),
       ),
     ),
     div([attribute.class("task-section-hint")], [
-      text(update_helpers.i18n_t(model, i18n_text.TaskDependenciesHint)),
+      text(helpers_i18n.i18n_t(model, i18n_text.TaskDependenciesHint)),
     ]),
-    case model.member.member_dependencies {
+    case model.member.dependencies.member_dependencies {
       NotAsked | Loading ->
         div([attribute.class("empty")], [
-          text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+          text(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)),
         ])
       Failed(err) -> error_notice.view(err.message)
       Loaded(deps) ->
@@ -454,10 +444,10 @@ fn view_dependencies(
           [] ->
             div([attribute.class("task-empty-state")], [
               div([attribute.class("task-empty-title")], [
-                text(update_helpers.i18n_t(model, i18n_text.NoDependencies)),
+                text(helpers_i18n.i18n_t(model, i18n_text.NoDependencies)),
               ]),
               div([attribute.class("task-empty-body")], [
-                text(update_helpers.i18n_t(
+                text(helpers_i18n.i18n_t(
                   model,
                   i18n_text.TaskDependenciesEmptyHint,
                 )),
@@ -472,9 +462,9 @@ fn view_dependencies(
             )
         }
     },
-    case model.member.member_dependency_dialog_open {
-      True -> view_dependency_dialog(model, task)
-      False -> element.none()
+    case model.member.dependencies.member_dependency_dialog_mode {
+      dialog_mode.DialogClosed -> element.none()
+      _ -> view_dependency_dialog(model, task)
     },
   ])
 }
@@ -498,7 +488,7 @@ fn view_dependency_row(
     task_status.Claimed(_) ->
       case claimed_by {
         opt.Some(email) ->
-          update_helpers.i18n_t(model, i18n_text.ClaimedBy) <> " " <> email
+          helpers_i18n.i18n_t(model, i18n_text.ClaimedBy) <> " " <> email
         opt.None -> status_label
       }
     _ -> status_label
@@ -510,7 +500,7 @@ fn view_dependency_row(
   }
 
   let is_removing =
-    model.member.member_dependency_remove_in_flight
+    model.member.dependencies.member_dependency_remove_in_flight
     == opt.Some(depends_on_task_id)
 
   div([attribute.class("task-dependency-row")], [
@@ -526,7 +516,7 @@ fn view_dependency_row(
         attribute.class("btn-icon btn-xs task-dependency-remove"),
         attribute.disabled(is_removing || task_id == depends_on_task_id),
         event.on_click(
-          pool_msg(MemberDependencyRemoveClicked(depends_on_task_id)),
+          pool_msg(pool_messages.MemberDependencyRemoveClicked(depends_on_task_id)),
         ),
       ],
       [icons.nav_icon(icons.XMark, icons.Small)],
@@ -543,9 +533,10 @@ fn view_dependency_dialog(
     opt.None -> 0
   }
 
-  let query = string.trim(model.member.member_dependency_search_query)
+  let query =
+    string.trim(model.member.dependencies.member_dependency_search_query)
 
-  let results = case model.member.member_dependency_candidates {
+  let results = case model.member.dependencies.member_dependency_candidates {
     Loaded(tasks) -> {
       let candidates =
         list.filter(tasks, fn(t) {
@@ -565,44 +556,38 @@ fn view_dependency_dialog(
     Failed(err) -> Failed(err)
   }
 
-  let selected_id = model.member.member_dependency_selected_task_id
+  let selected_id = model.member.dependencies.member_dependency_selected_task_id
 
   dialog.view(
     dialog.DialogConfig(
-      title: update_helpers.i18n_t(model, i18n_text.AddDependency),
+      title: helpers_i18n.i18n_t(model, i18n_text.AddDependency),
       icon: opt.Some(icons.nav_icon(icons.Plus, icons.Medium)),
       size: dialog.DialogMd,
-      on_close: pool_msg(MemberDependencyDialogClosed),
+      on_close: pool_msg(pool_messages.MemberDependencyDialogClosed),
     ),
     True,
-    model.member.member_dependency_add_error,
+    model.member.dependencies.member_dependency_add_error,
     [
       form(
         [
-          event.on_submit(fn(_) { pool_msg(MemberDependencyAddSubmitted) }),
+          event.on_submit(fn(_) { pool_msg(pool_messages.MemberDependencyAddSubmitted) }),
           attribute.id("task-dependency-form"),
         ],
         [
           search_select.view(search_select.Config(
-            label: update_helpers.i18n_t(model, i18n_text.TaskDependsOn),
-            placeholder: update_helpers.i18n_t(
-              model,
-              i18n_text.SearchPlaceholder,
-            ),
-            value: model.member.member_dependency_search_query,
+            label: helpers_i18n.i18n_t(model, i18n_text.TaskDependsOn),
+            placeholder: helpers_i18n.i18n_t(model, i18n_text.SearchPlaceholder),
+            value: model.member.dependencies.member_dependency_search_query,
             on_change: fn(value) {
-              pool_msg(MemberDependencySearchChanged(value))
+              pool_msg(pool_messages.MemberDependencySearchChanged(value))
             },
             input_attributes: [],
             results: results,
             render_item: fn(t) {
               view_dependency_candidate_item(model, t, selected_id)
             },
-            empty_label: update_helpers.i18n_t(model, i18n_text.NoMatchingTasks),
-            loading_label: update_helpers.i18n_t(
-              model,
-              i18n_text.LoadingEllipsis,
-            ),
+            empty_label: helpers_i18n.i18n_t(model, i18n_text.NoMatchingTasks),
+            loading_label: helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis),
             error_label: fn(message) { message },
             class: "task-dependency-search",
           )),
@@ -610,24 +595,24 @@ fn view_dependency_dialog(
       ),
     ],
     [
-      dialog.cancel_button(model, pool_msg(MemberDependencyDialogClosed)),
+      dialog.cancel_button(model, pool_msg(pool_messages.MemberDependencyDialogClosed)),
       button(
         [
           attribute.type_("submit"),
           attribute.form("task-dependency-form"),
           attribute.disabled(
-            model.member.member_dependency_add_in_flight
+            model.member.dependencies.member_dependency_add_in_flight
             || opt.is_none(selected_id),
           ),
-          attribute.class(case model.member.member_dependency_add_in_flight {
+          attribute.class(case model.member.dependencies.member_dependency_add_in_flight {
             True -> "btn-loading"
             False -> ""
           }),
         ],
         [
-          text(case model.member.member_dependency_add_in_flight {
-            True -> update_helpers.i18n_t(model, i18n_text.Adding)
-            False -> update_helpers.i18n_t(model, i18n_text.Add)
+          text(case model.member.dependencies.member_dependency_add_in_flight {
+            True -> helpers_i18n.i18n_t(model, i18n_text.Adding)
+            False -> helpers_i18n.i18n_t(model, i18n_text.Add)
           }),
         ],
       ),
@@ -649,7 +634,7 @@ fn view_dependency_candidate_item(
         True -> "dependency-candidate selected"
         False -> "dependency-candidate"
       }),
-      event.on_click(pool_msg(MemberDependencySelected(t.id))),
+      event.on_click(pool_msg(pool_messages.MemberDependencySelected(t.id))),
     ],
     [
       span([attribute.class("dependency-candidate-title")], [text(t.title)]),
@@ -668,7 +653,7 @@ fn view_task_details_tab(
       opt.Some(t) -> {
         let #(resolved_card_title, _resolved_card_color) =
           card_queries.resolve_task_card_info(model, t)
-        let no_card_label = update_helpers.i18n_t(model, i18n_text.NoCard)
+        let no_card_label = helpers_i18n.i18n_t(model, i18n_text.NoCard)
         let card_title = case resolved_card_title {
           opt.Some(title) -> title
           opt.None -> no_card_label
@@ -682,7 +667,7 @@ fn view_task_details_tab(
         div([attribute.class("task-detail-grid")], [
           div([attribute.class("detail-row")], [
             span([attribute.class("detail-label")], [
-              text(update_helpers.i18n_t(model, i18n_text.ParentCardLabel)),
+              text(helpers_i18n.i18n_t(model, i18n_text.ParentCardLabel)),
             ]),
             span(
               [
@@ -696,7 +681,7 @@ fn view_task_details_tab(
           ]),
           div([attribute.class("detail-row")], [
             span([attribute.class("detail-label")], [
-              text(update_helpers.i18n_t(model, i18n_text.Description)),
+              text(helpers_i18n.i18n_t(model, i18n_text.Description)),
             ]),
             span(
               [
@@ -712,7 +697,7 @@ fn view_task_details_tab(
       }
       opt.None ->
         div([attribute.class("loading")], [
-          text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+          text(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)),
         ])
     },
   ])
@@ -731,20 +716,20 @@ fn view_notes(model: Model, _task_id: Int) -> Element(Msg) {
     card_section_header.view_with_class(
       "task-notes-header",
       card_section_header.Config(
-        title: update_helpers.i18n_t(model, i18n_text.Notes),
-        button_label: "+ " <> update_helpers.i18n_t(model, i18n_text.AddNote),
+        title: helpers_i18n.i18n_t(model, i18n_text.Notes),
+        button_label: "+ " <> helpers_i18n.i18n_t(model, i18n_text.AddNote),
         button_disabled: False,
-        on_button_click: pool_msg(MemberNoteDialogOpened),
+        on_button_click: pool_msg(pool_messages.MemberNoteDialogOpened),
       ),
     ),
     div([attribute.class("task-section-hint")], [
-      text(update_helpers.i18n_t(model, i18n_text.TaskNotesHint)),
+      text(helpers_i18n.i18n_t(model, i18n_text.TaskNotesHint)),
     ]),
     // Notes list
-    case model.member.member_notes {
+    case model.member.notes.member_notes {
       NotAsked | Loading ->
         div([attribute.class("empty")], [
-          text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+          text(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)),
         ])
       Failed(err) -> error_notice.view(err.message)
       Loaded(notes) ->
@@ -752,10 +737,10 @@ fn view_notes(model: Model, _task_id: Int) -> Element(Msg) {
           [] ->
             div([attribute.class("task-empty-state")], [
               div([attribute.class("task-empty-title")], [
-                text(update_helpers.i18n_t(model, i18n_text.NoNotesYet)),
+                text(helpers_i18n.i18n_t(model, i18n_text.NoNotesYet)),
               ]),
               div([attribute.class("task-empty-body")], [
-                text(update_helpers.i18n_t(model, i18n_text.TaskNotesEmptyHint)),
+                text(helpers_i18n.i18n_t(model, i18n_text.TaskNotesEmptyHint)),
               ]),
             ])
           _ ->
@@ -763,16 +748,16 @@ fn view_notes(model: Model, _task_id: Int) -> Element(Msg) {
               list.map(notes, fn(n) {
                 task_note_to_view(model, n, current_user_id)
               }),
-              update_helpers.i18n_t(model, i18n_text.Delete),
-              update_helpers.i18n_t(model, i18n_text.DeleteAsAdmin),
-              fn(_id) { pool_msg(MemberTaskDetailsClosed) },
+              helpers_i18n.i18n_t(model, i18n_text.Delete),
+              helpers_i18n.i18n_t(model, i18n_text.DeleteAsAdmin),
+              fn(_id) { pool_msg(pool_messages.MemberTaskDetailsClosed) },
             )
         }
     },
     // Dialog overlay (conditional)
-    case model.member.member_note_dialog_open {
-      True -> view_note_dialog(model)
-      False -> element.none()
+    case model.member.notes.member_note_dialog_mode {
+      dialog_mode.DialogCreate -> view_note_dialog(model)
+      _ -> element.none()
     },
   ])
 }
@@ -782,9 +767,9 @@ fn view_task_footer(model: Model, task: opt.Option(task.Task)) -> Element(Msg) {
     button(
       [
         attribute.class("btn btn-secondary"),
-        event.on_click(pool_msg(MemberTaskDetailsClosed)),
+        event.on_click(pool_msg(pool_messages.MemberTaskDetailsClosed)),
       ],
-      [text(update_helpers.i18n_t(model, i18n_text.Close))],
+      [text(helpers_i18n.i18n_t(model, i18n_text.Close))],
     )
 
   case task {
@@ -797,7 +782,7 @@ fn view_task_footer(model: Model, task: opt.Option(task.Task)) -> Element(Msg) {
         opt.None -> 0
       }
       let is_mine = task.claimed_by(t) == opt.Some(current_user_id)
-      let disable_actions = model.member.member_task_mutation_in_flight
+      let disable_actions = model.member.pool.member_task_mutation_in_flight
 
       let work_state = task_state_domain.to_work_state(t.state)
       let actions = case work_state {
@@ -806,9 +791,9 @@ fn view_task_footer(model: Model, task: opt.Option(task.Task)) -> Element(Msg) {
             [
               attribute.class("btn btn-primary"),
               attribute.disabled(disable_actions || t.blocked_count > 0),
-              event.on_click(pool_msg(MemberClaimClicked(t.id, t.version))),
+              event.on_click(pool_msg(pool_messages.MemberClaimClicked(t.id, t.version))),
             ],
-            [text(update_helpers.i18n_t(model, i18n_text.ClaimTask))],
+            [text(helpers_i18n.i18n_t(model, i18n_text.ClaimTask))],
           ),
         ]
 
@@ -820,20 +805,20 @@ fn view_task_footer(model: Model, task: opt.Option(task.Task)) -> Element(Msg) {
                   attribute.class("btn btn-secondary"),
                   attribute.disabled(disable_actions),
                   event.on_click(
-                    pool_msg(MemberReleaseClicked(t.id, t.version)),
+                    pool_msg(pool_messages.MemberReleaseClicked(t.id, t.version)),
                   ),
                 ],
-                [text(update_helpers.i18n_t(model, i18n_text.Release))],
+                [text(helpers_i18n.i18n_t(model, i18n_text.Release))],
               ),
               button(
                 [
                   attribute.class("btn btn-primary"),
                   attribute.disabled(disable_actions),
                   event.on_click(
-                    pool_msg(MemberCompleteClicked(t.id, t.version)),
+                    pool_msg(pool_messages.MemberCompleteClicked(t.id, t.version)),
                   ),
                 ],
-                [text(update_helpers.i18n_t(model, i18n_text.Complete))],
+                [text(helpers_i18n.i18n_t(model, i18n_text.Complete))],
               ),
             ]
             False -> []
@@ -853,17 +838,17 @@ fn view_task_footer(model: Model, task: opt.Option(task.Task)) -> Element(Msg) {
 /// Dialog for creating a note - uses shared note_dialog component (Story 5.4.2).
 fn view_note_dialog(model: Model) -> Element(Msg) {
   note_dialog.view(note_dialog.Config(
-    title: update_helpers.i18n_t(model, i18n_text.AddNote),
-    content: model.member.member_note_content,
-    placeholder: update_helpers.i18n_t(model, i18n_text.NotePlaceholder),
-    error: model.member.member_note_error,
-    submit_label: update_helpers.i18n_t(model, i18n_text.AddNote),
-    submit_disabled: model.member.member_note_in_flight
-      || model.member.member_note_content == "",
-    cancel_label: update_helpers.i18n_t(model, i18n_text.Cancel),
-    on_content_change: fn(v) { pool_msg(MemberNoteContentChanged(v)) },
-    on_submit: pool_msg(MemberNoteSubmitted),
-    on_close: pool_msg(MemberNoteDialogClosed),
+    title: helpers_i18n.i18n_t(model, i18n_text.AddNote),
+    content: model.member.notes.member_note_content,
+    placeholder: helpers_i18n.i18n_t(model, i18n_text.NotePlaceholder),
+    error: model.member.notes.member_note_error,
+    submit_label: helpers_i18n.i18n_t(model, i18n_text.AddNote),
+    submit_disabled: model.member.notes.member_note_in_flight
+      || model.member.notes.member_note_content == "",
+    cancel_label: helpers_i18n.i18n_t(model, i18n_text.Cancel),
+    on_content_change: fn(v) { pool_msg(pool_messages.MemberNoteContentChanged(v)) },
+    on_submit: pool_msg(pool_messages.MemberNoteSubmitted),
+    on_close: pool_msg(pool_messages.MemberNoteDialogClosed),
   ))
 }
 
@@ -873,43 +858,43 @@ fn view_note_dialog(model: Model) -> Element(Msg) {
 
 /// Renders the position edit modal using ui/dialog.gleam.
 pub fn view_position_edit(model: Model, _task_id: Int) -> Element(Msg) {
-  let is_loading = model.member.member_position_edit_in_flight
+  let is_loading = model.member.positions.member_position_edit_in_flight
 
   dialog.view(
     dialog.DialogConfig(
-      title: update_helpers.i18n_t(model, i18n_text.EditPosition),
+      title: helpers_i18n.i18n_t(model, i18n_text.EditPosition),
       icon: opt.None,
       size: dialog.DialogSm,
-      on_close: pool_msg(MemberPositionEditClosed),
+      on_close: pool_msg(pool_messages.MemberPositionEditClosed),
     ),
     True,
-    model.member.member_position_edit_error,
+    model.member.positions.member_position_edit_error,
     // Content: form fields
     [
       form_field.view(
-        update_helpers.i18n_t(model, i18n_text.XLabel),
+        helpers_i18n.i18n_t(model, i18n_text.XLabel),
         input([
           attribute.type_("number"),
-          attribute.value(model.member.member_position_edit_x),
+          attribute.value(model.member.positions.member_position_edit_x),
           event.on_input(fn(value) {
-            pool_msg(MemberPositionEditXChanged(value))
+            pool_msg(pool_messages.MemberPositionEditXChanged(value))
           }),
         ]),
       ),
       form_field.view(
-        update_helpers.i18n_t(model, i18n_text.YLabel),
+        helpers_i18n.i18n_t(model, i18n_text.YLabel),
         input([
           attribute.type_("number"),
-          attribute.value(model.member.member_position_edit_y),
+          attribute.value(model.member.positions.member_position_edit_y),
           event.on_input(fn(value) {
-            pool_msg(MemberPositionEditYChanged(value))
+            pool_msg(pool_messages.MemberPositionEditYChanged(value))
           }),
         ]),
       ),
     ],
     // Footer: buttons (using on_click for non-form submit)
     [
-      dialog.cancel_button(model, pool_msg(MemberPositionEditClosed)),
+      dialog.cancel_button(model, pool_msg(pool_messages.MemberPositionEditClosed)),
       button(
         [
           attribute.type_("button"),
@@ -918,12 +903,12 @@ pub fn view_position_edit(model: Model, _task_id: Int) -> Element(Msg) {
             True -> "btn-loading"
             False -> ""
           }),
-          event.on_click(pool_msg(MemberPositionEditSubmitted)),
+          event.on_click(pool_msg(pool_messages.MemberPositionEditSubmitted)),
         ],
         [
           text(case is_loading {
-            True -> update_helpers.i18n_t(model, i18n_text.Saving)
-            False -> update_helpers.i18n_t(model, i18n_text.Save)
+            True -> helpers_i18n.i18n_t(model, i18n_text.Saving)
+            False -> helpers_i18n.i18n_t(model, i18n_text.Save)
           }),
         ],
       ),
@@ -950,8 +935,8 @@ fn task_note_to_view(
   ) = note
 
   let author = case user_id == current_user_id {
-    True -> update_helpers.i18n_t(model, i18n_text.You)
-    False -> update_helpers.i18n_t(model, i18n_text.UserNumber(user_id))
+    True -> helpers_i18n.i18n_t(model, i18n_text.You)
+    False -> helpers_i18n.i18n_t(model, i18n_text.UserNumber(user_id))
   }
 
   notes_list.NoteView(

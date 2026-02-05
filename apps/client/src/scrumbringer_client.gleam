@@ -78,15 +78,18 @@ import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/i18n/locale as i18n_locale
 
 import scrumbringer_client/client_state.{
-  type Model, type Msg, AcceptInvite as AcceptInvitePage, Admin, AuthModel,
-  CoreModel, Login, MeFetched, Member, Replace,
-  ResetPassword as ResetPasswordPage, UiModel, update_auth, update_core,
-  update_member, update_ui,
+  type Model, type Msg, AcceptInvite as AcceptInvitePage, Admin, CoreModel,
+  Login, MeFetched, Member, Replace, ResetPassword as ResetPasswordPage,
+  update_auth, update_core, update_member, update_ui,
 }
 import scrumbringer_client/client_state/member.{MemberModel}
+import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/client_state/auth as auth_state
+import scrumbringer_client/client_state/ui as ui_state
 
 import scrumbringer_client/client_update
 import scrumbringer_client/client_view
+import scrumbringer_client/features/auth/update as auth_workflow
 import scrumbringer_client/components/card_crud_dialog
 import scrumbringer_client/components/card_detail_modal
 import scrumbringer_client/components/rule_crud_dialog
@@ -261,23 +264,28 @@ fn init(flags: Flags) -> #(Model, Effect(Msg)) {
       )
     })
     |> update_auth(fn(auth) {
-      AuthModel(
+      auth_state.AuthModel(
         ..auth,
         accept_invite: accept_model,
         reset_password: reset_model,
       )
     })
     |> update_member(fn(member) {
+      let pool = member.pool
+
       MemberModel(
         ..member,
-        member_section: member_section,
-        view_mode: initial_view_mode,
-        member_pool_filters_visible: pool_filters_visible,
-        member_pool_view_mode: pool_view_mode,
+        pool: member_pool.Model(
+          ..pool,
+          member_section: member_section,
+          view_mode: initial_view_mode,
+          member_pool_filters_visible: pool_filters_visible,
+          member_pool_view_mode: pool_view_mode,
+        ),
       )
     })
     |> update_ui(fn(ui) {
-      UiModel(
+      ui_state.UiModel(
         ..ui,
         is_mobile: is_mobile,
         toast_state: toast.init(),
@@ -288,8 +296,8 @@ fn init(flags: Flags) -> #(Model, Effect(Msg)) {
     })
 
   let base_effect = case page {
-    AcceptInvitePage -> client_update.accept_invite_effect(accept_action)
-    ResetPasswordPage -> client_update.reset_password_effect(reset_action)
+    AcceptInvitePage -> auth_workflow.accept_invite_effect(accept_action)
+    ResetPasswordPage -> auth_workflow.reset_password_effect(reset_action)
     _ -> api_auth.fetch_me(MeFetched)
   }
 

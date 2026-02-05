@@ -5,6 +5,7 @@ import gleam/option.{None, Some}
 import gleeunit/should
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
+import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/auth/helpers
 
@@ -25,12 +26,17 @@ pub fn reset_to_login_clears_user_and_drag_state_test() {
       )
     })
     |> client_state.update_member(fn(member) {
+      let pool = member.pool
+
       member_state.MemberModel(
         ..member,
-        member_drag: state_types.DragActive(1, 5, 5),
-        member_pool_drag: state_types.PoolDragDragging(
-          over_my_tasks: True,
-          rect: state_types.Rect(left: 0, top: 0, width: 10, height: 10),
+        pool: member_pool.Model(
+          ..pool,
+          member_drag: state_types.DragActive(1, 5, 5),
+          member_pool_drag: state_types.PoolDragDragging(
+            over_my_tasks: True,
+            rect: state_types.Rect(left: 0, top: 0, width: 10, height: 10),
+          ),
         ),
       )
     })
@@ -39,11 +45,12 @@ pub fn reset_to_login_clears_user_and_drag_state_test() {
 
   let client_state.Model(core: core, member: member, ..) = next_model
   let client_state.CoreModel(page: page, user: user, ..) = core
-  let member_state.MemberModel(
+  let member_state.MemberModel(pool: pool, ..) = member
+  let member_pool.Model(
     member_drag: member_drag,
     member_pool_drag: member_pool_drag,
     ..,
-  ) = member
+  ) = pool
 
   page |> should.equal(client_state.Login)
   user |> should.equal(None)

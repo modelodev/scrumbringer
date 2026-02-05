@@ -10,6 +10,8 @@ import domain/remote.{Loaded}
 import domain/task_type.{TaskType}
 import scrumbringer_client/client_state.{type Model, default_model, update_admin}
 import scrumbringer_client/client_state/admin.{AdminModel}
+import scrumbringer_client/client_state/admin/capabilities as admin_capabilities
+import scrumbringer_client/client_state/admin/task_types as admin_task_types
 import scrumbringer_client/components/task_type_crud_dialog
 import scrumbringer_client/features/admin/view as admin_view
 import scrumbringer_client/i18n/locale.{En, Es}
@@ -34,16 +36,22 @@ pub fn task_types_table_renders_capability_name_test() {
     |> update_admin(fn(admin) {
       AdminModel(
         ..admin,
-        capabilities: Loaded([Capability(id: 1, name: "Backend")]),
-        task_types: Loaded([
-          TaskType(
-            id: 99,
-            name: "Bug",
-            icon: "bug-ant",
-            capability_id: opt.Some(1),
-            tasks_count: 7,
-          ),
-        ]),
+        capabilities: admin_capabilities.Model(
+          ..admin.capabilities,
+          capabilities: Loaded([Capability(id: 1, name: "Backend")]),
+        ),
+        task_types: admin_task_types.Model(
+          ..admin.task_types,
+          task_types: Loaded([
+            TaskType(
+              id: 99,
+              name: "Bug",
+              icon: "bug-ant",
+              capability_id: opt.Some(1),
+              tasks_count: 7,
+            ),
+          ]),
+        ),
       )
     })
 
@@ -64,15 +72,18 @@ pub fn task_types_table_renders_none_when_no_capability_test() {
     |> update_admin(fn(admin) {
       AdminModel(
         ..admin,
-        task_types: Loaded([
-          TaskType(
-            id: 20,
-            name: "Chore",
-            icon: "wrench",
-            capability_id: opt.None,
-            tasks_count: 0,
-          ),
-        ]),
+        task_types: admin_task_types.Model(
+          ..admin.task_types,
+          task_types: Loaded([
+            TaskType(
+              id: 20,
+              name: "Chore",
+              icon: "wrench",
+              capability_id: opt.None,
+              tasks_count: 0,
+            ),
+          ]),
+        ),
       )
     })
 
@@ -100,15 +111,18 @@ pub fn task_types_table_does_not_render_ids_test() {
     |> update_admin(fn(admin) {
       AdminModel(
         ..admin,
-        task_types: Loaded([
-          TaskType(
-            id: 1234,
-            name: "Infra",
-            icon: "bolt",
-            capability_id: opt.None,
-            tasks_count: 2,
-          ),
-        ]),
+        task_types: admin_task_types.Model(
+          ..admin.task_types,
+          task_types: Loaded([
+            TaskType(
+              id: 1234,
+              name: "Infra",
+              icon: "bolt",
+              capability_id: opt.None,
+              tasks_count: 2,
+            ),
+          ]),
+        ),
       )
     })
 

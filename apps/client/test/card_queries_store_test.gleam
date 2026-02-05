@@ -5,6 +5,7 @@ import domain/card.{type Card, Card, Pendiente}
 import domain/remote.{NotAsked}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
+import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/state/normalized_store
 import scrumbringer_client/utils/card_queries
 
@@ -39,10 +40,15 @@ pub fn find_card_uses_store_by_id_test() {
   let model =
     client_state.default_model()
     |> client_state.update_member(fn(member) {
+      let pool = member.pool
+
       member_state.MemberModel(
         ..member,
-        member_cards_store: store,
-        member_cards: NotAsked,
+        pool: member_pool.Model(
+          ..pool,
+          member_cards_store: store,
+          member_cards: NotAsked,
+        ),
       )
     })
 
@@ -63,7 +69,12 @@ pub fn get_project_cards_uses_store_index_test() {
       client_state.CoreModel(..core, selected_project_id: option.Some(10))
     })
     |> client_state.update_member(fn(member) {
-      member_state.MemberModel(..member, member_cards_store: store)
+      let pool = member.pool
+
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(..pool, member_cards_store: store),
+      )
     })
 
   card_queries.get_project_cards(model) |> should.equal([card_a, card_b])

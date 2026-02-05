@@ -42,19 +42,19 @@ import scrumbringer_client/accept_invite
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{type Model, type Msg, auth_msg}
 import scrumbringer_client/features/auth/msg as auth_messages
+import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/reset_password
 import scrumbringer_client/ui/copyable_input
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/loading
-import scrumbringer_client/update_helpers
 
 /// Renders the login page with email/password form.
 pub fn view_login(model: Model) -> Element(Msg) {
   let submit_label = case model.auth.login_in_flight {
-    True -> update_helpers.i18n_t(model, i18n_text.LoggingIn)
-    False -> update_helpers.i18n_t(model, i18n_text.LoginTitle)
+    True -> helpers_i18n.i18n_t(model, i18n_text.LoggingIn)
+    False -> helpers_i18n.i18n_t(model, i18n_text.LoginTitle)
   }
 
   // L01: Button class with loading state
@@ -64,8 +64,8 @@ pub fn view_login(model: Model) -> Element(Msg) {
   }
 
   div([attribute.class("page")], [
-    h1([], [text(update_helpers.i18n_t(model, i18n_text.AppName))]),
-    p([], [text(update_helpers.i18n_t(model, i18n_text.LoginSubtitle))]),
+    h1([], [text(helpers_i18n.i18n_t(model, i18n_text.AppName))]),
+    p([], [text(helpers_i18n.i18n_t(model, i18n_text.LoginSubtitle))]),
     // L03: Error banner with icon
     case model.auth.login_error {
       opt.Some(err) -> error_notice.view(err)
@@ -73,7 +73,7 @@ pub fn view_login(model: Model) -> Element(Msg) {
     },
     form([event.on_submit(fn(_) { auth_msg(auth_messages.LoginSubmitted) })], [
       form_field.view_required(
-        update_helpers.i18n_t(model, i18n_text.EmailLabel),
+        helpers_i18n.i18n_t(model, i18n_text.EmailLabel),
         input([
           attribute.attribute("id", "login-email"),
           attribute.type_("email"),
@@ -88,7 +88,7 @@ pub fn view_login(model: Model) -> Element(Msg) {
         ]),
       ),
       form_field.view_required(
-        update_helpers.i18n_t(model, i18n_text.PasswordLabel),
+        helpers_i18n.i18n_t(model, i18n_text.PasswordLabel),
         input([
           attribute.attribute("id", "login-password"),
           attribute.type_("password"),
@@ -111,7 +111,7 @@ pub fn view_login(model: Model) -> Element(Msg) {
       ),
     ]),
     button([event.on_click(auth_msg(auth_messages.ForgotPasswordClicked))], [
-      text(update_helpers.i18n_t(model, i18n_text.ForgotPassword)),
+      text(helpers_i18n.i18n_t(model, i18n_text.ForgotPassword)),
     ]),
     case model.auth.forgot_password_open {
       True -> view_forgot_password(model)
@@ -124,8 +124,8 @@ pub fn view_login(model: Model) -> Element(Msg) {
 /// Renders the forgot password form with email input and reset link display.
 pub fn view_forgot_password(model: Model) -> Element(Msg) {
   let submit_label = case model.auth.forgot_password_in_flight {
-    True -> update_helpers.i18n_t(model, i18n_text.Working)
-    False -> update_helpers.i18n_t(model, i18n_text.GenerateResetLink)
+    True -> helpers_i18n.i18n_t(model, i18n_text.Working)
+    False -> helpers_i18n.i18n_t(model, i18n_text.GenerateResetLink)
   }
 
   let btn_class = case model.auth.forgot_password_in_flight {
@@ -141,12 +141,12 @@ pub fn view_forgot_password(model: Model) -> Element(Msg) {
   }
 
   div([attribute.class("section")], [
-    p([], [text(update_helpers.i18n_t(model, i18n_text.NoEmailIntegrationNote))]),
+    p([], [text(helpers_i18n.i18n_t(model, i18n_text.NoEmailIntegrationNote))]),
     case model.auth.forgot_password_error {
       opt.Some(err) ->
         error_notice.view_dismissible(
           err,
-          update_helpers.i18n_t(model, i18n_text.Dismiss),
+          helpers_i18n.i18n_t(model, i18n_text.Dismiss),
           auth_msg(auth_messages.ForgotPasswordDismissed),
         )
       opt.None -> element.none()
@@ -159,7 +159,7 @@ pub fn view_forgot_password(model: Model) -> Element(Msg) {
       ],
       [
         form_field.view_required(
-          update_helpers.i18n_t(model, i18n_text.EmailLabel),
+          helpers_i18n.i18n_t(model, i18n_text.EmailLabel),
           input([
             attribute.type_("email"),
             attribute.value(model.auth.forgot_password_email),
@@ -184,10 +184,10 @@ pub fn view_forgot_password(model: Model) -> Element(Msg) {
 
       False ->
         copyable_input.view(
-          update_helpers.i18n_t(model, i18n_text.ResetLink),
+          helpers_i18n.i18n_t(model, i18n_text.ResetLink),
           link,
           auth_msg(auth_messages.ForgotPasswordCopyClicked),
-          update_helpers.i18n_t(model, i18n_text.Copy),
+          helpers_i18n.i18n_t(model, i18n_text.Copy),
           model.auth.forgot_password_copy_status,
         )
     },
@@ -206,13 +206,10 @@ pub fn view_accept_invite(model: Model) -> Element(Msg) {
 
   let content = case state {
     accept_invite.NoToken ->
-      error_notice.view(update_helpers.i18n_t(
-        model,
-        i18n_text.MissingInviteToken,
-      ))
+      error_notice.view(helpers_i18n.i18n_t(model, i18n_text.MissingInviteToken))
 
     accept_invite.Validating ->
-      loading.loading(update_helpers.i18n_t(model, i18n_text.ValidatingInvite))
+      loading.loading(helpers_i18n.i18n_t(model, i18n_text.ValidatingInvite))
 
     accept_invite.Invalid(code: _, message: message) ->
       error_notice.view(message)
@@ -224,17 +221,17 @@ pub fn view_accept_invite(model: Model) -> Element(Msg) {
       view_accept_invite_form(model, email, password, True, password_error)
 
     accept_invite.Done ->
-      loading.loading(update_helpers.i18n_t(model, i18n_text.SignedIn))
+      loading.loading(helpers_i18n.i18n_t(model, i18n_text.SignedIn))
   }
 
   div([attribute.class("page")], [
-    h1([], [text(update_helpers.i18n_t(model, i18n_text.AppName))]),
-    h2([], [text(update_helpers.i18n_t(model, i18n_text.AcceptInviteTitle))]),
+    h1([], [text(helpers_i18n.i18n_t(model, i18n_text.AppName))]),
+    h2([], [text(helpers_i18n.i18n_t(model, i18n_text.AcceptInviteTitle))]),
     case submit_error {
       opt.Some(err) ->
         error_notice.view_dismissible(
           err,
-          update_helpers.i18n_t(model, i18n_text.Dismiss),
+          helpers_i18n.i18n_t(model, i18n_text.Dismiss),
           auth_msg(auth_messages.AcceptInvite(accept_invite.ErrorDismissed)),
         )
       opt.None -> element.none()
@@ -251,8 +248,8 @@ fn view_accept_invite_form(
   password_error: opt.Option(String),
 ) -> Element(Msg) {
   let submit_label = case in_flight {
-    True -> update_helpers.i18n_t(model, i18n_text.Registering)
-    False -> update_helpers.i18n_t(model, i18n_text.Register)
+    True -> helpers_i18n.i18n_t(model, i18n_text.Registering)
+    False -> helpers_i18n.i18n_t(model, i18n_text.Register)
   }
 
   form(
@@ -263,7 +260,7 @@ fn view_accept_invite_form(
     ],
     [
       form_field.view(
-        update_helpers.i18n_t(model, i18n_text.EmailLabel),
+        helpers_i18n.i18n_t(model, i18n_text.EmailLabel),
         input([
           attribute.type_("email"),
           attribute.value(email),
@@ -271,7 +268,7 @@ fn view_accept_invite_form(
         ]),
       ),
       form_field.with_error(
-        update_helpers.i18n_t(model, i18n_text.PasswordLabel),
+        helpers_i18n.i18n_t(model, i18n_text.PasswordLabel),
         input([
           attribute.type_("password"),
           attribute.value(password),
@@ -285,7 +282,7 @@ fn view_accept_invite_form(
         password_error,
       ),
       p([], [
-        text(update_helpers.i18n_t(model, i18n_text.MinimumPasswordLength)),
+        text(helpers_i18n.i18n_t(model, i18n_text.MinimumPasswordLength)),
       ]),
       button(
         [
@@ -314,16 +311,10 @@ pub fn view_reset_password(model: Model) -> Element(Msg) {
 
   let content = case state {
     reset_password.NoToken ->
-      error_notice.view(update_helpers.i18n_t(
-        model,
-        i18n_text.MissingResetToken,
-      ))
+      error_notice.view(helpers_i18n.i18n_t(model, i18n_text.MissingResetToken))
 
     reset_password.Validating ->
-      loading.loading(update_helpers.i18n_t(
-        model,
-        i18n_text.ValidatingResetToken,
-      ))
+      loading.loading(helpers_i18n.i18n_t(model, i18n_text.ValidatingResetToken))
 
     reset_password.Invalid(code: _, message: message) ->
       error_notice.view(message)
@@ -335,17 +326,17 @@ pub fn view_reset_password(model: Model) -> Element(Msg) {
       view_reset_password_form(model, email, password, True, password_error)
 
     reset_password.Done ->
-      loading.loading(update_helpers.i18n_t(model, i18n_text.PasswordUpdated))
+      loading.loading(helpers_i18n.i18n_t(model, i18n_text.PasswordUpdated))
   }
 
   div([attribute.class("page")], [
-    h1([], [text(update_helpers.i18n_t(model, i18n_text.AppName))]),
-    h2([], [text(update_helpers.i18n_t(model, i18n_text.ResetPasswordTitle))]),
+    h1([], [text(helpers_i18n.i18n_t(model, i18n_text.AppName))]),
+    h2([], [text(helpers_i18n.i18n_t(model, i18n_text.ResetPasswordTitle))]),
     case submit_error {
       opt.Some(err) ->
         error_notice.view_dismissible(
           err,
-          update_helpers.i18n_t(model, i18n_text.Dismiss),
+          helpers_i18n.i18n_t(model, i18n_text.Dismiss),
           auth_msg(auth_messages.ResetPassword(reset_password.ErrorDismissed)),
         )
       opt.None -> element.none()
@@ -362,8 +353,8 @@ fn view_reset_password_form(
   password_error: opt.Option(String),
 ) -> Element(Msg) {
   let submit_label = case in_flight {
-    True -> update_helpers.i18n_t(model, i18n_text.Saving)
-    False -> update_helpers.i18n_t(model, i18n_text.SaveNewPassword)
+    True -> helpers_i18n.i18n_t(model, i18n_text.Saving)
+    False -> helpers_i18n.i18n_t(model, i18n_text.SaveNewPassword)
   }
 
   form(
@@ -374,7 +365,7 @@ fn view_reset_password_form(
     ],
     [
       form_field.view(
-        update_helpers.i18n_t(model, i18n_text.EmailLabel),
+        helpers_i18n.i18n_t(model, i18n_text.EmailLabel),
         input([
           attribute.type_("email"),
           attribute.value(email),
@@ -382,7 +373,7 @@ fn view_reset_password_form(
         ]),
       ),
       form_field.with_error(
-        update_helpers.i18n_t(model, i18n_text.NewPasswordLabel),
+        helpers_i18n.i18n_t(model, i18n_text.NewPasswordLabel),
         input([
           attribute.type_("password"),
           attribute.value(password),
@@ -396,7 +387,7 @@ fn view_reset_password_form(
         password_error,
       ),
       p([], [
-        text(update_helpers.i18n_t(model, i18n_text.MinimumPasswordLength)),
+        text(helpers_i18n.i18n_t(model, i18n_text.MinimumPasswordLength)),
       ]),
       button(
         [

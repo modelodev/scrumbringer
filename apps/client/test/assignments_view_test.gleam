@@ -18,6 +18,8 @@ import gleam/set
 import scrumbringer_client/assignments_view_mode
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/admin/members as admin_members
+import scrumbringer_client/client_state/admin/metrics as admin_metrics
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/assignments/view as assignments_view
 
@@ -90,7 +92,10 @@ pub fn project_collapsed_hides_members_test() {
     |> client_state.update_admin(fn(admin) {
       admin_state.AdminModel(
         ..admin,
-        org_users_cache: Loaded([org_user]),
+        members: admin_members.Model(
+          ..admin.members,
+          org_users_cache: Loaded([org_user]),
+        ),
         assignments: state_types.AssignmentsModel(
           ..admin.assignments,
           project_members: dict.from_list([
@@ -131,7 +136,10 @@ pub fn project_expanded_shows_members_test() {
     |> client_state.update_admin(fn(admin) {
       admin_state.AdminModel(
         ..admin,
-        org_users_cache: Loaded([org_user]),
+        members: admin_members.Model(
+          ..admin.members,
+          org_users_cache: Loaded([org_user]),
+        ),
         assignments: state_types.AssignmentsModel(
           ..admin.assignments,
           project_members: dict.from_list([
@@ -165,7 +173,10 @@ pub fn user_without_projects_shows_badge_test() {
     |> client_state.update_admin(fn(admin) {
       admin_state.AdminModel(
         ..admin,
-        org_users_cache: Loaded([user]),
+        members: admin_members.Model(
+          ..admin.members,
+          org_users_cache: Loaded([user]),
+        ),
         assignments: state_types.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByUser,
@@ -253,7 +264,10 @@ pub fn project_metrics_summary_renders_counts_test() {
     |> client_state.update_admin(fn(admin) {
       admin_state.AdminModel(
         ..admin,
-        admin_metrics_overview: Loaded(overview),
+        metrics: admin_metrics.Model(
+          ..admin.metrics,
+          admin_metrics_overview: Loaded(overview),
+        ),
         assignments: state_types.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByProject,
@@ -298,8 +312,14 @@ pub fn user_metrics_summary_renders_counts_test() {
     |> client_state.update_admin(fn(admin) {
       admin_state.AdminModel(
         ..admin,
-        org_users_cache: Loaded([user]),
-        admin_metrics_users: Loaded([metrics]),
+        members: admin_members.Model(
+          ..admin.members,
+          org_users_cache: Loaded([user]),
+        ),
+        metrics: admin_metrics.Model(
+          ..admin.metrics,
+          admin_metrics_users: Loaded([metrics]),
+        ),
         assignments: state_types.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByUser,
@@ -348,7 +368,10 @@ pub fn empty_state_when_no_users_test() {
     |> client_state.update_admin(fn(admin) {
       admin_state.AdminModel(
         ..admin,
-        org_users_cache: Loaded([]),
+        members: admin_members.Model(
+          ..admin.members,
+          org_users_cache: Loaded([]),
+        ),
         assignments: state_types.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByUser,
@@ -388,7 +411,10 @@ pub fn empty_state_when_only_admin_user_test() {
     |> client_state.update_admin(fn(admin_model) {
       admin_state.AdminModel(
         ..admin_model,
-        org_users_cache: Loaded([admin_org_user]),
+        members: admin_members.Model(
+          ..admin_model.members,
+          org_users_cache: Loaded([admin_org_user]),
+        ),
         assignments: state_types.AssignmentsModel(
           ..admin_model.assignments,
           view_mode: assignments_view_mode.ByUser,
@@ -424,7 +450,10 @@ pub fn filter_users_by_email_test() {
     |> client_state.update_admin(fn(admin) {
       admin_state.AdminModel(
         ..admin,
-        org_users_cache: Loaded([user_admin, user_member]),
+        members: admin_members.Model(
+          ..admin.members,
+          org_users_cache: Loaded([user_admin, user_member]),
+        ),
         assignments: state_types.AssignmentsModel(
           ..admin.assignments,
           view_mode: assignments_view_mode.ByUser,

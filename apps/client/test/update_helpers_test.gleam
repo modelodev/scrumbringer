@@ -6,20 +6,21 @@ import domain/task_state
 import domain/task_type.{TaskTypeInline}
 import gleam/option.{None}
 import gleeunit/should
-import scrumbringer_client/update_helpers
+import scrumbringer_client/helpers/lookup as helpers_lookup
+import scrumbringer_client/helpers/options as helpers_options
 
 pub fn empty_to_opt_trims_whitespace_test() {
-  update_helpers.empty_to_opt("   ")
+  helpers_options.empty_to_opt("   ")
   |> should.equal(None)
 }
 
 pub fn empty_to_int_opt_rejects_non_int_test() {
-  update_helpers.empty_to_int_opt("abc")
+  helpers_options.empty_to_int_opt("abc")
   |> should.equal(None)
 }
 
 pub fn find_task_by_id_returns_none_when_not_loaded_test() {
-  update_helpers.find_task_by_id(NotAsked, 1)
+  helpers_lookup.find_task_by_id(NotAsked, 1)
   |> should.equal(None)
 }
 
@@ -50,12 +51,12 @@ pub fn find_task_by_id_returns_none_when_missing_test() {
     ),
   ]
 
-  update_helpers.find_task_by_id(Loaded(tasks), 99)
+  helpers_lookup.find_task_by_id(Loaded(tasks), 99)
   |> should.equal(None)
 }
 
 pub fn resolve_org_user_returns_none_when_not_loaded_test() {
-  update_helpers.resolve_org_user(NotAsked, 1)
+  helpers_lookup.resolve_org_user(NotAsked, 1)
   |> should.equal(None)
 }
 
@@ -69,6 +70,6 @@ pub fn resolve_org_user_returns_none_when_missing_test() {
     ),
   ]
 
-  update_helpers.resolve_org_user(Loaded(users), 99)
+  helpers_lookup.resolve_org_user(Loaded(users), 99)
   |> should.equal(None)
 }

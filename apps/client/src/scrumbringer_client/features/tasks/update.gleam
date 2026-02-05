@@ -35,7 +35,7 @@
 //// - **client_state.gleam**: Provides Model, Msg types
 //// - **client_update.gleam**: Delegates task mutation messages here
 //// - **api/tasks.gleam**: Provides task API functions
-//// - **update_helpers.gleam**: Provides i18n_t helper
+//// - **helpers/i18n.gleam**: Provides i18n_t helper
 
 import gleam/int
 import gleam/list
@@ -59,10 +59,17 @@ import scrumbringer_client/client_state.{
   type Model, type Msg, pool_msg, update_member,
 }
 import scrumbringer_client/client_state/member.{MemberModel}
+import scrumbringer_client/client_state/dialog_mode
+import scrumbringer_client/client_state/member/dependencies as member_dependencies
+import scrumbringer_client/client_state/member/notes as member_notes
+import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/helpers/auth as helpers_auth
+import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/helpers/lookup as helpers_lookup
+import scrumbringer_client/helpers/toast as helpers_toast
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/task_tabs
-import scrumbringer_client/update_helpers
 
 // =============================================================================
 // Create Dialog Handlers
@@ -71,10 +78,10 @@ import scrumbringer_client/update_helpers
 /// Open the create task dialog.
 pub fn handle_create_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
   #(
-    update_member(model, fn(member) {
-      MemberModel(
-        ..member,
-        member_create_dialog_open: True,
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(
+        ..pool,
+        member_create_dialog_mode: dialog_mode.DialogCreate,
         member_create_error: opt.None,
         member_create_card_id: opt.None,
       )
@@ -89,10 +96,10 @@ pub fn handle_create_dialog_opened_with_card(
   card_id: Int,
 ) -> #(Model, Effect(Msg)) {
   #(
-    update_member(model, fn(member) {
-      MemberModel(
-        ..member,
-        member_create_dialog_open: True,
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(
+        ..pool,
+        member_create_dialog_mode: dialog_mode.DialogCreate,
         member_create_error: opt.None,
         member_create_card_id: opt.Some(card_id),
       )
@@ -104,10 +111,10 @@ pub fn handle_create_dialog_opened_with_card(
 /// Close the create task dialog.
 pub fn handle_create_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
   #(
-    update_member(model, fn(member) {
-      MemberModel(
-        ..member,
-        member_create_dialog_open: False,
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(
+        ..pool,
+        member_create_dialog_mode: dialog_mode.DialogClosed,
         member_create_error: opt.None,
         member_create_card_id: opt.None,
       )
@@ -122,8 +129,8 @@ pub fn handle_create_title_changed(
   value: String,
 ) -> #(Model, Effect(Msg)) {
   #(
-    update_member(model, fn(member) {
-      MemberModel(..member, member_create_title: value)
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(..pool, member_create_title: value)
     }),
     effect.none(),
   )
@@ -135,8 +142,8 @@ pub fn handle_create_description_changed(
   value: String,
 ) -> #(Model, Effect(Msg)) {
   #(
-    update_member(model, fn(member) {
-      MemberModel(..member, member_create_description: value)
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(..pool, member_create_description: value)
     }),
     effect.none(),
   )
@@ -148,8 +155,8 @@ pub fn handle_create_priority_changed(
   value: String,
 ) -> #(Model, Effect(Msg)) {
   #(
-    update_member(model, fn(member) {
-      MemberModel(..member, member_create_priority: value)
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(..pool, member_create_priority: value)
     }),
     effect.none(),
   )
@@ -161,8 +168,8 @@ pub fn handle_create_type_id_changed(
   value: String,
 ) -> #(Model, Effect(Msg)) {
   #(
-    update_member(model, fn(member) {
-      MemberModel(..member, member_create_type_id: value)
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(..pool, member_create_type_id: value)
     }),
     effect.none(),
   )
@@ -178,8 +185,8 @@ pub fn handle_create_card_id_changed(
     _ -> opt.None
   }
   #(
-    update_member(model, fn(member) {
-      MemberModel(..member, member_create_card_id: card_id)
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(..pool, member_create_card_id: card_id)
     }),
     effect.none(),
   )
@@ -197,7 +204,7 @@ pub fn handle_create_submitted(
   model: Model,
   member_refresh: fn(Model) -> #(Model, Effect(Msg)),
 ) -> #(Model, Effect(Msg)) {
-  case model.member.member_create_in_flight {
+  case model.member.pool.member_create_in_flight {
     True -> #(model, effect.none())
     False -> validate_and_create(model, member_refresh)
   }
@@ -209,10 +216,10 @@ fn validate_and_create(
 ) -> #(Model, Effect(Msg)) {
   case model.core.selected_project_id {
     opt.None -> #(
-      update_member(model, fn(member) {
-        MemberModel(
-          ..member,
-          member_create_error: opt.Some(update_helpers.i18n_t(
+      update_member_pool(model, fn(pool) {
+        member_pool.Model(
+          ..pool,
+          member_create_error: opt.Some(helpers_i18n.i18n_t(
             model,
             i18n_text.SelectProjectFirst,
           )),
@@ -226,14 +233,14 @@ fn validate_and_create(
 }
 
 fn validate_title(model: Model, project_id: Int) -> #(Model, Effect(Msg)) {
-  let title = string.trim(model.member.member_create_title)
+  let title = string.trim(model.member.pool.member_create_title)
 
   case title == "" {
     True -> #(
-      update_member(model, fn(member) {
-        MemberModel(
-          ..member,
-          member_create_error: opt.Some(update_helpers.i18n_t(
+      update_member_pool(model, fn(pool) {
+        member_pool.Model(
+          ..pool,
+          member_create_error: opt.Some(helpers_i18n.i18n_t(
             model,
             i18n_text.TitleRequired,
           )),
@@ -253,10 +260,10 @@ fn validate_title_length(
 ) -> #(Model, Effect(Msg)) {
   case string.length(title) > 56 {
     True -> #(
-      update_member(model, fn(member) {
-        MemberModel(
-          ..member,
-          member_create_error: opt.Some(update_helpers.i18n_t(
+      update_member_pool(model, fn(pool) {
+        member_pool.Model(
+          ..pool,
+          member_create_error: opt.Some(helpers_i18n.i18n_t(
             model,
             i18n_text.TitleTooLongMax56,
           )),
@@ -274,12 +281,12 @@ fn validate_type_id(
   project_id: Int,
   title: String,
 ) -> #(Model, Effect(Msg)) {
-  case int.parse(model.member.member_create_type_id) {
+  case int.parse(model.member.pool.member_create_type_id) {
     Error(_) -> #(
-      update_member(model, fn(member) {
-        MemberModel(
-          ..member,
-          member_create_error: opt.Some(update_helpers.i18n_t(
+      update_member_pool(model, fn(pool) {
+        member_pool.Model(
+          ..pool,
+          member_create_error: opt.Some(helpers_i18n.i18n_t(
             model,
             i18n_text.TypeRequired,
           )),
@@ -298,15 +305,15 @@ fn validate_priority(
   title: String,
   type_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  case int.parse(model.member.member_create_priority) {
+  case int.parse(model.member.pool.member_create_priority) {
     Ok(priority) if priority >= 1 && priority <= 5 ->
       submit_create(model, project_id, title, type_id, priority)
 
     _ -> #(
-      update_member(model, fn(member) {
-        MemberModel(
-          ..member,
-          member_create_error: opt.Some(update_helpers.i18n_t(
+      update_member_pool(model, fn(pool) {
+        member_pool.Model(
+          ..pool,
+          member_create_error: opt.Some(helpers_i18n.i18n_t(
             model,
             i18n_text.PriorityMustBe1To5,
           )),
@@ -324,19 +331,19 @@ fn submit_create(
   type_id: Int,
   priority: Int,
 ) -> #(Model, Effect(Msg)) {
-  let desc = string.trim(model.member.member_create_description)
+  let desc = string.trim(model.member.pool.member_create_description)
   let description = case desc == "" {
     True -> opt.None
     False -> opt.Some(desc)
   }
 
   // Story 4.12: Include card_id in task creation
-  let card_id = model.member.member_create_card_id
+  let card_id = model.member.pool.member_create_card_id
 
   let model =
-    update_member(model, fn(member) {
-      MemberModel(
-        ..member,
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(
+        ..pool,
         member_create_in_flight: True,
         member_create_error: opt.None,
       )
@@ -366,11 +373,11 @@ pub fn handle_task_created_ok(
   member_refresh: fn(Model) -> #(Model, Effect(Msg)),
 ) -> #(Model, Effect(Msg)) {
   let model =
-    update_member(model, fn(member) {
-      MemberModel(
-        ..member,
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(
+        ..pool,
         member_create_in_flight: False,
-        member_create_dialog_open: False,
+        member_create_dialog_mode: dialog_mode.DialogClosed,
         member_create_title: "",
         member_create_description: "",
         member_create_priority: "3",
@@ -380,7 +387,7 @@ pub fn handle_task_created_ok(
     })
   let #(model, refresh_fx) = member_refresh(model)
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.TaskCreated,
     ))
@@ -392,11 +399,11 @@ pub fn handle_task_created_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
-      update_member(model, fn(member) {
-        MemberModel(
-          ..member,
+      update_member_pool(model, fn(pool) {
+        member_pool.Model(
+          ..pool,
           member_create_in_flight: False,
           member_create_error: opt.Some(err.message),
         )
@@ -417,14 +424,17 @@ pub fn handle_claim_clicked(
   task_id: Int,
   version: Int,
 ) -> #(Model, Effect(Msg)) {
-  case model.member.member_task_mutation_in_flight {
+  case model.member.pool.member_task_mutation_in_flight {
     True -> #(model, effect.none())
     False ->
-      case update_helpers.find_task_by_id(model.member.member_tasks, task_id) {
+      case helpers_lookup.find_task_by_id(
+        model.member.pool.member_tasks,
+        task_id,
+      ) {
         opt.Some(Task(blocked_count: blocked_count, ..)) if blocked_count > 0 -> #(
-          update_member(model, fn(member) {
-            MemberModel(
-              ..member,
+          update_member_pool(model, fn(pool) {
+            member_pool.Model(
+              ..pool,
               member_blocked_claim_task: opt.Some(#(task_id, version)),
             )
           }),
@@ -437,21 +447,21 @@ pub fn handle_claim_clicked(
 
 pub fn handle_blocked_claim_cancelled(model: Model) -> #(Model, Effect(Msg)) {
   #(
-    update_member(model, fn(member) {
-      MemberModel(..member, member_blocked_claim_task: opt.None)
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(..pool, member_blocked_claim_task: opt.None)
     }),
     effect.none(),
   )
 }
 
 pub fn handle_blocked_claim_confirmed(model: Model) -> #(Model, Effect(Msg)) {
-  case model.member.member_blocked_claim_task {
+  case model.member.pool.member_blocked_claim_task {
     opt.None -> #(model, effect.none())
     opt.Some(#(task_id, version)) -> {
       let #(model, fx) = submit_claim(model, task_id, version)
       #(
-        update_member(model, fn(member) {
-          MemberModel(..member, member_blocked_claim_task: opt.None)
+        update_member_pool(model, fn(pool) {
+          member_pool.Model(..pool, member_blocked_claim_task: opt.None)
         }),
         fx,
       )
@@ -470,9 +480,9 @@ fn submit_claim(
   let model = apply_optimistic_claim(model, task_id)
   // 3. Set in-flight state with snapshot
   let model =
-    update_member(model, fn(member) {
-      MemberModel(
-        ..member,
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(
+        ..pool,
         member_task_mutation_in_flight: True,
         member_task_mutation_task_id: opt.Some(task_id),
         member_tasks_snapshot: snapshot,
@@ -493,7 +503,7 @@ pub fn handle_release_clicked(
   task_id: Int,
   version: Int,
 ) -> #(Model, Effect(Msg)) {
-  case model.member.member_task_mutation_in_flight {
+  case model.member.pool.member_task_mutation_in_flight {
     True -> #(model, effect.none())
     False -> {
       // 1. Snapshot current tasks
@@ -502,9 +512,9 @@ pub fn handle_release_clicked(
       let model = apply_optimistic_release(model, task_id)
       // 3. Set in-flight state with snapshot
       let model =
-        update_member(model, fn(member) {
-          MemberModel(
-            ..member,
+        update_member_pool(model, fn(pool) {
+          member_pool.Model(
+            ..pool,
             member_task_mutation_in_flight: True,
             member_task_mutation_task_id: opt.Some(task_id),
             member_tasks_snapshot: snapshot,
@@ -527,7 +537,7 @@ pub fn handle_complete_clicked(
   task_id: Int,
   version: Int,
 ) -> #(Model, Effect(Msg)) {
-  case model.member.member_task_mutation_in_flight {
+  case model.member.pool.member_task_mutation_in_flight {
     True -> #(model, effect.none())
     False -> {
       // 1. Snapshot current tasks
@@ -536,9 +546,9 @@ pub fn handle_complete_clicked(
       let model = apply_optimistic_complete(model, task_id)
       // 3. Set in-flight state with snapshot
       let model =
-        update_member(model, fn(member) {
-          MemberModel(
-            ..member,
+        update_member_pool(model, fn(pool) {
+          member_pool.Model(
+            ..pool,
             member_task_mutation_in_flight: True,
             member_task_mutation_task_id: opt.Some(task_id),
             member_tasks_snapshot: snapshot,
@@ -560,7 +570,7 @@ pub fn handle_complete_clicked(
 
 /// Extract current tasks list for snapshot.
 fn get_tasks_snapshot(model: Model) -> opt.Option(List(Task)) {
-  case model.member.member_tasks {
+  case model.member.pool.member_tasks {
     Loaded(tasks) -> opt.Some(tasks)
     _ -> opt.None
   }
@@ -569,7 +579,7 @@ fn get_tasks_snapshot(model: Model) -> opt.Option(List(Task)) {
 // Justification: nested case improves clarity for branching logic.
 /// Apply optimistic claim: mark task as Claimed(Taken).
 fn apply_optimistic_claim(model: Model, task_id: Int) -> Model {
-  case model.member.member_tasks {
+  case model.member.pool.member_tasks {
     Loaded(tasks) -> {
       let updated =
         list.map(tasks, fn(t) {
@@ -590,8 +600,8 @@ fn apply_optimistic_claim(model: Model, task_id: Int) -> Model {
             False -> t
           }
         })
-      update_member(model, fn(member) {
-        MemberModel(..member, member_tasks: Loaded(updated))
+      update_member_pool(model, fn(pool) {
+        member_pool.Model(..pool, member_tasks: Loaded(updated))
       })
     }
     _ -> model
@@ -601,7 +611,7 @@ fn apply_optimistic_claim(model: Model, task_id: Int) -> Model {
 // Justification: nested case improves clarity for branching logic.
 /// Apply optimistic release: mark task as Available.
 fn apply_optimistic_release(model: Model, task_id: Int) -> Model {
-  case model.member.member_tasks {
+  case model.member.pool.member_tasks {
     Loaded(tasks) -> {
       let updated =
         list.map(tasks, fn(t) {
@@ -610,8 +620,8 @@ fn apply_optimistic_release(model: Model, task_id: Int) -> Model {
             False -> t
           }
         })
-      update_member(model, fn(member) {
-        MemberModel(..member, member_tasks: Loaded(updated))
+      update_member_pool(model, fn(pool) {
+        member_pool.Model(..pool, member_tasks: Loaded(updated))
       })
     }
     _ -> model
@@ -621,7 +631,7 @@ fn apply_optimistic_release(model: Model, task_id: Int) -> Model {
 // Justification: nested case improves clarity for branching logic.
 /// Apply optimistic complete: mark task as Completed.
 fn apply_optimistic_complete(model: Model, task_id: Int) -> Model {
-  case model.member.member_tasks {
+  case model.member.pool.member_tasks {
     Loaded(tasks) -> {
       let updated =
         list.map(tasks, fn(t) {
@@ -630,8 +640,8 @@ fn apply_optimistic_complete(model: Model, task_id: Int) -> Model {
             False -> t
           }
         })
-      update_member(model, fn(member) {
-        MemberModel(..member, member_tasks: Loaded(updated))
+      update_member_pool(model, fn(pool) {
+        member_pool.Model(..pool, member_tasks: Loaded(updated))
       })
     }
     _ -> model
@@ -640,10 +650,10 @@ fn apply_optimistic_complete(model: Model, task_id: Int) -> Model {
 
 /// Restore tasks from snapshot (rollback on error).
 fn restore_from_snapshot(model: Model) -> Model {
-  case model.member.member_tasks_snapshot {
+  case model.member.pool.member_tasks_snapshot {
     opt.Some(tasks) ->
-      update_member(model, fn(member) {
-        MemberModel(..member, member_tasks: Loaded(tasks))
+      update_member_pool(model, fn(pool) {
+        member_pool.Model(..pool, member_tasks: Loaded(tasks))
       })
     opt.None -> model
   }
@@ -655,9 +665,9 @@ fn restore_from_snapshot(model: Model) -> Model {
 
 /// Clear optimistic state after successful mutation.
 fn clear_optimistic_state(model: Model) -> Model {
-  update_member(model, fn(member) {
-    MemberModel(
-      ..member,
+  update_member_pool(model, fn(pool) {
+    member_pool.Model(
+      ..pool,
       member_task_mutation_in_flight: False,
       member_task_mutation_task_id: opt.None,
       member_tasks_snapshot: opt.None,
@@ -674,7 +684,7 @@ pub fn handle_task_claimed_ok(
   let model = clear_optimistic_state(model)
   let #(model, refresh_fx) = member_refresh(model)
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.TaskClaimed,
     ))
@@ -690,7 +700,7 @@ pub fn handle_task_released_ok(
   let model = clear_optimistic_state(model)
   let #(model, fx) = member_refresh(model)
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.TaskReleased,
     ))
@@ -715,7 +725,7 @@ pub fn handle_task_completed_ok(
   let model = clear_optimistic_state(model)
   let #(model, fx) = member_refresh(model)
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.TaskCompleted,
     ))
@@ -744,11 +754,11 @@ pub fn handle_mutation_error(
   // Clear optimistic state
   let model = clear_optimistic_state(model)
 
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     case err.status {
       404 -> #(
         model,
-        update_helpers.toast_warning(update_helpers.i18n_t(
+        helpers_toast.toast_warning(helpers_i18n.i18n_t(
           model,
           i18n_text.TaskNotFound,
         )),
@@ -756,26 +766,26 @@ pub fn handle_mutation_error(
       409 -> {
         // Conflict - task already claimed
         let msg = case string.contains(err.code, "CLAIMED") {
-          True -> update_helpers.i18n_t(model, i18n_text.TaskAlreadyClaimed)
-          False -> update_helpers.i18n_t(model, i18n_text.TaskVersionConflict)
+          True -> helpers_i18n.i18n_t(model, i18n_text.TaskAlreadyClaimed)
+          False -> helpers_i18n.i18n_t(model, i18n_text.TaskVersionConflict)
         }
-        #(model, update_helpers.toast_warning(msg))
+        #(model, helpers_toast.toast_warning(msg))
       }
       422 -> {
         // Version conflict or validation error
         let msg = case string.contains(err.code, "VERSION") {
-          True -> update_helpers.i18n_t(model, i18n_text.TaskVersionConflict)
+          True -> helpers_i18n.i18n_t(model, i18n_text.TaskVersionConflict)
           False -> err.message
         }
-        #(model, update_helpers.toast_warning(msg))
+        #(model, helpers_toast.toast_warning(msg))
       }
       _ -> {
         // Show rollback notice + original error
         let msg =
-          update_helpers.i18n_t(model, i18n_text.TaskMutationRolledBack)
+          helpers_i18n.i18n_t(model, i18n_text.TaskMutationRolledBack)
           <> ": "
           <> err.message
-        #(model, update_helpers.toast_error(msg))
+        #(model, helpers_toast.toast_error(msg))
       }
     }
   })
@@ -792,14 +802,23 @@ pub fn handle_task_details_opened(
 ) -> #(Model, Effect(Msg)) {
   let next_model =
     update_member(model, fn(member) {
+      let notes = member.notes
+      let dependencies = member.dependencies
+
       MemberModel(
         ..member,
-        member_notes_task_id: opt.Some(task_id),
-        member_notes: Loading,
-        member_note_error: opt.None,
-        member_dependencies: Loading,
-        member_dependency_add_error: opt.None,
-        member_dependency_remove_in_flight: opt.None,
+        notes: member_notes.Model(
+          ..notes,
+          member_notes_task_id: opt.Some(task_id),
+          member_notes: Loading,
+          member_note_error: opt.None,
+        ),
+        dependencies: member_dependencies.Model(
+          ..dependencies,
+          member_dependencies: Loading,
+          member_dependency_add_error: opt.None,
+          member_dependency_remove_in_flight: opt.None,
+        ),
       )
     })
 
@@ -820,20 +839,28 @@ pub fn handle_task_details_opened(
 pub fn handle_task_details_closed(model: Model) -> #(Model, Effect(Msg)) {
   #(
     update_member(model, fn(member) {
+      let notes = member.notes
+
       MemberModel(
         ..member,
-        member_notes_task_id: opt.None,
-        member_notes: NotAsked,
-        member_note_content: "",
-        member_note_error: opt.None,
-        member_dependencies: NotAsked,
-        member_dependency_dialog_open: False,
-        member_dependency_search_query: "",
-        member_dependency_candidates: NotAsked,
-        member_dependency_selected_task_id: opt.None,
-        member_dependency_add_in_flight: False,
-        member_dependency_add_error: opt.None,
-        member_dependency_remove_in_flight: opt.None,
+        notes: member_notes.Model(
+          ..notes,
+          member_notes_task_id: opt.None,
+          member_notes: NotAsked,
+          member_note_content: "",
+          member_note_error: opt.None,
+          member_note_dialog_mode: dialog_mode.DialogClosed,
+        ),
+        dependencies: member_dependencies.Model(
+          member_dependencies: NotAsked,
+          member_dependency_dialog_mode: dialog_mode.DialogClosed,
+          member_dependency_search_query: "",
+          member_dependency_candidates: NotAsked,
+          member_dependency_selected_task_id: opt.None,
+          member_dependency_add_in_flight: False,
+          member_dependency_add_error: opt.None,
+          member_dependency_remove_in_flight: opt.None,
+        ),
       )
     }),
     effect.none(),
@@ -846,8 +873,8 @@ pub fn handle_task_detail_tab_clicked(
   tab: task_tabs.Tab,
 ) -> #(Model, Effect(Msg)) {
   #(
-    update_member(model, fn(member) {
-      MemberModel(..member, member_task_detail_tab: tab)
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(..pool, member_task_detail_tab: tab)
     }),
     effect.none(),
   )
@@ -859,8 +886,8 @@ pub fn handle_notes_fetched_ok(
   notes: List(TaskNote),
 ) -> #(Model, Effect(Msg)) {
   #(
-    update_member(model, fn(member) {
-      MemberModel(..member, member_notes: Loaded(notes))
+    update_member_notes(model, fn(notes_state) {
+      member_notes.Model(..notes_state, member_notes: Loaded(notes))
     }),
     effect.none(),
   )
@@ -871,10 +898,10 @@ pub fn handle_notes_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
-      update_member(model, fn(member) {
-        MemberModel(..member, member_notes: Failed(err))
+      update_member_notes(model, fn(notes_state) {
+        member_notes.Model(..notes_state, member_notes: Failed(err))
       }),
       effect.none(),
     )
@@ -887,8 +914,8 @@ pub fn handle_note_content_changed(
   value: String,
 ) -> #(Model, Effect(Msg)) {
   #(
-    update_member(model, fn(member) {
-      MemberModel(..member, member_note_content: value)
+    update_member_notes(model, fn(notes_state) {
+      member_notes.Model(..notes_state, member_note_content: value)
     }),
     effect.none(),
   )
@@ -897,10 +924,10 @@ pub fn handle_note_content_changed(
 /// Handle note dialog opened (Story 5.4 UX unification).
 pub fn handle_note_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
   #(
-    update_member(model, fn(member) {
-      MemberModel(
-        ..member,
-        member_note_dialog_open: True,
+    update_member_notes(model, fn(notes_state) {
+      member_notes.Model(
+        ..notes_state,
+        member_note_dialog_mode: dialog_mode.DialogCreate,
         member_note_error: opt.None,
       )
     }),
@@ -911,10 +938,10 @@ pub fn handle_note_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
 /// Handle note dialog closed (Story 5.4 UX unification).
 pub fn handle_note_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
   #(
-    update_member(model, fn(member) {
-      MemberModel(
-        ..member,
-        member_note_dialog_open: False,
+    update_member_notes(model, fn(notes_state) {
+      member_notes.Model(
+        ..notes_state,
+        member_note_dialog_mode: dialog_mode.DialogClosed,
         member_note_content: "",
         member_note_error: opt.None,
       )
@@ -925,21 +952,21 @@ pub fn handle_note_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
 
 /// Handle note form submission.
 pub fn handle_note_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.member.member_note_in_flight {
+  case model.member.notes.member_note_in_flight {
     True -> #(model, effect.none())
     False -> submit_note(model)
   }
 }
 
 fn submit_note(model: Model) -> #(Model, Effect(Msg)) {
-  case model.member.member_notes_task_id {
+  case model.member.notes.member_notes_task_id {
     opt.None -> #(model, effect.none())
     opt.Some(task_id) -> submit_note_for_task(model, task_id)
   }
 }
 
 fn submit_note_for_task(model: Model, task_id: Int) -> #(Model, Effect(Msg)) {
-  let content = string.trim(model.member.member_note_content)
+  let content = string.trim(model.member.notes.member_note_content)
   case content == "" {
     True -> submit_note_missing_content(model)
     False -> submit_note_with_content(model, task_id, content)
@@ -948,10 +975,10 @@ fn submit_note_for_task(model: Model, task_id: Int) -> #(Model, Effect(Msg)) {
 
 fn submit_note_missing_content(model: Model) -> #(Model, Effect(Msg)) {
   #(
-    update_member(model, fn(member) {
-      MemberModel(
-        ..member,
-        member_note_error: opt.Some(update_helpers.i18n_t(
+    update_member_notes(model, fn(notes_state) {
+      member_notes.Model(
+        ..notes_state,
+        member_note_error: opt.Some(helpers_i18n.i18n_t(
           model,
           i18n_text.ContentRequired,
         )),
@@ -967,9 +994,9 @@ fn submit_note_with_content(
   content: String,
 ) -> #(Model, Effect(Msg)) {
   let model =
-    update_member(model, fn(member) {
-      MemberModel(
-        ..member,
+    update_member_notes(model, fn(notes_state) {
+      member_notes.Model(
+        ..notes_state,
         member_note_in_flight: True,
         member_note_error: opt.None,
       )
@@ -987,26 +1014,23 @@ pub fn handle_note_added_ok(
   model: Model,
   note: TaskNote,
 ) -> #(Model, Effect(Msg)) {
-  let updated = case model.member.member_notes {
+  let updated = case model.member.notes.member_notes {
     Loaded(notes) -> [note, ..notes]
     _ -> [note]
   }
 
   let model =
-    update_member(model, fn(member) {
-      MemberModel(
-        ..member,
+    update_member_notes(model, fn(notes_state) {
+      member_notes.Model(
+        ..notes_state,
         member_note_in_flight: False,
         member_note_content: "",
-        member_note_dialog_open: False,
+        member_note_dialog_mode: dialog_mode.DialogClosed,
         member_notes: Loaded(updated),
       )
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
-      model,
-      i18n_text.NoteAdded,
-    ))
+    helpers_toast.toast_success(helpers_i18n.i18n_t(model, i18n_text.NoteAdded))
   #(model, toast_fx)
 }
 
@@ -1015,17 +1039,17 @@ pub fn handle_note_added_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     let model =
-      update_member(model, fn(member) {
-        MemberModel(
-          ..member,
+      update_member_notes(model, fn(notes_state) {
+        member_notes.Model(
+          ..notes_state,
           member_note_in_flight: False,
           member_note_error: opt.Some(err.message),
         )
       })
 
-    case model.member.member_notes_task_id {
+    case model.member.notes.member_notes_task_id {
       opt.Some(task_id) -> #(
         model,
         api_tasks.list_task_notes(task_id, fn(result) {
@@ -1046,8 +1070,8 @@ pub fn handle_dependencies_fetched_ok(
   deps: List(TaskDependency),
 ) -> #(Model, Effect(Msg)) {
   #(
-    update_member(model, fn(member) {
-      MemberModel(..member, member_dependencies: Loaded(deps))
+    update_member_dependencies(model, fn(dependencies) {
+      member_dependencies.Model(..dependencies, member_dependencies: Loaded(deps))
     }),
     effect.none(),
   )
@@ -1057,10 +1081,10 @@ pub fn handle_dependencies_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
-      update_member(model, fn(member) {
-        MemberModel(..member, member_dependencies: Failed(err))
+      update_member_dependencies(model, fn(dependencies) {
+        member_dependencies.Model(..dependencies, member_dependencies: Failed(err))
       }),
       effect.none(),
     )
@@ -1068,17 +1092,20 @@ pub fn handle_dependencies_fetched_error(
 }
 
 pub fn handle_dependency_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
-  case model.member.member_notes_task_id {
+  case model.member.notes.member_notes_task_id {
     opt.None -> #(model, effect.none())
     opt.Some(task_id) ->
-      case update_helpers.find_task_by_id(model.member.member_tasks, task_id) {
+      case helpers_lookup.find_task_by_id(
+        model.member.pool.member_tasks,
+        task_id,
+      ) {
         opt.None -> #(model, effect.none())
         opt.Some(task) -> {
           let model =
-            update_member(model, fn(member) {
-              MemberModel(
-                ..member,
-                member_dependency_dialog_open: True,
+            update_member_dependencies(model, fn(dependencies) {
+              member_dependencies.Model(
+                ..dependencies,
+                member_dependency_dialog_mode: dialog_mode.DialogCreate,
                 member_dependency_search_query: "",
                 member_dependency_candidates: Loading,
                 member_dependency_selected_task_id: opt.None,
@@ -1106,10 +1133,10 @@ pub fn handle_dependency_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
 
 pub fn handle_dependency_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
   #(
-    update_member(model, fn(member) {
-      MemberModel(
-        ..member,
-        member_dependency_dialog_open: False,
+    update_member_dependencies(model, fn(dependencies) {
+      member_dependencies.Model(
+        ..dependencies,
+        member_dependency_dialog_mode: dialog_mode.DialogClosed,
         member_dependency_search_query: "",
         member_dependency_candidates: NotAsked,
         member_dependency_selected_task_id: opt.None,
@@ -1125,8 +1152,11 @@ pub fn handle_dependency_search_changed(
   value: String,
 ) -> #(Model, Effect(Msg)) {
   #(
-    update_member(model, fn(member) {
-      MemberModel(..member, member_dependency_search_query: value)
+    update_member_dependencies(model, fn(dependencies) {
+      member_dependencies.Model(
+        ..dependencies,
+        member_dependency_search_query: value,
+      )
     }),
     effect.none(),
   )
@@ -1137,8 +1167,11 @@ pub fn handle_dependency_candidates_fetched_ok(
   tasks: List(Task),
 ) -> #(Model, Effect(Msg)) {
   #(
-    update_member(model, fn(member) {
-      MemberModel(..member, member_dependency_candidates: Loaded(tasks))
+    update_member_dependencies(model, fn(dependencies) {
+      member_dependencies.Model(
+        ..dependencies,
+        member_dependency_candidates: Loaded(tasks),
+      )
     }),
     effect.none(),
   )
@@ -1148,10 +1181,13 @@ pub fn handle_dependency_candidates_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
-      update_member(model, fn(member) {
-        MemberModel(..member, member_dependency_candidates: Failed(err))
+      update_member_dependencies(model, fn(dependencies) {
+        member_dependencies.Model(
+          ..dependencies,
+          member_dependency_candidates: Failed(err),
+        )
       }),
       effect.none(),
     )
@@ -1163,9 +1199,9 @@ pub fn handle_dependency_selected(
   task_id: Int,
 ) -> #(Model, Effect(Msg)) {
   #(
-    update_member(model, fn(member) {
-      MemberModel(
-        ..member,
+    update_member_dependencies(model, fn(dependencies) {
+      member_dependencies.Model(
+        ..dependencies,
         member_dependency_selected_task_id: opt.Some(task_id),
       )
     }),
@@ -1174,7 +1210,7 @@ pub fn handle_dependency_selected(
 }
 
 pub fn handle_dependency_add_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.member.member_dependency_add_in_flight {
+  case model.member.dependencies.member_dependency_add_in_flight {
     True -> #(model, effect.none())
     False -> submit_dependency_add(model)
   }
@@ -1182,8 +1218,8 @@ pub fn handle_dependency_add_submitted(model: Model) -> #(Model, Effect(Msg)) {
 
 fn submit_dependency_add(model: Model) -> #(Model, Effect(Msg)) {
   case
-    model.member.member_notes_task_id,
-    model.member.member_dependency_selected_task_id
+    model.member.notes.member_notes_task_id,
+    model.member.dependencies.member_dependency_selected_task_id
   {
     opt.Some(task_id), opt.Some(depends_on_task_id) ->
       submit_dependency_add_for_task(model, task_id, depends_on_task_id)
@@ -1197,9 +1233,9 @@ fn submit_dependency_add_for_task(
   depends_on_task_id: Int,
 ) -> #(Model, Effect(Msg)) {
   let model =
-    update_member(model, fn(member) {
-      MemberModel(
-        ..member,
+    update_member_dependencies(model, fn(dependencies) {
+      member_dependencies.Model(
+        ..dependencies,
         member_dependency_add_in_flight: True,
         member_dependency_add_error: opt.None,
       )
@@ -1218,11 +1254,11 @@ pub fn handle_dependency_added_ok(
 ) -> #(Model, Effect(Msg)) {
   let updated = add_dependency_to_state(model, dep)
   let model =
-    update_member(updated, fn(member) {
-      MemberModel(
-        ..member,
+    update_member_dependencies(updated, fn(dependencies) {
+      member_dependencies.Model(
+        ..dependencies,
         member_dependency_add_in_flight: False,
-        member_dependency_dialog_open: False,
+        member_dependency_dialog_mode: dialog_mode.DialogClosed,
         member_dependency_search_query: "",
         member_dependency_selected_task_id: opt.None,
         member_dependency_add_error: opt.None,
@@ -1235,11 +1271,11 @@ pub fn handle_dependency_added_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
-      update_member(model, fn(member) {
-        MemberModel(
-          ..member,
+      update_member_dependencies(model, fn(dependencies) {
+        member_dependencies.Model(
+          ..dependencies,
           member_dependency_add_in_flight: False,
           member_dependency_add_error: opt.Some(err.message),
         )
@@ -1253,15 +1289,15 @@ pub fn handle_dependency_remove_clicked(
   model: Model,
   depends_on_task_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  case model.member.member_dependency_remove_in_flight {
+  case model.member.dependencies.member_dependency_remove_in_flight {
     opt.Some(_) -> #(model, effect.none())
     opt.None ->
-      case model.member.member_notes_task_id {
+      case model.member.notes.member_notes_task_id {
         opt.None -> #(model, effect.none())
         opt.Some(task_id) -> #(
-          update_member(model, fn(member) {
-            MemberModel(
-              ..member,
+          update_member_dependencies(model, fn(dependencies) {
+            member_dependencies.Model(
+              ..dependencies,
               member_dependency_remove_in_flight: opt.Some(depends_on_task_id),
             )
           }),
@@ -1286,8 +1322,11 @@ pub fn handle_dependency_removed_ok(
 ) -> #(Model, Effect(Msg)) {
   let updated = remove_dependency_from_state(model, depends_on_task_id)
   #(
-    update_member(updated, fn(member) {
-      MemberModel(..member, member_dependency_remove_in_flight: opt.None)
+    update_member_dependencies(updated, fn(dependencies) {
+      member_dependencies.Model(
+        ..dependencies,
+        member_dependency_remove_in_flight: opt.None,
+      )
     }),
     effect.none(),
   )
@@ -1297,22 +1336,28 @@ pub fn handle_dependency_removed_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
-      update_member(model, fn(member) {
-        MemberModel(..member, member_dependency_remove_in_flight: opt.None)
+      update_member_dependencies(model, fn(dependencies) {
+        member_dependencies.Model(
+          ..dependencies,
+          member_dependency_remove_in_flight: opt.None,
+        )
       }),
-      update_helpers.toast_error(err.message),
+      helpers_toast.toast_error(err.message),
     )
   })
 }
 
 fn add_dependency_to_state(model: Model, dep: TaskDependency) -> Model {
-  case model.member.member_notes_task_id {
+  case model.member.notes.member_notes_task_id {
     opt.None -> model
     opt.Some(task_id) ->
       update_member(model, fn(member) {
-        let updated_deps = case member.member_dependencies {
+        let dependencies = member.dependencies
+        let pool = member.pool
+
+        let updated_deps = case dependencies.member_dependencies {
           Loaded(list) -> Loaded([dep, ..list])
           _ -> Loaded([dep])
         }
@@ -1320,7 +1365,7 @@ fn add_dependency_to_state(model: Model, dep: TaskDependency) -> Model {
           Completed -> 0
           _ -> 1
         }
-        let updated_tasks = case member.member_tasks {
+        let updated_tasks = case pool.member_tasks {
           Loaded(tasks) ->
             Loaded(
               list.map(tasks, fn(t) {
@@ -1335,28 +1380,34 @@ fn add_dependency_to_state(model: Model, dep: TaskDependency) -> Model {
                 }
               }),
             )
-          _ -> member.member_tasks
+          _ -> pool.member_tasks
         }
         MemberModel(
           ..member,
-          member_dependencies: updated_deps,
-          member_tasks: updated_tasks,
+          dependencies: member_dependencies.Model(
+            ..dependencies,
+            member_dependencies: updated_deps,
+          ),
+          pool: member_pool.Model(..pool, member_tasks: updated_tasks),
         )
       })
   }
 }
 
 fn remove_dependency_from_state(model: Model, depends_on_task_id: Int) -> Model {
-  case model.member.member_notes_task_id {
+  case model.member.notes.member_notes_task_id {
     opt.None -> model
     opt.Some(task_id) ->
       update_member(model, fn(member) {
+        let dependencies = member.dependencies
+        let pool = member.pool
+
         let #(updated_deps, blocked_delta) =
           remove_dependency_from_list(
-            member.member_dependencies,
+            dependencies.member_dependencies,
             depends_on_task_id,
           )
-        let updated_tasks = case member.member_tasks {
+        let updated_tasks = case pool.member_tasks {
           Loaded(tasks) ->
             Loaded(
               list.map(tasks, fn(t) {
@@ -1376,12 +1427,15 @@ fn remove_dependency_from_state(model: Model, depends_on_task_id: Int) -> Model 
                 }
               }),
             )
-          _ -> member.member_tasks
+          _ -> pool.member_tasks
         }
         MemberModel(
           ..member,
-          member_dependencies: updated_deps,
-          member_tasks: updated_tasks,
+          dependencies: member_dependencies.Model(
+            ..dependencies,
+            member_dependencies: updated_deps,
+          ),
+          pool: member_pool.Model(..pool, member_tasks: updated_tasks),
         )
       })
   }
@@ -1409,4 +1463,34 @@ fn remove_dependency_from_list(
     }
     _ -> #(deps_remote, 0)
   }
+}
+
+fn update_member_pool(
+  model: Model,
+  f: fn(member_pool.Model) -> member_pool.Model,
+) -> Model {
+  update_member(model, fn(member) {
+    let pool = member.pool
+    MemberModel(..member, pool: f(pool))
+  })
+}
+
+fn update_member_notes(
+  model: Model,
+  f: fn(member_notes.Model) -> member_notes.Model,
+) -> Model {
+  update_member(model, fn(member) {
+    let notes = member.notes
+    MemberModel(..member, notes: f(notes))
+  })
+}
+
+fn update_member_dependencies(
+  model: Model,
+  f: fn(member_dependencies.Model) -> member_dependencies.Model,
+) -> Model {
+  update_member(model, fn(member) {
+    let dependencies = member.dependencies
+    MemberModel(..member, dependencies: f(dependencies))
+  })
 }

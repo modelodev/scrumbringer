@@ -30,12 +30,16 @@ import scrumbringer_client/client_state.{
   type Model, type Msg, CoreModel, admin_msg, update_admin, update_core,
 }
 import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/update_helpers
 
 // API modules
 import scrumbringer_client/api/org as api_org
+import scrumbringer_client/helpers/auth as helpers_auth
+import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/helpers/lookup as helpers_lookup
+import scrumbringer_client/helpers/toast as helpers_toast
 
 // =============================================================================
 // Org Users Cache Handlers
@@ -48,7 +52,9 @@ pub fn handle_org_users_cache_fetched_ok(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      admin_state.AdminModel(..admin, org_users_cache: Loaded(users))
+      update_members(admin, fn(members_state) {
+        admin_members.Model(..members_state, org_users_cache: Loaded(users))
+      })
     }),
     effect.none(),
   )
@@ -59,10 +65,12 @@ pub fn handle_org_users_cache_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
       update_admin(model, fn(admin) {
-        admin_state.AdminModel(..admin, org_users_cache: Failed(err))
+        update_members(admin, fn(members_state) {
+          admin_members.Model(..members_state, org_users_cache: Failed(err))
+        })
       }),
       effect.none(),
     )
@@ -80,13 +88,15 @@ pub fn handle_org_settings_users_fetched_ok(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        org_settings_users: Loaded(users),
-        org_settings_save_in_flight: False,
-        org_settings_error: opt.None,
-        org_settings_error_user_id: opt.None,
-      )
+      update_members(admin, fn(members_state) {
+        admin_members.Model(
+          ..members_state,
+          org_settings_users: Loaded(users),
+          org_settings_save_in_flight: False,
+          org_settings_error: opt.None,
+          org_settings_error_user_id: opt.None,
+        )
+      })
     }),
     effect.none(),
   )
@@ -97,15 +107,17 @@ pub fn handle_org_settings_users_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     case err.status {
       403 -> {
         let model =
           update_admin(model, fn(admin) {
-            admin_state.AdminModel(..admin, org_settings_users: Failed(err))
+            update_members(admin, fn(members_state) {
+              admin_members.Model(..members_state, org_settings_users: Failed(err))
+            })
           })
         let toast_fx =
-          update_helpers.toast_warning(update_helpers.i18n_t(
+          helpers_toast.toast_warning(helpers_i18n.i18n_t(
             model,
             i18n_text.NotPermitted,
           ))
@@ -114,7 +126,9 @@ pub fn handle_org_settings_users_fetched_error(
 
       _ -> #(
         update_admin(model, fn(admin) {
-          admin_state.AdminModel(..admin, org_settings_users: Failed(err))
+          update_members(admin, fn(members_state) {
+            admin_members.Model(..members_state, org_settings_users: Failed(err))
+          })
         }),
         effect.none(),
       )
@@ -132,7 +146,7 @@ pub fn handle_org_settings_role_changed(
   user_id: Int,
   org_role: org_role.OrgRole,
 ) -> #(Model, Effect(Msg)) {
-  case model.admin.org_settings_save_in_flight {
+  case model.admin.members.org_settings_save_in_flight {
     True -> #(model, effect.none())
 
     False -> {
@@ -143,12 +157,14 @@ pub fn handle_org_settings_role_changed(
         False -> {
           let model =
             update_admin(model, fn(admin) {
-              admin_state.AdminModel(
-                ..admin,
-                org_settings_save_in_flight: True,
-                org_settings_error: opt.None,
-                org_settings_error_user_id: opt.None,
-              )
+              update_members(admin, fn(members_state) {
+                admin_members.Model(
+                  ..members_state,
+                  org_settings_save_in_flight: True,
+                  org_settings_error: opt.None,
+                  org_settings_error_user_id: opt.None,
+                )
+              })
             })
 
           #(
@@ -173,7 +189,7 @@ pub fn handle_org_settings_delete_clicked(
   user_id: Int,
 ) -> #(Model, Effect(Msg)) {
   let maybe_user =
-    update_helpers.resolve_org_user(model.admin.org_users_cache, user_id)
+    helpers_lookup.resolve_org_user(model.admin.members.org_users_cache, user_id)
 
   let user = case maybe_user {
     opt.Some(user) -> user
@@ -182,11 +198,13 @@ pub fn handle_org_settings_delete_clicked(
 
   #(
     update_admin(model, fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        org_settings_delete_confirm: opt.Some(user),
-        org_settings_delete_error: opt.None,
-      )
+      update_members(admin, fn(members_state) {
+        admin_members.Model(
+          ..members_state,
+          org_settings_delete_confirm: opt.Some(user),
+          org_settings_delete_error: opt.None,
+        )
+      })
     }),
     effect.none(),
   )
@@ -198,11 +216,13 @@ pub fn handle_org_settings_delete_cancelled(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        org_settings_delete_confirm: opt.None,
-        org_settings_delete_error: opt.None,
-      )
+      update_members(admin, fn(members_state) {
+        admin_members.Model(
+          ..members_state,
+          org_settings_delete_confirm: opt.None,
+          org_settings_delete_error: opt.None,
+        )
+      })
     }),
     effect.none(),
   )
@@ -213,18 +233,20 @@ pub fn handle_org_settings_delete_cancelled(
 pub fn handle_org_settings_delete_confirmed(
   model: Model,
 ) -> #(Model, Effect(Msg)) {
-  case model.admin.org_settings_delete_in_flight {
+  case model.admin.members.org_settings_delete_in_flight {
     True -> #(model, effect.none())
     False ->
-      case model.admin.org_settings_delete_confirm {
+      case model.admin.members.org_settings_delete_confirm {
         opt.Some(user) -> {
           let model =
             update_admin(model, fn(admin) {
-              admin_state.AdminModel(
-                ..admin,
-                org_settings_delete_in_flight: True,
-                org_settings_delete_error: opt.None,
-              )
+              update_members(admin, fn(members_state) {
+                admin_members.Model(
+                  ..members_state,
+                  org_settings_delete_in_flight: True,
+                  org_settings_delete_error: opt.None,
+                )
+              })
             })
           #(
             model,
@@ -256,12 +278,12 @@ pub fn handle_org_settings_saved_ok(
     })
   }
 
-  let org_settings_users = case model.admin.org_settings_users {
+  let org_settings_users = case model.admin.members.org_settings_users {
     Loaded(users) -> Loaded(update_list(users))
     other -> other
   }
 
-  let org_users_cache = case model.admin.org_users_cache {
+  let org_users_cache = case model.admin.members.org_users_cache {
     Loaded(users) -> Loaded(update_list(users))
     other -> other
   }
@@ -275,18 +297,20 @@ pub fn handle_org_settings_saved_ok(
 
   let model =
     update_admin(model, fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        org_settings_users: org_settings_users,
-        org_users_cache: org_users_cache,
-        org_settings_save_in_flight: False,
-        org_settings_error: opt.None,
-        org_settings_error_user_id: opt.None,
-      )
+      update_members(admin, fn(members_state) {
+        admin_members.Model(
+          ..members_state,
+          org_settings_users: org_settings_users,
+          org_users_cache: org_users_cache,
+          org_settings_save_in_flight: False,
+          org_settings_error: opt.None,
+          org_settings_error_user_id: opt.None,
+        )
+      })
     })
   let model = update_core(model, fn(core) { CoreModel(..core, user: user) })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.RoleUpdated,
     ))
@@ -295,7 +319,7 @@ pub fn handle_org_settings_saved_ok(
 
 /// Handle org settings delete success.
 pub fn handle_org_settings_deleted_ok(model: Model) -> #(Model, Effect(Msg)) {
-  let removed_id = case model.admin.org_settings_delete_confirm {
+  let removed_id = case model.admin.members.org_settings_delete_confirm {
     opt.Some(user) -> user.id
     opt.None -> -1
   }
@@ -304,30 +328,32 @@ pub fn handle_org_settings_deleted_ok(model: Model) -> #(Model, Effect(Msg)) {
     list.filter(users, fn(u) { u.id != removed_id })
   }
 
-  let org_settings_users = case model.admin.org_settings_users {
+  let org_settings_users = case model.admin.members.org_settings_users {
     Loaded(users) -> Loaded(filter_users(users))
     other -> other
   }
 
-  let org_users_cache = case model.admin.org_users_cache {
+  let org_users_cache = case model.admin.members.org_users_cache {
     Loaded(users) -> Loaded(filter_users(users))
     other -> other
   }
 
   let model =
     update_admin(model, fn(admin) {
-      admin_state.AdminModel(
-        ..admin,
-        org_settings_users: org_settings_users,
-        org_users_cache: org_users_cache,
-        org_settings_delete_in_flight: False,
-        org_settings_delete_confirm: opt.None,
-        org_settings_delete_error: opt.None,
-      )
+      update_members(admin, fn(members_state) {
+        admin_members.Model(
+          ..members_state,
+          org_settings_users: org_settings_users,
+          org_users_cache: org_users_cache,
+          org_settings_delete_in_flight: False,
+          org_settings_delete_confirm: opt.None,
+          org_settings_delete_error: opt.None,
+        )
+      })
     })
 
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.UserDeleted,
     ))
@@ -339,41 +365,47 @@ pub fn handle_org_settings_deleted_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     case err.status {
       403 -> #(
         update_admin(model, fn(admin) {
-          admin_state.AdminModel(
-            ..admin,
-            org_settings_delete_in_flight: False,
-            org_settings_delete_error: opt.Some(update_helpers.i18n_t(
-              model,
-              i18n_text.NotPermitted,
-            )),
-          )
+          update_members(admin, fn(members_state) {
+            admin_members.Model(
+              ..members_state,
+              org_settings_delete_in_flight: False,
+              org_settings_delete_error: opt.Some(helpers_i18n.i18n_t(
+                model,
+                i18n_text.NotPermitted,
+              )),
+            )
+          })
         }),
-        update_helpers.toast_warning(update_helpers.i18n_t(
+        helpers_toast.toast_warning(helpers_i18n.i18n_t(
           model,
           i18n_text.NotPermitted,
         )),
       )
       409 -> #(
         update_admin(model, fn(admin) {
-          admin_state.AdminModel(
-            ..admin,
-            org_settings_delete_in_flight: False,
-            org_settings_delete_error: opt.Some(err.message),
-          )
+          update_members(admin, fn(members_state) {
+            admin_members.Model(
+              ..members_state,
+              org_settings_delete_in_flight: False,
+              org_settings_delete_error: opt.Some(err.message),
+            )
+          })
         }),
-        update_helpers.toast_warning(err.message),
+        helpers_toast.toast_warning(err.message),
       )
       _ -> #(
         update_admin(model, fn(admin) {
-          admin_state.AdminModel(
-            ..admin,
-            org_settings_delete_in_flight: False,
-            org_settings_delete_error: opt.Some(err.message),
-          )
+          update_members(admin, fn(members_state) {
+            admin_members.Model(
+              ..members_state,
+              org_settings_delete_in_flight: False,
+              org_settings_delete_error: opt.Some(err.message),
+            )
+          })
         }),
         effect.none(),
       )
@@ -387,15 +419,20 @@ pub fn handle_org_settings_saved_error(
   user_id: Int,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     case err.status {
       403 -> {
         let model =
           update_admin(model, fn(admin) {
-            admin_state.AdminModel(..admin, org_settings_save_in_flight: False)
+            update_members(admin, fn(members_state) {
+              admin_members.Model(
+                ..members_state,
+                org_settings_save_in_flight: False,
+              )
+            })
           })
         let toast_fx =
-          update_helpers.toast_warning(update_helpers.i18n_t(
+          helpers_toast.toast_warning(helpers_i18n.i18n_t(
             model,
             i18n_text.NotPermitted,
           ))
@@ -404,24 +441,28 @@ pub fn handle_org_settings_saved_error(
 
       409 -> #(
         update_admin(model, fn(admin) {
-          admin_state.AdminModel(
-            ..admin,
-            org_settings_save_in_flight: False,
-            org_settings_error_user_id: opt.Some(user_id),
-            org_settings_error: opt.Some(err.message),
-          )
+          update_members(admin, fn(members_state) {
+            admin_members.Model(
+              ..members_state,
+              org_settings_save_in_flight: False,
+              org_settings_error_user_id: opt.Some(user_id),
+              org_settings_error: opt.Some(err.message),
+            )
+          })
         }),
         effect.none(),
       )
 
       _ -> #(
         update_admin(model, fn(admin) {
-          admin_state.AdminModel(
-            ..admin,
-            org_settings_save_in_flight: False,
-            org_settings_error_user_id: opt.Some(user_id),
-            org_settings_error: opt.Some(err.message),
-          )
+          update_members(admin, fn(members_state) {
+            admin_members.Model(
+              ..members_state,
+              org_settings_save_in_flight: False,
+              org_settings_error_user_id: opt.Some(user_id),
+              org_settings_error: opt.Some(err.message),
+            )
+          })
         }),
         effect.none(),
       )
@@ -436,7 +477,7 @@ pub fn handle_org_settings_saved_error(
 // Justification: nested case improves clarity for branching logic.
 /// Look up user's current role from org_settings_users.
 fn get_current_user_role(model: Model, user_id: Int) -> org_role.OrgRole {
-  case model.admin.org_settings_users {
+  case model.admin.members.org_settings_users {
     Loaded(users) ->
       case list.find(users, fn(u) { u.id == user_id }) {
         Ok(u) -> u.org_role
@@ -453,4 +494,11 @@ fn fallback_org_user(user_id: Int) -> OrgUser {
     org_role: org_role.Member,
     created_at: "",
   )
+}
+
+fn update_members(
+  admin: admin_state.AdminModel,
+  f: fn(admin_members.Model) -> admin_members.Model,
+) -> admin_state.AdminModel {
+  admin_state.AdminModel(..admin, members: f(admin.members))
 }

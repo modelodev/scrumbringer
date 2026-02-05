@@ -29,7 +29,7 @@ pub fn refresh_section_fetches_workflows_test() {
   let #(next, effects) = client_update.refresh_section_for_test(model)
 
   // Workflows are now project-scoped only
-  next.admin.workflows_project |> should.equal(Loading)
+  next.admin.workflows.workflows_project |> should.equal(Loading)
 
   effects |> should.not_equal(effect.none())
 }

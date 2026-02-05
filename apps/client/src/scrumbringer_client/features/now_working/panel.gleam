@@ -32,10 +32,12 @@ import lustre/element/html.{div, h3, text}
 import domain/task.{type WorkSession, Task, WorkSession}
 
 import scrumbringer_client/client_ffi
-import scrumbringer_client/client_state.{
-  type Model, type Msg, MemberCompleteClicked, MemberNowWorkingPauseClicked,
-  pool_msg,
-}
+import scrumbringer_client/client_state.{type Model, type Msg, pool_msg}
+import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/helpers/lookup as helpers_lookup
+import scrumbringer_client/helpers/selection as helpers_selection
+import scrumbringer_client/helpers/time as helpers_time
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/empty_state
@@ -43,7 +45,6 @@ import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_item
-import scrumbringer_client/update_helpers
 
 // =============================================================================
 // Now Working Section View
@@ -52,19 +53,19 @@ import scrumbringer_client/update_helpers
 /// Now Working section within the right panel.
 /// Shows all active tasks with their timers, or empty state.
 pub fn view(model: Model) -> Element(Msg) {
-  let error_el = case model.member.member_now_working_error {
+  let error_el = case model.member.now_working.member_now_working_error {
     opt.Some(err) -> error_notice.view(err)
     opt.None -> element.none()
   }
 
-  let sessions = update_helpers.now_working_all_sessions(model)
+  let sessions = helpers_selection.now_working_all_sessions(model)
   let session_count = list.length(sessions)
 
   // Header with count if multiple sessions
   let header_text = case session_count {
-    0 | 1 -> update_helpers.i18n_t(model, i18n_text.NowWorking)
+    0 | 1 -> helpers_i18n.i18n_t(model, i18n_text.NowWorking)
     n ->
-      update_helpers.i18n_t(model, i18n_text.NowWorking)
+      helpers_i18n.i18n_t(model, i18n_text.NowWorking)
       <> " ("
       <> int.to_string(n)
       <> ")"
@@ -79,7 +80,7 @@ pub fn view(model: Model) -> Element(Msg) {
           div([attribute.class("now-working-empty")], [
             empty_state.simple(
               icons.Clock,
-              update_helpers.i18n_t(model, i18n_text.NowWorkingNone),
+              helpers_i18n.i18n_t(model, i18n_text.NowWorkingNone),
             ),
           ]),
           error_el,
@@ -110,24 +111,24 @@ fn view_session(model: Model, session: WorkSession) -> Element(Msg) {
   let WorkSession(task_id: task_id, ..) = session
 
   let task_info =
-    update_helpers.find_task_by_id(model.member.member_tasks, task_id)
+    helpers_lookup.find_task_by_id(model.member.pool.member_tasks, task_id)
   let title = case task_info {
     opt.Some(Task(title: t, ..)) -> t
-    opt.None -> update_helpers.i18n_t(model, i18n_text.TaskNumber(task_id))
+    opt.None -> helpers_i18n.i18n_t(model, i18n_text.TaskNumber(task_id))
   }
 
   let elapsed = session_elapsed(model, session)
   let disable_actions =
-    model.member.member_task_mutation_in_flight
-    || model.member.member_now_working_in_flight
+    model.member.pool.member_task_mutation_in_flight
+    || model.member.now_working.member_now_working_in_flight
 
   let actions = case task_info {
     opt.Some(Task(version: version, ..)) ->
       task_actions.pause_and_complete(
-        update_helpers.i18n_t(model, i18n_text.Pause),
-        pool_msg(MemberNowWorkingPauseClicked),
-        update_helpers.i18n_t(model, i18n_text.Complete),
-        pool_msg(MemberCompleteClicked(task_id, version)),
+        helpers_i18n.i18n_t(model, i18n_text.Pause),
+        pool_msg(pool_messages.MemberNowWorkingPauseClicked),
+        helpers_i18n.i18n_t(model, i18n_text.Complete),
+        pool_msg(pool_messages.MemberCompleteClicked(task_id, version)),
         action_buttons.SizeXs,
         disable_actions,
         "",
@@ -167,8 +168,9 @@ fn session_elapsed(model: Model, session: WorkSession) -> String {
     session
   let started_ms = client_ffi.parse_iso_ms(started_at)
   let local_now_ms = client_ffi.now_ms()
-  let server_now_ms = local_now_ms - model.member.now_working_server_offset_ms
-  update_helpers.now_working_elapsed_from_ms(
+  let server_now_ms =
+    local_now_ms - model.member.now_working.now_working_server_offset_ms
+  helpers_time.now_working_elapsed_from_ms(
     accumulated_s,
     started_ms,
     server_now_ms,

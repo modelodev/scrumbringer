@@ -25,10 +25,12 @@ import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/router
-import scrumbringer_client/update_helpers
 
 import scrumbringer_client/api/org as api_org
 import scrumbringer_client/api/projects as api_projects
+import scrumbringer_client/helpers/auth as helpers_auth
+import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/helpers/toast as helpers_toast
 
 // =============================================================================
 // Helpers
@@ -217,16 +219,16 @@ fn handle_role_change_error(
   model: client_state.Model,
   err: ApiError,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     case err.status {
       422 -> #(
         model,
-        update_helpers.toast_warning(update_helpers.i18n_t(
+        helpers_toast.toast_warning(helpers_i18n.i18n_t(
           model,
           i18n_text.CannotDemoteLastManager,
         )),
       )
-      _ -> #(model, update_helpers.toast_error(err.message))
+      _ -> #(model, helpers_toast.toast_error(err.message))
     }
   })
 }
@@ -313,7 +315,7 @@ pub fn handle_assignments_project_members_fetched(
     )
 
     Error(err) ->
-      update_helpers.handle_401_or(model, err, fn() {
+      helpers_auth.handle_401_or(model, err, fn() {
         #(
           update_assignments(model, fn(assignments) {
             set_project_members_state(assignments, project_id, remote_state)
@@ -339,7 +341,7 @@ pub fn handle_assignments_user_projects_fetched(
     )
 
     Error(err) ->
-      update_helpers.handle_401_or(model, err, fn() {
+      helpers_auth.handle_401_or(model, err, fn() {
         #(
           update_assignments(model, fn(assignments) {
             set_user_projects_state(assignments, user_id, remote_state)
@@ -528,9 +530,9 @@ pub fn handle_assignments_project_member_added_error(
   model: client_state.Model,
   err: ApiError,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     let model = update_assignments(model, clear_inline_add)
-    #(model, update_helpers.toast_error(err.message))
+    #(model, helpers_toast.toast_error(err.message))
   })
 }
 
@@ -569,9 +571,9 @@ pub fn handle_assignments_user_project_added_error(
   model: client_state.Model,
   err: ApiError,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     let model = update_assignments(model, clear_inline_add)
-    #(model, update_helpers.toast_error(err.message))
+    #(model, helpers_toast.toast_error(err.message))
   })
 }
 
@@ -682,8 +684,8 @@ pub fn handle_assignments_remove_completed_error(
   model: client_state.Model,
   err: ApiError,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
-    #(model, update_helpers.toast_error(err.message))
+  helpers_auth.handle_401_or(model, err, fn() {
+    #(model, helpers_toast.toast_error(err.message))
   })
 }
 
@@ -741,7 +743,7 @@ pub fn handle_assignments_role_change_completed_ok(
       )
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.RoleUpdated,
     ))

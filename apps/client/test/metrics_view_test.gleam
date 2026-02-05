@@ -9,6 +9,7 @@ import gleam/option as opt
 
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/admin/metrics as admin_metrics
 import scrumbringer_client/features/metrics/view as metrics_view
 
 pub fn main() {
@@ -43,7 +44,13 @@ pub fn overview_no_sample_renders_label_test() {
   let model =
     base_model()
     |> client_state.update_admin(fn(admin) {
-      admin_state.AdminModel(..admin, admin_metrics_overview: Loaded(overview))
+      admin_state.AdminModel(
+        ..admin,
+        metrics: admin_metrics.Model(
+          ..admin.metrics,
+          admin_metrics_overview: Loaded(overview),
+        ),
+      )
     })
 
   let html =

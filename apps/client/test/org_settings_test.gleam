@@ -12,9 +12,11 @@ import domain/org_role
 import domain/remote.{Loaded}
 import domain/user.{type User, User}
 import scrumbringer_client/client_state.{
-  type Model, Admin, CoreModel, UiModel, update_admin, update_core, update_ui,
+  type Model, Admin, CoreModel, update_admin, update_core, update_ui,
 }
 import scrumbringer_client/client_state/admin.{AdminModel}
+import scrumbringer_client/client_state/admin/members as admin_members
+import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/features/admin/org_settings
 import scrumbringer_client/permissions
 import scrumbringer_client/ui/toast
@@ -176,7 +178,13 @@ pub fn saved_ok_updates_org_settings_users_list_test() {
   let existing_user = make_org_user(42, org_role.Member)
   let model =
     update_admin(base_model(), fn(admin) {
-      AdminModel(..admin, org_settings_users: Loaded([existing_user]))
+      AdminModel(
+        ..admin,
+        members: admin_members.Model(
+          ..admin.members,
+          org_settings_users: Loaded([existing_user]),
+        ),
+      )
     })
 
   // Action: update user 42 to admin
@@ -185,7 +193,7 @@ pub fn saved_ok_updates_org_settings_users_list_test() {
     org_settings.handle_org_settings_saved_ok(model, updated_org_user)
 
   // Assert: org_settings_users should have updated role
-  case next.admin.org_settings_users {
+  case next.admin.members.org_settings_users {
     Loaded([u]) -> u.org_role |> should.equal(org_role.Admin)
     _ -> should.fail()
   }
@@ -196,7 +204,13 @@ pub fn saved_ok_updates_org_users_cache_test() {
   let existing_user = make_org_user(42, org_role.Member)
   let model =
     update_admin(base_model(), fn(admin) {
-      AdminModel(..admin, org_users_cache: Loaded([existing_user]))
+      AdminModel(
+        ..admin,
+        members: admin_members.Model(
+          ..admin.members,
+          org_users_cache: Loaded([existing_user]),
+        ),
+      )
     })
 
   // Action: update user 42 to admin
@@ -205,7 +219,7 @@ pub fn saved_ok_updates_org_users_cache_test() {
     org_settings.handle_org_settings_saved_ok(model, updated_org_user)
 
   // Assert: org_users_cache should have updated role
-  case next.admin.org_users_cache {
+  case next.admin.members.org_users_cache {
     Loaded([u]) -> u.org_role |> should.equal(org_role.Admin)
     _ -> should.fail()
   }
@@ -217,9 +231,12 @@ pub fn saved_ok_clears_in_flight_and_error_state_test() {
     update_admin(base_model(), fn(admin) {
       AdminModel(
         ..admin,
-        org_settings_save_in_flight: True,
-        org_settings_error: opt.Some("Previous error"),
-        org_settings_error_user_id: opt.Some(42),
+        members: admin_members.Model(
+          ..admin.members,
+          org_settings_save_in_flight: True,
+          org_settings_error: opt.Some("Previous error"),
+          org_settings_error_user_id: opt.Some(42),
+        ),
       )
     })
 
@@ -229,9 +246,9 @@ pub fn saved_ok_clears_in_flight_and_error_state_test() {
     org_settings.handle_org_settings_saved_ok(model, updated_org_user)
 
   // Assert: in-flight and error state should be cleared
-  next.admin.org_settings_save_in_flight |> should.be_false
-  next.admin.org_settings_error |> should.equal(opt.None)
-  next.admin.org_settings_error_user_id |> should.equal(opt.None)
+  next.admin.members.org_settings_save_in_flight |> should.be_false
+  next.admin.members.org_settings_error |> should.equal(opt.None)
+  next.admin.members.org_settings_error_user_id |> should.equal(opt.None)
 }
 
 pub fn saved_ok_returns_no_effect_test() {
@@ -252,16 +269,24 @@ pub fn role_changed_triggers_save_when_role_diff_test() {
   let user = make_org_user(1, org_role.Member)
   let model =
     update_admin(base_model(), fn(admin) {
-      AdminModel(..admin, org_settings_users: Loaded([user]))
+      AdminModel(
+        ..admin,
+        members: admin_members.Model(
+          ..admin.members,
+          org_settings_users: Loaded([user]),
+        ),
+      )
     })
 
   let #(updated_model, fx) =
     org_settings.handle_org_settings_role_changed(model, 1, org_role.Admin)
 
-  updated_model.admin.org_settings_save_in_flight
+  updated_model.admin.members.org_settings_save_in_flight
   |> should.equal(True)
-  updated_model.admin.org_settings_error |> should.equal(opt.None)
-  updated_model.admin.org_settings_error_user_id |> should.equal(opt.None)
+  updated_model.admin.members.org_settings_error |> should.equal(opt.None)
+  updated_model.admin.members.org_settings_error_user_id |> should.equal(
+    opt.None,
+  )
   should.be_false(fx == effect.none())
 }
 
@@ -269,13 +294,19 @@ pub fn role_changed_noop_when_role_is_same_test() {
   let user = make_org_user(1, org_role.Member)
   let model =
     update_admin(base_model(), fn(admin) {
-      AdminModel(..admin, org_settings_users: Loaded([user]))
+      AdminModel(
+        ..admin,
+        members: admin_members.Model(
+          ..admin.members,
+          org_settings_users: Loaded([user]),
+        ),
+      )
     })
 
   let #(updated_model, fx) =
     org_settings.handle_org_settings_role_changed(model, 1, org_role.Member)
 
-  updated_model.admin.org_settings_save_in_flight
+  updated_model.admin.members.org_settings_save_in_flight
   |> should.equal(False)
   fx |> should.equal(effect.none())
 }
@@ -286,15 +317,18 @@ pub fn role_changed_ignored_when_in_flight_test() {
     update_admin(base_model(), fn(admin) {
       AdminModel(
         ..admin,
-        org_settings_users: Loaded([user]),
-        org_settings_save_in_flight: True,
+        members: admin_members.Model(
+          ..admin.members,
+          org_settings_users: Loaded([user]),
+          org_settings_save_in_flight: True,
+        ),
       )
     })
 
   let #(updated_model, fx) =
     org_settings.handle_org_settings_role_changed(model, 1, org_role.Admin)
 
-  updated_model.admin.org_settings_save_in_flight
+  updated_model.admin.members.org_settings_save_in_flight
   |> should.equal(True)
   fx |> should.equal(effect.none())
 }
@@ -306,11 +340,14 @@ pub fn saved_ok_shows_toast_test() {
       update_admin(base_model(), fn(admin) {
         AdminModel(
           ..admin,
-          org_settings_users: Loaded([user]),
-          org_settings_save_in_flight: True,
+          members: admin_members.Model(
+            ..admin.members,
+            org_settings_users: Loaded([user]),
+            org_settings_save_in_flight: True,
+          ),
         )
       }),
-      fn(ui) { UiModel(..ui, toast_state: toast.init()) },
+      fn(ui) { ui_state.UiModel(..ui, toast_state: toast.init()) },
     )
 
   let #(_updated_model, fx) =

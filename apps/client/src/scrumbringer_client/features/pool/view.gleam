@@ -48,6 +48,8 @@ import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/panel as now_working_panel
 import scrumbringer_client/features/pool/filters as pool_filters
 import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/helpers/selection as helpers_selection
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/ui/action_buttons
@@ -62,7 +64,6 @@ import scrumbringer_client/ui/task_hover_popup
 import scrumbringer_client/ui/task_item
 import scrumbringer_client/ui/task_status_utils
 import scrumbringer_client/ui/task_type_icon
-import scrumbringer_client/update_helpers
 import scrumbringer_client/utils/card_queries
 
 // =============================================================================
@@ -81,7 +82,7 @@ type AvailableTasksState {
 
 /// Determines the current state of available tasks.
 fn get_available_tasks_state(model: Model) -> AvailableTasksState {
-  case model.member.member_tasks {
+  case model.member.pool.member_tasks {
     NotAsked | Loading -> TasksLoading
     Failed(err) -> TasksError(err.message)
     Loaded(tasks) -> {
@@ -100,19 +101,19 @@ fn get_available_tasks_state(model: Model) -> AvailableTasksState {
 
 /// Checks if any filters are active.
 fn has_active_filters(model: Model) -> Bool {
-  model.member.member_filters_type_id != opt.None
-  || model.member.member_filters_capability_id != opt.None
-  || string.trim(model.member.member_filters_q) != ""
+  model.member.pool.member_filters_type_id != opt.None
+  || model.member.pool.member_filters_capability_id != opt.None
+  || string.trim(model.member.pool.member_filters_q) != ""
 }
 
 // Justification: nested case improves clarity for branching logic.
 /// Renders the main pool section with filters, canvas/list toggle, and tasks.
 pub fn view_pool_main(model: Model, _user: User) -> Element(Msg) {
-  case update_helpers.active_projects(model) {
+  case helpers_selection.active_projects(model) {
     [] ->
       div([attribute.class("empty")], [
-        h2([], [text(update_helpers.i18n_t(model, i18n_text.NoProjectsYet))]),
-        p([], [text(update_helpers.i18n_t(model, i18n_text.NoProjectsBody))]),
+        h2([], [text(helpers_i18n.i18n_t(model, i18n_text.NoProjectsYet))]),
+        p([], [text(helpers_i18n.i18n_t(model, i18n_text.NoProjectsBody))]),
       ])
 
     _ -> {
@@ -127,7 +128,7 @@ pub fn view_pool_main(model: Model, _user: User) -> Element(Msg) {
 
 /// Renders the right panel with claimed tasks dropzone.
 pub fn view_right_panel(model: Model, user: User) -> Element(Msg) {
-  let #(drag_armed, drag_over) = case model.member.member_pool_drag {
+  let #(drag_armed, drag_over) = case model.member.pool.member_pool_drag {
     PoolDragDragging(over_my_tasks: over, ..) -> #(True, over)
     PoolDragPendingRect -> #(True, False)
     PoolDragIdle -> #(False, False)
@@ -139,7 +140,7 @@ pub fn view_right_panel(model: Model, user: User) -> Element(Msg) {
     False, _ -> "pool-my-tasks-dropzone"
   }
 
-  let claimed_tasks = case model.member.member_tasks {
+  let claimed_tasks = case model.member.pool.member_tasks {
     Loaded(tasks) ->
       tasks
       |> list.filter(fn(t) {
@@ -158,7 +159,7 @@ pub fn view_right_panel(model: Model, user: User) -> Element(Msg) {
     // Now Working section (unified)
     now_working_panel.view(model),
     // My Tasks section with dropzone
-    h3([], [text(update_helpers.i18n_t(model, i18n_text.MyTasks))]),
+    h3([], [text(helpers_i18n.i18n_t(model, i18n_text.MyTasks))]),
     div(
       [
         attribute.attribute("id", "pool-my-tasks"),
@@ -169,9 +170,9 @@ pub fn view_right_panel(model: Model, user: User) -> Element(Msg) {
           True ->
             div([attribute.class("dropzone-hint")], [
               text(
-                update_helpers.i18n_t(model, i18n_text.Claim)
+                helpers_i18n.i18n_t(model, i18n_text.Claim)
                 <> ": "
-                <> update_helpers.i18n_t(model, i18n_text.MyTasks),
+                <> helpers_i18n.i18n_t(model, i18n_text.MyTasks),
               ),
             ])
           False -> element.none()
@@ -181,7 +182,7 @@ pub fn view_right_panel(model: Model, user: User) -> Element(Msg) {
           [] ->
             empty_state.simple(
               icons.Hand,
-              update_helpers.i18n_t(model, i18n_text.NoClaimedTasks),
+              helpers_i18n.i18n_t(model, i18n_text.NoClaimedTasks),
             )
           _ ->
             keyed.div(
@@ -259,7 +260,7 @@ fn view_tasks(model: Model) -> Element(Msg) {
 /// Loading state view.
 fn view_tasks_loading(model: Model) -> Element(Msg) {
   div([attribute.class("empty")], [
-    text(update_helpers.i18n_t(model, i18n_text.LoadingEllipsis)),
+    text(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)),
   ])
 }
 
@@ -272,7 +273,7 @@ fn view_tasks_error(message: String) -> Element(Msg) {
 fn view_tasks_no_matches(model: Model) -> Element(Msg) {
   empty_state.simple(
     icons.Search,
-    update_helpers.i18n_t(model, i18n_text.NoTasksMatchYourFilters),
+    helpers_i18n.i18n_t(model, i18n_text.NoTasksMatchYourFilters),
   )
 }
 
@@ -280,11 +281,11 @@ fn view_tasks_no_matches(model: Model) -> Element(Msg) {
 fn view_tasks_onboarding(model: Model) -> Element(Msg) {
   empty_state.new(
     icons.Target,
-    update_helpers.i18n_t(model, i18n_text.NoAvailableTasksRightNow),
-    update_helpers.i18n_t(model, i18n_text.CreateFirstTaskToStartUsingPool),
+    helpers_i18n.i18n_t(model, i18n_text.NoAvailableTasksRightNow),
+    helpers_i18n.i18n_t(model, i18n_text.CreateFirstTaskToStartUsingPool),
   )
   |> empty_state.with_action(
-    update_helpers.i18n_t(model, i18n_text.NewTask),
+    helpers_i18n.i18n_t(model, i18n_text.NewTask),
     pool_msg(pool_messages.MemberCreateDialogOpened),
   )
   |> empty_state.view
@@ -292,7 +293,7 @@ fn view_tasks_onboarding(model: Model) -> Element(Msg) {
 
 /// Renders task collection in the selected view mode.
 fn view_tasks_collection(model: Model, tasks: List(Task)) -> Element(Msg) {
-  case model.member.member_pool_view_mode {
+  case model.member.pool.member_pool_view_mode {
     pool_prefs.Canvas -> view_tasks_canvas(model, tasks)
     pool_prefs.List -> view_tasks_list(model, tasks)
   }
@@ -338,13 +339,13 @@ pub fn view_pool_task_row(model: Model, task: Task) -> Element(Msg) {
 
   let type_icon = task_type.icon
 
-  let disable_actions = model.member.member_task_mutation_in_flight
+  let disable_actions = model.member.pool.member_task_mutation_in_flight
 
   let claim_actions = case blocked_count > 0 {
     True -> []
     False ->
       task_actions.claim_only(
-        update_helpers.i18n_t(model, i18n_text.Claim),
+        helpers_i18n.i18n_t(model, i18n_text.Claim),
         pool_msg(pool_messages.MemberClaimClicked(id, version)),
         action_buttons.SizeXs,
         disable_actions,
@@ -418,7 +419,8 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
   }
 
   // Get saved position or generate deterministic initial position based on task ID
-  let #(x, y) = case dict.get(model.member.member_positions_by_task, id) {
+  let #(x, y) =
+    case dict.get(model.member.positions.member_positions_by_task, id) {
     Ok(xy) -> xy
     Error(_) -> {
       // Generate spread-out initial positions using task ID as seed
@@ -457,7 +459,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     s -> with_border <> " " <> s
   }
   let card_classes = card_classes <> blocked_class
-  let card_classes = case model.member.member_pool_preview_task_id {
+  let card_classes = case model.member.pool.member_pool_preview_task_id {
     opt.Some(preview_id) if preview_id == id -> card_classes <> " touch-preview"
     _ -> card_classes
   }
@@ -473,13 +475,13 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     <> int.to_string(size)
     <> "px;"
 
-  let disable_actions = model.member.member_task_mutation_in_flight
+  let disable_actions = model.member.pool.member_task_mutation_in_flight
 
   let primary_action = case status, is_mine {
     Available, _ if blocked_count > 0 -> element.none()
     Available, _ ->
       task_actions.claim_icon(
-        update_helpers.i18n_t(model, i18n_text.Claim),
+        helpers_i18n.i18n_t(model, i18n_text.Claim),
         pool_msg(pool_messages.MemberClaimClicked(id, version)),
         action_buttons.SizeXs,
         disable_actions,
@@ -490,7 +492,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
 
     Claimed(_), True ->
       task_actions.release_icon(
-        update_helpers.i18n_t(model, i18n_text.Release),
+        helpers_i18n.i18n_t(model, i18n_text.Release),
         pool_msg(pool_messages.MemberReleaseClicked(id, version)),
         action_buttons.SizeXs,
         disable_actions,
@@ -506,13 +508,10 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     button(
       [
         attribute.class("btn-xs btn-icon secondary-action drag-handle"),
-        attribute.attribute(
-          "title",
-          update_helpers.i18n_t(model, i18n_text.Drag),
-        ),
+        attribute.attribute("title", helpers_i18n.i18n_t(model, i18n_text.Drag)),
         attribute.attribute(
           "aria-label",
-          update_helpers.i18n_t(model, i18n_text.Drag),
+          helpers_i18n.i18n_t(model, i18n_text.Drag),
         ),
         attribute.attribute("type", "button"),
         event.on(
@@ -528,7 +527,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
   let complete_action = case status, is_mine {
     Claimed(_), True ->
       task_actions.complete_icon(
-        update_helpers.i18n_t(model, i18n_text.Complete),
+        helpers_i18n.i18n_t(model, i18n_text.Complete),
         pool_msg(pool_messages.MemberCompleteClicked(id, version)),
         action_buttons.SizeXs,
         disable_actions,
@@ -606,23 +605,20 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
         ],
         [
           task_hover_popup.view(task_hover_popup.TaskHoverConfig(
-            card_label: update_helpers.i18n_t(model, i18n_text.ParentCardLabel),
+            card_label: helpers_i18n.i18n_t(model, i18n_text.ParentCardLabel),
             card_title: resolved_card_title,
-            age_label: update_helpers.i18n_t(model, i18n_text.AgeLabel),
-            age_value: update_helpers.i18n_t(
+            age_label: helpers_i18n.i18n_t(model, i18n_text.AgeLabel),
+            age_value: helpers_i18n.i18n_t(
               model,
               i18n_text.CreatedAgoDays(age_days),
             ),
-            description_label: update_helpers.i18n_t(
-              model,
-              i18n_text.Description,
-            ),
+            description_label: helpers_i18n.i18n_t(model, i18n_text.Description),
             description: opt.unwrap(description, ""),
             blocked_label: hover_blocked_label(model, task),
             blocked_items: hover_blocked_items(model, task),
             notes_label: hover_notes_label(model, task),
             notes: hover_notes_for_task(model, id),
-            open_label: update_helpers.i18n_t(model, i18n_text.OpenTask),
+            open_label: helpers_i18n.i18n_t(model, i18n_text.OpenTask),
             on_open: pool_msg(pool_messages.MemberTaskDetailsOpened(id)),
           )),
         ],
@@ -636,7 +632,7 @@ fn hover_blocked_label(model: Model, task: Task) -> opt.Option(String) {
   let count = list.length(blocking)
   case count > 0 {
     True ->
-      opt.Some(update_helpers.i18n_t(model, i18n_text.BlockedByTasks(count)))
+      opt.Some(helpers_i18n.i18n_t(model, i18n_text.BlockedByTasks(count)))
     False -> opt.None
   }
 }
@@ -659,7 +655,7 @@ fn hover_notes_label(model: Model, task: Task) -> opt.Option(String) {
   let Task(id: task_id, ..) = task
   case hover_notes_for_task(model, task_id) {
     [] -> opt.None
-    _ -> opt.Some(update_helpers.i18n_t(model, i18n_text.RecentNotes))
+    _ -> opt.Some(helpers_i18n.i18n_t(model, i18n_text.RecentNotes))
   }
 }
 
@@ -672,7 +668,7 @@ fn hover_notes_for_task(
     opt.None -> 0
   }
 
-  case dict.get(model.member.member_hover_notes_cache, task_id) {
+  case dict.get(model.member.notes.member_hover_notes_cache, task_id) {
     Ok(notes) ->
       list.map(notes, fn(note) {
         let TaskNote(
@@ -682,8 +678,8 @@ fn hover_notes_for_task(
           ..,
         ) = note
         let author = case user_id == current_user_id {
-          True -> update_helpers.i18n_t(model, i18n_text.You)
-          False -> update_helpers.i18n_t(model, i18n_text.UserNumber(user_id))
+          True -> helpers_i18n.i18n_t(model, i18n_text.You)
+          False -> helpers_i18n.i18n_t(model, i18n_text.UserNumber(user_id))
         }
         task_hover_popup.HoverNote(
           author: author,

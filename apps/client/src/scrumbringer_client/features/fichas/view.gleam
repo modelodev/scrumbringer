@@ -30,10 +30,10 @@ import lustre/event
 import domain/card.{type Card}
 import domain/remote.{Loaded}
 import domain/task as domain_task
-import scrumbringer_client/client_state.{
-  type Model, type Msg, CloseCardDetail, MemberCreateDialogOpenedWithCard,
-  OpenCardDetail, pool_msg,
-}
+import scrumbringer_client/client_state.{type Model, type Msg, pool_msg}
+import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/helpers/selection as helpers_selection
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/state/normalized_store
@@ -48,7 +48,6 @@ import scrumbringer_client/ui/event_decoders
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/loading
 import scrumbringer_client/ui/section_header
-import scrumbringer_client/update_helpers
 import scrumbringer_client/utils/card_queries
 
 // =============================================================================
@@ -70,23 +69,20 @@ pub fn view_fichas(model: Model) -> Element(Msg) {
 fn view_fichas_header(model: Model) -> Element(Msg) {
   section_header.view(
     icons.Cards,
-    update_helpers.i18n_t(model, i18n_text.MemberFichas),
+    helpers_i18n.i18n_t(model, i18n_text.MemberFichas),
   )
 }
 
 // Justification: nested case improves clarity for branching logic.
 fn view_fichas_content(model: Model) -> Element(Msg) {
   let cards = card_queries.get_project_cards(model)
-  let pending = normalized_store.pending(model.member.member_cards_store)
+  let pending = normalized_store.pending(model.member.pool.member_cards_store)
 
   case list.is_empty(cards) {
     True ->
       case pending > 0 {
         True ->
-          loading.loading(update_helpers.i18n_t(
-            model,
-            i18n_text.LoadingEllipsis,
-          ))
+          loading.loading(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis))
         False -> view_empty_state(model)
       }
     False -> view_cards_list(model, cards)
@@ -96,8 +92,8 @@ fn view_fichas_content(model: Model) -> Element(Msg) {
 fn view_empty_state(model: Model) -> Element(Msg) {
   empty_state.new(
     icons.Clipboard,
-    update_helpers.i18n_t(model, i18n_text.MemberFichasEmpty),
-    update_helpers.i18n_t(model, i18n_text.MemberFichasEmptyHint),
+    helpers_i18n.i18n_t(model, i18n_text.MemberFichasEmpty),
+    helpers_i18n.i18n_t(model, i18n_text.MemberFichasEmptyHint),
   )
   |> empty_state.view
 }
@@ -120,7 +116,7 @@ fn view_card_item(model: Model, card: Card) -> Element(Msg) {
       option.None,
       option.None,
       card.has_new_notes,
-      update_helpers.i18n_t(model, i18n_text.NewNotesTooltip),
+      helpers_i18n.i18n_t(model, i18n_text.NewNotesTooltip),
       card_title_meta.TitleNotesColor,
     )
 
@@ -132,7 +128,7 @@ fn view_card_item(model: Model, card: Card) -> Element(Msg) {
   div(
     [
       attribute.class("ficha-card " <> border_class),
-      event.on_click(pool_msg(OpenCardDetail(card.id))),
+      event.on_click(pool_msg(pool_messages.OpenCardDetail(card.id))),
       attribute.attribute("role", "button"),
       attribute.attribute("tabindex", "0"),
     ],
@@ -171,7 +167,7 @@ fn color_from_string(
 /// Render the card-detail-modal custom element when a card is open.
 /// Made public for use in client_view.gleam (Story 5.3: Pool/Kanban card detail)
 pub fn view_card_detail_modal(model: Model) -> Element(Msg) {
-  case model.member.card_detail_open {
+  case model.member.pool.card_detail_open {
     option.None -> element.none()
     option.Some(card_id) -> {
       // Find the card data
@@ -190,7 +186,7 @@ pub fn view_card_detail_modal(model: Model) -> Element(Msg) {
             option.Some(user) -> permissions.is_org_admin(user.org_role)
             option.None -> False
           }
-          let is_manager = case update_helpers.selected_project(model) {
+          let is_manager = case helpers_selection.selected_project(model) {
             option.Some(project) -> permissions.is_project_manager(project)
             option.None -> False
           }
@@ -214,18 +210,20 @@ pub fn view_card_detail_modal(model: Model) -> Element(Msg) {
 /// Decoder for create-task-requested event.
 /// Opens the main task creation dialog with card_id pre-filled.
 fn decode_create_task_event(card_id: Int) -> decode.Decoder(Msg) {
-  event_decoders.message(pool_msg(MemberCreateDialogOpenedWithCard(card_id)))
+  event_decoders.message(pool_msg(
+    pool_messages.MemberCreateDialogOpenedWithCard(card_id),
+  ))
 }
 
 /// Decoder for close-requested event.
 fn decode_close_detail_event() -> decode.Decoder(Msg) {
-  event_decoders.message(pool_msg(CloseCardDetail))
+  event_decoders.message(pool_msg(pool_messages.CloseCardDetail))
 }
 
 // Justification: nested case improves clarity for branching logic.
 fn get_card_tasks(model: Model, card_id: Int) -> List(domain_task.Task) {
   // Filter tasks from member_tasks that belong to this card
-  case model.member.member_tasks {
+  case model.member.pool.member_tasks {
     Loaded(tasks) ->
       list.filter(tasks, fn(t) {
         case t.card_id {

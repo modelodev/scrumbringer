@@ -32,14 +32,19 @@ import scrumbringer_client/client_state.{
   type Model, type Msg, type TaskTemplateDialogMode, type WorkflowDialogMode,
   admin_msg, pool_msg, update_admin,
 }
-import scrumbringer_client/client_state/admin.{AdminModel}
+import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/admin/rules as admin_rules
+import scrumbringer_client/client_state/admin/task_templates as admin_task_templates
+import scrumbringer_client/client_state/admin/workflows as admin_workflows
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/update_helpers
 
 import scrumbringer_client/api/tasks as api_tasks
 import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/helpers/auth as helpers_auth
+import scrumbringer_client/helpers/i18n as helpers_i18n
+import scrumbringer_client/helpers/toast as helpers_toast
 
 // =============================================================================
 // Workflow Fetch Handlers
@@ -52,7 +57,12 @@ pub fn handle_workflows_project_fetched_ok(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, workflows_project: Loaded(workflows))
+      update_workflows(admin, fn(workflows_state) {
+        admin_workflows.Model(
+          ..workflows_state,
+          workflows_project: Loaded(workflows),
+        )
+      })
     }),
     effect.none(),
   )
@@ -63,10 +73,15 @@ pub fn handle_workflows_project_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
       update_admin(model, fn(admin) {
-        AdminModel(..admin, workflows_project: Failed(err))
+        update_workflows(admin, fn(workflows_state) {
+          admin_workflows.Model(
+            ..workflows_state,
+            workflows_project: Failed(err),
+          )
+        })
       }),
       effect.none(),
     )
@@ -84,7 +99,12 @@ pub fn handle_open_workflow_dialog(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, workflows_dialog_mode: opt.Some(mode))
+      update_workflows(admin, fn(workflows_state) {
+        admin_workflows.Model(
+          ..workflows_state,
+          workflows_dialog_mode: opt.Some(mode),
+        )
+      })
     }),
     effect.none(),
   )
@@ -94,7 +114,12 @@ pub fn handle_open_workflow_dialog(
 pub fn handle_close_workflow_dialog(model: Model) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, workflows_dialog_mode: opt.None)
+      update_workflows(admin, fn(workflows_state) {
+        admin_workflows.Model(
+          ..workflows_state,
+          workflows_dialog_mode: opt.None,
+        )
+      })
     }),
     effect.none(),
   )
@@ -113,31 +138,32 @@ pub fn handle_workflow_crud_created(
   // Add to org or project list based on project_id
   let #(org, project) = case workflow.project_id {
     opt.Some(_) -> {
-      let project = case model.admin.workflows_project {
+      let project = case model.admin.workflows.workflows_project {
         Loaded(existing) -> Loaded([workflow, ..existing])
         _ -> Loaded([workflow])
       }
-      #(model.admin.workflows_org, project)
+      #(model.admin.workflows.workflows_org, project)
     }
     opt.None -> {
-      let org = case model.admin.workflows_org {
+      let org = case model.admin.workflows.workflows_org {
         Loaded(existing) -> Loaded([workflow, ..existing])
         _ -> Loaded([workflow])
       }
-      #(org, model.admin.workflows_project)
+      #(org, model.admin.workflows.workflows_project)
     }
   }
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        workflows_org: org,
-        workflows_project: project,
-        workflows_dialog_mode: opt.None,
-      )
+      update_workflows(admin, fn(_workflows_state) {
+        admin_workflows.Model(
+          workflows_org: org,
+          workflows_project: project,
+          workflows_dialog_mode: opt.None,
+        )
+      })
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.WorkflowCreated,
     ))
@@ -158,25 +184,26 @@ pub fn handle_workflow_crud_updated(
       }
     })
   }
-  let org = case model.admin.workflows_org {
+  let org = case model.admin.workflows.workflows_org {
     Loaded(existing) -> Loaded(update_list(existing))
     other -> other
   }
-  let project = case model.admin.workflows_project {
+  let project = case model.admin.workflows.workflows_project {
     Loaded(existing) -> Loaded(update_list(existing))
     other -> other
   }
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        workflows_org: org,
-        workflows_project: project,
-        workflows_dialog_mode: opt.None,
-      )
+      update_workflows(admin, fn(_workflows_state) {
+        admin_workflows.Model(
+          workflows_org: org,
+          workflows_project: project,
+          workflows_dialog_mode: opt.None,
+        )
+      })
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.WorkflowUpdated,
     ))
@@ -192,25 +219,26 @@ pub fn handle_workflow_crud_deleted(
   let filter_list = fn(workflows: List(Workflow)) {
     list.filter(workflows, fn(w: Workflow) { w.id != workflow_id })
   }
-  let org = case model.admin.workflows_org {
+  let org = case model.admin.workflows.workflows_org {
     Loaded(existing) -> Loaded(filter_list(existing))
     other -> other
   }
-  let project = case model.admin.workflows_project {
+  let project = case model.admin.workflows.workflows_project {
     Loaded(existing) -> Loaded(filter_list(existing))
     other -> other
   }
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        workflows_org: org,
-        workflows_project: project,
-        workflows_dialog_mode: opt.None,
-      )
+      update_workflows(admin, fn(_workflows_state) {
+        admin_workflows.Model(
+          workflows_org: org,
+          workflows_project: project,
+          workflows_dialog_mode: opt.None,
+        )
+      })
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.WorkflowDeleted,
     ))
@@ -224,12 +252,14 @@ pub fn handle_workflow_rules_clicked(
 ) -> #(Model, Effect(Msg)) {
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        rules_workflow_id: opt.Some(workflow_id),
-        rules: Loading,
-        rules_metrics: Loading,
-      )
+      update_rules(admin, fn(rules_state) {
+        admin_rules.Model(
+          ..rules_state,
+          rules_workflow_id: opt.Some(workflow_id),
+          rules: Loading,
+          rules_metrics: Loading,
+        )
+      })
     })
 
   let task_types_effect = case model.core.selected_project_id {
@@ -264,7 +294,11 @@ pub fn handle_rules_fetched_ok(
   rules: List(Rule),
 ) -> #(Model, Effect(Msg)) {
   #(
-    update_admin(model, fn(admin) { AdminModel(..admin, rules: Loaded(rules)) }),
+    update_admin(model, fn(admin) {
+      update_rules(admin, fn(rules_state) {
+        admin_rules.Model(..rules_state, rules: Loaded(rules))
+      })
+    }),
     effect.none(),
   )
 }
@@ -274,9 +308,13 @@ pub fn handle_rules_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
-      update_admin(model, fn(admin) { AdminModel(..admin, rules: Failed(err)) }),
+      update_admin(model, fn(admin) {
+        update_rules(admin, fn(rules_state) {
+          admin_rules.Model(..rules_state, rules: Failed(err))
+        })
+      }),
       effect.none(),
     )
   })
@@ -289,7 +327,9 @@ pub fn handle_rule_metrics_fetched_ok(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, rules_metrics: Loaded(metrics))
+      update_rules(admin, fn(rules_state) {
+        admin_rules.Model(..rules_state, rules_metrics: Loaded(metrics))
+      })
     }),
     effect.none(),
   )
@@ -300,10 +340,12 @@ pub fn handle_rule_metrics_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
       update_admin(model, fn(admin) {
-        AdminModel(..admin, rules_metrics: Failed(err))
+        update_rules(admin, fn(rules_state) {
+          admin_rules.Model(..rules_state, rules_metrics: Failed(err))
+        })
       }),
       effect.none(),
     )
@@ -314,12 +356,14 @@ pub fn handle_rule_metrics_fetched_error(
 pub fn handle_rules_back_clicked(model: Model) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        rules_workflow_id: opt.None,
-        rules: NotAsked,
-        rules_metrics: NotAsked,
-      )
+      update_rules(admin, fn(rules_state) {
+        admin_rules.Model(
+          ..rules_state,
+          rules_workflow_id: opt.None,
+          rules: NotAsked,
+          rules_metrics: NotAsked,
+        )
+      })
     }),
     effect.none(),
   )
@@ -336,7 +380,12 @@ pub fn handle_open_rule_dialog(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, rules_dialog_mode: opt.Some(mode))
+      update_rules(admin, fn(rules_state) {
+        admin_rules.Model(
+          ..rules_state,
+          rules_dialog_mode: opt.Some(mode),
+        )
+      })
     }),
     effect.none(),
   )
@@ -346,7 +395,12 @@ pub fn handle_open_rule_dialog(
 pub fn handle_close_rule_dialog(model: Model) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, rules_dialog_mode: opt.None)
+      update_rules(admin, fn(rules_state) {
+        admin_rules.Model(
+          ..rules_state,
+          rules_dialog_mode: opt.None,
+        )
+      })
     }),
     effect.none(),
   )
@@ -362,16 +416,22 @@ pub fn handle_rule_crud_created(
   model: Model,
   rule: Rule,
 ) -> #(Model, Effect(Msg)) {
-  let rules = case model.admin.rules {
+  let rules = case model.admin.rules.rules {
     Loaded(existing) -> Loaded([rule, ..existing])
     _ -> Loaded([rule])
   }
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(..admin, rules: rules, rules_dialog_mode: opt.None)
+      update_rules(admin, fn(rules_state) {
+        admin_rules.Model(
+          ..rules_state,
+          rules: rules,
+          rules_dialog_mode: opt.None,
+        )
+      })
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.RuleCreated,
     ))
@@ -384,7 +444,7 @@ pub fn handle_rule_crud_updated(
   model: Model,
   updated_rule: Rule,
 ) -> #(Model, Effect(Msg)) {
-  let rules = case model.admin.rules {
+  let rules = case model.admin.rules.rules {
     Loaded(existing) ->
       Loaded(
         list.map(existing, fn(r: Rule) {
@@ -398,10 +458,16 @@ pub fn handle_rule_crud_updated(
   }
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(..admin, rules: rules, rules_dialog_mode: opt.None)
+      update_rules(admin, fn(rules_state) {
+        admin_rules.Model(
+          ..rules_state,
+          rules: rules,
+          rules_dialog_mode: opt.None,
+        )
+      })
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.RuleUpdated,
     ))
@@ -414,17 +480,23 @@ pub fn handle_rule_crud_deleted(
   model: Model,
   rule_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  let rules = case model.admin.rules {
+  let rules = case model.admin.rules.rules {
     Loaded(existing) ->
       Loaded(list.filter(existing, fn(r: Rule) { r.id != rule_id }))
     other -> other
   }
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(..admin, rules: rules, rules_dialog_mode: opt.None)
+      update_rules(admin, fn(rules_state) {
+        admin_rules.Model(
+          ..rules_state,
+          rules: rules,
+          rules_dialog_mode: opt.None,
+        )
+      })
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.RuleDeleted,
     ))
@@ -442,7 +514,12 @@ pub fn handle_rule_templates_fetched_ok(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, rules_templates: Loaded(templates))
+      update_rules(admin, fn(rules_state) {
+        admin_rules.Model(
+          ..rules_state,
+          rules_templates: Loaded(templates),
+        )
+      })
     }),
     effect.none(),
   )
@@ -453,10 +530,15 @@ pub fn handle_rule_templates_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
       update_admin(model, fn(admin) {
-        AdminModel(..admin, rules_templates: Failed(err))
+        update_rules(admin, fn(rules_state) {
+          admin_rules.Model(
+            ..rules_state,
+            rules_templates: Failed(err),
+          )
+        })
       }),
       effect.none(),
     )
@@ -478,7 +560,12 @@ pub fn handle_rule_attach_template_selected(
   }
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, rules_attach_template_id: template_id)
+      update_rules(admin, fn(rules_state) {
+        admin_rules.Model(
+          ..rules_state,
+          rules_attach_template_id: template_id,
+        )
+      })
     }),
     effect.none(),
   )
@@ -490,18 +577,20 @@ pub fn handle_rule_attach_template_submitted(
   model: Model,
   rule_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  case model.admin.rules_attach_in_flight {
+  case model.admin.rules.rules_attach_in_flight {
     True -> #(model, effect.none())
     False -> {
-      case model.admin.rules_attach_template_id {
+      case model.admin.rules.rules_attach_template_id {
         opt.Some(template_id) -> {
           let model =
             update_admin(model, fn(admin) {
-              AdminModel(
-                ..admin,
-                rules_attach_in_flight: True,
-                rules_attach_error: opt.None,
-              )
+              update_rules(admin, fn(rules_state) {
+                admin_rules.Model(
+                  ..rules_state,
+                  rules_attach_in_flight: True,
+                  rules_attach_error: opt.None,
+                )
+              })
             })
           // Use execution_order = 0 (will be appended at end on server)
           #(
@@ -524,13 +613,15 @@ pub fn handle_rule_template_attached_ok(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        rules_templates: Loaded(templates),
-        rules_attach_template_id: opt.None,
-        rules_attach_in_flight: False,
-        rules_attach_error: opt.None,
-      )
+      update_rules(admin, fn(rules_state) {
+        admin_rules.Model(
+          ..rules_state,
+          rules_templates: Loaded(templates),
+          rules_attach_template_id: opt.None,
+          rules_attach_in_flight: False,
+          rules_attach_error: opt.None,
+        )
+      })
     }),
     effect.none(),
   )
@@ -541,14 +632,16 @@ pub fn handle_rule_template_attached_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
       update_admin(model, fn(admin) {
-        AdminModel(
-          ..admin,
-          rules_attach_in_flight: False,
-          rules_attach_error: opt.Some(err.message),
-        )
+        update_rules(admin, fn(rules_state) {
+          admin_rules.Model(
+            ..rules_state,
+            rules_attach_in_flight: False,
+            rules_attach_error: opt.Some(err.message),
+          )
+        })
       }),
       effect.none(),
     )
@@ -561,16 +654,18 @@ pub fn handle_rule_template_detach_clicked(
   rule_id: Int,
   template_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  case model.admin.rules_attach_in_flight {
+  case model.admin.rules.rules_attach_in_flight {
     True -> #(model, effect.none())
     False -> {
       let model =
         update_admin(model, fn(admin) {
-          AdminModel(
-            ..admin,
-            rules_attach_in_flight: True,
-            rules_attach_error: opt.None,
-          )
+          update_rules(admin, fn(rules_state) {
+            admin_rules.Model(
+              ..rules_state,
+              rules_attach_in_flight: True,
+              rules_attach_error: opt.None,
+            )
+          })
         })
       #(
         model,
@@ -587,19 +682,21 @@ pub fn handle_rule_template_detached_ok(
   model: Model,
   template_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  let templates = case model.admin.rules_templates {
+  let templates = case model.admin.rules.rules_templates {
     Loaded(existing) ->
       Loaded(list.filter(existing, fn(t) { t.id != template_id }))
     other -> other
   }
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        rules_templates: templates,
-        rules_attach_in_flight: False,
-        rules_attach_error: opt.None,
-      )
+      update_rules(admin, fn(rules_state) {
+        admin_rules.Model(
+          ..rules_state,
+          rules_templates: templates,
+          rules_attach_in_flight: False,
+          rules_attach_error: opt.None,
+        )
+      })
     }),
     effect.none(),
   )
@@ -610,14 +707,16 @@ pub fn handle_rule_template_detached_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
       update_admin(model, fn(admin) {
-        AdminModel(
-          ..admin,
-          rules_attach_in_flight: False,
-          rules_attach_error: opt.Some(err.message),
-        )
+        update_rules(admin, fn(rules_state) {
+          admin_rules.Model(
+            ..rules_state,
+            rules_attach_in_flight: False,
+            rules_attach_error: opt.Some(err.message),
+          )
+        })
       }),
       effect.none(),
     )
@@ -633,13 +732,18 @@ pub fn handle_rule_expand_toggled(
   model: Model,
   rule_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  let expanded = case set.contains(model.admin.rules_expanded, rule_id) {
-    True -> set.delete(model.admin.rules_expanded, rule_id)
-    False -> set.insert(model.admin.rules_expanded, rule_id)
+  let expanded = case set.contains(model.admin.rules.rules_expanded, rule_id) {
+    True -> set.delete(model.admin.rules.rules_expanded, rule_id)
+    False -> set.insert(model.admin.rules.rules_expanded, rule_id)
   }
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, rules_expanded: expanded)
+      update_rules(admin, fn(rules_state) {
+        admin_rules.Model(
+          ..rules_state,
+          rules_expanded: expanded,
+        )
+      })
     }),
     effect.none(),
   )
@@ -653,7 +757,7 @@ pub fn handle_attach_template_modal_opened(
 ) -> #(Model, Effect(Msg)) {
   // Check if we need to fetch templates
   let fetch_effect = case
-    model.admin.task_templates_project,
+    model.admin.task_templates.task_templates_project,
     model.core.selected_project_id
   {
     // Already loaded or loading - no need to fetch
@@ -668,24 +772,33 @@ pub fn handle_attach_template_modal_opened(
     _, opt.None -> effect.none()
   }
 
+  let task_templates_project = case
+    model.admin.task_templates.task_templates_project,
+    model.core.selected_project_id
+  {
+    Loaded(_), _ -> model.admin.task_templates.task_templates_project
+    Loading, _ -> model.admin.task_templates.task_templates_project
+    _, opt.Some(_) -> Loading
+    _, opt.None -> model.admin.task_templates.task_templates_project
+  }
+
   let new_model =
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        attach_template_modal: opt.Some(rule_id),
-        attach_template_selected: opt.None,
-        attach_template_loading: False,
-        // Set to loading if we're fetching
-        task_templates_project: case
-          model.admin.task_templates_project,
-          model.core.selected_project_id
-        {
-          Loaded(_), _ -> model.admin.task_templates_project
-          Loading, _ -> model.admin.task_templates_project
-          _, opt.Some(_) -> Loading
-          _, opt.None -> model.admin.task_templates_project
-        },
-      )
+      let rules =
+        admin_rules.Model(
+          ..admin.rules,
+          attach_template_modal: opt.Some(rule_id),
+          attach_template_selected: opt.None,
+          attach_template_loading: False,
+        )
+
+      let task_templates =
+        admin_task_templates.Model(
+          ..admin.task_templates,
+          task_templates_project: task_templates_project,
+        )
+
+      admin_state.AdminModel(..admin, rules: rules, task_templates: task_templates)
     })
 
   #(new_model, fetch_effect)
@@ -697,12 +810,14 @@ pub fn handle_attach_template_modal_closed(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        attach_template_modal: opt.None,
-        attach_template_selected: opt.None,
-        attach_template_loading: False,
-      )
+      update_rules(admin, fn(rules_state) {
+        admin_rules.Model(
+          ..rules_state,
+          attach_template_modal: opt.None,
+          attach_template_selected: opt.None,
+          attach_template_loading: False,
+        )
+      })
     }),
     effect.none(),
   )
@@ -715,7 +830,12 @@ pub fn handle_attach_template_selected(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, attach_template_selected: opt.Some(template_id))
+      update_rules(admin, fn(rules_state) {
+        admin_rules.Model(
+          ..rules_state,
+          attach_template_selected: opt.Some(template_id),
+        )
+      })
     }),
     effect.none(),
   )
@@ -724,10 +844,10 @@ pub fn handle_attach_template_selected(
 // Justification: nested case improves clarity for branching logic.
 /// Handle submit of template attachment.
 pub fn handle_attach_template_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.admin.attach_template_modal, model.admin.attach_template_selected {
+  case model.admin.rules.attach_template_modal, model.admin.rules.attach_template_selected {
     opt.Some(rule_id), opt.Some(template_id) -> {
       // Calculate execution_order based on current templates
-      let order = case model.admin.rules {
+      let order = case model.admin.rules.rules {
         Loaded(rules) -> {
           case list.find(rules, fn(r) { r.id == rule_id }) {
             Ok(rule) -> list.length(rule.templates) + 1
@@ -738,7 +858,12 @@ pub fn handle_attach_template_submitted(model: Model) -> #(Model, Effect(Msg)) {
       }
       #(
         update_admin(model, fn(admin) {
-          AdminModel(..admin, attach_template_loading: True)
+          update_rules(admin, fn(rules_state) {
+            admin_rules.Model(
+              ..rules_state,
+              attach_template_loading: True,
+            )
+          })
         }),
         api_workflows.attach_template(rule_id, template_id, order, fn(result) {
           case result {
@@ -761,7 +886,7 @@ pub fn handle_attach_template_succeeded(
   templates: List(RuleTemplate),
 ) -> #(Model, Effect(Msg)) {
   // Update the rule's templates in the rules list
-  let updated_rules = case model.admin.rules {
+  let updated_rules = case model.admin.rules.rules {
     Loaded(rules) -> {
       Loaded(
         list.map(rules, fn(r) {
@@ -776,15 +901,17 @@ pub fn handle_attach_template_succeeded(
   }
   #(
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        rules: updated_rules,
-        attach_template_modal: opt.None,
-        attach_template_selected: opt.None,
-        attach_template_loading: False,
-      )
+      update_rules(admin, fn(rules_state) {
+        admin_rules.Model(
+          ..rules_state,
+          rules: updated_rules,
+          attach_template_modal: opt.None,
+          attach_template_selected: opt.None,
+          attach_template_loading: False,
+        )
+      })
     }),
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.TemplateAttached,
     )),
@@ -797,16 +924,18 @@ pub fn handle_attach_template_failed(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
       update_admin(model, fn(admin) {
-        AdminModel(
-          ..admin,
-          attach_template_loading: False,
-          rules_attach_error: opt.Some(err.message),
-        )
+        update_rules(admin, fn(rules_state) {
+          admin_rules.Model(
+            ..rules_state,
+            attach_template_loading: False,
+            rules_attach_error: opt.Some(err.message),
+          )
+        })
       }),
-      update_helpers.toast_error(err.message),
+      helpers_toast.toast_error(err.message),
     )
   })
 }
@@ -818,10 +947,15 @@ pub fn handle_template_detach_clicked(
   template_id: Int,
 ) -> #(Model, Effect(Msg)) {
   let detaching =
-    set.insert(model.admin.detaching_templates, #(rule_id, template_id))
+    set.insert(model.admin.rules.detaching_templates, #(rule_id, template_id))
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, detaching_templates: detaching)
+      update_rules(admin, fn(rules_state) {
+        admin_rules.Model(
+          ..rules_state,
+          detaching_templates: detaching,
+        )
+      })
     }),
     api_workflows.detach_template(rule_id, template_id, fn(result) {
       case result {
@@ -842,9 +976,9 @@ pub fn handle_template_detach_succeeded(
   template_id: Int,
 ) -> #(Model, Effect(Msg)) {
   let detaching =
-    set.delete(model.admin.detaching_templates, #(rule_id, template_id))
+    set.delete(model.admin.rules.detaching_templates, #(rule_id, template_id))
   // Remove template from rule's templates list
-  let updated_rules = case model.admin.rules {
+  let updated_rules = case model.admin.rules.rules {
     Loaded(rules) -> {
       Loaded(
         list.map(rules, fn(r) {
@@ -865,9 +999,15 @@ pub fn handle_template_detach_succeeded(
   }
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, rules: updated_rules, detaching_templates: detaching)
+      update_rules(admin, fn(rules_state) {
+        admin_rules.Model(
+          ..rules_state,
+          rules: updated_rules,
+          detaching_templates: detaching,
+        )
+      })
     }),
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.TemplateDetached,
     )),
@@ -883,17 +1023,19 @@ pub fn handle_template_detach_failed(
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
   let detaching =
-    set.delete(model.admin.detaching_templates, #(rule_id, template_id))
-  update_helpers.handle_401_or(model, err, fn() {
+    set.delete(model.admin.rules.detaching_templates, #(rule_id, template_id))
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
       update_admin(model, fn(admin) {
-        AdminModel(
-          ..admin,
-          detaching_templates: detaching,
-          rules_attach_error: opt.Some(err.message),
-        )
+        update_rules(admin, fn(rules_state) {
+          admin_rules.Model(
+            ..rules_state,
+            detaching_templates: detaching,
+            rules_attach_error: opt.Some(err.message),
+          )
+        })
       }),
-      update_helpers.toast_error(err.message),
+      helpers_toast.toast_error(err.message),
     )
   })
 }
@@ -909,7 +1051,12 @@ pub fn handle_task_templates_project_fetched_ok(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, task_templates_project: Loaded(templates))
+      update_task_templates(admin, fn(task_templates_state) {
+        admin_task_templates.Model(
+          ..task_templates_state,
+          task_templates_project: Loaded(templates),
+        )
+      })
     }),
     effect.none(),
   )
@@ -920,10 +1067,15 @@ pub fn handle_task_templates_project_fetched_error(
   model: Model,
   err: ApiError,
 ) -> #(Model, Effect(Msg)) {
-  update_helpers.handle_401_or(model, err, fn() {
+  helpers_auth.handle_401_or(model, err, fn() {
     #(
       update_admin(model, fn(admin) {
-        AdminModel(..admin, task_templates_project: Failed(err))
+        update_task_templates(admin, fn(task_templates_state) {
+          admin_task_templates.Model(
+            ..task_templates_state,
+            task_templates_project: Failed(err),
+          )
+        })
       }),
       effect.none(),
     )
@@ -941,7 +1093,12 @@ pub fn handle_open_task_template_dialog(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, task_templates_dialog_mode: opt.Some(mode))
+      update_task_templates(admin, fn(task_templates_state) {
+        admin_task_templates.Model(
+          ..task_templates_state,
+          task_templates_dialog_mode: opt.Some(mode),
+        )
+      })
     }),
     effect.none(),
   )
@@ -951,7 +1108,12 @@ pub fn handle_open_task_template_dialog(
 pub fn handle_close_task_template_dialog(model: Model) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
-      AdminModel(..admin, task_templates_dialog_mode: opt.None)
+      update_task_templates(admin, fn(task_templates_state) {
+        admin_task_templates.Model(
+          ..task_templates_state,
+          task_templates_dialog_mode: opt.None,
+        )
+      })
     }),
     effect.none(),
   )
@@ -970,31 +1132,32 @@ pub fn handle_task_template_crud_created(
   // Add to org or project list based on project_id
   let #(org, project) = case template.project_id {
     opt.Some(_) -> {
-      let project = case model.admin.task_templates_project {
+      let project = case model.admin.task_templates.task_templates_project {
         Loaded(existing) -> Loaded([template, ..existing])
         _ -> Loaded([template])
       }
-      #(model.admin.task_templates_org, project)
+      #(model.admin.task_templates.task_templates_org, project)
     }
     opt.None -> {
-      let org = case model.admin.task_templates_org {
+      let org = case model.admin.task_templates.task_templates_org {
         Loaded(existing) -> Loaded([template, ..existing])
         _ -> Loaded([template])
       }
-      #(org, model.admin.task_templates_project)
+      #(org, model.admin.task_templates.task_templates_project)
     }
   }
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        task_templates_org: org,
-        task_templates_project: project,
-        task_templates_dialog_mode: opt.None,
-      )
+      update_task_templates(admin, fn(_task_templates_state) {
+        admin_task_templates.Model(
+          task_templates_org: org,
+          task_templates_project: project,
+          task_templates_dialog_mode: opt.None,
+        )
+      })
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.TaskTemplateCreated,
     ))
@@ -1015,25 +1178,26 @@ pub fn handle_task_template_crud_updated(
       }
     })
   }
-  let org = case model.admin.task_templates_org {
+  let org = case model.admin.task_templates.task_templates_org {
     Loaded(existing) -> Loaded(update_list(existing))
     other -> other
   }
-  let project = case model.admin.task_templates_project {
+  let project = case model.admin.task_templates.task_templates_project {
     Loaded(existing) -> Loaded(update_list(existing))
     other -> other
   }
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        task_templates_org: org,
-        task_templates_project: project,
-        task_templates_dialog_mode: opt.None,
-      )
+      update_task_templates(admin, fn(_task_templates_state) {
+        admin_task_templates.Model(
+          task_templates_org: org,
+          task_templates_project: project,
+          task_templates_dialog_mode: opt.None,
+        )
+      })
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.TaskTemplateUpdated,
     ))
@@ -1049,25 +1213,26 @@ pub fn handle_task_template_crud_deleted(
   let filter_list = fn(templates: List(TaskTemplate)) {
     list.filter(templates, fn(t: TaskTemplate) { t.id != template_id })
   }
-  let org = case model.admin.task_templates_org {
+  let org = case model.admin.task_templates.task_templates_org {
     Loaded(existing) -> Loaded(filter_list(existing))
     other -> other
   }
-  let project = case model.admin.task_templates_project {
+  let project = case model.admin.task_templates.task_templates_project {
     Loaded(existing) -> Loaded(filter_list(existing))
     other -> other
   }
   let model =
     update_admin(model, fn(admin) {
-      AdminModel(
-        ..admin,
-        task_templates_org: org,
-        task_templates_project: project,
-        task_templates_dialog_mode: opt.None,
-      )
+      update_task_templates(admin, fn(_task_templates_state) {
+        admin_task_templates.Model(
+          task_templates_org: org,
+          task_templates_project: project,
+          task_templates_dialog_mode: opt.None,
+        )
+      })
     })
   let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
       model,
       i18n_text.TaskTemplateDeleted,
     ))
@@ -1088,7 +1253,12 @@ pub fn fetch_workflows(model: Model) -> #(Model, Effect(Msg)) {
         })
       let model =
         update_admin(model, fn(admin) {
-          AdminModel(..admin, workflows_project: Loading)
+          update_workflows(admin, fn(workflows_state) {
+            admin_workflows.Model(
+              ..workflows_state,
+              workflows_project: Loading,
+            )
+          })
         })
       #(model, fetch_effect)
     }
@@ -1106,10 +1276,36 @@ pub fn fetch_task_templates(model: Model) -> #(Model, Effect(Msg)) {
         })
       let model =
         update_admin(model, fn(admin) {
-          AdminModel(..admin, task_templates_project: Loading)
+          update_task_templates(admin, fn(task_templates_state) {
+            admin_task_templates.Model(
+              ..task_templates_state,
+              task_templates_project: Loading,
+            )
+          })
         })
       #(model, fetch_effect)
     }
     opt.None -> #(model, effect.none())
   }
+}
+
+fn update_workflows(
+  admin: admin_state.AdminModel,
+  f: fn(admin_workflows.Model) -> admin_workflows.Model,
+) -> admin_state.AdminModel {
+  admin_state.AdminModel(..admin, workflows: f(admin.workflows))
+}
+
+fn update_rules(
+  admin: admin_state.AdminModel,
+  f: fn(admin_rules.Model) -> admin_rules.Model,
+) -> admin_state.AdminModel {
+  admin_state.AdminModel(..admin, rules: f(admin.rules))
+}
+
+fn update_task_templates(
+  admin: admin_state.AdminModel,
+  f: fn(admin_task_templates.Model) -> admin_task_templates.Model,
+) -> admin_state.AdminModel {
+  admin_state.AdminModel(..admin, task_templates: f(admin.task_templates))
 }
