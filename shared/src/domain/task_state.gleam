@@ -86,10 +86,9 @@ pub fn from_db(
       }
 
     "completed" ->
-      case claimed_by, completed_at {
-        None, Some(at) -> Ok(Completed(completed_at: at))
-        Some(_), _ -> Error(CompletedWithClaim)
-        None, None -> Error(CompletedMissingAt)
+      case completed_at {
+        Some(at) -> Ok(Completed(completed_at: at))
+        None -> Error(CompletedMissingAt)
       }
 
     _ ->

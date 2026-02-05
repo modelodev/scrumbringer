@@ -187,7 +187,7 @@ fn view_card_selector(model: Model) -> Element(Msg) {
   let cards = card_queries.get_project_cards(model)
 
   form_field.view(
-    update_helpers.i18n_t(model, i18n_text.CardOptional),
+    update_helpers.i18n_t(model, i18n_text.ParentCardLabel),
     select(
       [
         attribute.value(card_id_to_string(model.member.member_create_card_id)),
@@ -265,12 +265,16 @@ pub fn view_task_details(model: Model, task_id: Int) -> Element(Msg) {
         attribute.attribute("aria-labelledby", "task-detail-title"),
       ],
       [
-        // AC1, AC8: Header with task info and close button
-        view_task_header(model, task),
-        // AC2: Tab system
-        view_task_tabs(model),
-        // Content based on active tab
-        view_task_tab_content(model, task_id, task),
+        div([attribute.class("modal-header-block task-detail-header-block")], [
+          // AC1, AC8: Header with task info and close button
+          view_task_header(model, task),
+          // AC2: Tab system
+          view_task_tabs(model),
+        ]),
+        div([attribute.class("modal-body task-detail-body")], [
+          // Content based on active tab
+          view_task_tab_content(model, task_id, task),
+        ]),
         // Footer
         view_task_footer(model, task),
       ],
@@ -664,8 +668,12 @@ fn view_task_details_tab(
       opt.Some(t) -> {
         let #(resolved_card_title, _resolved_card_color) =
           card_queries.resolve_task_card_info(model, t)
-        let card_title = resolved_card_title |> opt.unwrap("—")
-        let card_empty = card_title == "—"
+        let no_card_label = update_helpers.i18n_t(model, i18n_text.NoCard)
+        let card_title = case resolved_card_title {
+          opt.Some(title) -> title
+          opt.None -> no_card_label
+        }
+        let card_empty = resolved_card_title == opt.None
         let desc = case t.description {
           opt.Some(value) -> value
           opt.None -> "—"
@@ -674,7 +682,7 @@ fn view_task_details_tab(
         div([attribute.class("task-detail-grid")], [
           div([attribute.class("detail-row")], [
             span([attribute.class("detail-label")], [
-              text(update_helpers.i18n_t(model, i18n_text.CardOptional)),
+              text(update_helpers.i18n_t(model, i18n_text.ParentCardLabel)),
             ]),
             span(
               [

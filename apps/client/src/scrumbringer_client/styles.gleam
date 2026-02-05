@@ -737,8 +737,12 @@ pub fn base_css() -> String {
     // Card detail modal
     ".card-detail-modal { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 16px; }",
     ".card-detail-modal .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); z-index: 1; }",
-    ".modal-content.card-detail { border-left-width: 4px; z-index: 2; position: relative; }",
-    ".card-detail-header { padding-bottom: 16px; border-bottom: 1px solid var(--sb-border); margin-bottom: 16px; }",
+    ".modal-content.card-detail { border-left-width: 4px; z-index: 2; position: relative; min-height: 60vh; padding: 0; overflow: hidden; display: flex; flex-direction: column; }",
+    ".modal-header-block { border-bottom: 1px solid var(--sb-border); background: var(--sb-surface); }",
+    ".modal-header-block.card-detail-header-block { padding: 20px 20px 12px; }",
+    ".modal-header-block.task-detail-header-block { padding: 0; }",
+    ".modal-body { padding: 16px 20px 20px; overflow-y: auto; flex: 1; }",
+    ".card-detail-header { padding-bottom: 12px; border-bottom: 0; margin-bottom: 12px; }",
     ".card-detail-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }",
     ".card-detail-title { font-size: 20px; font-weight: 700; }",
     ".card-detail-meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }",
@@ -751,12 +755,12 @@ pub fn base_css() -> String {
     ".card-detail-progress-fill { height: 100%; background: var(--sb-primary); border-radius: 4px; transition: width 0.3s ease; }",
     ".card-detail-description { color: var(--sb-muted); line-height: 1.5; }",
     // AC21: Card modal tabs
-    ".card-tabs { display: flex; border-bottom: 2px solid var(--sb-border); margin-bottom: 16px; gap: 4px; }",
-    ".card-tab { padding: 10px 16px; background: transparent; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--sb-muted); transition: all 0.15s; display: flex; align-items: center; gap: 6px; }",
-    ".card-tab:hover { color: var(--sb-text); border-bottom-color: var(--sb-border); }",
-    ".card-tab.tab-active { color: var(--sb-primary); border-bottom-color: var(--sb-primary); }",
+    ".modal-tabs { display: flex; gap: 8px; padding: 0 20px 12px; border-bottom: 1px solid var(--sb-border); }",
+    ".modal-tab { padding: 6px 14px; background: transparent; border: 1px solid transparent; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--sb-muted); transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }",
+    ".modal-tab:hover { color: var(--sb-text); background: var(--sb-elevated); }",
+    ".modal-tab.tab-active { color: var(--sb-text); border-color: color-mix(in oklab, var(--sb-primary) 35%, var(--sb-border)); background: color-mix(in oklab, var(--sb-primary) 10%, var(--sb-surface)); box-shadow: 0 1px 0 rgba(0,0,0,0.04); }",
     ".tab-count { font-size: 12px; color: var(--sb-muted); }",
-    ".tab-active .tab-count { color: var(--sb-primary); }",
+    ".tab-active .tab-count { color: var(--sb-text); }",
     ".new-notes-indicator { color: var(--sb-warning); font-size: 10px; margin-left: 2px; }",
     ".card-detail-activity-section { padding: 24px; text-align: center; color: var(--sb-muted); }",
     // Shared section header for card detail tabs (Tasks, Notes)
@@ -777,8 +781,8 @@ pub fn base_css() -> String {
     // Task Detail Modal (Story 5.4.1)
     ".task-detail-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; }",
     ".task-detail-modal .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); z-index: 1; }",
-    ".task-detail-modal .modal-content { position: relative; background: var(--sb-surface); border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.2); z-index: 2; }",
-    ".task-detail-header { padding: 20px 20px 16px; border-bottom: 1px solid var(--sb-border); position: relative; }",
+    ".task-detail-modal .modal-content { position: relative; background: var(--sb-surface); border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; min-height: 60vh; padding: 0; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.2); z-index: 2; }",
+    ".task-detail-header { padding: 20px 20px 12px; border-bottom: 0; position: relative; }",
     ".task-detail-header .modal-close { position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 24px; color: var(--sb-muted); cursor: pointer; padding: 4px 8px; line-height: 1; }",
     ".task-detail-header .modal-close:hover { color: var(--sb-text); }",
     ".task-detail-title { font-size: 1.25rem; font-weight: 600; margin: 0 0 12px 0; padding-right: 40px; color: var(--sb-text); }",
@@ -786,20 +790,17 @@ pub fn base_css() -> String {
     ".task-meta-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--sb-border); background: var(--sb-elevated); color: var(--sb-text); font-size: 12px; font-weight: 500; }",
     ".task-meta-assignee.muted { color: var(--sb-muted); opacity: 0.7; }",
     // Task tabs (aligned with card-tabs)
-    ".task-tabs { display: flex; border-bottom: 2px solid var(--sb-border); margin-bottom: 16px; gap: 4px; }",
-    ".task-tab { padding: 10px 16px; background: transparent; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--sb-muted); transition: all 0.15s; display: flex; align-items: center; gap: 6px; }",
-    ".task-tab:hover { color: var(--sb-text); border-bottom-color: var(--sb-border); }",
-    ".task-tab.tab-active { color: var(--sb-primary); border-bottom-color: var(--sb-primary); }",
+    ".task-tabs { }",
     ".task-tab .tab-count { font-size: 0.85em; }",
     ".task-tab .new-notes-indicator { color: var(--sb-accent); font-size: 0.7em; margin-left: 4px; animation: pulse 2s infinite; }",
     // Task detail tab content
-    ".task-details-section { padding: 20px; overflow-y: auto; flex: 1; }",
+    ".task-details-section { padding: 0; }",
     ".task-detail-grid { display: grid; gap: 14px; }",
     ".detail-row { display: grid; grid-template-columns: 140px minmax(0, 1fr); align-items: center; gap: 12px; }",
     ".detail-label { font-weight: 600; color: var(--sb-muted); }",
     ".detail-value { color: var(--sb-text); }",
     ".detail-value.muted { color: var(--sb-muted); }",
-    ".task-dependencies-section { padding: 20px; overflow-y: auto; flex: 1; }",
+    ".task-dependencies-section { padding: 0; }",
     ".task-dependencies-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }",
     ".task-dependencies-list { display: flex; flex-direction: column; gap: 8px; }",
     ".task-dependency-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border: 1px solid var(--sb-border); border-radius: 10px; background: var(--sb-elevated); }",
@@ -893,7 +894,7 @@ pub fn base_css() -> String {
     // Mobile adaptations
     "@media (max-width: 640px) { .my-bar-card-groups { gap: 12px; } .my-bar-card-header { padding: 8px 10px; gap: 8px; } .my-bar-card-title { font-size: 13px; } .my-bar-card-progress { font-size: 12px; } }",
     "@media (max-width: 640px) { .fichas-list { gap: 8px; } .ficha-card { padding: 10px 12px; } .ficha-header { gap: 8px; } .ficha-title { font-size: 14px; } .ficha-state-badge { font-size: 10px; padding: 2px 6px; } }",
-    "@media (max-width: 640px) { .card-detail-modal { padding: 8px; } .modal-content.card-detail { padding: 12px; } .card-detail-title { font-size: 18px; } .card-detail-tasks-section { } .card-add-task-form { padding: 12px; } }",
+    "@media (max-width: 640px) { .card-detail-modal { padding: 8px; } .modal-content.card-detail { padding: 0; } .modal-header-block.card-detail-header-block { padding: 16px 16px 10px; } .modal-body { padding: 12px 16px 16px; } .card-detail-title { font-size: 18px; } .card-detail-tasks-section { } .card-add-task-form { padding: 12px; } }",
     // =====================================================
     // STORY 3.5 - Unified Dialog System
     // =====================================================

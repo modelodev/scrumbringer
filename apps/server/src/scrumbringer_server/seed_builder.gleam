@@ -817,19 +817,18 @@ fn build_tasks(
         let priority = list_at_int(priorities, idx % list.length(priorities), 3)
         let creator_for = list_at_int(state.user_ids, idx, state.admin_id)
         let claimed_user_for = member_for_index(members, idx, claimed_user_id)
-        let claimed_by = case status {
-          "claimed" -> Some(claimed_user_for)
-          _ -> None
-        }
-        let claimed_at = case status {
-          "claimed" ->
-            Some(days_ago_timestamp(int.max(1, base_days - { idx % 7 })))
-          _ -> None
-        }
-        let completed_at = case status {
-          "completed" ->
-            Some(days_ago_timestamp(int.max(1, base_days - { idx % 11 })))
-          _ -> None
+        let #(claimed_by, claimed_at, completed_at) = case status {
+          "claimed" -> #(
+            Some(claimed_user_for),
+            Some(days_ago_timestamp(int.max(1, base_days - { idx % 7 }))),
+            None,
+          )
+          "completed" -> #(
+            None,
+            None,
+            Some(days_ago_timestamp(int.max(1, base_days - { idx % 11 }))),
+          )
+          _ -> #(None, None, None)
         }
 
         let created_at =

@@ -571,23 +571,27 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
         attribute.attribute("aria-labelledby", "card-detail-title"),
       ],
       [
-        view_card_header(model, card),
-        // AC21: Tab navigation
-        card_tabs.view(card_tabs.Config(
-          active_tab: model.active_tab,
-          notes_count: notes_count,
-          has_new_notes: card.has_new_notes,
-          labels: card_tabs.Labels(
-            tasks: t(model.locale, i18n_text.TabTasks),
-            notes: t(model.locale, i18n_text.TabNotes),
-          ),
-          on_tab_click: TabClicked,
-        )),
-        // AC21: Conditional section rendering based on active tab
-        case model.active_tab {
-          card_tabs.TasksTab -> view_card_tasks_section(model)
-          card_tabs.NotesTab -> view_card_notes_section(model)
-        },
+        div([attribute.class("modal-header-block card-detail-header-block")], [
+          view_card_header(model, card),
+          // AC21: Tab navigation
+          card_tabs.view(card_tabs.Config(
+            active_tab: model.active_tab,
+            notes_count: notes_count,
+            has_new_notes: card.has_new_notes,
+            labels: card_tabs.Labels(
+              tasks: t(model.locale, i18n_text.TabTasks),
+              notes: t(model.locale, i18n_text.TabNotes),
+            ),
+            on_tab_click: TabClicked,
+          )),
+        ]),
+        div([attribute.class("modal-body card-detail-body")], [
+          // AC21: Conditional section rendering based on active tab
+          case model.active_tab {
+            card_tabs.TasksTab -> view_card_tasks_section(model)
+            card_tabs.NotesTab -> view_card_notes_section(model)
+          },
+        ]),
       ],
     ),
     // Note creation dialog (modal within modal)

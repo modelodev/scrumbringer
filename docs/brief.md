@@ -17,7 +17,7 @@
 - Auto-asignación nativa - sin campo "Assignee"
 - Cada usuario organiza SU vista del pool
 
-**Filosofía:** La plataforma visibiliza, la comunicación humana resuelve.
+**Filosofía:** La plataforma visibiliza, la comunicación humana resuelve. La unidad atómica es la tarea; fichas y procesos son implícitos y derivan de reglas y estados de tareas.
 
 ---
 
@@ -59,6 +59,8 @@ Los equipos usan herramientas con modelo "push" (asignación directa) que genera
 - Pool vivo: prioridad + decay visual evita backlog muerto y mantiene foco en flujo.
 - Trabajo real visible: separa “en curso” vs “claimed” vs “disponible” para claridad operativa.
 - Minimalismo documental: tarjetas y tareas con texto breve y/o enlaces para forzar uso de sistemas externos.
+- Motor de reglas: no se modelan procesos; solo reglas que reaccionan a cambios de estado de tareas y crean nuevas tareas.
+- Estado implícito de fichas: el estado de una ficha se deriva del estado de sus tareas, no se gestiona aparte.
 
 ---
 
@@ -95,6 +97,8 @@ Los equipos usan herramientas con modelo "push" (asignación directa) que genera
 | **Auth** | Email/password |
 | **1 org, múltiples proyectos** | Un usuario pertenece a 1 org y puede participar en varios proyectos dentro de esa org |
 | **Responsive** | Mobile-friendly |
+| **Motor de reglas** | Reglas que reaccionan a cambios de estado de tareas y crean nuevas tareas |
+| **Estado implícito de fichas** | Estado de ficha derivado del estado de sus tareas |
 
 ### OUT (Later)
 
@@ -103,7 +107,7 @@ Los equipos usan herramientas con modelo "push" (asignación directa) que genera
 | Multi-organización | v1.1 |
 | Múltiples proyectos | v1.1 |
 | Jerarquía (fichas/historias) | v1.1 |
-| Workflows/reglas | v1.1+ |
+| Workflows/reglas | Implementado |
 | Sprints | v1.2 |
 | Posiciones compartidas | Evaluar post-MVP |
 | Integraciones | v1.2+ |

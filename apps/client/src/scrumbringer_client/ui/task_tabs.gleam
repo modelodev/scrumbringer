@@ -79,8 +79,8 @@ pub fn view(config: Config(msg)) -> Element(msg) {
       ),
     ],
     active: active_tab,
-    container_class: "task-tabs",
-    tab_class: "task-tab",
+    container_class: "task-tabs modal-tabs",
+    tab_class: "task-tab modal-tab",
     on_click: on_tab_click,
   ))
 }

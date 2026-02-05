@@ -730,7 +730,6 @@ pub fn translate(text: Text) -> String {
     text.TaskTitlePlaceholder -> "Título de la tarea..."
 
     // Story 4.12 - Selector de tarjeta para nueva tarea
-    text.CardOptional -> "Tarjeta (opcional)"
     text.NoCard -> "Sin tarjeta"
     text.NewTaskInCard(card_title) -> "Nueva tarea en " <> card_title
 

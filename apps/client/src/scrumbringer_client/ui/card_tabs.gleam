@@ -45,8 +45,8 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     notes_count: notes_count,
     has_new_notes: has_new_notes,
     labels: notes_tabs.Labels(primary: labels.tasks, notes: labels.notes),
-    container_class: "card-tabs",
-    tab_class: "card-tab",
+    container_class: "card-tabs modal-tabs",
+    tab_class: "card-tab modal-tab",
     on_tab_click: on_tab_click,
   ))
 }

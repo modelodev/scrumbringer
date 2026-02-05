@@ -619,7 +619,6 @@ pub type Text {
   TaskTitlePlaceholder
 
   // Story 4.12 - Card selector for new task
-  CardOptional
   NoCard
   NewTaskInCard(card_title: String)
 
