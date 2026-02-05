@@ -56,12 +56,10 @@ import domain/task.{
 import domain/task_state
 import domain/task_status.{Completed, Taken}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, MemberDependenciesFetched, MemberDependencyAdded,
-  MemberDependencyCandidatesFetched, MemberDependencyRemoved, MemberNoteAdded,
-  MemberNotesFetched, MemberTaskClaimed, MemberTaskCompleted, MemberTaskCreated,
-  MemberTaskReleased, MemberWorkSessionsFetched, pool_msg, update_member,
+  type Model, type Msg, pool_msg, update_member,
 }
 import scrumbringer_client/client_state/member.{MemberModel}
+import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/task_tabs
 import scrumbringer_client/update_helpers
@@ -353,7 +351,7 @@ fn submit_create(
       priority,
       type_id,
       card_id,
-      fn(result) { pool_msg(MemberTaskCreated(result)) },
+      fn(result) { pool_msg(pool_messages.MemberTaskCreated(result)) },
     ),
   )
 }
@@ -483,7 +481,7 @@ fn submit_claim(
   #(
     model,
     api_tasks.claim_task(task_id, version, fn(result) {
-      pool_msg(MemberTaskClaimed(result))
+      pool_msg(pool_messages.MemberTaskClaimed(result))
     }),
   )
 }
@@ -515,7 +513,7 @@ pub fn handle_release_clicked(
       #(
         model,
         api_tasks.release_task(task_id, version, fn(result) {
-          pool_msg(MemberTaskReleased(result))
+          pool_msg(pool_messages.MemberTaskReleased(result))
         }),
       )
     }
@@ -549,7 +547,7 @@ pub fn handle_complete_clicked(
       #(
         model,
         api_tasks.complete_task(task_id, version, fn(result) {
-          pool_msg(MemberTaskCompleted(result))
+          pool_msg(pool_messages.MemberTaskCompleted(result))
         }),
       )
     }
@@ -701,7 +699,7 @@ pub fn handle_task_released_ok(
     effect.batch([
       fx,
       api_tasks.get_work_sessions(fn(result) {
-        pool_msg(MemberWorkSessionsFetched(result))
+        pool_msg(pool_messages.MemberWorkSessionsFetched(result))
       }),
       toast_fx,
     ]),
@@ -726,7 +724,7 @@ pub fn handle_task_completed_ok(
     effect.batch([
       fx,
       api_tasks.get_work_sessions(fn(result) {
-        pool_msg(MemberWorkSessionsFetched(result))
+        pool_msg(pool_messages.MemberWorkSessionsFetched(result))
       }),
       toast_fx,
     ]),
@@ -807,12 +805,12 @@ pub fn handle_task_details_opened(
 
   let notes_fx =
     api_tasks.list_task_notes(task_id, fn(result) {
-      pool_msg(MemberNotesFetched(result))
+      pool_msg(pool_messages.MemberNotesFetched(result))
     })
 
   let deps_fx =
     api_tasks.list_task_dependencies(task_id, fn(result) {
-      pool_msg(MemberDependenciesFetched(result))
+      pool_msg(pool_messages.MemberDependenciesFetched(result))
     })
 
   #(next_model, effect.batch([notes_fx, deps_fx]))
@@ -979,7 +977,7 @@ fn submit_note_with_content(
   #(
     model,
     api_tasks.add_task_note(task_id, content, fn(result) {
-      pool_msg(MemberNoteAdded(result))
+      pool_msg(pool_messages.MemberNoteAdded(result))
     }),
   )
 }
@@ -1031,7 +1029,7 @@ pub fn handle_note_added_error(
       opt.Some(task_id) -> #(
         model,
         api_tasks.list_task_notes(task_id, fn(result) {
-          pool_msg(MemberNotesFetched(result))
+          pool_msg(pool_messages.MemberNotesFetched(result))
         }),
       )
       opt.None -> #(model, effect.none())
@@ -1098,7 +1096,7 @@ pub fn handle_dependency_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
           #(
             model,
             api_tasks.list_project_tasks(task.project_id, filters, fn(result) {
-              pool_msg(MemberDependencyCandidatesFetched(result))
+              pool_msg(pool_messages.MemberDependencyCandidatesFetched(result))
             }),
           )
         }
@@ -1209,7 +1207,7 @@ fn submit_dependency_add_for_task(
   #(
     model,
     api_tasks.add_task_dependency(task_id, depends_on_task_id, fn(result) {
-      pool_msg(MemberDependencyAdded(result))
+      pool_msg(pool_messages.MemberDependencyAdded(result))
     }),
   )
 }
@@ -1271,7 +1269,10 @@ pub fn handle_dependency_remove_clicked(
             task_id,
             depends_on_task_id,
             fn(result) {
-              pool_msg(MemberDependencyRemoved(depends_on_task_id, result))
+              pool_msg(pool_messages.MemberDependencyRemoved(
+                depends_on_task_id,
+                result,
+              ))
             },
           ),
         )

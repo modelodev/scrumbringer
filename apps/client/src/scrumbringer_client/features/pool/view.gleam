@@ -40,18 +40,14 @@ import domain/task_status.{Available, Claimed, Completed, Taken}
 import domain/user.{type User}
 
 import scrumbringer_client/client_ffi
-import scrumbringer_client/client_state.{
-  type Model, type Msg, MemberClaimClicked, MemberCompleteClicked,
-  MemberCreateDialogOpened, MemberDragEnded, MemberDragMoved, MemberDragStarted,
-  MemberPoolTouchEnded, MemberPoolTouchStarted, MemberReleaseClicked,
-  MemberTaskDetailsOpened, MemberTaskHoverOpened, pool_msg,
-}
+import scrumbringer_client/client_state.{type Model, type Msg, pool_msg}
 import scrumbringer_client/client_state/types.{
   PoolDragDragging, PoolDragIdle, PoolDragPendingRect,
 }
 import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/panel as now_working_panel
 import scrumbringer_client/features/pool/filters as pool_filters
+import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/ui/action_buttons
@@ -212,19 +208,31 @@ pub fn view_pool_body(model: Model, user: User) -> Element(Msg) {
       event.on(
         "mousemove",
         event_decoders.mouse_client_position(fn(x, y) {
-          pool_msg(MemberDragMoved(x, y))
+          pool_msg(pool_messages.MemberDragMoved(x, y))
         }),
       ),
       event.on(
         "touchmove",
         event_decoders.touch_client_position(fn(x, y) {
-          pool_msg(MemberDragMoved(x, y))
+          pool_msg(pool_messages.MemberDragMoved(x, y))
         }),
       ),
-      event.on("mouseup", event_decoders.message(pool_msg(MemberDragEnded))),
-      event.on("mouseleave", event_decoders.message(pool_msg(MemberDragEnded))),
-      event.on("touchend", event_decoders.message(pool_msg(MemberDragEnded))),
-      event.on("touchcancel", event_decoders.message(pool_msg(MemberDragEnded))),
+      event.on(
+        "mouseup",
+        event_decoders.message(pool_msg(pool_messages.MemberDragEnded)),
+      ),
+      event.on(
+        "mouseleave",
+        event_decoders.message(pool_msg(pool_messages.MemberDragEnded)),
+      ),
+      event.on(
+        "touchend",
+        event_decoders.message(pool_msg(pool_messages.MemberDragEnded)),
+      ),
+      event.on(
+        "touchcancel",
+        event_decoders.message(pool_msg(pool_messages.MemberDragEnded)),
+      ),
     ],
     [
       div([attribute.class("content pool-main")], [
@@ -277,7 +285,7 @@ fn view_tasks_onboarding(model: Model) -> Element(Msg) {
   )
   |> empty_state.with_action(
     update_helpers.i18n_t(model, i18n_text.NewTask),
-    pool_msg(MemberCreateDialogOpened),
+    pool_msg(pool_messages.MemberCreateDialogOpened),
   )
   |> empty_state.view
 }
@@ -337,7 +345,7 @@ pub fn view_pool_task_row(model: Model, task: Task) -> Element(Msg) {
     False ->
       task_actions.claim_only(
         update_helpers.i18n_t(model, i18n_text.Claim),
-        pool_msg(MemberClaimClicked(id, version)),
+        pool_msg(pool_messages.MemberClaimClicked(id, version)),
         action_buttons.SizeXs,
         disable_actions,
         "",
@@ -359,7 +367,7 @@ pub fn view_pool_task_row(model: Model, task: Task) -> Element(Msg) {
     task_item.Config(
       container_class: "task-row " <> border_class <> blocked_class,
       content_class: "task-row-title",
-      on_click: opt.Some(pool_msg(MemberTaskDetailsOpened(id))),
+      on_click: opt.Some(pool_msg(pool_messages.MemberTaskDetailsOpened(id))),
       icon: opt.Some(task_type_icon.view(type_icon, 16, model.ui.theme)),
       icon_class: opt.None,
       title: title,
@@ -472,7 +480,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     Available, _ ->
       task_actions.claim_icon(
         update_helpers.i18n_t(model, i18n_text.Claim),
-        pool_msg(MemberClaimClicked(id, version)),
+        pool_msg(pool_messages.MemberClaimClicked(id, version)),
         action_buttons.SizeXs,
         disable_actions,
         "",
@@ -483,7 +491,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     Claimed(_), True ->
       task_actions.release_icon(
         update_helpers.i18n_t(model, i18n_text.Release),
-        pool_msg(MemberReleaseClicked(id, version)),
+        pool_msg(pool_messages.MemberReleaseClicked(id, version)),
         action_buttons.SizeXs,
         disable_actions,
         "",
@@ -510,7 +518,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
         event.on(
           "mousedown",
           event_decoders.mouse_client_position(fn(x, y) {
-            pool_msg(MemberDragStarted(id, x, y))
+            pool_msg(pool_messages.MemberDragStarted(id, x, y))
           }),
         ),
       ],
@@ -521,7 +529,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     Claimed(_), True ->
       task_actions.complete_icon(
         update_helpers.i18n_t(model, i18n_text.Complete),
-        pool_msg(MemberCompleteClicked(id, version)),
+        pool_msg(pool_messages.MemberCompleteClicked(id, version)),
         action_buttons.SizeXs,
         disable_actions,
         "secondary-action",
@@ -544,21 +552,23 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
       attribute.attribute("tabindex", "0"),
       event.on(
         "mouseenter",
-        event_decoders.message(pool_msg(MemberTaskHoverOpened(id))),
+        event_decoders.message(
+          pool_msg(pool_messages.MemberTaskHoverOpened(id)),
+        ),
       ),
       event.on(
         "touchstart",
         event_decoders.touch_client_position(fn(x, y) {
-          pool_msg(MemberPoolTouchStarted(id, x, y))
+          pool_msg(pool_messages.MemberPoolTouchStarted(id, x, y))
         }),
       ),
       event.on(
         "touchend",
-        event_decoders.message(pool_msg(MemberPoolTouchEnded(id))),
+        event_decoders.message(pool_msg(pool_messages.MemberPoolTouchEnded(id))),
       ),
       event.on(
         "touchcancel",
-        event_decoders.message(pool_msg(MemberPoolTouchEnded(id))),
+        event_decoders.message(pool_msg(pool_messages.MemberPoolTouchEnded(id))),
       ),
     ],
     [
@@ -613,7 +623,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
             notes_label: hover_notes_label(model, task),
             notes: hover_notes_for_task(model, id),
             open_label: update_helpers.i18n_t(model, i18n_text.OpenTask),
-            on_open: pool_msg(MemberTaskDetailsOpened(id)),
+            on_open: pool_msg(pool_messages.MemberTaskDetailsOpened(id)),
           )),
         ],
       ),

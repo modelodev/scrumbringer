@@ -33,9 +33,9 @@ import domain/task_status.{Claimed, Taken}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
   type Model, type Msg, MemberCompleteClicked, MemberNowWorkingPauseClicked,
-  MemberNowWorkingStartClicked, MemberPanelToggled, MemberReleaseClicked,
-  pool_msg,
+  MemberNowWorkingStartClicked, MemberReleaseClicked, layout_msg, pool_msg,
 }
+import scrumbringer_client/features/layout/msg as layout_messages
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/icons
@@ -63,7 +63,7 @@ pub fn view_mini_bar(model: Model) -> Element(Msg) {
   div(
     [
       attribute.class("member-mini-bar"),
-      event.on_click(pool_msg(MemberPanelToggled)),
+      event.on_click(layout_msg(layout_messages.MemberPanelToggled)),
     ],
     [
       span([attribute.class("member-mini-bar-expand")], [text(expand_icon)]),
@@ -108,7 +108,7 @@ pub fn view_panel_sheet(model: Model, user_id: Int) -> Element(Msg) {
     div(
       [
         attribute.class("member-panel-sheet-handle"),
-        event.on_click(pool_msg(MemberPanelToggled)),
+        event.on_click(layout_msg(layout_messages.MemberPanelToggled)),
       ],
       [],
     ),
@@ -164,7 +164,7 @@ pub fn view_overlay(model: Model) -> Element(Msg) {
       div(
         [
           attribute.class("member-panel-overlay visible"),
-          event.on_click(pool_msg(MemberPanelToggled)),
+          event.on_click(layout_msg(layout_messages.MemberPanelToggled)),
         ],
         [],
       )

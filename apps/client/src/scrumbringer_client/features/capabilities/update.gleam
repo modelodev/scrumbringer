@@ -35,10 +35,10 @@ import domain/api_error.{type ApiError}
 import domain/capability.{type Capability}
 import domain/remote.{Failed, Loaded}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, CapabilityCreated, CapabilityMembersFetched, admin_msg,
-  update_admin,
+  type Model, type Msg, admin_msg, update_admin,
 }
 import scrumbringer_client/client_state/admin.{AdminModel}
+import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
 
@@ -58,7 +58,7 @@ pub fn handle_capabilities_fetched_ok(
       capabilities
       |> list.map(fn(c) {
         api_projects.get_capability_members(project_id, c.id, fn(result) {
-          admin_msg(CapabilityMembersFetched(result))
+          admin_msg(admin_messages.CapabilityMembersFetched(result))
         })
       })
       |> effect.batch
@@ -168,7 +168,7 @@ pub fn handle_capability_create_submitted(model: Model) -> #(Model, Effect(Msg))
           #(
             model,
             api_org.create_project_capability(project_id, name, fn(result) {
-              admin_msg(CapabilityCreated(result))
+              admin_msg(admin_messages.CapabilityCreated(result))
             }),
           )
         }
@@ -303,7 +303,7 @@ pub fn handle_capability_delete_submitted(model: Model) -> #(Model, Effect(Msg))
       #(
         model,
         api_org.delete_project_capability(project_id, capability_id, fn(result) {
-          admin_msg(client_state.CapabilityDeleted(result))
+          admin_msg(admin_messages.CapabilityDeleted(result))
         }),
       )
     }

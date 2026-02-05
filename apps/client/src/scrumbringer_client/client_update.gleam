@@ -66,6 +66,7 @@ import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/client_update_dispatch as update_dispatch
+import scrumbringer_client/features/auth/state as auth_state
 
 // Story 4.10: Rule template attachment UI
 
@@ -74,9 +75,12 @@ import scrumbringer_client/client_update_dispatch as update_dispatch
 // Rule templates
 // Task templates
 
+import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/update as admin_workflow
 import scrumbringer_client/features/auth/update as auth_workflow
 import scrumbringer_client/features/i18n/update as i18n_workflow
+import scrumbringer_client/features/layout/update as layout_workflow
+import scrumbringer_client/features/pool/msg as pool_messages
 
 // ---------------------------------------------------------------------------
 // Routing helpers
@@ -122,40 +126,6 @@ fn current_route(model: client_state.Model) -> router.Route {
 
 fn replace_url(model: client_state.Model) -> Effect(client_state.Msg) {
   router.replace(current_route(model))
-}
-
-/// Provides accept invite effect.
-///
-/// Example:
-///   accept_invite_effect(...)
-pub fn accept_invite_effect(
-  action: accept_invite.Action,
-) -> Effect(client_state.Msg) {
-  case action {
-    accept_invite.ValidateToken(token) ->
-      api_auth.validate_invite_link_token(token, fn(result) {
-        client_state.AcceptInviteMsg(accept_invite.TokenValidated(result))
-      })
-
-    _ -> effect.none()
-  }
-}
-
-/// Provides reset password effect.
-///
-/// Example:
-///   reset_password_effect(...)
-pub fn reset_password_effect(
-  action: reset_password.Action,
-) -> Effect(client_state.Msg) {
-  case action {
-    reset_password.ValidateToken(token) ->
-      api_auth.validate_password_reset_token(token, fn(result) {
-        client_state.ResetPasswordMsg(reset_password.TokenValidated(result))
-      })
-
-    _ -> effect.none()
-  }
 }
 
 /// Registers keydown effect.
@@ -235,7 +205,7 @@ fn apply_route_fields(
               )
             }),
             fn(auth) {
-              client_state.AuthModel(..auth, accept_invite: new_accept_model)
+              auth_state.AuthModel(..auth, accept_invite: new_accept_model)
             },
           ),
           fn(member) {
@@ -247,7 +217,7 @@ fn apply_route_fields(
           },
         )
 
-      #(model, accept_invite_effect(action))
+      #(model, auth_workflow.accept_invite_effect(action))
     }
 
     router.ResetPassword(token) -> {
@@ -263,7 +233,7 @@ fn apply_route_fields(
               )
             }),
             fn(auth) {
-              client_state.AuthModel(..auth, reset_password: new_reset_model)
+              auth_state.AuthModel(..auth, reset_password: new_reset_model)
             },
           ),
           fn(member) {
@@ -275,7 +245,7 @@ fn apply_route_fields(
           },
         )
 
-      #(model, reset_password_effect(action))
+      #(model, auth_workflow.reset_password_effect(action))
     }
 
     // Story 4.5: Config routes - project-scoped configuration
@@ -374,7 +344,7 @@ fn apply_route_fields(
       let capabilities_fx = case model.core.page, project_id {
         client_state.Admin, opt.Some(pid) ->
           api_org.list_project_capabilities(pid, fn(result) {
-            client_state.admin_msg(client_state.CapabilitiesFetched(result))
+            client_state.admin_msg(admin_messages.CapabilitiesFetched(result))
           })
         _, _ -> effect.none()
       }
@@ -585,7 +555,7 @@ fn hydrate_projects_request(
 
   #(model, [
     api_projects.list_projects(fn(result) {
-      client_state.admin_msg(client_state.ProjectsFetched(result))
+      client_state.admin_msg(admin_messages.ProjectsFetched(result))
     }),
     ..fx
   ])
@@ -612,7 +582,7 @@ fn hydrate_invite_links_request(
 
   #(model, [
     api_org.list_invite_links(fn(result) {
-      client_state.admin_msg(client_state.InviteLinksFetched(result))
+      client_state.admin_msg(admin_messages.InviteLinksFetched(result))
     }),
     ..fx
   ])
@@ -642,7 +612,7 @@ fn hydrate_capabilities_request(
 
   #(model, [
     api_org.list_project_capabilities(project_id, fn(result) {
-      client_state.admin_msg(client_state.CapabilitiesFetched(result))
+      client_state.admin_msg(admin_messages.CapabilitiesFetched(result))
     }),
     ..fx
   ])
@@ -677,7 +647,7 @@ fn hydrate_me_capability_ids_request(
 
   #(model, [
     api_tasks.get_member_capability_ids(project_id, user.id, fn(result) {
-      client_state.pool_msg(client_state.MemberMyCapabilityIdsFetched(result))
+      client_state.pool_msg(pool_messages.MemberMyCapabilityIdsFetched(result))
     }),
     ..fx
   ])
@@ -704,7 +674,7 @@ fn hydrate_work_sessions_request(
 
   #(model, [
     api_tasks.get_work_sessions(fn(result) {
-      client_state.pool_msg(client_state.MemberWorkSessionsFetched(result))
+      client_state.pool_msg(pool_messages.MemberWorkSessionsFetched(result))
     }),
     ..fx
   ])
@@ -731,7 +701,7 @@ fn hydrate_me_metrics_request(
 
   #(model, [
     api_metrics.get_me_metrics(30, fn(result) {
-      client_state.pool_msg(client_state.MemberMetricsFetched(result))
+      client_state.pool_msg(pool_messages.MemberMetricsFetched(result))
     }),
     ..fx
   ])
@@ -758,7 +728,7 @@ fn hydrate_org_metrics_overview_request(
 
   #(model, [
     api_metrics.get_org_metrics_overview(30, fn(result) {
-      client_state.pool_msg(client_state.AdminMetricsOverviewFetched(result))
+      client_state.pool_msg(pool_messages.AdminMetricsOverviewFetched(result))
     }),
     ..fx
   ])
@@ -806,7 +776,9 @@ fn hydrate_org_metrics_project_tasks_request(
 
   let fx_tasks =
     api_metrics.get_org_metrics_project_tasks(project_id, 30, fn(result) {
-      client_state.pool_msg(client_state.AdminMetricsProjectTasksFetched(result))
+      client_state.pool_msg(pool_messages.AdminMetricsProjectTasksFetched(
+        result,
+      ))
     })
 
   #(model, [fx_tasks, ..fx])
@@ -839,7 +811,7 @@ fn hydrate_org_settings_users_request(
 
   #(model, [
     api_org.list_org_users("", fn(result) {
-      client_state.admin_msg(client_state.OrgSettingsUsersFetched(result))
+      client_state.admin_msg(admin_messages.OrgSettingsUsersFetched(result))
     }),
     ..fx
   ])
@@ -866,7 +838,7 @@ fn hydrate_org_users_cache_request(
 
   #(model, [
     api_org.list_org_users("", fn(result) {
-      client_state.admin_msg(client_state.OrgUsersCacheFetched(result))
+      client_state.admin_msg(admin_messages.OrgUsersCacheFetched(result))
     }),
     ..fx
   ])
@@ -911,11 +883,11 @@ fn hydrate_members_request(
 
   let fx_members =
     api_projects.list_project_members(project_id, fn(result) {
-      client_state.admin_msg(client_state.MembersFetched(result))
+      client_state.admin_msg(admin_messages.MembersFetched(result))
     })
   let fx_users =
     api_org.list_org_users("", fn(result) {
-      client_state.admin_msg(client_state.OrgUsersCacheFetched(result))
+      client_state.admin_msg(admin_messages.OrgUsersCacheFetched(result))
     })
 
   #(model, [effect.batch([fx_members, fx_users]), ..fx])
@@ -959,7 +931,7 @@ fn hydrate_task_types_request(
 
   #(model, [
     api_tasks.list_task_types(project_id, fn(result) {
-      client_state.admin_msg(client_state.TaskTypesFetched(result))
+      client_state.admin_msg(admin_messages.TaskTypesFetched(result))
     }),
     ..fx
   ])
@@ -1160,7 +1132,7 @@ fn bootstrap_admin(
 
   let effects = [
     api_projects.list_projects(fn(result) {
-      client_state.admin_msg(client_state.ProjectsFetched(result))
+      client_state.admin_msg(admin_messages.ProjectsFetched(result))
     }),
   ]
 
@@ -1168,7 +1140,7 @@ fn bootstrap_admin(
   let effects = case model.core.selected_project_id {
     opt.Some(project_id) -> [
       api_org.list_project_capabilities(project_id, fn(result) {
-        client_state.admin_msg(client_state.CapabilitiesFetched(result))
+        client_state.admin_msg(admin_messages.CapabilitiesFetched(result))
       }),
       ..effects
     ]
@@ -1179,7 +1151,7 @@ fn bootstrap_admin(
   let effects = case model.core.selected_project_id, model.core.user {
     opt.Some(project_id), opt.Some(user) -> [
       api_tasks.get_member_capability_ids(project_id, user.id, fn(result) {
-        client_state.pool_msg(client_state.MemberMyCapabilityIdsFetched(result))
+        client_state.pool_msg(pool_messages.MemberMyCapabilityIdsFetched(result))
       }),
       ..effects
     ]
@@ -1189,7 +1161,7 @@ fn bootstrap_admin(
   let effects = case is_admin {
     True -> [
       api_org.list_invite_links(fn(result) {
-        client_state.admin_msg(client_state.InviteLinksFetched(result))
+        client_state.admin_msg(admin_messages.InviteLinksFetched(result))
       }),
       ..effects
     ]
@@ -1216,7 +1188,7 @@ pub fn refresh_section_for_test(
       #(
         model,
         api_org.list_invite_links(fn(result) {
-          client_state.admin_msg(client_state.InviteLinksFetched(result))
+          client_state.admin_msg(admin_messages.InviteLinksFetched(result))
         }),
       )
     }
@@ -1236,7 +1208,7 @@ pub fn refresh_section_for_test(
       #(
         model,
         api_org.list_org_users("", fn(result) {
-          client_state.admin_msg(client_state.OrgSettingsUsersFetched(result))
+          client_state.admin_msg(admin_messages.OrgSettingsUsersFetched(result))
         }),
       )
     }
@@ -1244,7 +1216,7 @@ pub fn refresh_section_for_test(
     permissions.Projects -> #(
       model,
       api_projects.list_projects(fn(result) {
-        client_state.admin_msg(client_state.ProjectsFetched(result))
+        client_state.admin_msg(admin_messages.ProjectsFetched(result))
       }),
     )
 
@@ -1261,7 +1233,9 @@ pub fn refresh_section_for_test(
 
       let overview_fx =
         api_metrics.get_org_metrics_overview(30, fn(result) {
-          client_state.pool_msg(client_state.AdminMetricsOverviewFetched(result))
+          client_state.pool_msg(pool_messages.AdminMetricsOverviewFetched(
+            result,
+          ))
         })
 
       case model.core.selected_project_id {
@@ -1283,7 +1257,7 @@ pub fn refresh_section_for_test(
               30,
               fn(result) {
                 client_state.pool_msg(
-                  client_state.AdminMetricsProjectTasksFetched(result),
+                  pool_messages.AdminMetricsProjectTasksFetched(result),
                 )
               },
             )
@@ -1309,7 +1283,9 @@ pub fn refresh_section_for_test(
             model,
             effect.batch([
               api_org.list_project_capabilities(project_id, fn(result) {
-                client_state.admin_msg(client_state.CapabilitiesFetched(result))
+                client_state.admin_msg(admin_messages.CapabilitiesFetched(
+                  result,
+                ))
               }),
               ..right_panel_fx
             ]),
@@ -1336,10 +1312,12 @@ pub fn refresh_section_for_test(
             model,
             effect.batch([
               api_projects.list_project_members(project_id, fn(result) {
-                client_state.admin_msg(client_state.MembersFetched(result))
+                client_state.admin_msg(admin_messages.MembersFetched(result))
               }),
               api_org.list_org_users("", fn(result) {
-                client_state.admin_msg(client_state.OrgUsersCacheFetched(result))
+                client_state.admin_msg(admin_messages.OrgUsersCacheFetched(
+                  result,
+                ))
               }),
               ..right_panel_fx
             ]),
@@ -1364,7 +1342,7 @@ pub fn refresh_section_for_test(
             model,
             effect.batch([
               api_tasks.list_task_types(project_id, fn(result) {
-                client_state.admin_msg(client_state.TaskTypesFetched(result))
+                client_state.admin_msg(admin_messages.TaskTypesFetched(result))
               }),
               ..right_panel_fx
             ]),
@@ -1394,11 +1372,11 @@ pub fn refresh_section_for_test(
       {
         opt.Some(project_id), NotAsked ->
           api_tasks.list_task_types(project_id, fn(result) {
-            client_state.admin_msg(client_state.TaskTypesFetched(result))
+            client_state.admin_msg(admin_messages.TaskTypesFetched(result))
           })
         opt.Some(project_id), Failed(_) ->
           api_tasks.list_task_types(project_id, fn(result) {
-            client_state.admin_msg(client_state.TaskTypesFetched(result))
+            client_state.admin_msg(admin_messages.TaskTypesFetched(result))
           })
         _, _ -> effect.none()
       }
@@ -1441,7 +1419,9 @@ fn refresh_assignments_metrics(
         })
       let fx =
         api_metrics.get_org_metrics_overview(30, fn(result) {
-          client_state.pool_msg(client_state.AdminMetricsOverviewFetched(result))
+          client_state.pool_msg(pool_messages.AdminMetricsOverviewFetched(
+            result,
+          ))
         })
       #(model, fx)
     }
@@ -1460,7 +1440,7 @@ fn refresh_assignments_metrics_users(
         })
       let fx =
         api_metrics.get_org_metrics_users(30, fn(result) {
-          client_state.pool_msg(client_state.AdminMetricsUsersFetched(result))
+          client_state.pool_msg(pool_messages.AdminMetricsUsersFetched(result))
         })
       #(model, fx)
     }
@@ -1479,7 +1459,7 @@ fn refresh_assignments_projects(
         })
       let fx =
         api_projects.list_projects(fn(result) {
-          client_state.admin_msg(client_state.ProjectsFetched(result))
+          client_state.admin_msg(admin_messages.ProjectsFetched(result))
         })
       #(model, fx)
     }
@@ -1498,7 +1478,7 @@ fn refresh_assignments_org_users(
         })
       let fx =
         api_org.list_org_users("", fn(result) {
-          client_state.admin_msg(client_state.OrgUsersCacheFetched(result))
+          client_state.admin_msg(admin_messages.OrgUsersCacheFetched(result))
         })
       #(model, fx)
     }
@@ -1537,7 +1517,7 @@ fn refresh_assignments_project_members(
               let effect =
                 api_projects.list_project_members(project.id, fn(result) {
                   client_state.admin_msg(
-                    client_state.AssignmentsProjectMembersFetched(
+                    admin_messages.AssignmentsProjectMembersFetched(
                       project.id,
                       result,
                     ),
@@ -1587,7 +1567,10 @@ fn refresh_assignments_user_projects(
               let effect =
                 api_org.list_user_projects(user.id, fn(result) {
                   client_state.admin_msg(
-                    client_state.AssignmentsUserProjectsFetched(user.id, result),
+                    admin_messages.AssignmentsUserProjectsFetched(
+                      user.id,
+                      result,
+                    ),
                   )
                 })
               #(updated, [effect, ..fx])
@@ -1627,7 +1610,7 @@ fn fetch_right_panel_data(
             blocked: opt.None,
           ),
           fn(result) {
-            client_state.pool_msg(client_state.MemberProjectTasksFetched(
+            client_state.pool_msg(pool_messages.MemberProjectTasksFetched(
               project_id,
               result,
             ))
@@ -1637,7 +1620,7 @@ fn fetch_right_panel_data(
       // Fetch cards for "My Cards" section
       let cards_effect =
         api_cards.list_cards(project_id, fn(result) {
-          client_state.pool_msg(client_state.CardsFetched(result))
+          client_state.pool_msg(pool_messages.CardsFetched(result))
         })
 
       // Update model with pending counter and loading state
@@ -1697,7 +1680,7 @@ fn refresh_member_capabilities(
         member_state.MemberModel(..member, member_capabilities: Loading)
       }),
       api_org.list_project_capabilities(project_id, fn(result) {
-        client_state.pool_msg(client_state.MemberProjectCapabilitiesFetched(
+        client_state.pool_msg(pool_messages.MemberProjectCapabilitiesFetched(
           result,
         ))
       }),
@@ -1745,7 +1728,7 @@ fn refresh_member_cards_for_projects(
   let effects =
     list.map(project_ids, fn(project_id) {
       api_cards.list_cards(project_id, fn(result) {
-        client_state.pool_msg(client_state.MemberProjectCardsFetched(
+        client_state.pool_msg(pool_messages.MemberProjectCardsFetched(
           project_id,
           result,
         ))
@@ -1822,13 +1805,13 @@ fn refresh_member_data(
 
   let positions_effect =
     api_tasks.list_me_task_positions(model.core.selected_project_id, fn(result) {
-      client_state.pool_msg(client_state.MemberPositionsFetched(result))
+      client_state.pool_msg(pool_messages.MemberPositionsFetched(result))
     })
 
   let task_effects =
     list.map(project_ids, fn(project_id) {
       api_tasks.list_project_tasks(project_id, filters, fn(result) {
-        client_state.pool_msg(client_state.MemberProjectTasksFetched(
+        client_state.pool_msg(pool_messages.MemberProjectTasksFetched(
           project_id,
           result,
         ))
@@ -1838,7 +1821,7 @@ fn refresh_member_data(
   let task_type_effects =
     list.map(project_ids, fn(project_id) {
       api_tasks.list_task_types(project_id, fn(result) {
-        client_state.pool_msg(client_state.MemberTaskTypesFetched(
+        client_state.pool_msg(pool_messages.MemberTaskTypesFetched(
           project_id,
           result,
         ))
@@ -1848,7 +1831,7 @@ fn refresh_member_data(
   let member_card_effects =
     list.map(project_ids, fn(project_id) {
       api_cards.list_cards(project_id, fn(result) {
-        client_state.pool_msg(client_state.MemberProjectCardsFetched(
+        client_state.pool_msg(pool_messages.MemberProjectCardsFetched(
           project_id,
           result,
         ))
@@ -2044,87 +2027,11 @@ pub fn update(
                 )
               }),
               fn(auth) {
-                client_state.AuthModel(
-                  ..auth,
-                  login_error: opt.Some(err.message),
-                )
+                auth_state.AuthModel(..auth, login_error: opt.Some(err.message))
               },
             )
 
           #(model, replace_url(model))
-        }
-      }
-    }
-
-    client_state.AcceptInviteMsg(inner) -> {
-      let #(next_accept, action) =
-        accept_invite.update(model.auth.accept_invite, inner)
-      let model =
-        client_state.update_auth(model, fn(auth) {
-          client_state.AuthModel(..auth, accept_invite: next_accept)
-        })
-
-      case action {
-        accept_invite.NoOp -> #(model, effect.none())
-
-        accept_invite.ValidateToken(_) -> #(model, accept_invite_effect(action))
-
-        accept_invite.Register(token: token, password: password) -> #(
-          model,
-          api_auth.register_with_invite_link(token, password, fn(result) {
-            client_state.AcceptInviteMsg(accept_invite.Registered(result))
-          }),
-        )
-
-        accept_invite.Authed(user) -> handle_accept_invite_authed(model, user)
-      }
-    }
-
-    client_state.ResetPasswordMsg(inner) -> {
-      let #(next_reset, action) =
-        reset_password.update(model.auth.reset_password, inner)
-
-      let model =
-        client_state.update_auth(model, fn(auth) {
-          client_state.AuthModel(..auth, reset_password: next_reset)
-        })
-
-      case action {
-        reset_password.NoOp -> #(model, effect.none())
-
-        reset_password.ValidateToken(_) -> #(
-          model,
-          reset_password_effect(action),
-        )
-
-        reset_password.Consume(token: token, password: password) -> #(
-          model,
-          api_auth.consume_password_reset_token(token, password, fn(result) {
-            client_state.ResetPasswordMsg(reset_password.Consumed(result))
-          }),
-        )
-
-        reset_password.GoToLogin -> {
-          let model =
-            client_state.update_auth(
-              client_state.update_core(model, fn(core) {
-                client_state.CoreModel(..core, page: client_state.Login)
-              }),
-              fn(auth) {
-                client_state.AuthModel(
-                  ..auth,
-                  login_password: "",
-                  login_error: opt.None,
-                )
-              },
-            )
-          let toast_fx =
-            update_helpers.toast_success(update_helpers.i18n_t(
-              model,
-              i18n_text.PasswordUpdated,
-            ))
-
-          #(model, effect.batch([replace_url(model), toast_fx]))
         }
       }
     }
@@ -2197,8 +2104,8 @@ pub fn update(
       }
     }
 
-    client_state.LocaleSelected(value) ->
-      i18n_workflow.handle_locale_selected(model, value)
+    client_state.I18nMsg(inner) -> i18n_workflow.update(model, inner)
+    client_state.LayoutMsg(inner) -> layout_workflow.update(model, inner)
 
     client_state.ProjectSelected(project_id) -> {
       let selected = case int.parse(project_id) {
@@ -2261,45 +2168,6 @@ pub fn update(
   }
 }
 
-fn handle_accept_invite_authed(
-  model: client_state.Model,
-  user: User,
-) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let page = page_for_org_role(user.org_role)
-
-  let model =
-    client_state.update_core(model, fn(core) {
-      client_state.CoreModel(
-        ..core,
-        page: page,
-        user: opt.Some(user),
-        auth_checked: True,
-      )
-    })
-
-  let toast_fx =
-    update_helpers.toast_success(update_helpers.i18n_t(model, i18n_text.Welcome))
-
-  let #(model, boot) = bootstrap_admin(model)
-  let #(model, hyd_fx) = hydrate_model(model)
-  #(
-    model,
-    effect.batch([
-      boot,
-      hyd_fx,
-      replace_url(model),
-      toast_fx,
-    ]),
-  )
-}
-
-fn page_for_org_role(role: org_role.OrgRole) -> client_state.Page {
-  case role {
-    org_role.Admin -> client_state.Admin
-    _ -> client_state.Member
-  }
-}
-
 fn refresh_member_after_project_change(
   model: client_state.Model,
   should_pause: Bool,
@@ -2323,7 +2191,7 @@ fn pause_active_task_fx(model: client_state.Model) -> Effect(client_state.Msg) {
   case update_helpers.now_working_active_task_id(model) {
     opt.Some(task_id) ->
       api_tasks.pause_work_session(task_id, fn(result) {
-        client_state.pool_msg(client_state.MemberWorkSessionPaused(result))
+        client_state.pool_msg(pool_messages.MemberWorkSessionPaused(result))
       })
     opt.None -> effect.none()
   }

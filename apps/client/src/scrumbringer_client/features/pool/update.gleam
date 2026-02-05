@@ -40,15 +40,14 @@ import scrumbringer_client/api/tasks as api_tasks
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, MemberCanvasRectFetched, MemberDragOffsetResolved,
-  MemberPoolLongPressCheck, MemberPoolMyTasksRectFetched, MemberPositionSaved,
-  MemberTaskClaimed, MemberTaskHoverNotesFetched, pool_msg, update_member,
+  type Model, type Msg, pool_msg, update_member,
 }
 import scrumbringer_client/client_state/member.{MemberModel}
 import scrumbringer_client/client_state/types.{
   type PoolDragState, DragActive, DragIdle, DragPending, PoolDragDragging,
   PoolDragIdle, PoolDragPendingRect, Rect, rect_contains_point,
 }
+import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/member_section
 import scrumbringer_client/pool_prefs
@@ -351,7 +350,7 @@ pub fn handle_pool_touch_started(
     effect.batch([
       hover_fx,
       app_effects.schedule_timeout(450, fn() {
-        pool_msg(MemberPoolLongPressCheck(task_id))
+        pool_msg(pool_messages.MemberPoolLongPressCheck(task_id))
       }),
     ]),
   )
@@ -514,18 +513,24 @@ pub fn handle_drag_started(
     model,
     effect.from(fn(dispatch) {
       let #(left, top) = client_ffi.element_client_offset("member-canvas")
-      dispatch(pool_msg(MemberCanvasRectFetched(left, top)))
+      dispatch(pool_msg(pool_messages.MemberCanvasRectFetched(left, top)))
 
       let #(card_left, card_top, _width, _height) =
         client_ffi.element_client_rect("task-card-" <> int.to_string(task_id))
       let offset_x = client_x - card_left
       let offset_y = client_y - card_top
-      dispatch(pool_msg(MemberDragOffsetResolved(task_id, offset_x, offset_y)))
+      dispatch(
+        pool_msg(pool_messages.MemberDragOffsetResolved(
+          task_id,
+          offset_x,
+          offset_y,
+        )),
+      )
 
       let #(dz_left, dz_top, dz_width, dz_height) =
         client_ffi.element_client_rect("pool-my-tasks")
       dispatch(
-        pool_msg(MemberPoolMyTasksRectFetched(
+        pool_msg(pool_messages.MemberPoolMyTasksRectFetched(
           dz_left,
           dz_top,
           dz_width,
@@ -674,7 +679,7 @@ fn ensure_hover_notes(model: Model, task_id: Int) -> #(Model, Effect(Msg)) {
 
       let notes_fx =
         api_tasks.list_task_notes(task_id, fn(result) {
-          pool_msg(MemberTaskHoverNotesFetched(task_id, result))
+          pool_msg(pool_messages.MemberTaskHoverNotesFetched(task_id, result))
         })
 
       #(model, notes_fx)
@@ -759,7 +764,7 @@ fn handle_claim_drop(model: Model, task_id: Int) -> #(Model, Effect(Msg)) {
         MemberModel(..member, member_task_mutation_in_flight: True)
       }),
       api_tasks.claim_task(task_id, version, fn(result) {
-        pool_msg(MemberTaskClaimed(result))
+        pool_msg(pool_messages.MemberTaskClaimed(result))
       }),
     )
     opt.Some(_), True -> #(model, effect.none())
@@ -773,7 +778,7 @@ fn handle_position_drop(model: Model, task_id: Int) -> #(Model, Effect(Msg)) {
   #(
     model,
     api_tasks.upsert_me_task_position(task_id, x, y, fn(result) {
-      pool_msg(MemberPositionSaved(result))
+      pool_msg(pool_messages.MemberPositionSaved(result))
     }),
   )
 }
@@ -897,7 +902,7 @@ fn submit_position_edit_valid(
   #(
     model,
     api_tasks.upsert_me_task_position(task_id, x, y, fn(result) {
-      pool_msg(MemberPositionSaved(result))
+      pool_msg(pool_messages.MemberPositionSaved(result))
     }),
   )
 }
@@ -958,7 +963,7 @@ pub fn handle_position_saved_error(
       effect.batch([
         api_tasks.list_me_task_positions(
           model.core.selected_project_id,
-          fn(result) { pool_msg(client_state.MemberPositionsFetched(result)) },
+          fn(result) { pool_msg(pool_messages.MemberPositionsFetched(result)) },
         ),
         update_helpers.toast_error(err.message),
       ]),

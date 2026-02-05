@@ -40,21 +40,9 @@ import domain/workflow.{type Rule, type TaskTemplate, type Workflow, Workflow}
 
 import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/client_ffi
-import scrumbringer_client/client_state.{
-  type Model, type Msg, AdminRuleMetricsDrilldownClicked,
-  AdminRuleMetricsDrilldownClosed, AdminRuleMetricsExecPageChanged,
-  AdminRuleMetricsFromChangedAndRefresh, AdminRuleMetricsQuickRangeClicked,
-  AdminRuleMetricsToChangedAndRefresh, AdminRuleMetricsWorkflowExpanded,
-  AttachTemplateModalClosed, AttachTemplateModalOpened, AttachTemplateSelected,
-  AttachTemplateSubmitted, CloseRuleDialog, CloseTaskTemplateDialog,
-  CloseWorkflowDialog, NoOp, OpenRuleDialog, OpenTaskTemplateDialog,
-  OpenWorkflowDialog, RuleCrudCreated, RuleCrudDeleted, RuleCrudUpdated,
-  RuleExpandToggled, RulesBackClicked, TaskTemplateCrudCreated,
-  TaskTemplateCrudDeleted, TaskTemplateCrudUpdated, TemplateDetachClicked,
-  WorkflowCrudCreated, WorkflowCrudDeleted, WorkflowCrudUpdated,
-  WorkflowRulesClicked, pool_msg,
-}
+import scrumbringer_client/client_state.{type Model, type Msg, NoOp, pool_msg}
 import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
@@ -114,7 +102,9 @@ fn view_workflows_list(
           dialog.add_button(
             model,
             i18n_text.CreateWorkflow,
-            pool_msg(OpenWorkflowDialog(state_types.WorkflowDialogCreate)),
+            pool_msg(pool_messages.OpenWorkflowDialog(
+              state_types.WorkflowDialogCreate,
+            )),
           ),
         ),
         // Story 4.9 AC21: Contextual hint with link to Templates
@@ -239,14 +229,14 @@ fn workflow_to_property_json(workflow: Workflow, mode: String) -> json.Json {
 /// Decoder for workflow-created event.
 fn decode_workflow_created_event() -> decode.Decoder(Msg) {
   event_decoders.custom_detail(workflow_decoder(), fn(workflow) {
-    decode.success(pool_msg(WorkflowCrudCreated(workflow)))
+    decode.success(pool_msg(pool_messages.WorkflowCrudCreated(workflow)))
   })
 }
 
 /// Decoder for workflow-updated event.
 fn decode_workflow_updated_event() -> decode.Decoder(Msg) {
   event_decoders.custom_detail(workflow_decoder(), fn(workflow) {
-    decode.success(pool_msg(WorkflowCrudUpdated(workflow)))
+    decode.success(pool_msg(pool_messages.WorkflowCrudUpdated(workflow)))
   })
 }
 
@@ -254,7 +244,7 @@ fn decode_workflow_updated_event() -> decode.Decoder(Msg) {
 fn decode_workflow_deleted_event() -> decode.Decoder(Msg) {
   event_decoders.custom_detail(
     decode.field("id", decode.int, decode.success),
-    fn(id) { decode.success(pool_msg(WorkflowCrudDeleted(id))) },
+    fn(id) { decode.success(pool_msg(pool_messages.WorkflowCrudDeleted(id))) },
   )
 }
 
@@ -284,7 +274,7 @@ fn workflow_decoder() -> decode.Decoder(Workflow) {
 
 /// Decoder for close-requested event from workflow dialog.
 fn decode_workflow_close_requested_event() -> decode.Decoder(Msg) {
-  decode.success(pool_msg(CloseWorkflowDialog))
+  decode.success(pool_msg(pool_messages.CloseWorkflowDialog))
 }
 
 fn view_workflows_table(
@@ -337,19 +327,23 @@ fn view_workflow_actions(model: Model, w: Workflow) -> Element(Msg) {
       [
         attribute.class("btn-icon btn-xs"),
         attribute.attribute("title", t(i18n_text.WorkflowRules)),
-        event.on_click(pool_msg(WorkflowRulesClicked(w.id))),
+        event.on_click(pool_msg(pool_messages.WorkflowRulesClicked(w.id))),
       ],
       [icons.nav_icon(icons.Cog, icons.Small)],
     ),
     // Edit button
     action_buttons.edit_button(
       t(i18n_text.EditWorkflow),
-      pool_msg(OpenWorkflowDialog(state_types.WorkflowDialogEdit(w))),
+      pool_msg(
+        pool_messages.OpenWorkflowDialog(state_types.WorkflowDialogEdit(w)),
+      ),
     ),
     // Delete button
     action_buttons.delete_button(
       t(i18n_text.DeleteWorkflow),
-      pool_msg(OpenWorkflowDialog(state_types.WorkflowDialogDelete(w))),
+      pool_msg(
+        pool_messages.OpenWorkflowDialog(state_types.WorkflowDialogDelete(w)),
+      ),
     ),
   ])
 }
@@ -368,8 +362,8 @@ fn view_workflow_rules(model: Model, workflow_id: Int) -> Element(Msg) {
     |> opt.unwrap("Workflow #" <> int.to_string(workflow_id))
 
   div([attribute.class("section")], [
-    button([event.on_click(pool_msg(RulesBackClicked))], [
-      text("← Back to Workflows"),
+    button([event.on_click(pool_msg(pool_messages.RulesBackClicked))], [
+      text(update_helpers.i18n_t(model, i18n_text.BackToWorkflows)),
     ]),
     // Section header with add button (Story 4.8: consistent icons)
     section_header.view_with_action(
@@ -378,7 +372,7 @@ fn view_workflow_rules(model: Model, workflow_id: Int) -> Element(Msg) {
       dialog.add_button(
         model,
         i18n_text.CreateRule,
-        pool_msg(OpenRuleDialog(state_types.RuleDialogCreate)),
+        pool_msg(pool_messages.OpenRuleDialog(state_types.RuleDialogCreate)),
       ),
     ),
     view_rules_table(model, model.admin.rules, model.admin.rules_metrics),
@@ -493,7 +487,7 @@ fn view_rule_row_expandable(
           False -> "false"
         }),
         // AC2: Click anywhere on the row to expand/collapse
-        event.on_click(pool_msg(RuleExpandToggled(rule.id))),
+        event.on_click(pool_msg(pool_messages.RuleExpandToggled(rule.id))),
       ],
       [
         // Expand/collapse icon (AC1: visual indicator) - use triangles for consistency
@@ -540,11 +534,11 @@ fn view_rule_row_expandable(
           action_buttons.edit_delete_row(
             edit_title: t(i18n_text.EditRule),
             edit_click: pool_msg(
-              OpenRuleDialog(state_types.RuleDialogEdit(rule)),
+              pool_messages.OpenRuleDialog(state_types.RuleDialogEdit(rule)),
             ),
             delete_title: t(i18n_text.DeleteRule),
             delete_click: pool_msg(
-              OpenRuleDialog(state_types.RuleDialogDelete(rule)),
+              pool_messages.OpenRuleDialog(state_types.RuleDialogDelete(rule)),
             ),
           ),
         ]),
@@ -561,19 +555,20 @@ fn view_rule_row_expandable(
 // Justification: nested case keeps resource type rendering readable with optional
 // task type lookup and a fallback for missing types.
 fn view_rule_resource_type(model: Model, rule: Rule) -> Element(Msg) {
+  let task_label = update_helpers.i18n_t(model, i18n_text.ResourceTypeTask)
   case rule.resource_type, rule.task_type_id {
     "task", opt.Some(type_id) ->
       case find_task_type(model, type_id) {
         opt.Some(tt) ->
           span([attribute.class("resource-type-task")], [
-            text("task"),
+            text(task_label),
             span([attribute.class("resource-type-separator")], [text(" · ")]),
             span([attribute.class("task-type-inline")], [
               icons.view_task_type_icon_inline(tt.icon, 14, model.ui.theme),
             ]),
             text(" " <> tt.name),
           ])
-        opt.None -> text("task")
+        opt.None -> text(task_label)
       }
     resource_type, _ -> text(resource_type)
   }
@@ -628,7 +623,9 @@ fn view_rule_templates_expansion(
           [
             attribute.class("btn btn-sm btn-primary"),
             // Stop propagation to prevent any parent click handlers from interfering
-            event.on_click(pool_msg(AttachTemplateModalOpened(rule.id)))
+            event.on_click(
+              pool_msg(pool_messages.AttachTemplateModalOpened(rule.id)),
+            )
               |> event.stop_propagation,
           ],
           [
@@ -713,7 +710,7 @@ fn view_attached_template_item(
         False ->
           action_buttons.delete_button(
             t(i18n_text.RemoveTemplate),
-            pool_msg(TemplateDetachClicked(rule_id, tmpl.id)),
+            pool_msg(pool_messages.TemplateDetachClicked(rule_id, tmpl.id)),
           )
       },
     ]),
@@ -744,7 +741,7 @@ fn view_attach_template_modal(model: Model) -> Element(Msg) {
           modal_header.view_dialog(
             t(i18n_text.AttachTemplate),
             opt.None,
-            pool_msg(AttachTemplateModalClosed),
+            pool_msg(pool_messages.AttachTemplateModalClosed),
           ),
           view_attach_template_modal_body(
             model,
@@ -840,7 +837,7 @@ fn view_attach_template_modal_footer(model: Model) -> Element(Msg) {
     button(
       [
         attribute.class("btn btn-secondary"),
-        event.on_click(pool_msg(AttachTemplateModalClosed)),
+        event.on_click(pool_msg(pool_messages.AttachTemplateModalClosed)),
       ],
       [text(t(i18n_text.Cancel))],
     ),
@@ -855,7 +852,7 @@ fn view_attach_template_modal_footer(model: Model) -> Element(Msg) {
           [
             attribute.class("btn btn-primary"),
             attribute.disabled(opt.is_none(model.admin.attach_template_selected)),
-            event.on_click(pool_msg(AttachTemplateSubmitted)),
+            event.on_click(pool_msg(pool_messages.AttachTemplateSubmitted)),
           ],
           [text(t(i18n_text.Attach))],
         )
@@ -883,7 +880,7 @@ fn view_template_radio_option(model: Model, tmpl: TaskTemplate) -> Element(Msg) 
         },
       ),
       // Put click handler on the whole div so clicking label works
-      event.on_click(pool_msg(AttachTemplateSelected(tmpl.id))),
+      event.on_click(pool_msg(pool_messages.AttachTemplateSelected(tmpl.id))),
     ],
     [
       input([
@@ -987,17 +984,26 @@ fn view_rule_crud_dialog(model: Model, workflow_id: Int) -> Element(Msg) {
       // Event handlers
       event.on(
         "rule-created",
-        decode_rule_event(fn(rule) { pool_msg(RuleCrudCreated(rule)) }),
+        decode_rule_event(fn(rule) {
+          pool_msg(pool_messages.RuleCrudCreated(rule))
+        }),
       ),
       event.on(
         "rule-updated",
-        decode_rule_event(fn(rule) { pool_msg(RuleCrudUpdated(rule)) }),
+        decode_rule_event(fn(rule) {
+          pool_msg(pool_messages.RuleCrudUpdated(rule))
+        }),
       ),
       event.on(
         "rule-deleted",
-        decode_rule_id_event(fn(rule_id) { pool_msg(RuleCrudDeleted(rule_id)) }),
+        decode_rule_id_event(fn(rule_id) {
+          pool_msg(pool_messages.RuleCrudDeleted(rule_id))
+        }),
       ),
-      event.on("close-requested", decode_close_event(pool_msg(CloseRuleDialog))),
+      event.on(
+        "close-requested",
+        decode_close_event(pool_msg(pool_messages.CloseRuleDialog)),
+      ),
     ],
     [],
   )
@@ -1093,7 +1099,9 @@ pub fn view_task_templates(
       dialog.add_button(
         model,
         i18n_text.CreateTaskTemplate,
-        pool_msg(OpenTaskTemplateDialog(state_types.TaskTemplateDialogCreate)),
+        pool_msg(pool_messages.OpenTaskTemplateDialog(
+          state_types.TaskTemplateDialogCreate,
+        )),
       ),
     ),
     // Story 4.9: Unified hint with rules link and variables info
@@ -1254,14 +1262,14 @@ fn task_types_to_property_json(task_types: Remote(List(TaskType))) -> json.Json 
 /// Decoder for task-template-created event.
 fn decode_task_template_created_event() -> decode.Decoder(Msg) {
   event_decoders.custom_detail(task_template_decoder(), fn(template) {
-    decode.success(pool_msg(TaskTemplateCrudCreated(template)))
+    decode.success(pool_msg(pool_messages.TaskTemplateCrudCreated(template)))
   })
 }
 
 /// Decoder for task-template-updated event.
 fn decode_task_template_updated_event() -> decode.Decoder(Msg) {
   event_decoders.custom_detail(task_template_decoder(), fn(template) {
-    decode.success(pool_msg(TaskTemplateCrudUpdated(template)))
+    decode.success(pool_msg(pool_messages.TaskTemplateCrudUpdated(template)))
   })
 }
 
@@ -1269,13 +1277,15 @@ fn decode_task_template_updated_event() -> decode.Decoder(Msg) {
 fn decode_task_template_deleted_event() -> decode.Decoder(Msg) {
   event_decoders.custom_detail(
     decode.field("id", decode.int, decode.success),
-    fn(id) { decode.success(pool_msg(TaskTemplateCrudDeleted(id))) },
+    fn(id) {
+      decode.success(pool_msg(pool_messages.TaskTemplateCrudDeleted(id)))
+    },
   )
 }
 
 /// Decoder for close-requested event from task template component.
 fn decode_task_template_close_requested_event() -> decode.Decoder(Msg) {
-  decode.success(pool_msg(CloseTaskTemplateDialog))
+  decode.success(pool_msg(pool_messages.CloseTaskTemplateDialog))
 }
 
 /// Decoder for TaskTemplate from JSON (used in custom events).
@@ -1345,14 +1355,16 @@ fn view_task_templates_table(
             action_buttons.edit_delete_row_with_testid(
               edit_title: t(i18n_text.EditTaskTemplate),
               edit_click: pool_msg(
-                OpenTaskTemplateDialog(state_types.TaskTemplateDialogEdit(tmpl)),
+                pool_messages.OpenTaskTemplateDialog(
+                  state_types.TaskTemplateDialogEdit(tmpl),
+                ),
               ),
               edit_testid: "template-edit-btn",
               delete_title: t(i18n_text.Delete),
               delete_click: pool_msg(
-                OpenTaskTemplateDialog(state_types.TaskTemplateDialogDelete(
-                  tmpl,
-                )),
+                pool_messages.OpenTaskTemplateDialog(
+                  state_types.TaskTemplateDialogDelete(tmpl),
+                ),
               ),
               delete_testid: "template-delete-btn",
             )
@@ -1405,7 +1417,9 @@ pub fn view_rule_metrics(model: Model) -> Element(Msg) {
             attribute.value(model.admin.admin_rule_metrics_from),
             // Auto-refresh on date change
             event.on_input(fn(value) {
-              pool_msg(AdminRuleMetricsFromChangedAndRefresh(value))
+              pool_msg(pool_messages.AdminRuleMetricsFromChangedAndRefresh(
+                value,
+              ))
             }),
             attribute.attribute("aria-label", t(i18n_text.RuleMetricsFrom)),
           ]),
@@ -1417,7 +1431,7 @@ pub fn view_rule_metrics(model: Model) -> Element(Msg) {
             attribute.value(model.admin.admin_rule_metrics_to),
             // Auto-refresh on date change
             event.on_input(fn(value) {
-              pool_msg(AdminRuleMetricsToChangedAndRefresh(value))
+              pool_msg(pool_messages.AdminRuleMetricsToChangedAndRefresh(value))
             }),
             attribute.attribute("aria-label", t(i18n_text.RuleMetricsTo)),
           ]),
@@ -1460,7 +1474,9 @@ fn view_quick_range_button(
   button(
     [
       attribute.class(class),
-      event.on_click(pool_msg(AdminRuleMetricsQuickRangeClicked(from, today))),
+      event.on_click(
+        pool_msg(pool_messages.AdminRuleMetricsQuickRangeClicked(from, today)),
+      ),
       attribute.attribute("aria-pressed", case is_active {
         True -> "true"
         False -> "false"
@@ -1495,13 +1511,15 @@ fn view_rule_metrics_loaded(
     [] ->
       empty_state.simple(
         icons.Inbox,
-        "No se encontraron ejecuciones de automatizaciones en el rango seleccionado.",
+        update_helpers.i18n_t(model, i18n_text.RuleMetricsNoExecutions),
       )
     _ ->
       div([attribute.class("admin-card")], [
         div([attribute.class("admin-card-header")], [
           span([], [icons.nav_icon(icons.ClipboardDoc, icons.Small)]),
-          text(" Resultados"),
+          text(
+            " " <> update_helpers.i18n_t(model, i18n_text.RuleMetricsResults),
+          ),
         ]),
         view_rule_metrics_table(model, model.admin.admin_rule_metrics),
       ])
@@ -1594,7 +1612,7 @@ fn view_workflow_row(
       [
         attribute.class("workflow-row clickable"),
         event.on_click(
-          pool_msg(AdminRuleMetricsWorkflowExpanded(w.workflow_id)),
+          pool_msg(pool_messages.AdminRuleMetricsWorkflowExpanded(w.workflow_id)),
         ),
       ],
       [
@@ -1715,7 +1733,9 @@ fn view_workflow_rule_metrics_row(
           [
             attribute.class("btn-small"),
             event.on_click(
-              pool_msg(AdminRuleMetricsDrilldownClicked(rule_metrics.rule_id)),
+              pool_msg(pool_messages.AdminRuleMetricsDrilldownClicked(
+                rule_metrics.rule_id,
+              )),
             ),
           ],
           [text(update_helpers.i18n_t(model, i18n_text.ViewDetails))],
@@ -1739,7 +1759,9 @@ fn view_rule_drilldown_modal(model: Model) -> Element(Msg) {
             button(
               [
                 attribute.class("btn-close"),
-                event.on_click(pool_msg(AdminRuleMetricsDrilldownClosed)),
+                event.on_click(pool_msg(
+                  pool_messages.AdminRuleMetricsDrilldownClosed,
+                )),
               ],
               [text("X")],
             ),
@@ -1974,7 +1996,9 @@ fn view_executions_pagination(
           [
             attribute.class("btn-small"),
             attribute.disabled(pagination.offset == 0),
-            event.on_click(pool_msg(AdminRuleMetricsExecPageChanged(0))),
+            event.on_click(
+              pool_msg(pool_messages.AdminRuleMetricsExecPageChanged(0)),
+            ),
           ],
           [text("<<")],
         ),
@@ -1984,7 +2008,7 @@ fn view_executions_pagination(
             attribute.disabled(pagination.offset == 0),
             event.on_click(
               pool_msg(
-                AdminRuleMetricsExecPageChanged(int.max(
+                pool_messages.AdminRuleMetricsExecPageChanged(int.max(
                   0,
                   pagination.offset - pagination.limit,
                 )),
@@ -2005,7 +2029,7 @@ fn view_executions_pagination(
               pagination.offset + pagination.limit >= pagination.total,
             ),
             event.on_click(
-              pool_msg(AdminRuleMetricsExecPageChanged(
+              pool_msg(pool_messages.AdminRuleMetricsExecPageChanged(
                 pagination.offset + pagination.limit,
               )),
             ),
@@ -2019,7 +2043,7 @@ fn view_executions_pagination(
               pagination.offset + pagination.limit >= pagination.total,
             ),
             event.on_click(
-              pool_msg(AdminRuleMetricsExecPageChanged(
+              pool_msg(pool_messages.AdminRuleMetricsExecPageChanged(
                 { total_pages - 1 } * pagination.limit,
               )),
             ),

@@ -39,10 +39,10 @@ import domain/task.{type WorkSessionsPayload, WorkSessionsPayload}
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, MemberWorkSessionHeartbeated, MemberWorkSessionPaused,
-  MemberWorkSessionStarted, NowWorkingTicked, pool_msg, update_member,
+  type Model, type Msg, pool_msg, update_member,
 }
 import scrumbringer_client/client_state/member.{MemberModel}
+import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/update_helpers
 
 // =============================================================================
@@ -65,7 +65,7 @@ pub fn handle_start_clicked(model: Model, task_id: Int) -> #(Model, Effect(Msg))
       #(
         model,
         api_tasks.start_work_session(task_id, fn(result) -> Msg {
-          pool_msg(MemberWorkSessionStarted(result))
+          pool_msg(pool_messages.MemberWorkSessionStarted(result))
         }),
       )
     }
@@ -93,7 +93,7 @@ pub fn handle_pause_clicked(model: Model) -> #(Model, Effect(Msg)) {
           #(
             model,
             api_tasks.pause_work_session(task_id, fn(result) -> Msg {
-              pool_msg(MemberWorkSessionPaused(result))
+              pool_msg(pool_messages.MemberWorkSessionPaused(result))
             }),
           )
         }
@@ -131,7 +131,7 @@ pub fn handle_ticked(model: Model) -> #(Model, Effect(Msg)) {
       case active_task_id {
         opt.Some(task_id) ->
           api_tasks.heartbeat_work_session(task_id, fn(result) -> Msg {
-            pool_msg(MemberWorkSessionHeartbeated(result))
+            pool_msg(pool_messages.MemberWorkSessionHeartbeated(result))
           })
         opt.None -> effect.none()
       }
@@ -155,7 +155,9 @@ pub fn handle_ticked(model: Model) -> #(Model, Effect(Msg)) {
 
 /// Create effect that schedules the next tick in 1 second.
 pub fn tick_effect() -> Effect(Msg) {
-  app_effects.schedule_timeout(1000, fn() { pool_msg(NowWorkingTicked) })
+  app_effects.schedule_timeout(1000, fn() {
+    pool_msg(pool_messages.NowWorkingTicked)
+  })
 }
 
 // Justification: nested case improves clarity for branching logic.

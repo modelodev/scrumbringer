@@ -34,14 +34,14 @@ import domain/org.{type InviteLink}
 import domain/remote.{Failed, Loaded}
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, InviteLinkCopyFinished, InviteLinkCreated,
-  InviteLinkRegenerated, InviteLinksFetched, admin_msg, update_admin,
+  type Model, type Msg, admin_msg, update_admin,
 }
 import scrumbringer_client/client_state/admin.{AdminModel}
 import scrumbringer_client/client_state/types.{
   type DialogState, type InviteLinkForm, DialogClosed, DialogOpen, Error, Idle,
   InFlight, InviteLinkForm,
 }
+import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
 
@@ -174,7 +174,7 @@ pub fn handle_invite_link_create_submitted(
               #(
                 model,
                 api_org.create_invite_link(email, fn(result) {
-                  admin_msg(InviteLinkCreated(result))
+                  admin_msg(admin_messages.InviteLinkCreated(result))
                 }),
               )
             }
@@ -205,7 +205,7 @@ pub fn handle_invite_link_created_ok(
     ))
   let list_fx =
     api_org.list_invite_links(fn(result) {
-      admin_msg(InviteLinksFetched(result))
+      admin_msg(admin_messages.InviteLinksFetched(result))
     })
   #(model, effect.batch([list_fx, toast_fx]))
 }
@@ -291,7 +291,7 @@ pub fn handle_invite_link_regenerate_clicked(
           #(
             model,
             api_org.regenerate_invite_link(email, fn(result) {
-              admin_msg(InviteLinkRegenerated(result))
+              admin_msg(admin_messages.InviteLinkRegenerated(result))
             }),
           )
         }
@@ -321,7 +321,7 @@ pub fn handle_invite_link_regenerated_ok(
     ))
   let list_fx =
     api_org.list_invite_links(fn(result) {
-      admin_msg(InviteLinksFetched(result))
+      admin_msg(admin_messages.InviteLinksFetched(result))
     })
   #(model, effect.batch([list_fx, toast_fx]))
 }
@@ -405,7 +405,9 @@ pub fn handle_invite_link_copy_clicked(
         )),
       )
     }),
-    copy_to_clipboard(text, fn(ok) { admin_msg(InviteLinkCopyFinished(ok)) }),
+    copy_to_clipboard(text, fn(ok) {
+      admin_msg(admin_messages.InviteLinkCopyFinished(ok))
+    }),
   )
 }
 

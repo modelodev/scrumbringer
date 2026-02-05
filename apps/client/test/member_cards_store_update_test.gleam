@@ -6,6 +6,7 @@ import gleeunit/should
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_update
+import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/state/normalized_store
 
 fn make_card(id: Int, project_id: Int, title: String) -> Card {
@@ -57,7 +58,7 @@ pub fn member_project_cards_ok_updates_store_and_pending_test() {
   let #(next, _fx) =
     client_update.update(
       model,
-      client_state.pool_msg(client_state.MemberProjectCardsFetched(
+      client_state.pool_msg(pool_messages.MemberProjectCardsFetched(
         10,
         Ok([card_a]),
       )),
@@ -80,7 +81,7 @@ pub fn member_project_cards_error_preserves_store_test() {
   let #(next, _fx) =
     client_update.update(
       model,
-      client_state.pool_msg(client_state.MemberProjectCardsFetched(
+      client_state.pool_msg(pool_messages.MemberProjectCardsFetched(
         10,
         Error(api_error()),
       )),
@@ -99,7 +100,7 @@ pub fn pending_never_below_zero_test() {
   let #(next, _fx) =
     client_update.update(
       model,
-      client_state.pool_msg(client_state.MemberProjectCardsFetched(
+      client_state.pool_msg(pool_messages.MemberProjectCardsFetched(
         10,
         Ok([card_a]),
       )),
@@ -118,7 +119,7 @@ pub fn late_project_response_keeps_other_project_index_test() {
   let #(next_b, _fx_b) =
     client_update.update(
       model,
-      client_state.pool_msg(client_state.MemberProjectCardsFetched(
+      client_state.pool_msg(pool_messages.MemberProjectCardsFetched(
         20,
         Ok([card_b]),
       )),
@@ -127,7 +128,7 @@ pub fn late_project_response_keeps_other_project_index_test() {
   let #(next_a, _fx_a) =
     client_update.update(
       next_b,
-      client_state.pool_msg(client_state.MemberProjectCardsFetched(
+      client_state.pool_msg(pool_messages.MemberProjectCardsFetched(
         10,
         Ok([card_a]),
       )),
@@ -153,7 +154,7 @@ pub fn partial_error_keeps_global_loaded_test() {
   let #(next, _fx) =
     client_update.update(
       model,
-      client_state.pool_msg(client_state.MemberProjectCardsFetched(
+      client_state.pool_msg(pool_messages.MemberProjectCardsFetched(
         10,
         Error(api_error()),
       )),
@@ -170,7 +171,7 @@ pub fn pending_counts_across_multi_project_refresh_test() {
   let #(next_a, _fx_a) =
     client_update.update(
       model,
-      client_state.pool_msg(client_state.MemberProjectCardsFetched(
+      client_state.pool_msg(pool_messages.MemberProjectCardsFetched(
         10,
         Ok([card_a]),
       )),
@@ -181,7 +182,7 @@ pub fn pending_counts_across_multi_project_refresh_test() {
   let #(next_b, _fx_b) =
     client_update.update(
       next_a,
-      client_state.pool_msg(client_state.MemberProjectCardsFetched(
+      client_state.pool_msg(pool_messages.MemberProjectCardsFetched(
         20,
         Error(api_error()),
       )),

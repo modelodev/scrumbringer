@@ -750,7 +750,7 @@ fn view_card_tasks_section(model: Model) -> Element(Msg) {
         ])
       Failed(_) ->
         div([attribute.class("card-tasks-error")], [
-          text("Error loading tasks"),
+          text(t(model.locale, i18n_text.ErrorLoadingTasks)),
         ])
       _ ->
         case list.is_empty(tasks) {

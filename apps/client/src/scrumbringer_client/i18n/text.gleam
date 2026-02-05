@@ -676,5 +676,19 @@ pub type Text {
   TabDetails
   TabDependencies
   Unassigned
+  Assigned
   ClaimTask
+
+  // Error states
+  ErrorLoadingTasks
+
+  // Workflows / Rules
+  BackToWorkflows
+  ResourceTypeTask
+  RuleMetricsNoExecutions
+  RuleMetricsResults
+
+  // Icon picker
+  NoIconsFound
+  SearchIconsPlaceholder
 }

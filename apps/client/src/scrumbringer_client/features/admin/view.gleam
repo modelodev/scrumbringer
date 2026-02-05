@@ -49,24 +49,14 @@ import domain/task.{type Task}
 import domain/task_type.{type TaskType}
 
 import scrumbringer_client/client_state.{
-  type Model, type Msg, CapabilityCreateDialogClosed,
-  CapabilityCreateDialogOpened, CapabilityCreateNameChanged,
-  CapabilityCreateSubmitted, CapabilityDeleteDialogClosed,
-  CapabilityDeleteDialogOpened, CapabilityDeleteSubmitted,
-  CapabilityMembersDialogClosed, CapabilityMembersDialogOpened,
-  CapabilityMembersSaveClicked, CapabilityMembersToggled, CardCrudCreated,
-  CardCrudDeleted, CardCrudUpdated, CardsSearchChanged,
-  CardsShowCompletedToggled, CardsShowEmptyToggled, CardsStateFilterChanged,
-  CloseCardDetail, CloseCardDialog, CloseTaskTypeDialog,
-  MemberCreateDialogOpenedWithCard, NoOp, OpenCardDetail, OpenCardDialog,
-  OpenTaskTypeDialog, OrgSettingsDeleteCancelled, OrgSettingsDeleteClicked,
-  OrgSettingsDeleteConfirmed, OrgSettingsRoleChanged, TaskTypeCrudCreated,
-  TaskTypeCrudDeleted, TaskTypeCrudUpdated, admin_msg, pool_msg,
+  type Model, type Msg, NoOp, admin_msg, pool_msg,
 }
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/decoders
+import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/views/members as members_view
 import scrumbringer_client/features/admin/views/workflows as workflows_view
+import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/utils/card_queries
 
@@ -156,7 +146,7 @@ fn view_org_settings_table(model: Model) -> Element(Msg) {
               }
               action_buttons.task_icon_button_with_class(
                 t(i18n_text.DeleteUser),
-                admin_msg(OrgSettingsDeleteClicked(u.id)),
+                admin_msg(admin_messages.OrgSettingsDeleteClicked(u.id)),
                 icons.Trash,
                 icons.Small,
                 is_self || model.admin.org_settings_delete_in_flight,
@@ -186,7 +176,7 @@ fn view_org_settings_delete_dialog(model: Model) -> Element(Msg) {
           title: update_helpers.i18n_t(model, i18n_text.DeleteUser),
           icon: opt.None,
           size: dialog.DialogSm,
-          on_close: admin_msg(OrgSettingsDeleteCancelled),
+          on_close: admin_msg(admin_messages.OrgSettingsDeleteCancelled),
         ),
         True,
         model.admin.org_settings_delete_error,
@@ -199,13 +189,18 @@ fn view_org_settings_delete_dialog(model: Model) -> Element(Msg) {
           ]),
         ],
         [
-          dialog.cancel_button(model, admin_msg(OrgSettingsDeleteCancelled)),
+          dialog.cancel_button(
+            model,
+            admin_msg(admin_messages.OrgSettingsDeleteCancelled),
+          ),
           button(
             [
               attribute.type_("button"),
               attribute.class("btn btn-danger"),
               attribute.disabled(model.admin.org_settings_delete_in_flight),
-              event.on_click(admin_msg(OrgSettingsDeleteConfirmed)),
+              event.on_click(admin_msg(
+                admin_messages.OrgSettingsDeleteConfirmed,
+              )),
             ],
             [
               text(case model.admin.org_settings_delete_in_flight {
@@ -240,7 +235,8 @@ fn view_org_role_cell(model: Model, u: OrgUser) -> Element(Msg) {
         attribute.disabled(model.admin.org_settings_save_in_flight),
         event.on_input(fn(value) {
           case org_role.parse(value) {
-            Ok(role) -> admin_msg(OrgSettingsRoleChanged(u.id, role))
+            Ok(role) ->
+              admin_msg(admin_messages.OrgSettingsRoleChanged(u.id, role))
             Error(_) -> NoOp
           }
         }),
@@ -286,7 +282,7 @@ pub fn view_capabilities(model: Model) -> Element(Msg) {
       dialog.add_button(
         model,
         i18n_text.CreateCapability,
-        admin_msg(CapabilityCreateDialogOpened),
+        admin_msg(admin_messages.CapabilityCreateDialogOpened),
       ),
     ),
     // Capabilities list
@@ -311,7 +307,7 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
       title: update_helpers.i18n_t(model, i18n_text.CreateCapability),
       icon: opt.None,
       size: dialog.DialogSm,
-      on_close: admin_msg(CapabilityCreateDialogClosed),
+      on_close: admin_msg(admin_messages.CapabilityCreateDialogClosed),
     ),
     model.admin.capabilities_create_dialog_open,
     model.admin.capabilities_create_error,
@@ -319,7 +315,9 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
     [
       form(
         [
-          event.on_submit(fn(_) { admin_msg(CapabilityCreateSubmitted) }),
+          event.on_submit(fn(_) {
+            admin_msg(admin_messages.CapabilityCreateSubmitted)
+          }),
           attribute.id("capability-create-form"),
         ],
         [
@@ -329,7 +327,7 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
               attribute.type_("text"),
               attribute.value(model.admin.capabilities_create_name),
               event.on_input(fn(value) {
-                admin_msg(CapabilityCreateNameChanged(value))
+                admin_msg(admin_messages.CapabilityCreateNameChanged(value))
               }),
               attribute.required(True),
               attribute.placeholder(update_helpers.i18n_t(
@@ -344,7 +342,10 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
     ],
     // Footer buttons
     [
-      dialog.cancel_button(model, admin_msg(CapabilityCreateDialogClosed)),
+      dialog.cancel_button(
+        model,
+        admin_msg(admin_messages.CapabilityCreateDialogClosed),
+      ),
       button(
         [
           attribute.type_("submit"),
@@ -387,7 +388,7 @@ fn view_capability_delete_dialog(model: Model) -> Element(Msg) {
       title: update_helpers.i18n_t(model, i18n_text.DeleteCapability),
       icon: opt.None,
       size: dialog.DialogSm,
-      on_close: admin_msg(CapabilityDeleteDialogClosed),
+      on_close: admin_msg(admin_messages.CapabilityDeleteDialogClosed),
     ),
     opt.is_some(model.admin.capability_delete_dialog_id),
     model.admin.capability_delete_error,
@@ -402,13 +403,16 @@ fn view_capability_delete_dialog(model: Model) -> Element(Msg) {
     ],
     // Footer buttons
     [
-      dialog.cancel_button(model, admin_msg(CapabilityDeleteDialogClosed)),
+      dialog.cancel_button(
+        model,
+        admin_msg(admin_messages.CapabilityDeleteDialogClosed),
+      ),
       button(
         [
           attribute.type_("button"),
           attribute.class("btn btn-danger"),
           attribute.disabled(model.admin.capability_delete_in_flight),
-          event.on_click(admin_msg(CapabilityDeleteSubmitted)),
+          event.on_click(admin_msg(admin_messages.CapabilityDeleteSubmitted)),
         ],
         [
           text(case model.admin.capability_delete_in_flight {
@@ -452,7 +456,9 @@ pub fn view_task_types(
           dialog.add_button(
             model,
             i18n_text.CreateTaskType,
-            admin_msg(OpenTaskTypeDialog(state_types.TaskTypeDialogCreate)),
+            admin_msg(admin_messages.OpenTaskTypeDialog(
+              state_types.TaskTypeDialogCreate,
+            )),
           ),
         ),
         // Task types list
@@ -537,14 +543,14 @@ fn task_type_to_property_json(task_type: TaskType, mode: String) -> json.Json {
 /// Decoder for type-created event.
 fn decode_task_type_created_event() -> decode.Decoder(Msg) {
   event_decoders.custom_detail(task_type_decoder(), fn(task_type) {
-    decode.success(admin_msg(TaskTypeCrudCreated(task_type)))
+    decode.success(admin_msg(admin_messages.TaskTypeCrudCreated(task_type)))
   })
 }
 
 /// Decoder for type-updated event.
 fn decode_task_type_updated_event() -> decode.Decoder(Msg) {
   event_decoders.custom_detail(task_type_decoder(), fn(task_type) {
-    decode.success(admin_msg(TaskTypeCrudUpdated(task_type)))
+    decode.success(admin_msg(admin_messages.TaskTypeCrudUpdated(task_type)))
   })
 }
 
@@ -552,13 +558,13 @@ fn decode_task_type_updated_event() -> decode.Decoder(Msg) {
 fn decode_task_type_deleted_event() -> decode.Decoder(Msg) {
   event_decoders.custom_detail(
     decode.field("id", decode.int, decode.success),
-    fn(id) { decode.success(admin_msg(TaskTypeCrudDeleted(id))) },
+    fn(id) { decode.success(admin_msg(admin_messages.TaskTypeCrudDeleted(id))) },
   )
 }
 
 /// Decoder for close-requested event.
 fn decode_task_type_close_event() -> decode.Decoder(Msg) {
-  decode.success(admin_msg(CloseTaskTypeDialog))
+  decode.success(admin_msg(admin_messages.CloseTaskTypeDialog))
 }
 
 /// Decoder for TaskType from JSON (used in custom events).
@@ -637,14 +643,16 @@ fn view_capabilities_list(
                   attribute.class("btn-icon btn-xs"),
                   attribute.attribute("title", t(i18n_text.ManageMembers)),
                   attribute.attribute("data-testid", "capability-members-btn"),
-                  event.on_click(admin_msg(CapabilityMembersDialogOpened(c.id))),
+                  event.on_click(
+                    admin_msg(admin_messages.CapabilityMembersDialogOpened(c.id)),
+                  ),
                 ],
                 [icons.nav_icon(icons.OrgUsers, icons.Small)],
               ),
               // Delete button (Story 4.9 AC9)
               action_buttons.delete_button_with_testid(
                 t(i18n_text.Delete),
-                admin_msg(CapabilityDeleteDialogOpened(c.id)),
+                admin_msg(admin_messages.CapabilityDeleteDialogOpened(c.id)),
                 "capability-delete-btn",
               ),
             ])
@@ -689,7 +697,7 @@ fn view_capability_members_dialog(
       title: t(i18n_text.MembersForCapability(capability_name, project_name)),
       icon: opt.None,
       size: dialog.DialogMd,
-      on_close: admin_msg(CapabilityMembersDialogClosed),
+      on_close: admin_msg(admin_messages.CapabilityMembersDialogClosed),
     ),
     True,
     model.admin.capability_members_error,
@@ -742,7 +750,9 @@ fn view_capability_members_dialog(
                           attribute.type_("checkbox"),
                           attribute.checked(is_selected),
                           event.on_check(fn(_) {
-                            admin_msg(CapabilityMembersToggled(member.user_id))
+                            admin_msg(admin_messages.CapabilityMembersToggled(
+                              member.user_id,
+                            ))
                           }),
                         ]),
                         span([attribute.class("member-email")], [text(email)]),
@@ -755,11 +765,14 @@ fn view_capability_members_dialog(
       ]),
     ],
     [
-      dialog.cancel_button(model, admin_msg(CapabilityMembersDialogClosed)),
+      dialog.cancel_button(
+        model,
+        admin_msg(admin_messages.CapabilityMembersDialogClosed),
+      ),
       button(
         [
           attribute.class("btn-primary"),
-          event.on_click(admin_msg(CapabilityMembersSaveClicked)),
+          event.on_click(admin_msg(admin_messages.CapabilityMembersSaveClicked)),
           attribute.disabled(
             model.admin.capability_members_saving
             || model.admin.capability_members_loading,
@@ -900,10 +913,16 @@ fn view_task_types_list(
           update_helpers.i18n_t(model, i18n_text.Actions),
           fn(tt: TaskType) {
             let edit_click: Msg =
-              admin_msg(OpenTaskTypeDialog(state_types.TaskTypeDialogEdit(tt)))
+              admin_msg(
+                admin_messages.OpenTaskTypeDialog(
+                  state_types.TaskTypeDialogEdit(tt),
+                ),
+              )
             let delete_click: Msg =
               admin_msg(
-                OpenTaskTypeDialog(state_types.TaskTypeDialogDelete(tt)),
+                admin_messages.OpenTaskTypeDialog(
+                  state_types.TaskTypeDialogDelete(tt),
+                ),
               )
             action_buttons.edit_delete_row_with_testid(
               edit_title: update_helpers.i18n_t(model, i18n_text.EditTaskType),
@@ -963,7 +982,7 @@ pub fn view_cards(
           dialog.add_button(
             model,
             i18n_text.CreateCard,
-            pool_msg(OpenCardDialog(state_types.CardDialogCreate)),
+            pool_msg(pool_messages.OpenCardDialog(state_types.CardDialogCreate)),
           ),
         ),
         // Story 4.9 AC7-8: Filters bar
@@ -1028,14 +1047,14 @@ pub fn view_card_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
 /// Decoder for card-created event.
 fn decode_card_created_event() -> decode.Decoder(Msg) {
   event_decoders.custom_detail(card_decoder(), fn(card) {
-    decode.success(pool_msg(CardCrudCreated(card)))
+    decode.success(pool_msg(pool_messages.CardCrudCreated(card)))
   })
 }
 
 /// Decoder for card-updated event.
 fn decode_card_updated_event() -> decode.Decoder(Msg) {
   event_decoders.custom_detail(card_decoder(), fn(card) {
-    decode.success(pool_msg(CardCrudUpdated(card)))
+    decode.success(pool_msg(pool_messages.CardCrudUpdated(card)))
   })
 }
 
@@ -1043,13 +1062,13 @@ fn decode_card_updated_event() -> decode.Decoder(Msg) {
 fn decode_card_deleted_event() -> decode.Decoder(Msg) {
   event_decoders.custom_detail(
     decode.field("id", decode.int, decode.success),
-    fn(id) { decode.success(pool_msg(CardCrudDeleted(id))) },
+    fn(id) { decode.success(pool_msg(pool_messages.CardCrudDeleted(id))) },
   )
 }
 
 /// Decoder for close-requested event.
 fn decode_close_requested_event() -> decode.Decoder(Msg) {
-  decode.success(pool_msg(CloseCardDialog))
+  decode.success(pool_msg(pool_messages.CloseCardDialog))
 }
 
 /// Decoder for Card from JSON (used in custom events).
@@ -1127,7 +1146,9 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
             i18n_text.SearchPlaceholder,
           )),
           attribute.value(model.admin.cards_search),
-          event.on_input(fn(value) { pool_msg(CardsSearchChanged(value)) }),
+          event.on_input(fn(value) {
+            pool_msg(pool_messages.CardsSearchChanged(value))
+          }),
         ]),
       ]),
       // State filter dropdown (AC8)
@@ -1138,7 +1159,7 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
             attribute.class("filter-select"),
             attribute.attribute("data-testid", "cards-state-filter"),
             event.on_input(fn(value) {
-              pool_msg(CardsStateFilterChanged(value))
+              pool_msg(pool_messages.CardsStateFilterChanged(value))
             }),
           ],
           [
@@ -1186,7 +1207,9 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
             attribute.type_("checkbox"),
             attribute.checked(model.admin.cards_show_empty),
             attribute.attribute("data-testid", "show-empty-cards"),
-            event.on_check(fn(_) { pool_msg(CardsShowEmptyToggled) }),
+            event.on_check(fn(_) {
+              pool_msg(pool_messages.CardsShowEmptyToggled)
+            }),
           ]),
           text(update_helpers.i18n_t(model, i18n_text.ShowEmptyCards)),
         ]),
@@ -1198,7 +1221,9 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
             attribute.type_("checkbox"),
             attribute.checked(model.admin.cards_show_completed),
             attribute.attribute("data-testid", "show-completed-cards"),
-            event.on_check(fn(_) { pool_msg(CardsShowCompletedToggled) }),
+            event.on_check(fn(_) {
+              pool_msg(pool_messages.CardsShowCompletedToggled)
+            }),
           ]),
           text(update_helpers.i18n_t(model, i18n_text.ShowCompletedCards)),
         ]),
@@ -1283,7 +1308,7 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
                 [
                   attribute.class("card-title-button"),
                   attribute.attribute("data-testid", "card-detail-open"),
-                  event.on_click(pool_msg(OpenCardDetail(c.id))),
+                  event.on_click(pool_msg(pool_messages.OpenCardDetail(c.id))),
                 ],
                 [text(c.title)],
               ),
@@ -1328,16 +1353,22 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
               // [+] Nueva tarea
               action_buttons.create_task_in_card_button(
                 update_helpers.i18n_t(model, i18n_text.NewTaskInCard(c.title)),
-                pool_msg(MemberCreateDialogOpenedWithCard(c.id)),
+                pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(c.id)),
               ),
               action_buttons.edit_button_with_testid(
                 update_helpers.i18n_t(model, i18n_text.EditCard),
-                pool_msg(OpenCardDialog(state_types.CardDialogEdit(c.id))),
+                pool_msg(
+                  pool_messages.OpenCardDialog(state_types.CardDialogEdit(c.id)),
+                ),
                 "card-edit-btn",
               ),
               action_buttons.delete_button_with_testid(
                 update_helpers.i18n_t(model, i18n_text.DeleteCard),
-                pool_msg(OpenCardDialog(state_types.CardDialogDelete(c.id))),
+                pool_msg(
+                  pool_messages.OpenCardDialog(state_types.CardDialogDelete(
+                    c.id,
+                  )),
+                ),
                 "card-delete-btn",
               ),
             ])
@@ -1395,12 +1426,14 @@ fn view_card_detail_modal(model: Model, project: Project) -> Element(Msg) {
 
 /// Decoder for create-task-requested event.
 fn decode_create_task_event(card_id: Int) -> decode.Decoder(Msg) {
-  decode.success(pool_msg(MemberCreateDialogOpenedWithCard(card_id)))
+  decode.success(
+    pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(card_id)),
+  )
 }
 
 /// Decoder for close-requested event.
 fn decode_card_detail_close_event() -> decode.Decoder(Msg) {
-  decode.success(pool_msg(CloseCardDetail))
+  decode.success(pool_msg(pool_messages.CloseCardDetail))
 }
 
 fn admin_get_card_tasks(model: Model, card_id: Int) -> List(Task) {

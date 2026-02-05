@@ -27,10 +27,10 @@ import domain/org_role
 import domain/remote.{Failed, Loaded}
 import domain/user.{User}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, CoreModel, OrgSettingsDeleted, OrgSettingsSaved,
-  admin_msg, update_admin, update_core,
+  type Model, type Msg, CoreModel, admin_msg, update_admin, update_core,
 }
 import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
 
@@ -154,7 +154,7 @@ pub fn handle_org_settings_role_changed(
           #(
             model,
             api_org.update_org_user_role(user_id, org_role, fn(result) {
-              admin_msg(OrgSettingsSaved(user_id, result))
+              admin_msg(admin_messages.OrgSettingsSaved(user_id, result))
             }),
           )
         }
@@ -229,7 +229,7 @@ pub fn handle_org_settings_delete_confirmed(
           #(
             model,
             api_org.delete_org_user(user.id, fn(result) {
-              admin_msg(OrgSettingsDeleted(result))
+              admin_msg(admin_messages.OrgSettingsDeleted(result))
             }),
           )
         }

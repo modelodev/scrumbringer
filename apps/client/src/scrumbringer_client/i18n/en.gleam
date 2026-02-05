@@ -776,6 +776,21 @@ pub fn translate(text: Text) -> String {
     text.TabDetails -> "Details"
     text.TabDependencies -> "Dependencies"
     text.Unassigned -> "Unassigned"
+    text.Assigned -> "Assigned"
     text.ClaimTask -> "Claim task"
+
+    // Error states
+    text.ErrorLoadingTasks -> "Error loading tasks"
+
+    // Workflows / Rules
+    text.BackToWorkflows -> "← Back to Workflows"
+    text.ResourceTypeTask -> "task"
+    text.RuleMetricsNoExecutions ->
+      "No automation executions found in the selected range."
+    text.RuleMetricsResults -> "Results"
+
+    // Icon picker
+    text.NoIconsFound -> "No icons found"
+    text.SearchIconsPlaceholder -> "Search icons..."
   }
 }

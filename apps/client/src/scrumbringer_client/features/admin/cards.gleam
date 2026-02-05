@@ -27,6 +27,7 @@ import domain/card.{type Card}
 import domain/remote.{Failed, Loaded, Loading}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
 
@@ -192,7 +193,7 @@ pub fn fetch_cards_for_project(
       #(
         model,
         api_cards.list_cards(project_id, fn(result) -> client_state.Msg {
-          client_state.pool_msg(client_state.CardsFetched(result))
+          client_state.pool_msg(pool_messages.CardsFetched(result))
         }),
       )
     }

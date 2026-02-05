@@ -352,7 +352,7 @@ fn view_assignee(model: Model, t: task.Task) -> Element(Msg) {
     opt.Some(_user_id) ->
       span([attribute.class("task-meta-chip task-meta-assignee")], [
         icons.nav_icon(icons.UserCircle, icons.Small),
-        text("Asignado"),
+        text(update_helpers.i18n_t(model, i18n_text.Assigned)),
       ])
     opt.None ->
       span([attribute.class("task-meta-chip task-meta-assignee muted")], [

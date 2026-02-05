@@ -34,12 +34,8 @@ import lustre/element/html.{
 import lustre/event
 
 import domain/remote.{Loaded}
-import scrumbringer_client/client_state.{
-  type Model, type Msg, MemberClearFilters, MemberCreateDialogOpened,
-  MemberPoolCapabilityChanged, MemberPoolSearchChanged,
-  MemberPoolSearchDebounced, MemberPoolTypeChanged,
-  MemberToggleMyCapabilitiesQuick, pool_msg,
-}
+import scrumbringer_client/client_state.{type Model, type Msg, pool_msg}
+import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/icons
 import scrumbringer_client/update_helpers
@@ -147,7 +143,7 @@ fn view_filter_actions(model: Model, active_count: Int) -> Element(Msg) {
               "title",
               update_helpers.i18n_t(model, i18n_text.ClearFilters),
             ),
-            event.on_click(pool_msg(MemberClearFilters)),
+            event.on_click(pool_msg(pool_messages.MemberClearFilters)),
           ],
           [text(update_helpers.i18n_t(model, i18n_text.ClearFilters))],
         ),
@@ -190,7 +186,9 @@ fn view_type_filter(
           update_helpers.i18n_t(model, i18n_text.TypeLabel),
         ),
         attribute.value(current_value),
-        event.on_input(fn(value) { pool_msg(MemberPoolTypeChanged(value)) }),
+        event.on_input(fn(value) {
+          pool_msg(pool_messages.MemberPoolTypeChanged(value))
+        }),
         attribute.disabled(case model.member.member_task_types {
           Loaded(_) -> False
           _ -> True
@@ -238,7 +236,7 @@ fn view_capability_filter(
         ),
         attribute.value(current_value),
         event.on_input(fn(value) {
-          pool_msg(MemberPoolCapabilityChanged(value))
+          pool_msg(pool_messages.MemberPoolCapabilityChanged(value))
         }),
       ],
       options,
@@ -285,7 +283,7 @@ fn view_my_capabilities_toggle(
             False -> update_helpers.i18n_t(model, i18n_text.MyCapabilitiesOff)
           },
         ),
-        event.on_click(pool_msg(MemberToggleMyCapabilitiesQuick)),
+        event.on_click(pool_msg(pool_messages.MemberToggleMyCapabilitiesQuick)),
       ],
       [
         case is_active {
@@ -328,9 +326,13 @@ fn view_search_filter(model: Model) -> Element(Msg) {
       ),
       attribute.type_("text"),
       attribute.value(model.member.member_filters_q),
-      event.on_input(fn(value) { pool_msg(MemberPoolSearchChanged(value)) }),
+      event.on_input(fn(value) {
+        pool_msg(pool_messages.MemberPoolSearchChanged(value))
+      }),
       event.debounce(
-        event.on_input(fn(value) { pool_msg(MemberPoolSearchDebounced(value)) }),
+        event.on_input(fn(value) {
+          pool_msg(pool_messages.MemberPoolSearchDebounced(value))
+        }),
         350,
       ),
       attribute.placeholder(update_helpers.i18n_t(
@@ -366,7 +368,7 @@ pub fn view_unified_toolbar(model: Model) -> Element(Msg) {
         [
           attribute.class("btn-sm btn-primary"),
           attribute.attribute("data-testid", "btn-new-task-pool"),
-          event.on_click(pool_msg(MemberCreateDialogOpened)),
+          event.on_click(pool_msg(pool_messages.MemberCreateDialogOpened)),
         ],
         [
           span([attribute.class("btn-icon-left")], [text("+")]),

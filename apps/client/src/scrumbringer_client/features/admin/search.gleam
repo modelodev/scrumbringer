@@ -28,10 +28,11 @@ import lustre/effect.{type Effect}
 import domain/api_error.{type ApiError}
 import domain/org.{type OrgUser}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, OrgUsersSearchResults, admin_msg, update_admin,
+  type Model, type Msg, admin_msg, update_admin,
 }
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/update_helpers
 
 // API modules
@@ -101,7 +102,7 @@ pub fn handle_org_users_search_debounced(
       #(
         model,
         api_org.list_org_users(query, fn(result) {
-          admin_msg(OrgUsersSearchResults(token, result))
+          admin_msg(admin_messages.OrgUsersSearchResults(token, result))
         }),
       )
     }

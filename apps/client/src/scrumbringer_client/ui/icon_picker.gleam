@@ -36,11 +36,15 @@ pub type IconPickerMsg {
 /// - search_query: Current search text
 /// - active_category: Currently selected category (as string ID)
 /// - selected_icon: Currently selected icon ID (if any)
+/// - search_placeholder: Translated placeholder text for search input
+/// - empty_text: Translated text for "no icons found" state
 /// - on_msg: Message handler callback
 pub fn view(
   search_query: String,
   active_category: String,
   selected_icon: String,
+  search_placeholder: String,
+  empty_text: String,
   on_msg: fn(IconPickerMsg) -> msg,
 ) -> Element(msg) {
   let category = category_from_string(active_category)
@@ -62,7 +66,7 @@ pub fn view(
     html.div([attribute.class("icon-picker-search")], [
       html.input([
         attribute.type_("text"),
-        attribute.placeholder("Buscar iconos..."),
+        attribute.placeholder(search_placeholder),
         attribute.value(search_query),
         attribute.class("form-control form-control-sm"),
         event.on_input(fn(v) { on_msg(SearchChanged(v)) }),
@@ -94,7 +98,7 @@ pub fn view(
     html.div([attribute.class("icon-picker-grid")], case list.length(icons) {
       0 -> [
         html.div([attribute.class("icon-picker-empty")], [
-          html.text("No se encontraron iconos"),
+          html.text(empty_text),
         ]),
       ]
       _ ->

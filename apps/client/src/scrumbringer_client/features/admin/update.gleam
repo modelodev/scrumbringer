@@ -35,11 +35,10 @@ import domain/project_role.{type ProjectRole}
 import domain/remote.{Failed, Loaded}
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/client_state.{
-  type Model, type Msg, CapabilityMembersFetched, CapabilityMembersSaved,
-  MemberCapabilitiesFetched, MemberCapabilitiesSaved, MemberRoleChanged,
-  admin_msg, update_admin,
+  type Model, type Msg, admin_msg, update_admin,
 }
 import scrumbringer_client/client_state/admin.{AdminModel}
+import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
 
@@ -141,7 +140,7 @@ pub fn handle_member_role_change_requested(
     opt.Some(project_id) -> #(
       model,
       api_projects.update_member_role(project_id, user_id, new_role, fn(result) {
-        admin_msg(MemberRoleChanged(result))
+        admin_msg(admin_messages.MemberRoleChanged(result))
       }),
     )
     opt.None -> #(model, effect.none())
@@ -225,7 +224,7 @@ pub fn handle_member_capabilities_dialog_opened(
           )
         }),
         api_projects.get_member_capabilities(project_id, user_id, fn(result) {
-          admin_msg(MemberCapabilitiesFetched(result))
+          admin_msg(admin_messages.MemberCapabilitiesFetched(result))
         }),
       )
     }
@@ -288,7 +287,7 @@ pub fn handle_member_capabilities_save_clicked(
         project_id,
         user_id,
         model.admin.member_capabilities_selected,
-        fn(result) { admin_msg(MemberCapabilitiesSaved(result)) },
+        fn(result) { admin_msg(admin_messages.MemberCapabilitiesSaved(result)) },
       ),
     )
     _, _ -> #(model, effect.none())
@@ -419,7 +418,9 @@ pub fn handle_capability_members_dialog_opened(
         api_projects.get_capability_members(
           project_id,
           capability_id,
-          fn(result) { admin_msg(CapabilityMembersFetched(result)) },
+          fn(result) {
+            admin_msg(admin_messages.CapabilityMembersFetched(result))
+          },
         ),
       )
     }
@@ -482,7 +483,7 @@ pub fn handle_capability_members_save_clicked(
         project_id,
         capability_id,
         model.admin.capability_members_selected,
-        fn(result) { admin_msg(CapabilityMembersSaved(result)) },
+        fn(result) { admin_msg(admin_messages.CapabilityMembersSaved(result)) },
       ),
     )
     _, _ -> #(model, effect.none())
@@ -608,7 +609,7 @@ pub fn handle_members_fetched_ok(
       members
       |> list.map(fn(m) {
         api_projects.get_member_capabilities(project_id, m.user_id, fn(result) {
-          admin_msg(MemberCapabilitiesFetched(result))
+          admin_msg(admin_messages.MemberCapabilitiesFetched(result))
         })
       })
       |> effect.batch

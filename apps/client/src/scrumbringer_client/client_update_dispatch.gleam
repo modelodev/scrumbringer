@@ -18,12 +18,14 @@ import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/update as admin_workflow
 import scrumbringer_client/features/assignments/update as assignments_workflow
 import scrumbringer_client/features/capabilities/update as capabilities_workflow
 import scrumbringer_client/features/invites/update as invite_links_workflow
 import scrumbringer_client/features/metrics/update as metrics_workflow
 import scrumbringer_client/features/now_working/update as now_working_workflow
+import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/update as pool_workflow
 import scrumbringer_client/features/projects/update as projects_workflow
 import scrumbringer_client/features/skills/update as skills_workflow
@@ -69,7 +71,7 @@ pub fn handle_admin(
   ) = ctx
 
   case inner {
-    client_state.ProjectsFetched(Ok(projects)) -> {
+    admin_messages.ProjectsFetched(Ok(projects)) -> {
       let selected =
         update_helpers.ensure_selected_project(
           model.core.selected_project_id,
@@ -106,7 +108,7 @@ pub fn handle_admin(
       }
     }
 
-    client_state.ProjectsFetched(Error(err)) -> {
+    admin_messages.ProjectsFetched(Error(err)) -> {
       case err.status == 401 {
         True -> {
           let model =
@@ -138,364 +140,372 @@ pub fn handle_admin(
       }
     }
 
-    client_state.ProjectCreateDialogOpened ->
+    admin_messages.ProjectCreateDialogOpened ->
       projects_workflow.handle_project_create_dialog_opened(model)
-    client_state.ProjectCreateDialogClosed ->
+    admin_messages.ProjectCreateDialogClosed ->
       projects_workflow.handle_project_create_dialog_closed(model)
-    client_state.ProjectCreateNameChanged(name) ->
+    admin_messages.ProjectCreateNameChanged(name) ->
       projects_workflow.handle_project_create_name_changed(model, name)
-    client_state.ProjectCreateSubmitted ->
+    admin_messages.ProjectCreateSubmitted ->
       projects_workflow.handle_project_create_submitted(model)
-    client_state.ProjectCreated(Ok(project)) ->
+    admin_messages.ProjectCreated(Ok(project)) ->
       projects_workflow.handle_project_created_ok(model, project)
-    client_state.ProjectCreated(Error(err)) ->
+    admin_messages.ProjectCreated(Error(err)) ->
       projects_workflow.handle_project_created_error(model, err)
     // Project Edit (Story 4.8 AC39)
-    client_state.ProjectEditDialogOpened(project_id, project_name) ->
+    admin_messages.ProjectEditDialogOpened(project_id, project_name) ->
       projects_workflow.handle_project_edit_dialog_opened(
         model,
         project_id,
         project_name,
       )
-    client_state.ProjectEditDialogClosed ->
+    admin_messages.ProjectEditDialogClosed ->
       projects_workflow.handle_project_edit_dialog_closed(model)
-    client_state.ProjectEditNameChanged(name) ->
+    admin_messages.ProjectEditNameChanged(name) ->
       projects_workflow.handle_project_edit_name_changed(model, name)
-    client_state.ProjectEditSubmitted ->
+    admin_messages.ProjectEditSubmitted ->
       projects_workflow.handle_project_edit_submitted(model)
-    client_state.ProjectUpdated(Ok(project)) ->
+    admin_messages.ProjectUpdated(Ok(project)) ->
       projects_workflow.handle_project_updated_ok(model, project)
-    client_state.ProjectUpdated(Error(err)) ->
+    admin_messages.ProjectUpdated(Error(err)) ->
       projects_workflow.handle_project_updated_error(model, err)
     // Project Delete (Story 4.8 AC39)
-    client_state.ProjectDeleteConfirmOpened(project_id, project_name) ->
+    admin_messages.ProjectDeleteConfirmOpened(project_id, project_name) ->
       projects_workflow.handle_project_delete_confirm_opened(
         model,
         project_id,
         project_name,
       )
-    client_state.ProjectDeleteConfirmClosed ->
+    admin_messages.ProjectDeleteConfirmClosed ->
       projects_workflow.handle_project_delete_confirm_closed(model)
-    client_state.ProjectDeleteSubmitted ->
+    admin_messages.ProjectDeleteSubmitted ->
       projects_workflow.handle_project_delete_submitted(model)
-    client_state.ProjectDeleted(Ok(_)) ->
+    admin_messages.ProjectDeleted(Ok(_)) ->
       projects_workflow.handle_project_deleted_ok(model)
-    client_state.ProjectDeleted(Error(err)) ->
+    admin_messages.ProjectDeleted(Error(err)) ->
       projects_workflow.handle_project_deleted_error(model, err)
 
-    client_state.InviteCreateDialogOpened ->
+    admin_messages.InviteCreateDialogOpened ->
       invite_links_workflow.handle_invite_create_dialog_opened(model)
-    client_state.InviteCreateDialogClosed ->
+    admin_messages.InviteCreateDialogClosed ->
       invite_links_workflow.handle_invite_create_dialog_closed(model)
-    client_state.InviteLinkEmailChanged(value) ->
+    admin_messages.InviteLinkEmailChanged(value) ->
       invite_links_workflow.handle_invite_link_email_changed(model, value)
-    client_state.InviteLinksFetched(Ok(links)) ->
+    admin_messages.InviteLinksFetched(Ok(links)) ->
       invite_links_workflow.handle_invite_links_fetched_ok(model, links)
-    client_state.InviteLinksFetched(Error(err)) ->
+    admin_messages.InviteLinksFetched(Error(err)) ->
       invite_links_workflow.handle_invite_links_fetched_error(model, err)
-    client_state.InviteLinkCreateSubmitted ->
+    admin_messages.InviteLinkCreateSubmitted ->
       invite_links_workflow.handle_invite_link_create_submitted(model)
-    client_state.InviteLinkRegenerateClicked(email) ->
+    admin_messages.InviteLinkRegenerateClicked(email) ->
       invite_links_workflow.handle_invite_link_regenerate_clicked(model, email)
-    client_state.InviteLinkCreated(Ok(link)) ->
+    admin_messages.InviteLinkCreated(Ok(link)) ->
       invite_links_workflow.handle_invite_link_created_ok(model, link)
-    client_state.InviteLinkCreated(Error(err)) ->
+    admin_messages.InviteLinkCreated(Error(err)) ->
       invite_links_workflow.handle_invite_link_created_error(model, err)
-    client_state.InviteLinkRegenerated(Ok(link)) ->
+    admin_messages.InviteLinkRegenerated(Ok(link)) ->
       invite_links_workflow.handle_invite_link_regenerated_ok(model, link)
-    client_state.InviteLinkRegenerated(Error(err)) ->
+    admin_messages.InviteLinkRegenerated(Error(err)) ->
       invite_links_workflow.handle_invite_link_regenerated_error(model, err)
-    client_state.InviteLinkCopyClicked(text) ->
+    admin_messages.InviteLinkCopyClicked(text) ->
       invite_links_workflow.handle_invite_link_copy_clicked(model, text)
-    client_state.InviteLinkCopyFinished(ok) ->
+    admin_messages.InviteLinkCopyFinished(ok) ->
       invite_links_workflow.handle_invite_link_copy_finished(model, ok)
 
-    client_state.CapabilitiesFetched(Ok(capabilities)) ->
+    admin_messages.CapabilitiesFetched(Ok(capabilities)) ->
       capabilities_workflow.handle_capabilities_fetched_ok(model, capabilities)
-    client_state.CapabilitiesFetched(Error(err)) ->
+    admin_messages.CapabilitiesFetched(Error(err)) ->
       capabilities_workflow.handle_capabilities_fetched_error(model, err)
-    client_state.CapabilityCreateDialogOpened ->
+    admin_messages.CapabilityCreateDialogOpened ->
       capabilities_workflow.handle_capability_dialog_opened(model)
-    client_state.CapabilityCreateDialogClosed ->
+    admin_messages.CapabilityCreateDialogClosed ->
       capabilities_workflow.handle_capability_dialog_closed(model)
-    client_state.CapabilityCreateNameChanged(name) ->
+    admin_messages.CapabilityCreateNameChanged(name) ->
       capabilities_workflow.handle_capability_create_name_changed(model, name)
-    client_state.CapabilityCreateSubmitted ->
+    admin_messages.CapabilityCreateSubmitted ->
       capabilities_workflow.handle_capability_create_submitted(model)
-    client_state.CapabilityCreated(Ok(capability)) ->
+    admin_messages.CapabilityCreated(Ok(capability)) ->
       capabilities_workflow.handle_capability_created_ok(model, capability)
-    client_state.CapabilityCreated(Error(err)) ->
+    admin_messages.CapabilityCreated(Error(err)) ->
       capabilities_workflow.handle_capability_created_error(model, err)
     // Capability delete (Story 4.9 AC9)
-    client_state.CapabilityDeleteDialogOpened(capability_id) ->
+    admin_messages.CapabilityDeleteDialogOpened(capability_id) ->
       capabilities_workflow.handle_capability_delete_dialog_opened(
         model,
         capability_id,
       )
-    client_state.CapabilityDeleteDialogClosed ->
+    admin_messages.CapabilityDeleteDialogClosed ->
       capabilities_workflow.handle_capability_delete_dialog_closed(model)
-    client_state.CapabilityDeleteSubmitted ->
+    admin_messages.CapabilityDeleteSubmitted ->
       capabilities_workflow.handle_capability_delete_submitted(model)
-    client_state.CapabilityDeleted(Ok(deleted_id)) ->
+    admin_messages.CapabilityDeleted(Ok(deleted_id)) ->
       capabilities_workflow.handle_capability_deleted_ok(model, deleted_id)
-    client_state.CapabilityDeleted(Error(err)) ->
+    admin_messages.CapabilityDeleted(Error(err)) ->
       capabilities_workflow.handle_capability_deleted_error(model, err)
 
-    client_state.MembersFetched(Ok(members)) ->
+    admin_messages.MembersFetched(Ok(members)) ->
       admin_workflow.handle_members_fetched_ok(model, members)
-    client_state.MembersFetched(Error(err)) ->
+    admin_messages.MembersFetched(Error(err)) ->
       admin_workflow.handle_members_fetched_error(model, err)
 
-    client_state.OrgUsersCacheFetched(Ok(users)) -> {
+    admin_messages.OrgUsersCacheFetched(Ok(users)) -> {
       let #(model, fx) =
         admin_workflow.handle_org_users_cache_fetched_ok(model, users)
       let #(model, assignments_fx) =
         assignments_workflow.start_user_projects_fetch(model, users)
       #(model, effect.batch([fx, assignments_fx]))
     }
-    client_state.OrgUsersCacheFetched(Error(err)) ->
+    admin_messages.OrgUsersCacheFetched(Error(err)) ->
       admin_workflow.handle_org_users_cache_fetched_error(model, err)
-    client_state.OrgSettingsUsersFetched(Ok(users)) ->
+    admin_messages.OrgSettingsUsersFetched(Ok(users)) ->
       admin_workflow.handle_org_settings_users_fetched_ok(model, users)
 
-    client_state.OrgSettingsUsersFetched(Error(err)) ->
+    admin_messages.OrgSettingsUsersFetched(Error(err)) ->
       admin_workflow.handle_org_settings_users_fetched_error(model, err)
-    client_state.OrgSettingsRoleChanged(user_id, org_role) ->
+    admin_messages.OrgSettingsRoleChanged(user_id, org_role) ->
       admin_workflow.handle_org_settings_role_changed(model, user_id, org_role)
-    client_state.OrgSettingsSaved(_user_id, Ok(updated)) ->
+    admin_messages.OrgSettingsSaved(_user_id, Ok(updated)) ->
       admin_workflow.handle_org_settings_saved_ok(model, updated)
-    client_state.OrgSettingsSaved(user_id, Error(err)) ->
+    admin_messages.OrgSettingsSaved(user_id, Error(err)) ->
       admin_workflow.handle_org_settings_saved_error(model, user_id, err)
-    client_state.OrgSettingsDeleteClicked(user_id) ->
+    admin_messages.OrgSettingsDeleteClicked(user_id) ->
       admin_workflow.handle_org_settings_delete_clicked(model, user_id)
-    client_state.OrgSettingsDeleteCancelled ->
+    admin_messages.OrgSettingsDeleteCancelled ->
       admin_workflow.handle_org_settings_delete_cancelled(model)
-    client_state.OrgSettingsDeleteConfirmed ->
+    admin_messages.OrgSettingsDeleteConfirmed ->
       admin_workflow.handle_org_settings_delete_confirmed(model)
-    client_state.OrgSettingsDeleted(Ok(_)) ->
+    admin_messages.OrgSettingsDeleted(Ok(_)) ->
       admin_workflow.handle_org_settings_deleted_ok(model)
-    client_state.OrgSettingsDeleted(Error(err)) ->
+    admin_messages.OrgSettingsDeleted(Error(err)) ->
       admin_workflow.handle_org_settings_deleted_error(model, err)
 
-    client_state.MemberAddDialogOpened ->
+    admin_messages.MemberAddDialogOpened ->
       admin_workflow.handle_member_add_dialog_opened(model)
-    client_state.MemberAddDialogClosed ->
+    admin_messages.MemberAddDialogClosed ->
       admin_workflow.handle_member_add_dialog_closed(model)
-    client_state.MemberAddRoleChanged(role_string) -> {
+    admin_messages.MemberAddRoleChanged(role_string) -> {
       let role = case project_role.parse(role_string) {
         Ok(r) -> r
         Error(_) -> MemberRole
       }
       admin_workflow.handle_member_add_role_changed(model, role)
     }
-    client_state.MemberAddUserSelected(user_id) ->
+    admin_messages.MemberAddUserSelected(user_id) ->
       admin_workflow.handle_member_add_user_selected(model, user_id)
-    client_state.MemberAddSubmitted ->
+    admin_messages.MemberAddSubmitted ->
       admin_workflow.handle_member_add_submitted(model)
-    client_state.MemberAdded(Ok(_)) ->
+    admin_messages.MemberAdded(Ok(_)) ->
       admin_workflow.handle_member_added_ok(model, refresh_section_for_test)
-    client_state.MemberAdded(Error(err)) ->
+    admin_messages.MemberAdded(Error(err)) ->
       admin_workflow.handle_member_added_error(model, err)
 
-    client_state.MemberRemoveClicked(user_id) ->
+    admin_messages.MemberRemoveClicked(user_id) ->
       admin_workflow.handle_member_remove_clicked(model, user_id)
-    client_state.MemberRemoveCancelled ->
+    admin_messages.MemberRemoveCancelled ->
       admin_workflow.handle_member_remove_cancelled(model)
-    client_state.MemberRemoveConfirmed ->
+    admin_messages.MemberRemoveConfirmed ->
       admin_workflow.handle_member_remove_confirmed(model)
-    client_state.MemberRemoved(Ok(_)) ->
+    admin_messages.MemberRemoved(Ok(_)) ->
       admin_workflow.handle_member_removed_ok(model, refresh_section_for_test)
-    client_state.MemberRemoved(Error(err)) ->
+    admin_messages.MemberRemoved(Error(err)) ->
       admin_workflow.handle_member_removed_error(model, err)
 
-    client_state.MemberReleaseAllClicked(user_id, claimed_count) ->
+    admin_messages.MemberReleaseAllClicked(user_id, claimed_count) ->
       admin_workflow.handle_member_release_all_clicked(
         model,
         user_id,
         claimed_count,
       )
-    client_state.MemberReleaseAllCancelled ->
+    admin_messages.MemberReleaseAllCancelled ->
       admin_workflow.handle_member_release_all_cancelled(model)
-    client_state.MemberReleaseAllConfirmed ->
+    admin_messages.MemberReleaseAllConfirmed ->
       admin_workflow.handle_member_release_all_confirmed(model)
-    client_state.MemberReleaseAllResult(Ok(result)) ->
+    admin_messages.MemberReleaseAllResult(Ok(result)) ->
       admin_workflow.handle_member_release_all_ok(model, result)
-    client_state.MemberReleaseAllResult(Error(err)) ->
+    admin_messages.MemberReleaseAllResult(Error(err)) ->
       admin_workflow.handle_member_release_all_error(model, err)
 
-    client_state.MemberRoleChangeRequested(user_id, new_role) ->
+    admin_messages.MemberRoleChangeRequested(user_id, new_role) ->
       admin_workflow.handle_member_role_change_requested(
         model,
         user_id,
         new_role,
       )
-    client_state.MemberRoleChanged(Ok(result)) ->
+    admin_messages.MemberRoleChanged(Ok(result)) ->
       admin_workflow.handle_member_role_changed_ok(model, result)
-    client_state.MemberRoleChanged(Error(err)) ->
+    admin_messages.MemberRoleChanged(Error(err)) ->
       admin_workflow.handle_member_role_changed_error(model, err)
 
     // client_state.Member capabilities dialog (Story 4.7 AC10-14)
-    client_state.MemberCapabilitiesDialogOpened(user_id) ->
+    admin_messages.MemberCapabilitiesDialogOpened(user_id) ->
       admin_workflow.handle_member_capabilities_dialog_opened(model, user_id)
-    client_state.MemberCapabilitiesDialogClosed ->
+    admin_messages.MemberCapabilitiesDialogClosed ->
       admin_workflow.handle_member_capabilities_dialog_closed(model)
-    client_state.MemberCapabilitiesToggled(capability_id) ->
+    admin_messages.MemberCapabilitiesToggled(capability_id) ->
       admin_workflow.handle_member_capabilities_toggled(model, capability_id)
-    client_state.MemberCapabilitiesSaveClicked ->
+    admin_messages.MemberCapabilitiesSaveClicked ->
       admin_workflow.handle_member_capabilities_save_clicked(model)
-    client_state.MemberCapabilitiesFetched(Ok(result)) ->
+    admin_messages.MemberCapabilitiesFetched(Ok(result)) ->
       admin_workflow.handle_member_capabilities_fetched_ok(model, result)
-    client_state.MemberCapabilitiesFetched(Error(err)) ->
+    admin_messages.MemberCapabilitiesFetched(Error(err)) ->
       admin_workflow.handle_member_capabilities_fetched_error(model, err)
-    client_state.MemberCapabilitiesSaved(Ok(result)) ->
+    admin_messages.MemberCapabilitiesSaved(Ok(result)) ->
       admin_workflow.handle_member_capabilities_saved_ok(model, result)
-    client_state.MemberCapabilitiesSaved(Error(err)) ->
+    admin_messages.MemberCapabilitiesSaved(Error(err)) ->
       admin_workflow.handle_member_capabilities_saved_error(model, err)
 
     // Capability members dialog (Story 4.7 AC16-17)
-    client_state.CapabilityMembersDialogOpened(capability_id) ->
+    admin_messages.CapabilityMembersDialogOpened(capability_id) ->
       admin_workflow.handle_capability_members_dialog_opened(
         model,
         capability_id,
       )
-    client_state.CapabilityMembersDialogClosed ->
+    admin_messages.CapabilityMembersDialogClosed ->
       admin_workflow.handle_capability_members_dialog_closed(model)
-    client_state.CapabilityMembersToggled(user_id) ->
+    admin_messages.CapabilityMembersToggled(user_id) ->
       admin_workflow.handle_capability_members_toggled(model, user_id)
-    client_state.CapabilityMembersSaveClicked ->
+    admin_messages.CapabilityMembersSaveClicked ->
       admin_workflow.handle_capability_members_save_clicked(model)
-    client_state.CapabilityMembersFetched(Ok(result)) ->
+    admin_messages.CapabilityMembersFetched(Ok(result)) ->
       admin_workflow.handle_capability_members_fetched_ok(model, result)
-    client_state.CapabilityMembersFetched(Error(err)) ->
+    admin_messages.CapabilityMembersFetched(Error(err)) ->
       admin_workflow.handle_capability_members_fetched_error(model, err)
-    client_state.CapabilityMembersSaved(Ok(result)) ->
+    admin_messages.CapabilityMembersSaved(Ok(result)) ->
       admin_workflow.handle_capability_members_saved_ok(model, result)
-    client_state.CapabilityMembersSaved(Error(err)) ->
+    admin_messages.CapabilityMembersSaved(Error(err)) ->
       admin_workflow.handle_capability_members_saved_error(model, err)
 
-    client_state.OrgUsersSearchChanged(query) ->
+    admin_messages.OrgUsersSearchChanged(query) ->
       admin_workflow.handle_org_users_search_changed(model, query)
 
-    client_state.OrgUsersSearchDebounced(query) ->
+    admin_messages.OrgUsersSearchDebounced(query) ->
       admin_workflow.handle_org_users_search_debounced(model, query)
-    client_state.OrgUsersSearchResults(token, Ok(users)) ->
+    admin_messages.OrgUsersSearchResults(token, Ok(users)) ->
       admin_workflow.handle_org_users_search_results_ok(model, token, users)
-    client_state.OrgUsersSearchResults(token, Error(err)) ->
+    admin_messages.OrgUsersSearchResults(token, Error(err)) ->
       admin_workflow.handle_org_users_search_results_error(model, token, err)
 
-    client_state.AssignmentsViewModeChanged(view_mode) ->
+    admin_messages.AssignmentsViewModeChanged(view_mode) ->
       assignments_workflow.handle_assignments_view_mode_changed(
         model,
         view_mode,
       )
-    client_state.AssignmentsSearchChanged(value) ->
+    admin_messages.AssignmentsSearchChanged(value) ->
       assignments_workflow.handle_assignments_search_changed(model, value)
-    client_state.AssignmentsSearchDebounced(value) ->
+    admin_messages.AssignmentsSearchDebounced(value) ->
       assignments_workflow.handle_assignments_search_debounced(model, value)
-    client_state.AssignmentsProjectToggled(project_id) ->
+    admin_messages.AssignmentsProjectToggled(project_id) ->
       assignments_workflow.handle_assignments_project_toggled(model, project_id)
-    client_state.AssignmentsUserToggled(user_id) ->
+    admin_messages.AssignmentsUserToggled(user_id) ->
       assignments_workflow.handle_assignments_user_toggled(model, user_id)
-    client_state.AssignmentsProjectMembersFetched(project_id, Ok(members)) ->
+    admin_messages.AssignmentsProjectMembersFetched(project_id, Ok(members)) ->
       assignments_workflow.handle_assignments_project_members_fetched(
         model,
         project_id,
         Ok(members),
       )
-    client_state.AssignmentsProjectMembersFetched(project_id, Error(err)) ->
+    admin_messages.AssignmentsProjectMembersFetched(project_id, Error(err)) ->
       assignments_workflow.handle_assignments_project_members_fetched(
         model,
         project_id,
         Error(err),
       )
-    client_state.AssignmentsUserProjectsFetched(user_id, Ok(projects)) ->
+    admin_messages.AssignmentsUserProjectsFetched(user_id, Ok(projects)) ->
       assignments_workflow.handle_assignments_user_projects_fetched(
         model,
         user_id,
         Ok(projects),
       )
-    client_state.AssignmentsUserProjectsFetched(user_id, Error(err)) ->
+    admin_messages.AssignmentsUserProjectsFetched(user_id, Error(err)) ->
       assignments_workflow.handle_assignments_user_projects_fetched(
         model,
         user_id,
         Error(err),
       )
-    client_state.AssignmentsInlineAddStarted(context) ->
+    admin_messages.AssignmentsInlineAddStarted(context) ->
       assignments_workflow.handle_assignments_inline_add_started(model, context)
-    client_state.AssignmentsInlineAddSearchChanged(value) ->
+    admin_messages.AssignmentsInlineAddSearchChanged(value) ->
       assignments_workflow.handle_assignments_inline_add_search_changed(
         model,
         value,
       )
-    client_state.AssignmentsInlineAddSelectionChanged(value) ->
+    admin_messages.AssignmentsInlineAddSelectionChanged(value) ->
       assignments_workflow.handle_assignments_inline_add_selection_changed(
         model,
         value,
       )
-    client_state.AssignmentsInlineAddRoleChanged(value) ->
+    admin_messages.AssignmentsInlineAddRoleChanged(value) ->
       assignments_workflow.handle_assignments_inline_add_role_changed(
         model,
         value,
       )
-    client_state.AssignmentsInlineAddSubmitted ->
+    admin_messages.AssignmentsInlineAddSubmitted ->
       assignments_workflow.handle_assignments_inline_add_submitted(model)
-    client_state.AssignmentsInlineAddCancelled ->
+    admin_messages.AssignmentsInlineAddCancelled ->
       assignments_workflow.handle_assignments_inline_add_cancelled(model)
-    client_state.AssignmentsProjectMemberAdded(project_id, Ok(member)) ->
+    admin_messages.AssignmentsProjectMemberAdded(project_id, Ok(member)) ->
       assignments_workflow.handle_assignments_project_member_added_ok(
         model,
         project_id,
         member,
       )
-    client_state.AssignmentsProjectMemberAdded(_project_id, Error(err)) ->
+    admin_messages.AssignmentsProjectMemberAdded(_project_id, Error(err)) ->
       assignments_workflow.handle_assignments_project_member_added_error(
         model,
         err,
       )
-    client_state.AssignmentsUserProjectAdded(user_id, Ok(project)) ->
+    admin_messages.AssignmentsUserProjectAdded(user_id, Ok(project)) ->
       assignments_workflow.handle_assignments_user_project_added_ok(
         model,
         user_id,
         project,
       )
-    client_state.AssignmentsUserProjectAdded(_user_id, Error(err)) ->
+    admin_messages.AssignmentsUserProjectAdded(_user_id, Error(err)) ->
       assignments_workflow.handle_assignments_user_project_added_error(
         model,
         err,
       )
-    client_state.AssignmentsRemoveClicked(project_id, user_id) ->
+    admin_messages.AssignmentsRemoveClicked(project_id, user_id) ->
       assignments_workflow.handle_assignments_remove_clicked(
         model,
         project_id,
         user_id,
       )
-    client_state.AssignmentsRemoveCancelled ->
+    admin_messages.AssignmentsRemoveCancelled ->
       assignments_workflow.handle_assignments_remove_cancelled(model)
-    client_state.AssignmentsRemoveConfirmed ->
+    admin_messages.AssignmentsRemoveConfirmed ->
       assignments_workflow.handle_assignments_remove_confirmed(model)
-    client_state.AssignmentsRemoveCompleted(project_id, user_id, Ok(_)) ->
+    admin_messages.AssignmentsRemoveCompleted(project_id, user_id, Ok(_)) ->
       assignments_workflow.handle_assignments_remove_completed_ok(
         model,
         project_id,
         user_id,
       )
-    client_state.AssignmentsRemoveCompleted(_project_id, _user_id, Error(err)) ->
+    admin_messages.AssignmentsRemoveCompleted(_project_id, _user_id, Error(err)) ->
       assignments_workflow.handle_assignments_remove_completed_error(model, err)
-    client_state.AssignmentsRoleChanged(project_id, user_id, new_role) ->
+    admin_messages.AssignmentsRoleChanged(project_id, user_id, new_role) ->
       assignments_workflow.handle_assignments_role_changed(
         model,
         project_id,
         user_id,
         new_role,
       )
-    client_state.AssignmentsRoleChangeCompleted(project_id, user_id, Ok(result)) ->
+    admin_messages.AssignmentsRoleChangeCompleted(
+      project_id,
+      user_id,
+      Ok(result),
+    ) ->
       assignments_workflow.handle_assignments_role_change_completed_ok(
         model,
         project_id,
         user_id,
         result,
       )
-    client_state.AssignmentsRoleChangeCompleted(project_id, user_id, Error(err)) ->
+    admin_messages.AssignmentsRoleChangeCompleted(
+      project_id,
+      user_id,
+      Error(err),
+    ) ->
       assignments_workflow.handle_assignments_role_change_completed_error(
         model,
         project_id,
@@ -503,61 +513,61 @@ pub fn handle_admin(
         err,
       )
 
-    client_state.TaskTypesFetched(Ok(task_types)) ->
+    admin_messages.TaskTypesFetched(Ok(task_types)) ->
       task_types_workflow.handle_task_types_fetched_ok(model, task_types)
-    client_state.TaskTypesFetched(Error(err)) ->
+    admin_messages.TaskTypesFetched(Error(err)) ->
       task_types_workflow.handle_task_types_fetched_error(model, err)
-    client_state.TaskTypeCreateDialogOpened ->
+    admin_messages.TaskTypeCreateDialogOpened ->
       task_types_workflow.handle_task_type_dialog_opened(model)
-    client_state.TaskTypeCreateDialogClosed ->
+    admin_messages.TaskTypeCreateDialogClosed ->
       task_types_workflow.handle_task_type_dialog_closed(model)
-    client_state.TaskTypeCreateNameChanged(name) ->
+    admin_messages.TaskTypeCreateNameChanged(name) ->
       task_types_workflow.handle_task_type_create_name_changed(model, name)
-    client_state.TaskTypeCreateIconChanged(icon) ->
+    admin_messages.TaskTypeCreateIconChanged(icon) ->
       task_types_workflow.handle_task_type_create_icon_changed(model, icon)
-    client_state.TaskTypeCreateIconSearchChanged(search) ->
+    admin_messages.TaskTypeCreateIconSearchChanged(search) ->
       task_types_workflow.handle_task_type_create_icon_search_changed(
         model,
         search,
       )
-    client_state.TaskTypeCreateIconCategoryChanged(category) ->
+    admin_messages.TaskTypeCreateIconCategoryChanged(category) ->
       task_types_workflow.handle_task_type_create_icon_category_changed(
         model,
         category,
       )
-    client_state.TaskTypeIconLoaded ->
+    admin_messages.TaskTypeIconLoaded ->
       task_types_workflow.handle_task_type_icon_loaded(model)
-    client_state.TaskTypeIconErrored ->
+    admin_messages.TaskTypeIconErrored ->
       task_types_workflow.handle_task_type_icon_errored(model)
-    client_state.TaskTypeCreateCapabilityChanged(value) ->
+    admin_messages.TaskTypeCreateCapabilityChanged(value) ->
       task_types_workflow.handle_task_type_create_capability_changed(
         model,
         value,
       )
-    client_state.TaskTypeCreateSubmitted ->
+    admin_messages.TaskTypeCreateSubmitted ->
       task_types_workflow.handle_task_type_create_submitted(model)
-    client_state.TaskTypeCreated(Ok(_)) ->
+    admin_messages.TaskTypeCreated(Ok(_)) ->
       task_types_workflow.handle_task_type_created_ok(
         model,
         refresh_section_for_test,
       )
-    client_state.TaskTypeCreated(Error(err)) ->
+    admin_messages.TaskTypeCreated(Error(err)) ->
       task_types_workflow.handle_task_type_created_error(model, err)
     // Task types - dialog mode control (component pattern)
-    client_state.OpenTaskTypeDialog(mode) ->
+    admin_messages.OpenTaskTypeDialog(mode) ->
       task_types_workflow.handle_open_task_type_dialog(model, mode)
-    client_state.CloseTaskTypeDialog ->
+    admin_messages.CloseTaskTypeDialog ->
       task_types_workflow.handle_close_task_type_dialog(model)
     // Task types - component events
-    client_state.TaskTypeCrudCreated(task_type) ->
+    admin_messages.TaskTypeCrudCreated(task_type) ->
       task_types_workflow.handle_task_type_crud_created(
         model,
         task_type,
         refresh_section_for_test,
       )
-    client_state.TaskTypeCrudUpdated(task_type) ->
+    admin_messages.TaskTypeCrudUpdated(task_type) ->
       task_types_workflow.handle_task_type_crud_updated(model, task_type)
-    client_state.TaskTypeCrudDeleted(type_id) ->
+    admin_messages.TaskTypeCrudDeleted(type_id) ->
       task_types_workflow.handle_task_type_crud_deleted(model, type_id)
   }
 }
@@ -598,7 +608,7 @@ pub fn handle_pool(
   let PoolContext(member_refresh: member_refresh) = ctx
 
   case inner {
-    client_state.MemberPoolMyTasksRectFetched(left, top, width, height) ->
+    pool_messages.MemberPoolMyTasksRectFetched(left, top, width, height) ->
       pool_workflow.handle_pool_my_tasks_rect_fetched(
         model,
         left,
@@ -606,39 +616,39 @@ pub fn handle_pool(
         width,
         height,
       )
-    client_state.MemberPoolDragToClaimArmed(armed) ->
+    pool_messages.MemberPoolDragToClaimArmed(armed) ->
       pool_workflow.handle_pool_drag_to_claim_armed(model, armed)
-    client_state.MemberPoolStatusChanged(v) ->
+    pool_messages.MemberPoolStatusChanged(v) ->
       pool_workflow.handle_pool_status_changed(model, v, member_refresh)
-    client_state.MemberPoolTypeChanged(v) ->
+    pool_messages.MemberPoolTypeChanged(v) ->
       pool_workflow.handle_pool_type_changed(model, v, member_refresh)
-    client_state.MemberPoolCapabilityChanged(v) ->
+    pool_messages.MemberPoolCapabilityChanged(v) ->
       pool_workflow.handle_pool_capability_changed(model, v, member_refresh)
 
-    client_state.MemberToggleMyCapabilitiesQuick ->
+    pool_messages.MemberToggleMyCapabilitiesQuick ->
       pool_workflow.handle_toggle_my_capabilities_quick(model)
-    client_state.MemberPoolFiltersToggled ->
+    pool_messages.MemberPoolFiltersToggled ->
       pool_workflow.handle_pool_filters_toggled(model)
-    client_state.MemberClearFilters ->
+    pool_messages.MemberClearFilters ->
       pool_workflow.handle_clear_filters(model, member_refresh)
-    client_state.MemberPoolViewModeSet(mode) ->
+    pool_messages.MemberPoolViewModeSet(mode) ->
       pool_workflow.handle_pool_view_mode_set(model, mode)
-    client_state.MemberPoolTouchStarted(task_id, client_x, client_y) ->
+    pool_messages.MemberPoolTouchStarted(task_id, client_x, client_y) ->
       pool_workflow.handle_pool_touch_started(
         model,
         task_id,
         client_x,
         client_y,
       )
-    client_state.MemberPoolTouchEnded(task_id) ->
+    pool_messages.MemberPoolTouchEnded(task_id) ->
       pool_workflow.handle_pool_touch_ended(model, task_id)
-    client_state.MemberPoolLongPressCheck(task_id) ->
+    pool_messages.MemberPoolLongPressCheck(task_id) ->
       pool_workflow.handle_pool_long_press_check(model, task_id)
-    client_state.MemberTaskHoverOpened(task_id) ->
+    pool_messages.MemberTaskHoverOpened(task_id) ->
       pool_workflow.handle_task_hover_opened(model, task_id)
-    client_state.MemberTaskHoverNotesFetched(task_id, result) ->
+    pool_messages.MemberTaskHoverNotesFetched(task_id, result) ->
       pool_workflow.handle_task_hover_notes_fetched(model, task_id, result)
-    client_state.MemberListHideCompletedToggled -> #(
+    pool_messages.MemberListHideCompletedToggled -> #(
       client_state.update_member(model, fn(member) {
         member_state.MemberModel(
           ..member,
@@ -648,7 +658,7 @@ pub fn handle_pool(
       effect.none(),
     )
     // Story 4.8 UX: Collapse/expand card groups in Lista view
-    client_state.MemberListCardToggled(card_id) -> {
+    pool_messages.MemberListCardToggled(card_id) -> {
       let current =
         dict.get(model.member.member_list_expanded_cards, card_id)
         |> opt.from_result
@@ -678,83 +688,15 @@ pub fn handle_pool(
         )
       #(new_model, router.replace(route))
     }
-    client_state.MemberPanelToggled -> #(
-      client_state.update_member(model, fn(member) {
-        member_state.MemberModel(
-          ..member,
-          member_panel_expanded: !model.member.member_panel_expanded,
-        )
-      }),
-      effect.none(),
-    )
-    client_state.MobileLeftDrawerToggled -> #(
-      client_state.update_ui(model, fn(ui) {
-        client_state.UiModel(
-          ..ui,
-          mobile_drawer: client_state.toggle_left_drawer(model.ui.mobile_drawer),
-        )
-      }),
-      effect.none(),
-    )
-    client_state.MobileRightDrawerToggled -> #(
-      client_state.update_ui(model, fn(ui) {
-        client_state.UiModel(
-          ..ui,
-          mobile_drawer: client_state.toggle_right_drawer(
-            model.ui.mobile_drawer,
-          ),
-        )
-      }),
-      effect.none(),
-    )
-    client_state.MobileDrawersClosed -> #(
-      client_state.update_ui(model, fn(ui) {
-        client_state.UiModel(
-          ..ui,
-          mobile_drawer: client_state.close_drawers(model.ui.mobile_drawer),
-        )
-      }),
-      effect.none(),
-    )
-    client_state.SidebarConfigToggled -> {
-      let next_state =
-        client_state.toggle_sidebar_config(model.ui.sidebar_collapse)
-      #(
-        client_state.update_ui(model, fn(ui) {
-          client_state.UiModel(..ui, sidebar_collapse: next_state)
-        }),
-        app_effects.save_sidebar_state(next_state),
-      )
-    }
-    client_state.SidebarOrgToggled -> {
-      let next_state =
-        client_state.toggle_sidebar_org(model.ui.sidebar_collapse)
-      #(
-        client_state.update_ui(model, fn(ui) {
-          client_state.UiModel(..ui, sidebar_collapse: next_state)
-        }),
-        app_effects.save_sidebar_state(next_state),
-      )
-    }
-    // Story 4.8 UX: Preferences popup toggle
-    client_state.PreferencesPopupToggled -> #(
-      client_state.update_ui(model, fn(ui) {
-        client_state.UiModel(
-          ..ui,
-          preferences_popup_open: !model.ui.preferences_popup_open,
-        )
-      }),
-      effect.none(),
-    )
     client_state.GlobalKeyDown(event) ->
       pool_workflow.handle_global_keydown(model, event)
 
-    client_state.MemberPoolSearchChanged(v) ->
+    pool_messages.MemberPoolSearchChanged(v) ->
       pool_workflow.handle_pool_search_changed(model, v)
-    client_state.MemberPoolSearchDebounced(v) ->
+    pool_messages.MemberPoolSearchDebounced(v) ->
       pool_workflow.handle_pool_search_debounced(model, v, member_refresh)
 
-    client_state.MemberProjectTasksFetched(project_id, Ok(tasks)) -> {
+    pool_messages.MemberProjectTasksFetched(project_id, Ok(tasks)) -> {
       let tasks_by_project =
         dict.insert(model.member.member_tasks_by_project, project_id, tasks)
       let pending = model.member.member_tasks_pending - 1
@@ -784,7 +726,7 @@ pub fn handle_pool(
       }
     }
 
-    client_state.MemberProjectTasksFetched(_project_id, Error(err)) -> {
+    pool_messages.MemberProjectTasksFetched(_project_id, Error(err)) -> {
       case err.status {
         401 -> #(
           client_state.update_member(
@@ -818,7 +760,7 @@ pub fn handle_pool(
       }
     }
 
-    client_state.MemberTaskTypesFetched(project_id, Ok(task_types)) -> {
+    pool_messages.MemberTaskTypesFetched(project_id, Ok(task_types)) -> {
       let task_types_by_project =
         dict.insert(
           model.member.member_task_types_by_project,
@@ -852,7 +794,7 @@ pub fn handle_pool(
       }
     }
 
-    client_state.MemberTaskTypesFetched(_project_id, Error(err)) -> {
+    pool_messages.MemberTaskTypesFetched(_project_id, Error(err)) -> {
       case err.status {
         401 -> #(
           client_state.update_member(
@@ -886,178 +828,178 @@ pub fn handle_pool(
       }
     }
 
-    client_state.MemberCanvasRectFetched(left, top) ->
+    pool_messages.MemberCanvasRectFetched(left, top) ->
       pool_workflow.handle_canvas_rect_fetched(model, left, top)
-    client_state.MemberDragStarted(task_id, client_x, client_y) ->
+    pool_messages.MemberDragStarted(task_id, client_x, client_y) ->
       pool_workflow.handle_drag_started(model, task_id, client_x, client_y)
-    client_state.MemberDragOffsetResolved(task_id, offset_x, offset_y) ->
+    pool_messages.MemberDragOffsetResolved(task_id, offset_x, offset_y) ->
       pool_workflow.handle_drag_offset_resolved(
         model,
         task_id,
         offset_x,
         offset_y,
       )
-    client_state.MemberDragMoved(client_x, client_y) ->
+    pool_messages.MemberDragMoved(client_x, client_y) ->
       pool_workflow.handle_drag_moved(model, client_x, client_y)
-    client_state.MemberDragEnded -> pool_workflow.handle_drag_ended(model)
+    pool_messages.MemberDragEnded -> pool_workflow.handle_drag_ended(model)
 
-    client_state.MemberCreateDialogOpened ->
+    pool_messages.MemberCreateDialogOpened ->
       tasks_workflow.handle_create_dialog_opened(model)
-    client_state.MemberCreateDialogOpenedWithCard(card_id) ->
+    pool_messages.MemberCreateDialogOpenedWithCard(card_id) ->
       tasks_workflow.handle_create_dialog_opened_with_card(model, card_id)
-    client_state.MemberCreateDialogClosed ->
+    pool_messages.MemberCreateDialogClosed ->
       tasks_workflow.handle_create_dialog_closed(model)
-    client_state.MemberCreateTitleChanged(v) ->
+    pool_messages.MemberCreateTitleChanged(v) ->
       tasks_workflow.handle_create_title_changed(model, v)
-    client_state.MemberCreateDescriptionChanged(v) ->
+    pool_messages.MemberCreateDescriptionChanged(v) ->
       tasks_workflow.handle_create_description_changed(model, v)
-    client_state.MemberCreatePriorityChanged(v) ->
+    pool_messages.MemberCreatePriorityChanged(v) ->
       tasks_workflow.handle_create_priority_changed(model, v)
-    client_state.MemberCreateTypeIdChanged(v) ->
+    pool_messages.MemberCreateTypeIdChanged(v) ->
       tasks_workflow.handle_create_type_id_changed(model, v)
-    client_state.MemberCreateCardIdChanged(v) ->
+    pool_messages.MemberCreateCardIdChanged(v) ->
       tasks_workflow.handle_create_card_id_changed(model, v)
 
-    client_state.MemberCreateSubmitted ->
+    pool_messages.MemberCreateSubmitted ->
       tasks_workflow.handle_create_submitted(model, member_refresh)
 
-    client_state.MemberTaskCreated(Ok(_)) ->
+    pool_messages.MemberTaskCreated(Ok(_)) ->
       tasks_workflow.handle_task_created_ok(model, member_refresh)
-    client_state.MemberTaskCreated(Error(err)) ->
+    pool_messages.MemberTaskCreated(Error(err)) ->
       tasks_workflow.handle_task_created_error(model, err)
 
-    client_state.MemberClaimClicked(task_id, version) ->
+    pool_messages.MemberClaimClicked(task_id, version) ->
       tasks_workflow.handle_claim_clicked(model, task_id, version)
-    client_state.MemberReleaseClicked(task_id, version) ->
+    pool_messages.MemberReleaseClicked(task_id, version) ->
       tasks_workflow.handle_release_clicked(model, task_id, version)
-    client_state.MemberCompleteClicked(task_id, version) ->
+    pool_messages.MemberCompleteClicked(task_id, version) ->
       tasks_workflow.handle_complete_clicked(model, task_id, version)
 
-    client_state.MemberBlockedClaimCancelled ->
+    pool_messages.MemberBlockedClaimCancelled ->
       tasks_workflow.handle_blocked_claim_cancelled(model)
-    client_state.MemberBlockedClaimConfirmed ->
+    pool_messages.MemberBlockedClaimConfirmed ->
       tasks_workflow.handle_blocked_claim_confirmed(model)
 
-    client_state.MemberTaskClaimed(Ok(_)) ->
+    pool_messages.MemberTaskClaimed(Ok(_)) ->
       tasks_workflow.handle_task_claimed_ok(model, member_refresh)
-    client_state.MemberTaskReleased(Ok(_)) ->
+    pool_messages.MemberTaskReleased(Ok(_)) ->
       tasks_workflow.handle_task_released_ok(model, member_refresh)
-    client_state.MemberTaskCompleted(Ok(_)) ->
+    pool_messages.MemberTaskCompleted(Ok(_)) ->
       tasks_workflow.handle_task_completed_ok(model, member_refresh)
 
-    client_state.MemberTaskClaimed(Error(err)) ->
+    pool_messages.MemberTaskClaimed(Error(err)) ->
       tasks_workflow.handle_mutation_error(model, err, member_refresh)
-    client_state.MemberTaskReleased(Error(err)) ->
+    pool_messages.MemberTaskReleased(Error(err)) ->
       tasks_workflow.handle_mutation_error(model, err, member_refresh)
-    client_state.MemberTaskCompleted(Error(err)) ->
+    pool_messages.MemberTaskCompleted(Error(err)) ->
       tasks_workflow.handle_mutation_error(model, err, member_refresh)
 
-    client_state.MemberNowWorkingStartClicked(task_id) ->
+    pool_messages.MemberNowWorkingStartClicked(task_id) ->
       now_working_workflow.handle_start_clicked(model, task_id)
-    client_state.MemberNowWorkingPauseClicked ->
+    pool_messages.MemberNowWorkingPauseClicked ->
       now_working_workflow.handle_pause_clicked(model)
 
     // Work sessions (multi-session) - delegate to workflow
-    client_state.MemberWorkSessionsFetched(Ok(payload)) ->
+    pool_messages.MemberWorkSessionsFetched(Ok(payload)) ->
       now_working_workflow.handle_sessions_fetched_ok(model, payload)
-    client_state.MemberWorkSessionsFetched(Error(err)) ->
+    pool_messages.MemberWorkSessionsFetched(Error(err)) ->
       now_working_workflow.handle_sessions_fetched_error(model, err)
 
-    client_state.MemberWorkSessionStarted(Ok(payload)) ->
+    pool_messages.MemberWorkSessionStarted(Ok(payload)) ->
       now_working_workflow.handle_session_started_ok(model, payload)
-    client_state.MemberWorkSessionStarted(Error(err)) ->
+    pool_messages.MemberWorkSessionStarted(Error(err)) ->
       now_working_workflow.handle_session_started_error(model, err)
 
-    client_state.MemberWorkSessionPaused(Ok(payload)) ->
+    pool_messages.MemberWorkSessionPaused(Ok(payload)) ->
       now_working_workflow.handle_session_paused_ok(model, payload)
-    client_state.MemberWorkSessionPaused(Error(err)) ->
+    pool_messages.MemberWorkSessionPaused(Error(err)) ->
       now_working_workflow.handle_session_paused_error(model, err)
 
-    client_state.MemberWorkSessionHeartbeated(Ok(payload)) ->
+    pool_messages.MemberWorkSessionHeartbeated(Ok(payload)) ->
       now_working_workflow.handle_session_heartbeated_ok(model, payload)
-    client_state.MemberWorkSessionHeartbeated(Error(err)) ->
+    pool_messages.MemberWorkSessionHeartbeated(Error(err)) ->
       now_working_workflow.handle_session_heartbeated_error(model, err)
 
-    client_state.MemberMetricsFetched(Ok(metrics)) ->
+    pool_messages.MemberMetricsFetched(Ok(metrics)) ->
       metrics_workflow.handle_member_metrics_fetched_ok(model, metrics)
-    client_state.MemberMetricsFetched(Error(err)) ->
+    pool_messages.MemberMetricsFetched(Error(err)) ->
       metrics_workflow.handle_member_metrics_fetched_error(model, err)
 
-    client_state.AdminMetricsOverviewFetched(Ok(overview)) ->
+    pool_messages.AdminMetricsOverviewFetched(Ok(overview)) ->
       metrics_workflow.handle_admin_overview_fetched_ok(model, overview)
-    client_state.AdminMetricsOverviewFetched(Error(err)) ->
+    pool_messages.AdminMetricsOverviewFetched(Error(err)) ->
       metrics_workflow.handle_admin_overview_fetched_error(model, err)
 
-    client_state.AdminMetricsProjectTasksFetched(Ok(payload)) ->
+    pool_messages.AdminMetricsProjectTasksFetched(Ok(payload)) ->
       metrics_workflow.handle_admin_project_tasks_fetched_ok(model, payload)
-    client_state.AdminMetricsProjectTasksFetched(Error(err)) ->
+    pool_messages.AdminMetricsProjectTasksFetched(Error(err)) ->
       metrics_workflow.handle_admin_project_tasks_fetched_error(model, err)
 
-    client_state.AdminMetricsUsersFetched(Ok(users)) ->
+    pool_messages.AdminMetricsUsersFetched(Ok(users)) ->
       metrics_workflow.handle_admin_users_fetched_ok(model, users)
-    client_state.AdminMetricsUsersFetched(Error(err)) ->
+    pool_messages.AdminMetricsUsersFetched(Error(err)) ->
       metrics_workflow.handle_admin_users_fetched_error(model, err)
 
     // Rule metrics tab
-    client_state.AdminRuleMetricsFetched(Ok(metrics)) ->
+    pool_messages.AdminRuleMetricsFetched(Ok(metrics)) ->
       admin_workflow.handle_rule_metrics_tab_fetched_ok(model, metrics)
-    client_state.AdminRuleMetricsFetched(Error(err)) ->
+    pool_messages.AdminRuleMetricsFetched(Error(err)) ->
       admin_workflow.handle_rule_metrics_tab_fetched_error(model, err)
-    client_state.AdminRuleMetricsFromChanged(from) ->
+    pool_messages.AdminRuleMetricsFromChanged(from) ->
       admin_workflow.handle_rule_metrics_tab_from_changed(model, from)
-    client_state.AdminRuleMetricsToChanged(to) ->
+    pool_messages.AdminRuleMetricsToChanged(to) ->
       admin_workflow.handle_rule_metrics_tab_to_changed(model, to)
-    client_state.AdminRuleMetricsFromChangedAndRefresh(from) ->
+    pool_messages.AdminRuleMetricsFromChangedAndRefresh(from) ->
       admin_workflow.handle_rule_metrics_tab_from_changed_and_refresh(
         model,
         from,
       )
-    client_state.AdminRuleMetricsToChangedAndRefresh(to) ->
+    pool_messages.AdminRuleMetricsToChangedAndRefresh(to) ->
       admin_workflow.handle_rule_metrics_tab_to_changed_and_refresh(model, to)
-    client_state.AdminRuleMetricsRefreshClicked ->
+    pool_messages.AdminRuleMetricsRefreshClicked ->
       admin_workflow.handle_rule_metrics_tab_refresh_clicked(model)
-    client_state.AdminRuleMetricsQuickRangeClicked(from, to) ->
+    pool_messages.AdminRuleMetricsQuickRangeClicked(from, to) ->
       admin_workflow.handle_rule_metrics_tab_quick_range_clicked(
         model,
         from,
         to,
       )
     // Rule metrics drill-down
-    client_state.AdminRuleMetricsWorkflowExpanded(workflow_id) ->
+    pool_messages.AdminRuleMetricsWorkflowExpanded(workflow_id) ->
       admin_workflow.handle_rule_metrics_workflow_expanded(model, workflow_id)
-    client_state.AdminRuleMetricsWorkflowDetailsFetched(Ok(details)) ->
+    pool_messages.AdminRuleMetricsWorkflowDetailsFetched(Ok(details)) ->
       admin_workflow.handle_rule_metrics_workflow_details_fetched_ok(
         model,
         details,
       )
-    client_state.AdminRuleMetricsWorkflowDetailsFetched(Error(err)) ->
+    pool_messages.AdminRuleMetricsWorkflowDetailsFetched(Error(err)) ->
       admin_workflow.handle_rule_metrics_workflow_details_fetched_error(
         model,
         err,
       )
-    client_state.AdminRuleMetricsDrilldownClicked(rule_id) ->
+    pool_messages.AdminRuleMetricsDrilldownClicked(rule_id) ->
       admin_workflow.handle_rule_metrics_drilldown_clicked(model, rule_id)
-    client_state.AdminRuleMetricsDrilldownClosed ->
+    pool_messages.AdminRuleMetricsDrilldownClosed ->
       admin_workflow.handle_rule_metrics_drilldown_closed(model)
-    client_state.AdminRuleMetricsRuleDetailsFetched(Ok(details)) ->
+    pool_messages.AdminRuleMetricsRuleDetailsFetched(Ok(details)) ->
       admin_workflow.handle_rule_metrics_rule_details_fetched_ok(model, details)
-    client_state.AdminRuleMetricsRuleDetailsFetched(Error(err)) ->
+    pool_messages.AdminRuleMetricsRuleDetailsFetched(Error(err)) ->
       admin_workflow.handle_rule_metrics_rule_details_fetched_error(model, err)
-    client_state.AdminRuleMetricsExecutionsFetched(Ok(response)) ->
+    pool_messages.AdminRuleMetricsExecutionsFetched(Ok(response)) ->
       admin_workflow.handle_rule_metrics_executions_fetched_ok(model, response)
-    client_state.AdminRuleMetricsExecutionsFetched(Error(err)) ->
+    pool_messages.AdminRuleMetricsExecutionsFetched(Error(err)) ->
       admin_workflow.handle_rule_metrics_executions_fetched_error(model, err)
-    client_state.AdminRuleMetricsExecPageChanged(offset) ->
+    pool_messages.AdminRuleMetricsExecPageChanged(offset) ->
       admin_workflow.handle_rule_metrics_exec_page_changed(model, offset)
 
     client_state.NowWorkingTicked -> now_working_workflow.handle_ticked(model)
 
-    client_state.MemberMyCapabilityIdsFetched(Ok(ids)) ->
+    pool_messages.MemberMyCapabilityIdsFetched(Ok(ids)) ->
       skills_workflow.handle_my_capability_ids_fetched_ok(model, ids)
-    client_state.MemberMyCapabilityIdsFetched(Error(err)) ->
+    pool_messages.MemberMyCapabilityIdsFetched(Error(err)) ->
       skills_workflow.handle_my_capability_ids_fetched_error(model, err)
 
-    client_state.MemberProjectCapabilitiesFetched(Ok(capabilities)) ->
+    pool_messages.MemberProjectCapabilitiesFetched(Ok(capabilities)) ->
       client_state.update_member(model, fn(member) {
         member_state.MemberModel(
           ..member,
@@ -1065,107 +1007,107 @@ pub fn handle_pool(
         )
       })
       |> fn(next) { #(next, effect.none()) }
-    client_state.MemberProjectCapabilitiesFetched(Error(err)) ->
+    pool_messages.MemberProjectCapabilitiesFetched(Error(err)) ->
       client_state.update_member(model, fn(member) {
         member_state.MemberModel(..member, member_capabilities: Failed(err))
       })
       |> fn(next) { #(next, effect.none()) }
 
-    client_state.MemberToggleCapability(id) ->
+    pool_messages.MemberToggleCapability(id) ->
       skills_workflow.handle_toggle_capability(model, id)
-    client_state.MemberSaveCapabilitiesClicked ->
+    pool_messages.MemberSaveCapabilitiesClicked ->
       skills_workflow.handle_save_capabilities_clicked(model)
 
-    client_state.MemberMyCapabilityIdsSaved(Ok(ids)) ->
+    pool_messages.MemberMyCapabilityIdsSaved(Ok(ids)) ->
       skills_workflow.handle_save_capabilities_ok(model, ids)
-    client_state.MemberMyCapabilityIdsSaved(Error(err)) ->
+    pool_messages.MemberMyCapabilityIdsSaved(Error(err)) ->
       skills_workflow.handle_save_capabilities_error(model, err)
 
-    client_state.MemberPositionsFetched(Ok(positions)) ->
+    pool_messages.MemberPositionsFetched(Ok(positions)) ->
       pool_workflow.handle_positions_fetched_ok(model, positions)
-    client_state.MemberPositionsFetched(Error(err)) ->
+    pool_messages.MemberPositionsFetched(Error(err)) ->
       pool_workflow.handle_positions_fetched_error(model, err)
 
-    client_state.MemberPositionEditOpened(task_id) ->
+    pool_messages.MemberPositionEditOpened(task_id) ->
       pool_workflow.handle_position_edit_opened(model, task_id)
-    client_state.MemberPositionEditClosed ->
+    pool_messages.MemberPositionEditClosed ->
       pool_workflow.handle_position_edit_closed(model)
-    client_state.MemberPositionEditXChanged(v) ->
+    pool_messages.MemberPositionEditXChanged(v) ->
       pool_workflow.handle_position_edit_x_changed(model, v)
-    client_state.MemberPositionEditYChanged(v) ->
+    pool_messages.MemberPositionEditYChanged(v) ->
       pool_workflow.handle_position_edit_y_changed(model, v)
-    client_state.MemberPositionEditSubmitted ->
+    pool_messages.MemberPositionEditSubmitted ->
       pool_workflow.handle_position_edit_submitted(model)
 
-    client_state.MemberPositionSaved(Ok(pos)) ->
+    pool_messages.MemberPositionSaved(Ok(pos)) ->
       pool_workflow.handle_position_saved_ok(model, pos)
-    client_state.MemberPositionSaved(Error(err)) ->
+    pool_messages.MemberPositionSaved(Error(err)) ->
       pool_workflow.handle_position_saved_error(model, err)
 
-    client_state.MemberTaskDetailsOpened(task_id) ->
+    pool_messages.MemberTaskDetailsOpened(task_id) ->
       tasks_workflow.handle_task_details_opened(model, task_id)
-    client_state.MemberTaskDetailsClosed ->
+    pool_messages.MemberTaskDetailsClosed ->
       tasks_workflow.handle_task_details_closed(model)
 
-    client_state.MemberTaskDetailTabClicked(tab) ->
+    pool_messages.MemberTaskDetailTabClicked(tab) ->
       tasks_workflow.handle_task_detail_tab_clicked(model, tab)
 
-    client_state.MemberDependenciesFetched(Ok(deps)) ->
+    pool_messages.MemberDependenciesFetched(Ok(deps)) ->
       tasks_workflow.handle_dependencies_fetched_ok(model, deps)
-    client_state.MemberDependenciesFetched(Error(err)) ->
+    pool_messages.MemberDependenciesFetched(Error(err)) ->
       tasks_workflow.handle_dependencies_fetched_error(model, err)
 
-    client_state.MemberDependencyDialogOpened ->
+    pool_messages.MemberDependencyDialogOpened ->
       tasks_workflow.handle_dependency_dialog_opened(model)
-    client_state.MemberDependencyDialogClosed ->
+    pool_messages.MemberDependencyDialogClosed ->
       tasks_workflow.handle_dependency_dialog_closed(model)
-    client_state.MemberDependencySearchChanged(value) ->
+    pool_messages.MemberDependencySearchChanged(value) ->
       tasks_workflow.handle_dependency_search_changed(model, value)
-    client_state.MemberDependencyCandidatesFetched(Ok(tasks)) ->
+    pool_messages.MemberDependencyCandidatesFetched(Ok(tasks)) ->
       tasks_workflow.handle_dependency_candidates_fetched_ok(model, tasks)
-    client_state.MemberDependencyCandidatesFetched(Error(err)) ->
+    pool_messages.MemberDependencyCandidatesFetched(Error(err)) ->
       tasks_workflow.handle_dependency_candidates_fetched_error(model, err)
-    client_state.MemberDependencySelected(task_id) ->
+    pool_messages.MemberDependencySelected(task_id) ->
       tasks_workflow.handle_dependency_selected(model, task_id)
-    client_state.MemberDependencyAddSubmitted ->
+    pool_messages.MemberDependencyAddSubmitted ->
       tasks_workflow.handle_dependency_add_submitted(model)
-    client_state.MemberDependencyAdded(Ok(dep)) ->
+    pool_messages.MemberDependencyAdded(Ok(dep)) ->
       tasks_workflow.handle_dependency_added_ok(model, dep)
-    client_state.MemberDependencyAdded(Error(err)) ->
+    pool_messages.MemberDependencyAdded(Error(err)) ->
       tasks_workflow.handle_dependency_added_error(model, err)
-    client_state.MemberDependencyRemoveClicked(depends_on_task_id) ->
+    pool_messages.MemberDependencyRemoveClicked(depends_on_task_id) ->
       tasks_workflow.handle_dependency_remove_clicked(model, depends_on_task_id)
-    client_state.MemberDependencyRemoved(depends_on_task_id, Ok(_)) ->
+    pool_messages.MemberDependencyRemoved(depends_on_task_id, Ok(_)) ->
       tasks_workflow.handle_dependency_removed_ok(model, depends_on_task_id)
-    client_state.MemberDependencyRemoved(_depends_on_task_id, Error(err)) ->
+    pool_messages.MemberDependencyRemoved(_depends_on_task_id, Error(err)) ->
       tasks_workflow.handle_dependency_removed_error(model, err)
 
-    client_state.MemberNotesFetched(Ok(notes)) ->
+    pool_messages.MemberNotesFetched(Ok(notes)) ->
       tasks_workflow.handle_notes_fetched_ok(model, notes)
-    client_state.MemberNotesFetched(Error(err)) ->
+    pool_messages.MemberNotesFetched(Error(err)) ->
       tasks_workflow.handle_notes_fetched_error(model, err)
 
-    client_state.MemberNoteContentChanged(v) ->
+    pool_messages.MemberNoteContentChanged(v) ->
       tasks_workflow.handle_note_content_changed(model, v)
-    client_state.MemberNoteDialogOpened ->
+    pool_messages.MemberNoteDialogOpened ->
       tasks_workflow.handle_note_dialog_opened(model)
-    client_state.MemberNoteDialogClosed ->
+    pool_messages.MemberNoteDialogClosed ->
       tasks_workflow.handle_note_dialog_closed(model)
-    client_state.MemberNoteSubmitted ->
+    pool_messages.MemberNoteSubmitted ->
       tasks_workflow.handle_note_submitted(model)
 
-    client_state.MemberNoteAdded(Ok(note)) ->
+    pool_messages.MemberNoteAdded(Ok(note)) ->
       tasks_workflow.handle_note_added_ok(model, note)
-    client_state.MemberNoteAdded(Error(err)) ->
+    pool_messages.MemberNoteAdded(Error(err)) ->
       tasks_workflow.handle_note_added_error(model, err)
 
     // Cards (Fichas) handlers - list loading and dialog mode
-    client_state.CardsFetched(Ok(cards)) ->
+    pool_messages.CardsFetched(Ok(cards)) ->
       admin_workflow.handle_cards_fetched_ok(model, cards)
-    client_state.CardsFetched(Error(err)) ->
+    pool_messages.CardsFetched(Error(err)) ->
       admin_workflow.handle_cards_fetched_error(model, err)
 
-    client_state.MemberProjectCardsFetched(project_id, Ok(cards)) -> {
+    pool_messages.MemberProjectCardsFetched(project_id, Ok(cards)) -> {
       let next_store =
         normalized_store.upsert(
           model.member.member_cards_store,
@@ -1192,7 +1134,7 @@ pub fn handle_pool(
       })
       |> fn(next) { #(next, effect.none()) }
     }
-    client_state.MemberProjectCardsFetched(_project_id, Error(err)) -> {
+    pool_messages.MemberProjectCardsFetched(_project_id, Error(err)) -> {
       let next_store =
         model.member.member_cards_store
         |> normalized_store.decrement_pending
@@ -1211,7 +1153,7 @@ pub fn handle_pool(
       })
       |> fn(next) { #(next, effect.none()) }
     }
-    client_state.OpenCardDialog(mode) ->
+    pool_messages.OpenCardDialog(mode) ->
       admin_workflow.handle_open_card_dialog(model, mode)
     client_state.CloseCardDialog ->
       admin_workflow.handle_close_card_dialog(model)
@@ -1264,7 +1206,7 @@ pub fn handle_pool(
     )
 
     // Card detail (member view) handlers - component manages internal state
-    client_state.OpenCardDetail(card_id) -> {
+    pool_messages.OpenCardDetail(card_id) -> {
       let model =
         client_state.update_member(model, fn(member) {
           member_state.MemberModel(
@@ -1278,7 +1220,7 @@ pub fn handle_pool(
 
       #(model, fx)
     }
-    client_state.CloseCardDetail -> #(
+    pool_messages.CloseCardDetail -> #(
       client_state.update_member(model, fn(member) {
         member_state.MemberModel(..member, card_detail_open: opt.None)
       }),
@@ -1286,12 +1228,12 @@ pub fn handle_pool(
     )
 
     // Workflows handlers
-    client_state.WorkflowsProjectFetched(Ok(workflows)) ->
+    pool_messages.WorkflowsProjectFetched(Ok(workflows)) ->
       admin_workflow.handle_workflows_project_fetched_ok(model, workflows)
-    client_state.WorkflowsProjectFetched(Error(err)) ->
+    pool_messages.WorkflowsProjectFetched(Error(err)) ->
       admin_workflow.handle_workflows_project_fetched_error(model, err)
     // Workflow dialog control (component pattern)
-    client_state.OpenWorkflowDialog(mode) ->
+    pool_messages.OpenWorkflowDialog(mode) ->
       admin_workflow.handle_open_workflow_dialog(model, mode)
     client_state.CloseWorkflowDialog ->
       admin_workflow.handle_close_workflow_dialog(model)
@@ -1307,15 +1249,15 @@ pub fn handle_pool(
       admin_workflow.handle_workflow_rules_clicked(model, workflow_id)
 
     // Rules handlers
-    client_state.RulesFetched(Ok(rules)) ->
+    pool_messages.RulesFetched(Ok(rules)) ->
       admin_workflow.handle_rules_fetched_ok(model, rules)
-    client_state.RulesFetched(Error(err)) ->
+    pool_messages.RulesFetched(Error(err)) ->
       admin_workflow.handle_rules_fetched_error(model, err)
     client_state.RulesBackClicked ->
       admin_workflow.handle_rules_back_clicked(model)
-    client_state.RuleMetricsFetched(Ok(metrics)) ->
+    pool_messages.RuleMetricsFetched(Ok(metrics)) ->
       admin_workflow.handle_rule_metrics_fetched_ok(model, metrics)
-    client_state.RuleMetricsFetched(Error(err)) ->
+    pool_messages.RuleMetricsFetched(Error(err)) ->
       admin_workflow.handle_rule_metrics_fetched_error(model, err)
 
     // Rules - dialog mode control (component pattern)
@@ -1333,10 +1275,10 @@ pub fn handle_pool(
       admin_workflow.handle_rule_crud_deleted(model, rule_id)
 
     // Rule templates handlers
-    client_state.RuleTemplatesClicked(_rule_id) -> #(model, effect.none())
-    client_state.RuleTemplatesFetched(Ok(templates)) ->
+    pool_messages.RuleTemplatesClicked(_rule_id) -> #(model, effect.none())
+    pool_messages.RuleTemplatesFetched(Ok(templates)) ->
       admin_workflow.handle_rule_templates_fetched_ok(model, templates)
-    client_state.RuleTemplatesFetched(Error(err)) ->
+    pool_messages.RuleTemplatesFetched(Error(err)) ->
       admin_workflow.handle_rule_templates_fetched_error(model, err)
     client_state.RuleAttachTemplateSelected(template_id) ->
       admin_workflow.handle_rule_attach_template_selected(model, template_id)
@@ -1385,9 +1327,9 @@ pub fn handle_pool(
       )
 
     // Task templates handlers
-    client_state.TaskTemplatesProjectFetched(Ok(templates)) ->
+    pool_messages.TaskTemplatesProjectFetched(Ok(templates)) ->
       admin_workflow.handle_task_templates_project_fetched_ok(model, templates)
-    client_state.TaskTemplatesProjectFetched(Error(err)) ->
+    pool_messages.TaskTemplatesProjectFetched(Error(err)) ->
       admin_workflow.handle_task_templates_project_fetched_error(model, err)
 
     // Task templates - dialog mode control (component pattern)

@@ -21,6 +21,7 @@ import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/assignments/components/assignments_card
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/badge
@@ -115,7 +116,7 @@ pub fn view(
               attribute.class("btn-sm"),
               event.on_click(
                 client_state.admin_msg(
-                  client_state.AssignmentsInlineAddStarted(
+                  admin_messages.AssignmentsInlineAddStarted(
                     state_types.AddUserToProject(project.id),
                   ),
                 ),
@@ -133,7 +134,7 @@ pub fn view(
     meta: users_label,
     expanded: is_expanded,
     toggle_label: toggle_label,
-    on_toggle: client_state.admin_msg(client_state.AssignmentsProjectToggled(
+    on_toggle: client_state.admin_msg(admin_messages.AssignmentsProjectToggled(
       project.id,
     )),
     body: body,
@@ -235,7 +236,7 @@ fn view_member_row(
             "manager" -> Manager
             _ -> Member
           }
-          client_state.admin_msg(client_state.AssignmentsRoleChanged(
+          client_state.admin_msg(admin_messages.AssignmentsRoleChanged(
             project_id,
             member.user_id,
             new_role,
@@ -266,7 +267,7 @@ fn view_member_row(
             [
               attribute.class("btn-xs btn-danger"),
               event.on_click(client_state.admin_msg(
-                client_state.AssignmentsRemoveConfirmed,
+                admin_messages.AssignmentsRemoveConfirmed,
               )),
             ],
             [text(t(i18n_text.Remove))],
@@ -275,7 +276,7 @@ fn view_member_row(
             [
               attribute.class("btn-xs"),
               event.on_click(client_state.admin_msg(
-                client_state.AssignmentsRemoveCancelled,
+                admin_messages.AssignmentsRemoveCancelled,
               )),
             ],
             [text(t(i18n_text.Cancel))],
@@ -288,7 +289,7 @@ fn view_member_row(
             attribute.attribute("title", t(i18n_text.Remove)),
             attribute.attribute("aria-label", t(i18n_text.Remove)),
             event.on_click(
-              client_state.admin_msg(client_state.AssignmentsRemoveClicked(
+              client_state.admin_msg(admin_messages.AssignmentsRemoveClicked(
                 project_id,
                 member.user_id,
               )),
@@ -335,9 +336,9 @@ fn view_inline_add(
         attribute.value(search),
         attribute.placeholder(t(i18n_text.SearchByEmail)),
         event.on_input(fn(value) {
-          client_state.admin_msg(client_state.AssignmentsInlineAddSearchChanged(
-            value,
-          ))
+          client_state.admin_msg(
+            admin_messages.AssignmentsInlineAddSearchChanged(value),
+          )
         }),
       ]),
       select(
@@ -348,7 +349,7 @@ fn view_inline_add(
           }),
           event.on_input(fn(value) {
             client_state.admin_msg(
-              client_state.AssignmentsInlineAddSelectionChanged(value),
+              admin_messages.AssignmentsInlineAddSelectionChanged(value),
             )
           }),
         ],
@@ -364,9 +365,9 @@ fn view_inline_add(
         [
           attribute.value(to_string(assignments.inline_add_role)),
           event.on_input(fn(value) {
-            client_state.admin_msg(client_state.AssignmentsInlineAddRoleChanged(
-              value,
-            ))
+            client_state.admin_msg(
+              admin_messages.AssignmentsInlineAddRoleChanged(value),
+            )
           }),
         ],
         [
@@ -380,7 +381,7 @@ fn view_inline_add(
             attribute.class("btn-xs"),
             attribute.disabled(is_disabled),
             event.on_click(client_state.admin_msg(
-              client_state.AssignmentsInlineAddCancelled,
+              admin_messages.AssignmentsInlineAddCancelled,
             )),
           ],
           [text(t(i18n_text.Cancel))],
@@ -390,7 +391,7 @@ fn view_inline_add(
             attribute.class("btn-xs btn-primary"),
             attribute.disabled(is_disabled || selected == opt.None),
             event.on_click(client_state.admin_msg(
-              client_state.AssignmentsInlineAddSubmitted,
+              admin_messages.AssignmentsInlineAddSubmitted,
             )),
           ],
           [

@@ -35,9 +35,8 @@ import domain/api_error.{type ApiError}
 import domain/project.{type Project}
 import domain/remote.{Failed, Loaded, NotAsked}
 import scrumbringer_client/client_state.{
-  type Model, type Msg, Admin, CoreModel, Login, Member, ProjectCreated,
-  ProjectDeleted, ProjectUpdated, admin_msg, pool_msg, update_admin, update_core,
-  update_member,
+  type Model, type Msg, Admin, CoreModel, Login, Member, admin_msg, pool_msg,
+  update_admin, update_core, update_member,
 }
 import scrumbringer_client/client_state/admin.{AdminModel}
 import scrumbringer_client/client_state/member.{MemberModel}
@@ -46,6 +45,8 @@ import scrumbringer_client/client_state/types.{
   DialogOpen, Error as OpError, Idle, InFlight, ProjectDialogCreate,
   ProjectDialogDelete, ProjectDialogEdit,
 }
+import scrumbringer_client/features/admin/msg as admin_messages
+import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
 
@@ -177,7 +178,7 @@ pub fn handle_project_selected(
           case update_helpers.now_working_active_task_id(model) {
             opt.Some(task_id) ->
               api_tasks.pause_work_session(task_id, fn(result) {
-                pool_msg(client_state.MemberWorkSessionPaused(result))
+                pool_msg(pool_messages.MemberWorkSessionPaused(result))
               })
             opt.None -> effect.none()
           }
@@ -308,7 +309,7 @@ fn submit_project_create_valid(
   #(
     model,
     api_projects.create_project(trimmed, fn(result) {
-      admin_msg(ProjectCreated(result))
+      admin_msg(admin_messages.ProjectCreated(result))
     }),
   )
 }
@@ -511,7 +512,7 @@ fn submit_project_edit_valid(
   #(
     model,
     api_projects.update_project(project_id, trimmed, fn(result) {
-      admin_msg(ProjectUpdated(result))
+      admin_msg(admin_messages.ProjectUpdated(result))
     }),
   )
 }
@@ -651,7 +652,7 @@ pub fn handle_project_delete_submitted(model: Model) -> #(Model, Effect(Msg)) {
           #(
             model,
             api_projects.delete_project(project_id, fn(result) {
-              admin_msg(ProjectDeleted(result))
+              admin_msg(admin_messages.ProjectDeleted(result))
             }),
           )
         }

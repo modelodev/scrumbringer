@@ -25,11 +25,10 @@ import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/api/workflows as api_workflows
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type Model, type Msg, AdminRuleMetricsExecutionsFetched,
-  AdminRuleMetricsFetched, AdminRuleMetricsRuleDetailsFetched,
-  AdminRuleMetricsWorkflowDetailsFetched, pool_msg, update_admin,
+  type Model, type Msg, pool_msg, update_admin,
 }
 import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/update_helpers
 
 // =============================================================================
@@ -82,7 +81,7 @@ pub fn handle_from_changed_and_refresh(
       #(
         model,
         api_workflows.get_org_rule_metrics(from, to, fn(result) {
-          pool_msg(AdminRuleMetricsFetched(result))
+          pool_msg(pool_messages.AdminRuleMetricsFetched(result))
         }),
       )
     }
@@ -115,7 +114,7 @@ pub fn handle_to_changed_and_refresh(
       #(
         model,
         api_workflows.get_org_rule_metrics(from, to, fn(result) {
-          pool_msg(AdminRuleMetricsFetched(result))
+          pool_msg(pool_messages.AdminRuleMetricsFetched(result))
         }),
       )
     }
@@ -139,7 +138,7 @@ pub fn handle_refresh_clicked(model: Model) -> #(Model, Effect(Msg)) {
       #(
         model,
         api_workflows.get_org_rule_metrics(from, to, fn(result) {
-          pool_msg(AdminRuleMetricsFetched(result))
+          pool_msg(pool_messages.AdminRuleMetricsFetched(result))
         }),
       )
     }
@@ -164,7 +163,7 @@ pub fn handle_quick_range_clicked(
   #(
     model,
     api_workflows.get_org_rule_metrics(from, to, fn(result) {
-      pool_msg(AdminRuleMetricsFetched(result))
+      pool_msg(pool_messages.AdminRuleMetricsFetched(result))
     }),
   )
 }
@@ -260,7 +259,7 @@ pub fn handle_workflow_expanded(
       #(
         model,
         api_workflows.get_workflow_metrics(workflow_id, fn(result) {
-          pool_msg(AdminRuleMetricsWorkflowDetailsFetched(result))
+          pool_msg(pool_messages.AdminRuleMetricsWorkflowDetailsFetched(result))
         }),
       )
     }
@@ -323,12 +322,12 @@ pub fn handle_drilldown_clicked(
 
   let details_effect =
     api_workflows.get_rule_metrics_detailed(rule_id, from, to, fn(result) {
-      pool_msg(AdminRuleMetricsRuleDetailsFetched(result))
+      pool_msg(pool_messages.AdminRuleMetricsRuleDetailsFetched(result))
     })
 
   let executions_effect =
     api_workflows.get_rule_executions(rule_id, from, to, 20, 0, fn(result) {
-      pool_msg(AdminRuleMetricsExecutionsFetched(result))
+      pool_msg(pool_messages.AdminRuleMetricsExecutionsFetched(result))
     })
 
   #(model, effect.batch([details_effect, executions_effect]))
@@ -444,7 +443,9 @@ pub fn handle_exec_page_changed(
           to,
           20,
           offset,
-          fn(result) { pool_msg(AdminRuleMetricsExecutionsFetched(result)) },
+          fn(result) {
+            pool_msg(pool_messages.AdminRuleMetricsExecutionsFetched(result))
+          },
         ),
       )
     }

@@ -21,6 +21,7 @@ import scrumbringer_client/assignments_view_mode
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/router
@@ -449,7 +450,10 @@ pub fn handle_assignments_inline_add_submitted(
               role,
               fn(result) {
                 client_state.admin_msg(
-                  client_state.AssignmentsProjectMemberAdded(project_id, result),
+                  admin_messages.AssignmentsProjectMemberAdded(
+                    project_id,
+                    result,
+                  ),
                 )
               },
             )
@@ -470,10 +474,9 @@ pub fn handle_assignments_inline_add_submitted(
               project_id,
               project_role.to_string(role),
               fn(result) {
-                client_state.admin_msg(client_state.AssignmentsUserProjectAdded(
-                  user_id,
-                  result,
-                ))
+                client_state.admin_msg(
+                  admin_messages.AssignmentsUserProjectAdded(user_id, result),
+                )
               },
             )
           #(model, fx)
@@ -505,13 +508,13 @@ pub fn handle_assignments_project_member_added_ok(
 
   let effects = [
     api_projects.list_project_members(project_id, fn(result) {
-      client_state.admin_msg(client_state.AssignmentsProjectMembersFetched(
+      client_state.admin_msg(admin_messages.AssignmentsProjectMembersFetched(
         project_id,
         result,
       ))
     }),
     api_org.list_user_projects(member.user_id, fn(result) {
-      client_state.admin_msg(client_state.AssignmentsUserProjectsFetched(
+      client_state.admin_msg(admin_messages.AssignmentsUserProjectsFetched(
         member.user_id,
         result,
       ))
@@ -546,13 +549,13 @@ pub fn handle_assignments_user_project_added_ok(
 
   let effects = [
     api_org.list_user_projects(user_id, fn(result) {
-      client_state.admin_msg(client_state.AssignmentsUserProjectsFetched(
+      client_state.admin_msg(admin_messages.AssignmentsUserProjectsFetched(
         user_id,
         result,
       ))
     }),
     api_projects.list_project_members(project.id, fn(result) {
-      client_state.admin_msg(client_state.AssignmentsProjectMembersFetched(
+      client_state.admin_msg(admin_messages.AssignmentsProjectMembersFetched(
         project.id,
         result,
       ))
@@ -620,7 +623,7 @@ pub fn handle_assignments_remove_confirmed(
         })
       let fx =
         api_projects.remove_project_member(project_id, user_id, fn(result) {
-          client_state.admin_msg(client_state.AssignmentsRemoveCompleted(
+          client_state.admin_msg(admin_messages.AssignmentsRemoveCompleted(
             project_id,
             user_id,
             result,
@@ -711,7 +714,7 @@ pub fn handle_assignments_role_changed(
 
   let fx =
     api_projects.update_member_role(project_id, user_id, new_role, fn(result) {
-      client_state.admin_msg(client_state.AssignmentsRoleChangeCompleted(
+      client_state.admin_msg(admin_messages.AssignmentsRoleChangeCompleted(
         project_id,
         user_id,
         result,
@@ -798,7 +801,10 @@ pub fn start_user_projects_fetch(
               let effect =
                 api_org.list_user_projects(user.id, fn(result) {
                   client_state.admin_msg(
-                    client_state.AssignmentsUserProjectsFetched(user.id, result),
+                    admin_messages.AssignmentsUserProjectsFetched(
+                      user.id,
+                      result,
+                    ),
                   )
                 })
               #(updated, [effect, ..fx])

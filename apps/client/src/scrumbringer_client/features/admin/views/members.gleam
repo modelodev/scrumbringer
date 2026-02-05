@@ -35,17 +35,9 @@ import domain/project.{type Project, type ProjectMember}
 import domain/project_role.{Manager, Member}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 
-import scrumbringer_client/client_state.{
-  type Model, type Msg, MemberAddDialogClosed, MemberAddDialogOpened,
-  MemberAddRoleChanged, MemberAddSubmitted, MemberAddUserSelected,
-  MemberCapabilitiesDialogClosed, MemberCapabilitiesDialogOpened,
-  MemberCapabilitiesSaveClicked, MemberCapabilitiesToggled,
-  MemberReleaseAllCancelled, MemberReleaseAllClicked, MemberReleaseAllConfirmed,
-  MemberRemoveCancelled, MemberRemoveClicked, MemberRemoveConfirmed,
-  MemberRoleChangeRequested, OrgUsersSearchChanged, OrgUsersSearchDebounced,
-  admin_msg,
-}
+import scrumbringer_client/client_state.{type Model, type Msg, admin_msg}
 import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/badge
@@ -88,7 +80,7 @@ pub fn view_members(
           dialog.add_button(
             model,
             i18n_text.AddMember,
-            admin_msg(MemberAddDialogOpened),
+            admin_msg(admin_messages.MemberAddDialogOpened),
           ),
         ),
         // Members list
@@ -217,7 +209,7 @@ fn view_member_actions(model: Model, m: ProjectMember) -> Element(Msg) {
   div([attribute.class("actions-row")], [
     action_buttons.task_icon_button(
       update_helpers.i18n_t(model, i18n_text.ManageCapabilities),
-      admin_msg(MemberCapabilitiesDialogOpened(m.user_id)),
+      admin_msg(admin_messages.MemberCapabilitiesDialogOpened(m.user_id)),
       icons.Cog,
       action_buttons.SizeXs,
       False,
@@ -229,7 +221,7 @@ fn view_member_actions(model: Model, m: ProjectMember) -> Element(Msg) {
       True ->
         action_buttons.task_icon_button(
           update_helpers.i18n_t(model, i18n_text.ReleaseAll),
-          admin_msg(MemberReleaseAllClicked(m.user_id, count)),
+          admin_msg(admin_messages.MemberReleaseAllClicked(m.user_id, count)),
           icons.Return,
           action_buttons.SizeXs,
           is_loading,
@@ -241,7 +233,7 @@ fn view_member_actions(model: Model, m: ProjectMember) -> Element(Msg) {
     },
     action_buttons.task_icon_button_with_class(
       update_helpers.i18n_t(model, i18n_text.Remove),
-      admin_msg(MemberRemoveClicked(m.user_id)),
+      admin_msg(admin_messages.MemberRemoveClicked(m.user_id)),
       icons.Trash,
       icons.Small,
       False,
@@ -274,7 +266,10 @@ fn view_member_role_cell(
               "manager" -> Manager
               _ -> Member
             }
-            admin_msg(MemberRoleChangeRequested(member.user_id, new_role))
+            admin_msg(admin_messages.MemberRoleChangeRequested(
+              member.user_id,
+              new_role,
+            ))
           }),
         ],
         [
@@ -320,7 +315,7 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
       title: update_helpers.i18n_t(model, i18n_text.AddMember),
       icon: opt.None,
       size: dialog.DialogMd,
-      on_close: admin_msg(MemberAddDialogClosed),
+      on_close: admin_msg(admin_messages.MemberAddDialogClosed),
     ),
     True,
     model.admin.members_add_error,
@@ -332,11 +327,13 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
           i18n_text.EmailPlaceholderExample,
         ),
         value: search_query,
-        on_change: fn(value) { admin_msg(OrgUsersSearchChanged(value)) },
+        on_change: fn(value) {
+          admin_msg(admin_messages.OrgUsersSearchChanged(value))
+        },
         input_attributes: [
           event.debounce(
             event.on_input(fn(value) {
-              admin_msg(OrgUsersSearchDebounced(value))
+              admin_msg(admin_messages.OrgUsersSearchDebounced(value))
             }),
             350,
           ),
@@ -351,7 +348,9 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
             button(
               [
                 attribute.class("btn btn-secondary btn-xs"),
-                event.on_click(admin_msg(MemberAddUserSelected(u.id))),
+                event.on_click(
+                  admin_msg(admin_messages.MemberAddUserSelected(u.id)),
+                ),
               ],
               [text(update_helpers.i18n_t(model, i18n_text.Select))],
             ),
@@ -367,7 +366,9 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
         select(
           [
             attribute.value(project_role.to_string(model.admin.members_add_role)),
-            event.on_input(fn(value) { admin_msg(MemberAddRoleChanged(value)) }),
+            event.on_input(fn(value) {
+              admin_msg(admin_messages.MemberAddRoleChanged(value))
+            }),
           ],
           [
             option(
@@ -383,10 +384,13 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
       ),
     ],
     [
-      dialog.cancel_button(model, admin_msg(MemberAddDialogClosed)),
+      dialog.cancel_button(
+        model,
+        admin_msg(admin_messages.MemberAddDialogClosed),
+      ),
       button(
         [
-          event.on_click(admin_msg(MemberAddSubmitted)),
+          event.on_click(admin_msg(admin_messages.MemberAddSubmitted)),
           attribute.disabled(
             model.admin.members_add_in_flight
             || model.admin.members_add_selected_user == opt.None,
@@ -428,8 +432,8 @@ fn view_remove_member_dialog(
         False -> update_helpers.i18n_t(model, i18n_text.Remove)
       },
       cancel_label: update_helpers.i18n_t(model, i18n_text.Cancel),
-      on_confirm: admin_msg(MemberRemoveConfirmed),
-      on_cancel: admin_msg(MemberRemoveCancelled),
+      on_confirm: admin_msg(admin_messages.MemberRemoveConfirmed),
+      on_cancel: admin_msg(admin_messages.MemberRemoveCancelled),
       is_open: True,
       is_loading: model.admin.members_remove_in_flight,
       error: model.admin.members_remove_error,
@@ -463,8 +467,8 @@ fn view_release_all_dialog(
       ],
       confirm_label: update_helpers.i18n_t(model, i18n_text.Release),
       cancel_label: update_helpers.i18n_t(model, i18n_text.Cancel),
-      on_confirm: admin_msg(MemberReleaseAllConfirmed),
-      on_cancel: admin_msg(MemberReleaseAllCancelled),
+      on_confirm: admin_msg(admin_messages.MemberReleaseAllConfirmed),
+      on_cancel: admin_msg(admin_messages.MemberReleaseAllCancelled),
       is_open: True,
       is_loading: model.admin.members_release_in_flight == opt.Some(user.id),
       error: model.admin.members_release_error,
@@ -507,7 +511,7 @@ fn view_member_capabilities_dialog(
       ),
       icon: opt.None,
       size: dialog.DialogMd,
-      on_close: admin_msg(MemberCapabilitiesDialogClosed),
+      on_close: admin_msg(admin_messages.MemberCapabilitiesDialogClosed),
     ),
     True,
     model.admin.member_capabilities_error,
@@ -552,7 +556,9 @@ fn view_member_capabilities_dialog(
                         attribute.type_("checkbox"),
                         attribute.checked(is_selected),
                         event.on_check(fn(_) {
-                          admin_msg(MemberCapabilitiesToggled(cap.id))
+                          admin_msg(admin_messages.MemberCapabilitiesToggled(
+                            cap.id,
+                          ))
                         }),
                       ]),
                       span([attribute.class("capability-name")], [
@@ -566,10 +572,13 @@ fn view_member_capabilities_dialog(
       },
     ],
     [
-      dialog.cancel_button(model, admin_msg(MemberCapabilitiesDialogClosed)),
+      dialog.cancel_button(
+        model,
+        admin_msg(admin_messages.MemberCapabilitiesDialogClosed),
+      ),
       button(
         [
-          event.on_click(admin_msg(MemberCapabilitiesSaveClicked)),
+          event.on_click(admin_msg(admin_messages.MemberCapabilitiesSaveClicked)),
           attribute.disabled(
             model.admin.member_capabilities_saving
             || model.admin.member_capabilities_loading,

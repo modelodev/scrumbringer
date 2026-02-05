@@ -27,10 +27,11 @@ import domain/project.{type ProjectMember, ProjectMember}
 import domain/remote.{Loaded}
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/client_state.{
-  type Model, type Msg, MemberReleaseAllResult, admin_msg, update_admin,
+  type Model, type Msg, admin_msg, update_admin,
 }
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
 
@@ -107,7 +108,9 @@ pub fn handle_member_release_all_confirmed(
             api_projects.release_all_member_tasks(
               project_id,
               user.id,
-              fn(result) { admin_msg(MemberReleaseAllResult(result)) },
+              fn(result) {
+                admin_msg(admin_messages.MemberReleaseAllResult(result))
+              },
             ),
           )
         }

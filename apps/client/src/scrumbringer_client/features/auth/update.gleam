@@ -33,16 +33,16 @@ import scrumbringer_client/api/auth as api_auth
 
 // Domain types
 import domain/api_error.{type ApiError}
+import scrumbringer_client/accept_invite
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{
-  type AuthMsg, type Model, type Msg, Admin, AuthModel, CoreModel,
-  ForgotPasswordClicked, ForgotPasswordCopyClicked, ForgotPasswordCopyFinished,
-  ForgotPasswordDismissed, ForgotPasswordEmailChanged, ForgotPasswordFinished,
-  ForgotPasswordSubmitted, Login, LoginDomValuesRead, LoginEmailChanged,
-  LoginFinished, LoginPasswordChanged, LoginSubmitted, LogoutClicked,
-  LogoutFinished, Member, ToastShow, auth_msg, update_auth, update_core,
+  type Model, type Msg, type Page, Admin, CoreModel, Login, Member, ToastShow,
+  auth_msg, update_auth, update_core,
 }
+import scrumbringer_client/features/auth/msg as auth_messages
+import scrumbringer_client/features/auth/state as auth_state
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/reset_password
 import scrumbringer_client/ui/toast
 import scrumbringer_client/update_helpers
 
@@ -56,7 +56,9 @@ pub fn handle_login_email_changed(
   email: String,
 ) -> #(Model, Effect(Msg)) {
   #(
-    update_auth(model, fn(auth) { AuthModel(..auth, login_email: email) }),
+    update_auth(model, fn(auth) {
+      auth_state.AuthModel(..auth, login_email: email)
+    }),
     effect.none(),
   )
 }
@@ -67,7 +69,9 @@ pub fn handle_login_password_changed(
   password: String,
 ) -> #(Model, Effect(Msg)) {
   #(
-    update_auth(model, fn(auth) { AuthModel(..auth, login_password: password) }),
+    update_auth(model, fn(auth) {
+      auth_state.AuthModel(..auth, login_password: password)
+    }),
     effect.none(),
   )
 }
@@ -79,7 +83,11 @@ pub fn handle_login_submitted(model: Model) -> #(Model, Effect(Msg)) {
     False -> {
       let model =
         update_auth(model, fn(auth) {
-          AuthModel(..auth, login_in_flight: True, login_error: opt.None)
+          auth_state.AuthModel(
+            ..auth,
+            login_in_flight: True,
+            login_error: opt.None,
+          )
         })
       #(model, read_login_values_effect())
     }
@@ -111,24 +119,36 @@ pub fn handle_login_dom_values_read(
       let password = update_helpers.non_empty_string_value(password)
       let model =
         update_auth(model, fn(auth) {
-          AuthModel(..auth, login_email: email, login_password: password)
+          auth_state.AuthModel(
+            ..auth,
+            login_email: email,
+            login_password: password,
+          )
         })
       #(
         model,
         api_auth.login(email, password, fn(result) {
-          auth_msg(LoginFinished(result))
+          auth_msg(auth_messages.LoginFinished(result))
         }),
       )
     }
     Error(err), _ -> #(
       update_auth(model, fn(auth) {
-        AuthModel(..auth, login_in_flight: False, login_error: opt.Some(err))
+        auth_state.AuthModel(
+          ..auth,
+          login_in_flight: False,
+          login_error: opt.Some(err),
+        )
       }),
       effect.none(),
     )
     _, Error(err) -> #(
       update_auth(model, fn(auth) {
-        AuthModel(..auth, login_in_flight: False, login_error: opt.Some(err))
+        auth_state.AuthModel(
+          ..auth,
+          login_in_flight: False,
+          login_error: opt.Some(err),
+        )
       }),
       effect.none(),
     )
@@ -153,7 +173,9 @@ pub fn handle_login_finished_ok(
       update_core(model, fn(core) {
         CoreModel(..core, page: page, user: opt.Some(user), auth_checked: True)
       }),
-      fn(auth) { AuthModel(..auth, login_in_flight: False, login_password: "") },
+      fn(auth) {
+        auth_state.AuthModel(..auth, login_in_flight: False, login_password: "")
+      },
     )
 
   let #(model, boot) = bootstrap_fn(model)
@@ -181,7 +203,11 @@ pub fn handle_login_finished_error(
 
   #(
     update_auth(model, fn(auth) {
-      AuthModel(..auth, login_in_flight: False, login_error: opt.Some(message))
+      auth_state.AuthModel(
+        ..auth,
+        login_in_flight: False,
+        login_error: opt.Some(message),
+      )
     }),
     effect.none(),
   )
@@ -197,7 +223,7 @@ pub fn handle_forgot_password_clicked(model: Model) -> #(Model, Effect(Msg)) {
 
   #(
     update_auth(model, fn(auth) {
-      AuthModel(
+      auth_state.AuthModel(
         ..auth,
         forgot_password_open: open,
         forgot_password_in_flight: False,
@@ -217,7 +243,7 @@ pub fn handle_forgot_password_email_changed(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_auth(model, fn(auth) {
-      AuthModel(
+      auth_state.AuthModel(
         ..auth,
         forgot_password_email: email,
         forgot_password_error: opt.None,
@@ -244,7 +270,7 @@ pub fn handle_forgot_password_submitted(model: Model) -> #(Model, Effect(Msg)) {
       {
         Error(err) -> #(
           update_auth(model, fn(auth) {
-            AuthModel(..auth, forgot_password_error: opt.Some(err))
+            auth_state.AuthModel(..auth, forgot_password_error: opt.Some(err))
           }),
           effect.none(),
         )
@@ -253,7 +279,7 @@ pub fn handle_forgot_password_submitted(model: Model) -> #(Model, Effect(Msg)) {
           let email = update_helpers.non_empty_string_value(email)
           let model =
             update_auth(model, fn(auth) {
-              AuthModel(
+              auth_state.AuthModel(
                 ..auth,
                 forgot_password_in_flight: True,
                 forgot_password_error: opt.None,
@@ -265,7 +291,7 @@ pub fn handle_forgot_password_submitted(model: Model) -> #(Model, Effect(Msg)) {
           #(
             model,
             api_auth.request_password_reset(email, fn(result) {
-              auth_msg(ForgotPasswordFinished(result))
+              auth_msg(auth_messages.ForgotPasswordFinished(result))
             }),
           )
         }
@@ -281,7 +307,7 @@ pub fn handle_forgot_password_finished_ok(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_auth(model, fn(auth) {
-      AuthModel(
+      auth_state.AuthModel(
         ..auth,
         forgot_password_in_flight: False,
         forgot_password_result: opt.Some(reset),
@@ -300,7 +326,7 @@ pub fn handle_forgot_password_finished_error(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_auth(model, fn(auth) {
-      AuthModel(
+      auth_state.AuthModel(
         ..auth,
         forgot_password_in_flight: False,
         forgot_password_error: opt.Some(err.message),
@@ -323,7 +349,7 @@ pub fn handle_forgot_password_copy_clicked(
 
       #(
         update_auth(model, fn(auth) {
-          AuthModel(
+          auth_state.AuthModel(
             ..auth,
             forgot_password_copy_status: opt.Some(update_helpers.i18n_t(
               model,
@@ -332,7 +358,7 @@ pub fn handle_forgot_password_copy_clicked(
           )
         }),
         copy_to_clipboard(text, fn(ok) {
-          auth_msg(ForgotPasswordCopyFinished(ok))
+          auth_msg(auth_messages.ForgotPasswordCopyFinished(ok))
         }),
       )
     }
@@ -351,7 +377,10 @@ pub fn handle_forgot_password_copy_finished(
 
   #(
     update_auth(model, fn(auth) {
-      AuthModel(..auth, forgot_password_copy_status: opt.Some(message))
+      auth_state.AuthModel(
+        ..auth,
+        forgot_password_copy_status: opt.Some(message),
+      )
     }),
     effect.none(),
   )
@@ -361,7 +390,7 @@ pub fn handle_forgot_password_copy_finished(
 pub fn handle_forgot_password_dismissed(model: Model) -> #(Model, Effect(Msg)) {
   #(
     update_auth(model, fn(auth) {
-      AuthModel(
+      auth_state.AuthModel(
         ..auth,
         forgot_password_error: opt.None,
         forgot_password_copy_status: opt.None,
@@ -378,7 +407,12 @@ pub fn handle_forgot_password_dismissed(model: Model) -> #(Model, Effect(Msg)) {
 
 /// Handle logout click.
 pub fn handle_logout_clicked(model: Model) -> #(Model, Effect(Msg)) {
-  #(model, api_auth.logout(fn(result) { auth_msg(LogoutFinished(result)) }))
+  #(
+    model,
+    api_auth.logout(fn(result) {
+      auth_msg(auth_messages.LogoutFinished(result))
+    }),
+  )
 }
 
 /// Handle successful logout.
@@ -425,6 +459,150 @@ pub fn handle_logout_finished_error(
 }
 
 // =============================================================================
+// Accept Invite / Reset Password
+// =============================================================================
+
+pub fn accept_invite_effect(action: accept_invite.Action) -> Effect(Msg) {
+  case action {
+    accept_invite.ValidateToken(token) ->
+      api_auth.validate_invite_link_token(token, fn(result) {
+        auth_msg(
+          auth_messages.AcceptInvite(accept_invite.TokenValidated(result)),
+        )
+      })
+    _ -> effect.none()
+  }
+}
+
+pub fn reset_password_effect(action: reset_password.Action) -> Effect(Msg) {
+  case action {
+    reset_password.ValidateToken(token) ->
+      api_auth.validate_password_reset_token(token, fn(result) {
+        auth_msg(
+          auth_messages.ResetPassword(reset_password.TokenValidated(result)),
+        )
+      })
+    _ -> effect.none()
+  }
+}
+
+fn handle_accept_invite_authed(
+  model: Model,
+  user: User,
+  bootstrap_fn: fn(Model) -> #(Model, Effect(Msg)),
+  hydrate_fn: fn(Model) -> #(Model, Effect(Msg)),
+  replace_url_fn: fn(Model) -> Effect(Msg),
+) -> #(Model, Effect(Msg)) {
+  let page = page_for_org_role(user.org_role)
+
+  let model =
+    update_core(model, fn(core) {
+      CoreModel(..core, page: page, user: opt.Some(user), auth_checked: True)
+    })
+
+  let toast_fx =
+    update_helpers.toast_success(update_helpers.i18n_t(model, i18n_text.Welcome))
+
+  let #(model, boot) = bootstrap_fn(model)
+  let #(model, hyd_fx) = hydrate_fn(model)
+  #(
+    model,
+    effect.batch([
+      boot,
+      hyd_fx,
+      replace_url_fn(model),
+      toast_fx,
+    ]),
+  )
+}
+
+fn page_for_org_role(role: org_role.OrgRole) -> Page {
+  case role {
+    org_role.Admin -> Admin
+    _ -> Member
+  }
+}
+
+fn handle_accept_invite_msg(
+  model: Model,
+  inner: accept_invite.Msg,
+  bootstrap_fn: fn(Model) -> #(Model, Effect(Msg)),
+  hydrate_fn: fn(Model) -> #(Model, Effect(Msg)),
+  replace_url_fn: fn(Model) -> Effect(Msg),
+) -> #(Model, Effect(Msg)) {
+  let #(next_accept, action) =
+    accept_invite.update(model.auth.accept_invite, inner)
+  let model =
+    update_auth(model, fn(auth) {
+      auth_state.AuthModel(..auth, accept_invite: next_accept)
+    })
+
+  case action {
+    accept_invite.NoOp -> #(model, effect.none())
+    accept_invite.ValidateToken(_) -> #(model, accept_invite_effect(action))
+    accept_invite.Register(token: token, password: password) -> #(
+      model,
+      api_auth.register_with_invite_link(token, password, fn(result) {
+        auth_msg(auth_messages.AcceptInvite(accept_invite.Registered(result)))
+      }),
+    )
+    accept_invite.Authed(user) ->
+      handle_accept_invite_authed(
+        model,
+        user,
+        bootstrap_fn,
+        hydrate_fn,
+        replace_url_fn,
+      )
+  }
+}
+
+fn handle_reset_password_msg(
+  model: Model,
+  inner: reset_password.Msg,
+  replace_url_fn: fn(Model) -> Effect(Msg),
+) -> #(Model, Effect(Msg)) {
+  let #(next_reset, action) =
+    reset_password.update(model.auth.reset_password, inner)
+
+  let model =
+    update_auth(model, fn(auth) {
+      auth_state.AuthModel(..auth, reset_password: next_reset)
+    })
+
+  case action {
+    reset_password.NoOp -> #(model, effect.none())
+    reset_password.ValidateToken(_) -> #(model, reset_password_effect(action))
+    reset_password.Consume(token: token, password: password) -> #(
+      model,
+      api_auth.consume_password_reset_token(token, password, fn(result) {
+        auth_msg(auth_messages.ResetPassword(reset_password.Consumed(result)))
+      }),
+    )
+    reset_password.GoToLogin -> {
+      let model =
+        update_auth(
+          update_core(model, fn(core) { CoreModel(..core, page: Login) }),
+          fn(auth) {
+            auth_state.AuthModel(
+              ..auth,
+              login_password: "",
+              login_error: opt.None,
+            )
+          },
+        )
+      let toast_fx =
+        update_helpers.toast_success(update_helpers.i18n_t(
+          model,
+          i18n_text.PasswordUpdated,
+        ))
+
+      #(model, effect.batch([replace_url_fn(model), toast_fx]))
+    }
+  }
+}
+
+// =============================================================================
 // Auth Message Dispatcher
 // =============================================================================
 
@@ -434,19 +612,20 @@ pub fn handle_logout_finished_error(
 ///   update(...)
 pub fn update(
   model: Model,
-  msg: AuthMsg,
+  msg: auth_messages.Msg,
   bootstrap_fn: fn(Model) -> #(Model, Effect(Msg)),
   hydrate_fn: fn(Model) -> #(Model, Effect(Msg)),
   replace_url_fn: fn(Model) -> Effect(Msg),
 ) -> #(Model, Effect(Msg)) {
   case msg {
-    LoginEmailChanged(email) -> handle_login_email_changed(model, email)
-    LoginPasswordChanged(password) ->
+    auth_messages.LoginEmailChanged(email) ->
+      handle_login_email_changed(model, email)
+    auth_messages.LoginPasswordChanged(password) ->
       handle_login_password_changed(model, password)
-    LoginSubmitted -> handle_login_submitted(model)
-    LoginDomValuesRead(raw_email, raw_password) ->
+    auth_messages.LoginSubmitted -> handle_login_submitted(model)
+    auth_messages.LoginDomValuesRead(raw_email, raw_password) ->
       handle_login_dom_values_read(model, raw_email, raw_password)
-    LoginFinished(Ok(user)) ->
+    auth_messages.LoginFinished(Ok(user)) ->
       handle_login_finished_ok(
         model,
         user,
@@ -454,23 +633,38 @@ pub fn update(
         hydrate_fn,
         replace_url_fn,
       )
-    LoginFinished(Error(err)) -> handle_login_finished_error(model, err)
-    ForgotPasswordClicked -> handle_forgot_password_clicked(model)
-    ForgotPasswordEmailChanged(email) ->
+    auth_messages.LoginFinished(Error(err)) ->
+      handle_login_finished_error(model, err)
+    auth_messages.ForgotPasswordClicked -> handle_forgot_password_clicked(model)
+    auth_messages.ForgotPasswordEmailChanged(email) ->
       handle_forgot_password_email_changed(model, email)
-    ForgotPasswordSubmitted -> handle_forgot_password_submitted(model)
-    ForgotPasswordFinished(Ok(reset)) ->
+    auth_messages.ForgotPasswordSubmitted ->
+      handle_forgot_password_submitted(model)
+    auth_messages.ForgotPasswordFinished(Ok(reset)) ->
       handle_forgot_password_finished_ok(model, reset)
-    ForgotPasswordFinished(Error(err)) ->
+    auth_messages.ForgotPasswordFinished(Error(err)) ->
       handle_forgot_password_finished_error(model, err)
-    ForgotPasswordCopyClicked -> handle_forgot_password_copy_clicked(model)
-    ForgotPasswordCopyFinished(ok) ->
+    auth_messages.ForgotPasswordCopyClicked ->
+      handle_forgot_password_copy_clicked(model)
+    auth_messages.ForgotPasswordCopyFinished(ok) ->
       handle_forgot_password_copy_finished(model, ok)
-    ForgotPasswordDismissed -> handle_forgot_password_dismissed(model)
-    LogoutClicked -> handle_logout_clicked(model)
-    LogoutFinished(Ok(_)) -> handle_logout_finished_ok(model, replace_url_fn)
-    LogoutFinished(Error(err)) ->
+    auth_messages.ForgotPasswordDismissed ->
+      handle_forgot_password_dismissed(model)
+    auth_messages.LogoutClicked -> handle_logout_clicked(model)
+    auth_messages.LogoutFinished(Ok(_)) ->
+      handle_logout_finished_ok(model, replace_url_fn)
+    auth_messages.LogoutFinished(Error(err)) ->
       handle_logout_finished_error(model, err, replace_url_fn)
+    auth_messages.AcceptInvite(inner) ->
+      handle_accept_invite_msg(
+        model,
+        inner,
+        bootstrap_fn,
+        hydrate_fn,
+        replace_url_fn,
+      )
+    auth_messages.ResetPassword(inner) ->
+      handle_reset_password_msg(model, inner, replace_url_fn)
   }
 }
 
@@ -482,7 +676,7 @@ fn read_login_values_effect() -> Effect(Msg) {
   effect.from(fn(dispatch) {
     let email = client_ffi.input_value("login-email")
     let password = client_ffi.input_value("login-password")
-    dispatch(auth_msg(LoginDomValuesRead(email, password)))
+    dispatch(auth_msg(auth_messages.LoginDomValuesRead(email, password)))
     Nil
   })
 }

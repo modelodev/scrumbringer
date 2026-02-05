@@ -1,0 +1,97 @@
+//// Workflows feature update handlers.
+////
+//// Re-exported from admin workflows handlers (Phase 1 modularization).
+
+import scrumbringer_client/features/admin/workflows as admin_workflows
+
+pub const handle_workflows_project_fetched_ok = admin_workflows.handle_workflows_project_fetched_ok
+
+pub const handle_workflows_project_fetched_error = admin_workflows.handle_workflows_project_fetched_error
+
+pub const handle_open_workflow_dialog = admin_workflows.handle_open_workflow_dialog
+
+pub const handle_close_workflow_dialog = admin_workflows.handle_close_workflow_dialog
+
+pub const handle_workflow_crud_created = admin_workflows.handle_workflow_crud_created
+
+pub const handle_workflow_crud_updated = admin_workflows.handle_workflow_crud_updated
+
+pub const handle_workflow_crud_deleted = admin_workflows.handle_workflow_crud_deleted
+
+pub const handle_workflow_rules_clicked = admin_workflows.handle_workflow_rules_clicked
+
+pub const handle_rules_fetched_ok = admin_workflows.handle_rules_fetched_ok
+
+pub const handle_rules_fetched_error = admin_workflows.handle_rules_fetched_error
+
+pub const handle_rule_metrics_fetched_ok = admin_workflows.handle_rule_metrics_fetched_ok
+
+pub const handle_rule_metrics_fetched_error = admin_workflows.handle_rule_metrics_fetched_error
+
+pub const handle_rules_back_clicked = admin_workflows.handle_rules_back_clicked
+
+pub const handle_open_rule_dialog = admin_workflows.handle_open_rule_dialog
+
+pub const handle_close_rule_dialog = admin_workflows.handle_close_rule_dialog
+
+pub const handle_rule_crud_created = admin_workflows.handle_rule_crud_created
+
+pub const handle_rule_crud_updated = admin_workflows.handle_rule_crud_updated
+
+pub const handle_rule_crud_deleted = admin_workflows.handle_rule_crud_deleted
+
+pub const handle_rule_templates_fetched_ok = admin_workflows.handle_rule_templates_fetched_ok
+
+pub const handle_rule_templates_fetched_error = admin_workflows.handle_rule_templates_fetched_error
+
+pub const handle_rule_attach_template_selected = admin_workflows.handle_rule_attach_template_selected
+
+pub const handle_rule_attach_template_submitted = admin_workflows.handle_rule_attach_template_submitted
+
+pub const handle_rule_template_attached_ok = admin_workflows.handle_rule_template_attached_ok
+
+pub const handle_rule_template_attached_error = admin_workflows.handle_rule_template_attached_error
+
+pub const handle_rule_template_detach_clicked = admin_workflows.handle_rule_template_detach_clicked
+
+pub const handle_rule_template_detached_ok = admin_workflows.handle_rule_template_detached_ok
+
+pub const handle_rule_template_detached_error = admin_workflows.handle_rule_template_detached_error
+
+pub const handle_rule_expand_toggled = admin_workflows.handle_rule_expand_toggled
+
+pub const handle_attach_template_modal_opened = admin_workflows.handle_attach_template_modal_opened
+
+pub const handle_attach_template_modal_closed = admin_workflows.handle_attach_template_modal_closed
+
+pub const handle_attach_template_selected = admin_workflows.handle_attach_template_selected
+
+pub const handle_attach_template_submitted = admin_workflows.handle_attach_template_submitted
+
+pub const handle_attach_template_succeeded = admin_workflows.handle_attach_template_succeeded
+
+pub const handle_attach_template_failed = admin_workflows.handle_attach_template_failed
+
+pub const handle_template_detach_clicked = admin_workflows.handle_template_detach_clicked
+
+pub const handle_template_detach_succeeded = admin_workflows.handle_template_detach_succeeded
+
+pub const handle_template_detach_failed = admin_workflows.handle_template_detach_failed
+
+pub const handle_task_templates_project_fetched_ok = admin_workflows.handle_task_templates_project_fetched_ok
+
+pub const handle_task_templates_project_fetched_error = admin_workflows.handle_task_templates_project_fetched_error
+
+pub const handle_open_task_template_dialog = admin_workflows.handle_open_task_template_dialog
+
+pub const handle_close_task_template_dialog = admin_workflows.handle_close_task_template_dialog
+
+pub const handle_task_template_crud_created = admin_workflows.handle_task_template_crud_created
+
+pub const handle_task_template_crud_updated = admin_workflows.handle_task_template_crud_updated
+
+pub const handle_task_template_crud_deleted = admin_workflows.handle_task_template_crud_deleted
+
+pub const fetch_workflows = admin_workflows.fetch_workflows
+
+pub const fetch_task_templates = admin_workflows.fetch_task_templates

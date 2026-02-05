@@ -20,6 +20,7 @@ import domain/user.{User}
 
 import scrumbringer_client/assignments_view_mode
 import scrumbringer_client/client_state
+import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/assignments/components/project_card
 import scrumbringer_client/features/assignments/components/user_card
 import scrumbringer_client/features/projects/view as projects_view
@@ -67,7 +68,7 @@ fn view_toolbar(model: client_state.Model) -> element.Element(client_state.Msg) 
             },
           ),
           event.on_click(
-            client_state.admin_msg(client_state.AssignmentsViewModeChanged(
+            client_state.admin_msg(admin_messages.AssignmentsViewModeChanged(
               assignments_view_mode.ByProject,
             )),
           ),
@@ -84,7 +85,7 @@ fn view_toolbar(model: client_state.Model) -> element.Element(client_state.Msg) 
             },
           ),
           event.on_click(
-            client_state.admin_msg(client_state.AssignmentsViewModeChanged(
+            client_state.admin_msg(admin_messages.AssignmentsViewModeChanged(
               assignments_view_mode.ByUser,
             )),
           ),
@@ -98,11 +99,11 @@ fn view_toolbar(model: client_state.Model) -> element.Element(client_state.Msg) 
         attribute.value(assignments.search_input),
         attribute.placeholder(t(i18n_text.AssignmentsSearchPlaceholder)),
         event.on_input(fn(value) {
-          client_state.admin_msg(client_state.AssignmentsSearchChanged(value))
+          client_state.admin_msg(admin_messages.AssignmentsSearchChanged(value))
         }),
         event.debounce(
           event.on_input(fn(value) {
-            client_state.admin_msg(client_state.AssignmentsSearchDebounced(
+            client_state.admin_msg(admin_messages.AssignmentsSearchDebounced(
               value,
             ))
           }),
@@ -132,7 +133,7 @@ fn view_by_project(
           )
           |> empty_state.with_action(
             t(i18n_text.CreateProject),
-            client_state.admin_msg(client_state.ProjectCreateDialogOpened),
+            client_state.admin_msg(admin_messages.ProjectCreateDialogOpened),
           )
           |> empty_state.view
 

@@ -31,10 +31,10 @@ import domain/api_error.{type ApiError}
 import domain/remote.{Failed, Loaded}
 import scrumbringer_client/api/tasks as api_tasks
 import scrumbringer_client/client_state.{
-  type Model, type Msg, MemberMyCapabilityIdsFetched, MemberMyCapabilityIdsSaved,
-  PoolMsg, update_member,
+  type Model, type Msg, PoolMsg, update_member,
 }
 import scrumbringer_client/client_state/member.{MemberModel}
+import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/update_helpers
 
@@ -133,7 +133,9 @@ pub fn handle_save_capabilities_clicked(model: Model) -> #(Model, Effect(Msg)) {
           project_id,
           user.id,
           ids,
-          fn(result) -> Msg { PoolMsg(MemberMyCapabilityIdsSaved(result)) },
+          fn(result) -> Msg {
+            PoolMsg(pool_messages.MemberMyCapabilityIdsSaved(result))
+          },
         ),
       )
     }
@@ -173,7 +175,9 @@ pub fn handle_save_capabilities_error(
         api_tasks.get_member_capability_ids(
           project_id,
           user.id,
-          fn(result) -> Msg { PoolMsg(MemberMyCapabilityIdsFetched(result)) },
+          fn(result) -> Msg {
+            PoolMsg(pool_messages.MemberMyCapabilityIdsFetched(result))
+          },
         )
       _, _ -> effect.none()
     }
