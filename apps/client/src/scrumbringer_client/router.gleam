@@ -44,7 +44,6 @@
 //// router.update_page_title(route, locale)
 //// ```
 
-import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
@@ -53,7 +52,6 @@ import modem
 
 import lustre/effect.{type Effect}
 
-import domain/view_mode.{type ViewMode}
 import scrumbringer_client/assignments_view_mode
 import scrumbringer_client/client_ffi
 import scrumbringer_client/i18n/i18n
@@ -61,6 +59,7 @@ import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/member_section.{type MemberSection}
 import scrumbringer_client/permissions
+import scrumbringer_client/url_state
 
 /// Client route representing the current page and state.
 ///
@@ -82,11 +81,7 @@ pub type Route {
   // Story 4.5: New unified routes
   Config(section: permissions.AdminSection, project_id: Option(Int))
   Org(section: permissions.AdminSection)
-  Member(
-    section: MemberSection,
-    project_id: Option(Int),
-    view_mode: Option(ViewMode),
-  )
+  Member(section: MemberSection, state: url_state.UrlState)
 }
 
 /// Result of parsing a URL, indicating whether it was parsed directly
@@ -96,36 +91,11 @@ pub type ParseResult {
   Redirect(Route)
 }
 
-/// Parsed query parameters used by routes.
-pub type QueryParams {
-  QueryParams(project_id: Option(Int), view_mode: Option(ViewMode))
-}
-
-type QueryError {
-  InvalidProject(String)
-  InvalidView(String)
-}
-
-type QueryParseError {
-  InvalidQuery(params: QueryParams, errors: List(QueryError))
-}
-
 /// Parse URL components into a Route.
 ///
 /// Returns Redirect if the URL has invalid query params.
 fn parse(pathname: String, search: String, _hash: String) -> ParseResult {
-  let query_result = parse_query_params(search)
-  let #(query_params, query_invalid) = case query_result {
-    Ok(params) -> #(params, False)
-    Error(InvalidQuery(params, _)) -> #(params, True)
-  }
-
-  let route = parse_pathname(pathname, search, query_params)
-
-  case query_invalid {
-    True -> Redirect(route)
-    False -> Parsed(route)
-  }
+  parse_pathname(pathname, search)
 }
 
 /// Parse a URI into a Route.
@@ -141,129 +111,79 @@ pub fn parse_uri(uri: Uri) -> ParseResult {
   parse(uri.path, search, hash)
 }
 
-fn parse_query_params(search: String) -> Result(QueryParams, QueryParseError) {
-  let #(project_id, project_error) = parse_optional_int_param(search, "project")
-  let #(view_mode, view_error) = parse_optional_view_param(search, "view")
-  let params = QueryParams(project_id: project_id, view_mode: view_mode)
-
-  let errors =
-    [project_error, view_error]
-    |> list.filter_map(fn(err) { option.to_result(err, Nil) })
-
-  case errors {
-    [] -> Ok(params)
-    _ -> Error(InvalidQuery(params, errors))
-  }
-}
-
-// Justification: nested case improves clarity for branching logic.
-fn parse_optional_int_param(
-  search: String,
-  key: String,
-) -> #(Option(Int), Option(QueryError)) {
-  case query_param(search, key) {
-    None -> #(None, None)
-
-    Some(raw) ->
-      case int.parse(raw) {
-        Ok(id) -> #(Some(id), None)
-        Error(_) -> #(None, Some(InvalidProject(raw)))
-      }
-  }
-}
-
-// Justification: nested case improves clarity for branching logic.
-fn parse_optional_view_param(
-  search: String,
-  key: String,
-) -> #(Option(ViewMode), Option(QueryError)) {
-  case query_param(search, key) {
-    None -> #(None, None)
-
-    Some(raw) ->
-      case view_mode_from_param(raw) {
-        Some(mode) -> #(Some(mode), None)
-        None ->
-          case assignments_view_mode.from_param(raw) {
-            Some(_) -> #(None, None)
-            None -> #(None, Some(InvalidView(raw)))
-          }
-      }
-  }
-}
-
-fn view_mode_from_param(raw: String) -> Option(ViewMode) {
-  case raw {
-    "pool" -> Some(view_mode.Pool)
-    "list" -> Some(view_mode.List)
-    "cards" -> Some(view_mode.Cards)
-    _ -> None
-  }
-}
-
-fn parse_pathname(pathname: String, search: String, query: QueryParams) -> Route {
-  let QueryParams(project_id: project_id, view_mode: view_mode) = query
+fn parse_pathname(pathname: String, search: String) -> ParseResult {
   case pathname {
-    "/" -> Login
+    "/" -> Parsed(Login)
 
-    "/accept-invite" -> AcceptInvite(token_from_search(search))
+    "/accept-invite" -> Parsed(AcceptInvite(token_from_search(search)))
 
-    "/reset-password" -> ResetPassword(token_from_search(search))
+    "/reset-password" -> Parsed(ResetPassword(token_from_search(search)))
 
-    _ -> parse_app_route(pathname, project_id, view_mode)
+    _ -> parse_app_route(pathname, search)
   }
 }
 
-fn parse_app_route(
-  pathname: String,
-  project_id: Option(Int),
-  view_mode: Option(ViewMode),
-) -> Route {
+fn parse_app_route(pathname: String, search: String) -> ParseResult {
   case string.starts_with(pathname, "/config") {
-    True -> parse_config_route(pathname, project_id)
-    False -> parse_org_route(pathname, project_id, view_mode)
+    True -> parse_config_route(pathname, search)
+    False -> parse_org_route(pathname, search)
   }
 }
 
-fn parse_config_route(pathname: String, project_id: Option(Int)) -> Route {
+fn parse_config_route(pathname: String, search: String) -> ParseResult {
   let slug = path_segment(pathname, "/config")
-  Config(config_section_from_slug(slug), project_id)
+  let section = config_section_from_slug(slug)
+  let result = url_state.parse_query(search_to_query(search), url_state.Config)
+  let route = case result {
+    url_state.Parsed(state) -> Config(section, url_state.project(state))
+    url_state.Redirect(state) -> Config(section, url_state.project(state))
+  }
+
+  case result {
+    url_state.Parsed(_) -> Parsed(route)
+    url_state.Redirect(_) -> Redirect(route)
+  }
 }
 
-fn parse_org_route(
-  pathname: String,
-  project_id: Option(Int),
-  view_mode: Option(ViewMode),
-) -> Route {
+fn parse_org_route(pathname: String, search: String) -> ParseResult {
   case string.starts_with(pathname, "/org") {
-    True -> parse_org_section(pathname)
-    False -> parse_member_route(pathname, project_id, view_mode)
+    True -> parse_org_section(pathname, search)
+    False -> parse_member_route(pathname, search)
   }
 }
 
-fn parse_org_section(pathname: String) -> Route {
+fn parse_org_section(pathname: String, search: String) -> ParseResult {
   let slug = path_segment(pathname, "/org")
-  Org(org_section_from_slug(slug))
-}
+  let section = org_section_from_slug(slug)
+  let context = case section {
+    permissions.Assignments -> url_state.OrgAssignments
+    _ -> url_state.Org
+  }
+  let result = url_state.parse_query(search_to_query(search), context)
+  let route = Org(section)
 
-fn parse_member_route(
-  pathname: String,
-  project_id: Option(Int),
-  view_mode: Option(ViewMode),
-) -> Route {
-  case string.starts_with(pathname, "/app") {
-    True -> parse_member_section(pathname, project_id, view_mode)
-    False -> Login
+  case result {
+    url_state.Parsed(_) -> Parsed(route)
+    url_state.Redirect(_) -> Redirect(route)
   }
 }
 
-fn parse_member_section(
-  pathname: String,
-  project_id: Option(Int),
-  view_mode: Option(ViewMode),
-) -> Route {
+fn parse_member_route(pathname: String, search: String) -> ParseResult {
+  case string.starts_with(pathname, "/app") {
+    True -> parse_member_section(pathname, search)
+    False -> Parsed(Login)
+  }
+}
+
+fn parse_member_section(pathname: String, search: String) -> ParseResult {
   let slug = path_segment(pathname, "/app")
-  Member(member_section.from_slug(slug), project_id, view_mode)
+  let section = member_section.from_slug(slug)
+  let result = url_state.parse_query(search_to_query(search), url_state.Member)
+
+  case result {
+    url_state.Parsed(state) -> Parsed(Member(section, state))
+    url_state.Redirect(state) -> Redirect(Member(section, state))
+  }
 }
 
 // Justification: nested case improves clarity for branching logic.
@@ -308,43 +228,32 @@ fn format_parts(route: Route) -> #(String, Option(String), Option(String)) {
     // Story 4.5: New /config/* routes for project-scoped config
     Config(section, project_id) -> {
       let base = "/config/" <> config_section_slug(section)
-      let #(path, query) = with_project_parts(base, project_id)
-      #(path, query, None)
+      let state = state_with_project(project_id)
+      let query =
+        query_option(url_state.to_query_string_for(url_state.Config, state))
+      #(base, query, None)
     }
 
     // Story 4.5: New /org/* routes for org-scoped admin
     Org(section) -> #("/org/" <> org_section_slug(section), None, None)
 
-    Member(section, project_id, view) -> {
+    Member(section, state) -> {
       let base = "/app/" <> member_section.to_slug(section)
-      let query = with_query_parts(project_id, view)
+      let query =
+        query_option(url_state.to_query_string_for(url_state.Member, state))
       #(base, query, None)
     }
   }
 }
 
-fn with_project_parts(
-  base: String,
-  project_id: Option(Int),
-) -> #(String, Option(String)) {
+fn state_with_project(project_id: Option(Int)) -> url_state.UrlState {
   case project_id {
-    None -> #(base, None)
-    Some(id) -> #(base, Some("project=" <> int.to_string(id)))
+    Some(id) -> url_state.with_project(url_state.empty(), id)
+    None -> url_state.empty()
   }
 }
 
-fn with_query_parts(
-  project_id: Option(Int),
-  view: Option(ViewMode),
-) -> Option(String) {
-  let params = [
-    project_id |> option.map(fn(id) { "project=" <> int.to_string(id) }),
-    view |> option.map(fn(v) { "view=" <> view_mode.to_string(v) }),
-  ]
-  let query =
-    params
-    |> list.filter_map(fn(p) { option.to_result(p, Nil) })
-    |> string.join("&")
+fn query_option(query: String) -> Option(String) {
   case query {
     "" -> None
     q -> Some(q)
@@ -355,46 +264,46 @@ fn with_query_parts(
 // Assignments view helpers
 // =============================================================================
 
-pub fn assignments_view_from_uri(
-  uri: Uri,
-) -> Option(assignments_view_mode.AssignmentsViewMode) {
-  case uri.query {
-    None -> None
-    Some(query) -> assignments_view_from_search(query)
-  }
-}
-
-fn assignments_view_from_search(
-  search: String,
-) -> Option(assignments_view_mode.AssignmentsViewMode) {
-  case query_param(search, "view") {
-    Some(raw) -> assignments_view_mode.from_param(raw)
-    None -> None
-  }
-}
-
 pub fn format_assignments(
   view: Option(assignments_view_mode.AssignmentsViewMode),
 ) -> String {
   let base = "/org/assignments"
-  case view {
+  let state = case view {
+    Some(mode) -> url_state.with_assignments_view(url_state.empty(), mode)
+    None -> url_state.empty()
+  }
+  let query =
+    query_option(url_state.to_query_string_for(url_state.OrgAssignments, state))
+
+  case query {
     None -> base
-    Some(mode) -> base <> "?view=" <> assignments_view_mode.to_param(mode)
+    Some(q) -> base <> "?" <> q
   }
 }
 
 pub fn replace_assignments_view(
   view: assignments_view_mode.AssignmentsViewMode,
 ) -> Effect(msg) {
-  let query = "view=" <> assignments_view_mode.to_param(view)
-  modem.replace("/org/assignments", Some(query), None)
+  let state = url_state.with_assignments_view(url_state.empty(), view)
+  let query =
+    query_option(url_state.to_query_string_for(url_state.OrgAssignments, state))
+  modem.replace("/org/assignments", query, None)
 }
 
 pub fn push_assignments_view(
   view: assignments_view_mode.AssignmentsViewMode,
 ) -> Effect(msg) {
-  let query = "view=" <> assignments_view_mode.to_param(view)
-  modem.push("/org/assignments", Some(query), None)
+  let state = url_state.with_assignments_view(url_state.empty(), view)
+  let query =
+    query_option(url_state.to_query_string_for(url_state.OrgAssignments, state))
+  modem.push("/org/assignments", query, None)
+}
+
+fn search_to_query(search: String) -> String {
+  case string.starts_with(search, "?") {
+    True -> string.drop_start(search, 1)
+    False -> search
+  }
 }
 
 fn token_from_search(search: String) -> String {
@@ -507,7 +416,7 @@ fn org_section_slug(section: permissions.AdminSection) -> String {
 /// ```gleam
 /// let result = parse_uri(uri)
 /// apply_mobile_rules(result, True)
-/// // Parsed(Member(Pool, None)) - no longer redirects
+/// // Parsed(Member(Pool, state)) - no longer redirects
 /// ```
 pub fn apply_mobile_rules(result: ParseResult, _is_mobile: Bool) -> ParseResult {
   // Story 4.4: Mobile no longer redirects Pool to MyBar
@@ -577,7 +486,7 @@ pub fn page_title_for_route(route: Route, locale: i18n_locale.Locale) -> String 
     Config(section, _) -> Some(admin_section_title(section, locale))
     Org(section) -> Some(admin_section_title(section, locale))
 
-    Member(section, _, _) -> Some(member_section_title(section, locale))
+    Member(section, _) -> Some(member_section_title(section, locale))
   }
 
   case section_title {

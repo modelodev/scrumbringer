@@ -14,8 +14,5 @@ pub type Model {
 
 /// Provides default member metrics state.
 pub fn default_model() -> Model {
-  Model(
-    member_work_sessions: NotAsked,
-    member_metrics: NotAsked,
-  )
+  Model(member_work_sessions: NotAsked, member_metrics: NotAsked)
 }

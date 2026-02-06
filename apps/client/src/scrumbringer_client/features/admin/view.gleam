@@ -200,7 +200,9 @@ fn view_org_settings_delete_dialog(model: Model) -> Element(Msg) {
             [
               attribute.type_("button"),
               attribute.class("btn btn-danger"),
-              attribute.disabled(model.admin.members.org_settings_delete_in_flight),
+              attribute.disabled(
+                model.admin.members.org_settings_delete_in_flight,
+              ),
               event.on_click(admin_msg(
                 admin_messages.OrgSettingsDeleteConfirmed,
               )),
@@ -358,11 +360,15 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
         [
           attribute.type_("submit"),
           attribute.form("capability-create-form"),
-          attribute.disabled(model.admin.capabilities.capabilities_create_in_flight),
-          attribute.class(case model.admin.capabilities.capabilities_create_in_flight {
-            True -> "btn-loading"
-            False -> ""
-          }),
+          attribute.disabled(
+            model.admin.capabilities.capabilities_create_in_flight,
+          ),
+          attribute.class(
+            case model.admin.capabilities.capabilities_create_in_flight {
+              True -> "btn-loading"
+              False -> ""
+            },
+          ),
         ],
         [
           text(case model.admin.capabilities.capabilities_create_in_flight {
@@ -378,7 +384,9 @@ fn view_capabilities_create_dialog(model: Model) -> Element(Msg) {
 /// Dialog for deleting a capability (Story 4.9 AC9).
 fn view_capability_delete_dialog(model: Model) -> Element(Msg) {
   // Get capability name for the confirmation message
-  let capability_name = case model.admin.capabilities.capability_delete_dialog_id {
+  let capability_name = case
+    model.admin.capabilities.capability_delete_dialog_id
+  {
     opt.Some(id) ->
       case model.admin.capabilities.capabilities {
         Loaded(caps) ->
@@ -419,7 +427,9 @@ fn view_capability_delete_dialog(model: Model) -> Element(Msg) {
         [
           attribute.type_("button"),
           attribute.class("btn btn-danger"),
-          attribute.disabled(model.admin.capabilities.capability_delete_in_flight),
+          attribute.disabled(
+            model.admin.capabilities.capability_delete_in_flight,
+          ),
           event.on_click(admin_msg(admin_messages.CapabilityDeleteSubmitted)),
         ],
         [
@@ -470,7 +480,11 @@ pub fn view_task_types(
           ),
         ),
         // Task types list
-        view_task_types_list(model, model.admin.task_types.task_types, model.ui.theme),
+        view_task_types_list(
+          model,
+          model.admin.task_types.task_types,
+          model.ui.theme,
+        ),
         // Task type CRUD dialog component (handles create, edit, delete)
         view_task_type_crud_dialog(model, project.id),
       ])
@@ -1170,7 +1184,9 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
             option(
               [
                 attribute.value(""),
-                attribute.selected(model.admin.cards.cards_state_filter == opt.None),
+                attribute.selected(
+                  model.admin.cards.cards_state_filter == opt.None,
+                ),
               ],
               helpers_i18n.i18n_t(model, i18n_text.AllOption),
             ),
@@ -1178,7 +1194,8 @@ fn view_cards_filters(model: Model) -> Element(Msg) {
               [
                 attribute.value("pendiente"),
                 attribute.selected(
-                  model.admin.cards.cards_state_filter == opt.Some(card.Pendiente),
+                  model.admin.cards.cards_state_filter
+                  == opt.Some(card.Pendiente),
                 ),
               ],
               helpers_i18n.i18n_t(model, i18n_text.CardStatePendiente),
@@ -1259,7 +1276,9 @@ fn filter_cards(model: Model) -> Remote(List(Card)) {
             False -> c.state != card.Cerrada
           }
           // Filter by search
-          let search_match = case string.is_empty(model.admin.cards.cards_search) {
+          let search_match = case
+            string.is_empty(model.admin.cards.cards_search)
+          {
             True -> True
             False ->
               string.contains(

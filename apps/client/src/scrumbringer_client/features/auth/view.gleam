@@ -22,8 +22,8 @@
 ////
 //// - **client_view.gleam**: Main view dispatches to these functions
 //// - **client_state.gleam**: Provides Model and Msg types
-//// - **accept_invite.gleam**: Provides accept invite sub-model types
-//// - **reset_password.gleam**: Provides reset password sub-model types
+//// - **token_flow.gleam**: Provides accept invite sub-model types
+//// - **token_flow.gleam**: Provides reset password sub-model types
 ////
 //// ## Line Count Justification
 ////
@@ -38,13 +38,12 @@ import lustre/element.{type Element}
 import lustre/element/html.{button, div, form, h1, h2, input, p, text}
 import lustre/event
 
-import scrumbringer_client/accept_invite
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{type Model, type Msg, auth_msg}
 import scrumbringer_client/features/auth/msg as auth_messages
 import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/i18n/text as i18n_text
-import scrumbringer_client/reset_password
+import scrumbringer_client/token_flow
 import scrumbringer_client/ui/copyable_input
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/form_field
@@ -196,7 +195,7 @@ pub fn view_forgot_password(model: Model) -> Element(Msg) {
 
 /// Renders the accept invite page for new user registration.
 pub fn view_accept_invite(model: Model) -> Element(Msg) {
-  let accept_invite.Model(
+  let token_flow.Model(
     state: state,
     password: password,
     password_error: password_error,
@@ -205,22 +204,21 @@ pub fn view_accept_invite(model: Model) -> Element(Msg) {
   ) = model.auth.accept_invite
 
   let content = case state {
-    accept_invite.NoToken ->
+    token_flow.NoToken ->
       error_notice.view(helpers_i18n.i18n_t(model, i18n_text.MissingInviteToken))
 
-    accept_invite.Validating ->
+    token_flow.Validating ->
       loading.loading(helpers_i18n.i18n_t(model, i18n_text.ValidatingInvite))
 
-    accept_invite.Invalid(code: _, message: message) ->
-      error_notice.view(message)
+    token_flow.Invalid(code: _, message: message) -> error_notice.view(message)
 
-    accept_invite.Ready(email) ->
+    token_flow.Ready(email) ->
       view_accept_invite_form(model, email, password, False, password_error)
 
-    accept_invite.Registering(email) ->
+    token_flow.Submitting(email) ->
       view_accept_invite_form(model, email, password, True, password_error)
 
-    accept_invite.Done ->
+    token_flow.Done ->
       loading.loading(helpers_i18n.i18n_t(model, i18n_text.SignedIn))
   }
 
@@ -232,7 +230,7 @@ pub fn view_accept_invite(model: Model) -> Element(Msg) {
         error_notice.view_dismissible(
           err,
           helpers_i18n.i18n_t(model, i18n_text.Dismiss),
-          auth_msg(auth_messages.AcceptInvite(accept_invite.ErrorDismissed)),
+          auth_msg(auth_messages.AcceptInvite(token_flow.ErrorDismissed)),
         )
       opt.None -> element.none()
     },
@@ -255,7 +253,7 @@ fn view_accept_invite_form(
   form(
     [
       event.on_submit(fn(_) {
-        auth_msg(auth_messages.AcceptInvite(accept_invite.Submitted))
+        auth_msg(auth_messages.AcceptInvite(token_flow.Submitted))
       }),
     ],
     [
@@ -274,7 +272,7 @@ fn view_accept_invite_form(
           attribute.value(password),
           event.on_input(fn(value) {
             auth_msg(
-              auth_messages.AcceptInvite(accept_invite.PasswordChanged(value)),
+              auth_messages.AcceptInvite(token_flow.PasswordChanged(value)),
             )
           }),
           attribute.required(True),
@@ -301,7 +299,7 @@ fn view_accept_invite_form(
 
 /// Renders the reset password page for existing users.
 pub fn view_reset_password(model: Model) -> Element(Msg) {
-  let reset_password.Model(
+  let token_flow.Model(
     state: state,
     password: password,
     password_error: password_error,
@@ -310,22 +308,21 @@ pub fn view_reset_password(model: Model) -> Element(Msg) {
   ) = model.auth.reset_password
 
   let content = case state {
-    reset_password.NoToken ->
+    token_flow.NoToken ->
       error_notice.view(helpers_i18n.i18n_t(model, i18n_text.MissingResetToken))
 
-    reset_password.Validating ->
+    token_flow.Validating ->
       loading.loading(helpers_i18n.i18n_t(model, i18n_text.ValidatingResetToken))
 
-    reset_password.Invalid(code: _, message: message) ->
-      error_notice.view(message)
+    token_flow.Invalid(code: _, message: message) -> error_notice.view(message)
 
-    reset_password.Ready(email) ->
+    token_flow.Ready(email) ->
       view_reset_password_form(model, email, password, False, password_error)
 
-    reset_password.Consuming(email) ->
+    token_flow.Submitting(email) ->
       view_reset_password_form(model, email, password, True, password_error)
 
-    reset_password.Done ->
+    token_flow.Done ->
       loading.loading(helpers_i18n.i18n_t(model, i18n_text.PasswordUpdated))
   }
 
@@ -337,7 +334,7 @@ pub fn view_reset_password(model: Model) -> Element(Msg) {
         error_notice.view_dismissible(
           err,
           helpers_i18n.i18n_t(model, i18n_text.Dismiss),
-          auth_msg(auth_messages.ResetPassword(reset_password.ErrorDismissed)),
+          auth_msg(auth_messages.ResetPassword(token_flow.ErrorDismissed)),
         )
       opt.None -> element.none()
     },
@@ -360,7 +357,7 @@ fn view_reset_password_form(
   form(
     [
       event.on_submit(fn(_) {
-        auth_msg(auth_messages.ResetPassword(reset_password.Submitted))
+        auth_msg(auth_messages.ResetPassword(token_flow.Submitted))
       }),
     ],
     [
@@ -379,7 +376,7 @@ fn view_reset_password_form(
           attribute.value(password),
           event.on_input(fn(value) {
             auth_msg(
-              auth_messages.ResetPassword(reset_password.PasswordChanged(value)),
+              auth_messages.ResetPassword(token_flow.PasswordChanged(value)),
             )
           }),
           attribute.required(True),

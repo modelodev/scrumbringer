@@ -4,9 +4,9 @@ import lustre/effect.{type Effect}
 
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
-import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/features/layout/msg as layout_messages
 
 /// Updates layout state for a message.

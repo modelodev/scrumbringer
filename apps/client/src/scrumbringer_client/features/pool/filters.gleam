@@ -155,8 +155,7 @@ fn view_type_filter(
   model: Model,
   options: List(element.Element(Msg)),
 ) -> Element(Msg) {
-  let current_value =
-    option_int_value(model.member.pool.member_filters_type_id)
+  let current_value = option_int_value(model.member.pool.member_filters_type_id)
   div([attribute.class("field")], [
     span([attribute.class("filter-tooltip")], [
       text(helpers_i18n.i18n_t(model, i18n_text.TypeLabel)),

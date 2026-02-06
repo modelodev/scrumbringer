@@ -58,14 +58,8 @@ pub fn member_refresh_skills_fetches_capabilities_test() {
 
       member_state.MemberModel(
         ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_section: member_section.MySkills,
-        ),
-        skills: member_skills.Model(
-          ..skills,
-          member_capabilities: NotAsked,
-        ),
+        pool: member_pool.Model(..pool, member_section: member_section.MySkills),
+        skills: member_skills.Model(..skills, member_capabilities: NotAsked),
       )
     })
 

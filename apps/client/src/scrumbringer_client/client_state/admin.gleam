@@ -1,8 +1,8 @@
 //// Admin-specific client state model.
 
 import scrumbringer_client/client_state/admin/assignments as admin_assignments
-import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/admin/capabilities as admin_capabilities
+import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/admin/invites as admin_invites
 import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/client_state/admin/metrics as admin_metrics

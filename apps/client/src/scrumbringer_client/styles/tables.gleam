@@ -1,0 +1,115 @@
+//// Auto-split CSS chunk: tables
+
+/// Provides tables CSS chunk.
+pub fn css() -> List(String) {
+  [
+    ".table { width: 100%; border-collapse: collapse; }",
+    ".table th { text-align: left; color: var(--sb-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 12px; border-bottom: 2px solid var(--sb-border); background: var(--sb-surface); }",
+    ".table-header { font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }",
+    ".table td { padding: 10px 12px; border-bottom: 1px solid var(--sb-border); vertical-align: middle; }",
+    ".table tbody tr:nth-child(even) { background: color-mix(in oklab, var(--sb-surface) 50%, var(--sb-bg)); }",
+    ".table tbody tr:hover { background: var(--sb-elevated); }",
+    // Expansion rows for subtables
+    ".expansion-row { background: var(--sb-surface) !important; }",
+    ".expansion-row:hover { background: var(--sb-surface) !important; }",
+    ".expansion-content { padding: 8px 0 8px 24px; border-left: 3px solid var(--sb-primary); margin-left: 8px; }",
+    ".expansion-content .table { background: var(--sb-elevated); border-radius: 8px; overflow: hidden; }",
+    ".expansion-content .table th { background: var(--sb-surface); font-size: 11px; padding: 8px 10px; }",
+    ".expansion-content .table td { padding: 8px 10px; font-size: 14px; }",
+    // Story 4.10: Expandable rules table with template attachment
+    ".rules-expandable-table { }",
+    ".col-expand { width: 40px; text-align: center; }",
+    ".cell-expand { text-align: center; }",
+    ".btn-expand { background: transparent; border: none; padding: 4px 8px; cursor: pointer; font-size: 12px; color: var(--sb-muted); border-radius: 4px; }",
+    ".btn-expand:hover { background: var(--sb-elevated); color: var(--sb-text); }",
+    ".cell-templates { text-align: center; }",
+    ".badge { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 20px; padding: 0 6px; border-radius: 10px; font-size: 12px; font-weight: 600; }",
+    ".badge-empty { background: var(--sb-surface); color: var(--sb-muted); border: 1px solid var(--sb-border); }",
+    ".badge-count { background: color-mix(in oklab, var(--sb-primary) 15%, var(--sb-elevated)); color: var(--sb-primary); border: 1px solid color-mix(in oklab, var(--sb-primary) 40%, var(--sb-border)); }",
+    // Templates expansion panel
+    ".templates-expansion { padding: 12px 16px; background: var(--sb-surface); border-radius: 8px; margin: 4px 8px 4px 40px; border-left: 3px solid var(--sb-primary); }",
+    ".templates-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }",
+    ".templates-title { font-weight: 600; font-size: 13px; color: var(--sb-text); }",
+    ".templates-empty { color: var(--sb-muted); font-size: 13px; font-style: italic; padding: 8px 0; }",
+    ".templates-list { display: flex; flex-direction: column; gap: 6px; }",
+    ".template-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 8px; }",
+    ".template-name { font-size: 13px; font-weight: 500; }",
+    ".template-item .btn-danger { padding: 2px 8px; font-size: 14px; line-height: 1; border-radius: 4px; }",
+    ".template-item .detaching { font-size: 12px; color: var(--sb-muted); font-style: italic; }",
+    // Story 4.10: AC2 - Clickable rule rows
+    ".rule-row-expandable { cursor: pointer; transition: background 0.1s ease; }",
+    ".rule-row-expandable:hover { background: var(--sb-elevated); }",
+    ".rule-row-expandable:focus-visible { outline: 2px solid var(--sb-primary); outline-offset: -2px; }",
+    ".rule-row-expanded { background: var(--sb-surface); }",
+    // AC2: Prevent row click on actions column
+    ".cell-no-expand { pointer-events: auto; }",
+    ".cell-no-expand * { position: relative; z-index: 1; }",
+    // Story 4.10: AC5 - Expand icon (triangles)
+    ".rule-expand-icon { display: inline-flex; align-items: center; justify-content: center; font-size: 12px; color: var(--sb-muted); width: 16px; }",
+    // Story 4.10: AC6-8 - Status indicators
+    ".cell-status { text-align: center; width: 50px; }",
+    ".rule-complete-indicator { color: var(--sb-success); }",
+    ".rule-incomplete-indicator { color: var(--sb-warning); cursor: help; }",
+    ".rule-inactive-indicator { color: var(--sb-muted); }",
+    // Resource type cell with task type info
+    ".cell-resource-type { white-space: nowrap; }",
+    ".resource-type-task { display: inline-flex; align-items: center; }",
+    ".resource-type-separator { color: var(--sb-muted); margin: 0 2px; }",
+    ".task-type-inline { display: inline-flex; align-items: center; vertical-align: middle; }",
+    ".task-type-inline svg { width: 14px; height: 14px; }",
+    // Story 4.10: AC4 - Attached template row with icon and priority
+    ".attached-template-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 8px; }",
+    ".attached-template-info { display: flex; align-items: center; gap: 8px; }",
+    ".template-type-icon { display: inline-flex; opacity: 0.8; }",
+    ".attached-template-name { font-size: 13px; font-weight: 500; }",
+    ".attached-template-meta { display: flex; align-items: center; gap: 8px; }",
+    ".priority-badge { font-size: 11px; font-weight: 600; color: var(--sb-muted); background: var(--sb-surface); padding: 2px 8px; border-radius: 4px; }",
+    // Story 4.10: AC13 - Empathetic empty hint
+    ".templates-empty-hint { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 12px; text-align: center; color: var(--sb-muted); }",
+    ".templates-empty-hint .hint-icon { color: var(--sb-primary); opacity: 0.6; }",
+    ".templates-empty-hint p { margin: 0; font-size: 13px; line-height: 1.5; }",
+    // Story 4.10: AC12 - Radio buttons in modal
+    ".radio-group { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; }",
+    ".template-radio-list { margin-bottom: 12px; }",
+    ".radio-option { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--sb-border); background: var(--sb-surface); cursor: pointer; transition: all 0.1s ease; }",
+    ".radio-option:hover { border-color: var(--sb-primary); background: var(--sb-elevated); }",
+    ".radio-option.selected { border-color: var(--sb-primary); background: color-mix(in oklab, var(--sb-primary) 10%, var(--sb-elevated)); }",
+    ".radio-option input[type=radio] { width: 16px; height: 16px; margin: 0; accent-color: var(--sb-primary); cursor: pointer; }",
+    ".radio-label { display: flex; align-items: center; gap: 8px; flex: 1; cursor: pointer; }",
+    ".radio-label .template-name { font-size: 14px; font-weight: 500; flex: 1; }",
+    ".radio-label .template-priority { font-size: 11px; color: var(--sb-muted); background: var(--sb-surface); padding: 2px 6px; border-radius: 4px; }",
+    // Story 4.10: AC14-15 - Empty state in modal with link
+    ".modal-empty-state { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 24px 16px; text-align: center; }",
+    ".modal-empty-state p { margin: 0; color: var(--sb-muted); font-size: 14px; }",
+    ".link-to-templates { color: var(--sb-primary); text-decoration: none; font-weight: 500; }",
+    ".link-to-templates:hover { text-decoration: underline; }",
+    // Form hints
+    ".form-hint { font-size: 13px; color: var(--sb-muted); margin-bottom: 8px; }",
+    ".form-hint-secondary { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--sb-muted); margin-top: 8px; }",
+    // Attach template modal
+    ".modal-backdrop { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, 0.5); }",
+    ".modal-sm { position: relative; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 12px; padding: 0; width: min(400px, 100%); max-height: 85vh; overflow: hidden; }",
+    ".modal-sm .modal-header { padding: 16px; border-bottom: 1px solid var(--sb-border); margin: 0; }",
+    ".modal-sm .modal-body { padding: 16px; }",
+    ".modal-sm .modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--sb-border); background: var(--sb-surface); }",
+    ".btn-sm { padding: 6px 12px; font-size: 13px; border-radius: 8px; }",
+    ".btn-primary { background: var(--sb-primary); border-color: var(--sb-primary); color: var(--sb-inverse); }",
+    ".btn-primary:hover { background: var(--sb-primary-hover); border-color: var(--sb-primary-hover); }",
+    ".btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }",
+    ".btn-secondary { background: var(--sb-surface); border-color: var(--sb-border); color: var(--sb-text); }",
+    ".btn-secondary:hover { background: var(--sb-elevated); border-color: var(--sb-text); }",
+    ".btn-danger { background: transparent; border-color: var(--sb-danger); color: var(--sb-danger); }",
+    ".btn-danger:hover { background: color-mix(in oklab, var(--sb-danger) 15%, transparent); }",
+    ".form-group { margin-bottom: 12px; }",
+    ".form-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: var(--sb-muted); }",
+    ".form-group .select { width: 100%; padding: 10px 12px; font-size: 14px; }",
+    // Metric cells in tables
+    ".metric-cell { text-align: center; }",
+    ".metric { display: inline-block; padding: 2px 10px; border-radius: 12px; font-weight: 600; font-size: 13px; }",
+    ".metric.applied { background: color-mix(in oklab, var(--sb-success) 15%, transparent); color: var(--sb-success); }",
+    ".metric.suppressed { background: color-mix(in oklab, var(--sb-warning) 15%, transparent); color: var(--sb-warning); }",
+    ".nav-item { width: 100%; text-align: left; }",
+    ".nav-item.active { border-color: var(--sb-primary); }",
+    ".actions { display: flex; gap: 8px; flex-wrap: wrap; }",
+  ]
+}

@@ -23,6 +23,7 @@ import domain/org_role.{type OrgRole, Admin}
 import scrumbringer_client/member_section
 import scrumbringer_client/permissions.{type AdminSection}
 import scrumbringer_client/router
+import scrumbringer_client/url_state
 
 /// Loading state for a resource (simplified from Remote for snapshot comparison).
 pub type ResourceState {
@@ -120,6 +121,17 @@ fn collect(requirements: List(#(Bool, Command))) -> List(Command) {
   })
 }
 
+fn member_route(
+  section: member_section.MemberSection,
+  project_id: Option(Int),
+) -> router.Route {
+  let state = case project_id {
+    Some(id) -> url_state.with_project(url_state.empty(), id)
+    None -> url_state.empty()
+  }
+  router.Member(section, state)
+}
+
 /// Provides plan.
 ///
 /// Example:
@@ -130,7 +142,7 @@ pub fn plan(route: router.Route, snap: Snapshot) -> List(Command) {
     router.Login -> plan_login(snap)
     router.Config(section, project_id) -> plan_admin(snap, section, project_id)
     router.Org(section) -> plan_org(snap, section)
-    router.Member(_, _, _) -> plan_member(snap)
+    router.Member(_, _) -> plan_member(snap)
   }
 }
 
@@ -189,7 +201,7 @@ fn plan_admin_authed(
     False ->
       case has_access {
         False -> [
-          Redirect(to: router.Member(member_section.Pool, project_id, None)),
+          Redirect(to: member_route(member_section.Pool, project_id)),
         ]
         True -> plan_admin_with_access(snap, section, project_id, is_org_admin)
       }
@@ -279,7 +291,7 @@ fn plan_org_for_role(
   role: OrgRole,
 ) -> List(Command) {
   case role == Admin {
-    False -> [Redirect(to: router.Member(member_section.Pool, None, None))]
+    False -> [Redirect(to: member_route(member_section.Pool, None))]
     True -> plan_org_for_admin(snap, section)
   }
 }

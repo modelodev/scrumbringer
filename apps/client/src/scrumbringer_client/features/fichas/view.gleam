@@ -210,9 +210,9 @@ pub fn view_card_detail_modal(model: Model) -> Element(Msg) {
 /// Decoder for create-task-requested event.
 /// Opens the main task creation dialog with card_id pre-filled.
 fn decode_create_task_event(card_id: Int) -> decode.Decoder(Msg) {
-  event_decoders.message(pool_msg(
-    pool_messages.MemberCreateDialogOpenedWithCard(card_id),
-  ))
+  event_decoders.message(
+    pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(card_id)),
+  )
 }
 
 /// Decoder for close-requested event.

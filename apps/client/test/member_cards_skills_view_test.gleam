@@ -44,10 +44,7 @@ pub fn skills_view_shows_empty_state_for_member_capabilities_test() {
 
       member_state.MemberModel(
         ..member,
-        skills: member_skills.Model(
-          ..skills,
-          member_capabilities: Loaded([]),
-        ),
+        skills: member_skills.Model(..skills, member_capabilities: Loaded([])),
       )
     })
 

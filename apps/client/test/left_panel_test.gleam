@@ -10,6 +10,7 @@ import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/member_section
 import scrumbringer_client/permissions
 import scrumbringer_client/router
+import scrumbringer_client/url_state
 
 fn base_config(
   current_route: opt.Option(router.Route),
@@ -52,7 +53,11 @@ fn base_config(
 
 /// Helper to create a Member route with a view mode
 fn member_route(mode: view_mode_module.ViewMode) -> router.Route {
-  router.Member(member_section.Pool, opt.Some(1), opt.Some(mode))
+  let state =
+    url_state.empty()
+    |> url_state.with_project(1)
+    |> url_state.with_view(mode)
+  router.Member(member_section.Pool, state)
 }
 
 /// Helper to create a Config route with an admin section

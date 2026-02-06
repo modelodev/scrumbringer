@@ -41,10 +41,7 @@ pub fn handle_from_changed(model: Model, from: String) -> #(Model, Effect(Msg)) 
   #(
     update_admin(model, fn(admin) {
       update_metrics(admin, fn(metrics_state) {
-        admin_metrics.Model(
-          ..metrics_state,
-          admin_rule_metrics_from: from,
-        )
+        admin_metrics.Model(..metrics_state, admin_rule_metrics_from: from)
       })
     }),
     effect.none(),
@@ -56,10 +53,7 @@ pub fn handle_to_changed(model: Model, to: String) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
       update_metrics(admin, fn(metrics_state) {
-        admin_metrics.Model(
-          ..metrics_state,
-          admin_rule_metrics_to: to,
-        )
+        admin_metrics.Model(..metrics_state, admin_rule_metrics_to: to)
       })
     }),
     effect.none(),
@@ -77,10 +71,7 @@ pub fn handle_from_changed_and_refresh(
     True -> #(
       update_admin(model, fn(admin) {
         update_metrics(admin, fn(metrics_state) {
-          admin_metrics.Model(
-            ..metrics_state,
-            admin_rule_metrics_from: from,
-          )
+          admin_metrics.Model(..metrics_state, admin_rule_metrics_from: from)
         })
       }),
       effect.none(),
@@ -117,10 +108,7 @@ pub fn handle_to_changed_and_refresh(
     True -> #(
       update_admin(model, fn(admin) {
         update_metrics(admin, fn(metrics_state) {
-          admin_metrics.Model(
-            ..metrics_state,
-            admin_rule_metrics_to: to,
-          )
+          admin_metrics.Model(..metrics_state, admin_rule_metrics_to: to)
         })
       }),
       effect.none(),
@@ -158,10 +146,7 @@ pub fn handle_refresh_clicked(model: Model) -> #(Model, Effect(Msg)) {
       let model =
         update_admin(model, fn(admin) {
           update_metrics(admin, fn(metrics_state) {
-            admin_metrics.Model(
-              ..metrics_state,
-              admin_rule_metrics: Loading,
-            )
+            admin_metrics.Model(..metrics_state, admin_rule_metrics: Loading)
           })
         })
       // Use org-wide metrics (project filtering can be added later)
@@ -231,10 +216,7 @@ pub fn handle_fetched_error(
     #(
       update_admin(model, fn(admin) {
         update_metrics(admin, fn(metrics_state) {
-          admin_metrics.Model(
-            ..metrics_state,
-            admin_rule_metrics: Failed(err),
-          )
+          admin_metrics.Model(..metrics_state, admin_rule_metrics: Failed(err))
         })
       }),
       effect.none(),
@@ -278,7 +260,10 @@ pub fn handle_workflow_expanded(
   model: Model,
   workflow_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  case model.admin.metrics.admin_rule_metrics_expanded_workflow == Some(workflow_id) {
+  case
+    model.admin.metrics.admin_rule_metrics_expanded_workflow
+    == Some(workflow_id)
+  {
     // Collapse if already expanded
     True -> #(
       update_admin(model, fn(admin) {

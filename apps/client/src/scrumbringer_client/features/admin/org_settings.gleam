@@ -113,7 +113,10 @@ pub fn handle_org_settings_users_fetched_error(
         let model =
           update_admin(model, fn(admin) {
             update_members(admin, fn(members_state) {
-              admin_members.Model(..members_state, org_settings_users: Failed(err))
+              admin_members.Model(
+                ..members_state,
+                org_settings_users: Failed(err),
+              )
             })
           })
         let toast_fx =
@@ -127,7 +130,10 @@ pub fn handle_org_settings_users_fetched_error(
       _ -> #(
         update_admin(model, fn(admin) {
           update_members(admin, fn(members_state) {
-            admin_members.Model(..members_state, org_settings_users: Failed(err))
+            admin_members.Model(
+              ..members_state,
+              org_settings_users: Failed(err),
+            )
           })
         }),
         effect.none(),
@@ -189,7 +195,10 @@ pub fn handle_org_settings_delete_clicked(
   user_id: Int,
 ) -> #(Model, Effect(Msg)) {
   let maybe_user =
-    helpers_lookup.resolve_org_user(model.admin.members.org_users_cache, user_id)
+    helpers_lookup.resolve_org_user(
+      model.admin.members.org_users_cache,
+      user_id,
+    )
 
   let user = case maybe_user {
     opt.Some(user) -> user

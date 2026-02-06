@@ -76,7 +76,9 @@ pub fn view_create_dialog(model: Model) -> Element(Msg) {
     [
       form(
         [
-          event.on_submit(fn(_) { pool_msg(pool_messages.MemberCreateSubmitted) }),
+          event.on_submit(fn(_) {
+            pool_msg(pool_messages.MemberCreateSubmitted)
+          }),
           attribute.id("task-create-form"),
         ],
         [
@@ -145,7 +147,10 @@ pub fn view_create_dialog(model: Model) -> Element(Msg) {
       ),
     ],
     [
-      dialog.cancel_button(model, pool_msg(pool_messages.MemberCreateDialogClosed)),
+      dialog.cancel_button(
+        model,
+        pool_msg(pool_messages.MemberCreateDialogClosed),
+      ),
       button(
         [
           attribute.type_("submit"),
@@ -180,15 +185,21 @@ fn view_card_selector(model: Model) -> Element(Msg) {
     helpers_i18n.i18n_t(model, i18n_text.ParentCardLabel),
     select(
       [
-        attribute.value(card_id_to_string(model.member.pool.member_create_card_id)),
-        event.on_input(fn(value) { pool_msg(pool_messages.MemberCreateCardIdChanged(value)) }),
+        attribute.value(card_id_to_string(
+          model.member.pool.member_create_card_id,
+        )),
+        event.on_input(fn(value) {
+          pool_msg(pool_messages.MemberCreateCardIdChanged(value))
+        }),
       ],
       [
         // "No card" option (AC2)
         option(
           [
             attribute.value(""),
-            attribute.selected(opt.is_none(model.member.pool.member_create_card_id)),
+            attribute.selected(opt.is_none(
+              model.member.pool.member_create_card_id,
+            )),
           ],
           helpers_i18n.i18n_t(model, i18n_text.NoCard),
         ),
@@ -378,7 +389,9 @@ fn view_task_tabs(model: Model) -> Element(Msg) {
         dependencies: helpers_i18n.i18n_t(model, i18n_text.TabDependencies),
         notes: helpers_i18n.i18n_t(model, i18n_text.TabNotes),
       ),
-      on_tab_click: fn(tab) { pool_msg(pool_messages.MemberTaskDetailTabClicked(tab)) },
+      on_tab_click: fn(tab) {
+        pool_msg(pool_messages.MemberTaskDetailTabClicked(tab))
+      },
     ),
   )
 }
@@ -516,7 +529,9 @@ fn view_dependency_row(
         attribute.class("btn-icon btn-xs task-dependency-remove"),
         attribute.disabled(is_removing || task_id == depends_on_task_id),
         event.on_click(
-          pool_msg(pool_messages.MemberDependencyRemoveClicked(depends_on_task_id)),
+          pool_msg(pool_messages.MemberDependencyRemoveClicked(
+            depends_on_task_id,
+          )),
         ),
       ],
       [icons.nav_icon(icons.XMark, icons.Small)],
@@ -570,7 +585,9 @@ fn view_dependency_dialog(
     [
       form(
         [
-          event.on_submit(fn(_) { pool_msg(pool_messages.MemberDependencyAddSubmitted) }),
+          event.on_submit(fn(_) {
+            pool_msg(pool_messages.MemberDependencyAddSubmitted)
+          }),
           attribute.id("task-dependency-form"),
         ],
         [
@@ -595,7 +612,10 @@ fn view_dependency_dialog(
       ),
     ],
     [
-      dialog.cancel_button(model, pool_msg(pool_messages.MemberDependencyDialogClosed)),
+      dialog.cancel_button(
+        model,
+        pool_msg(pool_messages.MemberDependencyDialogClosed),
+      ),
       button(
         [
           attribute.type_("submit"),
@@ -604,10 +624,12 @@ fn view_dependency_dialog(
             model.member.dependencies.member_dependency_add_in_flight
             || opt.is_none(selected_id),
           ),
-          attribute.class(case model.member.dependencies.member_dependency_add_in_flight {
-            True -> "btn-loading"
-            False -> ""
-          }),
+          attribute.class(
+            case model.member.dependencies.member_dependency_add_in_flight {
+              True -> "btn-loading"
+              False -> ""
+            },
+          ),
         ],
         [
           text(case model.member.dependencies.member_dependency_add_in_flight {
@@ -791,7 +813,9 @@ fn view_task_footer(model: Model, task: opt.Option(task.Task)) -> Element(Msg) {
             [
               attribute.class("btn btn-primary"),
               attribute.disabled(disable_actions || t.blocked_count > 0),
-              event.on_click(pool_msg(pool_messages.MemberClaimClicked(t.id, t.version))),
+              event.on_click(
+                pool_msg(pool_messages.MemberClaimClicked(t.id, t.version)),
+              ),
             ],
             [text(helpers_i18n.i18n_t(model, i18n_text.ClaimTask))],
           ),
@@ -815,7 +839,10 @@ fn view_task_footer(model: Model, task: opt.Option(task.Task)) -> Element(Msg) {
                   attribute.class("btn btn-primary"),
                   attribute.disabled(disable_actions),
                   event.on_click(
-                    pool_msg(pool_messages.MemberCompleteClicked(t.id, t.version)),
+                    pool_msg(pool_messages.MemberCompleteClicked(
+                      t.id,
+                      t.version,
+                    )),
                   ),
                 ],
                 [text(helpers_i18n.i18n_t(model, i18n_text.Complete))],
@@ -846,7 +873,9 @@ fn view_note_dialog(model: Model) -> Element(Msg) {
     submit_disabled: model.member.notes.member_note_in_flight
       || model.member.notes.member_note_content == "",
     cancel_label: helpers_i18n.i18n_t(model, i18n_text.Cancel),
-    on_content_change: fn(v) { pool_msg(pool_messages.MemberNoteContentChanged(v)) },
+    on_content_change: fn(v) {
+      pool_msg(pool_messages.MemberNoteContentChanged(v))
+    },
     on_submit: pool_msg(pool_messages.MemberNoteSubmitted),
     on_close: pool_msg(pool_messages.MemberNoteDialogClosed),
   ))
@@ -894,7 +923,10 @@ pub fn view_position_edit(model: Model, _task_id: Int) -> Element(Msg) {
     ],
     // Footer: buttons (using on_click for non-form submit)
     [
-      dialog.cancel_button(model, pool_msg(pool_messages.MemberPositionEditClosed)),
+      dialog.cancel_button(
+        model,
+        pool_msg(pool_messages.MemberPositionEditClosed),
+      ),
       button(
         [
           attribute.type_("button"),

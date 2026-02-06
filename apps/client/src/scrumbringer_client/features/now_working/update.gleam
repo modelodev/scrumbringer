@@ -174,7 +174,10 @@ pub fn start_tick_if_needed(model: Model) -> #(Model, Effect(Msg)) {
       case helpers_selection.now_working_active_task(model) {
         opt.Some(_) -> #(
           update_now_working(model, fn(now_working) {
-            member_now_working.Model(..now_working, now_working_tick_running: True)
+            member_now_working.Model(
+              ..now_working,
+              now_working_tick_running: True,
+            )
           }),
           tick_effect(),
         )
@@ -315,7 +318,10 @@ fn handle_sessions_toast_error(
 ) -> #(Model, Effect(Msg)) {
   let model =
     update_now_working(model, fn(now_working) {
-      member_now_working.Model(..now_working, member_now_working_in_flight: False)
+      member_now_working.Model(
+        ..now_working,
+        member_now_working_in_flight: False,
+      )
     })
 
   helpers_auth.handle_401_or(model, err, fn() {
@@ -348,7 +354,10 @@ fn start_tick_if_sessions_needed(model: Model) -> #(Model, Effect(Msg)) {
       case model.member.metrics.member_work_sessions {
         Loaded(WorkSessionsPayload(active_sessions: [_, ..], ..)) -> #(
           update_now_working(model, fn(now_working) {
-            member_now_working.Model(..now_working, now_working_tick_running: True)
+            member_now_working.Model(
+              ..now_working,
+              now_working_tick_running: True,
+            )
           }),
           tick_effect(),
         )

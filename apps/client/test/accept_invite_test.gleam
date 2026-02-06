@@ -5,24 +5,25 @@ import domain/api_error.{ApiError}
 import domain/org_role
 import domain/user
 import scrumbringer_client/accept_invite
+import scrumbringer_client/token_flow
 
 pub fn init_with_missing_token_stays_in_no_token_state_test() {
   let #(model, action) = accept_invite.init("")
 
-  let accept_invite.Model(token: token, state: state, ..) = model
+  let token_flow.Model(token: token, state: state, ..) = model
 
   token |> should.equal("")
-  state |> should.equal(accept_invite.NoToken)
+  state |> should.equal(token_flow.NoToken)
   action |> should.equal(accept_invite.NoOp)
 }
 
 pub fn init_with_token_triggers_validation_test() {
   let #(model, action) = accept_invite.init("il_token")
 
-  let accept_invite.Model(token: token, state: state, ..) = model
+  let token_flow.Model(token: token, state: state, ..) = model
 
   token |> should.equal("il_token")
-  state |> should.equal(accept_invite.Validating)
+  state |> should.equal(token_flow.Validating)
   action |> should.equal(accept_invite.ValidateToken("il_token"))
 }
 
@@ -32,12 +33,12 @@ pub fn token_validation_success_moves_to_ready_test() {
   let #(next, action) =
     accept_invite.update(
       model,
-      accept_invite.TokenValidated(Ok("member@example.com")),
+      token_flow.TokenValidated(Ok("member@example.com")),
     )
 
-  let accept_invite.Model(state: state, ..) = next
+  let token_flow.Model(state: state, ..) = next
 
-  state |> should.equal(accept_invite.Ready("member@example.com"))
+  state |> should.equal(token_flow.Ready("member@example.com"))
   action |> should.equal(accept_invite.NoOp)
 }
 
@@ -47,12 +48,12 @@ pub fn token_validation_failure_moves_to_invalid_test() {
   let err = ApiError(status: 403, code: "INVITE_INVALID", message: "Nope")
 
   let #(next, action) =
-    accept_invite.update(model, accept_invite.TokenValidated(Error(err)))
+    accept_invite.update(model, token_flow.TokenValidated(Error(err)))
 
-  let accept_invite.Model(state: state, ..) = next
+  let token_flow.Model(state: state, ..) = next
 
   state
-  |> should.equal(accept_invite.Invalid(code: "INVITE_INVALID", message: "Nope"))
+  |> should.equal(token_flow.Invalid(code: "INVITE_INVALID", message: "Nope"))
   action |> should.equal(accept_invite.NoOp)
 }
 
@@ -62,15 +63,15 @@ pub fn submit_requires_min_password_length_test() {
   let #(model, _) =
     accept_invite.update(
       model,
-      accept_invite.TokenValidated(Ok("member@example.com")),
+      token_flow.TokenValidated(Ok("member@example.com")),
     )
 
   let #(model, _) =
-    accept_invite.update(model, accept_invite.PasswordChanged("short"))
+    accept_invite.update(model, token_flow.PasswordChanged("short"))
 
-  let #(next, action) = accept_invite.update(model, accept_invite.Submitted)
+  let #(next, action) = accept_invite.update(model, token_flow.Submitted)
 
-  let accept_invite.Model(password_error: password_error, ..) = next
+  let token_flow.Model(password_error: password_error, ..) = next
 
   password_error
   |> should.equal(option.Some("Password must be at least 12 characters"))
@@ -83,20 +84,17 @@ pub fn submit_with_valid_password_triggers_register_action_test() {
   let #(model, _) =
     accept_invite.update(
       model,
-      accept_invite.TokenValidated(Ok("member@example.com")),
+      token_flow.TokenValidated(Ok("member@example.com")),
     )
 
   let #(model, _) =
-    accept_invite.update(
-      model,
-      accept_invite.PasswordChanged("passwordpassword"),
-    )
+    accept_invite.update(model, token_flow.PasswordChanged("passwordpassword"))
 
-  let #(next, action) = accept_invite.update(model, accept_invite.Submitted)
+  let #(next, action) = accept_invite.update(model, token_flow.Submitted)
 
-  let accept_invite.Model(state: state, ..) = next
+  let token_flow.Model(state: state, ..) = next
 
-  state |> should.equal(accept_invite.Registering("member@example.com"))
+  state |> should.equal(token_flow.Submitting("member@example.com"))
   action
   |> should.equal(accept_invite.Register(
     token: "il_token",
@@ -110,16 +108,13 @@ pub fn registration_success_emits_authed_action_test() {
   let #(model, _) =
     accept_invite.update(
       model,
-      accept_invite.TokenValidated(Ok("member@example.com")),
+      token_flow.TokenValidated(Ok("member@example.com")),
     )
 
   let #(model, _) =
-    accept_invite.update(
-      model,
-      accept_invite.PasswordChanged("passwordpassword"),
-    )
+    accept_invite.update(model, token_flow.PasswordChanged("passwordpassword"))
 
-  let #(model, _) = accept_invite.update(model, accept_invite.Submitted)
+  let #(model, _) = accept_invite.update(model, token_flow.Submitted)
 
   let authed_user =
     user.User(
@@ -131,10 +126,37 @@ pub fn registration_success_emits_authed_action_test() {
     )
 
   let #(next, action) =
-    accept_invite.update(model, accept_invite.Registered(Ok(authed_user)))
+    accept_invite.update(model, token_flow.Completed(Ok(authed_user)))
 
-  let accept_invite.Model(state: state, ..) = next
+  let token_flow.Model(state: state, ..) = next
 
-  state |> should.equal(accept_invite.Done)
+  state |> should.equal(token_flow.Done)
   action |> should.equal(accept_invite.Authed(authed_user))
+}
+
+pub fn registration_invite_error_sets_invalid_state_test() {
+  let #(model, _) = accept_invite.init("il_token")
+
+  let #(model, _) =
+    accept_invite.update(
+      model,
+      token_flow.TokenValidated(Ok("member@example.com")),
+    )
+
+  let #(model, _) =
+    accept_invite.update(model, token_flow.PasswordChanged("passwordpassword"))
+
+  let #(model, _) = accept_invite.update(model, token_flow.Submitted)
+
+  let err = ApiError(status: 403, code: "INVITE_USED", message: "Used")
+
+  let #(next, action) =
+    accept_invite.update(model, token_flow.Completed(Error(err)))
+
+  let token_flow.Model(state: state, submit_error: submit_error, ..) = next
+
+  state
+  |> should.equal(token_flow.Invalid(code: "INVITE_USED", message: "Used"))
+  submit_error |> should.equal(option.Some("Used"))
+  action |> should.equal(accept_invite.NoOp)
 }

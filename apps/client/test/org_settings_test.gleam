@@ -284,9 +284,8 @@ pub fn role_changed_triggers_save_when_role_diff_test() {
   updated_model.admin.members.org_settings_save_in_flight
   |> should.equal(True)
   updated_model.admin.members.org_settings_error |> should.equal(opt.None)
-  updated_model.admin.members.org_settings_error_user_id |> should.equal(
-    opt.None,
-  )
+  updated_model.admin.members.org_settings_error_user_id
+  |> should.equal(opt.None)
   should.be_false(fx == effect.none())
 }
 

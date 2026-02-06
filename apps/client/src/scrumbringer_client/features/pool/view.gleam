@@ -419,8 +419,9 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
   }
 
   // Get saved position or generate deterministic initial position based on task ID
-  let #(x, y) =
-    case dict.get(model.member.positions.member_positions_by_task, id) {
+  let #(x, y) = case
+    dict.get(model.member.positions.member_positions_by_task, id)
+  {
     Ok(xy) -> xy
     Error(_) -> {
       // Generate spread-out initial positions using task ID as seed

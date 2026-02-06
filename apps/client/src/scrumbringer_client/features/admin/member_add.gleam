@@ -117,7 +117,10 @@ pub fn handle_member_add_user_selected(
   #(
     update_admin(model, fn(admin) {
       update_members(admin, fn(members_state) {
-        admin_members.Model(..members_state, members_add_selected_user: selected)
+        admin_members.Model(
+          ..members_state,
+          members_add_selected_user: selected,
+        )
       })
     }),
     effect.none(),

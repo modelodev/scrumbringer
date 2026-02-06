@@ -178,38 +178,43 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
     open,
     error,
     [
-      form([event.on_submit(fn(_) {
-        admin_msg(admin_messages.InviteLinkCreateSubmitted)
-      })], [
-        form_field.view(
-          helpers_i18n.i18n_t(model, i18n_text.EmailLabel),
-          input([
-            attribute.type_("email"),
-            attribute.value(email),
-            event.on_input(fn(value) {
-              admin_msg(admin_messages.InviteLinkEmailChanged(value))
-            }),
-            attribute.required(True),
-            attribute.placeholder(helpers_i18n.i18n_t(
+      form(
+        [
+          event.on_submit(fn(_) {
+            admin_msg(admin_messages.InviteLinkCreateSubmitted)
+          }),
+        ],
+        [
+          form_field.view(
+            helpers_i18n.i18n_t(model, i18n_text.EmailLabel),
+            input([
+              attribute.type_("email"),
+              attribute.value(email),
+              event.on_input(fn(value) {
+                admin_msg(admin_messages.InviteLinkEmailChanged(value))
+              }),
+              attribute.required(True),
+              attribute.placeholder(helpers_i18n.i18n_t(
+                model,
+                i18n_text.EmailPlaceholderExample,
+              )),
+            ]),
+          ),
+          div([attribute.class("dialog-footer")], [
+            dialog.cancel_button(
               model,
-              i18n_text.EmailPlaceholderExample,
-            )),
+              admin_msg(admin_messages.InviteCreateDialogClosed),
+            ),
+            dialog.submit_button(
+              model,
+              in_flight,
+              False,
+              i18n_text.Create,
+              i18n_text.Creating,
+            ),
           ]),
-        ),
-        div([attribute.class("dialog-footer")], [
-          dialog.cancel_button(
-            model,
-            admin_msg(admin_messages.InviteCreateDialogClosed),
-          ),
-          dialog.submit_button(
-            model,
-            in_flight,
-            False,
-            i18n_text.Create,
-            i18n_text.Creating,
-          ),
-        ]),
-      ]),
+        ],
+      ),
     ],
     [],
   )

@@ -1,5 +1,8 @@
+import domain/org_role
+import domain/user
 import gleam/option.{None, Some}
 import gleeunit/should
+import lustre/effect
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/auth as auth_state
 import scrumbringer_client/features/auth/update as auth_update
@@ -48,4 +51,27 @@ pub fn handle_login_submitted_sets_in_flight_and_clears_error_test() {
 
   login_in_flight |> should.equal(True)
   login_error |> should.equal(None)
+}
+
+pub fn handle_login_finished_ok_admin_lands_on_member_page_test() {
+  let model = client_state.default_model()
+  let admin_user =
+    user.User(
+      id: 1,
+      email: "admin@example.com",
+      org_id: 1,
+      org_role: org_role.Admin,
+      created_at: "2026-01-01T00:00:00Z",
+    )
+
+  let #(next_model, _) =
+    auth_update.handle_login_finished_ok(
+      model,
+      admin_user,
+      fn(m) { #(m, effect.none()) },
+      fn(m) { #(m, effect.none()) },
+      fn(_) { effect.none() },
+    )
+
+  next_model.core.page |> should.equal(client_state.Member)
 }

@@ -248,9 +248,7 @@ pub fn handle_project_create_name_changed(
   }
 
   #(
-    update_admin(model, fn(admin) {
-      set_projects_dialog(admin, next_state)
-    }),
+    update_admin(model, fn(admin) { set_projects_dialog(admin, next_state) }),
     effect.none(),
   )
 }
@@ -290,10 +288,7 @@ fn validate_project_create_name(
       update_admin(model, fn(admin) {
         set_projects_dialog(
           admin,
-          update_project_dialog_error(
-            model.admin.projects.projects_dialog,
-            err,
-          ),
+          update_project_dialog_error(model.admin.projects.projects_dialog, err),
         )
       }),
       effect.none(),
@@ -312,9 +307,7 @@ fn submit_project_create_valid(
     update_admin(model, fn(admin) {
       set_projects_dialog(
         admin,
-        update_project_dialog_in_flight(
-          model.admin.projects.projects_dialog,
-        ),
+        update_project_dialog_in_flight(model.admin.projects.projects_dialog),
       )
     })
   #(
@@ -344,9 +337,7 @@ pub fn handle_project_created_ok(
           selected_project_id: opt.Some(project.id),
         )
       }),
-      fn(admin) {
-        set_projects_dialog(admin, DialogClosed(operation: Idle))
-      },
+      fn(admin) { set_projects_dialog(admin, DialogClosed(operation: Idle)) },
     )
   let toast_fx =
     helpers_toast.toast_success(helpers_i18n.i18n_t(
@@ -449,9 +440,7 @@ pub fn handle_project_edit_name_changed(
   }
 
   #(
-    update_admin(model, fn(admin) {
-      set_projects_dialog(admin, next_state)
-    }),
+    update_admin(model, fn(admin) { set_projects_dialog(admin, next_state) }),
     effect.none(),
   )
 }
@@ -495,10 +484,7 @@ fn validate_project_edit_name(
       update_admin(model, fn(admin) {
         set_projects_dialog(
           admin,
-          update_project_dialog_error(
-            model.admin.projects.projects_dialog,
-            err,
-          ),
+          update_project_dialog_error(model.admin.projects.projects_dialog, err),
         )
       }),
       effect.none(),
@@ -519,9 +505,7 @@ fn submit_project_edit_valid(
     update_admin(model, fn(admin) {
       set_projects_dialog(
         admin,
-        update_project_dialog_in_flight(
-          model.admin.projects.projects_dialog,
-        ),
+        update_project_dialog_in_flight(model.admin.projects.projects_dialog),
       )
     })
   #(
@@ -555,9 +539,7 @@ pub fn handle_project_updated_ok(
       update_core(model, fn(core) {
         CoreModel(..core, projects: Loaded(updated_projects))
       }),
-      fn(admin) {
-        set_projects_dialog(admin, DialogClosed(operation: Idle))
-      },
+      fn(admin) { set_projects_dialog(admin, DialogClosed(operation: Idle)) },
     )
   let toast_fx =
     helpers_toast.toast_success(helpers_i18n.i18n_t(model, i18n_text.Saved))
@@ -678,7 +660,8 @@ pub fn handle_project_delete_submitted(model: Model) -> #(Model, Effect(Msg)) {
 
 /// Handle project deleted success.
 pub fn handle_project_deleted_ok(model: Model) -> #(Model, Effect(Msg)) {
-  let deleted_id = project_dialog_delete_id(model.admin.projects.projects_dialog)
+  let deleted_id =
+    project_dialog_delete_id(model.admin.projects.projects_dialog)
 
   // Remove the project from the list
   let updated_projects = case model.core.projects {
@@ -708,9 +691,7 @@ pub fn handle_project_deleted_ok(model: Model) -> #(Model, Effect(Msg)) {
           selected_project_id: selected,
         )
       }),
-      fn(admin) {
-        set_projects_dialog(admin, DialogClosed(operation: Idle))
-      },
+      fn(admin) { set_projects_dialog(admin, DialogClosed(operation: Idle)) },
     )
   let toast_fx =
     helpers_toast.toast_success(helpers_i18n.i18n_t(model, i18n_text.Deleted))
@@ -731,9 +712,7 @@ pub fn handle_project_deleted_error(
             update_admin(model, fn(admin) {
               set_projects_dialog(
                 admin,
-                update_project_dialog_idle(
-                  model.admin.projects.projects_dialog,
-                ),
+                update_project_dialog_idle(model.admin.projects.projects_dialog),
               )
             }),
             helpers_toast.toast_warning(helpers_i18n.i18n_t(
@@ -749,9 +728,7 @@ pub fn handle_project_deleted_error(
             update_admin(model, fn(admin) {
               set_projects_dialog(
                 admin,
-                update_project_dialog_idle(
-                  model.admin.projects.projects_dialog,
-                ),
+                update_project_dialog_idle(model.admin.projects.projects_dialog),
               )
             }),
             helpers_toast.toast_error(err.message),

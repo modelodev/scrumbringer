@@ -28,48 +28,14 @@ import gleam/string
 
 import lustre/effect.{type Effect}
 
-import domain/org_role
-import domain/user.{type User, User}
+import domain/user.{type User}
+import domain/user/codec as user_codec
 import scrumbringer_client/api/core.{type ApiResult}
 import scrumbringer_client/client_ffi
 
-// =============================================================================
-// Decoders
-// =============================================================================
-
-fn user_decoder() -> decode.Decoder(User) {
-  use id <- decode.field("id", decode.int)
-  use email <- decode.field("email", decode.string)
-  use org_id <- decode.field("org_id", decode.int)
-  use org_role_str <- decode.field("org_role", decode.string)
-  use created_at <- decode.field("created_at", decode.string)
-
-  case org_role.parse(org_role_str) {
-    Ok(role) ->
-      decode.success(User(
-        id: id,
-        email: email,
-        org_id: org_id,
-        org_role: role,
-        created_at: created_at,
-      ))
-    Error(_) ->
-      decode.failure(
-        User(
-          id: 0,
-          email: "",
-          org_id: 0,
-          org_role: org_role.Member,
-          created_at: "",
-        ),
-        expected: "OrgRole",
-      )
-  }
-}
-
 /// Decoder for user wrapped in { "user": ... } envelope.
 pub fn user_payload_decoder() -> decode.Decoder(User) {
-  decode.field("user", user_decoder(), decode.success)
+  decode.field("user", user_codec.user_decoder(), decode.success)
 }
 
 // =============================================================================

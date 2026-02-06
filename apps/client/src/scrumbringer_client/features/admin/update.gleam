@@ -41,12 +41,12 @@ import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/assignments/update as assignments_workflow
 import scrumbringer_client/features/capabilities/update as capabilities_workflow
 import scrumbringer_client/features/invites/update as invite_links_workflow
 import scrumbringer_client/features/projects/update as projects_workflow
 import scrumbringer_client/features/task_types/update as task_types_workflow
-import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/i18n/text as i18n_text
 
 // Re-export from split modules
@@ -239,7 +239,9 @@ pub fn handle_member_capabilities_dialog_opened(
           })
         }),
         api_projects.get_member_capabilities(project_id, user_id, fn(result) {
-          client_state.admin_msg(admin_messages.MemberCapabilitiesFetched(result))
+          client_state.admin_msg(admin_messages.MemberCapabilitiesFetched(
+            result,
+          ))
         }),
       )
     }
@@ -272,13 +274,19 @@ pub fn handle_member_capabilities_toggled(
   capability_id: Int,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let selected = case
-    list.contains(model.admin.capabilities.member_capabilities_selected, capability_id)
+    list.contains(
+      model.admin.capabilities.member_capabilities_selected,
+      capability_id,
+    )
   {
     True ->
       list.filter(model.admin.capabilities.member_capabilities_selected, fn(id) {
         id != capability_id
       })
-    False -> [capability_id, ..model.admin.capabilities.member_capabilities_selected]
+    False -> [
+      capability_id,
+      ..model.admin.capabilities.member_capabilities_selected
+    ]
   }
   #(
     client_state.update_admin(model, fn(admin) {
@@ -314,7 +322,9 @@ pub fn handle_member_capabilities_save_clicked(
         project_id,
         user_id,
         model.admin.capabilities.member_capabilities_selected,
-        fn(result) { client_state.admin_msg(admin_messages.MemberCapabilitiesSaved(result)) },
+        fn(result) {
+          client_state.admin_msg(admin_messages.MemberCapabilitiesSaved(result))
+        },
       ),
     )
     _, _ -> #(model, effect.none())
@@ -435,7 +445,10 @@ pub fn handle_capability_members_dialog_opened(
     opt.Some(project_id) -> {
       // Check if we have cached members for this capability
       let selected = case
-        dict.get(model.admin.capabilities.capability_members_cache, capability_id)
+        dict.get(
+          model.admin.capabilities.capability_members_cache,
+          capability_id,
+        )
       {
         Ok(ids) -> ids
         Error(_) -> []
@@ -456,7 +469,9 @@ pub fn handle_capability_members_dialog_opened(
           project_id,
           capability_id,
           fn(result) {
-            client_state.admin_msg(admin_messages.CapabilityMembersFetched(result))
+            client_state.admin_msg(admin_messages.CapabilityMembersFetched(
+              result,
+            ))
           },
         ),
       )
@@ -532,7 +547,9 @@ pub fn handle_capability_members_save_clicked(
         project_id,
         capability_id,
         model.admin.capabilities.capability_members_selected,
-        fn(result) { client_state.admin_msg(admin_messages.CapabilityMembersSaved(result)) },
+        fn(result) {
+          client_state.admin_msg(admin_messages.CapabilityMembersSaved(result))
+        },
       ),
     )
     _, _ -> #(model, effect.none())
@@ -666,7 +683,9 @@ pub fn handle_members_fetched_ok(
       members
       |> list.map(fn(m) {
         api_projects.get_member_capabilities(project_id, m.user_id, fn(result) {
-          client_state.admin_msg(admin_messages.MemberCapabilitiesFetched(result))
+          client_state.admin_msg(admin_messages.MemberCapabilitiesFetched(
+            result,
+          ))
         })
       })
       |> effect.batch
@@ -888,9 +907,12 @@ pub const handle_rule_metrics_exec_page_changed = rule_metrics.handle_exec_page_
 /// Provides admin update context.
 pub type Context {
   Context(
-    member_refresh: fn(client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)),
-    refresh_section_for_test: fn(client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)),
-    hydrate_model: fn(client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)),
+    member_refresh: fn(client_state.Model) ->
+      #(client_state.Model, effect.Effect(client_state.Msg)),
+    refresh_section_for_test: fn(client_state.Model) ->
+      #(client_state.Model, effect.Effect(client_state.Msg)),
+    hydrate_model: fn(client_state.Model) ->
+      #(client_state.Model, effect.Effect(client_state.Msg)),
     replace_url: fn(client_state.Model) -> effect.Effect(client_state.Msg),
   )
 }
@@ -1135,8 +1157,7 @@ pub fn update(
     }
     admin_messages.MemberAddUserSelected(user_id) ->
       handle_member_add_user_selected(model, user_id)
-    admin_messages.MemberAddSubmitted ->
-      handle_member_add_submitted(model)
+    admin_messages.MemberAddSubmitted -> handle_member_add_submitted(model)
     admin_messages.MemberAdded(Ok(_)) ->
       handle_member_added_ok(model, refresh_section_for_test)
     admin_messages.MemberAdded(Error(err)) ->

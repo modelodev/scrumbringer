@@ -203,7 +203,8 @@ fn view_member_actions(model: Model, m: ProjectMember) -> Element(Msg) {
     opt.None -> False
   }
   let can_release = count > 0 && is_self == False
-  let is_loading = model.admin.members.members_release_in_flight == opt.Some(m.user_id)
+  let is_loading =
+    model.admin.members.members_release_in_flight == opt.Some(m.user_id)
 
   div([attribute.class("actions-row")], [
     action_buttons.task_icon_button(
@@ -364,7 +365,9 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
         helpers_i18n.i18n_t(model, i18n_text.Role),
         select(
           [
-            attribute.value(project_role.to_string(model.admin.members.members_add_role)),
+            attribute.value(project_role.to_string(
+              model.admin.members.members_add_role,
+            )),
             event.on_input(fn(value) {
               admin_msg(admin_messages.MemberAddRoleChanged(value))
             }),
@@ -469,7 +472,8 @@ fn view_release_all_dialog(
       on_confirm: admin_msg(admin_messages.MemberReleaseAllConfirmed),
       on_cancel: admin_msg(admin_messages.MemberReleaseAllCancelled),
       is_open: True,
-      is_loading: model.admin.members.members_release_in_flight == opt.Some(user.id),
+      is_loading: model.admin.members.members_release_in_flight
+        == opt.Some(user.id),
       error: model.admin.members.members_release_error,
       confirm_class: case model.admin.members.members_release_in_flight {
         opt.Some(_) -> "btn-primary btn-loading"
@@ -490,7 +494,10 @@ fn view_member_capabilities_dialog(
 ) -> Element(Msg) {
   // Get user email for display
   let user_email = case
-    helpers_lookup.resolve_org_user(model.admin.members.org_users_cache, user_id)
+    helpers_lookup.resolve_org_user(
+      model.admin.members.org_users_cache,
+      user_id,
+    )
   {
     opt.Some(user) -> user.email
     opt.None -> helpers_i18n.i18n_t(model, i18n_text.UserNumber(user_id))
@@ -579,10 +586,12 @@ fn view_member_capabilities_dialog(
             model.admin.capabilities.member_capabilities_saving
             || model.admin.capabilities.member_capabilities_loading,
           ),
-          attribute.class(case model.admin.capabilities.member_capabilities_saving {
-            True -> "btn-primary btn-loading"
-            False -> "btn-primary"
-          }),
+          attribute.class(
+            case model.admin.capabilities.member_capabilities_saving {
+              True -> "btn-primary btn-loading"
+              False -> "btn-primary"
+            },
+          ),
         ],
         [
           text(case model.admin.capabilities.member_capabilities_saving {

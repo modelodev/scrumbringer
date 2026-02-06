@@ -20,7 +20,7 @@ import gleam/option as opt
 
 import lustre/effect
 
-import domain/remote.{type Remote, Loaded, Loading, NotAsked, Failed}
+import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/user.{type User}
 import scrumbringer_client/api/auth as api_auth
 import scrumbringer_client/api/metrics as api_metrics
@@ -48,9 +48,14 @@ import scrumbringer_client/router
 pub type Context {
   Context(
     current_route: fn(client_state.Model) -> router.Route,
-    handle_navigate_to: fn(client_state.Model, router.Route, client_state.NavMode) ->
+    handle_navigate_to: fn(
+      client_state.Model,
+      router.Route,
+      client_state.NavMode,
+    ) ->
       #(client_state.Model, effect.Effect(client_state.Msg)),
-    member_refresh: fn(client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)),
+    member_refresh: fn(client_state.Model) ->
+      #(client_state.Model, effect.Effect(client_state.Msg)),
   )
 }
 
@@ -84,7 +89,9 @@ fn build_snapshot(model: client_state.Model) -> hydration.Snapshot {
     is_any_project_manager: permissions.any_project_manager(projects),
     invite_links: remote_state(model.admin.invites.invite_links),
     capabilities: remote_state(model.admin.capabilities.capabilities),
-    my_capability_ids: remote_state(model.member.skills.member_my_capability_ids),
+    my_capability_ids: remote_state(
+      model.member.skills.member_my_capability_ids,
+    ),
     org_settings_users: remote_state(model.admin.members.org_settings_users),
     org_users_cache: remote_state(model.admin.members.org_users_cache),
     members: remote_state(model.admin.members.members),
@@ -95,7 +102,9 @@ fn build_snapshot(model: client_state.Model) -> hydration.Snapshot {
     member_cards: remote_state(model.member.pool.member_cards),
     work_sessions: remote_state(model.member.metrics.member_work_sessions),
     me_metrics: remote_state(model.member.metrics.member_metrics),
-    org_metrics_overview: remote_state(model.admin.metrics.admin_metrics_overview),
+    org_metrics_overview: remote_state(
+      model.admin.metrics.admin_metrics_overview,
+    ),
     org_metrics_project_tasks: remote_state(
       model.admin.metrics.admin_metrics_project_tasks,
     ),
@@ -157,7 +166,8 @@ fn handle_hydration_redirect(
 fn apply_hydration_commands(
   model: client_state.Model,
   commands: List(hydration.Command),
-  member_refresh: fn(client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)),
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let #(next, effects) =
     list.fold(commands, #(model, []), fn(state, cmd) {
@@ -172,7 +182,8 @@ fn apply_hydration_command(
   model: client_state.Model,
   fx: List(effect.Effect(client_state.Msg)),
   cmd: hydration.Command,
-  member_refresh: fn(client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)),
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, List(effect.Effect(client_state.Msg))) {
   case cmd {
     hydration.FetchMe -> hydrate_fetch_me(model, fx)
@@ -250,10 +261,7 @@ fn hydrate_invite_links_request(
     client_state.update_admin(model, fn(admin) {
       admin_state.AdminModel(
         ..admin,
-        invites: admin_invites.Model(
-          ..admin.invites,
-          invite_links: Loading,
-        ),
+        invites: admin_invites.Model(..admin.invites, invite_links: Loading),
       )
     })
 
@@ -329,10 +337,7 @@ fn hydrate_me_capability_ids_request(
       let skills = member.skills
       member_state.MemberModel(
         ..member,
-        skills: member_skills.Model(
-          ..skills,
-          member_my_capability_ids: Loading,
-        ),
+        skills: member_skills.Model(..skills, member_my_capability_ids: Loading),
       )
     })
 
@@ -363,10 +368,7 @@ fn hydrate_work_sessions_request(
       let metrics = member.metrics
       member_state.MemberModel(
         ..member,
-        metrics: member_metrics.Model(
-          ..metrics,
-          member_work_sessions: Loading,
-        ),
+        metrics: member_metrics.Model(..metrics, member_work_sessions: Loading),
       )
     })
 
@@ -428,10 +430,7 @@ fn hydrate_org_metrics_overview_request(
       let metrics = admin.metrics
       admin_state.AdminModel(
         ..admin,
-        metrics: admin_metrics.Model(
-          ..metrics,
-          admin_metrics_overview: Loading,
-        ),
+        metrics: admin_metrics.Model(..metrics, admin_metrics_overview: Loading),
       )
     })
 
@@ -669,7 +668,8 @@ fn hydrate_task_types_request(
 fn hydrate_refresh_member(
   model: client_state.Model,
   fx: List(effect.Effect(client_state.Msg)),
-  member_refresh: fn(client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)),
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, List(effect.Effect(client_state.Msg))) {
   case model.core.projects {
     Loaded(_) -> {

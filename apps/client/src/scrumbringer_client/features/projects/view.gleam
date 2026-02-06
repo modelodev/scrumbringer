@@ -81,7 +81,9 @@ pub fn view_project_dialogs(model: Model) -> element.Element(Msg) {
 
 /// Dialog for creating a new project.
 fn view_projects_create_dialog(model: Model) -> element.Element(Msg) {
-  let #(is_open, name, in_flight, error) = case model.admin.projects.projects_dialog {
+  let #(is_open, name, in_flight, error) = case
+    model.admin.projects.projects_dialog
+  {
     DialogOpen(form: ProjectDialogCreate(name: name), operation: op) -> #(
       True,
       name,
@@ -154,7 +156,9 @@ fn view_projects_create_dialog(model: Model) -> element.Element(Msg) {
 
 /// Dialog for editing a project (Story 4.8 AC39).
 fn view_projects_edit_dialog(model: Model) -> element.Element(Msg) {
-  let #(is_open, name, in_flight, error) = case model.admin.projects.projects_dialog {
+  let #(is_open, name, in_flight, error) = case
+    model.admin.projects.projects_dialog
+  {
     DialogOpen(form: ProjectDialogEdit(id: _, name: name), operation: op) -> #(
       True,
       name,

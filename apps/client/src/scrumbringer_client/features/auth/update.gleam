@@ -39,13 +39,14 @@ import scrumbringer_client/client_state.{
   type Model, type Msg, type Page, Admin, CoreModel, Login, Member, ToastShow,
   auth_msg, update_auth, update_core,
 }
-import scrumbringer_client/features/auth/msg as auth_messages
 import scrumbringer_client/client_state/auth as auth_state
+import scrumbringer_client/features/auth/msg as auth_messages
 import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/helpers/toast as helpers_toast
 import scrumbringer_client/helpers/validation as helpers_validation
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/reset_password
+import scrumbringer_client/token_flow
 import scrumbringer_client/ui/toast
 
 // =============================================================================
@@ -165,10 +166,8 @@ pub fn handle_login_finished_ok(
   hydrate_fn: fn(Model) -> #(Model, Effect(Msg)),
   replace_url_fn: fn(Model) -> Effect(Msg),
 ) -> #(Model, Effect(Msg)) {
-  let page = case user.org_role {
-    org_role.Admin -> Admin
-    _ -> Member
-  }
+  // Default landing for all roles is member pool.
+  let page = Member
 
   let model =
     update_auth(
@@ -465,9 +464,7 @@ pub fn accept_invite_effect(action: accept_invite.Action) -> Effect(Msg) {
   case action {
     accept_invite.ValidateToken(token) ->
       api_auth.validate_invite_link_token(token, fn(result) {
-        auth_msg(
-          auth_messages.AcceptInvite(accept_invite.TokenValidated(result)),
-        )
+        auth_msg(auth_messages.AcceptInvite(token_flow.TokenValidated(result)))
       })
     _ -> effect.none()
   }
@@ -477,9 +474,7 @@ pub fn reset_password_effect(action: reset_password.Action) -> Effect(Msg) {
   case action {
     reset_password.ValidateToken(token) ->
       api_auth.validate_password_reset_token(token, fn(result) {
-        auth_msg(
-          auth_messages.ResetPassword(reset_password.TokenValidated(result)),
-        )
+        auth_msg(auth_messages.ResetPassword(token_flow.TokenValidated(result)))
       })
     _ -> effect.none()
   }
@@ -542,7 +537,7 @@ fn handle_accept_invite_msg(
     accept_invite.Register(token: token, password: password) -> #(
       model,
       api_auth.register_with_invite_link(token, password, fn(result) {
-        auth_msg(auth_messages.AcceptInvite(accept_invite.Registered(result)))
+        auth_msg(auth_messages.AcceptInvite(token_flow.Completed(result)))
       }),
     )
     accept_invite.Authed(user) ->
@@ -575,7 +570,7 @@ fn handle_reset_password_msg(
     reset_password.Consume(token: token, password: password) -> #(
       model,
       api_auth.consume_password_reset_token(token, password, fn(result) {
-        auth_msg(auth_messages.ResetPassword(reset_password.Consumed(result)))
+        auth_msg(auth_messages.ResetPassword(token_flow.Completed(result)))
       }),
     )
     reset_password.GoToLogin -> {

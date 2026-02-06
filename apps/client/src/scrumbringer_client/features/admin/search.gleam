@@ -87,7 +87,10 @@ pub fn handle_org_users_search_debounced(
         update_members(admin, fn(members_state) {
           admin_members.Model(
             ..members_state,
-            org_users_search: state_types.OrgUsersSearchIdle(query, current_token),
+            org_users_search: state_types.OrgUsersSearchIdle(
+              query,
+              current_token,
+            ),
           )
         })
       }),

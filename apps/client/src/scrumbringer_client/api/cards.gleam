@@ -25,74 +25,10 @@ import lustre/effect.{type Effect}
 
 import scrumbringer_client/api/core.{type ApiResult}
 import scrumbringer_client/api/tasks/decoders as task_decoders
-import scrumbringer_client/decoders
 
-import domain/card.{type Card, type CardNote, Card, CardNote}
+import domain/card.{type Card, type CardNote}
+import domain/card/codec as card_codec
 import domain/task.{type Task}
-
-fn color_decoder() -> decode.Decoder(option.Option(String)) {
-  use color_str <- decode.then(decode.string)
-  case color_str {
-    "" -> decode.success(option.None)
-    c -> decode.success(option.Some(c))
-  }
-}
-
-fn card_decoder() -> decode.Decoder(Card) {
-  use id <- decode.field("id", decode.int)
-  use project_id <- decode.field("project_id", decode.int)
-  use title <- decode.field("title", decode.string)
-  use description <- decode.field("description", decode.string)
-  use color <- decode.field("color", color_decoder())
-  use state <- decode.field("state", decoders.card_state_decoder())
-  use task_count <- decode.field("task_count", decode.int)
-  use completed_count <- decode.field("completed_count", decode.int)
-  use created_by <- decode.field("created_by", decode.int)
-  use created_at <- decode.field("created_at", decode.string)
-  use has_new_notes <- decode.optional_field(
-    "has_new_notes",
-    False,
-    decode.bool,
-  )
-  decode.success(Card(
-    id: id,
-    project_id: project_id,
-    title: title,
-    description: description,
-    color: color,
-    state: state,
-    task_count: task_count,
-    completed_count: completed_count,
-    created_by: created_by,
-    created_at: created_at,
-    has_new_notes: has_new_notes,
-  ))
-}
-
-fn card_note_decoder() -> decode.Decoder(CardNote) {
-  use id <- decode.field("id", decode.int)
-  use card_id <- decode.field("card_id", decode.int)
-  use user_id <- decode.field("user_id", decode.int)
-  use content <- decode.field("content", decode.string)
-  use created_at <- decode.field("created_at", decode.string)
-  use author_email <- decode.field("author_email", decode.string)
-  use author_project_role <- decode.optional_field(
-    "author_project_role",
-    option.None,
-    decode.optional(decode.string),
-  )
-  use author_org_role <- decode.field("author_org_role", decode.string)
-  decode.success(CardNote(
-    id: id,
-    card_id: card_id,
-    user_id: user_id,
-    content: content,
-    created_at: created_at,
-    author_email: author_email,
-    author_project_role: author_project_role,
-    author_org_role: author_org_role,
-  ))
-}
 
 // =============================================================================
 // API Functions
@@ -104,7 +40,11 @@ pub fn list_cards(
   to_msg: fn(ApiResult(List(Card))) -> msg,
 ) -> Effect(msg) {
   let decoder =
-    decode.field("cards", decode.list(card_decoder()), decode.success)
+    decode.field(
+      "cards",
+      decode.list(card_codec.card_decoder()),
+      decode.success,
+    )
   core.request(
     "GET",
     "/api/v1/projects/" <> int.to_string(project_id) <> "/cards",
@@ -131,7 +71,7 @@ pub fn create_card(
     option.None -> base_fields
   }
   let body = json.object(fields)
-  let decoder = decode.field("card", card_decoder(), decode.success)
+  let decoder = decode.field("card", card_codec.card_decoder(), decode.success)
   core.request(
     "POST",
     "/api/v1/projects/" <> int.to_string(project_id) <> "/cards",
@@ -143,7 +83,7 @@ pub fn create_card(
 
 /// Get a single card by ID.
 pub fn get_card(card_id: Int, to_msg: fn(ApiResult(Card)) -> msg) -> Effect(msg) {
-  let decoder = decode.field("card", card_decoder(), decode.success)
+  let decoder = decode.field("card", card_codec.card_decoder(), decode.success)
   core.request(
     "GET",
     "/api/v1/cards/" <> int.to_string(card_id),
@@ -183,7 +123,7 @@ pub fn update_card(
     option.None -> base_fields
   }
   let body = json.object(fields)
-  let decoder = decode.field("card", card_decoder(), decode.success)
+  let decoder = decode.field("card", card_codec.card_decoder(), decode.success)
   core.request(
     "PATCH",
     "/api/v1/cards/" <> int.to_string(card_id),
@@ -232,7 +172,11 @@ pub fn get_card_notes(
   to_msg: fn(ApiResult(List(CardNote))) -> msg,
 ) -> Effect(msg) {
   let decoder =
-    decode.field("notes", decode.list(card_note_decoder()), decode.success)
+    decode.field(
+      "notes",
+      decode.list(card_codec.card_note_decoder()),
+      decode.success,
+    )
   core.request(
     "GET",
     "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",
@@ -249,7 +193,8 @@ pub fn create_card_note(
   to_msg: fn(ApiResult(CardNote)) -> msg,
 ) -> Effect(msg) {
   let body = json.object([#("content", json.string(content))])
-  let decoder = decode.field("note", card_note_decoder(), decode.success)
+  let decoder =
+    decode.field("note", card_codec.card_note_decoder(), decode.success)
   core.request(
     "POST",
     "/api/v1/cards/" <> int.to_string(card_id) <> "/notes",

@@ -27,94 +27,22 @@ import scrumbringer_client/api/core.{type ApiResult}
 import scrumbringer_client/client_ffi
 
 // Import types from shared domain
-import domain/capability.{type Capability, Capability}
-import domain/org.{
-  type InviteLink, type OrgInvite, type OrgUser, InviteLink, OrgInvite, OrgUser,
-}
+import domain/capability.{type Capability}
+import domain/capability/codec as capability_codec
+import domain/org.{type InviteLink, type OrgInvite, type OrgUser}
+import domain/org/codec as org_codec
 import domain/org_role
-
-// =============================================================================
-// Decoders
-// =============================================================================
-
-fn org_user_decoder() -> decode.Decoder(OrgUser) {
-  use id <- decode.field("id", decode.int)
-  use email <- decode.field("email", decode.string)
-  use org_role_value <- decode.field("org_role", org_role_decoder())
-  use created_at <- decode.field("created_at", decode.string)
-  decode.success(OrgUser(
-    id: id,
-    email: email,
-    org_role: org_role_value,
-    created_at: created_at,
-  ))
-}
-
-fn org_role_decoder() -> decode.Decoder(org_role.OrgRole) {
-  use role_string <- decode.then(decode.string)
-  case org_role.parse(role_string) {
-    Ok(role) -> decode.success(role)
-    Error(_) -> decode.failure(org_role.Member, "OrgRole")
-  }
-}
-
-fn capability_decoder() -> decode.Decoder(Capability) {
-  use id <- decode.field("id", decode.int)
-  use name <- decode.field("name", decode.string)
-  decode.success(Capability(id: id, name: name))
-}
-
-fn invite_decoder() -> decode.Decoder(OrgInvite) {
-  use code <- decode.field("code", decode.string)
-  use created_at <- decode.field("created_at", decode.string)
-  use expires_at <- decode.field("expires_at", decode.string)
-  decode.success(OrgInvite(
-    code: code,
-    created_at: created_at,
-    expires_at: expires_at,
-  ))
-}
-
-fn invite_link_decoder() -> decode.Decoder(InviteLink) {
-  use email <- decode.field("email", decode.string)
-  use token <- decode.field("token", decode.string)
-  use url_path <- decode.field("url_path", decode.string)
-  use state <- decode.field("state", decode.string)
-  use created_at <- decode.field("created_at", decode.string)
-
-  use used_at <- decode.optional_field(
-    "used_at",
-    option.None,
-    decode.optional(decode.string),
-  )
-
-  use invalidated_at <- decode.optional_field(
-    "invalidated_at",
-    option.None,
-    decode.optional(decode.string),
-  )
-
-  decode.success(InviteLink(
-    email: email,
-    token: token,
-    url_path: url_path,
-    state: state,
-    created_at: created_at,
-    used_at: used_at,
-    invalidated_at: invalidated_at,
-  ))
-}
 
 /// Decoder for invite link wrapped in envelope.
 pub fn invite_link_payload_decoder() -> decode.Decoder(InviteLink) {
-  decode.field("invite_link", invite_link_decoder(), decode.success)
+  decode.field("invite_link", org_codec.invite_link_decoder(), decode.success)
 }
 
 /// Decoder for list of invite links.
 pub fn invite_links_payload_decoder() -> decode.Decoder(List(InviteLink)) {
   decode.field(
     "invite_links",
-    decode.list(invite_link_decoder()),
+    decode.list(org_codec.invite_link_decoder()),
     decode.success,
   )
 }
@@ -136,7 +64,11 @@ pub fn list_org_users(
   }
 
   let decoder =
-    decode.field("users", decode.list(org_user_decoder()), decode.success)
+    decode.field(
+      "users",
+      decode.list(org_codec.org_user_decoder()),
+      decode.success,
+    )
   core.request("GET", url, option.None, decoder, to_msg)
 }
 
@@ -148,7 +80,8 @@ pub fn update_org_user_role(
 ) -> Effect(msg) {
   let body = json.object([#("org_role", json.string(org_role.to_string(role)))])
 
-  let decoder = decode.field("user", org_user_decoder(), decode.success)
+  let decoder =
+    decode.field("user", org_codec.org_user_decoder(), decode.success)
 
   core.request(
     "PATCH",
@@ -176,22 +109,8 @@ pub fn delete_org_user(
 // User Projects API Functions
 // =============================================================================
 
-import domain/project.{type Project, Project}
-import scrumbringer_client/decoders
-
-fn user_project_decoder() -> decode.Decoder(Project) {
-  use id <- decode.field("id", decode.int)
-  use name <- decode.field("name", decode.string)
-  use my_role <- decode.field("role", decoders.project_role_decoder())
-  // Note: created_at and members_count not returned by this endpoint
-  decode.success(Project(
-    id: id,
-    name: name,
-    my_role: my_role,
-    created_at: "",
-    members_count: 0,
-  ))
-}
+import domain/project.{type Project}
+import domain/project/codec as project_codec
 
 /// List projects that a user is a member of.
 pub fn list_user_projects(
@@ -201,7 +120,7 @@ pub fn list_user_projects(
   let decoder =
     decode.field(
       "projects",
-      decode.list(user_project_decoder()),
+      decode.list(project_codec.user_project_decoder()),
       decode.success,
     )
   core.request(
@@ -225,7 +144,12 @@ pub fn add_user_to_project(
       #("project_id", json.int(project_id)),
       #("role", json.string(role)),
     ])
-  let decoder = decode.field("project", user_project_decoder(), decode.success)
+  let decoder =
+    decode.field(
+      "project",
+      project_codec.user_project_decoder(),
+      decode.success,
+    )
   core.request(
     "POST",
     "/api/v1/org/users/" <> int.to_string(user_id) <> "/projects",
@@ -243,7 +167,12 @@ pub fn update_user_project_role(
   to_msg: fn(ApiResult(Project)) -> msg,
 ) -> Effect(msg) {
   let body = json.object([#("role", json.string(role))])
-  let decoder = decode.field("project", user_project_decoder(), decode.success)
+  let decoder =
+    decode.field(
+      "project",
+      project_codec.user_project_decoder(),
+      decode.success,
+    )
   core.request(
     "PATCH",
     "/api/v1/org/users/"
@@ -285,7 +214,7 @@ pub fn list_project_capabilities(
   let decoder =
     decode.field(
       "capabilities",
-      decode.list(capability_decoder()),
+      decode.list(capability_codec.capability_decoder()),
       decode.success,
     )
   core.request(
@@ -304,7 +233,12 @@ pub fn create_project_capability(
   to_msg: fn(ApiResult(Capability)) -> msg,
 ) -> Effect(msg) {
   let body = json.object([#("name", json.string(name))])
-  let decoder = decode.field("capability", capability_decoder(), decode.success)
+  let decoder =
+    decode.field(
+      "capability",
+      capability_codec.capability_decoder(),
+      decode.success,
+    )
   core.request(
     "POST",
     "/api/v1/projects/" <> int.to_string(project_id) <> "/capabilities",
@@ -348,7 +282,8 @@ pub fn create_invite(
       option.None -> []
     })
 
-  let decoder = decode.field("invite", invite_decoder(), decode.success)
+  let decoder =
+    decode.field("invite", org_codec.invite_decoder(), decode.success)
   core.request(
     "POST",
     "/api/v1/org/invites",

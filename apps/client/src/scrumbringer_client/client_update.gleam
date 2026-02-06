@@ -53,8 +53,9 @@ import scrumbringer_client/reset_password
 import scrumbringer_client/router
 import scrumbringer_client/state/normalized_store
 import scrumbringer_client/theme
+import scrumbringer_client/token_flow
 import scrumbringer_client/ui/toast
-
+import scrumbringer_client/url_state
 
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
@@ -63,11 +64,11 @@ import scrumbringer_client/client_state/admin/invites as admin_invites
 import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/client_state/admin/metrics as admin_metrics
 import scrumbringer_client/client_state/admin/task_types as admin_task_types
+import scrumbringer_client/client_state/auth as auth_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/member/skills as member_skills
 import scrumbringer_client/client_state/types as state_types
-import scrumbringer_client/client_state/auth as auth_state
 import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/features/hydration/update as hydration_workflow
 
@@ -98,12 +99,12 @@ fn current_route(model: client_state.Model) -> router.Route {
     client_state.Login -> router.Login
 
     client_state.AcceptInvite -> {
-      let accept_invite.Model(token: token, ..) = model.auth.accept_invite
+      let token_flow.Model(token: token, ..) = model.auth.accept_invite
       router.AcceptInvite(token)
     }
 
     client_state.ResetPassword -> {
-      let reset_password.Model(token: token, ..) = model.auth.reset_password
+      let token_flow.Model(token: token, ..) = model.auth.reset_password
       router.ResetPassword(token)
     }
 
@@ -122,12 +123,15 @@ fn current_route(model: client_state.Model) -> router.Route {
           )
       }
 
-    client_state.Member ->
-      router.Member(
-        model.member.pool.member_section,
-        model.core.selected_project_id,
-        opt.Some(model.member.pool.view_mode),
-      )
+    client_state.Member -> {
+      let state = case model.core.selected_project_id {
+        opt.Some(project_id) ->
+          url_state.with_project(url_state.empty(), project_id)
+        opt.None -> url_state.empty()
+      }
+      let state = url_state.with_view(state, model.member.pool.view_mode)
+      router.Member(model.member.pool.member_section, state)
+    }
   }
 }
 
@@ -367,7 +371,8 @@ fn apply_route_fields(
       #(model, fx)
     }
 
-    router.Member(section, project_id, view) -> {
+    router.Member(section, state) -> {
+      let project_id = url_state.project(state)
       let capabilities_fx = case model.core.page, project_id {
         client_state.Admin, opt.Some(pid) ->
           api_org.list_project_capabilities(pid, fn(result) {
@@ -377,7 +382,8 @@ fn apply_route_fields(
       }
 
       // Update view mode if provided in URL
-      let new_view = opt.unwrap(view, model.member.pool.view_mode)
+      let new_view =
+        opt.unwrap(url_state.view_param(state), model.member.pool.view_mode)
 
       #(
         client_state.update_member(
@@ -482,48 +488,51 @@ fn apply_assignments_view_from_url(
 ) -> client_state.Model {
   case route {
     router.Org(permissions.Assignments) ->
-      case router.assignments_view_from_uri(uri) {
-        opt.Some(view_mode) ->
-          client_state.update_admin(model, fn(admin) {
-            let state_types.AssignmentsModel(
-              view_mode: _,
-              search_input: search_input,
-              search_query: search_query,
-              project_members: project_members,
-              user_projects: user_projects,
-              expanded_projects: expanded_projects,
-              expanded_users: expanded_users,
-              inline_add_context: inline_add_context,
-              inline_add_selection: inline_add_selection,
-              inline_add_search: inline_add_search,
-              inline_add_role: inline_add_role,
-              inline_add_in_flight: inline_add_in_flight,
-              inline_remove_confirm: inline_remove_confirm,
-              role_change_in_flight: role_change_in_flight,
-              role_change_previous: role_change_previous,
-            ) = admin.assignments
-            admin_state.AdminModel(
-              ..admin,
-              assignments: state_types.AssignmentsModel(
-                view_mode: view_mode,
-                search_input: search_input,
-                search_query: search_query,
-                project_members: project_members,
-                user_projects: user_projects,
-                expanded_projects: expanded_projects,
-                expanded_users: expanded_users,
-                inline_add_context: inline_add_context,
-                inline_add_selection: inline_add_selection,
-                inline_add_search: inline_add_search,
-                inline_add_role: inline_add_role,
-                inline_add_in_flight: inline_add_in_flight,
-                inline_remove_confirm: inline_remove_confirm,
-                role_change_in_flight: role_change_in_flight,
-                role_change_previous: role_change_previous,
-              ),
-            )
-          })
-        opt.None -> model
+      case url_state.parse(uri, url_state.OrgAssignments) {
+        url_state.Parsed(state) | url_state.Redirect(state) ->
+          case url_state.assignments_view_param(state) {
+            opt.Some(view_mode) ->
+              client_state.update_admin(model, fn(admin) {
+                let state_types.AssignmentsModel(
+                  view_mode: _,
+                  search_input: search_input,
+                  search_query: search_query,
+                  project_members: project_members,
+                  user_projects: user_projects,
+                  expanded_projects: expanded_projects,
+                  expanded_users: expanded_users,
+                  inline_add_context: inline_add_context,
+                  inline_add_selection: inline_add_selection,
+                  inline_add_search: inline_add_search,
+                  inline_add_role: inline_add_role,
+                  inline_add_in_flight: inline_add_in_flight,
+                  inline_remove_confirm: inline_remove_confirm,
+                  role_change_in_flight: role_change_in_flight,
+                  role_change_previous: role_change_previous,
+                ) = admin.assignments
+                admin_state.AdminModel(
+                  ..admin,
+                  assignments: state_types.AssignmentsModel(
+                    view_mode: view_mode,
+                    search_input: search_input,
+                    search_query: search_query,
+                    project_members: project_members,
+                    user_projects: user_projects,
+                    expanded_projects: expanded_projects,
+                    expanded_users: expanded_users,
+                    inline_add_context: inline_add_context,
+                    inline_add_selection: inline_add_selection,
+                    inline_add_search: inline_add_search,
+                    inline_add_role: inline_add_role,
+                    inline_add_in_flight: inline_add_in_flight,
+                    inline_remove_confirm: inline_remove_confirm,
+                    role_change_in_flight: role_change_in_flight,
+                    role_change_previous: role_change_previous,
+                  ),
+                )
+              })
+            opt.None -> model
+          }
       }
     _ -> model
   }
@@ -535,8 +544,8 @@ fn handle_navigate_to(
   mode: client_state.NavMode,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
   let #(next_route, next_mode) = case model.ui.is_mobile, route {
-    True, router.Member(member_section.Pool, project_id, view) -> #(
-      router.Member(member_section.MyBar, project_id, view),
+    True, router.Member(member_section.Pool, state) -> #(
+      router.Member(member_section.MyBar, state),
       client_state.Replace,
     )
     _, _ -> #(route, mode)
@@ -655,10 +664,7 @@ pub fn refresh_section_for_test(
         client_state.update_admin(model, fn(admin) {
           admin_state.AdminModel(
             ..admin,
-            invites: admin_invites.Model(
-              ..admin.invites,
-              invite_links: Loading,
-            ),
+            invites: admin_invites.Model(..admin.invites, invite_links: Loading),
           )
         })
       #(
@@ -1514,10 +1520,8 @@ pub fn update(
       handle_navigate_to(model, route, mode)
 
     client_state.MeFetched(Ok(user)) -> {
-      let default_page = case user.org_role {
-        org_role.Admin -> client_state.Admin
-        _ -> client_state.Member
-      }
+      // Default landing for authenticated users is member pool.
+      let default_page = client_state.Member
 
       // Keep client_state.Admin page if user requested it - hydration will check access
       // after projects load (to determine if user is a project manager)

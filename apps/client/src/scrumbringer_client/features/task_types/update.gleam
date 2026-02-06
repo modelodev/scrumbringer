@@ -77,10 +77,7 @@ pub fn handle_task_types_fetched_error(
     #(
       update_admin(model, fn(admin) {
         update_task_types(admin, fn(task_types_state) {
-          admin_task_types.Model(
-            ..task_types_state,
-            task_types: Failed(err),
-          )
+          admin_task_types.Model(..task_types_state, task_types: Failed(err))
         })
       }),
       effect.none(),
@@ -139,10 +136,7 @@ pub fn handle_task_type_create_name_changed(
   #(
     update_admin(model, fn(admin) {
       update_task_types(admin, fn(task_types_state) {
-        admin_task_types.Model(
-          ..task_types_state,
-          task_types_create_name: name,
-        )
+        admin_task_types.Model(..task_types_state, task_types_create_name: name)
       })
     }),
     effect.none(),
@@ -339,7 +333,9 @@ fn submit_task_type(
   name: String,
   icon: String,
 ) -> #(Model, Effect(Msg)) {
-  let capability_id = case model.admin.task_types.task_types_create_capability_id {
+  let capability_id = case
+    model.admin.task_types.task_types_create_capability_id
+  {
     opt.None -> opt.None
     opt.Some(id_str) ->
       case int.parse(id_str) {

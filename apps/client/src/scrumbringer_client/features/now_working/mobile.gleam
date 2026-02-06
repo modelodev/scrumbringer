@@ -31,7 +31,9 @@ import domain/task.{type Task, ActiveTask, Task, claimed_by}
 import domain/task_status.{Claimed, Taken}
 
 import scrumbringer_client/client_ffi
-import scrumbringer_client/client_state.{type Model, type Msg, layout_msg, pool_msg}
+import scrumbringer_client/client_state.{
+  type Model, type Msg, layout_msg, pool_msg,
+}
 import scrumbringer_client/features/layout/msg as layout_messages
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/helpers/i18n as helpers_i18n

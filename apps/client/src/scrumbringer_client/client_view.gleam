@@ -81,6 +81,7 @@ import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/styles
 import scrumbringer_client/theme
+import scrumbringer_client/url_state
 
 // Story 4.5: css module no longer used after unified layout removal
 import scrumbringer_client/ui/action_buttons
@@ -502,10 +503,7 @@ fn view_member_blocked_claim_modal(
     opt.None -> element.none()
     opt.Some(#(task_id, _version)) -> {
       let task_opt =
-        helpers_lookup.find_task_by_id(
-          model.member.pool.member_tasks,
-          task_id,
-        )
+        helpers_lookup.find_task_by_id(model.member.pool.member_tasks, task_id)
       let task_title = case task_opt {
         opt.Some(t) -> t.title
         opt.None -> helpers_i18n.i18n_t(model, i18n_text.TaskNumber(task_id))
@@ -587,12 +585,20 @@ fn build_left_panel(
   // Story 4.5: Use Config and Org routes instead of client_state.Admin
   // Story 4.7: TRABAJO section visible for all roles (AC1, AC7-9)
   // Unified active indicator: build current route from page state
+  let member_state_for = fn(mode: view_mode.ViewMode) {
+    let state = case model.core.selected_project_id {
+      opt.Some(project_id) ->
+        url_state.with_project(url_state.empty(), project_id)
+      opt.None -> url_state.empty()
+    }
+    url_state.with_view(state, mode)
+  }
+
   let current_route = case model.core.page {
     client_state.Member ->
       opt.Some(router.Member(
         member_section.Pool,
-        model.core.selected_project_id,
-        opt.Some(model.member.pool.view_mode),
+        member_state_for(model.member.pool.view_mode),
       ))
     client_state.Admin ->
       // Determine if it's a Config or Org section based on active_section
@@ -637,27 +643,15 @@ fn build_left_panel(
     )),
     // Navigation to work views (AC2)
     on_navigate_pool: client_state.NavigateTo(
-      router.Member(
-        member_section.Pool,
-        model.core.selected_project_id,
-        opt.Some(view_mode.Pool),
-      ),
+      router.Member(member_section.Pool, member_state_for(view_mode.Pool)),
       client_state.Push,
     ),
     on_navigate_list: client_state.NavigateTo(
-      router.Member(
-        member_section.Pool,
-        model.core.selected_project_id,
-        opt.Some(view_mode.List),
-      ),
+      router.Member(member_section.Pool, member_state_for(view_mode.List)),
       client_state.Push,
     ),
     on_navigate_cards: client_state.NavigateTo(
-      router.Member(
-        member_section.Pool,
-        model.core.selected_project_id,
-        opt.Some(view_mode.Cards),
-      ),
+      router.Member(member_section.Pool, member_state_for(view_mode.Cards)),
       client_state.Push,
     ),
     // Config navigation
@@ -922,7 +916,9 @@ fn build_right_panel(
         accumulated_s: accumulated_s,
       ) = session
       // Find task title and type icon
-      let #(title, type_icon, card_color) = case model.member.pool.member_tasks {
+      let #(title, type_icon, card_color) = case
+        model.member.pool.member_tasks
+      {
         Loaded(tasks) ->
           case list.find(tasks, fn(t) { t.id == id }) {
             Ok(t) -> {

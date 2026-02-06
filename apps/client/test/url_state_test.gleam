@@ -10,7 +10,7 @@ import scrumbringer_client/url_state
 
 pub fn parse_empty_url_test() {
   let assert Ok(uri) = uri.parse("/app")
-  let state = url_state.parse(uri)
+  let state = unwrap_parse(url_state.parse(uri, url_state.Member))
 
   state |> url_state.project |> should.be_none
   state |> url_state.view |> should.equal(view_mode.Pool)
@@ -22,7 +22,7 @@ pub fn parse_empty_url_test() {
 
 pub fn parse_project_only_test() {
   let assert Ok(uri) = uri.parse("/app?project=8")
-  let state = url_state.parse(uri)
+  let state = unwrap_parse(url_state.parse(uri, url_state.Member))
 
   state |> url_state.project |> should.equal(Some(8))
   state |> url_state.view |> should.equal(view_mode.Pool)
@@ -30,14 +30,14 @@ pub fn parse_project_only_test() {
 
 pub fn parse_view_mode_list_test() {
   let assert Ok(uri) = uri.parse("/app?view=list")
-  let state = url_state.parse(uri)
+  let state = unwrap_parse(url_state.parse(uri, url_state.Member))
 
   state |> url_state.view |> should.equal(view_mode.List)
 }
 
 pub fn parse_view_mode_cards_test() {
   let assert Ok(uri) = uri.parse("/app?view=cards")
-  let state = url_state.parse(uri)
+  let state = unwrap_parse(url_state.parse(uri, url_state.Member))
 
   state |> url_state.view |> should.equal(view_mode.Cards)
 }
@@ -45,7 +45,7 @@ pub fn parse_view_mode_cards_test() {
 pub fn parse_full_url_test() {
   let assert Ok(uri) =
     uri.parse("/app?project=8&view=list&type=2&cap=3&search=bug&card=15")
-  let state = url_state.parse(uri)
+  let state = unwrap_parse(url_state.parse(uri, url_state.Member))
 
   state |> url_state.project |> should.equal(Some(8))
   state |> url_state.view |> should.equal(view_mode.List)
@@ -56,7 +56,8 @@ pub fn parse_full_url_test() {
 }
 
 pub fn parse_query_string_directly_test() {
-  let state = url_state.parse_query("project=5&view=cards")
+  let state =
+    unwrap_parse(url_state.parse_query("project=5&view=cards", url_state.Member))
 
   state |> url_state.project |> should.equal(Some(5))
   state |> url_state.view |> should.equal(view_mode.Cards)
@@ -64,14 +65,14 @@ pub fn parse_query_string_directly_test() {
 
 pub fn parse_invalid_view_defaults_to_pool_test() {
   let assert Ok(uri) = uri.parse("/app?view=unknown")
-  let state = url_state.parse(uri)
+  let assert url_state.Redirect(state) = url_state.parse(uri, url_state.Member)
 
   state |> url_state.view |> should.equal(view_mode.Pool)
 }
 
 pub fn parse_invalid_project_drops_project_test() {
   let assert Ok(uri) = uri.parse("/app?project=nope")
-  let state = url_state.parse(uri)
+  let assert url_state.Redirect(state) = url_state.parse(uri, url_state.Member)
 
   state |> url_state.project |> should.be_none
 }
@@ -181,7 +182,7 @@ pub fn to_query_string_empty_test() {
     url_state.empty()
     |> url_state.to_query_string
 
-  query |> should.equal("view=pool")
+  query |> should.equal("")
 }
 
 pub fn to_query_string_with_project_test() {
@@ -190,7 +191,7 @@ pub fn to_query_string_with_project_test() {
     |> url_state.with_project(8)
     |> url_state.to_query_string
 
-  query |> should.equal("project=8&view=pool")
+  query |> should.equal("project=8")
 }
 
 pub fn to_query_string_full_test() {
@@ -216,7 +217,7 @@ pub fn to_app_url_empty_test() {
     url_state.empty()
     |> url_state.to_app_url
 
-  url |> should.equal("/app?view=pool")
+  url |> should.equal("/app")
 }
 
 pub fn to_app_url_with_project_test() {
@@ -241,7 +242,7 @@ pub fn roundtrip_test() {
     |> url_state.with_type_filter(Some(2))
 
   let query = url_state.to_query_string(original)
-  let reparsed = url_state.parse_query(query)
+  let reparsed = unwrap_parse(url_state.parse_query(query, url_state.Member))
 
   reparsed |> url_state.project |> should.equal(Some(8))
   reparsed |> url_state.view |> should.equal(view_mode.Cards)
@@ -254,7 +255,14 @@ pub fn roundtrip_with_encoded_search_test() {
     |> url_state.with_search(Some("test query"))
 
   let query = url_state.to_query_string(original)
-  let reparsed = url_state.parse_query(query)
+  let reparsed = unwrap_parse(url_state.parse_query(query, url_state.Member))
 
   reparsed |> url_state.search |> should.equal(Some("test query"))
+}
+
+fn unwrap_parse(result: url_state.QueryParseResult) -> url_state.UrlState {
+  case result {
+    url_state.Parsed(state) -> state
+    url_state.Redirect(state) -> state
+  }
 }

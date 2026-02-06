@@ -48,10 +48,12 @@ pub fn view_skills(model: Model) -> Element(Msg) {
         attribute.type_("submit"),
         event.on_click(pool_msg(pool_messages.MemberSaveCapabilitiesClicked)),
         attribute.disabled(model.member.skills.member_my_capabilities_in_flight),
-        attribute.class(case model.member.skills.member_my_capabilities_in_flight {
-          True -> "btn-loading"
-          False -> ""
-        }),
+        attribute.class(
+          case model.member.skills.member_my_capabilities_in_flight {
+            True -> "btn-loading"
+            False -> ""
+          },
+        ),
       ],
       [
         text(case model.member.skills.member_my_capabilities_in_flight {
@@ -83,7 +85,10 @@ fn view_skills_list(model: Model) -> Element(Msg) {
             [attribute.class("skills-list")],
             list.map(capabilities, fn(c) {
               let selected = case
-                dict.get(model.member.skills.member_my_capability_ids_edit, c.id)
+                dict.get(
+                  model.member.skills.member_my_capability_ids_edit,
+                  c.id,
+                )
               {
                 Ok(v) -> v
                 Error(_) -> False
@@ -97,9 +102,9 @@ fn view_skills_list(model: Model) -> Element(Msg) {
                     True -> "true"
                     False -> "false"
                   }),
-                  event.on_click(pool_msg(
-                    pool_messages.MemberToggleCapability(c.id),
-                  )),
+                  event.on_click(
+                    pool_msg(pool_messages.MemberToggleCapability(c.id)),
+                  ),
                 ]),
               ])
             }),

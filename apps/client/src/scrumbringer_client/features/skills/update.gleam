@@ -84,7 +84,9 @@ pub fn handle_my_capability_ids_fetched_error(
 
 /// Toggle a capability checkbox in the edit state.
 pub fn handle_toggle_capability(model: Model, id: Int) -> #(Model, Effect(Msg)) {
-  let next = case dict.get(model.member.skills.member_my_capability_ids_edit, id) {
+  let next = case
+    dict.get(model.member.skills.member_my_capability_ids_edit, id)
+  {
     Ok(v) -> !v
     Error(_) -> True
   }

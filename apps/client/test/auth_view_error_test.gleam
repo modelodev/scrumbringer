@@ -2,9 +2,7 @@ import gleam/option as opt
 import gleam/string
 import gleeunit/should
 import lustre/element
-import scrumbringer_client/client_state.{
-  type Model, default_model, update_auth,
-}
+import scrumbringer_client/client_state.{type Model, default_model, update_auth}
 import scrumbringer_client/client_state/auth as auth_state
 import scrumbringer_client/features/auth/view as auth_view
 

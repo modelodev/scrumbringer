@@ -1,0 +1,261 @@
+//// Auto-split CSS chunk: layout
+
+/// Provides layout CSS chunk.
+pub fn css() -> List(String) {
+  [
+    // Three-panel layout (Story 4.4)
+    // =============================================================================
+    // Base layout - desktop 3 columns
+    ".three-panel-layout { display: grid; grid-template-columns: 240px 1fr 300px; gap: 12px; min-height: calc(100vh - 48px); }",
+    // Left panel (navigation)
+    ".panel-left { background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; position: sticky; top: 12px; max-height: calc(100vh - 48px); overflow-y: auto; }",
+    // Center panel (main content)
+    ".panel-center { background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 12px; padding: 12px; min-width: 0; }",
+    // Right panel (activity/profile)
+    ".panel-right { background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; position: sticky; top: 12px; max-height: calc(100vh - 48px); overflow-y: auto; }",
+    // Tablet: 2 columns (left + center, right as drawer)
+    "@media (max-width: 1024px) { .three-panel-layout { grid-template-columns: 220px 1fr; } .panel-right { display: none; } }",
+    // Mobile: 1 column (center only, both panels as drawers)
+    "@media (max-width: 768px) { .three-panel-layout { grid-template-columns: 1fr; } .panel-left { display: none; } .panel-right { display: none; } }",
+    // =============================================================================
+    // Left Panel Components (Story 4.4)
+    // =============================================================================
+    ".left-panel-content { display: flex; flex-direction: column; gap: 16px; }",
+    ".project-selector-section { margin-bottom: 8px; }",
+    ".project-selector-dropdown { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--sb-border); background: var(--sb-elevated); font-weight: 500; }",
+    ".panel-section { display: flex; flex-direction: column; gap: 8px; }",
+    ".section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--sb-muted); margin: 0 0 4px 0; }",
+    ".btn-action { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: var(--sb-text); }",
+    ".btn-action:hover { background: var(--sb-elevated); }",
+    ".btn-action:disabled { opacity: 0.5; cursor: not-allowed; }",
+    ".btn-icon-prefix { font-weight: 700; color: var(--sb-primary); }",
+    // Primary action buttons (Story 4.8 UX: solid button for clear affordance)
+    ".btn-action-primary { background: var(--sb-primary); border: 1px solid var(--sb-primary); color: var(--sb-inverse); font-weight: 500; }",
+    ".btn-action-primary:hover { background: var(--sb-primary-hover); border-color: var(--sb-primary-hover); }",
+    ".btn-action-primary .btn-icon-prefix { color: inherit; }",
+    ".btn-primary .btn-icon-prefix { color: inherit; }",
+    // Navigation links within TRABAJO section (Story 4.7 AC2, AC3)
+    ".nav-links { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }",
+    ".nav-link { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: var(--sb-text); }",
+    ".nav-link:hover { background: var(--sb-elevated); }",
+    ".nav-link:disabled { opacity: 0.5; cursor: not-allowed; }",
+    ".nav-link.active { background: #F0FDFA; border-left: 3px solid #0D9488; padding-left: 9px; }",
+    ".nav-icon { font-size: 14px; }",
+    ".nav-label { flex: 1; }",
+    ".active-indicator { color: var(--sb-primary); font-size: 8px; }",
+    // =============================================================================
+    // Right Panel Components (Story 4.4)
+    // =============================================================================
+    ".right-panel-content { display: flex; flex-direction: column; gap: 16px; height: 100%; }",
+    ".active-task-section, .my-tasks-section, .my-cards-section { display: flex; flex-direction: column; gap: 8px; }",
+    ".active-task-card { background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 10px; padding: 12px; position: relative; }",
+    ".active-task-card.card-border-gray, .active-task-card.card-border-red, .active-task-card.card-border-orange, .active-task-card.card-border-yellow, .active-task-card.card-border-green, .active-task-card.card-border-blue, .active-task-card.card-border-purple, .active-task-card.card-border-pink { border-left-width: 4px; border-left-style: solid; }",
+    ".active-task-card.card-border-gray { border-left-color: var(--sb-card-gray); }",
+    ".active-task-card.card-border-red { border-left-color: var(--sb-card-red); }",
+    ".active-task-card.card-border-orange { border-left-color: var(--sb-card-orange); }",
+    ".active-task-card.card-border-yellow { border-left-color: var(--sb-card-yellow); }",
+    ".active-task-card.card-border-green { border-left-color: var(--sb-card-green); }",
+    ".active-task-card.card-border-blue { border-left-color: var(--sb-card-blue); }",
+    ".active-task-card.card-border-purple { border-left-color: var(--sb-card-purple); }",
+    ".active-task-card.card-border-pink { border-left-color: var(--sb-card-pink); }",
+    ".active-tasks-list { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; }",
+    ".active-tasks-list .active-task-card { padding: 10px; }",
+    ".active-tasks-list .task-timer { font-size: 18px; margin: 4px 0; }",
+    ".task-timer { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: center; margin: 8px 0; }",
+    ".task-actions { display: flex; gap: 8px; justify-content: center; }",
+    ".task-list { display: flex; flex-direction: column; gap: 6px; }",
+    ".task-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 8px; gap: 8px; }",
+    ".task-item.card-border-gray, .task-item.card-border-red, .task-item.card-border-orange, .task-item.card-border-yellow, .task-item.card-border-green, .task-item.card-border-blue, .task-item.card-border-purple, .task-item.card-border-pink { border-left-width: 4px; border-left-style: solid; }",
+    ".task-item.card-border-gray { border-left-color: var(--sb-card-gray); }",
+    ".task-item.card-border-red { border-left-color: var(--sb-card-red); }",
+    ".task-item.card-border-orange { border-left-color: var(--sb-card-orange); }",
+    ".task-item.card-border-yellow { border-left-color: var(--sb-card-yellow); }",
+    ".task-item.card-border-green { border-left-color: var(--sb-card-green); }",
+    ".task-item.card-border-blue { border-left-color: var(--sb-card-blue); }",
+    ".task-item.card-border-purple { border-left-color: var(--sb-card-purple); }",
+    ".task-item.card-border-pink { border-left-color: var(--sb-card-pink); }",
+    ".task-title-row { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }",
+    ".task-type-icon { flex-shrink: 0; display: flex; align-items: center; justify-content: center; }",
+    ".task-item .task-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }",
+    ".task-item .task-actions { display: flex; gap: 4px; flex-shrink: 0; }",
+    ".active-task-card .task-title-row { justify-content: center; }",
+    ".active-task-card .task-title { text-align: center; font-weight: 500; }",
+    // My cards list (right panel)
+    ".my-cards-list { display: flex; flex-direction: column; gap: 6px; }",
+    ".my-card-item { display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 10px 12px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 8px; cursor: pointer; text-align: left; }",
+    ".my-card-item.card-border-gray, .my-card-item.card-border-red, .my-card-item.card-border-orange, .my-card-item.card-border-yellow, .my-card-item.card-border-green, .my-card-item.card-border-blue, .my-card-item.card-border-purple, .my-card-item.card-border-pink { border-left-width: 4px; border-left-style: solid; }",
+    ".my-card-item.card-border-gray { border-left-color: var(--sb-card-gray); }",
+    ".my-card-item.card-border-red { border-left-color: var(--sb-card-red); }",
+    ".my-card-item.card-border-orange { border-left-color: var(--sb-card-orange); }",
+    ".my-card-item.card-border-yellow { border-left-color: var(--sb-card-yellow); }",
+    ".my-card-item.card-border-green { border-left-color: var(--sb-card-green); }",
+    ".my-card-item.card-border-blue { border-left-color: var(--sb-card-blue); }",
+    ".my-card-item.card-border-purple { border-left-color: var(--sb-card-purple); }",
+    ".my-card-item.card-border-pink { border-left-color: var(--sb-card-pink); }",
+    ".my-card-item:hover { border-color: var(--sb-primary); background: var(--sb-surface); }",
+    ".my-card-item .card-title { font-weight: 500; font-size: 14px; }",
+    ".card-progress-row { display: flex; align-items: center; gap: 8px; }",
+    ".progress-bar-mini { flex: 1; height: 4px; background: var(--sb-border); border-radius: 2px; overflow: hidden; }",
+    ".progress-bar-mini .progress-bar-fill { height: 100%; background: var(--sb-primary); border-radius: 2px; }",
+    ".card-progress { font-size: 12px; color: var(--sb-muted); font-variant-numeric: tabular-nums; }",
+    // My Metrics section (Story 4.7 Task 6.1)
+    // Right panel layout (Story 4.8 UX)
+    ".right-panel-activity { display: flex; flex-direction: column; gap: 16px; flex: 1; }",
+    ".right-panel-footer { display: flex; flex-direction: column; gap: 12px; margin-top: auto; padding-top: 16px; border-top: 1px solid var(--sb-border); }",
+    // Section titles with icons (Story 4.8 UX)
+    ".section-title-with-icon { display: flex; align-items: center; gap: 8px; }",
+    ".section-title-with-icon .nav-icon { color: var(--sb-muted); }",
+    // Preferences popup (Story 4.8 UX: moved from inline to popup)
+    ".preferences-popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; z-index: 1000; }",
+    ".preferences-popup { background: var(--sb-surface); border-radius: 12px; padding: 20px; min-width: 280px; max-width: 320px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }",
+    ".popup-title { display: flex; align-items: center; gap: 8px; margin: 0 0 16px 0; font-size: 16px; font-weight: 600; }",
+    ".popup-title .nav-icon { color: var(--sb-muted); }",
+    ".preferences-popup-content { display: flex; flex-direction: column; gap: 12px; }",
+    ".preference-item { display: flex; align-items: center; gap: 8px; cursor: pointer; }",
+    ".preference-icon { display: flex; align-items: center; color: var(--sb-muted); }",
+    ".preference-select { flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--sb-border); background: var(--sb-elevated); font-size: 14px; cursor: pointer; }",
+    ".preference-select:hover { border-color: var(--sb-primary); }",
+    // Empty section hints (right panel - inline contextual hints)
+    // padding-left: 24px aligns with title text after icon (16px icon + 8px gap)
+    ".section-empty-hint { color: var(--sb-muted); font-size: 12px; font-style: italic; padding: 8px 4px 8px 24px; }",
+    // Inside dropzone (has 8px padding), reduce hint padding to maintain alignment
+    ".pool-my-tasks-dropzone .section-empty-hint { padding-left: 16px; }",
+    // Profile section (Story 4.8 UX: compact with icon buttons)
+    ".profile-section { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 0; }",
+    ".profile-section .user-info { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }",
+    ".profile-section .user-info .nav-icon { color: var(--sb-muted); flex-shrink: 0; }",
+    ".profile-section .user-email { font-size: 13px; color: var(--sb-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }",
+    ".profile-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }",
+    ".btn-icon-only { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: var(--sb-muted); transition: all 0.15s ease; }",
+    ".btn-icon-only:hover { background: var(--sb-elevated); color: var(--sb-text); border-color: var(--sb-border); }",
+    ".btn-icon-only.btn-logout:hover { color: var(--sb-error); border-color: var(--sb-error); }",
+    // =============================================================================
+    // View Mode Toggle (Story 4.4)
+    // =============================================================================
+    ".view-mode-toggle { display: inline-flex; gap: 4px; padding: 4px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 12px; }",
+    ".view-mode-btn { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: transparent; border: none; border-radius: 8px; cursor: pointer; color: var(--sb-text); transition: all 0.15s ease; }",
+    ".view-mode-btn:hover { background: var(--sb-surface); }",
+    ".view-mode-btn.active { background: var(--sb-primary); color: var(--sb-inverse); }",
+    ".view-mode-icon { font-size: 16px; }",
+    ".view-mode-label { font-size: 14px; font-weight: 500; }",
+    "@media (max-width: 768px) { .view-mode-label { display: none; } }",
+    // =============================================================================
+    // Center Panel / Toolbar (Story 4.4)
+    // =============================================================================
+    ".center-panel-content { display: flex; flex-direction: column; gap: 12px; height: 100%; }",
+    ".center-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }",
+    ".center-filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-left: auto; }",
+    ".filter-field { display: flex; flex-direction: column; gap: 4px; }",
+    ".filter-field label { font-size: 11px; color: var(--sb-muted); }",
+    ".filter-field select, .filter-field input { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--sb-border); background: var(--sb-elevated); min-width: 120px; }",
+    ".filter-search input { min-width: 160px; }",
+    ".center-content { flex: 1; overflow: auto; }",
+    // =============================================================================
+    // Grouped List View (Story 4.4)
+    // =============================================================================
+    ".grouped-list { display: flex; flex-direction: column; gap: 12px; }",
+    ".grouped-list-empty { text-align: center; color: var(--sb-muted); padding: 40px 20px; }",
+    ".card-group { background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 12px; overflow: hidden; }",
+    ".card-group-header { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 16px; background: transparent; border: none; cursor: pointer; text-align: left; }",
+    ".card-group-header:hover { background: var(--sb-surface); }",
+    ".expand-icon { font-size: 12px; color: var(--sb-muted); width: 16px; }",
+    ".card-title { flex: 1; font-weight: 500; }",
+    ".card-progress { font-size: 13px; color: var(--sb-muted); }",
+    ".card-color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }",
+    ".card-task-list { list-style: none; margin: 0; padding: 0 16px 12px 16px; display: flex; flex-direction: column; gap: 6px; }",
+    ".task-item-content { flex: 1; background: transparent; border: none; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 0; }",
+    ".task-status { font-size: 12px; color: var(--sb-muted); }",
+    ".task-status-muted { font-size: 12px; color: var(--sb-muted); }",
+    // AC7: Claimed by user display
+    ".task-claimed-by { font-size: 12px; color: var(--sb-muted); font-style: italic; display: inline-flex; align-items: center; gap: 4px; }",
+    ".task-claimed-icon { display: inline-flex; align-items: center; }",
+    // AC9: Claim button as icon with tooltip
+    ".btn-claim { background: var(--sb-success); color: white; border-color: var(--sb-success); }",
+    ".btn-claim.btn-icon { padding: 6px; border-radius: 6px; display: flex; align-items: center; justify-content: center; min-width: 28px; min-height: 28px; }",
+    ".btn-claim.btn-icon:hover { background: var(--sb-success-hover, #059669); }",
+    // =============================================================================
+    // Kanban Board View (Story 4.4)
+    // =============================================================================
+    ".kanban-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; height: 100%; min-height: 400px; }",
+    "@media (max-width: 1024px) { .kanban-board { grid-template-columns: 1fr; } }",
+    ".kanban-column { background: var(--sb-bg); border: 1px solid var(--sb-border); border-radius: 12px; display: flex; flex-direction: column; min-height: 200px; }",
+    ".kanban-column.pendiente { border-top: 3px solid var(--sb-muted); }",
+    ".kanban-column.en-curso { border-top: 3px solid var(--sb-primary); }",
+    ".kanban-column.cerrada { border-top: 3px solid var(--sb-success); }",
+    ".kanban-column-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--sb-border); }",
+    ".kanban-column-title { display: flex; align-items: center; gap: 8px; }",
+    ".kanban-column-icon { display: inline-flex; align-items: center; justify-content: center; color: var(--sb-muted); }",
+    ".kanban-column-header h4 { margin: 0; font-size: 14px; font-weight: 600; }",
+    ".column-count { font-size: 12px; color: var(--sb-muted); background: var(--sb-elevated); padding: 2px 8px; border-radius: 10px; }",
+    ".kanban-column-content { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }",
+    ".kanban-empty-column { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px 16px; border: 2px dashed var(--sb-border); border-radius: 10px; color: var(--sb-muted); text-align: center; min-height: 100px; }",
+    ".kanban-empty-column .empty-icon { font-size: 24px; opacity: 0.6; }",
+    ".kanban-empty-column .empty-text { font-size: 13px; }",
+    ".kanban-card { background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 10px; padding: 12px; }",
+    ".kanban-card-header { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }",
+    ".kanban-card-title { flex: 1; background: transparent; border: none; cursor: pointer; text-align: left; font-weight: 500; padding: 0; display: flex; align-items: center; gap: 6px; }",
+    ".kanban-card-title:hover { color: var(--sb-primary); }",
+    ".card-notes-indicator { font-weight: 600; color: var(--sb-warning); }",
+    ".kanban-card-menu { display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; }",
+    ".kanban-card:hover .kanban-card-menu { opacity: 1; }",
+    ".kanban-card-desc { font-size: 13px; color: var(--sb-muted); margin-bottom: 8px; line-height: 1.4; }",
+    ".kanban-card-progress { display: flex; align-items: center; gap: 8px; }",
+    // Note: .progress-bar defined in UX IMPROVEMENTS section (L385). kanban uses flex container for layout.
+    ".kanban-card-progress .progress-bar { flex: 1; }",
+    ".progress-fill { height: 100%; background: var(--sb-success); transition: width 0.3s ease; }",
+    ".progress-text { font-size: 12px; color: var(--sb-muted); min-width: 40px; text-align: right; }",
+    // =============================================================================
+    // Kanban Task Items (Story 4.8 UX - Homogeneous with Lista view)
+    // =============================================================================
+    ".kanban-card-tasks { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--sb-border); display: flex; flex-direction: column; gap: 4px; }",
+    ".kanban-task-item { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 6px; font-size: 12px; transition: background 0.15s; }",
+    ".kanban-task-item.card-border-gray, .kanban-task-item.card-border-red, .kanban-task-item.card-border-orange, .kanban-task-item.card-border-yellow, .kanban-task-item.card-border-green, .kanban-task-item.card-border-blue, .kanban-task-item.card-border-purple, .kanban-task-item.card-border-pink { border-left-width: 4px; border-left-style: solid; }",
+    ".kanban-task-item.card-border-gray { border-left-color: var(--sb-card-gray); }",
+    ".kanban-task-item.card-border-red { border-left-color: var(--sb-card-red); }",
+    ".kanban-task-item.card-border-orange { border-left-color: var(--sb-card-orange); }",
+    ".kanban-task-item.card-border-yellow { border-left-color: var(--sb-card-yellow); }",
+    ".kanban-task-item.card-border-green { border-left-color: var(--sb-card-green); }",
+    ".kanban-task-item.card-border-blue { border-left-color: var(--sb-card-blue); }",
+    ".kanban-task-item.card-border-purple { border-left-color: var(--sb-card-purple); }",
+    ".kanban-task-item.card-border-pink { border-left-color: var(--sb-card-pink); }",
+    ".kanban-task-item:hover { background: var(--sb-bg); }",
+    ".kanban-task-content { flex: 1; display: flex; align-items: center; gap: 6px; background: transparent; border: none; cursor: pointer; text-align: left; padding: 0; min-width: 0; }",
+    ".kanban-task-content:hover .task-title { color: var(--sb-primary); }",
+    ".kanban-task-item .task-type-icon { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; }",
+    ".kanban-task-item .task-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--sb-text); }",
+    ".kanban-task-item .task-claimed-by { font-size: 10px; color: var(--sb-muted); flex-shrink: 0; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }",
+    // Status-specific colors
+    ".kanban-task-item.status-completed .task-title { text-decoration: line-through; color: var(--sb-muted); }",
+    // Status dot for available tasks
+    ".status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }",
+    // Mini claim button
+    ".btn-claim-mini { background: transparent; border: none; cursor: pointer; padding: 2px; border-radius: 4px; color: var(--sb-muted); opacity: 0; transition: opacity 0.15s, color 0.15s; display: flex; align-items: center; justify-content: center; }",
+    ".kanban-task-item:hover .btn-claim-mini { opacity: 1; }",
+    ".btn-claim-mini:hover { color: var(--sb-primary); background: var(--sb-surface); }",
+    // =============================================================================
+    // Responsive Drawers (Story 4.4 - Phase 6)
+    // =============================================================================
+    ".drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }",
+    ".drawer-overlay.open { opacity: 1; pointer-events: auto; }",
+    ".drawer { position: fixed; top: 0; bottom: 0; width: 280px; background: var(--sb-surface); z-index: 101; transform: translateX(-100%); transition: transform 0.3s ease; display: flex; flex-direction: column; }",
+    ".drawer.right { right: 0; left: auto; transform: translateX(100%); }",
+    ".drawer.open { transform: translateX(0); }",
+    ".drawer-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--sb-border); }",
+    ".drawer-content { flex: 1; overflow-y: auto; padding: 16px; }",
+    ".drawer-close { background: transparent; border: none; font-size: 24px; cursor: pointer; color: var(--sb-muted); min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }",
+    // =============================================================================
+    // Mobile Mini Task Bar (Story 4.4 - Phase 6)
+    // =============================================================================
+    ".mini-task-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--sb-primary); color: var(--sb-inverse); padding: 12px 16px; display: none; align-items: center; gap: 12px; z-index: 90; }",
+    "@media (max-width: 768px) { .mini-task-bar.visible { display: flex; } }",
+    ".mini-task-bar .task-title { flex: 1; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }",
+    ".mini-task-bar .task-timer { font-variant-numeric: tabular-nums; font-weight: 600; }",
+    // =============================================================================
+    // Mobile Header (Story 4.4 - Phase 6)
+    // =============================================================================
+    ".mobile-header { display: none; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--sb-surface); border-bottom: 1px solid var(--sb-border); }",
+    "@media (max-width: 768px) { .mobile-header { display: flex; } }",
+    ".menu-hamburger, .menu-user { background: transparent; border: none; font-size: 24px; cursor: pointer; padding: 8px; }",
+    // =============================================================================
+  ]
+}

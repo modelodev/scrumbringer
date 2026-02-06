@@ -34,6 +34,7 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/router
 import scrumbringer_client/ui/icons
+import scrumbringer_client/url_state
 
 // =============================================================================
 // Types
@@ -96,8 +97,8 @@ fn is_route_active(
     Some(route) ->
       case route {
         // Work views: match by ViewMode
-        router.Member(_, _, view_mode) ->
-          case check_view_mode, view_mode {
+        router.Member(_, state) ->
+          case check_view_mode, url_state.view_param(state) {
             Some(expected), Some(actual) -> expected == actual
             _, _ -> False
           }

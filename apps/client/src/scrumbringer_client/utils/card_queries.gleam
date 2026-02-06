@@ -26,7 +26,9 @@ import scrumbringer_client/state/normalized_store
 
 /// Find a card by ID in the loaded cards list.
 pub fn find_card(model: Model, card_id: Int) -> option.Option(Card) {
-  case normalized_store.get_by_id(model.member.pool.member_cards_store, card_id) {
+  case
+    normalized_store.get_by_id(model.member.pool.member_cards_store, card_id)
+  {
     option.Some(card) -> option.Some(card)
     option.None ->
       case model.admin.cards.cards {

@@ -34,9 +34,7 @@ pub fn selected_project(model: client_state.Model) -> Option(Project) {
 }
 
 /// Get the currently active task from work sessions, if any.
-pub fn now_working_active_task(
-  model: client_state.Model,
-) -> Option(ActiveTask) {
+pub fn now_working_active_task(model: client_state.Model) -> Option(ActiveTask) {
   case model.member.metrics.member_work_sessions {
     Loaded(WorkSessionsPayload(active_sessions: [first, ..], ..)) ->
       Some(work_session_to_active_task(first))
@@ -56,9 +54,7 @@ fn work_session_to_active_task(session: WorkSession) -> ActiveTask {
 }
 
 /// Get the task ID of the currently active task, if any.
-pub fn now_working_active_task_id(
-  model: client_state.Model,
-) -> Option(Int) {
+pub fn now_working_active_task_id(model: client_state.Model) -> Option(Int) {
   case now_working_active_task(model) {
     Some(ActiveTask(task_id: task_id, ..)) -> Some(task_id)
     None -> None
@@ -66,9 +62,7 @@ pub fn now_working_active_task_id(
 }
 
 /// Returns ALL active work sessions (for multi-task EN CURSO panel).
-pub fn now_working_all_sessions(
-  model: client_state.Model,
-) -> List(WorkSession) {
+pub fn now_working_all_sessions(model: client_state.Model) -> List(WorkSession) {
   case model.member.metrics.member_work_sessions {
     Loaded(WorkSessionsPayload(active_sessions: sessions, ..)) -> sessions
     _ -> []
@@ -104,9 +98,7 @@ fn first_project_id(projects: List(Project)) -> Option(Int) {
 }
 
 /// Ensure the current admin section is valid for the user's permissions.
-pub fn ensure_default_section(
-  model: client_state.Model,
-) -> client_state.Model {
+pub fn ensure_default_section(model: client_state.Model) -> client_state.Model {
   case model.core.user, model.core.projects {
     Some(user), Loaded(projects) ->
       ensure_default_section_for_user(model, user, projects)

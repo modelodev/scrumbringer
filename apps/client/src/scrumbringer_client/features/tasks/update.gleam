@@ -58,8 +58,8 @@ import domain/task_status.{Completed, Taken}
 import scrumbringer_client/client_state.{
   type Model, type Msg, pool_msg, update_member,
 }
-import scrumbringer_client/client_state/member.{MemberModel}
 import scrumbringer_client/client_state/dialog_mode
+import scrumbringer_client/client_state/member.{MemberModel}
 import scrumbringer_client/client_state/member/dependencies as member_dependencies
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
@@ -427,10 +427,9 @@ pub fn handle_claim_clicked(
   case model.member.pool.member_task_mutation_in_flight {
     True -> #(model, effect.none())
     False ->
-      case helpers_lookup.find_task_by_id(
-        model.member.pool.member_tasks,
-        task_id,
-      ) {
+      case
+        helpers_lookup.find_task_by_id(model.member.pool.member_tasks, task_id)
+      {
         opt.Some(Task(blocked_count: blocked_count, ..)) if blocked_count > 0 -> #(
           update_member_pool(model, fn(pool) {
             member_pool.Model(
@@ -1071,7 +1070,10 @@ pub fn handle_dependencies_fetched_ok(
 ) -> #(Model, Effect(Msg)) {
   #(
     update_member_dependencies(model, fn(dependencies) {
-      member_dependencies.Model(..dependencies, member_dependencies: Loaded(deps))
+      member_dependencies.Model(
+        ..dependencies,
+        member_dependencies: Loaded(deps),
+      )
     }),
     effect.none(),
   )
@@ -1084,7 +1086,10 @@ pub fn handle_dependencies_fetched_error(
   helpers_auth.handle_401_or(model, err, fn() {
     #(
       update_member_dependencies(model, fn(dependencies) {
-        member_dependencies.Model(..dependencies, member_dependencies: Failed(err))
+        member_dependencies.Model(
+          ..dependencies,
+          member_dependencies: Failed(err),
+        )
       }),
       effect.none(),
     )
@@ -1095,10 +1100,9 @@ pub fn handle_dependency_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
   case model.member.notes.member_notes_task_id {
     opt.None -> #(model, effect.none())
     opt.Some(task_id) ->
-      case helpers_lookup.find_task_by_id(
-        model.member.pool.member_tasks,
-        task_id,
-      ) {
+      case
+        helpers_lookup.find_task_by_id(model.member.pool.member_tasks, task_id)
+      {
         opt.None -> #(model, effect.none())
         opt.Some(task) -> {
           let model =

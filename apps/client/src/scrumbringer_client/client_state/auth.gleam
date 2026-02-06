@@ -5,6 +5,7 @@ import gleam/option.{type Option}
 import scrumbringer_client/accept_invite
 import scrumbringer_client/api/auth.{type PasswordReset}
 import scrumbringer_client/reset_password
+import scrumbringer_client/token_flow
 
 /// Represents AuthModel.
 pub type AuthModel {
@@ -37,16 +38,16 @@ pub fn default_model() -> AuthModel {
     forgot_password_result: option.None,
     forgot_password_error: option.None,
     forgot_password_copy_status: option.None,
-    accept_invite: accept_invite.Model(
+    accept_invite: token_flow.Model(
       token: "",
-      state: accept_invite.NoToken,
+      state: token_flow.NoToken,
       password: "",
       password_error: option.None,
       submit_error: option.None,
     ),
-    reset_password: reset_password.Model(
+    reset_password: token_flow.Model(
       token: "",
-      state: reset_password.NoToken,
+      state: token_flow.NoToken,
       password: "",
       password_error: option.None,
       submit_error: option.None,

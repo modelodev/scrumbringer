@@ -264,9 +264,9 @@ fn view_card_group(model: Model, user: User, group: CardGroup) -> Element(Msg) {
                 "title",
                 helpers_i18n.i18n_t(model, i18n_text.NewTaskInCard(title)),
               ),
-              event.on_click(pool_msg(
-                pool_messages.MemberCreateDialogOpenedWithCard(id),
-              )),
+              event.on_click(
+                pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(id)),
+              ),
             ],
             [text("+")],
           )

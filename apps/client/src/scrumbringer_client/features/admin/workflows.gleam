@@ -381,10 +381,7 @@ pub fn handle_open_rule_dialog(
   #(
     update_admin(model, fn(admin) {
       update_rules(admin, fn(rules_state) {
-        admin_rules.Model(
-          ..rules_state,
-          rules_dialog_mode: opt.Some(mode),
-        )
+        admin_rules.Model(..rules_state, rules_dialog_mode: opt.Some(mode))
       })
     }),
     effect.none(),
@@ -396,10 +393,7 @@ pub fn handle_close_rule_dialog(model: Model) -> #(Model, Effect(Msg)) {
   #(
     update_admin(model, fn(admin) {
       update_rules(admin, fn(rules_state) {
-        admin_rules.Model(
-          ..rules_state,
-          rules_dialog_mode: opt.None,
-        )
+        admin_rules.Model(..rules_state, rules_dialog_mode: opt.None)
       })
     }),
     effect.none(),
@@ -515,10 +509,7 @@ pub fn handle_rule_templates_fetched_ok(
   #(
     update_admin(model, fn(admin) {
       update_rules(admin, fn(rules_state) {
-        admin_rules.Model(
-          ..rules_state,
-          rules_templates: Loaded(templates),
-        )
+        admin_rules.Model(..rules_state, rules_templates: Loaded(templates))
       })
     }),
     effect.none(),
@@ -534,10 +525,7 @@ pub fn handle_rule_templates_fetched_error(
     #(
       update_admin(model, fn(admin) {
         update_rules(admin, fn(rules_state) {
-          admin_rules.Model(
-            ..rules_state,
-            rules_templates: Failed(err),
-          )
+          admin_rules.Model(..rules_state, rules_templates: Failed(err))
         })
       }),
       effect.none(),
@@ -561,10 +549,7 @@ pub fn handle_rule_attach_template_selected(
   #(
     update_admin(model, fn(admin) {
       update_rules(admin, fn(rules_state) {
-        admin_rules.Model(
-          ..rules_state,
-          rules_attach_template_id: template_id,
-        )
+        admin_rules.Model(..rules_state, rules_attach_template_id: template_id)
       })
     }),
     effect.none(),
@@ -739,10 +724,7 @@ pub fn handle_rule_expand_toggled(
   #(
     update_admin(model, fn(admin) {
       update_rules(admin, fn(rules_state) {
-        admin_rules.Model(
-          ..rules_state,
-          rules_expanded: expanded,
-        )
+        admin_rules.Model(..rules_state, rules_expanded: expanded)
       })
     }),
     effect.none(),
@@ -798,7 +780,11 @@ pub fn handle_attach_template_modal_opened(
           task_templates_project: task_templates_project,
         )
 
-      admin_state.AdminModel(..admin, rules: rules, task_templates: task_templates)
+      admin_state.AdminModel(
+        ..admin,
+        rules: rules,
+        task_templates: task_templates,
+      )
     })
 
   #(new_model, fetch_effect)
@@ -844,7 +830,10 @@ pub fn handle_attach_template_selected(
 // Justification: nested case improves clarity for branching logic.
 /// Handle submit of template attachment.
 pub fn handle_attach_template_submitted(model: Model) -> #(Model, Effect(Msg)) {
-  case model.admin.rules.attach_template_modal, model.admin.rules.attach_template_selected {
+  case
+    model.admin.rules.attach_template_modal,
+    model.admin.rules.attach_template_selected
+  {
     opt.Some(rule_id), opt.Some(template_id) -> {
       // Calculate execution_order based on current templates
       let order = case model.admin.rules.rules {
@@ -859,10 +848,7 @@ pub fn handle_attach_template_submitted(model: Model) -> #(Model, Effect(Msg)) {
       #(
         update_admin(model, fn(admin) {
           update_rules(admin, fn(rules_state) {
-            admin_rules.Model(
-              ..rules_state,
-              attach_template_loading: True,
-            )
+            admin_rules.Model(..rules_state, attach_template_loading: True)
           })
         }),
         api_workflows.attach_template(rule_id, template_id, order, fn(result) {
@@ -951,10 +937,7 @@ pub fn handle_template_detach_clicked(
   #(
     update_admin(model, fn(admin) {
       update_rules(admin, fn(rules_state) {
-        admin_rules.Model(
-          ..rules_state,
-          detaching_templates: detaching,
-        )
+        admin_rules.Model(..rules_state, detaching_templates: detaching)
       })
     }),
     api_workflows.detach_template(rule_id, template_id, fn(result) {
@@ -1254,10 +1237,7 @@ pub fn fetch_workflows(model: Model) -> #(Model, Effect(Msg)) {
       let model =
         update_admin(model, fn(admin) {
           update_workflows(admin, fn(workflows_state) {
-            admin_workflows.Model(
-              ..workflows_state,
-              workflows_project: Loading,
-            )
+            admin_workflows.Model(..workflows_state, workflows_project: Loading)
           })
         })
       #(model, fetch_effect)

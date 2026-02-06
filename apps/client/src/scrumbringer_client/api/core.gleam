@@ -46,6 +46,7 @@ import scrumbringer_client/client_ffi
 import domain/api_error.{
   type ApiError, type ApiResult as SharedApiResult, ApiError,
 }
+import domain/api_error/codec as api_error_codec
 
 // Re-export ApiResult for backwards compatibility
 /// Represents ApiResult.
@@ -128,19 +129,6 @@ pub fn envelope(payload: decode.Decoder(a)) -> decode.Decoder(a) {
   decode.field("data", payload, decode.success)
 }
 
-fn api_error_decoder(status: Int) -> decode.Decoder(ApiError) {
-  let error_inner = {
-    use code <- decode.field("code", decode.string)
-    use message <- decode.field("message", decode.string)
-    decode.success(#(code, message))
-  }
-
-  decode.field("error", error_inner, fn(inner) {
-    let #(code, message) = inner
-    decode.success(ApiError(status: status, code: code, message: message))
-  })
-}
-
 /// Decode a successful JSON response.
 pub fn decode_success(
   status: Int,
@@ -159,7 +147,9 @@ pub fn decode_success(
 
 /// Decode an error response.
 pub fn decode_failure(status: Int, text: String) -> ApiError {
-  case json.parse(from: text, using: api_error_decoder(status)) {
+  case
+    json.parse(from: text, using: api_error_codec.api_error_decoder(status))
+  {
     Ok(err) -> err
     Error(_) ->
       ApiError(status: status, code: "HTTP_ERROR", message: "Request failed")

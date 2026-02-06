@@ -50,7 +50,10 @@ pub fn handle_member_release_all_clicked(
   claimed_count: Int,
 ) -> #(Model, Effect(Msg)) {
   let maybe_user =
-    helpers_lookup.resolve_org_user(model.admin.members.org_users_cache, user_id)
+    helpers_lookup.resolve_org_user(
+      model.admin.members.org_users_cache,
+      user_id,
+    )
 
   let user = case maybe_user {
     opt.Some(user) -> user
@@ -99,7 +102,10 @@ pub fn handle_member_release_all_confirmed(
   case model.admin.members.members_release_in_flight {
     opt.Some(_) -> #(model, effect.none())
     opt.None ->
-      case model.core.selected_project_id, model.admin.members.members_release_confirm {
+      case
+        model.core.selected_project_id,
+        model.admin.members.members_release_confirm
+      {
         opt.Some(project_id),
           opt.Some(state_types.ReleaseAllTarget(user: user, ..))
         -> {

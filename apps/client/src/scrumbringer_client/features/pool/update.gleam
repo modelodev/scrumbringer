@@ -45,8 +45,8 @@ import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/cards as admin_cards
-import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/dialog_mode
+import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/member/positions as member_positions
@@ -74,6 +74,7 @@ import scrumbringer_client/pool_prefs
 import scrumbringer_client/router
 import scrumbringer_client/state/normalized_store
 import scrumbringer_client/theme
+import scrumbringer_client/url_state
 
 // =============================================================================
 // Filter Handlers
@@ -83,7 +84,8 @@ import scrumbringer_client/theme
 pub fn handle_pool_status_changed(
   model: client_state.Model,
   value: String,
-  member_refresh: fn(client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)),
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let next_status = case string.trim(value) {
     "" -> opt.None
@@ -104,7 +106,8 @@ pub fn handle_pool_status_changed(
 pub fn handle_pool_type_changed(
   model: client_state.Model,
   value: String,
-  member_refresh: fn(client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)),
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let next_type_id = helpers_options.empty_to_int_opt(value)
   let model =
@@ -118,12 +121,16 @@ pub fn handle_pool_type_changed(
 pub fn handle_pool_capability_changed(
   model: client_state.Model,
   value: String,
-  member_refresh: fn(client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)),
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let next_capability_id = helpers_options.empty_to_int_opt(value)
   let model =
     update_member_pool(model, fn(pool) {
-      member_pool.Model(..pool, member_filters_capability_id: next_capability_id)
+      member_pool.Model(
+        ..pool,
+        member_filters_capability_id: next_capability_id,
+      )
     })
   member_refresh(model)
 }
@@ -145,7 +152,8 @@ pub fn handle_pool_search_changed(
 pub fn handle_pool_search_debounced(
   model: client_state.Model,
   value: String,
-  member_refresh: fn(client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)),
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let model =
     update_member_pool(model, fn(pool) {
@@ -157,7 +165,8 @@ pub fn handle_pool_search_debounced(
 /// Clear all pool filters at once.
 pub fn handle_clear_filters(
   model: client_state.Model,
-  member_refresh: fn(client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)),
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let model =
     update_member_pool(model, fn(pool) {
@@ -193,7 +202,9 @@ pub fn handle_toggle_my_capabilities_quick(
 }
 
 /// Toggle pool filters visibility.
-pub fn handle_pool_filters_toggled(model: client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+pub fn handle_pool_filters_toggled(
+  model: client_state.Model,
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let next = !model.member.pool.member_pool_filters_visible
   #(
     update_member_pool(model, fn(pool) {
@@ -216,7 +227,9 @@ pub fn handle_pool_view_mode_set(
   )
 }
 
-fn save_pool_filters_visible_effect(visible: Bool) -> effect.Effect(client_state.Msg) {
+fn save_pool_filters_visible_effect(
+  visible: Bool,
+) -> effect.Effect(client_state.Msg) {
   effect.from(fn(_dispatch) {
     theme.local_storage_set(
       pool_prefs.filters_visible_storage_key,
@@ -227,7 +240,9 @@ fn save_pool_filters_visible_effect(visible: Bool) -> effect.Effect(client_state
   })
 }
 
-fn save_pool_view_mode_effect(mode: pool_prefs.ViewMode) -> effect.Effect(client_state.Msg) {
+fn save_pool_view_mode_effect(
+  mode: pool_prefs.ViewMode,
+) -> effect.Effect(client_state.Msg) {
   effect.from(fn(_dispatch) {
     theme.local_storage_set(
       pool_prefs.view_mode_storage_key,
@@ -269,7 +284,9 @@ fn handle_pool_shortcut_action(
   }
 }
 
-fn toggle_filters_shortcut(model: client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+fn toggle_filters_shortcut(
+  model: client_state.Model,
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let next = !model.member.pool.member_pool_filters_visible
   #(
     update_member_pool(model, fn(pool) {
@@ -279,7 +296,9 @@ fn toggle_filters_shortcut(model: client_state.Model) -> #(client_state.Model, e
   )
 }
 
-fn focus_search_shortcut(model: client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+fn focus_search_shortcut(
+  model: client_state.Model,
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let should_show = !model.member.pool.member_pool_filters_visible
   let model =
     update_member_pool(model, fn(pool) {
@@ -299,7 +318,9 @@ fn focus_search_shortcut(model: client_state.Model) -> #(client_state.Model, eff
   )
 }
 
-fn open_create_shortcut(model: client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+fn open_create_shortcut(
+  model: client_state.Model,
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   case model.member.pool.member_create_dialog_mode {
     dialog_mode.DialogCreate -> #(model, effect.none())
     _ -> #(
@@ -314,7 +335,9 @@ fn open_create_shortcut(model: client_state.Model) -> #(client_state.Model, effe
   }
 }
 
-fn close_dialog_shortcut(model: client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+fn close_dialog_shortcut(
+  model: client_state.Model,
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   case
     model.member.pool.member_create_dialog_mode,
     opt.is_some(model.member.notes.member_notes_task_id),
@@ -322,7 +345,10 @@ fn close_dialog_shortcut(model: client_state.Model) -> #(client_state.Model, eff
   {
     dialog_mode.DialogCreate, _, _ -> #(
       update_member_pool(model, fn(pool) {
-        member_pool.Model(..pool, member_create_dialog_mode: dialog_mode.DialogClosed)
+        member_pool.Model(
+          ..pool,
+          member_create_dialog_mode: dialog_mode.DialogClosed,
+        )
       }),
       effect.none(),
     )
@@ -487,7 +513,10 @@ pub fn handle_pool_my_tasks_rect_fetched(
   height: Int,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let rect = Rect(left: left, top: top, width: width, height: height)
-  let next_drag = case model.member.pool.member_pool_drag, model.member.pool.member_drag {
+  let next_drag = case
+    model.member.pool.member_pool_drag,
+    model.member.pool.member_drag
+  {
     PoolDragDragging(over_my_tasks: over, ..), _ ->
       PoolDragDragging(over_my_tasks: over, rect: rect)
     PoolDragPendingRect, DragIdle -> PoolDragIdle
@@ -541,7 +570,9 @@ pub fn handle_drag_started(
     model,
     effect.from(fn(dispatch) {
       let #(left, top) = client_ffi.element_client_offset("member-canvas")
-      dispatch(client_state.pool_msg(pool_messages.MemberCanvasRectFetched(left, top)))
+      dispatch(
+        client_state.pool_msg(pool_messages.MemberCanvasRectFetched(left, top)),
+      )
 
       let #(card_left, card_top, _width, _height) =
         client_ffi.element_client_rect("task-card-" <> int.to_string(task_id))
@@ -691,7 +722,10 @@ pub fn handle_task_hover_notes_fetched(
   }
 }
 
-fn ensure_hover_notes(model: client_state.Model, task_id: Int) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+fn ensure_hover_notes(
+  model: client_state.Model,
+  task_id: Int,
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let cached = dict.get(model.member.notes.member_hover_notes_cache, task_id)
   let pending = dict.get(model.member.notes.member_hover_notes_pending, task_id)
 
@@ -713,7 +747,10 @@ fn ensure_hover_notes(model: client_state.Model, task_id: Int) -> #(client_state
 
       let notes_fx =
         api_tasks.list_task_notes(task_id, fn(result) {
-          client_state.pool_msg(pool_messages.MemberTaskHoverNotesFetched(task_id, result))
+          client_state.pool_msg(pool_messages.MemberTaskHoverNotesFetched(
+            task_id,
+            result,
+          ))
         })
 
       #(model, notes_fx)
@@ -733,7 +770,9 @@ fn take_last_notes(
 }
 
 /// Handle drag end event.
-pub fn handle_drag_ended(model: client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+pub fn handle_drag_ended(
+  model: client_state.Model,
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   case model.member.pool.member_drag {
     DragIdle -> #(model, effect.none())
     DragPending(task_id) -> handle_drag_end_for_task(model, task_id)
@@ -765,7 +804,10 @@ fn next_pool_drag_state(
   }
 }
 
-fn handle_drag_end_for_task(model: client_state.Model, task_id: Int) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+fn handle_drag_end_for_task(
+  model: client_state.Model,
+  task_id: Int,
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let over_my_tasks = is_over_my_tasks(model.member.pool.member_pool_drag)
   let model = clear_pool_drag_state(model)
 
@@ -784,11 +826,18 @@ fn is_over_my_tasks(drag_state: PoolDragState) -> Bool {
 
 fn clear_pool_drag_state(model: client_state.Model) -> client_state.Model {
   update_member_pool(model, fn(pool) {
-    member_pool.Model(..pool, member_drag: DragIdle, member_pool_drag: PoolDragIdle)
+    member_pool.Model(
+      ..pool,
+      member_drag: DragIdle,
+      member_pool_drag: PoolDragIdle,
+    )
   })
 }
 
-fn handle_claim_drop(model: client_state.Model, task_id: Int) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+fn handle_claim_drop(
+  model: client_state.Model,
+  task_id: Int,
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   case
     helpers_lookup.find_task_by_id(model.member.pool.member_tasks, task_id),
     model.member.pool.member_task_mutation_in_flight
@@ -806,7 +855,10 @@ fn handle_claim_drop(model: client_state.Model, task_id: Int) -> #(client_state.
   }
 }
 
-fn handle_position_drop(model: client_state.Model, task_id: Int) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+fn handle_position_drop(
+  model: client_state.Model,
+  task_id: Int,
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let #(x, y) =
     position_for_task(model.member.positions.member_positions_by_task, task_id)
   #(
@@ -836,8 +888,9 @@ pub fn handle_position_edit_opened(
   model: client_state.Model,
   task_id: Int,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let #(x, y) =
-    case dict.get(model.member.positions.member_positions_by_task, task_id) {
+  let #(x, y) = case
+    dict.get(model.member.positions.member_positions_by_task, task_id)
+  {
     Ok(xy) -> xy
     Error(_) -> #(0, 0)
   }
@@ -857,7 +910,9 @@ pub fn handle_position_edit_opened(
 }
 
 /// Close position edit dialog.
-pub fn handle_position_edit_closed(model: client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+pub fn handle_position_edit_closed(
+  model: client_state.Model,
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   #(
     update_member_positions(model, fn(positions) {
       member_positions.Model(
@@ -898,7 +953,9 @@ pub fn handle_position_edit_y_changed(
 
 // Justification: nested case improves clarity for branching logic.
 /// Handle position edit form submission.
-pub fn handle_position_edit_submitted(model: client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+pub fn handle_position_edit_submitted(
+  model: client_state.Model,
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   case model.member.positions.member_position_edit_in_flight {
     True -> #(model, effect.none())
     False ->
@@ -909,7 +966,10 @@ pub fn handle_position_edit_submitted(model: client_state.Model) -> #(client_sta
   }
 }
 
-fn submit_position_edit(model: client_state.Model, task_id: Int) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+fn submit_position_edit(
+  model: client_state.Model,
+  task_id: Int,
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   case
     int.parse(model.member.positions.member_position_edit_x),
     int.parse(model.member.positions.member_position_edit_y)
@@ -942,7 +1002,9 @@ fn submit_position_edit_valid(
   )
 }
 
-fn submit_position_edit_invalid(model: client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+fn submit_position_edit_invalid(
+  model: client_state.Model,
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   #(
     update_member_positions(model, fn(positions) {
       member_positions.Model(
@@ -998,7 +1060,9 @@ pub fn handle_position_saved_error(
       effect.batch([
         api_tasks.list_me_task_positions(
           model.core.selected_project_id,
-          fn(result) { client_state.pool_msg(pool_messages.MemberPositionsFetched(result)) },
+          fn(result) {
+            client_state.pool_msg(pool_messages.MemberPositionsFetched(result))
+          },
         ),
         helpers_toast.toast_error(err.message),
       ]),
@@ -1067,7 +1131,8 @@ fn update_member_notes(
 /// Provides pool update context.
 pub type Context {
   Context(
-    member_refresh: fn(client_state.Model) -> #(client_state.Model, effect.Effect(client_state.Msg)),
+    member_refresh: fn(client_state.Model) ->
+      #(client_state.Model, effect.Effect(client_state.Msg)),
   )
 }
 
@@ -1140,7 +1205,10 @@ pub fn update(
           let pool = member.pool
           member_state.MemberModel(
             ..member,
-            pool: member_pool.Model(..pool, member_list_expanded_cards: new_cards),
+            pool: member_pool.Model(
+              ..pool,
+              member_list_expanded_cards: new_cards,
+            ),
           )
         }),
         effect.none(),
@@ -1150,14 +1218,18 @@ pub fn update(
       let new_model =
         client_state.update_member(model, fn(member) {
           let pool = member.pool
-          member_state.MemberModel(..member, pool: member_pool.Model(..pool, view_mode: mode))
+          member_state.MemberModel(
+            ..member,
+            pool: member_pool.Model(..pool, view_mode: mode),
+          )
         })
-      let route =
-        router.Member(
-          model.member.pool.member_section,
-          model.core.selected_project_id,
-          opt.Some(mode),
-        )
+      let state = case model.core.selected_project_id {
+        opt.Some(project_id) ->
+          url_state.with_project(url_state.empty(), project_id)
+        opt.None -> url_state.empty()
+      }
+      let state = url_state.with_view(state, mode)
+      let route = router.Member(model.member.pool.member_section, state)
       #(new_model, router.replace(route))
     }
     pool_messages.GlobalKeyDown(event) -> handle_global_keydown(model, event)
@@ -1169,7 +1241,11 @@ pub fn update(
 
     pool_messages.MemberProjectTasksFetched(project_id, Ok(tasks)) -> {
       let tasks_by_project =
-        dict.insert(model.member.pool.member_tasks_by_project, project_id, tasks)
+        dict.insert(
+          model.member.pool.member_tasks_by_project,
+          project_id,
+          tasks,
+        )
       let pending = model.member.pool.member_tasks_pending - 1
 
       let model =
@@ -1193,7 +1269,9 @@ pub fn update(
               ..member,
               pool: member_pool.Model(
                 ..pool,
-                member_tasks: Loaded(helpers_dicts.flatten_tasks(tasks_by_project)),
+                member_tasks: Loaded(helpers_dicts.flatten_tasks(
+                  tasks_by_project,
+                )),
               ),
             )
           }),
@@ -1530,7 +1608,10 @@ pub fn update(
         let skills = member.skills
         member_state.MemberModel(
           ..member,
-          skills: member_skills.Model(..skills, member_capabilities: Failed(err)),
+          skills: member_skills.Model(
+            ..skills,
+            member_capabilities: Failed(err),
+          ),
         )
       })
       |> fn(next) { #(next, effect.none()) }
@@ -1552,8 +1633,7 @@ pub fn update(
 
     pool_messages.MemberPositionEditOpened(task_id) ->
       handle_position_edit_opened(model, task_id)
-    pool_messages.MemberPositionEditClosed ->
-      handle_position_edit_closed(model)
+    pool_messages.MemberPositionEditClosed -> handle_position_edit_closed(model)
     pool_messages.MemberPositionEditXChanged(v) ->
       handle_position_edit_x_changed(model, v)
     pool_messages.MemberPositionEditYChanged(v) ->
@@ -1758,10 +1838,7 @@ pub fn update(
           let pool = member.pool
           member_state.MemberModel(
             ..member,
-            pool: member_pool.Model(
-              ..pool,
-              card_detail_open: opt.Some(card_id),
-            ),
+            pool: member_pool.Model(..pool, card_detail_open: opt.Some(card_id)),
           )
         })
         |> clear_card_new_notes(card_id)
@@ -1916,7 +1993,10 @@ pub fn update(
   }
 }
 
-fn clear_card_new_notes(model: client_state.Model, card_id: Int) -> client_state.Model {
+fn clear_card_new_notes(
+  model: client_state.Model,
+  card_id: Int,
+) -> client_state.Model {
   client_state.update_admin(model, fn(admin) {
     let cards_state = admin.cards
 

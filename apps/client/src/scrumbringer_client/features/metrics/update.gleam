@@ -34,8 +34,8 @@ import scrumbringer_client/client_state.{
   type Model, type Msg, update_admin, update_member,
 }
 import scrumbringer_client/client_state/admin as admin_state
-import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/admin/metrics as admin_metrics
+import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/metrics as member_metrics
 import scrumbringer_client/helpers/auth as helpers_auth
 
@@ -51,10 +51,7 @@ pub fn handle_member_metrics_fetched_ok(
   #(
     update_member(model, fn(member) {
       update_member_metrics(member, fn(metrics_state) {
-        member_metrics.Model(
-          ..metrics_state,
-          member_metrics: Loaded(metrics),
-        )
+        member_metrics.Model(..metrics_state, member_metrics: Loaded(metrics))
       })
     }),
     effect.none(),
@@ -70,10 +67,7 @@ pub fn handle_member_metrics_fetched_error(
     #(
       update_member(model, fn(member) {
         update_member_metrics(member, fn(metrics_state) {
-          member_metrics.Model(
-            ..metrics_state,
-            member_metrics: Failed(err),
-          )
+          member_metrics.Model(..metrics_state, member_metrics: Failed(err))
         })
       }),
       effect.none(),
@@ -179,10 +173,7 @@ pub fn handle_admin_users_fetched_ok(
   #(
     update_admin(model, fn(admin) {
       update_admin_metrics(admin, fn(metrics_state) {
-        admin_metrics.Model(
-          ..metrics_state,
-          admin_metrics_users: Loaded(users),
-        )
+        admin_metrics.Model(..metrics_state, admin_metrics_users: Loaded(users))
       })
     }),
     effect.none(),
@@ -197,10 +188,7 @@ pub fn handle_admin_users_fetched_error(
     #(
       update_admin(model, fn(admin) {
         update_admin_metrics(admin, fn(metrics_state) {
-          admin_metrics.Model(
-            ..metrics_state,
-            admin_metrics_users: Failed(err),
-          )
+          admin_metrics.Model(..metrics_state, admin_metrics_users: Failed(err))
         })
       }),
       effect.none(),

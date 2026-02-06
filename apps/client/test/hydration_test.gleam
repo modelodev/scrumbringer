@@ -1,4 +1,4 @@
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleeunit/should
 
 import domain/org_role
@@ -6,6 +6,7 @@ import scrumbringer_client/hydration
 import scrumbringer_client/member_section
 import scrumbringer_client/permissions
 import scrumbringer_client/router
+import scrumbringer_client/url_state
 
 pub fn admin_members_unknown_auth_requires_fetch_me_test() {
   let snap =
@@ -128,7 +129,7 @@ pub fn admin_route_non_admin_redirects_to_member_pool_test() {
 
   hydration.plan(router.Org(permissions.Invites), snap)
   |> should.equal([
-    hydration.Redirect(to: router.Member(member_section.Pool, None, None)),
+    hydration.Redirect(to: member_route(None)),
   ])
 }
 
@@ -227,7 +228,7 @@ pub fn admin_org_level_section_pm_redirects_test() {
   // Should redirect because Invites is org-level
   hydration.plan(router.Org(permissions.Invites), snap)
   |> should.equal([
-    hydration.Redirect(to: router.Member(member_section.Pool, None, None)),
+    hydration.Redirect(to: member_route(None)),
   ])
 }
 
@@ -256,7 +257,7 @@ pub fn member_pool_with_projects_loaded_only_refreshes_member_test() {
       org_metrics_project_id: None,
     )
 
-  hydration.plan(router.Member(member_section.Pool, Some(2), None), snap)
+  hydration.plan(member_route(Some(2)), snap)
   |> should.equal([
     hydration.FetchWorkSessions,
     hydration.FetchMeMetrics,
@@ -288,6 +289,14 @@ pub fn member_pool_refreshes_when_cards_missing_test() {
       org_metrics_project_id: None,
     )
 
-  hydration.plan(router.Member(member_section.Pool, Some(2), None), snap)
+  hydration.plan(member_route(Some(2)), snap)
   |> should.equal([hydration.RefreshMember])
+}
+
+fn member_route(project_id: Option(Int)) -> router.Route {
+  let state = case project_id {
+    Some(id) -> url_state.with_project(url_state.empty(), id)
+    None -> url_state.empty()
+  }
+  router.Member(member_section.Pool, state)
 }

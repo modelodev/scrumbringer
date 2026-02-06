@@ -66,8 +66,8 @@ import domain/user.{type User}
 import domain/api_error.{type ApiResult}
 import domain/project.{type Project}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
-import scrumbringer_client/client_state/auth as auth_state
 import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/auth as auth_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/client_state/ui as ui_state

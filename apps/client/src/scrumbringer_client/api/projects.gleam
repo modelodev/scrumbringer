@@ -21,40 +21,11 @@ import gleam/option
 
 import lustre/effect.{type Effect}
 
-import scrumbringer_client/api/core.{type ApiResult}
-import scrumbringer_client/decoders
-
-// Import types from shared domain
-import domain/project.{type Project, type ProjectMember, Project, ProjectMember}
+import domain/project.{type Project, type ProjectMember}
+import domain/project/codec as project_codec
 import domain/project_role.{type ProjectRole}
-
-fn project_decoder() -> decode.Decoder(Project) {
-  use id <- decode.field("id", decode.int)
-  use name <- decode.field("name", decode.string)
-  use my_role <- decode.field("my_role", decoders.project_role_decoder())
-  use created_at <- decode.field("created_at", decode.string)
-  use members_count <- decode.field("members_count", decode.int)
-  decode.success(Project(
-    id: id,
-    name: name,
-    my_role: my_role,
-    created_at: created_at,
-    members_count: members_count,
-  ))
-}
-
-fn project_member_decoder() -> decode.Decoder(ProjectMember) {
-  use user_id <- decode.field("user_id", decode.int)
-  use role <- decode.field("role", decoders.project_role_decoder())
-  use created_at <- decode.field("created_at", decode.string)
-  use claimed_count <- decode.field("claimed_count", decode.int)
-  decode.success(ProjectMember(
-    user_id: user_id,
-    role: role,
-    created_at: created_at,
-    claimed_count: claimed_count,
-  ))
-}
+import domain/project_role/codec as project_role_codec
+import scrumbringer_client/api/core.{type ApiResult}
 
 // =============================================================================
 // API Functions
@@ -63,7 +34,11 @@ fn project_member_decoder() -> decode.Decoder(ProjectMember) {
 /// List all projects the current user has access to.
 pub fn list_projects(to_msg: fn(ApiResult(List(Project))) -> msg) -> Effect(msg) {
   let decoder =
-    decode.field("projects", decode.list(project_decoder()), decode.success)
+    decode.field(
+      "projects",
+      decode.list(project_codec.project_decoder()),
+      decode.success,
+    )
   core.request("GET", "/api/v1/projects", option.None, decoder, to_msg)
 }
 
@@ -73,7 +48,8 @@ pub fn create_project(
   to_msg: fn(ApiResult(Project)) -> msg,
 ) -> Effect(msg) {
   let body = json.object([#("name", json.string(name))])
-  let decoder = decode.field("project", project_decoder(), decode.success)
+  let decoder =
+    decode.field("project", project_codec.project_decoder(), decode.success)
   core.request("POST", "/api/v1/projects", option.Some(body), decoder, to_msg)
 }
 
@@ -85,7 +61,7 @@ pub fn list_project_members(
   let decoder =
     decode.field(
       "members",
-      decode.list(project_member_decoder()),
+      decode.list(project_codec.project_member_decoder()),
       decode.success,
     )
   core.request(
@@ -109,7 +85,12 @@ pub fn add_project_member(
       #("user_id", json.int(user_id)),
       #("role", json.string(project_role.to_string(role))),
     ])
-  let decoder = decode.field("member", project_member_decoder(), decode.success)
+  let decoder =
+    decode.field(
+      "member",
+      project_codec.project_member_decoder(),
+      decode.success,
+    )
   core.request(
     "POST",
     "/api/v1/projects/" <> int.to_string(project_id) <> "/members",
@@ -167,10 +148,10 @@ fn release_all_result_decoder() -> decode.Decoder(ReleaseAllResult) {
 fn role_change_result_decoder() -> decode.Decoder(RoleChangeResult) {
   use user_id <- decode.field("user_id", decode.int)
   use email <- decode.field("email", decode.string)
-  use role <- decode.field("role", decoders.project_role_decoder())
+  use role <- decode.field("role", project_role_codec.project_role_decoder())
   use previous_role <- decode.field(
     "previous_role",
-    decoders.project_role_decoder(),
+    project_role_codec.project_role_decoder(),
   )
   decode.success(RoleChangeResult(
     user_id: user_id,
@@ -357,7 +338,8 @@ pub fn update_project(
   to_msg: fn(ApiResult(Project)) -> msg,
 ) -> Effect(msg) {
   let body = json.object([#("name", json.string(name))])
-  let decoder = decode.field("project", project_decoder(), decode.success)
+  let decoder =
+    decode.field("project", project_codec.project_decoder(), decode.success)
   core.request(
     "PATCH",
     "/api/v1/projects/" <> int.to_string(project_id),

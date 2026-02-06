@@ -3,18 +3,16 @@
 import gleam/dynamic/decode
 
 import domain/card
+import domain/card/codec as card_codec
 import domain/project_role
+import domain/project_role/codec as project_role_codec
 
 /// Decoder for ProjectRole.
 pub fn project_role_decoder() -> decode.Decoder(project_role.ProjectRole) {
-  use role_string <- decode.then(decode.string)
-  case project_role.parse(role_string) {
-    Ok(role) -> decode.success(role)
-    Error(_) -> decode.failure(project_role.Manager, "ProjectRole")
-  }
+  project_role_codec.project_role_decoder()
 }
 
 /// Decoder for CardState.
 pub fn card_state_decoder() -> decode.Decoder(card.CardState) {
-  decode.string |> decode.map(card.state_from_string)
+  card_codec.card_state_decoder()
 }

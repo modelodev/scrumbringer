@@ -101,7 +101,10 @@ pub fn fichas_shows_empty_without_cache_or_pending_test() {
 
       member_state.MemberModel(
         ..member,
-        pool: member_pool.Model(..pool, member_cards_store: normalized_store.new()),
+        pool: member_pool.Model(
+          ..pool,
+          member_cards_store: normalized_store.new(),
+        ),
       )
     })
 

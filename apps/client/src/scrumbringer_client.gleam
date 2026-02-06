@@ -73,6 +73,7 @@ import scrumbringer_client/router
 import scrumbringer_client/storage
 import scrumbringer_client/theme
 import scrumbringer_client/ui/toast
+import scrumbringer_client/url_state
 
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/i18n/locale as i18n_locale
@@ -82,20 +83,20 @@ import scrumbringer_client/client_state.{
   Login, MeFetched, Member, Replace, ResetPassword as ResetPasswordPage,
   update_auth, update_core, update_member, update_ui,
 }
+import scrumbringer_client/client_state/auth as auth_state
 import scrumbringer_client/client_state/member.{MemberModel}
 import scrumbringer_client/client_state/member/pool as member_pool
-import scrumbringer_client/client_state/auth as auth_state
 import scrumbringer_client/client_state/ui as ui_state
 
 import scrumbringer_client/client_update
 import scrumbringer_client/client_view
-import scrumbringer_client/features/auth/update as auth_workflow
 import scrumbringer_client/components/card_crud_dialog
 import scrumbringer_client/components/card_detail_modal
 import scrumbringer_client/components/rule_crud_dialog
 import scrumbringer_client/components/task_template_crud_dialog
 import scrumbringer_client/components/task_type_crud_dialog
 import scrumbringer_client/components/workflow_crud_dialog
+import scrumbringer_client/features/auth/update as auth_workflow
 
 // =============================================================================
 // Application Entry Point
@@ -211,7 +212,7 @@ fn init(flags: Flags) -> #(Model, Effect(Msg)) {
     router.AcceptInvite(_) -> AcceptInvitePage
     router.ResetPassword(_) -> ResetPasswordPage
     router.Config(_, _) | router.Org(_) -> Admin
-    router.Member(_, _, _) -> Member
+    router.Member(_, _) -> Member
   }
 
   let active_section = case route {
@@ -220,19 +221,20 @@ fn init(flags: Flags) -> #(Model, Effect(Msg)) {
   }
 
   let member_section = case route {
-    router.Member(section, _, _) -> section
+    router.Member(section, _) -> section
     _ -> member_section.Pool
   }
 
   let selected_project_id = case route {
-    router.Config(_, project_id) | router.Member(_, project_id, _) -> project_id
+    router.Config(_, project_id) -> project_id
+    router.Member(_, state) -> url_state.project(state)
     router.Org(_) -> opt.None
     _ -> opt.None
   }
 
   // Extract view mode from URL (default to Pool if not specified)
   let initial_view_mode = case route {
-    router.Member(_, _, opt.Some(vm)) -> vm
+    router.Member(_, state) -> url_state.view(state)
     _ -> view_mode.Pool
   }
 

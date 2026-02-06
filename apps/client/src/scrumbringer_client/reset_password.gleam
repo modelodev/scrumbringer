@@ -3,40 +3,20 @@
 //// Handles the flow of validating a reset token, collecting
 //// a new password, and updating the user's credentials.
 
-import gleam/option
-import gleam/string
-
-import domain/api_error.{type ApiError, type ApiResult}
+import domain/api_error.{type ApiError}
+import scrumbringer_client/token_flow
 
 /// Token validation and password reset state.
-pub type State {
-  NoToken
-  Validating
-  Invalid(code: String, message: String)
-  Ready(email: String)
-  Consuming(email: String)
-  Done
-}
+pub type State =
+  token_flow.State
 
 /// Component model for the reset-password form.
-pub type Model {
-  Model(
-    token: String,
-    state: State,
-    password: String,
-    password_error: option.Option(String),
-    submit_error: option.Option(String),
-  )
-}
+pub type Model =
+  token_flow.Model
 
 /// Messages handled by this module.
-pub type Msg {
-  TokenValidated(ApiResult(String))
-  PasswordChanged(String)
-  Submitted
-  Consumed(ApiResult(Nil))
-  ErrorDismissed
-}
+pub type Msg =
+  token_flow.Msg(Nil)
 
 /// Side effects to perform after an update.
 pub type Action {
@@ -48,122 +28,30 @@ pub type Action {
 
 /// Initializes the model, triggering token validation if provided.
 pub fn init(token: String) -> #(Model, Action) {
-  case token {
-    "" -> #(
-      Model(
-        token: "",
-        state: NoToken,
-        password: "",
-        password_error: option.None,
-        submit_error: option.None,
-      ),
-      NoOp,
-    )
-
-    _ -> #(
-      Model(
-        token: token,
-        state: Validating,
-        password: "",
-        password_error: option.None,
-        submit_error: option.None,
-      ),
-      ValidateToken(token),
-    )
-  }
+  let #(model, action) = token_flow.init(token)
+  #(model, map_action(action))
 }
 
 /// Handles messages and returns updated model with any actions.
 pub fn update(model: Model, msg: Msg) -> #(Model, Action) {
-  case msg {
-    TokenValidated(Ok(email)) -> #(
-      Model(
-        ..model,
-        state: Ready(email),
-        submit_error: option.None,
-        password_error: option.None,
-      ),
-      NoOp,
-    )
+  let #(next, action) = token_flow.update(model, msg, submit_error_state)
+  #(next, map_action(action))
+}
 
-    TokenValidated(Error(err)) -> #(
-      Model(
-        ..model,
-        state: Invalid(code: err.code, message: err.message),
-        submit_error: option.None,
-        password_error: option.None,
-      ),
-      NoOp,
-    )
-
-    PasswordChanged(value) -> #(
-      Model(
-        ..model,
-        password: value,
-        password_error: option.None,
-        submit_error: option.None,
-      ),
-      NoOp,
-    )
-
-    Submitted -> handle_submitted(model)
-
-    Consumed(Ok(_)) -> #(Model(..model, state: Done), GoToLogin)
-
-    Consumed(Error(err)) -> handle_consumed_error(model, err)
-
-    ErrorDismissed -> #(Model(..model, submit_error: option.None), NoOp)
+fn map_action(action: token_flow.Action(Nil)) -> Action {
+  case action {
+    token_flow.NoOp -> NoOp
+    token_flow.ValidateToken(token) -> ValidateToken(token)
+    token_flow.Submit(token: token, password: password) ->
+      Consume(token: token, password: password)
+    token_flow.Succeeded(_) -> GoToLogin
   }
 }
 
-fn handle_submitted(model: Model) -> #(Model, Action) {
-  case model.state {
-    Ready(email) -> handle_ready_submit(model, email)
-    _ -> #(model, NoOp)
-  }
-}
-
-fn handle_ready_submit(model: Model, email: String) -> #(Model, Action) {
-  case string.length(model.password) < 12 {
-    True -> #(
-      Model(
-        ..model,
-        password_error: option.Some("Password must be at least 12 characters"),
-      ),
-      NoOp,
-    )
-
-    False -> #(
-      Model(..model, state: Consuming(email), submit_error: option.None),
-      Consume(token: model.token, password: model.password),
-    )
-  }
-}
-
-fn handle_consumed_error(model: Model, err: ApiError) -> #(Model, Action) {
-  case model.state {
-    Consuming(email) -> apply_consumed_error(model, email, err)
-    _ -> #(model, NoOp)
-  }
-}
-
-fn apply_consumed_error(
-  model: Model,
-  email: String,
-  err: ApiError,
-) -> #(Model, Action) {
-  let new_state = consumed_error_state(email, err)
-
-  #(
-    Model(..model, state: new_state, submit_error: option.Some(err.message)),
-    NoOp,
-  )
-}
-
-fn consumed_error_state(email: String, err: ApiError) -> State {
+fn submit_error_state(email: String, err: ApiError) -> token_flow.State {
   case err.code {
     "RESET_TOKEN_INVALID" | "RESET_TOKEN_USED" ->
-      Invalid(code: err.code, message: err.message)
-    _ -> Ready(email)
+      token_flow.Invalid(code: err.code, message: err.message)
+    _ -> token_flow.Ready(email)
   }
 }

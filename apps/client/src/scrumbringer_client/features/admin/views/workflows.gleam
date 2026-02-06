@@ -375,7 +375,11 @@ fn view_workflow_rules(model: Model, workflow_id: Int) -> Element(Msg) {
         pool_msg(pool_messages.OpenRuleDialog(state_types.RuleDialogCreate)),
       ),
     ),
-    view_rules_table(model, model.admin.rules.rules, model.admin.rules.rules_metrics),
+    view_rules_table(
+      model,
+      model.admin.rules.rules,
+      model.admin.rules.rules_metrics,
+    ),
     // Rule CRUD dialog component (handles create/edit/delete internally)
     view_rule_crud_dialog(model, workflow_id),
   ])
@@ -771,7 +775,10 @@ fn available_templates_for_modal(
   model: Model,
   attached_ids: List(Int),
 ) -> List(TaskTemplate) {
-  case model.admin.task_templates.task_templates_org, model.admin.task_templates.task_templates_project {
+  case
+    model.admin.task_templates.task_templates_org,
+    model.admin.task_templates.task_templates_project
+  {
     Loaded(org), Loaded(proj) ->
       list.filter(list.append(org, proj), fn(tmpl) {
         !list.contains(attached_ids, tmpl.id)
@@ -851,7 +858,9 @@ fn view_attach_template_modal_footer(model: Model) -> Element(Msg) {
         button(
           [
             attribute.class("btn btn-primary"),
-            attribute.disabled(opt.is_none(model.admin.rules.attach_template_selected)),
+            attribute.disabled(opt.is_none(
+              model.admin.rules.attach_template_selected,
+            )),
             event.on_click(pool_msg(pool_messages.AttachTemplateSubmitted)),
           ],
           [text(t(i18n_text.Attach))],
@@ -1108,7 +1117,10 @@ pub fn view_task_templates(
     // Story 4.9: Unified hint with rules link and variables info
     view_templates_hint(model),
     // Templates table (project-scoped)
-    view_task_templates_table(model, model.admin.task_templates.task_templates_project),
+    view_task_templates_table(
+      model,
+      model.admin.task_templates.task_templates_project,
+    ),
     // Task template CRUD dialog component
     view_task_template_crud_dialog(model),
   ])
@@ -1595,7 +1607,8 @@ fn view_workflow_row(
   w: api_workflows.OrgWorkflowMetricsSummary,
 ) -> List(#(String, Element(Msg))) {
   let is_expanded =
-    model.admin.metrics.admin_rule_metrics_expanded_workflow == opt.Some(w.workflow_id)
+    model.admin.metrics.admin_rule_metrics_expanded_workflow
+    == opt.Some(w.workflow_id)
   let main_row = #(
     "wf-" <> int.to_string(w.workflow_id),
     tr(
