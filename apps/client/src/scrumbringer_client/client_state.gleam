@@ -288,6 +288,8 @@ pub type Msg {
   AdminMsg(AdminMsg)
   PoolMsg(PoolMsg)
   ToastShow(String, toast.ToastVariant)
+  ToastShowWithAction(String, toast.ToastVariant, toast.ToastAction)
+  ToastActionTriggered(toast.ToastActionKind)
   ToastDismiss(ToastId)
   ToastTick(Int)
   ThemeSelected(String)

@@ -439,6 +439,38 @@ pub fn handle_task_blurred(
   handle_task_hover_closed(model)
 }
 
+pub fn handle_task_created_feedback(
+  model: client_state.Model,
+  task_id: Int,
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+  #(
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(
+        ..pool,
+        member_highlight_state: member_pool.CreatedHighlight(task_id),
+      )
+    }),
+    effect.none(),
+  )
+}
+
+pub fn handle_highlight_expired(
+  model: client_state.Model,
+  task_id: Int,
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+  let next_highlight = case model.member.pool.member_highlight_state {
+    member_pool.CreatedHighlight(id) if id == task_id -> member_pool.NoHighlight
+    state -> state
+  }
+
+  #(
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(..pool, member_highlight_state: next_highlight)
+    }),
+    effect.none(),
+  )
+}
+
 fn open_blocker_highlight(
   model: client_state.Model,
   task_id: Int,
@@ -1254,6 +1286,10 @@ pub fn update(
     pool_messages.MemberTaskFocused(task_id) ->
       handle_task_focused(model, task_id)
     pool_messages.MemberTaskBlurred -> handle_task_blurred(model)
+    pool_messages.MemberTaskCreatedFeedback(task_id) ->
+      handle_task_created_feedback(model, task_id)
+    pool_messages.MemberHighlightExpired(task_id) ->
+      handle_highlight_expired(model, task_id)
     pool_messages.MemberTaskHoverNotesFetched(task_id, result) ->
       handle_task_hover_notes_fetched(model, task_id, result)
     pool_messages.MemberListHideCompletedToggled -> #(
@@ -1518,8 +1554,8 @@ pub fn update(
     pool_messages.MemberCreateSubmitted ->
       tasks_workflow.handle_create_submitted(model, member_refresh)
 
-    pool_messages.MemberTaskCreated(Ok(_)) ->
-      tasks_workflow.handle_task_created_ok(model, member_refresh)
+    pool_messages.MemberTaskCreated(Ok(task)) ->
+      tasks_workflow.handle_task_created_ok(model, task, member_refresh)
     pool_messages.MemberTaskCreated(Error(err)) ->
       tasks_workflow.handle_task_created_error(model, err)
 

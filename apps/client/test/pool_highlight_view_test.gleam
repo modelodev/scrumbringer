@@ -119,3 +119,34 @@ pub fn pool_card_shows_hidden_blockers_message_test() {
 
   has_hidden_message |> should.be_true
 }
+
+pub fn pool_card_applies_created_highlight_info_class_test() {
+  let created = make_task(5, 0, [])
+  let other = make_task(6, 0, [])
+
+  let model =
+    client_state.default_model()
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_tasks: Loaded([created, other]),
+          member_highlight_state: member_pool.CreatedHighlight(5),
+        ),
+      )
+    })
+
+  let created_html =
+    pool_view.view_task_card(model, created)
+    |> element.to_document_string
+
+  let other_html =
+    pool_view.view_task_card(model, other)
+    |> element.to_document_string
+
+  string.contains(created_html, "is-highlight-source") |> should.be_true
+  string.contains(created_html, "highlight-info") |> should.be_true
+  string.contains(other_html, "highlight-info") |> should.be_false
+}

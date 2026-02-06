@@ -29,6 +29,7 @@
 //// - **client_update.gleam**: Integrates with main update
 
 import gleam/list
+import gleam/option.{type Option, None, Some}
 
 import lustre/attribute
 import lustre/element.{type Element}
@@ -53,9 +54,26 @@ pub type ToastVariant {
   Warning
 }
 
+/// Typed toast actions for global interactive notifications.
+pub type ToastActionKind {
+  ViewTask(task_id: Int)
+  ClearPoolFilters
+}
+
+/// Action metadata rendered in the toast UI.
+pub type ToastAction {
+  ToastAction(label: String, kind: ToastActionKind)
+}
+
 /// A toast notification with type-safe ID.
 pub type Toast {
-  Toast(id: ToastId, message: String, variant: ToastVariant, created_at: Int)
+  Toast(
+    id: ToastId,
+    message: String,
+    variant: ToastVariant,
+    action: Option(ToastAction),
+    created_at: Int,
+  )
 }
 
 /// State for managing multiple toasts.
@@ -100,8 +118,19 @@ pub fn show(
   variant: ToastVariant,
   now: Int,
 ) -> ToastState {
+  show_with_action(state, message, variant, None, now)
+}
+
+/// Show a new toast with optional action.
+pub fn show_with_action(
+  state: ToastState,
+  message: String,
+  variant: ToastVariant,
+  action: Option(ToastAction),
+  now: Int,
+) -> ToastState {
   let id = new_toast_id(state.next_id)
-  let toast = Toast(id:, message:, variant:, created_at: now)
+  let toast = Toast(id:, message:, variant:, action:, created_at: now)
   ToastState(toasts: [toast, ..state.toasts], next_id: state.next_id + 1)
 }
 
@@ -145,20 +174,40 @@ pub fn get_toasts(state: ToastState) -> List(Toast) {
 pub fn view_container(
   state: ToastState,
   on_dismiss: fn(ToastId) -> msg,
+  on_action: fn(ToastActionKind) -> msg,
 ) -> Element(msg) {
   case list.is_empty(state.toasts) {
     True -> element.none()
     False ->
       div(
         [attribute.class("toast-container")],
-        list.map(state.toasts, fn(t) { view_toast(t, on_dismiss(t.id)) }),
+        list.map(state.toasts, fn(t) {
+          view_toast(t, on_dismiss(t.id), on_action)
+        }),
       )
   }
 }
 
 /// Render a single toast notification.
-fn view_toast(toast: Toast, on_dismiss: msg) -> Element(msg) {
+fn view_toast(
+  toast: Toast,
+  on_dismiss: msg,
+  on_action: fn(ToastActionKind) -> msg,
+) -> Element(msg) {
   let variant_class = variant_to_class(toast.variant)
+
+  let action_button = case toast.action {
+    Some(ToastAction(label:, kind: kind)) ->
+      button(
+        [
+          attribute.class("toast-action btn-xs"),
+          attribute.attribute("aria-label", label),
+          event.on_click(on_action(kind)),
+        ],
+        [text(label)],
+      )
+    None -> element.none()
+  }
 
   div(
     [
@@ -173,6 +222,7 @@ fn view_toast(toast: Toast, on_dismiss: msg) -> Element(msg) {
     [
       span([attribute.class("toast-icon")], [text(variant_icon(toast.variant))]),
       span([attribute.class("toast-message")], [text(toast.message)]),
+      action_button,
       button(
         [
           attribute.class("toast-dismiss btn-xs"),

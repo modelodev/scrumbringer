@@ -47,6 +47,7 @@ pub type Text {
   MemberRemoved
   TaskTypeCreated
   TaskCreated
+  TaskCreatedNotVisibleByFilters
   TaskClaimed
   TaskReleased
   TaskCompleted

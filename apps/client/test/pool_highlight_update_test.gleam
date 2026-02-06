@@ -166,3 +166,52 @@ pub fn blur_clears_blocking_highlight_test() {
   next.member.pool.member_highlight_state
   |> should.equal(member_pool.NoHighlight)
 }
+
+pub fn task_created_feedback_sets_created_highlight_test() {
+  let model = client_state.default_model()
+
+  let #(next, _fx) = pool_update.handle_task_created_feedback(model, 21)
+
+  next.member.pool.member_highlight_state
+  |> should.equal(member_pool.CreatedHighlight(21))
+}
+
+pub fn highlight_expired_clears_matching_created_highlight_test() {
+  let model =
+    client_state.default_model()
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_highlight_state: member_pool.CreatedHighlight(21),
+        ),
+      )
+    })
+
+  let #(next, _fx) = pool_update.handle_highlight_expired(model, 21)
+
+  next.member.pool.member_highlight_state
+  |> should.equal(member_pool.NoHighlight)
+}
+
+pub fn highlight_expired_keeps_blocking_highlight_test() {
+  let model =
+    client_state.default_model()
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_highlight_state: member_pool.BlockingHighlight(10, [11], 0),
+        ),
+      )
+    })
+
+  let #(next, _fx) = pool_update.handle_highlight_expired(model, 10)
+
+  next.member.pool.member_highlight_state
+  |> should.equal(member_pool.BlockingHighlight(10, [11], 0))
+}

@@ -2,12 +2,25 @@
 
 import lustre/effect.{type Effect}
 
-import scrumbringer_client/client_state.{type Msg, ToastShow}
+import scrumbringer_client/client_state.{
+  type Msg, ToastShow, ToastShowWithAction,
+}
 import scrumbringer_client/ui/toast
 
 /// Build a toast effect to show a message with a variant.
 pub fn toast_effect(message: String, variant: toast.ToastVariant) -> Effect(Msg) {
   effect.from(fn(dispatch) { dispatch(ToastShow(message, variant)) })
+}
+
+/// Build a toast effect with an action button.
+pub fn toast_effect_with_action(
+  message: String,
+  variant: toast.ToastVariant,
+  action: toast.ToastAction,
+) -> Effect(Msg) {
+  effect.from(fn(dispatch) {
+    dispatch(ToastShowWithAction(message, variant, action))
+  })
 }
 
 /// Provides toast success.

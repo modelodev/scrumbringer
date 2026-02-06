@@ -57,6 +57,8 @@ pub fn translate(text: Text) -> String {
     text.MemberRemoved -> "Member removed"
     text.TaskTypeCreated -> "Task type created"
     text.TaskCreated -> "Task created"
+    text.TaskCreatedNotVisibleByFilters ->
+      "Task created, but not visible with current filters"
     text.TaskClaimed -> "Task claimed"
     text.TaskReleased -> "Task released"
     text.TaskCompleted -> "Task completed"

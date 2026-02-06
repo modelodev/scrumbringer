@@ -46,6 +46,7 @@ import lustre/effect.{type Effect}
 
 // API modules
 import scrumbringer_client/api/tasks as api_tasks
+import scrumbringer_client/app/effects as app_effects
 
 // Domain types
 import domain/api_error.{type ApiError}
@@ -55,6 +56,7 @@ import domain/task.{
 }
 import domain/task_state
 import domain/task_status.{Completed, Taken}
+import domain/task_type.{type TaskType, TaskType}
 import scrumbringer_client/client_state.{
   type Model, type Msg, pool_msg, update_member,
 }
@@ -70,6 +72,9 @@ import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/helpers/toast as helpers_toast
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/task_tabs
+import scrumbringer_client/ui/toast
+
+const created_highlight_ms = 4000
 
 // =============================================================================
 // Create Dialog Handlers
@@ -370,6 +375,7 @@ fn submit_create(
 /// Handle successful task creation.
 pub fn handle_task_created_ok(
   model: Model,
+  task: Task,
   member_refresh: fn(Model) -> #(Model, Effect(Msg)),
 ) -> #(Model, Effect(Msg)) {
   let model =
@@ -386,12 +392,122 @@ pub fn handle_task_created_ok(
       )
     })
   let #(model, refresh_fx) = member_refresh(model)
+
+  let #(toast_message, toast_variant, toast_action) =
+    task_created_feedback(model, task)
+
   let toast_fx =
-    helpers_toast.toast_success(helpers_i18n.i18n_t(
-      model,
-      i18n_text.TaskCreated,
-    ))
-  #(model, effect.batch([refresh_fx, toast_fx]))
+    helpers_toast.toast_effect_with_action(
+      toast_message,
+      toast_variant,
+      toast_action,
+    )
+
+  let feedback_fx =
+    effect.from(fn(dispatch) {
+      dispatch(pool_msg(pool_messages.MemberTaskCreatedFeedback(task.id)))
+    })
+
+  let expire_fx =
+    app_effects.schedule_timeout(created_highlight_ms, fn() {
+      pool_msg(pool_messages.MemberHighlightExpired(task.id))
+    })
+
+  #(model, effect.batch([refresh_fx, feedback_fx, expire_fx, toast_fx]))
+}
+
+fn task_created_feedback(
+  model: Model,
+  task: Task,
+) -> #(String, toast.ToastVariant, toast.ToastAction) {
+  case is_task_visible_under_active_filters(model, task) {
+    True -> #(
+      helpers_i18n.i18n_t(model, i18n_text.TaskCreated),
+      toast.Success,
+      toast.ToastAction(
+        label: helpers_i18n.i18n_t(model, i18n_text.View),
+        kind: toast.ViewTask(task.id),
+      ),
+    )
+
+    False -> #(
+      helpers_i18n.i18n_t(model, i18n_text.TaskCreatedNotVisibleByFilters),
+      toast.Info,
+      toast.ToastAction(
+        label: helpers_i18n.i18n_t(model, i18n_text.ClearFilters),
+        kind: toast.ClearPoolFilters,
+      ),
+    )
+  }
+}
+
+pub fn task_created_feedback_for_test(
+  model: Model,
+  task: Task,
+) -> #(String, toast.ToastVariant, toast.ToastAction) {
+  task_created_feedback(model, task)
+}
+
+fn is_task_visible_under_active_filters(model: Model, task: Task) -> Bool {
+  let status_ok = case model.member.pool.member_filters_status {
+    opt.Some(status) -> task.status == status
+    opt.None -> True
+  }
+
+  let type_ok = case model.member.pool.member_filters_type_id {
+    opt.Some(type_id) -> task.type_id == type_id
+    opt.None -> True
+  }
+
+  let capability_ok =
+    matches_capability_filter(
+      model.member.pool.member_filters_capability_id,
+      model.member.pool.member_task_types,
+      task.type_id,
+    )
+
+  let query_ok = case string.trim(model.member.pool.member_filters_q) {
+    "" -> True
+    q -> {
+      let q_lower = string.lowercase(q)
+      let in_title = string.contains(string.lowercase(task.title), q_lower)
+      let in_description = case task.description {
+        opt.Some(description) ->
+          string.contains(string.lowercase(description), q_lower)
+        opt.None -> False
+      }
+      in_title || in_description
+    }
+  }
+
+  status_ok && type_ok && capability_ok && query_ok
+}
+
+pub fn is_task_visible_under_active_filters_for_test(
+  model: Model,
+  task: Task,
+) -> Bool {
+  is_task_visible_under_active_filters(model, task)
+}
+
+fn matches_capability_filter(
+  selected_capability_id: opt.Option(Int),
+  task_types_remote: Remote(List(TaskType)),
+  task_type_id: Int,
+) -> Bool {
+  case selected_capability_id {
+    opt.None -> True
+    opt.Some(capability_id) ->
+      case task_types_remote {
+        Loaded(task_types) ->
+          case list.find(task_types, fn(t) { t.id == task_type_id }) {
+            Ok(TaskType(capability_id: opt.Some(task_capability_id), ..)) ->
+              task_capability_id == capability_id
+            _ -> False
+          }
+        _ -> False
+      }
+  }
 }
 
 /// Handle failed task creation.

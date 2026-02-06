@@ -144,9 +144,11 @@ fn view_skip_link(model: client_state.Model) -> Element(client_state.Msg) {
 fn view_global_overlays(model: client_state.Model) -> Element(client_state.Msg) {
   element.fragment([
     // New toast system with auto-dismiss (Story 4.8)
-    ui_toast.view_container(model.ui.toast_state, fn(id) {
-      client_state.ToastDismiss(id)
-    }),
+    ui_toast.view_container(
+      model.ui.toast_state,
+      fn(id) { client_state.ToastDismiss(id) },
+      fn(action) { client_state.ToastActionTriggered(action) },
+    ),
     // Global card dialog (Story 4.8 UX: renders on any page when open)
     case model.core.selected_project_id, model.admin.cards.cards_dialog_mode {
       opt.Some(project_id), opt.Some(_) ->

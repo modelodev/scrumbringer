@@ -19,6 +19,7 @@ import scrumbringer_client/ui/task_tabs
 /// Highlight state for dependency visualization in pool cards.
 pub type HighlightState {
   NoHighlight
+  CreatedHighlight(task_id: Int)
   BlockingHighlight(
     source_task_id: Int,
     blocker_ids: List(Int),

@@ -64,6 +64,8 @@ pub type Msg {
   MemberCreateCardIdChanged(String)
   MemberCreateSubmitted
   MemberTaskCreated(ApiResult(Task))
+  MemberTaskCreatedFeedback(Int)
+  MemberHighlightExpired(Int)
   MemberClaimClicked(Int, Int)
   MemberReleaseClicked(Int, Int)
   MemberCompleteClicked(Int, Int)

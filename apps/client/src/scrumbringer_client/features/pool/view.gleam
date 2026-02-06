@@ -110,6 +110,11 @@ fn has_active_filters(model: Model) -> Bool {
 fn task_highlight_classes(model: Model, task_id: Int) -> String {
   case model.member.pool.member_highlight_state {
     member_pool_state.NoHighlight -> ""
+    member_pool_state.CreatedHighlight(created_task_id) ->
+      case task_id == created_task_id {
+        True -> " is-highlight-source highlight-info"
+        False -> ""
+      }
     member_pool_state.BlockingHighlight(
       source_task_id: source_task_id,
       blocker_ids: blocker_ids,

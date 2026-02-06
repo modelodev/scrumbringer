@@ -1615,6 +1615,39 @@ pub fn update(
       )
     }
 
+    client_state.ToastShowWithAction(message, variant, action) -> {
+      let now = client_ffi.now_ms()
+      let next_state =
+        toast.show_with_action(
+          model.ui.toast_state,
+          message,
+          variant,
+          opt.Some(action),
+          now,
+        )
+      let tick_effect =
+        app_effects.schedule_timeout(toast.auto_dismiss_ms, fn() {
+          client_state.ToastTick(client_ffi.now_ms())
+        })
+      #(
+        client_state.update_ui(model, fn(ui) {
+          ui_state.UiModel(..ui, toast_state: next_state)
+        }),
+        tick_effect,
+      )
+    }
+
+    client_state.ToastActionTriggered(action) -> {
+      let action_msg = case action {
+        toast.ClearPoolFilters ->
+          client_state.pool_msg(pool_messages.MemberClearFilters)
+        toast.ViewTask(task_id) ->
+          client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
+      }
+
+      #(model, effect.from(fn(dispatch) { dispatch(action_msg) }))
+    }
+
     client_state.ToastDismiss(id) -> {
       let next_state = toast.dismiss(model.ui.toast_state, id)
       #(
