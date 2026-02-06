@@ -1,7 +1,7 @@
 //// People feature state and derivation helpers.
 
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{Some}
 
 import domain/task.{type Task}
 import domain/task_state
@@ -24,7 +24,7 @@ pub type PersonStatus {
     user_id: Int,
     label: String,
     availability: Availability,
-    active_task: Option(Task),
+    active_tasks: List(Task),
     claimed_tasks: List(Task),
   )
 }
@@ -42,26 +42,21 @@ pub fn derive_status(
       }
     })
 
-  let active_task =
-    list.find(user_claimed, fn(t) {
-      case t.status {
-        task_status.Claimed(task_status.Ongoing) -> True
-        _ -> False
-      }
-    })
-    |> option.from_result
+  let active_tasks =
+    list.filter(user_claimed, fn(t) { is_active_for_user(t, user_id) })
 
   let claimed_tasks =
     list.filter(user_claimed, fn(t) {
       case t.status {
-        task_status.Claimed(task_status.Taken) -> True
+        task_status.Claimed(task_status.Taken) ->
+          !is_active_for_user(t, user_id)
         _ -> False
       }
     })
 
-  let availability = case active_task {
-    Some(_) -> Working
-    None ->
+  let availability = case active_tasks != [] {
+    True -> Working
+    False ->
       case claimed_tasks != [] {
         True -> Busy
         False -> Free
@@ -72,9 +67,21 @@ pub fn derive_status(
     user_id: user_id,
     label: label,
     availability: availability,
-    active_task: active_task,
+    active_tasks: active_tasks,
     claimed_tasks: claimed_tasks,
   )
+}
+
+fn is_active_for_user(task: Task, user_id: Int) -> Bool {
+  case task.status {
+    task_status.Claimed(task_status.Ongoing) -> True
+    _ ->
+      case task.ongoing_by {
+        Some(task_status.OngoingBy(user_id: ongoing_user_id)) ->
+          ongoing_user_id == user_id
+        _ -> False
+      }
+  }
 }
 
 pub fn badge_variant(availability: Availability) -> badge.BadgeVariant {

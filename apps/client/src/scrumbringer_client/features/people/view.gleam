@@ -21,6 +21,9 @@ import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/badge
+import scrumbringer_client/ui/task_color
+import scrumbringer_client/ui/task_item
+import scrumbringer_client/utils/card_queries
 
 pub fn view(model: Model) -> Element(Msg) {
   case model.member.pool.people_roster {
@@ -89,7 +92,7 @@ fn view_person_row(
     user_id: user_id,
     label: label,
     availability: availability,
-    active_task: active_task,
+    active_tasks: active_tasks,
     claimed_tasks: claimed_tasks,
   ) = person
 
@@ -138,7 +141,7 @@ fn view_person_row(
             attribute.attribute("id", details_id),
           ],
           [
-            view_active_section(model, active_task),
+            view_active_section(model, active_tasks),
             view_claimed_section(model, claimed_tasks),
           ],
         )
@@ -147,14 +150,23 @@ fn view_person_row(
   ])
 }
 
-fn view_active_section(model: Model, active_task: Option(Task)) -> Element(Msg) {
+fn view_active_section(model: Model, active_tasks: List(Task)) -> Element(Msg) {
   div([attribute.class("people-subsection")], [
     p([attribute.class("people-subsection-title")], [
       text(helpers_i18n.i18n_t(model, i18n_text.PeopleActiveSection)),
     ]),
-    case active_task {
-      Some(task) -> p([attribute.class("people-task-item")], [text(task.title)])
-      None -> p([attribute.class("people-task-empty")], [text("-")])
+    case active_tasks {
+      [] -> p([attribute.class("people-task-empty")], [text("-")])
+      [task] -> view_task_item(model, task)
+      _ ->
+        ul(
+          [attribute.class("people-claimed-list")],
+          list.map(active_tasks, fn(task) {
+            li([attribute.class("people-task-item")], [
+              view_task_item(model, task),
+            ])
+          }),
+        )
     },
   ])
 }
@@ -170,11 +182,36 @@ fn view_claimed_section(model: Model, claimed_tasks: List(Task)) -> Element(Msg)
         ul(
           [attribute.class("people-claimed-list")],
           list.map(claimed_tasks, fn(task) {
-            li([attribute.class("people-task-item")], [text(task.title)])
+            li([attribute.class("people-task-item")], [
+              view_task_item(model, task),
+            ])
           }),
         )
     },
   ])
+}
+
+fn view_task_item(model: Model, task: Task) -> Element(Msg) {
+  let #(_card_title_opt, resolved_color) =
+    card_queries.resolve_task_card_info(model, task)
+
+  let border_class = task_color.card_border_class(resolved_color)
+
+  task_item.view(
+    task_item.Config(
+      container_class: "task-item " <> border_class,
+      content_class: "task-item-content",
+      on_click: Some(pool_msg(pool_messages.MemberTaskDetailsOpened(task.id))),
+      icon: None,
+      icon_class: None,
+      title: task.title,
+      title_class: None,
+      secondary: task_item.empty_secondary(),
+      actions: task_item.no_actions(),
+      testid: None,
+    ),
+    task_item.Div,
+  )
 }
 
 fn tasks_for_member(model: Model, user_id: Int) -> List(Task) {

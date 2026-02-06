@@ -226,7 +226,7 @@ pub fn translate(text: Text) -> String {
     text.PeopleLoadError -> "No se pudieron cargar las personas"
     text.ExpandPerson(name) -> "Expandir estado de " <> name
     text.CollapsePerson(name) -> "Colapsar estado de " <> name
-    text.PeopleActiveSection -> "Activa"
+    text.PeopleActiveSection -> "Activas"
     text.PeopleClaimedSection -> "Reclamadas"
     text.Drag -> "Arrastrar"
     text.StartNowWorking -> "Empezar en curso"

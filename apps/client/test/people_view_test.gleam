@@ -1,5 +1,6 @@
 import gleam/dict
-import gleam/option.{None}
+import gleam/list
+import gleam/option.{None, Some}
 import gleam/string
 import gleeunit/should
 import lustre/element
@@ -59,6 +60,11 @@ fn make_task(
     blocked_count: 0,
     dependencies: [],
   )
+}
+
+fn make_taken_task_with_ongoing_by(id: Int, title: String, user_id: Int) -> Task {
+  let task = make_task(id, title, user_id, task_status.Taken)
+  Task(..task, ongoing_by: Some(task_status.OngoingBy(user_id: user_id)))
 }
 
 fn base_model() -> client_state.Model {
@@ -126,6 +132,13 @@ fn with_org_users(
       ),
     )
   })
+}
+
+fn count_occurrences(haystack: String, needle: String) -> Int {
+  case needle == "" {
+    True -> 0
+    False -> list.length(string.split(haystack, needle)) - 1
+  }
 }
 
 pub fn people_view_loading_state_test() {
@@ -248,6 +261,37 @@ pub fn people_view_availability_rules_test() {
   string.contains(html, "Free") |> should.be_true
 }
 
+pub fn people_view_availability_prefers_ongoing_by_test() {
+  let tasks = [make_taken_task_with_ongoing_by(1, "Active task", 10)]
+
+  let model =
+    base_model()
+    |> with_people_roster(
+      remote.Loaded([
+        ProjectMember(
+          user_id: 10,
+          role: project_role.Member,
+          created_at: "",
+          claimed_count: 1,
+        ),
+      ]),
+    )
+    |> with_org_users([
+      OrgUser(
+        id: 10,
+        email: "ana@example.com",
+        org_role: org_role.Member,
+        created_at: "",
+      ),
+    ])
+    |> with_tasks(tasks)
+
+  let html = people_view.view(model) |> element.to_document_string
+
+  string.contains(html, "Working") |> should.be_true
+  string.contains(html, "Busy") |> should.be_false
+}
+
 pub fn people_view_expanded_row_accessibility_and_sections_test() {
   let model =
     base_model()
@@ -279,6 +323,7 @@ pub fn people_view_expanded_row_accessibility_and_sections_test() {
   string.contains(html, "Collapse status for ana@example.com") |> should.be_true
   string.contains(html, "Active") |> should.be_true
   string.contains(html, "Claimed") |> should.be_true
+  string.contains(html, "task-item-content") |> should.be_true
 }
 
 pub fn people_view_uses_list_semantics_test() {
@@ -332,4 +377,44 @@ pub fn people_view_toggle_is_keyboard_accessible_button_test() {
   string.contains(html, "aria-expanded=\"false\"") |> should.be_true
   string.contains(html, "aria-label=\"Expand status for ana@example.com\"")
   |> should.be_true
+}
+
+pub fn people_view_expanded_separates_active_and_claimed_tasks_test() {
+  let tasks = [
+    make_task(1, "Ongoing one", 10, task_status.Ongoing),
+    make_taken_task_with_ongoing_by(2, "Ongoing via session", 10),
+    make_task(3, "Claimed parked", 10, task_status.Taken),
+  ]
+
+  let model =
+    base_model()
+    |> with_people_roster(
+      remote.Loaded([
+        ProjectMember(
+          user_id: 10,
+          role: project_role.Member,
+          created_at: "",
+          claimed_count: 3,
+        ),
+      ]),
+    )
+    |> with_org_users([
+      OrgUser(
+        id: 10,
+        email: "ana@example.com",
+        org_role: org_role.Member,
+        created_at: "",
+      ),
+    ])
+    |> with_tasks(tasks)
+    |> with_people_expanded(10)
+
+  let html = people_view.view(model) |> element.to_document_string
+
+  string.contains(html, "Active") |> should.be_true
+  string.contains(html, "Claimed") |> should.be_true
+
+  count_occurrences(html, "Ongoing one") |> should.equal(1)
+  count_occurrences(html, "Ongoing via session") |> should.equal(1)
+  count_occurrences(html, "Claimed parked") |> should.equal(1)
 }
