@@ -39,6 +39,9 @@ pub type Msg {
   MemberPoolTouchEnded(Int)
   MemberPoolLongPressCheck(Int)
   MemberTaskHoverOpened(Int)
+  MemberTaskHoverClosed
+  MemberTaskFocused(Int)
+  MemberTaskBlurred
   MemberTaskHoverNotesFetched(Int, ApiResult(List(TaskNote)))
   MemberListHideCompletedToggled
   MemberListCardToggled(Int)

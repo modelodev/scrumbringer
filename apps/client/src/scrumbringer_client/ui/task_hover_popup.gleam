@@ -6,7 +6,7 @@ import gleam/list as g_list
 import gleam/option.{type Option, None, Some}
 import gleam/string
 import lustre/attribute
-import lustre/element.{type Element}
+import lustre/element as lustre_element
 import lustre/element/html.{button, div, li, span, text, ul}
 import lustre/event
 
@@ -20,6 +20,7 @@ pub type TaskHoverConfig(msg) {
     description: String,
     blocked_label: Option(String),
     blocked_items: List(String),
+    blocked_hidden_note: Option(String),
     notes_label: Option(String),
     notes: List(HoverNote),
     open_label: String,
@@ -31,7 +32,7 @@ pub type HoverNote {
   HoverNote(author: String, created_at: String, content: String)
 }
 
-pub fn view(config: TaskHoverConfig(msg)) -> Element(msg) {
+pub fn view(config: TaskHoverConfig(msg)) -> lustre_element.Element(msg) {
   let TaskHoverConfig(
     card_label: card_label,
     card_title: card_title,
@@ -41,6 +42,7 @@ pub fn view(config: TaskHoverConfig(msg)) -> Element(msg) {
     description: description,
     blocked_label: blocked_label,
     blocked_items: blocked_items,
+    blocked_hidden_note: blocked_hidden_note,
     notes_label: notes_label,
     notes: notes,
     open_label: open_label,
@@ -91,6 +93,13 @@ pub fn view(config: TaskHoverConfig(msg)) -> Element(msg) {
             ])
           }),
         ),
+        case blocked_hidden_note {
+          Some(note) ->
+            span([attribute.class("task-preview-blocked-hidden-note")], [
+              text(note),
+            ])
+          None -> lustre_element.none()
+        },
       ]),
     ]
     _, _ -> []

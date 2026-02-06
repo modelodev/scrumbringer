@@ -16,6 +16,16 @@ import scrumbringer_client/pool_prefs
 import scrumbringer_client/state/normalized_store
 import scrumbringer_client/ui/task_tabs
 
+/// Highlight state for dependency visualization in pool cards.
+pub type HighlightState {
+  NoHighlight
+  BlockingHighlight(
+    source_task_id: Int,
+    blocker_ids: List(Int),
+    hidden_count: Int,
+  )
+}
+
 /// Represents member pool state.
 pub type Model {
   Model(
@@ -60,6 +70,7 @@ pub type Model {
     card_detail_open: Option(Int),
     member_task_detail_tab: task_tabs.Tab,
     member_blocked_claim_task: Option(#(Int, Int)),
+    member_highlight_state: HighlightState,
   )
 }
 
@@ -107,5 +118,6 @@ pub fn default_model() -> Model {
     card_detail_open: option.None,
     member_task_detail_tab: task_tabs.DetailsTab,
     member_blocked_claim_task: option.None,
+    member_highlight_state: NoHighlight,
   )
 }

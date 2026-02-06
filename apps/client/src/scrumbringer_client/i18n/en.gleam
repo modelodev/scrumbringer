@@ -160,6 +160,8 @@ pub fn translate(text: Text) -> String {
     text.Blocked -> "Blocked"
     text.BlockedByTasks(count) ->
       "Blocked by " <> int.to_string(count) <> " tasks"
+    text.HiddenBlockedByFilters(count) ->
+      int.to_string(count) <> " blockers out of view due to filters"
     text.BlockedTaskTitle -> "Blocked task"
     text.BlockedTaskWarning(count) ->
       "This task depends on " <> int.to_string(count) <> " incomplete tasks."

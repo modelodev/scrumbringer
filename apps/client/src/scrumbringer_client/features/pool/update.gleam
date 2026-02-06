@@ -410,7 +410,84 @@ pub fn handle_task_hover_opened(
   model: client_state.Model,
   task_id: Int,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  ensure_hover_notes(model, task_id)
+  let #(next, fx) = ensure_hover_notes(model, task_id)
+  #(open_blocker_highlight(next, task_id), fx)
+}
+
+pub fn handle_task_hover_closed(
+  model: client_state.Model,
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+  #(
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(..pool, member_highlight_state: member_pool.NoHighlight)
+    }),
+    effect.none(),
+  )
+}
+
+pub fn handle_task_focused(
+  model: client_state.Model,
+  task_id: Int,
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+  let #(next, fx) = ensure_hover_notes(model, task_id)
+  #(open_blocker_highlight(next, task_id), fx)
+}
+
+pub fn handle_task_blurred(
+  model: client_state.Model,
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
+  handle_task_hover_closed(model)
+}
+
+fn open_blocker_highlight(
+  model: client_state.Model,
+  task_id: Int,
+) -> client_state.Model {
+  let next_state = case
+    helpers_lookup.find_task_by_id(model.member.pool.member_tasks, task_id)
+  {
+    opt.Some(task.Task(dependencies: dependencies, ..)) -> {
+      let blocker_ids =
+        dependencies
+        |> list.filter(fn(dep) { dep.status != task_status.Completed })
+        |> list.map(fn(dep) { dep.depends_on_task_id })
+
+      case blocker_ids {
+        [] -> member_pool.NoHighlight
+        _ -> {
+          let total_blockers = list.length(blocker_ids)
+          let visible_blockers =
+            visible_blockers_count(model.member.pool.member_tasks, blocker_ids)
+          let hidden_count = case total_blockers - visible_blockers {
+            n if n < 0 -> 0
+            n -> n
+          }
+
+          member_pool.BlockingHighlight(task_id, blocker_ids, hidden_count)
+        }
+      }
+    }
+    opt.None -> member_pool.NoHighlight
+  }
+
+  update_member_pool(model, fn(pool) {
+    member_pool.Model(..pool, member_highlight_state: next_state)
+  })
+}
+
+fn visible_blockers_count(tasks_remote, blocker_ids: List(Int)) -> Int {
+  case tasks_remote {
+    Loaded(tasks) ->
+      blocker_ids
+      |> list.filter(fn(blocker_id) {
+        list.any(tasks, fn(t) {
+          let task.Task(id: task_id, ..) = t
+          task_id == blocker_id
+        })
+      })
+      |> list.length
+    _ -> 0
+  }
 }
 
 /// Handle touch end on a task card.
@@ -1173,6 +1250,10 @@ pub fn update(
       handle_pool_long_press_check(model, task_id)
     pool_messages.MemberTaskHoverOpened(task_id) ->
       handle_task_hover_opened(model, task_id)
+    pool_messages.MemberTaskHoverClosed -> handle_task_hover_closed(model)
+    pool_messages.MemberTaskFocused(task_id) ->
+      handle_task_focused(model, task_id)
+    pool_messages.MemberTaskBlurred -> handle_task_blurred(model)
     pool_messages.MemberTaskHoverNotesFetched(task_id, result) ->
       handle_task_hover_notes_fetched(model, task_id, result)
     pool_messages.MemberListHideCompletedToggled -> #(

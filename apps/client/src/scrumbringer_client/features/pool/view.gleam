@@ -41,6 +41,7 @@ import domain/user.{type User}
 
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state.{type Model, type Msg, pool_msg}
+import scrumbringer_client/client_state/member/pool as member_pool_state
 import scrumbringer_client/client_state/types.{
   PoolDragDragging, PoolDragIdle, PoolDragPendingRect,
 }
@@ -104,6 +105,42 @@ fn has_active_filters(model: Model) -> Bool {
   model.member.pool.member_filters_type_id != opt.None
   || model.member.pool.member_filters_capability_id != opt.None
   || string.trim(model.member.pool.member_filters_q) != ""
+}
+
+fn task_highlight_classes(model: Model, task_id: Int) -> String {
+  case model.member.pool.member_highlight_state {
+    member_pool_state.NoHighlight -> ""
+    member_pool_state.BlockingHighlight(
+      source_task_id: source_task_id,
+      blocker_ids: blocker_ids,
+      ..,
+    ) -> {
+      case task_id == source_task_id {
+        True -> " is-highlight-source highlight-warning"
+        False ->
+          case list.contains(blocker_ids, task_id) {
+            True -> " is-highlight-target highlight-warning"
+            False -> " is-highlight-dimmed"
+          }
+      }
+    }
+  }
+}
+
+fn highlighted_hidden_count_for_source(
+  model: Model,
+  task_id: Int,
+) -> opt.Option(Int) {
+  case model.member.pool.member_highlight_state {
+    member_pool_state.BlockingHighlight(
+      source_task_id: source_task_id,
+      hidden_count: hidden_count,
+      ..,
+    )
+      if source_task_id == task_id
+    -> opt.Some(hidden_count)
+    _ -> opt.None
+  }
 }
 
 // Justification: nested case improves clarity for branching logic.
@@ -363,10 +400,14 @@ pub fn view_pool_task_row(model: Model, task: Task) -> Element(Msg) {
     True -> " task-blocked"
     False -> ""
   }
+  let highlight_class = task_highlight_classes(model, id)
 
   task_item.view(
     task_item.Config(
-      container_class: "task-row " <> border_class <> blocked_class,
+      container_class: "task-row "
+        <> border_class
+        <> blocked_class
+        <> highlight_class,
       content_class: "task-row-title",
       on_click: opt.Some(pool_msg(pool_messages.MemberTaskDetailsOpened(id))),
       icon: opt.Some(task_type_icon.view(type_icon, 16, model.ui.theme)),
@@ -460,6 +501,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     s -> with_border <> " " <> s
   }
   let card_classes = card_classes <> blocked_class
+  let card_classes = card_classes <> task_highlight_classes(model, id)
   let card_classes = case model.member.pool.member_pool_preview_task_id {
     opt.Some(preview_id) if preview_id == id -> card_classes <> " touch-preview"
     _ -> card_classes
@@ -557,6 +599,18 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
         ),
       ),
       event.on(
+        "mouseleave",
+        event_decoders.message(pool_msg(pool_messages.MemberTaskHoverClosed)),
+      ),
+      event.on(
+        "focus",
+        event_decoders.message(pool_msg(pool_messages.MemberTaskFocused(id))),
+      ),
+      event.on(
+        "blur",
+        event_decoders.message(pool_msg(pool_messages.MemberTaskBlurred)),
+      ),
+      event.on(
         "touchstart",
         event_decoders.touch_client_position(fn(x, y) {
           pool_msg(pool_messages.MemberPoolTouchStarted(id, x, y))
@@ -617,6 +671,7 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
             description: opt.unwrap(description, ""),
             blocked_label: hover_blocked_label(model, task),
             blocked_items: hover_blocked_items(model, task),
+            blocked_hidden_note: hover_blocked_hidden_note(model, task),
             notes_label: hover_notes_label(model, task),
             notes: hover_notes_for_task(model, id),
             open_label: helpers_i18n.i18n_t(model, i18n_text.OpenTask),
@@ -645,6 +700,17 @@ fn hover_blocked_items(model: Model, task: Task) -> List(String) {
   |> list.map(fn(dep) {
     dep.title <> " · " <> task_status_utils.label(model.ui.locale, dep.status)
   })
+}
+
+fn hover_blocked_hidden_note(model: Model, task: Task) -> opt.Option(String) {
+  case highlighted_hidden_count_for_source(model, task.id) {
+    opt.Some(hidden_count) if hidden_count > 0 ->
+      opt.Some(helpers_i18n.i18n_t(
+        model,
+        i18n_text.HiddenBlockedByFilters(hidden_count),
+      ))
+    _ -> opt.None
+  }
 }
 
 fn blocking_dependencies(task: Task) -> List(task.TaskDependency) {

@@ -143,6 +143,7 @@ pub type Text {
   TaskDependsOn
   Blocked
   BlockedByTasks(count: Int)
+  HiddenBlockedByFilters(count: Int)
   BlockedTaskTitle
   BlockedTaskWarning(count: Int)
   EditPosition
