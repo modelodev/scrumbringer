@@ -69,6 +69,7 @@ pub type Message {
     priority: Int,
     type_id: Int,
     card_id: Option(Int),
+    milestone_id: Option(Int),
   )
 
   /// Get a single task.
@@ -109,6 +110,7 @@ pub type TaskUpdates {
     description: field_update.FieldUpdate(String),
     priority: field_update.FieldUpdate(Int),
     type_id: field_update.FieldUpdate(Int),
+    milestone_id: field_update.FieldUpdate(Option(Int)),
   )
 }
 
@@ -140,6 +142,12 @@ pub type Error {
 
   /// Validation error with message.
   ValidationError(String)
+
+  /// Milestone cannot be explicitly set when task belongs to a card.
+  TaskMilestoneInheritedFromCard
+
+  /// Invalid movement between pool and milestone lanes.
+  InvalidMovePoolToMilestone
 
   /// Task type name already exists.
   TaskTypeAlreadyExists

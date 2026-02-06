@@ -38,6 +38,7 @@ import scrumbringer_client/assignments_view_mode
 // API modules
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/api/metrics as api_metrics
+import scrumbringer_client/api/milestones as api_milestones
 import scrumbringer_client/api/org as api_org
 import scrumbringer_client/api/projects as api_projects
 import scrumbringer_client/api/tasks as api_tasks
@@ -1350,6 +1351,9 @@ fn reset_member_tasks(
           member_task_types: NotAsked,
           member_task_types_pending: 0,
           member_task_types_by_project: dict.new(),
+          member_milestones_store: normalized_store.new(),
+          member_milestones: NotAsked,
+          member_milestone_activate_in_flight_id: opt.None,
           people_roster: NotAsked,
           people_expansions: dict.new(),
         ),
@@ -1400,6 +1404,16 @@ fn refresh_member_data(
       })
     })
 
+  let member_milestone_effects =
+    list.map(project_ids, fn(project_id) {
+      api_milestones.list_milestones(project_id, fn(result) {
+        client_state.pool_msg(pool_messages.MemberProjectMilestonesFetched(
+          project_id,
+          result,
+        ))
+      })
+    })
+
   let roster_project_id = case model.core.selected_project_id, project_ids {
     opt.Some(project_id), _ -> opt.Some(project_id)
     opt.None, [project_id, ..] -> opt.Some(project_id)
@@ -1434,7 +1448,7 @@ fn refresh_member_data(
         task_type_effects,
         list.append(
           [positions_effect, roster_effect, org_users_effect],
-          member_card_effects,
+          list.append(member_card_effects, member_milestone_effects),
         ),
       ),
     )
@@ -1468,6 +1482,15 @@ fn refresh_member_data(
             Loaded(_) -> pool.member_cards
             _ -> Loading
           },
+          member_milestones_store: normalized_store.with_pending(
+            pool.member_milestones_store,
+            list.length(project_ids),
+          ),
+          member_milestones: case pool.member_milestones {
+            Loaded(_) -> pool.member_milestones
+            _ -> Loading
+          },
+          member_milestone_activate_in_flight_id: opt.None,
         ),
       )
     })

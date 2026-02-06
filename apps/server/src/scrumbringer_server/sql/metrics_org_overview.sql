@@ -23,10 +23,14 @@ with event_counts as (
   where p.org_id = $1
 ), time_stats as (
   select
-    avg(extract(epoch from (t.completed_at - t.claimed_at)) * 1000)::bigint
-      as avg_claim_to_complete_ms,
-    avg(extract(epoch from (now() - t.claimed_at)) * 1000)::bigint
-      as avg_time_in_claimed_ms,
+    coalesce(
+      avg(extract(epoch from (t.completed_at - t.claimed_at)) * 1000)::bigint,
+      0
+    ) as avg_claim_to_complete_ms,
+    coalesce(
+      avg(extract(epoch from (now() - t.claimed_at)) * 1000)::bigint,
+      0
+    ) as avg_time_in_claimed_ms,
     coalesce(sum(case
       when t.status = 'claimed' and t.claimed_at < now() - interval '48 hours'
       then 1 else 0 end), 0) as stale_claims_count

@@ -22,7 +22,7 @@ pub fn cards_db_update_returns_not_found_test() {
   let assert Ok(#(app, _handler, _session)) = fixtures.bootstrap()
   let scrumbringer_server.App(db: db, ..) = app
 
-  case cards_db.update_card(db, 999_999, "Title", None, None, 1) {
+  case cards_db.update_card(db, 999_999, None, "Title", None, None, 1) {
     Ok(_) -> should.fail()
     Error(cards_db.CardNotFound) -> should.be_true(True)
     Error(_) -> should.fail()

@@ -121,9 +121,13 @@ pub fn format_member_pool_with_project_test() {
   |> should.equal("/app/pool?project=2")
 }
 
-pub fn format_member_list_with_project_test() {
-  router.format(member_route(member_section.Pool, Some(2), Some(view_mode.List)))
-  |> should.equal("/app/pool?project=2&view=list")
+pub fn format_member_milestones_with_project_test() {
+  router.format(member_route(
+    member_section.Pool,
+    Some(2),
+    Some(view_mode.Milestones),
+  ))
+  |> should.equal("/app/pool?project=2&view=milestones")
 }
 
 pub fn format_member_people_with_project_test() {
@@ -170,8 +174,9 @@ pub fn roundtrip_member_fichas_without_project_test() {
   router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
 }
 
-pub fn roundtrip_member_list_with_project_test() {
-  let route = member_route(member_section.Pool, Some(2), Some(view_mode.List))
+pub fn roundtrip_member_milestones_with_project_test() {
+  let route =
+    member_route(member_section.Pool, Some(2), Some(view_mode.Milestones))
   router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
 }
 

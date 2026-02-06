@@ -1,4 +1,4 @@
-import domain/view_mode.{Cards, List, People, Pool}
+import domain/view_mode.{Cards, Milestones, People, Pool}
 import gleeunit/should
 
 // =============================================================================
@@ -10,9 +10,9 @@ pub fn from_string_pool_test() {
   |> should.equal(Pool)
 }
 
-pub fn from_string_list_test() {
-  view_mode.from_string("list")
-  |> should.equal(List)
+pub fn from_string_milestones_test() {
+  view_mode.from_string("milestones")
+  |> should.equal(Milestones)
 }
 
 pub fn from_string_cards_test() {
@@ -44,9 +44,9 @@ pub fn to_string_pool_test() {
   |> should.equal("pool")
 }
 
-pub fn to_string_list_test() {
-  view_mode.to_string(List)
-  |> should.equal("list")
+pub fn to_string_milestones_test() {
+  view_mode.to_string(Milestones)
+  |> should.equal("milestones")
 }
 
 pub fn to_string_cards_test() {
@@ -70,11 +70,11 @@ pub fn roundtrip_pool_test() {
   |> should.equal(Pool)
 }
 
-pub fn roundtrip_list_test() {
-  List
+pub fn roundtrip_milestones_test() {
+  Milestones
   |> view_mode.to_string
   |> view_mode.from_string
-  |> should.equal(List)
+  |> should.equal(Milestones)
 }
 
 pub fn roundtrip_cards_test() {
@@ -100,8 +100,8 @@ pub fn pool_supports_drag_drop_test() {
   |> should.be_true
 }
 
-pub fn list_does_not_support_drag_drop_test() {
-  view_mode.supports_drag_drop(List)
+pub fn milestones_does_not_support_drag_drop_test() {
+  view_mode.supports_drag_drop(Milestones)
   |> should.be_false
 }
 
@@ -124,9 +124,9 @@ pub fn label_key_pool_test() {
   |> should.equal("ViewModePool")
 }
 
-pub fn label_key_list_test() {
-  view_mode.label_key(List)
-  |> should.equal("ViewModeList")
+pub fn label_key_milestones_test() {
+  view_mode.label_key(Milestones)
+  |> should.equal("ViewModeMilestones")
 }
 
 pub fn label_key_cards_test() {

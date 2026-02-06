@@ -20,7 +20,7 @@ import lustre/event
 
 import domain/capability.{type Capability}
 import domain/task_type.{type TaskType}
-import domain/view_mode.{type ViewMode, Cards, List, People, Pool}
+import domain/view_mode.{type ViewMode, Cards, Milestones, People, Pool}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -47,7 +47,7 @@ pub type CenterPanelConfig(msg) {
     on_search_change: fn(String) -> msg,
     // Content
     pool_content: Element(msg),
-    list_content: Element(msg),
+    milestones_content: Element(msg),
     cards_content: Element(msg),
     people_content: Element(msg),
     // Drag handlers for pool (Story 4.7 fix)
@@ -80,6 +80,7 @@ fn view_toolbar(config: CenterPanelConfig(msg)) -> Element(msg) {
 fn view_filters(config: CenterPanelConfig(msg)) -> Element(msg) {
   case config.view_mode {
     People -> view_people_filters(config)
+    Milestones -> element.none()
     _ -> view_work_filters(config)
   }
 }
@@ -178,16 +179,16 @@ fn view_people_filters(config: CenterPanelConfig(msg)) -> Element(msg) {
 fn view_content(config: CenterPanelConfig(msg)) -> Element(msg) {
   let content = case config.view_mode {
     Pool -> config.pool_content
-    List -> config.list_content
     Cards -> config.cards_content
     People -> config.people_content
+    Milestones -> config.milestones_content
   }
 
   let testid = case config.view_mode {
     Pool -> "pool-canvas"
-    List -> "grouped-list"
     Cards -> "kanban-board"
     People -> "people-view"
+    Milestones -> "milestones-view"
   }
 
   // Add drag handlers for Pool view (Story 4.7 fix)

@@ -25,7 +25,7 @@ import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
-import gleam/option.{type Option, None}
+import gleam/option.{type Option, None, Some}
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
@@ -161,7 +161,7 @@ fn create_task_with_project(
   case decode_create_payload(data) {
     Error(resp) -> resp
 
-    Ok(#(title, description, priority, type_id, card_id)) ->
+    Ok(#(title, description, priority, type_id, card_id, milestone_id)) ->
       create_task_db(
         ctx,
         user,
@@ -171,6 +171,7 @@ fn create_task_with_project(
         priority,
         type_id,
         card_id,
+        milestone_id,
       )
   }
 }
@@ -184,6 +185,40 @@ fn create_task_db(
   priority: Int,
   type_id: Int,
   card_id: Option(Int),
+  milestone_id: Option(Int),
+) -> wisp.Response {
+  case card_id, milestone_id {
+    Some(_), Some(_) ->
+      api.error(
+        422,
+        "TASK_MILESTONE_INHERITED_FROM_CARD",
+        "Task milestone is inherited from card",
+      )
+    _, _ ->
+      create_task_db_insert(
+        ctx,
+        user,
+        project_id,
+        title,
+        description,
+        priority,
+        type_id,
+        card_id,
+        milestone_id,
+      )
+  }
+}
+
+fn create_task_db_insert(
+  ctx: auth.Ctx,
+  user: StoredUser,
+  project_id: Int,
+  title: String,
+  description: String,
+  priority: Int,
+  type_id: Int,
+  card_id: Option(Int),
+  milestone_id: Option(Int),
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
@@ -200,6 +235,7 @@ fn create_task_db(
         priority,
         type_id,
         card_id,
+        milestone_id,
       ),
     )
   {
@@ -219,7 +255,10 @@ fn create_task_db(
 
 fn decode_create_payload(
   data: dynamic.Dynamic,
-) -> Result(#(String, String, Int, Int, Option(Int)), wisp.Response) {
+) -> Result(
+  #(String, String, Int, Int, Option(Int), Option(Int)),
+  wisp.Response,
+) {
   let decoder = {
     use title <- decode.field("title", decode.string)
     use description <- decode.optional_field("description", "", decode.string)
@@ -230,7 +269,19 @@ fn decode_create_payload(
       None,
       decode.optional(decode.int),
     )
-    decode.success(#(title, description, priority, type_id, card_id))
+    use milestone_id <- decode.optional_field(
+      "milestone_id",
+      None,
+      decode.optional(decode.int),
+    )
+    decode.success(#(
+      title,
+      description,
+      priority,
+      type_id,
+      card_id,
+      milestone_id,
+    ))
   }
 
   case decode.run(data, decoder) {

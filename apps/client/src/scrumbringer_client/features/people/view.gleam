@@ -7,7 +7,7 @@ import gleam/option.{type Option, None, Some, from_result}
 import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, li, p, section, span, text, ul}
+import lustre/element/html.{button, div, h3, li, p, section, span, text, ul}
 import lustre/event
 
 import domain/org.{type OrgUser}
@@ -69,12 +69,15 @@ fn view_loaded(model: Model, members: List(ProjectMember)) -> Element(Msg) {
         _ ->
           section(
             [
-              attribute.class("people-list"),
+              attribute.class("people-view people-list"),
               attribute.attribute("data-testid", "people-view"),
             ],
             [
+              h3([attribute.class("people-title")], [
+                text(helpers_i18n.i18n_t(model, i18n_text.People)),
+              ]),
               ul(
-                [],
+                [attribute.class("people-items")],
                 list.map(filtered, fn(person) { view_person_row(model, person) }),
               ),
             ],
@@ -156,7 +159,7 @@ fn view_active_section(model: Model, active_tasks: List(Task)) -> Element(Msg) {
       text(helpers_i18n.i18n_t(model, i18n_text.PeopleActiveSection)),
     ]),
     case active_tasks {
-      [] -> p([attribute.class("people-task-empty")], [text("-")])
+      [] -> p([attribute.class("section-empty-hint")], [text("-")])
       [task] -> view_task_item(model, task)
       _ ->
         ul(
@@ -177,7 +180,7 @@ fn view_claimed_section(model: Model, claimed_tasks: List(Task)) -> Element(Msg)
       text(helpers_i18n.i18n_t(model, i18n_text.PeopleClaimedSection)),
     ]),
     case claimed_tasks {
-      [] -> p([attribute.class("people-task-empty")], [text("-")])
+      [] -> p([attribute.class("section-empty-hint")], [text("-")])
       _ ->
         ul(
           [attribute.class("people-claimed-list")],

@@ -244,6 +244,7 @@ pub fn build_seed(
   use state <- result.try(build_workflows(db, state, config))
   use state <- result.try(build_rules(db, state, config))
   use state <- result.try(build_tasks(db, state, config))
+  use state <- result.try(build_milestones(db, state, config))
   use state <- result.try(build_task_events(db, state, config))
   use state <- result.try(build_task_positions(db, state, config))
   use state <- result.try(build_work_sessions(db, state, config))
@@ -921,6 +922,187 @@ fn build_task_events(
       Ok(BuildState(..state, task_events_count: list.length(all_events)))
     }
   }
+}
+
+fn build_milestones(
+  db: pog.Connection,
+  state: BuildState,
+  _config: SeedConfig,
+) -> Result(BuildState, String) {
+  let active_projects =
+    active_project_ids(state)
+    |> list.filter(fn(project_id) { project_id != 1 })
+
+  use _ <- result.try(
+    list.index_map(active_projects, fn(project_id, idx) {
+      // Scenario A (idx 0): only ready milestones
+      // - one empty ready milestone
+      // - one ready milestone with available pool tasks + one card
+      // Scenario B (idx 1): full lifecycle
+      // - completed milestone with completed tasks + one card
+      // - active milestone with claimed/available tasks + one card
+      // - ready backlog milestone with available tasks
+      // Scenario C+ (idx >= 2): single ready milestone with available tasks
+      case idx {
+        0 -> {
+          use empty_ready_id <- result.try(seed_db.insert_milestone(
+            db,
+            seed_db.MilestoneInsertOptions(
+              project_id: project_id,
+              name: "M0 - Ready Empty",
+              description: Some("Ready milestone without assignments"),
+              state: "ready",
+              position: 0,
+              created_by: state.admin_id,
+              created_at: Some(days_ago_timestamp(12)),
+              activated_at: None,
+              completed_at: None,
+            ),
+          ))
+          let _ = empty_ready_id
+
+          use ready_seeded_id <- result.try(seed_db.insert_milestone(
+            db,
+            seed_db.MilestoneInsertOptions(
+              project_id: project_id,
+              name: "M1 - Ready Seeded",
+              description: Some("Ready milestone with pending work"),
+              state: "ready",
+              position: 1,
+              created_by: state.admin_id,
+              created_at: Some(days_ago_timestamp(10)),
+              activated_at: None,
+              completed_at: None,
+            ),
+          ))
+          use _ <- result.try(seed_db.assign_cards_to_milestone(
+            db,
+            project_id,
+            ready_seeded_id,
+            1,
+          ))
+          use _ <- result.try(seed_db.assign_available_pool_tasks_to_milestone(
+            db,
+            project_id,
+            ready_seeded_id,
+            2,
+          ))
+          Ok(Nil)
+        }
+
+        1 -> {
+          use completed_id <- result.try(seed_db.insert_milestone(
+            db,
+            seed_db.MilestoneInsertOptions(
+              project_id: project_id,
+              name: "M0 - Completed",
+              description: Some("Completed milestone for historical metrics"),
+              state: "completed",
+              position: 0,
+              created_by: state.admin_id,
+              created_at: Some(days_ago_timestamp(18)),
+              activated_at: Some(days_ago_timestamp(12)),
+              completed_at: Some(days_ago_timestamp(3)),
+            ),
+          ))
+          use _ <- result.try(seed_db.assign_cards_to_milestone(
+            db,
+            project_id,
+            completed_id,
+            1,
+          ))
+          use _ <- result.try(seed_db.assign_completed_pool_tasks_to_milestone(
+            db,
+            project_id,
+            completed_id,
+            2,
+          ))
+
+          use active_id <- result.try(seed_db.insert_milestone(
+            db,
+            seed_db.MilestoneInsertOptions(
+              project_id: project_id,
+              name: "M1 - Active",
+              description: Some("Current active delivery milestone"),
+              state: "active",
+              position: 1,
+              created_by: state.admin_id,
+              created_at: Some(days_ago_timestamp(9)),
+              activated_at: Some(days_ago_timestamp(2)),
+              completed_at: None,
+            ),
+          ))
+          use _ <- result.try(seed_db.assign_cards_to_milestone(
+            db,
+            project_id,
+            active_id,
+            1,
+          ))
+          use _ <- result.try(seed_db.assign_claimed_pool_tasks_to_milestone(
+            db,
+            project_id,
+            active_id,
+            1,
+          ))
+          use _ <- result.try(seed_db.assign_available_pool_tasks_to_milestone(
+            db,
+            project_id,
+            active_id,
+            1,
+          ))
+
+          use backlog_id <- result.try(seed_db.insert_milestone(
+            db,
+            seed_db.MilestoneInsertOptions(
+              project_id: project_id,
+              name: "M2 - Ready Backlog",
+              description: Some("Next milestone planned but not active"),
+              state: "ready",
+              position: 2,
+              created_by: state.admin_id,
+              created_at: Some(days_ago_timestamp(1)),
+              activated_at: None,
+              completed_at: None,
+            ),
+          ))
+          use _ <- result.try(seed_db.assign_available_pool_tasks_to_milestone(
+            db,
+            project_id,
+            backlog_id,
+            1,
+          ))
+          Ok(Nil)
+        }
+
+        _ -> {
+          use ready_id <- result.try(seed_db.insert_milestone(
+            db,
+            seed_db.MilestoneInsertOptions(
+              project_id: project_id,
+              name: "M0 - Ready",
+              description: Some("Single ready milestone scenario"),
+              state: "ready",
+              position: 0,
+              created_by: state.admin_id,
+              created_at: Some(days_ago_timestamp(7)),
+              activated_at: None,
+              completed_at: None,
+            ),
+          ))
+          use _ <- result.try(seed_db.assign_available_pool_tasks_to_milestone(
+            db,
+            project_id,
+            ready_id,
+            2,
+          ))
+          Ok(Nil)
+        }
+      }
+    })
+    |> result.all,
+  )
+
+  Ok(state)
 }
 
 fn build_task_positions(

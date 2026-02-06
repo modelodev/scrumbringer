@@ -25,9 +25,9 @@ fn base_config(
     on_capability_filter_change: fn(_value) { "msg" },
     on_search_change: fn(_value) { "msg" },
     pool_content: html.text("pool"),
-    list_content: html.text("list"),
     cards_content: html.text("cards"),
     people_content: html.text("people"),
+    milestones_content: html.text("milestones"),
     on_drag_move: fn(_x, _y) { "msg" },
     on_drag_end: "msg",
   )
@@ -52,4 +52,15 @@ pub fn work_toolbar_keeps_type_and_capability_filters_test() {
 
   string.contains(html, "data-testid=\"filter-type\"") |> should.be_true
   string.contains(html, "data-testid=\"filter-capability\"") |> should.be_true
+}
+
+pub fn milestones_toolbar_hides_pool_filters_test() {
+  let html =
+    center_panel.view(base_config(view_mode.Milestones))
+    |> element.to_document_string
+
+  string.contains(html, "data-testid=\"filter-type\"") |> should.be_false
+  string.contains(html, "data-testid=\"filter-capability\"") |> should.be_false
+  string.contains(html, "data-testid=\"filter-search-people\"")
+  |> should.be_false
 }

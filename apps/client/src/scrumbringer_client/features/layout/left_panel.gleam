@@ -8,7 +8,7 @@
 //// - Work section (visible for ALL roles - AC1, AC7-9)
 ////   - New Task button: ALL members
 ////   - New Card button: PM/Admin only
-////   - Navigation links: Pool, Lista, Tarjetas (ALL members)
+////   - Navigation links: Pool, Kanban, Personas, Hitos (ALL members)
 //// - Configuration section (PM/Admin only)
 //// - Organization section (Org Admin only)
 //// - Unified active state indication across all nav items
@@ -27,7 +27,7 @@ import lustre/event
 
 import domain/project.{type Project}
 import domain/user.{type User}
-import domain/view_mode.{type ViewMode, Cards, List, People, Pool}
+import domain/view_mode.{type ViewMode, Cards, Milestones, People, Pool}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -64,9 +64,9 @@ pub type LeftPanelConfig(msg) {
     on_new_card: msg,
     // Navigation to work views (AC2)
     on_navigate_pool: msg,
-    on_navigate_list: msg,
     on_navigate_cards: msg,
     on_navigate_people: msg,
+    on_navigate_milestones: msg,
     // Config navigation
     on_navigate_config_team: msg,
     on_navigate_config_capabilities: msg,
@@ -308,18 +308,10 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
         ),
         view_work_nav_link(
           config,
-          List,
-          "nav-list",
-          icons.List,
-          i18n_text.List,
-          config.on_navigate_list,
-        ),
-        view_work_nav_link(
-          config,
           Cards,
           "nav-cards",
           icons.Cards,
-          i18n_text.MemberFichas,
+          i18n_text.Kanban,
           config.on_navigate_cards,
         ),
         view_work_nav_link(
@@ -330,12 +322,20 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
           i18n_text.People,
           config.on_navigate_people,
         ),
+        view_work_nav_link(
+          config,
+          Milestones,
+          "nav-milestones",
+          icons.List,
+          i18n_text.Milestones,
+          config.on_navigate_milestones,
+        ),
       ]),
     ],
   )
 }
 
-/// Renders a work section navigation link (Pool/List/Cards)
+/// Renders a work section navigation link (Pool/Kanban/People/Milestones)
 fn view_work_nav_link(
   config: LeftPanelConfig(msg),
   mode: ViewMode,

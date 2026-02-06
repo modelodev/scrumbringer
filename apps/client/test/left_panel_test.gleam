@@ -32,9 +32,9 @@ fn base_config(
     on_new_task: "msg",
     on_new_card: "msg",
     on_navigate_pool: "msg",
-    on_navigate_list: "msg",
     on_navigate_cards: "msg",
     on_navigate_people: "msg",
+    on_navigate_milestones: "msg",
     on_navigate_config_team: "msg",
     on_navigate_config_capabilities: "msg",
     on_navigate_config_cards: "msg",
@@ -82,9 +82,9 @@ pub fn left_panel_active_nav_has_active_class_test() {
 pub fn left_panel_all_view_modes_can_be_active_test() {
   [
     view_mode_module.Pool,
-    view_mode_module.List,
     view_mode_module.Cards,
     view_mode_module.People,
+    view_mode_module.Milestones,
   ]
   |> list.each(fn(mode) {
     let rendered = left_panel.view(base_config(opt.Some(member_route(mode))))

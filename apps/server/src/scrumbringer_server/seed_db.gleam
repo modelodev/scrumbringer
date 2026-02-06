@@ -70,6 +70,21 @@ pub type CardInsertOptions {
   )
 }
 
+/// Options for inserting a milestone.
+pub type MilestoneInsertOptions {
+  MilestoneInsertOptions(
+    project_id: Int,
+    name: String,
+    description: Option(String),
+    state: String,
+    position: Int,
+    created_by: Int,
+    created_at: Option(String),
+    activated_at: Option(String),
+    completed_at: Option(String),
+  )
+}
+
 /// Options for inserting a workflow.
 pub type WorkflowInsertOptions {
   WorkflowInsertOptions(
@@ -642,6 +657,186 @@ pub fn insert_card_simple(
       created_at: None,
     ),
   )
+}
+
+// =============================================================================
+// Milestone Operations
+// =============================================================================
+
+/// Insert a milestone with full control over fields.
+pub fn insert_milestone(
+  db: pog.Connection,
+  opts: MilestoneInsertOptions,
+) -> Result(Int, String) {
+  let base_cols = "project_id, name, description, state, position, created_by"
+  let base_vals = "$1, $2, $3, $4, $5, $6"
+  let base_idx = 7
+
+  let #(cols, vals, idx, params) =
+    append_optional_timestamp(
+      base_cols,
+      base_vals,
+      base_idx,
+      "created_at",
+      opts.created_at,
+      [],
+    )
+
+  let #(cols, vals, idx, params) =
+    append_optional_timestamp(
+      cols,
+      vals,
+      idx,
+      "activated_at",
+      opts.activated_at,
+      params,
+    )
+
+  let #(cols, vals, _, params) =
+    append_optional_timestamp(
+      cols,
+      vals,
+      idx,
+      "completed_at",
+      opts.completed_at,
+      params,
+    )
+
+  let sql =
+    "INSERT INTO milestones ("
+    <> cols
+    <> ") VALUES ("
+    <> vals
+    <> ") RETURNING id"
+
+  let base_query =
+    pog.query(sql)
+    |> pog.parameter(pog.int(opts.project_id))
+    |> pog.parameter(pog.text(opts.name))
+    |> pog.parameter(pog.nullable(pog.text, opts.description))
+    |> pog.parameter(pog.text(opts.state))
+    |> pog.parameter(pog.int(opts.position))
+    |> pog.parameter(pog.int(opts.created_by))
+
+  apply_timestamp_params(base_query, params)
+  |> pog.returning(int_decoder())
+  |> pog.execute(db)
+  |> result.map_error(fn(e) { "insert_milestone: " <> string.inspect(e) })
+  |> result.try(fn(r) {
+    case r.rows {
+      [id] -> Ok(id)
+      _ -> Error("No ID")
+    }
+  })
+}
+
+/// Assign the first available cards of a project to a milestone.
+pub fn assign_cards_to_milestone(
+  db: pog.Connection,
+  project_id: Int,
+  milestone_id: Int,
+  limit: Int,
+) -> Result(Nil, String) {
+  pog.query(
+    "UPDATE cards
+     SET milestone_id = $2
+     WHERE id IN (
+       SELECT id
+       FROM cards
+       WHERE project_id = $1
+         AND milestone_id IS NULL
+       ORDER BY id
+       LIMIT $3
+     )",
+  )
+  |> pog.parameter(pog.int(project_id))
+  |> pog.parameter(pog.int(milestone_id))
+  |> pog.parameter(pog.int(limit))
+  |> pog.execute(db)
+  |> result.map(fn(_) { Nil })
+  |> result.map_error(fn(e) {
+    "assign_cards_to_milestone: " <> string.inspect(e)
+  })
+}
+
+/// Assign available pool tasks (card_id is null) to a milestone.
+pub fn assign_available_pool_tasks_to_milestone(
+  db: pog.Connection,
+  project_id: Int,
+  milestone_id: Int,
+  limit: Int,
+) -> Result(Nil, String) {
+  assign_pool_tasks_to_milestone_by_status(
+    db,
+    project_id,
+    milestone_id,
+    "available",
+    limit,
+  )
+}
+
+/// Assign claimed pool tasks (card_id is null) to a milestone.
+pub fn assign_claimed_pool_tasks_to_milestone(
+  db: pog.Connection,
+  project_id: Int,
+  milestone_id: Int,
+  limit: Int,
+) -> Result(Nil, String) {
+  assign_pool_tasks_to_milestone_by_status(
+    db,
+    project_id,
+    milestone_id,
+    "claimed",
+    limit,
+  )
+}
+
+/// Assign completed pool tasks (card_id is null) to a milestone.
+pub fn assign_completed_pool_tasks_to_milestone(
+  db: pog.Connection,
+  project_id: Int,
+  milestone_id: Int,
+  limit: Int,
+) -> Result(Nil, String) {
+  assign_pool_tasks_to_milestone_by_status(
+    db,
+    project_id,
+    milestone_id,
+    "completed",
+    limit,
+  )
+}
+
+fn assign_pool_tasks_to_milestone_by_status(
+  db: pog.Connection,
+  project_id: Int,
+  milestone_id: Int,
+  status: String,
+  limit: Int,
+) -> Result(Nil, String) {
+  pog.query(
+    "UPDATE tasks
+     SET milestone_id = $2
+     WHERE id IN (
+       SELECT id
+       FROM tasks
+       WHERE project_id = $1
+         AND card_id IS NULL
+         AND milestone_id IS NULL
+         AND status = $3
+       ORDER BY id
+       LIMIT $4
+     )",
+  )
+  |> pog.parameter(pog.int(project_id))
+  |> pog.parameter(pog.int(milestone_id))
+  |> pog.parameter(pog.text(status))
+  |> pog.parameter(pog.int(limit))
+  |> pog.execute(db)
+  |> result.map(fn(_) { Nil })
+  |> result.map_error(fn(e) {
+    "assign_pool_tasks_to_milestone_by_status: " <> string.inspect(e)
+  })
 }
 
 // =============================================================================

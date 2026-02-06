@@ -26,7 +26,7 @@ import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
-import gleam/option.{type Option, None}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
 import scrumbringer_server/http/api
@@ -147,6 +147,18 @@ fn update_task_in_workflow(
         task_id,
         user_id,
       ))
+    Error(workflow_types.TaskMilestoneInheritedFromCard) ->
+      Error(api.error(
+        422,
+        "TASK_MILESTONE_INHERITED_FROM_CARD",
+        "Task milestone is inherited from card",
+      ))
+    Error(workflow_types.InvalidMovePoolToMilestone) ->
+      Error(api.error(
+        422,
+        "INVALID_MOVE_POOL_TO_MILESTONE",
+        "Invalid move from pool to milestone",
+      ))
     Error(workflow_types.ValidationError(msg)) ->
       Error(api.error(422, "VALIDATION_ERROR", msg))
     Error(workflow_types.DbError(_)) ->
@@ -183,15 +195,19 @@ fn decode_update_payload(
     decode.success(#(version, title, description, priority, type_id))
   }
 
-  decode.run(data, decoder)
-  |> result.map(build_updates)
-  |> result.map_error(fn(_) {
-    api.error(400, "VALIDATION_ERROR", "Invalid JSON")
-  })
+  case decode.run(data, decoder) {
+    Error(_) -> Error(api.error(400, "VALIDATION_ERROR", "Invalid JSON"))
+    Ok(payload) ->
+      case decode_milestone_update(data) {
+        Error(resp) -> Error(resp)
+        Ok(milestone_update) -> Ok(build_updates(payload, milestone_update))
+      }
+  }
 }
 
 fn build_updates(
   payload: #(Int, Option(String), Option(String), Option(Int), Option(Int)),
+  milestone_update: field_update.FieldUpdate(Option(Int)),
 ) -> #(Int, workflow_types.TaskUpdates) {
   let #(version, title, description, priority, type_id) = payload
 
@@ -202,8 +218,34 @@ fn build_updates(
       description: field_update.from_option(description),
       priority: field_update.from_option(priority),
       type_id: field_update.from_option(type_id),
+      milestone_id: milestone_update,
     ),
   )
+}
+
+fn decode_milestone_update(
+  data: dynamic.Dynamic,
+) -> Result(field_update.FieldUpdate(Option(Int)), wisp.Response) {
+  case
+    decode.run(
+      data,
+      decode.field("milestone_id", decode.dynamic, decode.success),
+    )
+  {
+    Error(_) -> Ok(field_update.unchanged())
+    Ok(raw) ->
+      case decode.run(raw, decode.optional(decode.int)) {
+        Error(_) -> Error(api.error(400, "VALIDATION_ERROR", "Invalid JSON"))
+        Ok(value) -> Ok(field_update.set(normalize_milestone_id(value)))
+      }
+  }
+}
+
+fn normalize_milestone_id(value: Option(Int)) -> Option(Int) {
+  case value {
+    Some(id) if id <= 0 -> None
+    _ -> value
+  }
 }
 
 fn require_current_user(

@@ -5,6 +5,11 @@ with updated as (
     claimed_by = $2,
     claimed_at = now(),
     status = 'claimed',
+    pool_lifetime_s = pool_lifetime_s + case
+      when last_entered_pool_at is null then 0
+      else greatest(0, extract(epoch from (now() - last_entered_pool_at))::bigint)
+    end,
+    last_entered_pool_at = null,
     version = version + 1
   where id = $1
     and status = 'available'
@@ -23,7 +28,11 @@ with updated as (
     coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as completed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
     version,
-    coalesce(card_id, 0) as card_id
+    coalesce(card_id, 0) as card_id,
+    coalesce(milestone_id, 0) as milestone_id,
+    pool_lifetime_s,
+    coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as last_entered_pool_at,
+    coalesce(created_from_rule_id, 0) as created_from_rule_id
 )
 select
   updated.*,

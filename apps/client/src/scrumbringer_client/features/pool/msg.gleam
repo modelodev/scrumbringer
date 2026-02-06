@@ -7,6 +7,7 @@ import domain/metrics.{
   type MyMetrics, type OrgMetricsOverview, type OrgMetricsProjectTasksPayload,
   type OrgMetricsUserOverview,
 }
+import domain/milestone.{type Milestone, type MilestoneProgress}
 import domain/project.{type ProjectMember}
 import domain/task.{
   type Task, type TaskDependency, type TaskNote, type TaskPosition,
@@ -89,6 +90,23 @@ pub type Msg {
   MemberSaveCapabilitiesClicked
   MemberMyCapabilityIdsSaved(ApiResult(List(Int)))
   MemberProjectCardsFetched(Int, ApiResult(List(Card)))
+  MemberProjectMilestonesFetched(Int, ApiResult(List(MilestoneProgress)))
+  MemberMilestonesShowCompletedToggled
+  MemberMilestonesShowEmptyToggled
+  MemberMilestoneRowToggled(Int)
+  MemberMilestoneDetailsClicked(Int)
+  MemberMilestoneActivatePromptClicked(Int)
+  MemberMilestoneActivateClicked(Int)
+  MemberMilestoneActivated(Int, ApiResult(Nil))
+  MemberMilestoneEditClicked(Int)
+  MemberMilestoneDeleteClicked(Int)
+  MemberMilestoneDialogClosed
+  MemberMilestoneNameChanged(String)
+  MemberMilestoneDescriptionChanged(String)
+  MemberMilestoneEditSubmitted(Int)
+  MemberMilestoneDeleteSubmitted(Int)
+  MemberMilestoneUpdated(ApiResult(Milestone))
+  MemberMilestoneDeleted(Int, ApiResult(Nil))
   MemberPositionsFetched(ApiResult(List(TaskPosition)))
   MemberPositionEditOpened(Int)
   MemberPositionEditClosed

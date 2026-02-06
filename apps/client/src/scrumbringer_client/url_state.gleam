@@ -489,9 +489,9 @@ fn parse_optional_view_param(
 fn view_param_from_raw(raw: String) -> option.Option(ViewParam) {
   case raw {
     "pool" -> option.Some(MemberView(view_mode.Pool))
-    "list" -> option.Some(MemberView(view_mode.List))
     "cards" -> option.Some(MemberView(view_mode.Cards))
     "people" -> option.Some(MemberView(view_mode.People))
+    "milestones" -> option.Some(MemberView(view_mode.Milestones))
     _ ->
       assignments_view_mode.from_param(raw)
       |> option.map(AssignmentsView)

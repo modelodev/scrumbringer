@@ -9,12 +9,41 @@ with type_ok as (
 ), card_ok as (
   -- If card_id <= 0, allow creation.
   -- If card_id is provided, require it to belong to the same project.
+  select
+    case
+      when $7 <= 0 then null
+      else c.id
+    end as id,
+    case
+      when $7 <= 0 then null
+      else c.milestone_id
+    end as milestone_id
+  from (select 1) seed
+  left join cards c
+    on c.id = $7 and c.project_id = $2
+), milestone_ok as (
   select case
-    when $7 <= 0 then null
-    else (select id from cards where id = $7 and project_id = $2)
+    when $8 <= 0 then null
+    else (
+      select m.id
+      from milestones m
+      where m.id = $8
+        and m.project_id = $2
+        and m.state = 'ready'
+    )
   end as id
 ), inserted as (
-  insert into tasks (project_id, type_id, title, description, priority, created_by, card_id)
+  insert into tasks (
+    project_id,
+    type_id,
+    title,
+    description,
+    priority,
+    created_by,
+    card_id,
+    milestone_id,
+    created_from_rule_id
+  )
   select
     $2,
     type_ok.id,
@@ -22,11 +51,17 @@ with type_ok as (
     nullif($4, ''),
     $5,
     $6,
-    card_ok.id
-  from type_ok, card_ok
+    card_ok.id,
+    case when card_ok.id is not null then null else milestone_ok.id end,
+    case when $9 <= 0 then null else $9 end
+  from type_ok, card_ok, milestone_ok
   where type_ok.id is not null
     -- Block if card_id is provided but card_ok.id is null (invalid card)
     and ($7 <= 0 or card_ok.id is not null)
+    -- Task milestone only valid when task has no card
+    and (card_ok.id is null or $8 <= 0)
+    -- If milestone_id is provided, it must exist and be ready
+    and ($8 <= 0 or milestone_ok.id is not null)
   returning
     id,
     project_id,
@@ -41,7 +76,11 @@ with type_ok as (
     coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as completed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
     version,
-    coalesce(card_id, 0) as card_id
+    coalesce(card_id, 0) as card_id,
+    coalesce(milestone_id, 0) as milestone_id,
+    pool_lifetime_s,
+    coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as last_entered_pool_at,
+    coalesce(created_from_rule_id, 0) as created_from_rule_id
 )
 select
   inserted.*,

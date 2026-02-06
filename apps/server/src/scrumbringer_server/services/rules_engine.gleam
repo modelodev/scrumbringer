@@ -429,6 +429,7 @@ fn apply_rule_with_templates(
 ) -> Result(RuleResult, RuleEngineError) {
   use tasks_created <- result.try(create_tasks_from_templates(
     db,
+    rule.id,
     templates,
     event,
   ))
@@ -491,6 +492,7 @@ fn get_rule_templates(
 
 fn create_tasks_from_templates(
   db: pog.Connection,
+  rule_id: Int,
   templates: List(ExecutionTemplate),
   event: StateChange,
 ) -> Result(Int, RuleEngineError) {
@@ -502,7 +504,14 @@ fn create_tasks_from_templates(
   let results =
     templates
     |> list.map(fn(template) {
-      create_task_from_template(db, template, event, project_name, user_name)
+      create_task_from_template(
+        db,
+        rule_id,
+        template,
+        event,
+        project_name,
+        user_name,
+      )
     })
 
   // Count successes
@@ -521,6 +530,7 @@ fn create_tasks_from_templates(
 
 fn create_task_from_template(
   db: pog.Connection,
+  rule_id: Int,
   template: ExecutionTemplate,
   event: StateChange,
   project_name: String,
@@ -581,6 +591,8 @@ fn create_task_from_template(
       template.priority,
       event_user_id(event),
       option_helpers.option_to_value(card_id_param, 0),
+      0,
+      rule_id,
     )
   {
     Ok(pog.Returned(rows: [row, ..], ..)) -> {

@@ -6,11 +6,12 @@ set
   description = case when $4 = '__unset__' then description else nullif($4, '') end,
   priority = case when $5 <= 0 then priority else $5 end,
   type_id = case when $6 <= 0 then type_id else $6 end,
+  milestone_id = case when $7 = -1 then milestone_id else nullif($7, 0) end,
   version = version + 1
 where id = $1
   and claimed_by = $2
     and status = 'claimed'
-    and version = $7
+    and version = $8
   returning
     id,
     project_id,
@@ -25,7 +26,11 @@ where id = $1
     coalesce(to_char(completed_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as completed_at,
     to_char(created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
     version,
-    coalesce(card_id, 0) as card_id
+    coalesce(card_id, 0) as card_id,
+    coalesce(milestone_id, 0) as milestone_id,
+    pool_lifetime_s,
+    coalesce(to_char(last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as last_entered_pool_at,
+    coalesce(created_from_rule_id, 0) as created_from_rule_id
 )
 select
   updated.*,

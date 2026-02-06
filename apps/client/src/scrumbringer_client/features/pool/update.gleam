@@ -57,6 +57,8 @@ import scrumbringer_client/client_state/types.{
 }
 import scrumbringer_client/features/cards/update as cards_workflow
 import scrumbringer_client/features/metrics/update as metrics_workflow
+import scrumbringer_client/features/milestones/ids as milestone_ids
+import scrumbringer_client/features/milestones/update as milestones_workflow
 import scrumbringer_client/features/now_working/update as now_working_workflow
 import scrumbringer_client/features/people/update as people_workflow
 import scrumbringer_client/features/pool/msg as pool_messages
@@ -341,10 +343,11 @@ fn close_dialog_shortcut(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   case
     model.member.pool.member_create_dialog_mode,
+    model.member.pool.member_milestone_dialog,
     opt.is_some(model.member.notes.member_notes_task_id),
     opt.is_some(model.member.positions.member_position_edit_task)
   {
-    dialog_mode.DialogCreate, _, _ -> #(
+    dialog_mode.DialogCreate, _, _, _ -> #(
       update_member_pool(model, fn(pool) {
         member_pool.Model(
           ..pool,
@@ -353,13 +356,69 @@ fn close_dialog_shortcut(
       }),
       effect.none(),
     )
-    _, True, _ -> #(
+    _, member_pool.MilestoneDialogActivate(id), _, _ -> #(
+      update_member_pool(model, fn(pool) {
+        member_pool.Model(
+          ..pool,
+          member_milestone_dialog: member_pool.MilestoneDialogClosed,
+          member_milestone_dialog_in_flight: False,
+          member_milestone_dialog_error: opt.None,
+        )
+      }),
+      app_effects.focus_element_after_timeout(
+        milestone_ids.activate_button_id(id),
+        0,
+      ),
+    )
+    _, member_pool.MilestoneDialogEdit(id: id, ..), _, _ -> #(
+      update_member_pool(model, fn(pool) {
+        member_pool.Model(
+          ..pool,
+          member_milestone_dialog: member_pool.MilestoneDialogClosed,
+          member_milestone_dialog_in_flight: False,
+          member_milestone_dialog_error: opt.None,
+        )
+      }),
+      app_effects.focus_element_after_timeout(
+        milestone_ids.edit_button_id(id),
+        0,
+      ),
+    )
+    _, member_pool.MilestoneDialogDelete(id: id, ..), _, _ -> #(
+      update_member_pool(model, fn(pool) {
+        member_pool.Model(
+          ..pool,
+          member_milestone_dialog: member_pool.MilestoneDialogClosed,
+          member_milestone_dialog_in_flight: False,
+          member_milestone_dialog_error: opt.None,
+        )
+      }),
+      app_effects.focus_element_after_timeout(
+        milestone_ids.delete_button_id(id),
+        0,
+      ),
+    )
+    _, member_pool.MilestoneDialogView(id: id), _, _ -> #(
+      update_member_pool(model, fn(pool) {
+        member_pool.Model(
+          ..pool,
+          member_milestone_dialog: member_pool.MilestoneDialogClosed,
+          member_milestone_dialog_in_flight: False,
+          member_milestone_dialog_error: opt.None,
+        )
+      }),
+      app_effects.focus_element_after_timeout(
+        milestone_ids.details_button_id(id),
+        0,
+      ),
+    )
+    _, _, True, _ -> #(
       update_member_notes(model, fn(notes) {
         member_notes.Model(..notes, member_notes_task_id: opt.None)
       }),
       effect.none(),
     )
-    _, _, True -> #(
+    _, _, _, True -> #(
       update_member_positions(model, fn(positions) {
         member_positions.Model(
           ..positions,
@@ -369,7 +428,7 @@ fn close_dialog_shortcut(
       }),
       effect.none(),
     )
-    _, _, _ -> #(model, effect.none())
+    _, _, _, _ -> #(model, effect.none())
   }
 }
 
@@ -1256,6 +1315,18 @@ pub fn update(
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   let Context(member_refresh: member_refresh) = ctx
 
+  case milestones_workflow.try_update(model, inner, member_refresh) {
+    opt.Some(result) -> result
+    opt.None -> update_without_milestones(model, inner, member_refresh)
+  }
+}
+
+fn update_without_milestones(
+  model: client_state.Model,
+  inner: client_state.PoolMsg,
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
+) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
   case inner {
     pool_messages.MemberPoolMyTasksRectFetched(left, top, width, height) ->
       handle_pool_my_tasks_rect_fetched(model, left, top, width, height)
@@ -1890,6 +1961,25 @@ pub fn update(
       })
       |> fn(next) { #(next, effect.none()) }
     }
+
+    pool_messages.MemberProjectMilestonesFetched(_, _)
+    | pool_messages.MemberMilestonesShowCompletedToggled
+    | pool_messages.MemberMilestonesShowEmptyToggled
+    | pool_messages.MemberMilestoneRowToggled(_)
+    | pool_messages.MemberMilestoneDetailsClicked(_)
+    | pool_messages.MemberMilestoneActivatePromptClicked(_)
+    | pool_messages.MemberMilestoneActivateClicked(_)
+    | pool_messages.MemberMilestoneActivated(_, _)
+    | pool_messages.MemberMilestoneEditClicked(_)
+    | pool_messages.MemberMilestoneDeleteClicked(_)
+    | pool_messages.MemberMilestoneDialogClosed
+    | pool_messages.MemberMilestoneNameChanged(_)
+    | pool_messages.MemberMilestoneDescriptionChanged(_)
+    | pool_messages.MemberMilestoneEditSubmitted(_)
+    | pool_messages.MemberMilestoneDeleteSubmitted(_)
+    | pool_messages.MemberMilestoneUpdated(_)
+    | pool_messages.MemberMilestoneDeleted(_, _) -> #(model, effect.none())
+
     pool_messages.OpenCardDialog(mode) ->
       cards_workflow.handle_open_card_dialog(model, mode)
     pool_messages.CloseCardDialog ->

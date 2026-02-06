@@ -176,7 +176,9 @@ pub fn translate(text: Text) -> String {
     text.ViewList -> "View: list"
     text.Canvas -> "Canvas"
     text.List -> "List"
+    text.Kanban -> "Kanban"
     text.People -> "People"
+    text.Milestones -> "Milestones"
     text.ShowFilters -> "Show filters"
     text.HideFilters -> "Hide filters"
     text.NewTask -> "New task"
@@ -222,6 +224,44 @@ pub fn translate(text: Text) -> String {
     text.PeopleNoResults -> "No people match your search"
     text.PeopleLoading -> "Loading people..."
     text.PeopleLoadError -> "Could not load people"
+    text.MilestonesEmpty -> "No milestones yet"
+    text.MilestonesNoResults -> "No milestones match current filters"
+    text.MilestonesLoadError -> "Could not load milestones"
+    text.ShowCompletedMilestones -> "Show completed"
+    text.ShowEmptyMilestones -> "Show empty"
+    text.MilestonesReady -> "Ready"
+    text.MilestonesActive -> "Active"
+    text.MilestonesCompleted -> "Completed"
+    text.MilestoneDone -> "Done"
+    text.MilestoneActivationTitle -> "Activate milestone"
+    text.MilestoneActivationBody(cards_count, tasks_count) ->
+      "This action is irreversible. It will activate all content in this milestone ("
+      <> int.to_string(cards_count)
+      <> " cards, "
+      <> int.to_string(tasks_count)
+      <> " tasks)."
+    text.MilestoneActivationWarning ->
+      "You will not be able to undo this action"
+    text.MilestoneDetails -> "Details"
+    text.ActivateMilestone -> "Activate"
+    text.ActivatingMilestone -> "Activating..."
+    text.MilestoneActivated -> "Milestone activated"
+    text.MilestoneActivateFailed -> "Could not activate milestone"
+    text.EditMilestone -> "Edit milestone"
+    text.DeleteMilestone -> "Delete milestone"
+    text.DeleteMilestoneTitle -> "Delete milestone"
+    text.DeleteMilestoneConfirm(name) ->
+      "Permanently delete milestone \"" <> name <> "\"?"
+    text.MilestoneUpdated -> "Milestone updated"
+    text.MilestoneUpdateFailed -> "Could not update milestone"
+    text.MilestoneDeleted -> "Milestone deleted"
+    text.MilestoneDeleteFailed -> "Could not delete milestone"
+    text.MilestoneDeleteNotAllowed -> "Milestone must be ready and empty"
+    text.MilestoneAlreadyActive -> "Another milestone is already active"
+    text.MilestoneActivationIrreversible ->
+      "Milestone cannot be activated in its current state"
+    text.ExpandMilestone(name) -> "Expand milestone " <> name
+    text.CollapseMilestone(name) -> "Collapse milestone " <> name
     text.ExpandPerson(name) -> "Expand status for " <> name
     text.CollapsePerson(name) -> "Collapse status for " <> name
     text.PeopleActiveSection -> "Active"

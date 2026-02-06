@@ -1,4 +1,12 @@
 -- name: list_tasks_for_project
+with active_milestone as (
+  select id
+  from milestones
+  where project_id = $1
+    and state = 'active'
+  order by activated_at desc
+  limit 1
+)
 select
   t.id,
   t.project_id,
@@ -31,8 +39,12 @@ select
   to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
   t.version,
   coalesce(t.card_id, 0) as card_id,
+  coalesce(t.milestone_id, 0) as milestone_id,
   coalesce(c.title, '') as card_title,
   coalesce(c.color, '') as card_color,
+  t.pool_lifetime_s,
+  coalesce(to_char(t.last_entered_pool_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as last_entered_pool_at,
+  coalesce(t.created_from_rule_id, 0) as created_from_rule_id,
   -- Story 5.4: AC4 - has_new_notes indicator
   case
     when (select max(n.created_at) from task_notes n where n.task_id = t.id) is null then false
@@ -66,6 +78,16 @@ left join lateral (
   where d.task_id = t.id
 ) deps on true
 where t.project_id = $1
+  and (
+    -- Task belongs to active milestone (direct or inherited from card)
+    coalesce(t.milestone_id, c.milestone_id) = (
+      select id from active_milestone
+    )
+    -- Orphan task (no card and no milestone)
+    or (t.card_id is null and t.milestone_id is null)
+    -- Task under orphan card
+    or (t.card_id is not null and c.milestone_id is null)
+  )
   and ($2 = '' or t.status = $2)
   and ($3 <= 0 or t.type_id = $3)
   and ($4 <= 0 or tt.capability_id = $4)

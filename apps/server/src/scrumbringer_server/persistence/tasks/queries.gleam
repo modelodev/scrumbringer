@@ -97,6 +97,8 @@ pub fn create_task(
   priority: Int,
   created_by: Int,
   card_id: Option(Int),
+  milestone_id: Option(Int),
+  created_from_rule_id: Option(Int),
 ) -> Result(Task, service_error.ServiceError) {
   pog.transaction(db, fn(tx) {
     case
@@ -109,6 +111,8 @@ pub fn create_task(
         priority,
         created_by,
         option_helpers.option_to_value(card_id, 0),
+        option_helpers.option_to_value(milestone_id, 0),
+        option_helpers.option_to_value(created_from_rule_id, 0),
       )
     {
       Ok(pog.Returned(rows: [row, ..], ..)) -> {
@@ -159,6 +163,7 @@ pub fn update_task_claimed_by_user(
   description: Option(String),
   priority: Option(Int),
   type_id: Option(Int),
+  milestone_id: Int,
   version: Int,
 ) -> Result(Task, service_error.ServiceError) {
   case
@@ -170,6 +175,7 @@ pub fn update_task_claimed_by_user(
       option_helpers.option_to_value(description, "__unset__"),
       option_helpers.option_to_value(priority, 0),
       option_helpers.option_to_value(type_id, 0),
+      milestone_id,
       version,
     )
   {

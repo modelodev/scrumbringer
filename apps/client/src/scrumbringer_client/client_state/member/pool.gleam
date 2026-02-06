@@ -4,6 +4,7 @@ import gleam/dict.{type Dict}
 import gleam/option.{type Option}
 
 import domain/card.{type Card}
+import domain/milestone.{type MilestoneProgress}
 import domain/project.{type ProjectMember}
 import domain/remote.{type Remote, NotAsked}
 import domain/task.{type Task}
@@ -30,6 +31,14 @@ pub type HighlightState {
   )
 }
 
+pub type MilestoneDialog {
+  MilestoneDialogClosed
+  MilestoneDialogView(id: Int)
+  MilestoneDialogActivate(id: Int)
+  MilestoneDialogEdit(id: Int, name: String, description: String)
+  MilestoneDialogDelete(id: Int, name: String)
+}
+
 /// Represents member pool state.
 pub type Model {
   Model(
@@ -43,6 +52,18 @@ pub type Model {
     member_task_types_by_project: Dict(Int, List(TaskType)),
     member_cards_store: normalized_store.NormalizedStore(Int, Card),
     member_cards: Remote(List(Card)),
+    member_milestones_store: normalized_store.NormalizedStore(
+      Int,
+      MilestoneProgress,
+    ),
+    member_milestones: Remote(List(MilestoneProgress)),
+    member_milestones_show_completed: Bool,
+    member_milestones_show_empty: Bool,
+    member_milestones_expanded: Dict(Int, Bool),
+    member_milestone_activate_in_flight_id: Option(Int),
+    member_milestone_dialog: MilestoneDialog,
+    member_milestone_dialog_in_flight: Bool,
+    member_milestone_dialog_error: Option(String),
     member_task_mutation_in_flight: Bool,
     member_task_mutation_task_id: Option(Int),
     member_tasks_snapshot: Option(List(Task)),
@@ -93,6 +114,15 @@ pub fn default_model() -> Model {
     member_task_types_by_project: dict.new(),
     member_cards_store: normalized_store.new(),
     member_cards: NotAsked,
+    member_milestones_store: normalized_store.new(),
+    member_milestones: NotAsked,
+    member_milestones_show_completed: False,
+    member_milestones_show_empty: False,
+    member_milestones_expanded: dict.new(),
+    member_milestone_activate_in_flight_id: option.None,
+    member_milestone_dialog: MilestoneDialogClosed,
+    member_milestone_dialog_in_flight: False,
+    member_milestone_dialog_error: option.None,
     member_task_mutation_in_flight: False,
     member_task_mutation_task_id: option.None,
     member_tasks_snapshot: option.None,

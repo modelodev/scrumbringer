@@ -1,10 +1,11 @@
 //// ViewModeToggle - Toggle component for switching between view modes
 ////
-//// Mission: Provide a type-safe toggle for switching between Pool, List, and Cards
+//// Mission: Provide a type-safe toggle for switching between Pool, Kanban,
+//// People, and Milestones view modes.
 //// view modes with proper accessibility and visual feedback.
 ////
 //// Responsibilities:
-//// - Render 3 toggle buttons for view modes
+//// - Render 4 toggle buttons for view modes
 //// - Highlight active mode
 //// - Emit messages on mode change
 //// - Include data-testid for E2E testing
@@ -13,7 +14,7 @@
 //// - Managing view state (handled by parent)
 //// - Rendering view content (handled by center panel)
 
-import domain/view_mode.{type ViewMode, Cards, List, People, Pool}
+import domain/view_mode.{type ViewMode, Cards, Milestones, People, Pool}
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{button, div, span, text}
@@ -40,7 +41,7 @@ pub type ToggleConfig(msg) {
 // View
 // =============================================================================
 
-/// Renders the view mode toggle with 3 buttons
+/// Renders the view mode toggle with 4 buttons
 pub fn view(config: ToggleConfig(msg)) -> Element(msg) {
   div(
     [
@@ -50,9 +51,14 @@ pub fn view(config: ToggleConfig(msg)) -> Element(msg) {
     ],
     [
       view_mode_button(config, Pool, "view-mode-pool", i18n_text.Pool),
-      view_mode_button(config, List, "view-mode-list", i18n_text.List),
-      view_mode_button(config, Cards, "view-mode-cards", i18n_text.MemberFichas),
+      view_mode_button(config, Cards, "view-mode-cards", i18n_text.Kanban),
       view_mode_button(config, People, "view-mode-people", i18n_text.People),
+      view_mode_button(
+        config,
+        Milestones,
+        "view-mode-milestones",
+        i18n_text.Milestones,
+      ),
     ],
   )
 }
@@ -93,9 +99,9 @@ fn view_mode_button(
 fn mode_icon(mode: ViewMode) -> String {
   case mode {
     Pool -> "🎯"
-    List -> "≡"
     Cards -> "🎴"
     People -> "👥"
+    Milestones -> "🏁"
   }
 }
 

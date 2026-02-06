@@ -156,7 +156,9 @@ pub type Text {
   ViewList
   Canvas
   List
+  Kanban
   People
+  Milestones
   ShowFilters
   HideFilters
   NewTask
@@ -195,6 +197,36 @@ pub type Text {
   PeopleNoResults
   PeopleLoading
   PeopleLoadError
+  MilestonesEmpty
+  MilestonesNoResults
+  MilestonesLoadError
+  ShowCompletedMilestones
+  ShowEmptyMilestones
+  MilestonesReady
+  MilestonesActive
+  MilestonesCompleted
+  MilestoneDone
+  MilestoneActivationTitle
+  MilestoneActivationBody(cards_count: Int, tasks_count: Int)
+  MilestoneActivationWarning
+  MilestoneDetails
+  ActivateMilestone
+  ActivatingMilestone
+  MilestoneActivated
+  MilestoneActivateFailed
+  EditMilestone
+  DeleteMilestone
+  DeleteMilestoneTitle
+  DeleteMilestoneConfirm(name: String)
+  MilestoneUpdated
+  MilestoneUpdateFailed
+  MilestoneDeleted
+  MilestoneDeleteFailed
+  MilestoneDeleteNotAllowed
+  MilestoneAlreadyActive
+  MilestoneActivationIrreversible
+  ExpandMilestone(name: String)
+  CollapseMilestone(name: String)
   ExpandPerson(name: String)
   CollapsePerson(name: String)
   PeopleActiveSection

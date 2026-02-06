@@ -177,7 +177,9 @@ pub fn translate(text: Text) -> String {
     text.ViewList -> "Vista: lista"
     text.Canvas -> "Lienzo"
     text.List -> "Lista"
+    text.Kanban -> "Kanban"
     text.People -> "Personas"
+    text.Milestones -> "Hitos"
     text.ShowFilters -> "Mostrar filtros"
     text.HideFilters -> "Ocultar filtros"
     text.NewTask -> "Nueva tarea"
@@ -224,6 +226,43 @@ pub fn translate(text: Text) -> String {
     text.PeopleNoResults -> "No hay personas que coincidan con la busqueda"
     text.PeopleLoading -> "Cargando personas..."
     text.PeopleLoadError -> "No se pudieron cargar las personas"
+    text.MilestonesEmpty -> "Aun no hay hitos"
+    text.MilestonesNoResults -> "No hay hitos que coincidan con los filtros"
+    text.MilestonesLoadError -> "No se pudieron cargar los hitos"
+    text.ShowCompletedMilestones -> "Ver completados"
+    text.ShowEmptyMilestones -> "Ver vacios"
+    text.MilestonesReady -> "Listos"
+    text.MilestonesActive -> "Activos"
+    text.MilestonesCompleted -> "Completados"
+    text.MilestoneDone -> "Hecho"
+    text.MilestoneActivationTitle -> "Activar hito"
+    text.MilestoneActivationBody(cards_count, tasks_count) ->
+      "Esta accion es irreversible. Activara todo el contenido del hito ("
+      <> int.to_string(cards_count)
+      <> " fichas, "
+      <> int.to_string(tasks_count)
+      <> " tareas)."
+    text.MilestoneActivationWarning -> "No podras deshacer esta accion"
+    text.MilestoneDetails -> "Detalle"
+    text.ActivateMilestone -> "Activar"
+    text.ActivatingMilestone -> "Activando..."
+    text.MilestoneActivated -> "Hito activado"
+    text.MilestoneActivateFailed -> "No se pudo activar el hito"
+    text.EditMilestone -> "Editar hito"
+    text.DeleteMilestone -> "Eliminar hito"
+    text.DeleteMilestoneTitle -> "Eliminar hito"
+    text.DeleteMilestoneConfirm(name) ->
+      "Eliminar permanentemente el hito \"" <> name <> "\"?"
+    text.MilestoneUpdated -> "Hito actualizado"
+    text.MilestoneUpdateFailed -> "No se pudo actualizar el hito"
+    text.MilestoneDeleted -> "Hito eliminado"
+    text.MilestoneDeleteFailed -> "No se pudo eliminar el hito"
+    text.MilestoneDeleteNotAllowed -> "El hito debe estar listo y vacio"
+    text.MilestoneAlreadyActive -> "Ya hay otro hito activo"
+    text.MilestoneActivationIrreversible ->
+      "El hito no se puede activar en su estado actual"
+    text.ExpandMilestone(name) -> "Expandir hito " <> name
+    text.CollapseMilestone(name) -> "Colapsar hito " <> name
     text.ExpandPerson(name) -> "Expandir estado de " <> name
     text.CollapsePerson(name) -> "Colapsar estado de " <> name
     text.PeopleActiveSection -> "Activas"

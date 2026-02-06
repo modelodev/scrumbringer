@@ -127,17 +127,25 @@ fn validate_named_color(color: String) -> Result(Option(String), wisp.Response) 
 
 fn decode_card_payload_data(
   data: dynamic.Dynamic,
-) -> Result(#(String, Option(String), Option(String)), wisp.Response) {
+) -> Result(
+  #(String, Option(String), Option(String), Option(Int)),
+  wisp.Response,
+) {
   let decoder = {
     use title <- decode.field("title", decode.string)
     use description <- decode.optional_field("description", "", decode.string)
     use color <- decode.optional_field("color", "", decode.string)
-    decode.success(#(title, description, color))
+    use milestone_id <- decode.optional_field(
+      "milestone_id",
+      None,
+      decode.optional(decode.int),
+    )
+    decode.success(#(title, description, color, milestone_id))
   }
 
   case decode.run(data, decoder) {
-    Ok(#(title, description, color)) ->
-      normalize_card_payload(title, description, color)
+    Ok(#(title, description, color, milestone_id)) ->
+      normalize_card_payload(title, description, color, milestone_id)
     Error(_) -> Error(api.error(422, "VALIDATION_ERROR", "Invalid JSON body"))
   }
 }
@@ -146,11 +154,20 @@ fn normalize_card_payload(
   title: String,
   description: String,
   color: String,
-) -> Result(#(String, Option(String), Option(String)), wisp.Response) {
+  milestone_id: Option(Int),
+) -> Result(
+  #(String, Option(String), Option(String), Option(Int)),
+  wisp.Response,
+) {
   case validate_color(color) {
     Error(resp) -> Error(resp)
     Ok(validated_color) ->
-      Ok(#(title, normalize_optional(description), validated_color))
+      Ok(#(
+        title,
+        normalize_optional(description),
+        validated_color,
+        milestone_id,
+      ))
   }
 }
 
@@ -208,10 +225,11 @@ fn create_card_with_payload(
 
   case decode_card_payload_data(data) {
     Error(resp) -> resp
-    Ok(#(title, description, color)) ->
+    Ok(#(title, description, color, milestone_id)) ->
       create_card_in_project(
         ctx,
         project_id,
+        milestone_id,
         title,
         description,
         color,
@@ -223,6 +241,7 @@ fn create_card_with_payload(
 fn create_card_in_project(
   ctx: auth.Ctx,
   project_id: Int,
+  milestone_id: Option(Int),
   title: String,
   description: Option(String),
   color: Option(String),
@@ -231,9 +250,25 @@ fn create_card_in_project(
   let auth.Ctx(db: db, ..) = ctx
 
   case
-    cards_db.create_card(db, project_id, title, description, color, user_id)
+    cards_db.create_card(
+      db,
+      project_id,
+      milestone_id,
+      title,
+      description,
+      color,
+      user_id,
+    )
   {
     Ok(card) -> api.ok(json.object([#("card", card_to_json(card))]))
+    Error(cards_db.InvalidMilestone) ->
+      api.error(422, "VALIDATION_ERROR", "Invalid milestone_id")
+    Error(cards_db.InvalidMovePoolToMilestone) ->
+      api.error(
+        422,
+        "INVALID_MOVE_POOL_TO_MILESTONE",
+        "Cannot move pool content into a milestone",
+      )
     Error(_) -> api.error(500, "INTERNAL", "Database error")
   }
 }
@@ -345,14 +380,23 @@ fn update_card_with_payload(
 
   case decode_card_payload_data(data) {
     Error(resp) -> resp
-    Ok(#(title, description, color)) ->
-      update_card_in_db(ctx, card_id, title, description, color, user_id)
+    Ok(#(title, description, color, milestone_id)) ->
+      update_card_in_db(
+        ctx,
+        card_id,
+        milestone_id,
+        title,
+        description,
+        color,
+        user_id,
+      )
   }
 }
 
 fn update_card_in_db(
   ctx: auth.Ctx,
   card_id: Int,
+  milestone_id: Option(Int),
   title: String,
   description: Option(String),
   color: Option(String),
@@ -360,10 +404,28 @@ fn update_card_in_db(
 ) -> wisp.Response {
   let auth.Ctx(db: db, ..) = ctx
 
-  case cards_db.update_card(db, card_id, title, description, color, user_id) {
+  case
+    cards_db.update_card(
+      db,
+      card_id,
+      milestone_id,
+      title,
+      description,
+      color,
+      user_id,
+    )
+  {
     Ok(updated) -> api.ok(json.object([#("card", card_to_json(updated))]))
     Error(cards_db.CardNotFound) ->
       api.error(404, "NOT_FOUND", "Card not found")
+    Error(cards_db.InvalidMilestone) ->
+      api.error(422, "VALIDATION_ERROR", "Invalid milestone_id")
+    Error(cards_db.InvalidMovePoolToMilestone) ->
+      api.error(
+        422,
+        "INVALID_MOVE_POOL_TO_MILESTONE",
+        "Cannot move pool content into a milestone",
+      )
     Error(_) -> api.error(500, "INTERNAL", "Database error")
   }
 }
@@ -442,6 +504,7 @@ fn card_to_json(card: cards_db.Card) -> json.Json {
   json.object([
     #("id", json.int(card.id)),
     #("project_id", json.int(card.project_id)),
+    #("milestone_id", option_int_json(card.milestone_id)),
     #("title", json.string(card.title)),
     #("description", json.string(card.description)),
     #("color", json.string(card.color)),
@@ -456,4 +519,11 @@ fn card_to_json(card: cards_db.Card) -> json.Json {
 
 fn cards_to_json(cards: List(cards_db.Card)) -> json.Json {
   json.array(cards, of: card_to_json)
+}
+
+fn option_int_json(value: Option(Int)) -> json.Json {
+  case value {
+    None -> json.null()
+    Some(v) -> json.int(v)
+  }
 }

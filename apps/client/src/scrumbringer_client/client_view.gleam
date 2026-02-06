@@ -65,6 +65,7 @@ import scrumbringer_client/features/cards/view as cards_view
 import scrumbringer_client/features/fichas/view as fichas_view
 import scrumbringer_client/features/invites/view as invites_view
 import scrumbringer_client/features/metrics/view as metrics_view
+import scrumbringer_client/features/milestones/view as milestones_view
 import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/view as now_working_view
 import scrumbringer_client/features/people/view as people_view
@@ -104,7 +105,6 @@ import scrumbringer_client/features/layout/left_panel
 import scrumbringer_client/features/layout/responsive_drawer
 import scrumbringer_client/features/layout/right_panel
 import scrumbringer_client/features/layout/view as layout_view
-import scrumbringer_client/features/views/grouped_list
 import scrumbringer_client/features/views/kanban_board
 import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/helpers/lookup as helpers_lookup
@@ -493,7 +493,7 @@ fn view_member_three_panel(
       helpers_i18n.i18n_t(model, i18n_text.MainNavigation),
       helpers_i18n.i18n_t(model, i18n_text.MyActivity),
     ),
-    // Story 5.3: Card detail modal for Pool/Lista/Kanban views
+    // Story 5.3: Card detail modal for Pool/Kanban/Milestones views
     view_member_card_detail_modal(model, user),
     view_member_blocked_claim_modal(model),
   ])
@@ -649,16 +649,16 @@ fn build_left_panel(
       router.Member(member_section.Pool, member_state_for(view_mode.Pool)),
       client_state.Push,
     ),
-    on_navigate_list: client_state.NavigateTo(
-      router.Member(member_section.Pool, member_state_for(view_mode.List)),
-      client_state.Push,
-    ),
     on_navigate_cards: client_state.NavigateTo(
       router.Member(member_section.Pool, member_state_for(view_mode.Cards)),
       client_state.Push,
     ),
     on_navigate_people: client_state.NavigateTo(
       router.Member(member_section.Pool, member_state_for(view_mode.People)),
+      client_state.Push,
+    ),
+    on_navigate_milestones: client_state.NavigateTo(
+      router.Member(member_section.Pool, member_state_for(view_mode.Milestones)),
       client_state.Push,
     ),
     // Config navigation
@@ -748,29 +748,7 @@ fn build_center_panel(
     Loaded(users) -> users
     _ -> []
   }
-  let list_content =
-    grouped_list.view(grouped_list.GroupedListConfig(
-      locale: model.ui.locale,
-      theme: model.ui.theme,
-      tasks: tasks,
-      cards: cards,
-      org_users: org_users,
-      // Story 4.8 UX: Use model state for collapse/expand
-      expanded_cards: model.member.pool.member_list_expanded_cards,
-      hide_completed: model.member.pool.member_list_hide_completed,
-      on_toggle_card: fn(card_id) {
-        client_state.pool_msg(pool_messages.MemberListCardToggled(card_id))
-      },
-      on_toggle_hide_completed: client_state.pool_msg(
-        pool_messages.MemberListHideCompletedToggled,
-      ),
-      on_task_click: fn(task_id) {
-        client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
-      },
-      on_task_claim: fn(task_id, version) {
-        client_state.pool_msg(pool_messages.MemberClaimClicked(task_id, version))
-      },
-    ))
+  let milestones_content = milestones_view.view(model)
   let cards_content =
     kanban_board.view(kanban_board.KanbanConfig(
       locale: model.ui.locale,
@@ -839,9 +817,9 @@ fn build_center_panel(
       client_state.pool_msg(pool_messages.MemberPoolSearchChanged(value))
     },
     pool_content: pool_content,
-    list_content: list_content,
     cards_content: cards_content,
     people_content: people_content,
+    milestones_content: milestones_content,
     // Drag handlers for pool (Story 4.7 fix)
     on_drag_move: fn(x, y) {
       client_state.pool_msg(pool_messages.MemberDragMoved(x, y))
@@ -1216,7 +1194,7 @@ fn view_claimed_task_row(
 // Card Detail Modal for Member Views
 // =============================================================================
 
-/// Renders the card detail modal for Pool/Lista/Kanban views.
+/// Renders the card detail modal for Pool/Kanban/Milestones views.
 /// Story 5.3: Delegates to fichas_view.view_card_detail_modal.
 fn view_member_card_detail_modal(
   model: client_state.Model,

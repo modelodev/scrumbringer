@@ -180,6 +180,16 @@ pub fn get_org_overview(
         project_rows
         |> map_project_rows
 
+      let avg_claim_to_complete_ms = case totals_row.avg_claim_to_complete_ms {
+        0 -> None
+        value -> Some(value)
+      }
+
+      let avg_time_in_claimed_ms = case totals_row.avg_time_in_claimed_ms {
+        0 -> None
+        value -> Some(value)
+      }
+
       Ok(MetricsOverview(
         window_days: window_days,
         available_count: available,
@@ -194,8 +204,8 @@ pub fn get_org_overview(
         time_to_first_claim_buckets: ttf_buckets_mapped,
         release_rate_buckets: rr_buckets_mapped,
         wip_count: wip_count,
-        avg_claim_to_complete_ms: totals_row.avg_claim_to_complete_ms,
-        avg_time_in_claimed_ms: totals_row.avg_time_in_claimed_ms,
+        avg_claim_to_complete_ms: avg_claim_to_complete_ms,
+        avg_time_in_claimed_ms: avg_time_in_claimed_ms,
         stale_claims_count: totals_row.stale_claims_count,
         by_project: project_rows_mapped,
       ))

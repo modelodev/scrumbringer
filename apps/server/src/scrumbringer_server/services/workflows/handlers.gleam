@@ -25,13 +25,16 @@
 //// - **authorization.gleam**: Authorization checks
 
 import domain/field_update
+import domain/milestone
 import domain/task_state
 import domain/task_status.{Available, Claimed, Completed, task_status_to_string}
 import gleam/option.{type Option, None, Some}
+import gleam/result
 import pog
 import scrumbringer_server/persistence/tasks/mappers as task_mappers
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
 import scrumbringer_server/services/cards_db
+import scrumbringer_server/services/milestones_db
 import scrumbringer_server/services/rules_engine
 import scrumbringer_server/services/service_error
 import scrumbringer_server/services/task_types_db
@@ -40,11 +43,12 @@ import scrumbringer_server/services/workflows/authorization
 import scrumbringer_server/services/workflows/types.{
   type Error, type Message, type Response, type TaskFilters, type TaskUpdates,
   AlreadyClaimed, ClaimOwnershipConflict, ClaimTask, CompleteTask, CreateTask,
-  CreateTaskType, DbError, DeleteTaskType, GetTask, InvalidTransition,
-  ListTaskTypes, ListTasks, NotAuthorized, NotFound, ReleaseTask, TaskResult,
-  TaskTypeAlreadyExists, TaskTypeCreated, TaskTypeDeleted, TaskTypeInUse,
-  TaskTypeUpdated, TaskTypesList, TasksList, UpdateTask, UpdateTaskType,
-  ValidationError, VersionConflict,
+  CreateTaskType, DbError, DeleteTaskType, GetTask, InvalidMovePoolToMilestone,
+  InvalidTransition, ListTaskTypes, ListTasks, NotAuthorized, NotFound,
+  ReleaseTask, TaskMilestoneInheritedFromCard, TaskResult, TaskTypeAlreadyExists,
+  TaskTypeCreated, TaskTypeDeleted, TaskTypeInUse, TaskTypeUpdated,
+  TaskTypesList, TasksList, UpdateTask, UpdateTaskType, ValidationError,
+  VersionConflict,
 }
 import scrumbringer_server/services/workflows/validation
 
@@ -79,14 +83,15 @@ pub fn handle(db: pog.Connection, message: Message) -> Result(Response, Error) {
       handle_list_tasks(db, project_id, user_id, filters)
 
     CreateTask(
-      project_id,
-      user_id,
-      org_id,
-      title,
-      description,
-      priority,
-      type_id,
-      card_id,
+      project_id: project_id,
+      user_id: user_id,
+      org_id: org_id,
+      title: title,
+      description: description,
+      priority: priority,
+      type_id: type_id,
+      card_id: card_id,
+      milestone_id: milestone_id,
     ) ->
       handle_create_task(
         db,
@@ -98,6 +103,7 @@ pub fn handle(db: pog.Connection, message: Message) -> Result(Response, Error) {
         priority,
         type_id,
         card_id,
+        milestone_id,
       )
 
     GetTask(task_id, user_id) -> handle_get_task(db, task_id, user_id)
@@ -273,6 +279,7 @@ fn handle_create_task(
   priority: Int,
   type_id: Int,
   card_id: Option(Int),
+  milestone_id: Option(Int),
 ) -> Result(Response, Error) {
   use _ <- authorization.require_project_member(db, project_id, user_id)
   use validated_title <- validation.validate_task_title(title)
@@ -300,6 +307,8 @@ fn handle_create_task(
           priority,
           user_id,
           card_id,
+          milestone_id,
+          None,
         )
       {
         Ok(task) -> {
@@ -419,11 +428,17 @@ fn update_task_for_owner(
     updates.type_id,
     current.project_id,
   )
+  use _ <- result.try(validate_milestone_update(
+    db,
+    current,
+    updates.milestone_id,
+  ))
 
   let title_update = field_update.to_option(updates.title)
   let description_update = field_update.to_option(updates.description)
   let priority_update = field_update.to_option(updates.priority)
   let type_id_update = field_update.to_option(updates.type_id)
+  let milestone_update = to_milestone_query_value(updates.milestone_id)
 
   case
     tasks_queries.update_task_claimed_by_user(
@@ -434,6 +449,7 @@ fn update_task_for_owner(
       description_update,
       priority_update,
       type_id_update,
+      milestone_update,
       version,
     )
   {
@@ -447,6 +463,110 @@ fn update_task_for_owner(
       Error(ValidationError("Unexpected error"))
     Error(service_error.Conflict(_)) -> Error(ValidationError("Conflict"))
     Error(service_error.AlreadyExists) -> Error(ValidationError("Conflict"))
+  }
+}
+
+fn validate_milestone_update(
+  db: pog.Connection,
+  current: task_mappers.Task,
+  milestone_update: field_update.FieldUpdate(Option(Int)),
+) -> Result(Response, Error) {
+  case milestone_update {
+    field_update.Unchanged -> Ok(TaskResult(current))
+    field_update.Set(target) ->
+      case current.card_id {
+        Some(_) -> Error(TaskMilestoneInheritedFromCard)
+        None ->
+          case
+            validate_milestone_move(db, current.project_id, current.id, target)
+          {
+            Ok(Nil) -> Ok(TaskResult(current))
+            Error(e) -> Error(e)
+          }
+      }
+  }
+}
+
+fn validate_milestone_move(
+  db: pog.Connection,
+  project_id: Int,
+  task_id: Int,
+  target_milestone_id: Option(Int),
+) -> Result(Nil, Error) {
+  let current_milestone_id = case
+    milestones_db.get_effective_milestone_for_task(db, task_id)
+  {
+    Ok(value) -> Ok(value)
+    Error(milestones_db.NotFound) -> Ok(None)
+    Error(milestones_db.DeleteNotAllowed) ->
+      Error(ValidationError("Invalid milestone_id"))
+    Error(milestones_db.DbError(e)) -> Error(DbError(e))
+  }
+
+  case current_milestone_id {
+    Error(e) -> Error(e)
+    Ok(current_id) ->
+      case target_milestone_id {
+        None ->
+          case current_id {
+            None -> Ok(Nil)
+            Some(id) ->
+              case validate_ready_milestone(db, project_id, id) {
+                Ok(Nil) -> Ok(Nil)
+                Error(ValidationError(_)) -> Error(InvalidMovePoolToMilestone)
+                Error(e) -> Error(e)
+              }
+          }
+        Some(target_id) ->
+          case current_id {
+            None -> Error(InvalidMovePoolToMilestone)
+            Some(current_id) ->
+              case
+                validate_ready_milestone(db, project_id, current_id),
+                validate_ready_milestone(db, project_id, target_id)
+              {
+                Ok(Nil), Ok(Nil) -> Ok(Nil)
+                Error(ValidationError(_)), _ ->
+                  Error(InvalidMovePoolToMilestone)
+                _, Error(ValidationError(_)) ->
+                  Error(ValidationError("Invalid milestone_id"))
+                Error(e), _ -> Error(e)
+                _, Error(e) -> Error(e)
+              }
+          }
+      }
+  }
+}
+
+fn validate_ready_milestone(
+  db: pog.Connection,
+  project_id: Int,
+  milestone_id: Int,
+) -> Result(Nil, Error) {
+  case milestones_db.get_milestone(db, milestone_id) {
+    Ok(found) -> {
+      let milestone.Milestone(project_id: owner_project_id, state: state, ..) =
+        found
+      case owner_project_id == project_id && state == milestone.Ready {
+        True -> Ok(Nil)
+        False -> Error(ValidationError("Invalid milestone_id"))
+      }
+    }
+    Error(milestones_db.NotFound) ->
+      Error(ValidationError("Invalid milestone_id"))
+    Error(milestones_db.DeleteNotAllowed) ->
+      Error(ValidationError("Invalid milestone_id"))
+    Error(milestones_db.DbError(e)) -> Error(DbError(e))
+  }
+}
+
+fn to_milestone_query_value(
+  update: field_update.FieldUpdate(Option(Int)),
+) -> Int {
+  case update {
+    field_update.Unchanged -> -1
+    field_update.Set(None) -> 0
+    field_update.Set(Some(id)) -> id
   }
 }
 
@@ -761,6 +881,8 @@ fn complete_task_success(
   let to_state = task_status_to_string(task.status)
   let _ = evaluate_task_rules(db, ctx, user_id, from_state, to_state)
 
+  let _ = recompute_milestone_if_needed(db, task_id)
+
   let _ =
     maybe_evaluate_card_rules(
       db,
@@ -770,6 +892,16 @@ fn complete_task_success(
       user_id,
     )
   Ok(TaskResult(task))
+}
+
+fn recompute_milestone_if_needed(db: pog.Connection, task_id: Int) -> Nil {
+  case milestones_db.get_effective_milestone_for_task(db, task_id) {
+    Ok(Some(milestone_id)) -> {
+      let _ = milestones_db.recompute_completion(db, milestone_id)
+      Nil
+    }
+    _ -> Nil
+  }
 }
 
 // =============================================================================

@@ -28,11 +28,11 @@ pub fn parse_project_only_test() {
   state |> url_state.view |> should.equal(view_mode.Pool)
 }
 
-pub fn parse_view_mode_list_test() {
-  let assert Ok(uri) = uri.parse("/app?view=list")
+pub fn parse_view_mode_milestones_test() {
+  let assert Ok(uri) = uri.parse("/app?view=milestones")
   let state = unwrap_parse(url_state.parse(uri, url_state.Member))
 
-  state |> url_state.view |> should.equal(view_mode.List)
+  state |> url_state.view |> should.equal(view_mode.Milestones)
 }
 
 pub fn parse_view_mode_cards_test() {
@@ -51,11 +51,11 @@ pub fn parse_view_mode_people_test() {
 
 pub fn parse_full_url_test() {
   let assert Ok(uri) =
-    uri.parse("/app?project=8&view=list&type=2&cap=3&search=bug&card=15")
+    uri.parse("/app?project=8&view=milestones&type=2&cap=3&search=bug&card=15")
   let state = unwrap_parse(url_state.parse(uri, url_state.Member))
 
   state |> url_state.project |> should.equal(Some(8))
-  state |> url_state.view |> should.equal(view_mode.List)
+  state |> url_state.view |> should.equal(view_mode.Milestones)
   state |> url_state.type_filter |> should.equal(Some(2))
   state |> url_state.capability_filter |> should.equal(Some(3))
   state |> url_state.search |> should.equal(Some("bug"))
@@ -72,6 +72,13 @@ pub fn parse_query_string_directly_test() {
 
 pub fn parse_invalid_view_defaults_to_pool_test() {
   let assert Ok(uri) = uri.parse("/app?view=unknown")
+  let assert url_state.Redirect(state) = url_state.parse(uri, url_state.Member)
+
+  state |> url_state.view |> should.equal(view_mode.Pool)
+}
+
+pub fn parse_legacy_list_view_is_invalid_and_redirects_to_pool_test() {
+  let assert Ok(uri) = uri.parse("/app?view=list")
   let assert url_state.Redirect(state) = url_state.parse(uri, url_state.Member)
 
   state |> url_state.view |> should.equal(view_mode.Pool)
@@ -205,14 +212,15 @@ pub fn to_query_string_full_test() {
   let query =
     url_state.empty()
     |> url_state.with_project(8)
-    |> url_state.with_view(view_mode.List)
+    |> url_state.with_view(view_mode.Milestones)
     |> url_state.with_type_filter(Some(2))
     |> url_state.with_capability_filter(Some(3))
     |> url_state.with_search(Some("bug"))
     |> url_state.with_expanded_card(Some(15))
     |> url_state.to_query_string
 
-  query |> should.equal("project=8&view=list&type=2&cap=3&search=bug&card=15")
+  query
+  |> should.equal("project=8&view=milestones&type=2&cap=3&search=bug&card=15")
 }
 
 pub fn to_query_string_people_test() {

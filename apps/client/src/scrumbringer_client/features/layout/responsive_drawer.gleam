@@ -31,12 +31,12 @@ pub fn view(
   content: Element(msg),
 ) -> Element(msg) {
   let position_class = case position {
-    Left -> "drawer-left"
-    Right -> "drawer-right"
+    Left -> " drawer-left"
+    Right -> " drawer-right right"
   }
 
   let open_class = case is_open {
-    True -> " drawer-open"
+    True -> " drawer-open open"
     False -> ""
   }
 
@@ -54,7 +54,7 @@ pub fn view(
     [
       div(
         [
-          attribute.class("drawer " <> position_class <> open_class),
+          attribute.class("drawer" <> position_class <> open_class),
           attribute.attribute("data-testid", testid),
           attribute.attribute("role", "dialog"),
           attribute.attribute("aria-modal", "true"),
