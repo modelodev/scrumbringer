@@ -42,6 +42,13 @@ pub fn parse_view_mode_cards_test() {
   state |> url_state.view |> should.equal(view_mode.Cards)
 }
 
+pub fn parse_view_mode_people_test() {
+  let assert Ok(uri) = uri.parse("/app?view=people")
+  let state = unwrap_parse(url_state.parse(uri, url_state.Member))
+
+  state |> url_state.view |> should.equal(view_mode.People)
+}
+
 pub fn parse_full_url_test() {
   let assert Ok(uri) =
     uri.parse("/app?project=8&view=list&type=2&cap=3&search=bug&card=15")
@@ -206,6 +213,16 @@ pub fn to_query_string_full_test() {
     |> url_state.to_query_string
 
   query |> should.equal("project=8&view=list&type=2&cap=3&search=bug&card=15")
+}
+
+pub fn to_query_string_people_test() {
+  let query =
+    url_state.empty()
+    |> url_state.with_project(8)
+    |> url_state.with_view(view_mode.People)
+    |> url_state.to_query_string
+
+  query |> should.equal("project=8&view=people")
 }
 
 // =============================================================================

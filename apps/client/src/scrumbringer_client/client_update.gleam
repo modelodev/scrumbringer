@@ -135,6 +135,15 @@ fn current_route(model: client_state.Model) -> router.Route {
   }
 }
 
+pub fn toast_action_to_msg(action: toast.ToastActionKind) -> client_state.Msg {
+  case action {
+    toast.ClearPoolFilters ->
+      client_state.pool_msg(pool_messages.MemberClearFilters)
+    toast.ViewTask(task_id) ->
+      client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
+  }
+}
+
 fn replace_url(model: client_state.Model) -> Effect(client_state.Msg) {
   router.replace(current_route(model))
 }
@@ -1341,6 +1350,8 @@ fn reset_member_tasks(
           member_task_types: NotAsked,
           member_task_types_pending: 0,
           member_task_types_by_project: dict.new(),
+          people_roster: NotAsked,
+          people_expansions: dict.new(),
         ),
       )
     }),
@@ -1389,12 +1400,42 @@ fn refresh_member_data(
       })
     })
 
+  let roster_project_id = case model.core.selected_project_id, project_ids {
+    opt.Some(project_id), _ -> opt.Some(project_id)
+    opt.None, [project_id, ..] -> opt.Some(project_id)
+    opt.None, [] -> opt.None
+  }
+
+  let roster_effect = case roster_project_id {
+    opt.Some(project_id) ->
+      api_projects.list_project_members(project_id, fn(result) {
+        client_state.pool_msg(pool_messages.MemberPeopleRosterFetched(result))
+      })
+    opt.None -> effect.none()
+  }
+
+  let should_fetch_org_users = case model.admin.members.org_users_cache {
+    Loading | Loaded(_) -> False
+    _ -> True
+  }
+
+  let org_users_effect = case should_fetch_org_users {
+    True ->
+      api_org.list_org_users("", fn(result) {
+        client_state.admin_msg(admin_messages.OrgUsersCacheFetched(result))
+      })
+    False -> effect.none()
+  }
+
   let effects =
     list.append(
       task_effects,
       list.append(
         task_type_effects,
-        list.append([positions_effect], member_card_effects),
+        list.append(
+          [positions_effect, roster_effect, org_users_effect],
+          member_card_effects,
+        ),
       ),
     )
 
@@ -1411,6 +1452,14 @@ fn refresh_member_data(
           member_task_types: Loading,
           member_task_types_pending: list.length(project_ids),
           member_task_types_by_project: dict.new(),
+          people_roster: case roster_project_id {
+            opt.Some(_) -> Loading
+            opt.None -> NotAsked
+          },
+          people_expansions: case roster_project_id {
+            opt.Some(_) -> pool.people_expansions
+            opt.None -> dict.new()
+          },
           member_cards_store: normalized_store.with_pending(
             pool.member_cards_store,
             list.length(project_ids),
@@ -1422,6 +1471,19 @@ fn refresh_member_data(
         ),
       )
     })
+
+  let next = case should_fetch_org_users {
+    False -> next
+    True ->
+      client_state.update_admin(next, fn(admin) {
+        let members = admin.members
+        admin_state.AdminModel(
+          ..admin,
+          members: admin_members.Model(..members, org_users_cache: Loading),
+        )
+      })
+  }
+
   #(next, effect.batch(effects))
 }
 
@@ -1638,12 +1700,7 @@ pub fn update(
     }
 
     client_state.ToastActionTriggered(action) -> {
-      let action_msg = case action {
-        toast.ClearPoolFilters ->
-          client_state.pool_msg(pool_messages.MemberClearFilters)
-        toast.ViewTask(task_id) ->
-          client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
-      }
+      let action_msg = toast_action_to_msg(action)
 
       #(model, effect.from(fn(dispatch) { dispatch(action_msg) }))
     }

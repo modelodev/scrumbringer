@@ -27,7 +27,7 @@ import lustre/event
 
 import domain/project.{type Project}
 import domain/user.{type User}
-import domain/view_mode.{type ViewMode, Cards, List, Pool}
+import domain/view_mode.{type ViewMode, Cards, List, People, Pool}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -66,6 +66,7 @@ pub type LeftPanelConfig(msg) {
     on_navigate_pool: msg,
     on_navigate_list: msg,
     on_navigate_cards: msg,
+    on_navigate_people: msg,
     // Config navigation
     on_navigate_config_team: msg,
     on_navigate_config_capabilities: msg,
@@ -320,6 +321,14 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
           icons.Cards,
           i18n_text.MemberFichas,
           config.on_navigate_cards,
+        ),
+        view_work_nav_link(
+          config,
+          People,
+          "nav-people",
+          icons.Team,
+          i18n_text.People,
+          config.on_navigate_people,
         ),
       ]),
     ],

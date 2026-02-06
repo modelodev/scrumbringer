@@ -20,7 +20,7 @@ import lustre/event
 
 import domain/capability.{type Capability}
 import domain/task_type.{type TaskType}
-import domain/view_mode.{type ViewMode, Cards, List, Pool}
+import domain/view_mode.{type ViewMode, Cards, List, People, Pool}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -49,6 +49,7 @@ pub type CenterPanelConfig(msg) {
     pool_content: Element(msg),
     list_content: Element(msg),
     cards_content: Element(msg),
+    people_content: Element(msg),
     // Drag handlers for pool (Story 4.7 fix)
     on_drag_move: fn(Int, Int) -> msg,
     on_drag_end: msg,
@@ -77,6 +78,13 @@ fn view_toolbar(config: CenterPanelConfig(msg)) -> Element(msg) {
 }
 
 fn view_filters(config: CenterPanelConfig(msg)) -> Element(msg) {
+  case config.view_mode {
+    People -> view_people_filters(config)
+    _ -> view_work_filters(config)
+  }
+}
+
+fn view_work_filters(config: CenterPanelConfig(msg)) -> Element(msg) {
   div([attribute.class("center-filters")], [
     // Type filter
     div([attribute.class("filter-field")], [
@@ -143,17 +151,43 @@ fn view_filters(config: CenterPanelConfig(msg)) -> Element(msg) {
   ])
 }
 
+fn view_people_filters(config: CenterPanelConfig(msg)) -> Element(msg) {
+  div(
+    [
+      attribute.class("center-filters center-filters-people"),
+      attribute.attribute("data-testid", "people-toolbar"),
+    ],
+    [
+      div([attribute.class("filter-field filter-search")], [
+        label([], [text(i18n.t(config.locale, i18n_text.SearchLabel))]),
+        input([
+          attribute.type_("search"),
+          attribute.attribute("data-testid", "filter-search-people"),
+          attribute.placeholder(i18n.t(
+            config.locale,
+            i18n_text.PeopleSearchPlaceholder,
+          )),
+          attribute.value(config.search_query),
+          event.on_input(config.on_search_change),
+        ]),
+      ]),
+    ],
+  )
+}
+
 fn view_content(config: CenterPanelConfig(msg)) -> Element(msg) {
   let content = case config.view_mode {
     Pool -> config.pool_content
     List -> config.list_content
     Cards -> config.cards_content
+    People -> config.people_content
   }
 
   let testid = case config.view_mode {
     Pool -> "pool-canvas"
     List -> "grouped-list"
     Cards -> "kanban-board"
+    People -> "people-view"
   }
 
   // Add drag handlers for Pool view (Story 4.7 fix)

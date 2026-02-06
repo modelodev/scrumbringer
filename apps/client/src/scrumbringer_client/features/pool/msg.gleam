@@ -7,6 +7,7 @@ import domain/metrics.{
   type MyMetrics, type OrgMetricsOverview, type OrgMetricsProjectTasksPayload,
   type OrgMetricsUserOverview,
 }
+import domain/project.{type ProjectMember}
 import domain/task.{
   type Task, type TaskDependency, type TaskNote, type TaskPosition,
   type WorkSessionsPayload,
@@ -48,6 +49,8 @@ pub type Msg {
   ViewModeChanged(view_mode.ViewMode)
   GlobalKeyDown(pool_prefs.KeyEvent)
   MemberProjectTasksFetched(Int, ApiResult(List(Task)))
+  MemberPeopleRosterFetched(ApiResult(List(ProjectMember)))
+  MemberPeopleRowToggled(Int)
   MemberTaskTypesFetched(Int, ApiResult(List(TaskType)))
   MemberCanvasRectFetched(Int, Int)
   MemberDragStarted(Int, Int, Int)

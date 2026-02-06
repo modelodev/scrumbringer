@@ -491,6 +491,7 @@ fn view_param_from_raw(raw: String) -> option.Option(ViewParam) {
     "pool" -> option.Some(MemberView(view_mode.Pool))
     "list" -> option.Some(MemberView(view_mode.List))
     "cards" -> option.Some(MemberView(view_mode.Cards))
+    "people" -> option.Some(MemberView(view_mode.People))
     _ ->
       assignments_view_mode.from_param(raw)
       |> option.map(AssignmentsView)

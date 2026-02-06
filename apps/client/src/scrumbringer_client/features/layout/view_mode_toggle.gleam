@@ -13,7 +13,7 @@
 //// - Managing view state (handled by parent)
 //// - Rendering view content (handled by center panel)
 
-import domain/view_mode.{type ViewMode, Cards, List, Pool}
+import domain/view_mode.{type ViewMode, Cards, List, People, Pool}
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{button, div, span, text}
@@ -52,6 +52,7 @@ pub fn view(config: ToggleConfig(msg)) -> Element(msg) {
       view_mode_button(config, Pool, "view-mode-pool", i18n_text.Pool),
       view_mode_button(config, List, "view-mode-list", i18n_text.List),
       view_mode_button(config, Cards, "view-mode-cards", i18n_text.MemberFichas),
+      view_mode_button(config, People, "view-mode-people", i18n_text.People),
     ],
   )
 }
@@ -94,6 +95,7 @@ fn mode_icon(mode: ViewMode) -> String {
     Pool -> "🎯"
     List -> "≡"
     Cards -> "🎴"
+    People -> "👥"
   }
 }
 

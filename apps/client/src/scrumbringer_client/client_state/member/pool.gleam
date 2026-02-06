@@ -4,6 +4,7 @@ import gleam/dict.{type Dict}
 import gleam/option.{type Option}
 
 import domain/card.{type Card}
+import domain/project.{type ProjectMember}
 import domain/remote.{type Remote, NotAsked}
 import domain/task.{type Task}
 import domain/task_status
@@ -15,6 +16,8 @@ import scrumbringer_client/member_section
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/state/normalized_store
 import scrumbringer_client/ui/task_tabs
+
+import scrumbringer_client/features/people/state as people_state
 
 /// Highlight state for dependency visualization in pool cards.
 pub type HighlightState {
@@ -72,6 +75,8 @@ pub type Model {
     member_task_detail_tab: task_tabs.Tab,
     member_blocked_claim_task: Option(#(Int, Int)),
     member_highlight_state: HighlightState,
+    people_roster: Remote(List(ProjectMember)),
+    people_expansions: Dict(Int, people_state.RowExpansion),
   )
 }
 
@@ -120,5 +125,7 @@ pub fn default_model() -> Model {
     member_task_detail_tab: task_tabs.DetailsTab,
     member_blocked_claim_task: option.None,
     member_highlight_state: NoHighlight,
+    people_roster: NotAsked,
+    people_expansions: dict.new(),
   )
 }

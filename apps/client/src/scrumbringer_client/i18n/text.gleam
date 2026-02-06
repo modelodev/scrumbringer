@@ -156,6 +156,7 @@ pub type Text {
   ViewList
   Canvas
   List
+  People
   ShowFilters
   HideFilters
   NewTask
@@ -187,6 +188,17 @@ pub type Text {
   ClaimThisTask
   ClaimedBy
   UnknownUser
+  Busy
+  Free
+  PeopleSearchPlaceholder
+  PeopleEmpty
+  PeopleNoResults
+  PeopleLoading
+  PeopleLoadError
+  ExpandPerson(name: String)
+  CollapsePerson(name: String)
+  PeopleActiveSection
+  PeopleClaimedSection
   Drag
   StartNowWorking
   PauseNowWorking

@@ -1,4 +1,4 @@
-import domain/view_mode.{Cards, List, Pool}
+import domain/view_mode.{Cards, List, People, Pool}
 import gleeunit/should
 
 // =============================================================================
@@ -18,6 +18,11 @@ pub fn from_string_list_test() {
 pub fn from_string_cards_test() {
   view_mode.from_string("cards")
   |> should.equal(Cards)
+}
+
+pub fn from_string_people_test() {
+  view_mode.from_string("people")
+  |> should.equal(People)
 }
 
 pub fn from_string_unknown_defaults_to_pool_test() {
@@ -49,6 +54,11 @@ pub fn to_string_cards_test() {
   |> should.equal("cards")
 }
 
+pub fn to_string_people_test() {
+  view_mode.to_string(People)
+  |> should.equal("people")
+}
+
 // =============================================================================
 // roundtrip tests
 // =============================================================================
@@ -74,6 +84,13 @@ pub fn roundtrip_cards_test() {
   |> should.equal(Cards)
 }
 
+pub fn roundtrip_people_test() {
+  People
+  |> view_mode.to_string
+  |> view_mode.from_string
+  |> should.equal(People)
+}
+
 // =============================================================================
 // supports_drag_drop tests
 // =============================================================================
@@ -93,6 +110,11 @@ pub fn cards_supports_drag_drop_test() {
   |> should.be_true
 }
 
+pub fn people_does_not_support_drag_drop_test() {
+  view_mode.supports_drag_drop(People)
+  |> should.be_false
+}
+
 // =============================================================================
 // label_key tests
 // =============================================================================
@@ -110,4 +132,9 @@ pub fn label_key_list_test() {
 pub fn label_key_cards_test() {
   view_mode.label_key(Cards)
   |> should.equal("ViewModeCards")
+}
+
+pub fn label_key_people_test() {
+  view_mode.label_key(People)
+  |> should.equal("ViewModePeople")
 }

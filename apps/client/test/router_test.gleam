@@ -126,6 +126,15 @@ pub fn format_member_list_with_project_test() {
   |> should.equal("/app/pool?project=2&view=list")
 }
 
+pub fn format_member_people_with_project_test() {
+  router.format(member_route(
+    member_section.Pool,
+    Some(2),
+    Some(view_mode.People),
+  ))
+  |> should.equal("/app/pool?project=2&view=people")
+}
+
 // Story 4.5: Config routes roundtrip correctly
 pub fn roundtrip_config_members_test() {
   let route = router.Config(permissions.Members, Some(2))
@@ -163,6 +172,11 @@ pub fn roundtrip_member_fichas_without_project_test() {
 
 pub fn roundtrip_member_list_with_project_test() {
   let route = member_route(member_section.Pool, Some(2), Some(view_mode.List))
+  router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
+}
+
+pub fn roundtrip_member_people_with_project_test() {
+  let route = member_route(member_section.Pool, Some(2), Some(view_mode.People))
   router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
 }
 

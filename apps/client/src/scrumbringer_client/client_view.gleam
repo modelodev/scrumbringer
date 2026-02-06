@@ -67,6 +67,7 @@ import scrumbringer_client/features/invites/view as invites_view
 import scrumbringer_client/features/metrics/view as metrics_view
 import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/view as now_working_view
+import scrumbringer_client/features/people/view as people_view
 import scrumbringer_client/features/pool/dialogs as pool_dialogs
 import scrumbringer_client/features/pool/view as pool_view
 import scrumbringer_client/features/projects/view as projects_view
@@ -656,6 +657,10 @@ fn build_left_panel(
       router.Member(member_section.Pool, member_state_for(view_mode.Cards)),
       client_state.Push,
     ),
+    on_navigate_people: client_state.NavigateTo(
+      router.Member(member_section.Pool, member_state_for(view_mode.People)),
+      client_state.Push,
+    ),
     // Config navigation
     on_navigate_config_team: client_state.NavigateTo(
       router.Config(permissions.Members, model.core.selected_project_id),
@@ -811,6 +816,7 @@ fn build_center_panel(
         ))
       },
     ))
+  let people_content = people_view.view(model)
 
   center_panel.view(center_panel.CenterPanelConfig(
     locale: model.ui.locale,
@@ -835,6 +841,7 @@ fn build_center_panel(
     pool_content: pool_content,
     list_content: list_content,
     cards_content: cards_content,
+    people_content: people_content,
     // Drag handlers for pool (Story 4.7 fix)
     on_drag_move: fn(x, y) {
       client_state.pool_msg(pool_messages.MemberDragMoved(x, y))

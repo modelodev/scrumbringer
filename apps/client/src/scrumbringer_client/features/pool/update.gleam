@@ -58,6 +58,7 @@ import scrumbringer_client/client_state/types.{
 import scrumbringer_client/features/cards/update as cards_workflow
 import scrumbringer_client/features/metrics/update as metrics_workflow
 import scrumbringer_client/features/now_working/update as now_working_workflow
+import scrumbringer_client/features/people/update as people_workflow
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/skills/update as skills_workflow
 import scrumbringer_client/features/tasks/update as tasks_workflow
@@ -1397,6 +1398,15 @@ pub fn update(
         False -> #(model, effect.none())
       }
     }
+
+    pool_messages.MemberPeopleRosterFetched(Ok(members)) ->
+      people_workflow.handle_roster_fetched_ok(model, members)
+
+    pool_messages.MemberPeopleRosterFetched(Error(err)) ->
+      people_workflow.handle_roster_fetched_error(model, err)
+
+    pool_messages.MemberPeopleRowToggled(user_id) ->
+      people_workflow.handle_row_toggled(model, user_id)
 
     pool_messages.MemberProjectTasksFetched(_project_id, Error(err)) -> {
       case err.status {
