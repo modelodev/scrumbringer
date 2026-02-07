@@ -243,6 +243,15 @@ fn view_section_if_has_items(
   }
 }
 
+fn milestone_progress_pill(
+  model: client_state.Model,
+  label: i18n_text.Text,
+) -> Element(client_state.Msg) {
+  span([attribute.class("milestone-stat-pill")], [
+    text(helpers_i18n.i18n_t(model, label)),
+  ])
+}
+
 fn view_item(
   model: client_state.Model,
   progress: MilestoneProgress,
@@ -439,22 +448,20 @@ fn view_item(
             ),
           ],
           [
-            span([attribute.class("milestone-stat-pill")], [
-              text(
-                "Cards "
-                <> int.to_string(progress.cards_completed)
-                <> "/"
-                <> int.to_string(progress.cards_total),
+            milestone_progress_pill(
+              model,
+              i18n_text.MilestoneCardsProgress(
+                progress.cards_completed,
+                progress.cards_total,
               ),
-            ]),
-            span([attribute.class("milestone-stat-pill")], [
-              text(
-                "Tasks "
-                <> int.to_string(progress.tasks_completed)
-                <> "/"
-                <> int.to_string(progress.tasks_total),
+            ),
+            milestone_progress_pill(
+              model,
+              i18n_text.MilestoneTasksProgress(
+                progress.tasks_completed,
+                progress.tasks_total,
               ),
-            ]),
+            ),
           ],
         ),
       ]),
@@ -546,7 +553,9 @@ fn view_cards_section(
     [] -> none()
     _ ->
       div([attribute.class("milestone-subsection")], [
-        p([attribute.class("milestone-subsection-title")], [text("Cards")]),
+        p([attribute.class("milestone-subsection-title")], [
+          text(helpers_i18n.i18n_t(model, i18n_text.MilestoneCardsLabel)),
+        ]),
         keyed.div(
           [attribute.class("milestone-cards-list")],
           list.map(cards, fn(card) {
@@ -600,12 +609,13 @@ fn view_cards_section(
                 p([attribute.class("milestone-card-title")], [text(title)]),
                 div([attribute.class("milestone-card-actions")], [
                   span([attribute.class("milestone-card-progress")], [
-                    text(
-                      "Tasks "
-                      <> int.to_string(completed_count)
-                      <> "/"
-                      <> int.to_string(task_count),
-                    ),
+                    text(helpers_i18n.i18n_t(
+                      model,
+                      i18n_text.MilestoneTasksProgress(
+                        completed_count,
+                        task_count,
+                      ),
+                    )),
                   ]),
                   case can_move {
                     True ->
@@ -653,7 +663,9 @@ fn view_loose_tasks_section(
     [] -> none()
     _ ->
       div([attribute.class("milestone-subsection")], [
-        p([attribute.class("milestone-subsection-title")], [text("Tasks")]),
+        p([attribute.class("milestone-subsection-title")], [
+          text(helpers_i18n.i18n_t(model, i18n_text.MilestoneTasksLabel)),
+        ]),
         keyed.div(
           [attribute.class("milestone-cards-list")],
           list.map(tasks, fn(task) {
@@ -702,7 +714,7 @@ fn view_loose_tasks_section(
                 p([attribute.class("milestone-card-title")], [text(title)]),
                 div([attribute.class("milestone-card-actions")], [
                   span([attribute.class("milestone-card-progress")], [
-                    text(task_status_to_short(status)),
+                    text(task_status_to_short(model, status)),
                   ]),
                   case can_move {
                     True ->
@@ -881,11 +893,17 @@ fn view_move_task_actions(
   }
 }
 
-fn task_status_to_short(status: task_status.TaskStatus) -> String {
+fn task_status_to_short(
+  model: client_state.Model,
+  status: task_status.TaskStatus,
+) -> String {
   case status {
-    task_status.Available -> "available"
-    task_status.Claimed(_) -> "claimed"
-    task_status.Completed -> "completed"
+    task_status.Available ->
+      helpers_i18n.i18n_t(model, i18n_text.MilestoneTaskStatusAvailable)
+    task_status.Claimed(_) ->
+      helpers_i18n.i18n_t(model, i18n_text.MilestoneTaskStatusClaimed)
+    task_status.Completed ->
+      helpers_i18n.i18n_t(model, i18n_text.MilestoneTaskStatusCompleted)
   }
 }
 
@@ -1140,9 +1158,12 @@ fn view_details_dialog(model: client_state.Model) -> Element(client_state.Msg) {
             },
             p([attribute.class("milestone-item-description")], [
               text(
-                "Cards: "
+                helpers_i18n.i18n_t(model, i18n_text.MilestoneCardsLabel)
+                <> ": "
                 <> int.to_string(progress.cards_total)
-                <> " · Tasks: "
+                <> " · "
+                <> helpers_i18n.i18n_t(model, i18n_text.MilestoneTasksLabel)
+                <> ": "
                 <> int.to_string(progress.tasks_total),
               ),
             ]),
@@ -1195,22 +1216,20 @@ fn view_details_dialog(model: client_state.Model) -> Element(client_state.Msg) {
                   ),
                 ],
                 [
-                  span([attribute.class("milestone-stat-pill")], [
-                    text(
-                      "Cards "
-                      <> int.to_string(progress.cards_completed)
-                      <> "/"
-                      <> int.to_string(progress.cards_total),
+                  milestone_progress_pill(
+                    model,
+                    i18n_text.MilestoneCardsProgress(
+                      progress.cards_completed,
+                      progress.cards_total,
                     ),
-                  ]),
-                  span([attribute.class("milestone-stat-pill")], [
-                    text(
-                      "Tasks "
-                      <> int.to_string(progress.tasks_completed)
-                      <> "/"
-                      <> int.to_string(progress.tasks_total),
+                  ),
+                  milestone_progress_pill(
+                    model,
+                    i18n_text.MilestoneTasksProgress(
+                      progress.tasks_completed,
+                      progress.tasks_total,
                     ),
-                  ]),
+                  ),
                 ],
               ),
             ]),

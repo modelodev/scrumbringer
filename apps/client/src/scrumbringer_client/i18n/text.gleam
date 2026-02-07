@@ -230,6 +230,13 @@ pub type Text {
   MilestoneOpenDetails
   MilestoneMoreActions
   MilestoneMoveTo
+  MilestoneCardsLabel
+  MilestoneTasksLabel
+  MilestoneCardsProgress(completed: Int, total: Int)
+  MilestoneTasksProgress(completed: Int, total: Int)
+  MilestoneTaskStatusAvailable
+  MilestoneTaskStatusClaimed
+  MilestoneTaskStatusCompleted
   ExpandMilestone(name: String)
   CollapseMilestone(name: String)
   ExpandPerson(name: String)

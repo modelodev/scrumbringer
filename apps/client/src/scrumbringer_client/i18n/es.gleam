@@ -266,6 +266,15 @@ pub fn translate(text: Text) -> String {
     text.MilestoneOpenDetails -> "Ver detalle"
     text.MilestoneMoreActions -> "Acciones"
     text.MilestoneMoveTo -> "Mover a hito..."
+    text.MilestoneCardsLabel -> "Tarjetas"
+    text.MilestoneTasksLabel -> "Tareas"
+    text.MilestoneCardsProgress(completed, total) ->
+      "Tarjetas " <> int.to_string(completed) <> "/" <> int.to_string(total)
+    text.MilestoneTasksProgress(completed, total) ->
+      "Tareas " <> int.to_string(completed) <> "/" <> int.to_string(total)
+    text.MilestoneTaskStatusAvailable -> "disponible"
+    text.MilestoneTaskStatusClaimed -> "reclamada"
+    text.MilestoneTaskStatusCompleted -> "completada"
     text.ExpandMilestone(name) -> "Expandir hito " <> name
     text.CollapseMilestone(name) -> "Colapsar hito " <> name
     text.ExpandPerson(name) -> "Expandir estado de " <> name

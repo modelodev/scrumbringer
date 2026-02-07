@@ -265,6 +265,15 @@ pub fn translate(text: Text) -> String {
     text.MilestoneOpenDetails -> "Open details"
     text.MilestoneMoreActions -> "More actions"
     text.MilestoneMoveTo -> "Move to milestone..."
+    text.MilestoneCardsLabel -> "Cards"
+    text.MilestoneTasksLabel -> "Tasks"
+    text.MilestoneCardsProgress(completed, total) ->
+      "Cards " <> int.to_string(completed) <> "/" <> int.to_string(total)
+    text.MilestoneTasksProgress(completed, total) ->
+      "Tasks " <> int.to_string(completed) <> "/" <> int.to_string(total)
+    text.MilestoneTaskStatusAvailable -> "available"
+    text.MilestoneTaskStatusClaimed -> "claimed"
+    text.MilestoneTaskStatusCompleted -> "completed"
     text.ExpandMilestone(name) -> "Expand milestone " <> name
     text.CollapseMilestone(name) -> "Collapse milestone " <> name
     text.ExpandPerson(name) -> "Expand status for " <> name

@@ -4,8 +4,10 @@ import gleeunit/should
 import lustre/effect
 
 import domain/api_error.{ApiError}
+import domain/card.{Card, Pendiente}
 import domain/milestone.{
-  type MilestoneProgress, Milestone, MilestoneProgress, Ready,
+  type MilestoneProgress, type MilestoneState, Active, Milestone,
+  MilestoneProgress, Ready,
 }
 import domain/remote.{Loaded}
 import domain/task.{Task}
@@ -40,13 +42,17 @@ fn test_context() -> pool_update.Context {
 }
 
 fn sample_progress(id: Int) -> MilestoneProgress {
+  sample_progress_state(id, Ready)
+}
+
+fn sample_progress_state(id: Int, state: MilestoneState) -> MilestoneProgress {
   MilestoneProgress(
     milestone: Milestone(
       id: id,
       project_id: 1,
       name: "Milestone " <> int.to_string(id),
       description: Some("Desc"),
-      state: Ready,
+      state: state,
       position: 1,
       created_by: 1,
       created_at: "2026-01-01T00:00:00Z",
@@ -57,6 +63,50 @@ fn sample_progress(id: Int) -> MilestoneProgress {
     cards_completed: 1,
     tasks_total: 6,
     tasks_completed: 2,
+  )
+}
+
+fn sample_card(id: Int, milestone_id: Int) {
+  Card(
+    id: id,
+    project_id: 1,
+    milestone_id: Some(milestone_id),
+    title: "Card " <> int.to_string(id),
+    description: "",
+    color: None,
+    state: Pendiente,
+    task_count: 3,
+    completed_count: 1,
+    created_by: 1,
+    created_at: "2026-01-01T00:00:00Z",
+    has_new_notes: False,
+  )
+}
+
+fn sample_task_in(id: Int, milestone_id: Int) {
+  let state = task_state.Available
+  Task(
+    id: id,
+    project_id: 1,
+    type_id: 1,
+    task_type: TaskTypeInline(id: 1, name: "Task", icon: "check"),
+    ongoing_by: None,
+    title: "Task " <> int.to_string(id),
+    description: None,
+    priority: 1,
+    state: state,
+    status: task_state.to_status(state),
+    work_state: task_state.to_work_state(state),
+    created_by: 1,
+    created_at: "2026-01-01T00:00:00Z",
+    version: 1,
+    milestone_id: Some(milestone_id),
+    card_id: None,
+    card_title: None,
+    card_color: None,
+    has_new_notes: False,
+    blocked_count: 0,
+    dependencies: [],
   )
 }
 
@@ -295,6 +345,62 @@ pub fn milestone_activate_error_maps_backend_code_test() {
   let expected = helpers_i18n.i18n_t(next, i18n_text.MilestoneAlreadyActive)
 
   next.member.pool.member_milestone_dialog_error |> should.equal(Some(expected))
+}
+
+pub fn milestone_card_move_clicked_ignores_non_ready_destination_test() {
+  let model =
+    client_state.default_model()
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_milestones: Loaded([
+            sample_progress_state(1, Ready),
+            sample_progress_state(2, Active),
+          ]),
+          member_cards: Loaded([sample_card(10, 1)]),
+        ),
+      )
+    })
+
+  let #(next, _fx) =
+    pool_update.update(
+      model,
+      pool_messages.MemberMilestoneCardMoveClicked(10, 1, 2),
+      test_context(),
+    )
+
+  next.member.pool.member_filters_q |> should.equal("")
+}
+
+pub fn milestone_task_move_clicked_ignores_task_outside_source_milestone_test() {
+  let model =
+    client_state.default_model()
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_milestones: Loaded([
+            sample_progress_state(1, Ready),
+            sample_progress_state(2, Ready),
+          ]),
+          member_tasks: Loaded([sample_task_in(30, 2)]),
+        ),
+      )
+    })
+
+  let #(next, _fx) =
+    pool_update.update(
+      model,
+      pool_messages.MemberMilestoneTaskMoveClicked(30, 1, 2),
+      test_context(),
+    )
+
+  next.member.pool.member_filters_q |> should.equal("")
 }
 
 pub fn milestone_delete_error_maps_backend_code_test() {

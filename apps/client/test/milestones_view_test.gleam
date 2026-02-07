@@ -21,7 +21,9 @@ import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/milestone_details_tab
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/features/milestones/view as milestones_view
+import scrumbringer_client/i18n/locale as i18n_locale
 
 fn sample_progress(id: Int, state: MilestoneState) -> MilestoneProgress {
   MilestoneProgress(
@@ -130,6 +132,15 @@ fn with_tasks(
       ..member,
       pool: member_pool.Model(..pool, member_tasks: remote.Loaded(tasks)),
     )
+  })
+}
+
+fn with_locale(
+  model: client_state.Model,
+  locale: i18n_locale.Locale,
+) -> client_state.Model {
+  client_state.update_ui(model, fn(ui) {
+    ui_state.UiModel(..ui, locale: locale)
   })
 }
 
@@ -680,4 +691,56 @@ pub fn milestones_view_rows_are_draggable_only_when_move_is_possible_test() {
     "data-testid=\"milestone-task-row:103:908\" draggable=\"true\"",
   )
   |> should.be_true
+}
+
+pub fn milestones_view_uses_es_i18n_labels_and_statuses_test() {
+  let html =
+    base_model()
+    |> with_admin_user
+    |> with_locale(i18n_locale.Es)
+    |> with_milestones(remote.Loaded([sample_progress(120, Ready)]))
+    |> with_cards([sample_card(920, 120)])
+    |> with_tasks([sample_loose_task(921, 120)])
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_milestones_expanded: dict.insert(dict.new(), 120, True),
+        ),
+      )
+    })
+    |> milestones_view.view
+    |> element.to_document_string
+
+  string.contains(html, ">Tarjetas<") |> should.be_true
+  string.contains(html, ">Tareas<") |> should.be_true
+  string.contains(html, "disponible") |> should.be_true
+}
+
+pub fn milestones_view_uses_en_i18n_labels_and_statuses_test() {
+  let html =
+    base_model()
+    |> with_admin_user
+    |> with_locale(i18n_locale.En)
+    |> with_milestones(remote.Loaded([sample_progress(121, Ready)]))
+    |> with_cards([sample_card(930, 121)])
+    |> with_tasks([sample_loose_task(931, 121)])
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_milestones_expanded: dict.insert(dict.new(), 121, True),
+        ),
+      )
+    })
+    |> milestones_view.view
+    |> element.to_document_string
+
+  string.contains(html, ">Cards<") |> should.be_true
+  string.contains(html, ">Tasks<") |> should.be_true
+  string.contains(html, "available") |> should.be_true
 }

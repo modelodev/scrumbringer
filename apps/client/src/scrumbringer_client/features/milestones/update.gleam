@@ -303,17 +303,29 @@ pub fn try_update(
 
     pool_messages.MemberMilestoneCardMoveClicked(
       card_id,
-      _from_milestone_id,
+      from_milestone_id,
       to_milestone_id,
     ) -> {
+      let can_move =
+        can_move_between_ready_milestones(
+          model,
+          from_milestone_id,
+          to_milestone_id,
+        )
+
       let payload = case model.member.pool.member_cards {
         Loaded(cards) ->
-          list.find(cards, fn(c) { c.id == card_id }) |> opt.from_result
+          list.find(cards, fn(c) {
+            c.id == card_id && c.milestone_id == opt.Some(from_milestone_id)
+          })
+          |> opt.from_result
         _ -> opt.None
       }
 
-      case payload {
-        opt.Some(card) ->
+      case can_move, payload {
+        False, _ -> opt.Some(#(model, effect.none()))
+
+        True, opt.Some(card) ->
           opt.Some(#(
             model,
             api_cards.update_card(
@@ -329,25 +341,49 @@ pub fn try_update(
               },
             ),
           ))
-        opt.None -> opt.Some(#(model, effect.none()))
+        True, opt.None -> opt.Some(#(model, effect.none()))
       }
     }
 
     pool_messages.MemberMilestoneTaskMoveClicked(
       task_id,
-      _from_milestone_id,
+      from_milestone_id,
       to_milestone_id,
-    ) ->
-      opt.Some(#(
-        model,
-        api_tasks.update_task_milestone(
-          task_id,
-          opt.Some(to_milestone_id),
-          fn(result) {
-            client_state.pool_msg(pool_messages.MemberMilestoneTaskMoved(result))
-          },
-        ),
-      ))
+    ) -> {
+      let can_move =
+        can_move_between_ready_milestones(
+          model,
+          from_milestone_id,
+          to_milestone_id,
+        )
+
+      let task_in_source = case model.member.pool.member_tasks {
+        Loaded(tasks) ->
+          tasks
+          |> list.any(fn(task) {
+            task.id == task_id
+            && task.milestone_id == opt.Some(from_milestone_id)
+          })
+        _ -> False
+      }
+
+      case can_move && task_in_source {
+        True ->
+          opt.Some(#(
+            model,
+            api_tasks.update_task_milestone(
+              task_id,
+              opt.Some(to_milestone_id),
+              fn(result) {
+                client_state.pool_msg(pool_messages.MemberMilestoneTaskMoved(
+                  result,
+                ))
+              },
+            ),
+          ))
+        False -> opt.Some(#(model, effect.none()))
+      }
+    }
 
     pool_messages.MemberMilestoneCardMoved(Ok(_))
     | pool_messages.MemberMilestoneTaskMoved(Ok(_)) -> {
