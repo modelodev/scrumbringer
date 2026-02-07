@@ -51,6 +51,7 @@ pub type Card {
   Card(
     id: Int,
     project_id: Int,
+    milestone_id: Option(Int),
     title: String,
     description: String,
     color: Option(String),

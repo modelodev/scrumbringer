@@ -159,7 +159,10 @@ pub fn view_pool_main(model: Model, _user: User) -> Element(Msg) {
       ])
 
     _ -> {
-      div([attribute.class("section")], [
+      div([attribute.class("section pool-view")], [
+        h3([attribute.class("pool-title")], [
+          text(helpers_i18n.i18n_t(model, i18n_text.Pool)),
+        ]),
         // Unified toolbar: view mode, filters toggle, and new task - all in one row
         pool_filters.view_unified_toolbar(model),
         view_tasks(model),

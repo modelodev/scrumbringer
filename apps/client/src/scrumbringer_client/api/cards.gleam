@@ -60,6 +60,7 @@ pub fn create_card(
   title: String,
   description: String,
   color: option.Option(String),
+  milestone_id: option.Option(Int),
   to_msg: fn(ApiResult(Card)) -> msg,
 ) -> Effect(msg) {
   let base_fields = [
@@ -69,6 +70,10 @@ pub fn create_card(
   let fields = case color {
     option.Some(c) -> list.append(base_fields, [#("color", json.string(c))])
     option.None -> base_fields
+  }
+  let fields = case milestone_id {
+    option.Some(id) -> list.append(fields, [#("milestone_id", json.int(id))])
+    option.None -> fields
   }
   let body = json.object(fields)
   let decoder = decode.field("card", card_codec.card_decoder(), decode.success)
@@ -112,6 +117,7 @@ pub fn update_card(
   title: String,
   description: String,
   color: option.Option(String),
+  milestone_id: option.Option(Int),
   to_msg: fn(ApiResult(Card)) -> msg,
 ) -> Effect(msg) {
   let base_fields = [
@@ -121,6 +127,10 @@ pub fn update_card(
   let fields = case color {
     option.Some(c) -> list.append(base_fields, [#("color", json.string(c))])
     option.None -> base_fields
+  }
+  let fields = case milestone_id {
+    option.Some(id) -> list.append(fields, [#("milestone_id", json.int(id))])
+    option.None -> fields
   }
   let body = json.object(fields)
   let decoder = decode.field("card", card_codec.card_decoder(), decode.success)

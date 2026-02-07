@@ -129,6 +129,8 @@ pub const release_task = operations.release_task
 
 pub const complete_task = operations.complete_task
 
+pub const update_task_milestone = operations.update_task_milestone
+
 // =============================================================================
 // Re-export Functions: Notes
 // =============================================================================

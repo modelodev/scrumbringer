@@ -71,6 +71,13 @@ fn org_route(section: permissions.AdminSection) -> router.Route {
   router.Org(section)
 }
 
+fn appears_before(html: String, first: String, second: String) -> Bool {
+  case string.split_once(html, first) {
+    Ok(#(_, after_first)) -> string.contains(after_first, second)
+    Error(_) -> False
+  }
+}
+
 pub fn left_panel_active_nav_has_active_class_test() {
   let rendered =
     left_panel.view(base_config(opt.Some(member_route(view_mode_module.Pool))))
@@ -121,4 +128,70 @@ pub fn left_panel_org_section_active_test() {
 
   // Should have active class on the Invites nav item
   string.contains(html, "nav-link active") |> should.be_true
+}
+
+pub fn left_panel_work_nav_order_is_pool_kanban_people_milestones_en_test() {
+  let html =
+    left_panel.view(base_config(opt.Some(member_route(view_mode_module.Pool))))
+    |> element.to_document_string
+
+  appears_before(html, "data-testid=\"nav-pool\"", "data-testid=\"nav-cards\"")
+  |> should.be_true
+  appears_before(
+    html,
+    "data-testid=\"nav-cards\"",
+    "data-testid=\"nav-people\"",
+  )
+  |> should.be_true
+  appears_before(
+    html,
+    "data-testid=\"nav-people\"",
+    "data-testid=\"nav-milestones\"",
+  )
+  |> should.be_true
+
+  string.contains(html, "<span class=\"nav-label\">Pool</span>")
+  |> should.be_true
+  string.contains(html, "<span class=\"nav-label\">Kanban</span>")
+  |> should.be_true
+  string.contains(html, "<span class=\"nav-label\">People</span>")
+  |> should.be_true
+  string.contains(html, "<span class=\"nav-label\">Milestones</span>")
+  |> should.be_true
+  string.contains(html, ">List<") |> should.be_false
+}
+
+pub fn left_panel_work_nav_order_is_pool_kanban_personas_hitos_es_test() {
+  let config =
+    left_panel.LeftPanelConfig(
+      ..base_config(opt.Some(member_route(view_mode_module.Pool))),
+      locale: i18n_locale.Es,
+    )
+
+  let html = left_panel.view(config) |> element.to_document_string
+
+  appears_before(html, "data-testid=\"nav-pool\"", "data-testid=\"nav-cards\"")
+  |> should.be_true
+  appears_before(
+    html,
+    "data-testid=\"nav-cards\"",
+    "data-testid=\"nav-people\"",
+  )
+  |> should.be_true
+  appears_before(
+    html,
+    "data-testid=\"nav-people\"",
+    "data-testid=\"nav-milestones\"",
+  )
+  |> should.be_true
+
+  string.contains(html, "<span class=\"nav-label\">Pool</span>")
+  |> should.be_true
+  string.contains(html, "<span class=\"nav-label\">Kanban</span>")
+  |> should.be_true
+  string.contains(html, "<span class=\"nav-label\">Personas</span>")
+  |> should.be_true
+  string.contains(html, "<span class=\"nav-label\">Hitos</span>")
+  |> should.be_true
+  string.contains(html, ">Lista<") |> should.be_false
 }

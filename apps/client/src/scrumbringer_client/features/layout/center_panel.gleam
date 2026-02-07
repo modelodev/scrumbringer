@@ -86,7 +86,7 @@ fn view_filters(config: CenterPanelConfig(msg)) -> Element(msg) {
 }
 
 fn view_work_filters(config: CenterPanelConfig(msg)) -> Element(msg) {
-  div([attribute.class("center-filters")], [
+  div([attribute.class("center-filters center-filters-work")], [
     // Type filter
     div([attribute.class("filter-field")], [
       label([], [text(i18n.t(config.locale, i18n_text.TypeLabel))]),

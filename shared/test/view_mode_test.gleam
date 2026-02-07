@@ -1,4 +1,5 @@
 import domain/view_mode.{Cards, Milestones, People, Pool}
+import gleam/list
 import gleeunit/should
 
 // =============================================================================
@@ -30,6 +31,11 @@ pub fn from_string_unknown_defaults_to_pool_test() {
   |> should.equal(Pool)
 }
 
+pub fn from_string_list_defaults_to_pool_test() {
+  view_mode.from_string("list")
+  |> should.equal(Pool)
+}
+
 pub fn from_string_empty_defaults_to_pool_test() {
   view_mode.from_string("")
   |> should.equal(Pool)
@@ -57,6 +63,14 @@ pub fn to_string_cards_test() {
 pub fn to_string_people_test() {
   view_mode.to_string(People)
   |> should.equal("people")
+}
+
+pub fn to_string_never_emits_list_test() {
+  [Pool, Cards, People, Milestones]
+  |> list.each(fn(mode) {
+    view_mode.to_string(mode)
+    |> should.not_equal("list")
+  })
 }
 
 // =============================================================================

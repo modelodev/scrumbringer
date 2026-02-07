@@ -20,6 +20,7 @@ import domain/workflow.{
 }
 
 import scrumbringer_client/api/workflows as api_workflows
+import scrumbringer_client/client_state/member/milestone_details_tab
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/ui/task_tabs
@@ -95,6 +96,17 @@ pub type Msg {
   MemberMilestonesShowEmptyToggled
   MemberMilestoneRowToggled(Int)
   MemberMilestoneDetailsClicked(Int)
+  MemberMilestoneDetailsTabSelected(milestone_details_tab.MilestoneDetailsTab)
+  MemberMilestoneCreateTaskClicked(Int)
+  MemberMilestoneCreateCardClicked(Int)
+  MemberMilestoneCardDragStarted(Int, Int)
+  MemberMilestoneTaskDragStarted(Int, Int)
+  MemberMilestoneDroppedOn(Int)
+  MemberMilestoneDragEnded
+  MemberMilestoneCardMoveClicked(Int, Int, Int)
+  MemberMilestoneTaskMoveClicked(Int, Int, Int)
+  MemberMilestoneCardMoved(ApiResult(Card))
+  MemberMilestoneTaskMoved(ApiResult(Task))
   MemberMilestoneActivatePromptClicked(Int)
   MemberMilestoneActivateClicked(Int)
   MemberMilestoneActivated(Int, ApiResult(Nil))

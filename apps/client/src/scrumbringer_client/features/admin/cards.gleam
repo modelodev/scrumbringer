@@ -28,6 +28,7 @@ import domain/remote.{Failed, Loaded, Loading}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/cards as admin_cards
+import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/i18n/text as i18n_text
 
@@ -81,10 +82,37 @@ pub fn handle_open_card_dialog(
   model: client_state.Model,
   mode: client_state.CardDialogMode,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
+  let create_milestone_id = case mode {
+    state_types.CardDialogCreate -> opt.None
+    _ -> model.admin.cards.cards_create_milestone_id
+  }
+
   #(
     client_state.update_admin(model, fn(admin) {
       update_cards(admin, fn(cards_state) {
-        admin_cards.Model(..cards_state, cards_dialog_mode: opt.Some(mode))
+        admin_cards.Model(
+          ..cards_state,
+          cards_dialog_mode: opt.Some(mode),
+          cards_create_milestone_id: create_milestone_id,
+        )
+      })
+    }),
+    effect.none(),
+  )
+}
+
+pub fn handle_open_card_dialog_for_milestone(
+  model: client_state.Model,
+  milestone_id: Int,
+) -> #(client_state.Model, Effect(client_state.Msg)) {
+  #(
+    client_state.update_admin(model, fn(admin) {
+      update_cards(admin, fn(cards_state) {
+        admin_cards.Model(
+          ..cards_state,
+          cards_dialog_mode: opt.Some(state_types.CardDialogCreate),
+          cards_create_milestone_id: opt.Some(milestone_id),
+        )
       })
     }),
     effect.none(),
@@ -98,7 +126,11 @@ pub fn handle_close_card_dialog(
   #(
     client_state.update_admin(model, fn(admin) {
       update_cards(admin, fn(cards_state) {
-        admin_cards.Model(..cards_state, cards_dialog_mode: opt.None)
+        admin_cards.Model(
+          ..cards_state,
+          cards_dialog_mode: opt.None,
+          cards_create_milestone_id: opt.None,
+        )
       })
     }),
     effect.none(),
@@ -126,6 +158,7 @@ pub fn handle_card_crud_created(
           ..cards_state,
           cards: cards,
           cards_dialog_mode: opt.None,
+          cards_create_milestone_id: opt.None,
         )
       })
     })
@@ -162,6 +195,7 @@ pub fn handle_card_crud_updated(
           ..cards_state,
           cards: cards,
           cards_dialog_mode: opt.None,
+          cards_create_milestone_id: opt.None,
         )
       })
     })
@@ -190,6 +224,7 @@ pub fn handle_card_crud_deleted(
           ..cards_state,
           cards: cards,
           cards_dialog_mode: opt.None,
+          cards_create_milestone_id: opt.None,
         )
       })
     })

@@ -42,6 +42,7 @@ pub fn find_task_by_id_returns_none_when_missing_test() {
       created_by: 1,
       created_at: "2026-01-01T00:00:00Z",
       version: 1,
+      milestone_id: None,
       card_id: None,
       card_title: None,
       card_color: None,

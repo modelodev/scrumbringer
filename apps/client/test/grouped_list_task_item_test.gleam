@@ -45,6 +45,7 @@ fn sample_card() -> Card {
   Card(
     id: 1,
     project_id: 1,
+    milestone_id: None,
     title: "Sprint",
     description: "",
     color: Some("blue"),
@@ -80,6 +81,7 @@ fn claimed_task() -> Task {
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
     version: 1,
+    milestone_id: None,
     card_id: Some(1),
     card_title: Some("Sprint"),
     card_color: Some("blue"),
@@ -107,6 +109,7 @@ fn available_task() -> Task {
     created_by: 1,
     created_at: "2026-01-01T00:00:00Z",
     version: 2,
+    milestone_id: None,
     card_id: Some(1),
     card_title: Some("Sprint"),
     card_color: Some("blue"),

@@ -210,6 +210,8 @@ pub type Text {
   MilestoneActivationBody(cards_count: Int, tasks_count: Int)
   MilestoneActivationWarning
   MilestoneDetails
+  MilestoneTabOverview
+  MilestoneTabContent
   ActivateMilestone
   ActivatingMilestone
   MilestoneActivated
@@ -225,6 +227,9 @@ pub type Text {
   MilestoneDeleteNotAllowed
   MilestoneAlreadyActive
   MilestoneActivationIrreversible
+  MilestoneOpenDetails
+  MilestoneMoreActions
+  MilestoneMoveTo
   ExpandMilestone(name: String)
   CollapseMilestone(name: String)
   ExpandPerson(name: String)

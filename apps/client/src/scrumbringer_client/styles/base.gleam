@@ -63,6 +63,7 @@ pub fn css() -> List(String) {
     ".filter-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; background: var(--sb-accent); color: var(--sb-bg); border-radius: 10px; font-size: 12px; font-weight: 600; }",
     ".btn-clear-filters { font-size: 12px; padding: 4px 10px !important; height: 28px !important; }",
     ".hint { color: var(--sb-muted); font-size: 0.9em; }",
+    ".hidden { display: none !important; }",
     ".empty { color: var(--sb-muted); }",
     ".loading { color: var(--sb-info); }",
     ".spinner { border: 2px solid var(--sb-border); border-top-color: var(--sb-primary); border-radius: 50%; animation: spin 0.6s linear infinite; }",

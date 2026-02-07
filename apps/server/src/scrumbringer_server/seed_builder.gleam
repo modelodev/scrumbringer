@@ -949,8 +949,8 @@ fn build_milestones(
             db,
             seed_db.MilestoneInsertOptions(
               project_id: project_id,
-              name: "M0 - Ready Empty",
-              description: Some("Ready milestone without assignments"),
+              name: "M0 - Hito vacio",
+              description: Some("Hito listo sin asignaciones"),
               state: "ready",
               position: 0,
               created_by: state.admin_id,
@@ -965,8 +965,8 @@ fn build_milestones(
             db,
             seed_db.MilestoneInsertOptions(
               project_id: project_id,
-              name: "M1 - Ready Seeded",
-              description: Some("Ready milestone with pending work"),
+              name: "M1 - Hito planificado",
+              description: Some("Hito listo con trabajo pendiente"),
               state: "ready",
               position: 1,
               created_by: state.admin_id,

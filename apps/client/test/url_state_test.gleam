@@ -84,6 +84,16 @@ pub fn parse_legacy_list_view_is_invalid_and_redirects_to_pool_test() {
   state |> url_state.view |> should.equal(view_mode.Pool)
 }
 
+pub fn to_query_string_never_emits_view_list_test() {
+  let query =
+    url_state.empty()
+    |> url_state.with_project(8)
+    |> url_state.with_view(view_mode.Milestones)
+    |> url_state.to_query_string
+
+  query |> should.not_equal("project=8&view=list")
+}
+
 pub fn parse_invalid_project_drops_project_test() {
   let assert Ok(uri) = uri.parse("/app?project=nope")
   let assert url_state.Redirect(state) = url_state.parse(uri, url_state.Member)

@@ -148,6 +148,7 @@ pub fn create_task(
     priority,
     type_id,
     option.None,
+    option.None,
     to_msg,
   )
 }
@@ -160,6 +161,7 @@ pub fn create_task_with_card(
   priority: Int,
   type_id: Int,
   card_id: option.Option(Int),
+  milestone_id: option.Option(Int),
   to_msg: fn(core.ApiResult(Task)) -> msg,
 ) -> Effect(msg) {
   let entries = [
@@ -176,6 +178,11 @@ pub fn create_task_with_card(
 
   let entries = case card_id {
     option.Some(cid) -> list.append(entries, [#("card_id", json.int(cid))])
+    option.None -> entries
+  }
+
+  let entries = case milestone_id {
+    option.Some(mid) -> list.append(entries, [#("milestone_id", json.int(mid))])
     option.None -> entries
   }
 
@@ -240,6 +247,27 @@ pub fn complete_task(
   core.request(
     "POST",
     "/api/v1/tasks/" <> int.to_string(task_id) <> "/complete",
+    option.Some(body),
+    decoder,
+    to_msg,
+  )
+}
+
+/// Update milestone assignment for a task.
+pub fn update_task_milestone(
+  task_id: Int,
+  milestone_id: option.Option(Int),
+  to_msg: fn(core.ApiResult(Task)) -> msg,
+) -> Effect(msg) {
+  let fields = case milestone_id {
+    option.Some(id) -> [#("milestone_id", json.int(id))]
+    option.None -> [#("milestone_id", json.null())]
+  }
+  let body = json.object(fields)
+  let decoder = decode.field("task", decoders.task_decoder(), decode.success)
+  core.request(
+    "PATCH",
+    "/api/v1/tasks/" <> int.to_string(task_id),
     option.Some(body),
     decoder,
     to_msg,

@@ -1967,6 +1967,17 @@ fn update_without_milestones(
     | pool_messages.MemberMilestonesShowEmptyToggled
     | pool_messages.MemberMilestoneRowToggled(_)
     | pool_messages.MemberMilestoneDetailsClicked(_)
+    | pool_messages.MemberMilestoneDetailsTabSelected(_)
+    | pool_messages.MemberMilestoneCreateTaskClicked(_)
+    | pool_messages.MemberMilestoneCreateCardClicked(_)
+    | pool_messages.MemberMilestoneCardDragStarted(_, _)
+    | pool_messages.MemberMilestoneTaskDragStarted(_, _)
+    | pool_messages.MemberMilestoneDroppedOn(_)
+    | pool_messages.MemberMilestoneDragEnded
+    | pool_messages.MemberMilestoneCardMoveClicked(_, _, _)
+    | pool_messages.MemberMilestoneTaskMoveClicked(_, _, _)
+    | pool_messages.MemberMilestoneCardMoved(_)
+    | pool_messages.MemberMilestoneTaskMoved(_)
     | pool_messages.MemberMilestoneActivatePromptClicked(_)
     | pool_messages.MemberMilestoneActivateClicked(_)
     | pool_messages.MemberMilestoneActivated(_, _)

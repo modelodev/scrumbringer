@@ -1,4 +1,5 @@
 import gleam/dict
+import gleam/list
 import gleam/option as opt
 
 import lustre/effect
@@ -6,11 +7,16 @@ import lustre/effect
 import domain/api_error.{type ApiError, ApiError}
 import domain/milestone
 import domain/remote.{Failed, Loaded}
+import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/api/milestones as api_milestones
+import scrumbringer_client/api/tasks as api_tasks
 import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
+import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member as member_state
+import scrumbringer_client/client_state/member/milestone_details_tab
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/features/admin/cards as cards_workflow
 import scrumbringer_client/features/milestones/dialog_helpers
 import scrumbringer_client/features/milestones/error_codes
 import scrumbringer_client/features/milestones/ids as milestone_ids
@@ -135,10 +141,235 @@ pub fn try_update(
             ),
             member_milestone_dialog_in_flight: False,
             member_milestone_dialog_error: opt.None,
+            member_milestone_details_tab: milestone_details_tab.MilestoneOverviewTab,
           )
         }),
         effect.none(),
       ))
+
+    pool_messages.MemberMilestoneDetailsTabSelected(tab) ->
+      opt.Some(#(
+        update_member_pool(model, fn(pool) {
+          member_pool.Model(..pool, member_milestone_details_tab: tab)
+        }),
+        effect.none(),
+      ))
+
+    pool_messages.MemberMilestoneCreateTaskClicked(milestone_id) ->
+      opt.Some(#(
+        update_member_pool(model, fn(pool) {
+          member_pool.Model(
+            ..pool,
+            member_milestone_dialog: member_pool.MilestoneDialogClosed,
+            member_milestone_dialog_in_flight: False,
+            member_milestone_dialog_error: opt.None,
+            member_create_dialog_mode: dialog_mode.DialogCreate,
+            member_create_card_id: opt.None,
+            member_create_milestone_id: opt.Some(milestone_id),
+          )
+        }),
+        effect.none(),
+      ))
+
+    pool_messages.MemberMilestoneCreateCardClicked(milestone_id) -> {
+      let #(next, card_fx) =
+        cards_workflow.handle_open_card_dialog_for_milestone(
+          model,
+          milestone_id,
+        )
+
+      opt.Some(#(
+        update_member_pool(next, fn(pool) {
+          member_pool.Model(
+            ..pool,
+            member_milestone_dialog: member_pool.MilestoneDialogClosed,
+            member_milestone_dialog_in_flight: False,
+            member_milestone_dialog_error: opt.None,
+          )
+        }),
+        card_fx,
+      ))
+    }
+
+    pool_messages.MemberMilestoneCardDragStarted(card_id, from_milestone_id) ->
+      opt.Some(#(
+        update_member_pool(model, fn(pool) {
+          member_pool.Model(
+            ..pool,
+            member_milestone_drag_item: opt.Some(member_pool.MilestoneDragCard(
+              card_id,
+              from_milestone_id,
+            )),
+          )
+        }),
+        effect.none(),
+      ))
+
+    pool_messages.MemberMilestoneTaskDragStarted(task_id, from_milestone_id) ->
+      opt.Some(#(
+        update_member_pool(model, fn(pool) {
+          member_pool.Model(
+            ..pool,
+            member_milestone_drag_item: opt.Some(member_pool.MilestoneDragTask(
+              task_id,
+              from_milestone_id,
+            )),
+          )
+        }),
+        effect.none(),
+      ))
+
+    pool_messages.MemberMilestoneDroppedOn(to_milestone_id) -> {
+      let maybe_drag = model.member.pool.member_milestone_drag_item
+      let model =
+        update_member_pool(model, fn(pool) {
+          member_pool.Model(..pool, member_milestone_drag_item: opt.None)
+        })
+
+      case maybe_drag {
+        opt.Some(member_pool.MilestoneDragCard(card_id, from_milestone_id)) ->
+          case
+            can_move_between_ready_milestones(
+              model,
+              from_milestone_id,
+              to_milestone_id,
+            )
+          {
+            True -> {
+              let payload = case model.member.pool.member_cards {
+                Loaded(cards) ->
+                  list.find(cards, fn(c) { c.id == card_id }) |> opt.from_result
+                _ -> opt.None
+              }
+
+              case payload {
+                opt.Some(card) ->
+                  opt.Some(#(
+                    model,
+                    api_cards.update_card(
+                      card.id,
+                      card.title,
+                      card.description,
+                      card.color,
+                      opt.Some(to_milestone_id),
+                      fn(result) {
+                        client_state.pool_msg(
+                          pool_messages.MemberMilestoneCardMoved(result),
+                        )
+                      },
+                    ),
+                  ))
+                opt.None -> opt.Some(#(model, effect.none()))
+              }
+            }
+            False -> opt.Some(#(model, effect.none()))
+          }
+
+        opt.Some(member_pool.MilestoneDragTask(task_id, from_milestone_id)) ->
+          case
+            can_move_between_ready_milestones(
+              model,
+              from_milestone_id,
+              to_milestone_id,
+            )
+          {
+            True ->
+              opt.Some(#(
+                model,
+                api_tasks.update_task_milestone(
+                  task_id,
+                  opt.Some(to_milestone_id),
+                  fn(result) {
+                    client_state.pool_msg(
+                      pool_messages.MemberMilestoneTaskMoved(result),
+                    )
+                  },
+                ),
+              ))
+            False -> opt.Some(#(model, effect.none()))
+          }
+
+        opt.None -> opt.Some(#(model, effect.none()))
+      }
+    }
+
+    pool_messages.MemberMilestoneDragEnded ->
+      opt.Some(#(
+        update_member_pool(model, fn(pool) {
+          member_pool.Model(..pool, member_milestone_drag_item: opt.None)
+        }),
+        effect.none(),
+      ))
+
+    pool_messages.MemberMilestoneCardMoveClicked(
+      card_id,
+      _from_milestone_id,
+      to_milestone_id,
+    ) -> {
+      let payload = case model.member.pool.member_cards {
+        Loaded(cards) ->
+          list.find(cards, fn(c) { c.id == card_id }) |> opt.from_result
+        _ -> opt.None
+      }
+
+      case payload {
+        opt.Some(card) ->
+          opt.Some(#(
+            model,
+            api_cards.update_card(
+              card.id,
+              card.title,
+              card.description,
+              card.color,
+              opt.Some(to_milestone_id),
+              fn(result) {
+                client_state.pool_msg(pool_messages.MemberMilestoneCardMoved(
+                  result,
+                ))
+              },
+            ),
+          ))
+        opt.None -> opt.Some(#(model, effect.none()))
+      }
+    }
+
+    pool_messages.MemberMilestoneTaskMoveClicked(
+      task_id,
+      _from_milestone_id,
+      to_milestone_id,
+    ) ->
+      opt.Some(#(
+        model,
+        api_tasks.update_task_milestone(
+          task_id,
+          opt.Some(to_milestone_id),
+          fn(result) {
+            client_state.pool_msg(pool_messages.MemberMilestoneTaskMoved(result))
+          },
+        ),
+      ))
+
+    pool_messages.MemberMilestoneCardMoved(Ok(_))
+    | pool_messages.MemberMilestoneTaskMoved(Ok(_)) -> {
+      let #(next, refresh_fx) = member_refresh(model)
+      opt.Some(#(
+        next,
+        effect.batch([
+          helpers_toast.toast_success(helpers_i18n.i18n_t(
+            next,
+            i18n_text.MilestoneUpdated,
+          )),
+          refresh_fx,
+        ]),
+      ))
+    }
+
+    pool_messages.MemberMilestoneCardMoved(Error(err))
+    | pool_messages.MemberMilestoneTaskMoved(Error(err)) -> {
+      let message =
+        milestone_error_message(model, err, i18n_text.MilestoneUpdateFailed)
+      opt.Some(#(model, helpers_toast.toast_error(message)))
+    }
 
     pool_messages.MemberMilestoneActivatePromptClicked(milestone_id) ->
       opt.Some(#(
@@ -283,6 +514,7 @@ pub fn try_update(
               member_milestone_dialog: member_pool.MilestoneDialogClosed,
               member_milestone_dialog_in_flight: False,
               member_milestone_dialog_error: opt.None,
+              member_milestone_details_tab: milestone_details_tab.MilestoneOverviewTab,
             )
           }),
           case focus_target {
@@ -481,6 +713,28 @@ pub fn try_update(
     }
 
     _ -> opt.None
+  }
+}
+
+fn can_move_between_ready_milestones(
+  model: client_state.Model,
+  from_milestone_id: Int,
+  to_milestone_id: Int,
+) -> Bool {
+  from_milestone_id != to_milestone_id
+  && is_ready_milestone(model, from_milestone_id)
+  && is_ready_milestone(model, to_milestone_id)
+}
+
+fn is_ready_milestone(model: client_state.Model, milestone_id: Int) -> Bool {
+  case model.member.pool.member_milestones {
+    Loaded(items) ->
+      items
+      |> list.any(fn(progress) {
+        progress.milestone.id == milestone_id
+        && progress.milestone.state == milestone.Ready
+      })
+    _ -> False
   }
 }
 

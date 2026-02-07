@@ -143,6 +143,11 @@ pub fn task_decoder() -> decode.Decoder(Task) {
 
   use created_at <- decode.field("created_at", decode.string)
   use version <- decode.field("version", decode.int)
+  use milestone_id <- decode.optional_field(
+    "milestone_id",
+    option.None,
+    decode.optional(decode.int),
+  )
 
   // Card (ficha) association - optional fields
   use card_id <- decode.optional_field(
@@ -191,6 +196,7 @@ pub fn task_decoder() -> decode.Decoder(Task) {
     created_by: created_by,
     created_at: created_at,
     version: version,
+    milestone_id: milestone_id,
     card_id: card_id,
     card_title: card_title,
     card_color: card_color,

@@ -62,6 +62,7 @@ pub type Task {
     created_by: Int,
     created_at: String,
     version: Int,
+    milestone_id: Option(Int),
     // Card (ficha) association
     card_id: Option(Int),
     card_title: Option(String),

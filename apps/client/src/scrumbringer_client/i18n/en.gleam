@@ -243,6 +243,8 @@ pub fn translate(text: Text) -> String {
     text.MilestoneActivationWarning ->
       "You will not be able to undo this action"
     text.MilestoneDetails -> "Details"
+    text.MilestoneTabOverview -> "Overview"
+    text.MilestoneTabContent -> "Content"
     text.ActivateMilestone -> "Activate"
     text.ActivatingMilestone -> "Activating..."
     text.MilestoneActivated -> "Milestone activated"
@@ -260,6 +262,9 @@ pub fn translate(text: Text) -> String {
     text.MilestoneAlreadyActive -> "Another milestone is already active"
     text.MilestoneActivationIrreversible ->
       "Milestone cannot be activated in its current state"
+    text.MilestoneOpenDetails -> "Open details"
+    text.MilestoneMoreActions -> "More actions"
+    text.MilestoneMoveTo -> "Move to milestone..."
     text.ExpandMilestone(name) -> "Expand milestone " <> name
     text.CollapseMilestone(name) -> "Collapse milestone " <> name
     text.ExpandPerson(name) -> "Expand status for " <> name

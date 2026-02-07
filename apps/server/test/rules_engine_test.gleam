@@ -97,6 +97,14 @@ pub fn evaluate_rules_creates_tasks_from_templates_test() {
       [pog.int(review_type_id)],
     )
   count |> should.equal(1)
+
+  let assert Ok(traced_count) =
+    fixtures.query_int(
+      db,
+      "select count(*)::int from tasks where type_id = $1 and created_from_rule_id = $2",
+      [pog.int(review_type_id), pog.int(rule_id)],
+    )
+  traced_count |> should.equal(1)
 }
 
 pub fn evaluate_rules_idempotency_suppresses_duplicate_test() {

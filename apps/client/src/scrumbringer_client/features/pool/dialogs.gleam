@@ -141,8 +141,24 @@ pub fn view_create_dialog(model: Model) -> Element(Msg) {
               },
             ),
           ),
+          case model.member.pool.member_create_milestone_id {
+            opt.Some(milestone_id) ->
+              form_field.view(
+                helpers_i18n.i18n_t(model, i18n_text.Milestones),
+                div([attribute.class("task-create-milestone-target")], [
+                  text(
+                    milestone_name(model, milestone_id)
+                    |> opt.unwrap("#" <> int.to_string(milestone_id)),
+                  ),
+                ]),
+              )
+            opt.None -> element.none()
+          },
           // Card selector (AC1-AC3, Story 4.12)
-          view_card_selector(model),
+          case model.member.pool.member_create_milestone_id {
+            opt.Some(_) -> element.none()
+            opt.None -> view_card_selector(model)
+          },
         ],
       ),
     ],
@@ -170,6 +186,20 @@ pub fn view_create_dialog(model: Model) -> Element(Msg) {
       ),
     ],
   )
+}
+
+fn milestone_name(model: Model, milestone_id: Int) -> opt.Option(String) {
+  case model.member.pool.member_milestones {
+    Loaded(items) ->
+      list.find_map(items, fn(progress) {
+        case progress.milestone.id == milestone_id {
+          True -> Ok(progress.milestone.name)
+          False -> Error(Nil)
+        }
+      })
+      |> opt.from_result
+    _ -> opt.None
+  }
 }
 
 // =============================================================================

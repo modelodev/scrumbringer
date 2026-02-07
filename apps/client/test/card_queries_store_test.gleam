@@ -13,6 +13,7 @@ fn make_card(id: Int, project_id: Int, title: String) -> Card {
   Card(
     id: id,
     project_id: project_id,
+    milestone_id: option.None,
     title: title,
     description: "",
     color: option.None,

@@ -1047,6 +1047,13 @@ pub fn view_card_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
           // Attributes (strings)
           attribute.attribute("locale", locale.serialize(model.ui.locale)),
           attribute.attribute("project-id", int.to_string(project_id)),
+          attribute.attribute(
+            "milestone-id",
+            case model.admin.cards.cards_create_milestone_id {
+              opt.Some(id) -> int.to_string(id)
+              opt.None -> ""
+            },
+          ),
           attribute.attribute("mode", mode_str),
           // Property for card data (edit/delete modes)
           card_json,
@@ -1093,6 +1100,11 @@ fn decode_close_requested_event() -> decode.Decoder(Msg) {
 fn card_decoder() -> decode.Decoder(Card) {
   use id <- decode.field("id", decode.int)
   use project_id <- decode.field("project_id", decode.int)
+  use milestone_id <- decode.optional_field(
+    "milestone_id",
+    opt.None,
+    decode.optional(decode.int),
+  )
   use title <- decode.field("title", decode.string)
   use description <- decode.field("description", decode.string)
   use color <- decode.field("color", decode.optional(decode.string))
@@ -1109,6 +1121,7 @@ fn card_decoder() -> decode.Decoder(Card) {
   decode.success(card.Card(
     id: id,
     project_id: project_id,
+    milestone_id: milestone_id,
     title: title,
     description: description,
     color: color,
@@ -1132,9 +1145,14 @@ fn card_to_property_json(c: Card, mode: String) -> json.Json {
     opt.Some(color) -> json.string(color)
     opt.None -> json.null()
   }
+  let milestone_field = case c.milestone_id {
+    opt.Some(id) -> json.int(id)
+    opt.None -> json.null()
+  }
   json.object([
     #("id", json.int(c.id)),
     #("project_id", json.int(c.project_id)),
+    #("milestone_id", milestone_field),
     #("title", json.string(c.title)),
     #("description", json.string(c.description)),
     #("color", color_field),

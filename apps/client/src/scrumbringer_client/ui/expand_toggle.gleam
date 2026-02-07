@@ -7,12 +7,16 @@ pub fn view(expanded: Bool) -> Element(msg) {
 }
 
 pub fn view_with_class(expanded: Bool, class_name: String) -> Element(msg) {
-  span([attribute.class(class_name)], [text(symbol(expanded))])
+  let classes =
+    class_name
+    <> case expanded {
+      True -> " is-expanded"
+      False -> ""
+    }
+
+  span([attribute.class(classes)], [text(symbol())])
 }
 
-fn symbol(expanded: Bool) -> String {
-  case expanded {
-    True -> "▼"
-    False -> "▶"
-  }
+fn symbol() -> String {
+  "▶"
 }

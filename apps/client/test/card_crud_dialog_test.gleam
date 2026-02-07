@@ -9,8 +9,8 @@ import scrumbringer_client/components/card_crud_dialog.{
   type CardColor, Blue, CreateColorChanged, CreateColorToggle,
   CreateDescriptionChanged, CreateSubmitted, CreateTitleChanged, DeleteCancelled,
   DeleteConfirmed, EditCancelled, EditTitleChanged, Gray, Green, LocaleReceived,
-  ModeCreate, ModeDelete, ModeEdit, ModeReceived, Model, Orange, Pink,
-  ProjectIdReceived, Purple, Red, Yellow,
+  MilestoneIdReceived, ModeCreate, ModeDelete, ModeEdit, ModeReceived, Model,
+  Orange, Pink, ProjectIdReceived, Purple, Red, Yellow,
 }
 import scrumbringer_client/i18n/locale.{En, Es}
 
@@ -23,6 +23,7 @@ pub fn model_default_values_test() {
     Model(
       locale: En,
       project_id: option.None,
+      create_milestone_id: option.None,
       mode: option.None,
       create_title: "",
       create_description: "",
@@ -52,6 +53,7 @@ pub fn model_with_spanish_locale_test() {
     Model(
       locale: Es,
       project_id: option.Some(42),
+      create_milestone_id: option.Some(7),
       mode: option.Some(ModeCreate),
       create_title: "Mi Ficha",
       create_description: "Descripción",
@@ -119,6 +121,13 @@ pub fn msg_mode_received_test() {
   let msg = ModeReceived(ModeCreate)
   case msg {
     ModeReceived(mode) -> should.equal(mode, ModeCreate)
+  }
+}
+
+pub fn msg_milestone_id_received_test() {
+  let msg = MilestoneIdReceived(77)
+  case msg {
+    MilestoneIdReceived(id) -> id |> should.equal(77)
   }
 }
 
@@ -209,6 +218,7 @@ fn make_test_card() -> Card {
   Card(
     id: 1,
     project_id: 10,
+    milestone_id: option.None,
     title: "Test Card",
     description: "Test Description",
     color: option.Some("blue"),

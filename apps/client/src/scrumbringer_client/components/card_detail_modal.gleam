@@ -165,6 +165,11 @@ fn decode_can_manage_notes(value: String) -> Result(Msg, Nil) {
 fn card_property_decoder() -> Decoder(Msg) {
   use id <- decode.field("id", decode.int)
   use project_id <- decode.field("project_id", decode.int)
+  use milestone_id <- decode.optional_field(
+    "milestone_id",
+    option.None,
+    decode.optional(decode.int),
+  )
   use title <- decode.field("title", decode.string)
   use description <- decode.field("description", decode.string)
   use color <- decode.field("color", decode.optional(decode.string))
@@ -182,6 +187,7 @@ fn card_property_decoder() -> Decoder(Msg) {
     CardReceived(card.Card(
       id: id,
       project_id: project_id,
+      milestone_id: milestone_id,
       title: title,
       description: description,
       color: color,
@@ -239,6 +245,11 @@ fn task_decoder() -> Decoder(Task) {
   )
   use created_at <- decode.field("created_at", decode.string)
   use version <- decode.field("version", decode.int)
+  use milestone_id <- decode.optional_field(
+    "milestone_id",
+    option.None,
+    decode.optional(decode.int),
+  )
   use card_id <- decode.optional_field(
     "card_id",
     option.None,
@@ -292,6 +303,7 @@ fn task_decoder() -> Decoder(Task) {
     created_by: created_by,
     created_at: created_at,
     version: version,
+    milestone_id: milestone_id,
     card_id: card_id,
     card_title: card_title,
     card_color: card_color,

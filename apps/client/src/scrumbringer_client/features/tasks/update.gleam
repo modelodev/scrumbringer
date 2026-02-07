@@ -89,6 +89,7 @@ pub fn handle_create_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
         member_create_dialog_mode: dialog_mode.DialogCreate,
         member_create_error: opt.None,
         member_create_card_id: opt.None,
+        member_create_milestone_id: opt.None,
       )
     }),
     effect.none(),
@@ -107,6 +108,7 @@ pub fn handle_create_dialog_opened_with_card(
         member_create_dialog_mode: dialog_mode.DialogCreate,
         member_create_error: opt.None,
         member_create_card_id: opt.Some(card_id),
+        member_create_milestone_id: opt.None,
       )
     }),
     effect.none(),
@@ -122,6 +124,7 @@ pub fn handle_create_dialog_closed(model: Model) -> #(Model, Effect(Msg)) {
         member_create_dialog_mode: dialog_mode.DialogClosed,
         member_create_error: opt.None,
         member_create_card_id: opt.None,
+        member_create_milestone_id: opt.None,
       )
     }),
     effect.none(),
@@ -344,6 +347,7 @@ fn submit_create(
 
   // Story 4.12: Include card_id in task creation
   let card_id = model.member.pool.member_create_card_id
+  let milestone_id = model.member.pool.member_create_milestone_id
 
   let model =
     update_member_pool(model, fn(pool) {
@@ -363,6 +367,7 @@ fn submit_create(
       priority,
       type_id,
       card_id,
+      milestone_id,
       fn(result) { pool_msg(pool_messages.MemberTaskCreated(result)) },
     ),
   )
@@ -389,6 +394,7 @@ pub fn handle_task_created_ok(
         member_create_priority: "3",
         member_create_type_id: "",
         member_create_card_id: opt.None,
+        member_create_milestone_id: opt.None,
       )
     })
   let #(model, refresh_fx) = member_refresh(model)

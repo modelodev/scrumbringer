@@ -244,6 +244,8 @@ pub fn translate(text: Text) -> String {
       <> " tareas)."
     text.MilestoneActivationWarning -> "No podras deshacer esta accion"
     text.MilestoneDetails -> "Detalle"
+    text.MilestoneTabOverview -> "Resumen"
+    text.MilestoneTabContent -> "Contenido"
     text.ActivateMilestone -> "Activar"
     text.ActivatingMilestone -> "Activando..."
     text.MilestoneActivated -> "Hito activado"
@@ -261,6 +263,9 @@ pub fn translate(text: Text) -> String {
     text.MilestoneAlreadyActive -> "Ya hay otro hito activo"
     text.MilestoneActivationIrreversible ->
       "El hito no se puede activar en su estado actual"
+    text.MilestoneOpenDetails -> "Ver detalle"
+    text.MilestoneMoreActions -> "Acciones"
+    text.MilestoneMoveTo -> "Mover a hito..."
     text.ExpandMilestone(name) -> "Expandir hito " <> name
     text.CollapseMilestone(name) -> "Colapsar hito " <> name
     text.ExpandPerson(name) -> "Expandir estado de " <> name

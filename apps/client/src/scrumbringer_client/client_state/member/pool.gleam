@@ -12,6 +12,7 @@ import domain/task_status
 import domain/task_type.{type TaskType}
 import domain/view_mode
 import scrumbringer_client/client_state/dialog_mode
+import scrumbringer_client/client_state/member/milestone_details_tab
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/member_section
 import scrumbringer_client/pool_prefs
@@ -39,6 +40,11 @@ pub type MilestoneDialog {
   MilestoneDialogDelete(id: Int, name: String)
 }
 
+pub type MilestoneDragItem {
+  MilestoneDragCard(card_id: Int, from_milestone_id: Int)
+  MilestoneDragTask(task_id: Int, from_milestone_id: Int)
+}
+
 /// Represents member pool state.
 pub type Model {
   Model(
@@ -64,6 +70,8 @@ pub type Model {
     member_milestone_dialog: MilestoneDialog,
     member_milestone_dialog_in_flight: Bool,
     member_milestone_dialog_error: Option(String),
+    member_milestone_details_tab: milestone_details_tab.MilestoneDetailsTab,
+    member_milestone_drag_item: Option(MilestoneDragItem),
     member_task_mutation_in_flight: Bool,
     member_task_mutation_task_id: Option(Int),
     member_tasks_snapshot: Option(List(Task)),
@@ -83,6 +91,7 @@ pub type Model {
     member_create_priority: String,
     member_create_type_id: String,
     member_create_card_id: Option(Int),
+    member_create_milestone_id: Option(Int),
     member_create_in_flight: Bool,
     member_create_error: Option(String),
     member_drag: state_types.DragState,
@@ -123,6 +132,8 @@ pub fn default_model() -> Model {
     member_milestone_dialog: MilestoneDialogClosed,
     member_milestone_dialog_in_flight: False,
     member_milestone_dialog_error: option.None,
+    member_milestone_details_tab: milestone_details_tab.MilestoneOverviewTab,
+    member_milestone_drag_item: option.None,
     member_task_mutation_in_flight: False,
     member_task_mutation_task_id: option.None,
     member_tasks_snapshot: option.None,
@@ -142,6 +153,7 @@ pub fn default_model() -> Model {
     member_create_priority: "3",
     member_create_type_id: "",
     member_create_card_id: option.None,
+    member_create_milestone_id: option.None,
     member_create_in_flight: False,
     member_create_error: option.None,
     member_drag: state_types.DragIdle,

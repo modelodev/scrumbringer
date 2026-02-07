@@ -24,6 +24,11 @@ fn color_decoder() -> decode.Decoder(option.Option(String)) {
 pub fn card_decoder() -> decode.Decoder(Card) {
   use id <- decode.field("id", decode.int)
   use project_id <- decode.field("project_id", decode.int)
+  use milestone_id <- decode.optional_field(
+    "milestone_id",
+    option.None,
+    decode.optional(decode.int),
+  )
   use title <- decode.field("title", decode.string)
   use description <- decode.field("description", decode.string)
   use color <- decode.field("color", color_decoder())
@@ -40,6 +45,7 @@ pub fn card_decoder() -> decode.Decoder(Card) {
   decode.success(Card(
     id: id,
     project_id: project_id,
+    milestone_id: milestone_id,
     title: title,
     description: description,
     color: color,

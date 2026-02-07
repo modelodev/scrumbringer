@@ -60,6 +60,15 @@ pub fn parse_member_invalid_view_redirects_test() {
   )
 }
 
+pub fn parse_member_legacy_list_view_redirects_test() {
+  let parsed = router.parse_uri(build_uri("/app/pool", "?view=list"))
+
+  parsed
+  |> should.equal(
+    router.Redirect(member_route(member_section.Pool, None, None)),
+  )
+}
+
 pub fn parse_org_assignments_invalid_view_redirects_test() {
   let parsed = router.parse_uri(build_uri("/org/assignments", "?view=pool"))
 

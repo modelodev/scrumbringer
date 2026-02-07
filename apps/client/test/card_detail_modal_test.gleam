@@ -41,6 +41,7 @@ fn make_card(id: Int) -> Card {
   Card(
     id: id,
     project_id: 1,
+    milestone_id: option.None,
     title: "Test Card",
     description: "A test card",
     color: option.Some("blue"),

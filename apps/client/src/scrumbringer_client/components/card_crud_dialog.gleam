@@ -17,6 +17,7 @@
 //// - API: api/cards.gleam for CRUD operations
 
 import gleam/dynamic/decode.{type Decoder}
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option}
@@ -61,6 +62,7 @@ pub type Model {
     // Attributes from parent
     locale: Locale,
     project_id: Option(Int),
+    create_milestone_id: Option(Int),
     mode: Option(DialogMode),
     // Create dialog fields
     create_title: String,
@@ -102,6 +104,8 @@ pub type Msg {
   // Attribute/property changes
   LocaleReceived(Locale)
   ProjectIdReceived(Int)
+  MilestoneIdReceived(Int)
+  MilestoneIdCleared
   ModeReceived(DialogMode)
   // Create form
   CreateTitleChanged(String)
@@ -142,6 +146,7 @@ fn on_attribute_change() -> List(component.Option(Msg)) {
   [
     component.on_attribute_change("locale", decode_locale),
     component.on_attribute_change("project-id", decode_project_id),
+    component.on_attribute_change("milestone-id", decode_milestone_id),
     component.on_attribute_change("mode", decode_mode),
     component.on_attribute_change("card-id", decode_card_id),
     component.on_property_change("card", card_property_decoder()),
@@ -157,6 +162,13 @@ fn decode_project_id(value: String) -> Result(Msg, Nil) {
   crud_dialog_base.decode_int_attribute(value, ProjectIdReceived)
 }
 
+fn decode_milestone_id(value: String) -> Result(Msg, Nil) {
+  case int.parse(value) {
+    Ok(id) -> Ok(MilestoneIdReceived(id))
+    Error(_) -> Ok(MilestoneIdCleared)
+  }
+}
+
 fn decode_mode(value: String) -> Result(Msg, Nil) {
   // edit and delete modes need card data from property
   crud_dialog_base.decode_create_mode(value, ModeCreate, ModeReceived)
@@ -170,6 +182,11 @@ fn decode_card_id(_value: String) -> Result(Msg, Nil) {
 fn card_property_decoder() -> Decoder(Msg) {
   use id <- decode.field("id", decode.int)
   use project_id <- decode.field("project_id", decode.int)
+  use milestone_id <- decode.optional_field(
+    "milestone_id",
+    option.None,
+    decode.optional(decode.int),
+  )
   use title <- decode.field("title", decode.string)
   use description <- decode.field("description", decode.string)
   use color <- decode.field("color", decode.optional(decode.string))
@@ -188,6 +205,7 @@ fn card_property_decoder() -> Decoder(Msg) {
     Card(
       id: id,
       project_id: project_id,
+      milestone_id: milestone_id,
       title: title,
       description: description,
       color: color,
@@ -217,6 +235,7 @@ fn default_model() -> Model {
   Model(
     locale: En,
     project_id: option.None,
+    create_milestone_id: option.None,
     mode: option.None,
     create_title: "",
     create_description: "",
@@ -245,6 +264,16 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     ProjectIdReceived(id) -> #(
       Model(..model, project_id: option.Some(id)),
+      effect.none(),
+    )
+
+    MilestoneIdReceived(id) -> #(
+      Model(..model, create_milestone_id: option.Some(id)),
+      effect.none(),
+    )
+
+    MilestoneIdCleared -> #(
+      Model(..model, create_milestone_id: option.None),
       effect.none(),
     )
 
@@ -407,6 +436,7 @@ fn submit_create_with_title(
         title,
         model.create_description,
         model.create_color,
+        model.create_milestone_id,
         CreateResult,
       ),
     )
@@ -465,6 +495,7 @@ fn submit_edit_with_title(model: Model, title: String) -> #(Model, Effect(Msg)) 
         title,
         model.edit_description,
         model.edit_color,
+        option.None,
         EditResult,
       ),
     )

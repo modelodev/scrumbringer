@@ -427,6 +427,178 @@ pub fn task_move_ready_to_ready_and_ready_to_pool_is_allowed_test() {
   db_milestone_after_pool |> should.equal(option.None)
 }
 
+pub fn task_pool_lifetime_tracking_fields_are_wired_test() {
+  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let assert Ok(task_id) =
+    fixtures.create_task(handler, session, project_id, type_id, "Standalone")
+
+  let assert Ok(initial_pool_lifetime_s) =
+    fixtures.query_int(db, "select pool_lifetime_s from tasks where id = $1", [
+      pog.int(task_id),
+    ])
+  initial_pool_lifetime_s |> should.equal(0)
+
+  let claim_res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/claim",
+      )
+      |> fixtures.with_auth(session)
+      |> simulate.json_body(
+        json.object([#("version", json.int(task_version(db, task_id)))]),
+      ),
+    )
+  claim_res.status |> should.equal(200)
+
+  let assert Ok(non_negative_after_claim) =
+    fixtures.query_int(
+      db,
+      "select case when pool_lifetime_s >= 0 then 1 else 0 end from tasks where id = $1",
+      [pog.int(task_id)],
+    )
+  non_negative_after_claim |> should.equal(1)
+
+  let release_res =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/release",
+      )
+      |> fixtures.with_auth(session)
+      |> simulate.json_body(
+        json.object([#("version", json.int(task_version(db, task_id)))]),
+      ),
+    )
+  release_res.status |> should.equal(200)
+
+  let assert Ok(release_last_entered_present) =
+    fixtures.query_int(
+      db,
+      "select case when last_entered_pool_at is null then 0 else 1 end from tasks where id = $1",
+      [pog.int(task_id)],
+    )
+  release_last_entered_present |> should.equal(1)
+}
+
+pub fn milestone_activation_returns_snapshot_and_blocks_second_active_test() {
+  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(..) = app
+
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let assert Ok(milestone_1) =
+    create_milestone(handler, session, project_id, "Release 1", "Initial")
+  let assert Ok(milestone_2) =
+    create_milestone(handler, session, project_id, "Release 2", "Next")
+
+  let activate_1 =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/milestones/" <> int.to_string(milestone_1) <> "/activate",
+      )
+      |> fixtures.with_auth(session)
+      |> simulate.json_body(json.object([])),
+    )
+
+  activate_1.status |> should.equal(200)
+  let assert Ok(#(cards_released, tasks_released, activated_at_present)) =
+    decode_activation_snapshot(simulate.read_body(activate_1))
+  cards_released |> should.equal(0)
+  tasks_released |> should.equal(0)
+  activated_at_present |> should.equal(True)
+
+  let activate_2 =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/milestones/" <> int.to_string(milestone_2) <> "/activate",
+      )
+      |> fixtures.with_auth(session)
+      |> simulate.json_body(json.object([])),
+    )
+
+  activate_2.status |> should.equal(409)
+  let assert Ok(code) = decode_error_code(simulate.read_body(activate_2))
+  code |> should.equal("MILESTONE_ALREADY_ACTIVE")
+}
+
+pub fn milestone_completes_when_all_items_complete_test() {
+  let assert Ok(#(app, handler, session)) = fixtures.bootstrap()
+  let scrumbringer_server.App(db: db, ..) = app
+
+  let assert Ok(project_id) = fixtures.create_project(handler, session, "Core")
+  let assert Ok(milestone_id) =
+    create_milestone(handler, session, project_id, "Release 1", "Initial")
+  let assert Ok(type_id) =
+    fixtures.create_task_type(handler, session, project_id, "Bug", "bug-ant")
+  let assert Ok(task_id) =
+    create_task_with_milestone(
+      handler,
+      session,
+      project_id,
+      type_id,
+      milestone_id,
+      "Standalone",
+    )
+
+  let activate =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/milestones/" <> int.to_string(milestone_id) <> "/activate",
+      )
+      |> fixtures.with_auth(session)
+      |> simulate.json_body(json.object([])),
+    )
+  activate.status |> should.equal(200)
+
+  let claim =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/claim",
+      )
+      |> fixtures.with_auth(session)
+      |> simulate.json_body(
+        json.object([#("version", json.int(task_version(db, task_id)))]),
+      ),
+    )
+  claim.status |> should.equal(200)
+
+  let complete =
+    handler(
+      simulate.request(
+        http.Post,
+        "/api/v1/tasks/" <> int.to_string(task_id) <> "/complete",
+      )
+      |> fixtures.with_auth(session)
+      |> simulate.json_body(
+        json.object([#("version", json.int(task_version(db, task_id)))]),
+      ),
+    )
+  complete.status |> should.equal(200)
+
+  let assert Ok(state_after_complete) =
+    fixtures.query_string(db, "select state from milestones where id = $1", [
+      pog.int(milestone_id),
+    ])
+  state_after_complete |> should.equal("completed")
+
+  let assert Ok(completed_at_present) =
+    fixtures.query_int(
+      db,
+      "select case when completed_at is null then 0 else 1 end from milestones where id = $1",
+      [pog.int(milestone_id)],
+    )
+  completed_at_present |> should.equal(1)
+}
+
 fn create_milestone(
   handler: fixtures.Handler,
   session: fixtures.Session,
@@ -524,6 +696,27 @@ fn decode_error_code(body: String) -> Result(String, String) {
       case decode.run(dynamic, decode.field("error", decoder, decode.success)) {
         Ok(code) -> Ok(code)
         Error(_) -> Error("decode error code failed")
+      }
+  }
+}
+
+fn decode_activation_snapshot(body: String) -> Result(#(Int, Int, Bool), String) {
+  let decoder = {
+    use cards <- decode.field("cards_released", decode.int)
+    use tasks <- decode.field("tasks_released", decode.int)
+    use activated_at <- decode.field(
+      "activated_at",
+      decode.optional(decode.string),
+    )
+    decode.success(#(cards, tasks, option.is_some(activated_at)))
+  }
+
+  case json.parse(body, decode.dynamic) {
+    Error(_) -> Error("invalid json")
+    Ok(dynamic) ->
+      case decode.run(dynamic, decode.field("data", decoder, decode.success)) {
+        Ok(payload) -> Ok(payload)
+        Error(_) -> Error("decode activation snapshot failed")
       }
   }
 }

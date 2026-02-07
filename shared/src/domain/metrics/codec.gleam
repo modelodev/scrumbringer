@@ -293,6 +293,7 @@ pub fn metrics_project_task_decoder() -> decode.Decoder(MetricsProjectTask) {
       created_by: created_by,
       created_at: created_at,
       version: version,
+      milestone_id: option.None,
       // Card fields not available in metrics endpoint
       card_id: option.None,
       card_title: option.None,

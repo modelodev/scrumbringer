@@ -34,6 +34,7 @@ fn sample_card() {
   Card(
     id: 1,
     project_id: 1,
+    milestone_id: opt.None,
     title: "Playwright Card",
     description: "",
     color: opt.None,
