@@ -28,6 +28,7 @@ import scrumbringer_client/helpers/lookup as helpers_lookup
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/error_notice
+import scrumbringer_client/ui/icon_actions
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/loading
 
@@ -287,19 +288,12 @@ fn view_member_row(
           ),
         ])
       False ->
-        button(
-          [
-            attribute.class("btn-icon btn-xs btn-danger"),
-            attribute.attribute("title", t(i18n_text.Remove)),
-            attribute.attribute("aria-label", t(i18n_text.Remove)),
-            event.on_click(
-              client_state.admin_msg(admin_messages.AssignmentsRemoveClicked(
-                project_id,
-                member.user_id,
-              )),
-            ),
-          ],
-          [icons.nav_icon(icons.Trash, icons.Small)],
+        icon_actions.delete(
+          t(i18n_text.Remove),
+          client_state.admin_msg(admin_messages.AssignmentsRemoveClicked(
+            project_id,
+            member.user_id,
+          )),
         )
     },
   ])

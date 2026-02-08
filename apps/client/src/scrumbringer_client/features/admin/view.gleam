@@ -83,6 +83,7 @@ import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/event_decoders
 import scrumbringer_client/ui/form_field
+import scrumbringer_client/ui/icon_actions
 import scrumbringer_client/ui/icon_catalog
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/section_header
@@ -659,16 +660,10 @@ fn view_capabilities_list(
           fn(c: Capability) {
             div([attribute.class("btn-group")], [
               // Manage members button
-              button(
-                [
-                  attribute.class("btn-icon btn-xs"),
-                  attribute.attribute("title", t(i18n_text.ManageMembers)),
-                  attribute.attribute("data-testid", "capability-members-btn"),
-                  event.on_click(
-                    admin_msg(admin_messages.CapabilityMembersDialogOpened(c.id)),
-                  ),
-                ],
-                [icons.nav_icon(icons.OrgUsers, icons.Small)],
+              icon_actions.settings_with_testid(
+                t(i18n_text.ManageMembers),
+                admin_msg(admin_messages.CapabilityMembersDialogOpened(c.id)),
+                "capability-members-btn",
               ),
               // Delete button (Story 4.9 AC9)
               action_buttons.delete_button_with_testid(

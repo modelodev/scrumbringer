@@ -42,6 +42,7 @@ import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/card_section_header
 import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/detail_metrics
@@ -672,17 +673,15 @@ fn view_dependency_row(
         span([attribute.class("task-dependency-status")], [text(status_note)]),
       ]),
     ]),
-    button(
-      [
-        attribute.class("btn-icon btn-xs task-dependency-remove"),
-        attribute.disabled(is_removing || task_id == depends_on_task_id),
-        event.on_click(
-          pool_msg(pool_messages.MemberDependencyRemoveClicked(
-            depends_on_task_id,
-          )),
-        ),
-      ],
-      [icons.nav_icon(icons.XMark, icons.Small)],
+    action_buttons.task_icon_button(
+      helpers_i18n.i18n_t(model, i18n_text.Remove),
+      pool_msg(pool_messages.MemberDependencyRemoveClicked(depends_on_task_id)),
+      icons.XMark,
+      action_buttons.SizeXs,
+      is_removing || task_id == depends_on_task_id,
+      "task-dependency-remove",
+      opt.None,
+      opt.None,
     ),
   ])
 }

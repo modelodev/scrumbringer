@@ -57,8 +57,8 @@ pub fn view(state: EmptyStateConfig(msg)) -> Element(msg) {
     div([attribute.class(css.to_string(css.empty_state_icon()))], [
       text(icons.emoji_to_string(icon)),
     ]),
-    h2([], [text(title)]),
-    p([attribute.class(css.to_string(css.empty_state_text()))], [
+    h2([attribute.class("empty-state-title")], [text(title)]),
+    p([attribute.class("empty-state-description")], [
       text(description),
     ]),
     case action {

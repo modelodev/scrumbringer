@@ -34,6 +34,7 @@ import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/card_title_meta
+import scrumbringer_client/ui/icon_actions
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_blocked_badge
@@ -346,14 +347,10 @@ fn view_context_menu(config: KanbanConfig(msg), card_id: Int) -> Element(msg) {
       attribute.attribute("data-testid", "card-context-menu"),
     ],
     [
-      button(
-        [
-          attribute.class("btn-icon btn-xs"),
-          attribute.attribute("data-testid", "card-edit-btn"),
-          attribute.attribute("aria-label", "Edit card"),
-          event.on_click(config.on_card_edit(card_id)),
-        ],
-        [icons.nav_icon(icons.Pencil, icons.Small)],
+      icon_actions.edit_with_testid(
+        "Edit card",
+        config.on_card_edit(card_id),
+        "card-edit-btn",
       ),
     ],
   )

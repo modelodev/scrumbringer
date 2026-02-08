@@ -29,14 +29,18 @@ import scrumbringer_client/helpers/selection as helpers_selection
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/action_row
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/confirm_dialog
 import scrumbringer_client/ui/detail_metrics
 import scrumbringer_client/ui/dialog
+import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/expand_toggle
 import scrumbringer_client/ui/form_field
+import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/modal_header
+import scrumbringer_client/ui/move_menu
 import scrumbringer_client/ui/tabs
 
 pub fn view(model: client_state.Model) -> Element(client_state.Msg) {
@@ -140,7 +144,7 @@ fn view_empty_state(
   message: i18n_text.Text,
 ) -> Element(client_state.Msg) {
   div([attribute.class("milestones-state milestones-empty")], [
-    text(helpers_i18n.i18n_t(model, message)),
+    empty_state.simple(icons.Clipboard, helpers_i18n.i18n_t(model, message)),
     case can_manage_milestones(model) {
       True ->
         div([attribute.class("milestones-empty-actions")], [
@@ -545,19 +549,10 @@ fn view_item(
             ])
           _ -> none()
         },
-        div(
-          [attribute.class("milestone-item-actions milestone-item-actions-row")],
-          [
-            div([attribute.class("milestone-item-actions-main")], [
-              activate_button,
-              quick_create_card_button,
-              quick_create_task_button,
-            ]),
-            div([attribute.class("milestone-item-actions-manage")], [
-              edit_button,
-              delete_button,
-            ]),
-          ],
+        action_row.view(
+          [quick_create_card_button, quick_create_task_button],
+          [activate_button],
+          [edit_button, delete_button],
         ),
       ],
     ),
@@ -808,56 +803,29 @@ fn view_move_card_actions(
   from_milestone_id: Int,
   destinations: List(milestone.Milestone),
 ) -> Element(client_state.Msg) {
-  case destinations {
-    [] -> none()
-    _ ->
-      div([attribute.class("milestone-context-menu")], [
-        button(
-          [
-            attribute.class("btn btn-xs btn-ghost"),
-            attribute.attribute("type", "button"),
-            attribute.attribute(
-              "data-testid",
-              "milestone-move-menu-card:"
-                <> int.to_string(from_milestone_id)
-                <> ":"
-                <> int.to_string(card_id),
-            ),
-          ],
-          [text(helpers_i18n.i18n_t(model, i18n_text.MilestoneMoveTo))],
-        ),
-        div(
-          [attribute.class("milestone-move-actions")],
-          list.map(destinations, fn(dest) {
-            button(
-              [
-                attribute.class("btn btn-xs btn-ghost"),
-                attribute.attribute(
-                  "data-testid",
-                  "milestone-move-card:"
-                    <> int.to_string(from_milestone_id)
-                    <> ":"
-                    <> int.to_string(card_id)
-                    <> ":"
-                    <> int.to_string(dest.id),
-                ),
-                attribute.attribute("type", "button"),
-                event.on_click(
-                  client_state.pool_msg(
-                    pool_messages.MemberMilestoneCardMoveClicked(
-                      card_id,
-                      from_milestone_id,
-                      dest.id,
-                    ),
-                  ),
-                ),
-              ],
-              [text(dest.name)],
-            )
-          }),
-        ),
-      ])
-  }
+  move_menu.view(
+    helpers_i18n.i18n_t(model, i18n_text.MilestoneMoveTo),
+    "milestone-move-menu-card:"
+      <> int.to_string(from_milestone_id)
+      <> ":"
+      <> int.to_string(card_id),
+    list.map(destinations, fn(dest) {
+      move_menu.option(
+        dest.name,
+        "milestone-move-card:"
+          <> int.to_string(from_milestone_id)
+          <> ":"
+          <> int.to_string(card_id)
+          <> ":"
+          <> int.to_string(dest.id),
+        client_state.pool_msg(pool_messages.MemberMilestoneCardMoveClicked(
+          card_id,
+          from_milestone_id,
+          dest.id,
+        )),
+      )
+    }),
+  )
 }
 
 fn view_move_task_actions(
@@ -866,56 +834,29 @@ fn view_move_task_actions(
   from_milestone_id: Int,
   destinations: List(milestone.Milestone),
 ) -> Element(client_state.Msg) {
-  case destinations {
-    [] -> none()
-    _ ->
-      div([attribute.class("milestone-context-menu")], [
-        button(
-          [
-            attribute.class("btn btn-xs btn-ghost"),
-            attribute.attribute("type", "button"),
-            attribute.attribute(
-              "data-testid",
-              "milestone-move-menu-task:"
-                <> int.to_string(from_milestone_id)
-                <> ":"
-                <> int.to_string(task_id),
-            ),
-          ],
-          [text(helpers_i18n.i18n_t(model, i18n_text.MilestoneMoveTo))],
-        ),
-        div(
-          [attribute.class("milestone-move-actions")],
-          list.map(destinations, fn(dest) {
-            button(
-              [
-                attribute.class("btn btn-xs btn-ghost"),
-                attribute.attribute(
-                  "data-testid",
-                  "milestone-move-task:"
-                    <> int.to_string(from_milestone_id)
-                    <> ":"
-                    <> int.to_string(task_id)
-                    <> ":"
-                    <> int.to_string(dest.id),
-                ),
-                attribute.attribute("type", "button"),
-                event.on_click(
-                  client_state.pool_msg(
-                    pool_messages.MemberMilestoneTaskMoveClicked(
-                      task_id,
-                      from_milestone_id,
-                      dest.id,
-                    ),
-                  ),
-                ),
-              ],
-              [text(dest.name)],
-            )
-          }),
-        ),
-      ])
-  }
+  move_menu.view(
+    helpers_i18n.i18n_t(model, i18n_text.MilestoneMoveTo),
+    "milestone-move-menu-task:"
+      <> int.to_string(from_milestone_id)
+      <> ":"
+      <> int.to_string(task_id),
+    list.map(destinations, fn(dest) {
+      move_menu.option(
+        dest.name,
+        "milestone-move-task:"
+          <> int.to_string(from_milestone_id)
+          <> ":"
+          <> int.to_string(task_id)
+          <> ":"
+          <> int.to_string(dest.id),
+        client_state.pool_msg(pool_messages.MemberMilestoneTaskMoveClicked(
+          task_id,
+          from_milestone_id,
+          dest.id,
+        )),
+      )
+    }),
+  )
 }
 
 fn task_status_to_short(

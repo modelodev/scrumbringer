@@ -55,6 +55,7 @@ import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/event_decoders
 import scrumbringer_client/ui/expand_toggle
 import scrumbringer_client/ui/form_field
+import scrumbringer_client/ui/icon_actions
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/info_callout
 import scrumbringer_client/ui/loading
@@ -323,23 +324,20 @@ fn view_workflow_actions(model: Model, w: Workflow) -> Element(Msg) {
 
   div([attribute.class("btn-group")], [
     // Rules button - navigate to rules view
-    button(
-      [
-        attribute.class("btn-icon btn-xs"),
-        attribute.attribute("title", t(i18n_text.WorkflowRules)),
-        event.on_click(pool_msg(pool_messages.WorkflowRulesClicked(w.id))),
-      ],
-      [icons.nav_icon(icons.Cog, icons.Small)],
+    icon_actions.settings_with_testid(
+      t(i18n_text.WorkflowRules),
+      pool_msg(pool_messages.WorkflowRulesClicked(w.id)),
+      "workflow-rules-btn",
     ),
     // Edit button
-    action_buttons.edit_button(
+    icon_actions.edit(
       t(i18n_text.EditWorkflow),
       pool_msg(
         pool_messages.OpenWorkflowDialog(state_types.WorkflowDialogEdit(w)),
       ),
     ),
     // Delete button
-    action_buttons.delete_button(
+    icon_actions.delete(
       t(i18n_text.DeleteWorkflow),
       pool_msg(
         pool_messages.OpenWorkflowDialog(state_types.WorkflowDialogDelete(w)),

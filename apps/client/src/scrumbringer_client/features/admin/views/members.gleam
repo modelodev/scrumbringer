@@ -49,6 +49,7 @@ import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/form_field
+import scrumbringer_client/ui/icon_actions
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/search_select
 import scrumbringer_client/ui/section_header
@@ -231,15 +232,10 @@ fn view_member_actions(model: Model, m: ProjectMember) -> Element(Msg) {
         )
       False -> element.none()
     },
-    action_buttons.task_icon_button_with_class(
+    icon_actions.delete_with_testid(
       helpers_i18n.i18n_t(model, i18n_text.Remove),
       admin_msg(admin_messages.MemberRemoveClicked(m.user_id)),
-      icons.Trash,
-      icons.Small,
-      False,
-      "btn-icon btn-xs btn-danger-icon",
-      opt.None,
-      opt.None,
+      "member-remove-btn",
     ),
   ])
 }

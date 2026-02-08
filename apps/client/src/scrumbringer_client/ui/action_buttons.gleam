@@ -279,6 +279,24 @@ pub fn settings_button(title: String, on_click: msg) -> Element(msg) {
   )
 }
 
+/// Creates a settings button with a data-testid attribute.
+pub fn settings_button_with_testid(
+  title: String,
+  on_click: msg,
+  testid: String,
+) -> Element(msg) {
+  button(
+    [
+      attribute.class("btn-icon btn-xs"),
+      attribute.attribute("title", title),
+      attribute.attribute("aria-label", title),
+      attribute.attribute("data-testid", testid),
+      event.on_click(on_click),
+    ],
+    [icons.nav_icon(icons.Cog, icons.Small)],
+  )
+}
+
 // =============================================================================
 // Action Button Row (for table cells)
 // =============================================================================

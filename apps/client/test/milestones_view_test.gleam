@@ -234,6 +234,7 @@ pub fn milestones_view_empty_state_test() {
     |> element.to_document_string
 
   string.contains(html, "No milestones yet") |> should.be_true
+  string.contains(html, "class=\"empty-state\"") |> should.be_true
 }
 
 pub fn milestones_view_shows_create_button_for_managers_test() {
@@ -729,6 +730,30 @@ pub fn milestones_view_ready_rows_show_move_actions_only_for_ready_destinations_
   |> should.be_false
   string.contains(html, "data-testid=\"milestone-move-task:94:902:96\"")
   |> should.be_false
+  string.contains(html, "class=\"move-menu\"")
+  |> should.be_true
+}
+
+pub fn milestones_view_uses_shared_action_row_layout_test() {
+  let html =
+    base_model()
+    |> with_admin_user
+    |> with_milestones(remote.Loaded([sample_progress(122, Ready)]))
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_milestones_expanded: dict.insert(dict.new(), 122, True),
+        ),
+      )
+    })
+    |> milestones_view.view
+    |> element.to_document_string
+
+  string.contains(html, "class=\"action-row\"")
+  |> should.be_true
 }
 
 pub fn milestones_view_hides_move_actions_for_non_managers_test() {
