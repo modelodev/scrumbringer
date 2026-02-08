@@ -14,21 +14,20 @@ import scrumbringer_client/ui/tabs
 
 /// Tab variants for Task Detail Modal.
 pub type Tab {
-  DetailsTab
-  DependenciesTab
+  TasksTab
   NotesTab
+  MetricsTab
 }
 
 /// Labels for tabs (i18n compatible).
 pub type Labels {
-  Labels(details: String, dependencies: String, notes: String)
+  Labels(tasks: String, notes: String, metrics: String)
 }
 
 /// Configuration for task tabs component.
 pub type Config(msg) {
   Config(
     active_tab: Tab,
-    dependencies_count: Int,
     notes_count: Int,
     has_new_notes: Bool,
     labels: Labels,
@@ -44,7 +43,6 @@ pub type Config(msg) {
 pub fn view(config: Config(msg)) -> Element(msg) {
   let Config(
     active_tab: active_tab,
-    dependencies_count: dependencies_count,
     notes_count: notes_count,
     has_new_notes: has_new_notes,
     labels: labels,
@@ -54,18 +52,9 @@ pub fn view(config: Config(msg)) -> Element(msg) {
   tabs.view(tabs.config(
     tabs: [
       tabs.TabItem(
-        id: DetailsTab,
-        label: labels.details,
+        id: TasksTab,
+        label: labels.tasks,
         count: opt.None,
-        has_indicator: False,
-      ),
-      tabs.TabItem(
-        id: DependenciesTab,
-        label: labels.dependencies,
-        count: case dependencies_count > 0 {
-          True -> opt.Some(dependencies_count)
-          False -> opt.None
-        },
         has_indicator: False,
       ),
       tabs.TabItem(
@@ -76,6 +65,12 @@ pub fn view(config: Config(msg)) -> Element(msg) {
           False -> opt.None
         },
         has_indicator: has_new_notes,
+      ),
+      tabs.TabItem(
+        id: MetricsTab,
+        label: labels.metrics,
+        count: opt.None,
+        has_indicator: False,
       ),
     ],
     active: active_tab,

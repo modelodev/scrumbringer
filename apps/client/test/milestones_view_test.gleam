@@ -7,6 +7,9 @@ import lustre/element
 
 import domain/api_error.{ApiError}
 import domain/card.{Card, Pendiente}
+import domain/metrics.{
+  MilestoneModalMetrics, ModalExecutionHealth, WorkflowBreakdown,
+}
 import domain/milestone.{
   type MilestoneProgress, type MilestoneState, Active, Completed, Milestone,
   MilestoneProgress, Ready,
@@ -131,6 +134,19 @@ fn with_tasks(
     member_state.MemberModel(
       ..member,
       pool: member_pool.Model(..pool, member_tasks: remote.Loaded(tasks)),
+    )
+  })
+}
+
+fn with_milestone_metrics(
+  model: client_state.Model,
+  metrics,
+) -> client_state.Model {
+  client_state.update_member(model, fn(member) {
+    let pool = member.pool
+    member_state.MemberModel(
+      ..member,
+      pool: member_pool.Model(..pool, member_milestone_metrics: metrics),
     )
   })
 }
@@ -743,4 +759,77 @@ pub fn milestones_view_uses_en_i18n_labels_and_statuses_test() {
   string.contains(html, ">Cards<") |> should.be_true
   string.contains(html, ">Tasks<") |> should.be_true
   string.contains(html, "available") |> should.be_true
+}
+
+pub fn milestone_metrics_error_copy_i18n_test() {
+  let html =
+    base_model()
+    |> with_admin_user
+    |> with_locale(i18n_locale.Es)
+    |> with_milestones(remote.Loaded([sample_progress(140, Ready)]))
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_milestone_dialog: member_pool.MilestoneDialogView(140),
+          member_milestone_details_tab: milestone_details_tab.MilestoneMetricsTab,
+        ),
+      )
+    })
+    |> with_milestone_metrics(
+      remote.Failed(ApiError(
+        status: 409,
+        code: "metrics_unavailable",
+        message: "x",
+      )),
+    )
+    |> milestones_view.view
+    |> element.to_document_string
+
+  string.contains(html, "No se pudieron cargar métricas") |> should.be_true
+}
+
+pub fn milestone_metrics_empty_copy_i18n_test() {
+  let html =
+    base_model()
+    |> with_admin_user
+    |> with_locale(i18n_locale.En)
+    |> with_milestones(remote.Loaded([sample_progress(141, Ready)]))
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_milestone_dialog: member_pool.MilestoneDialogView(141),
+          member_milestone_details_tab: milestone_details_tab.MilestoneMetricsTab,
+        ),
+      )
+    })
+    |> with_milestone_metrics(
+      remote.Loaded(MilestoneModalMetrics(
+        cards_total: 0,
+        cards_completed: 0,
+        cards_percent: 0,
+        tasks_total: 0,
+        tasks_completed: 0,
+        tasks_percent: 0,
+        tasks_available: 0,
+        tasks_claimed: 0,
+        tasks_ongoing: 0,
+        health: ModalExecutionHealth(
+          avg_rebotes: 0,
+          avg_pool_lifetime_s: 0,
+          avg_executors: 0,
+        ),
+        workflows: [WorkflowBreakdown(name: "none", count: 0)],
+        most_activated: None,
+      )),
+    )
+    |> milestones_view.view
+    |> element.to_document_string
+
+  string.contains(html, "Not enough data for metrics") |> should.be_true
 }

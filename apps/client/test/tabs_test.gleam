@@ -180,4 +180,16 @@ pub fn aria_attributes_correct_test() {
   html |> string.contains("role=\"tab\"") |> should.be_true()
   // Active tab has aria-selected="true"
   html |> string.contains("aria-selected=\"true\"") |> should.be_true()
+  // Tabs are linked to tabpanels
+  html |> string.contains("id=\"modal-tab-0\"") |> should.be_true()
+  html
+  |> string.contains("aria-controls=\"modal-tabpanel-0\"")
+  |> should.be_true()
+  html |> string.contains("id=\"modal-tab-1\"") |> should.be_true()
+  html
+  |> string.contains("aria-controls=\"modal-tabpanel-1\"")
+  |> should.be_true()
+  // Roving tabindex contract
+  html |> string.contains("tabindex=\"0\"") |> should.be_true()
+  html |> string.contains("tabindex=\"-1\"") |> should.be_true()
 }

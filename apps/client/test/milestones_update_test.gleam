@@ -17,6 +17,7 @@ import domain/task_type.{TaskTypeInline}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member as member_state
+import scrumbringer_client/client_state/member/milestone_details_tab
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/pool/msg as pool_messages
@@ -459,6 +460,8 @@ pub fn milestone_details_click_opens_view_dialog_test() {
 
   next.member.pool.member_milestone_dialog
   |> should.equal(member_pool.MilestoneDialogView(77))
+  next.member.pool.member_milestone_details_tab
+  |> should.equal(milestone_details_tab.MilestoneContentTab)
 }
 
 pub fn milestone_create_task_click_opens_task_dialog_with_milestone_test() {

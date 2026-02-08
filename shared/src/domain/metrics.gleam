@@ -211,3 +211,64 @@ pub type OrgMetricsUserOverview {
     last_claim_at: Option(String),
   )
 }
+
+/// Workflow breakdown item for modal metrics.
+pub type WorkflowBreakdown {
+  WorkflowBreakdown(name: String, count: Int)
+}
+
+/// Shared execution health metrics for card/milestone modal tabs.
+pub type ModalExecutionHealth {
+  ModalExecutionHealth(
+    avg_rebotes: Int,
+    avg_pool_lifetime_s: Int,
+    avg_executors: Int,
+  )
+}
+
+/// Milestone metrics payload used in milestone detail modal tab.
+pub type MilestoneModalMetrics {
+  MilestoneModalMetrics(
+    cards_total: Int,
+    cards_completed: Int,
+    cards_percent: Int,
+    tasks_total: Int,
+    tasks_completed: Int,
+    tasks_percent: Int,
+    tasks_available: Int,
+    tasks_claimed: Int,
+    tasks_ongoing: Int,
+    health: ModalExecutionHealth,
+    workflows: List(WorkflowBreakdown),
+    most_activated: Option(String),
+  )
+}
+
+/// Card metrics payload used in card detail modal tab.
+pub type CardModalMetrics {
+  CardModalMetrics(
+    tasks_total: Int,
+    tasks_completed: Int,
+    tasks_percent: Int,
+    tasks_available: Int,
+    tasks_claimed: Int,
+    tasks_ongoing: Int,
+    health: ModalExecutionHealth,
+    workflows: List(WorkflowBreakdown),
+    most_activated: Option(String),
+  )
+}
+
+/// Task metrics payload used in task detail modal tab.
+pub type TaskModalMetrics {
+  TaskModalMetrics(
+    claim_count: Int,
+    release_count: Int,
+    unique_executors: Int,
+    first_claim_at: Option(String),
+    current_state_duration_s: Int,
+    pool_lifetime_s: Int,
+    session_count: Int,
+    total_work_time_s: Int,
+  )
+}

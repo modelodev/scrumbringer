@@ -4,6 +4,7 @@ import domain/milestone as milestone_domain
 import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/http
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -12,6 +13,7 @@ import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
 import scrumbringer_server/services/authorization
+import scrumbringer_server/services/metrics_db
 import scrumbringer_server/services/milestones_db
 import wisp
 
@@ -84,13 +86,18 @@ fn handle_get(
   ctx: auth.Ctx,
   milestone_id: Int,
 ) -> wisp.Response {
+  let include_metrics = wants_metrics(req)
+
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
     Ok(user) -> {
       let auth.Ctx(db: db, ..) = ctx
       case milestones_db.get_milestone(db, milestone_id) {
         Error(milestones_db.NotFound) ->
-          api.error(404, "NOT_FOUND", "Milestone not found")
+          case include_metrics {
+            True -> api.error(404, "not_found", "Milestone not found")
+            False -> api.error(404, "NOT_FOUND", "Milestone not found")
+          }
         Error(milestones_db.DeleteNotAllowed) ->
           api.error(500, "INTERNAL", "Unexpected error")
         Error(milestones_db.DbError(_)) ->
@@ -99,14 +106,51 @@ fn handle_get(
           case
             authorization.is_project_member(db, user.id, milestone.project_id)
           {
-            False -> api.error(403, "FORBIDDEN", "Not a member of this project")
-            True ->
-              api.ok(json.object([#("milestone", milestone_json(milestone))]))
+            False ->
+              case include_metrics {
+                True ->
+                  api.error(403, "forbidden", "Not a member of this project")
+                False ->
+                  api.error(403, "FORBIDDEN", "Not a member of this project")
+              }
+            True -> {
+              case include_metrics {
+                True ->
+                  case metrics_db.get_milestone_metrics(db, milestone.id) {
+                    Ok(metrics) ->
+                      api.ok(
+                        json.object([
+                          #("id", json.string(int.to_string(milestone.id))),
+                          #("metrics", milestone_metrics_json(metrics)),
+                        ]),
+                      )
+                    Error(metrics_db.NotFound) ->
+                      api.error(404, "not_found", "Milestone not found")
+                    Error(metrics_db.MetricsUnavailable) ->
+                      api.error(
+                        409,
+                        "metrics_unavailable",
+                        "Metrics unavailable",
+                      )
+                    Error(metrics_db.DbError(_)) ->
+                      api.error(500, "internal", "Database error")
+                  }
+                False ->
+                  api.ok(
+                    json.object([#("milestone", milestone_json(milestone))]),
+                  )
+              }
+            }
           }
         }
       }
     }
   }
+}
+
+fn wants_metrics(req: wisp.Request) -> Bool {
+  wisp.get_query(req)
+  |> list.any(fn(pair) { pair.0 == "include" && pair.1 == "metrics" })
 }
 
 fn handle_create(
@@ -447,4 +491,77 @@ fn option_string_json(value: Option(String)) -> json.Json {
     None -> json.null()
     Some(v) -> json.string(v)
   }
+}
+
+fn milestone_metrics_json(metrics: metrics_db.MilestoneMetrics) -> json.Json {
+  let metrics_db.MilestoneMetrics(
+    cards_total: cards_total,
+    cards_completed: cards_completed,
+    tasks_total: tasks_total,
+    tasks_completed: tasks_completed,
+    tasks_available: tasks_available,
+    tasks_claimed: tasks_claimed,
+    tasks_ongoing: tasks_ongoing,
+    health: health,
+    workflows: workflows,
+    most_activated: most_activated,
+  ) = metrics
+
+  let metrics_db.ExecutionHealth(
+    avg_rebotes: avg_rebotes,
+    avg_pool_lifetime_s: avg_pool_lifetime_s,
+    avg_executors: avg_executors,
+  ) = health
+
+  json.object([
+    #(
+      "progress",
+      json.object([
+        #("cards_total", json.int(cards_total)),
+        #("cards_completed", json.int(cards_completed)),
+        #(
+          "cards_percent",
+          json.int(metrics_db.percent(cards_completed, cards_total)),
+        ),
+        #("tasks_total", json.int(tasks_total)),
+        #("tasks_completed", json.int(tasks_completed)),
+        #(
+          "tasks_percent",
+          json.int(metrics_db.percent(tasks_completed, tasks_total)),
+        ),
+      ]),
+    ),
+    #(
+      "states",
+      json.object([
+        #("available", json.int(tasks_available)),
+        #("claimed", json.int(tasks_claimed)),
+        #("ongoing", json.int(tasks_ongoing)),
+        #("completed", json.int(tasks_completed)),
+      ]),
+    ),
+    #(
+      "health",
+      json.object([
+        #("avg_rebotes", json.int(avg_rebotes)),
+        #("avg_pool_lifetime_s", json.int(avg_pool_lifetime_s)),
+        #("avg_executors", json.int(avg_executors)),
+      ]),
+    ),
+    #(
+      "workflows",
+      json.object([
+        #("items", json.array(workflows, of: workflow_count_json)),
+        #("most_activated", option_string_json(most_activated)),
+      ]),
+    ),
+  ])
+}
+
+fn workflow_count_json(value: metrics_db.WorkflowCount) -> json.Json {
+  let metrics_db.WorkflowCount(name: name, count: count) = value
+  json.object([
+    #("name", json.string(metrics_db.workflow_name_or_default(name))),
+    #("count", json.int(count)),
+  ])
 }

@@ -35,6 +35,7 @@ import lustre/element/html.{div, span, text}
 import lustre/event
 
 import domain/card.{type Card, type CardNote, CardNote}
+import domain/metrics.{type CardModalMetrics}
 import domain/task.{type Task, claimed_by}
 import domain/task_state
 import domain/task_status.{Available, Completed}
@@ -48,6 +49,7 @@ import scrumbringer_client/i18n/en as i18n_en
 import scrumbringer_client/i18n/es as i18n_es
 import scrumbringer_client/i18n/locale.{type Locale, En, Es}
 import scrumbringer_client/i18n/text as i18n_text
+import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/card_section_header
 import scrumbringer_client/ui/card_state
@@ -81,6 +83,7 @@ pub type Model {
     note_in_flight: Bool,
     note_error: Option(String),
     tasks: Remote(List(Task)),
+    metrics: Remote(CardModalMetrics),
   )
 }
 
@@ -94,6 +97,7 @@ pub type Msg {
   ProjectIdReceived(Int)
   CanManageNotesReceived(Bool)
   NotesReceived(ApiResult(List(CardNote)))
+  CardMetricsReceived(ApiResult(CardModalMetrics))
   TasksReceived(List(Task))
   // AC21: Tab navigation
   TabClicked(card_tabs.Tab)
@@ -335,6 +339,7 @@ fn init(_: Nil) -> #(Model, Effect(Msg)) {
       note_in_flight: False,
       note_error: option.None,
       tasks: NotAsked,
+      metrics: NotAsked,
     ),
     effect.none(),
   )
@@ -347,8 +352,8 @@ fn init(_: Nil) -> #(Model, Effect(Msg)) {
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     CardIdReceived(id) -> #(
-      Model(..model, card_id: option.Some(id), notes: Loading),
-      fetch_notes(id),
+      Model(..model, card_id: option.Some(id), notes: Loading, metrics: Loading),
+      effect.batch([fetch_notes(id), fetch_metrics(id)]),
     )
 
     CardReceived(card) -> #(
@@ -380,6 +385,16 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     NotesReceived(Error(err)) -> #(
       Model(..model, notes: Failed(err), note_error: option.Some(err.message)),
+      effect.none(),
+    )
+
+    CardMetricsReceived(Ok(metrics)) -> #(
+      Model(..model, metrics: Loaded(metrics)),
+      effect.none(),
+    )
+
+    CardMetricsReceived(Error(err)) -> #(
+      Model(..model, metrics: Failed(err)),
       effect.none(),
     )
 
@@ -460,6 +475,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
 fn fetch_notes(card_id: Int) -> Effect(Msg) {
   api_cards.get_card_notes(card_id, NotesReceived)
+}
+
+fn fetch_metrics(card_id: Int) -> Effect(Msg) {
+  api_cards.get_card_metrics(card_id, CardMetricsReceived)
 }
 
 fn handle_submit_note(model: Model) -> #(Model, Effect(Msg)) {
@@ -593,16 +612,30 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
             labels: card_tabs.Labels(
               tasks: t(model.locale, i18n_text.TabTasks),
               notes: t(model.locale, i18n_text.TabNotes),
+              metrics: t(model.locale, i18n_text.TabMetrics),
             ),
             on_tab_click: TabClicked,
           )),
         ]),
         div([attribute.class("modal-body card-detail-body")], [
           // AC21: Conditional section rendering based on active tab
-          case model.active_tab {
-            card_tabs.TasksTab -> view_card_tasks_section(model)
-            card_tabs.NotesTab -> view_card_notes_section(model)
-          },
+          div(
+            [
+              attribute.attribute("role", "tabpanel"),
+              attribute.id(card_tabpanel_id(model.active_tab)),
+              attribute.attribute(
+                "aria-labelledby",
+                card_tab_id(model.active_tab),
+              ),
+            ],
+            [
+              case model.active_tab {
+                card_tabs.TasksTab -> view_card_tasks_section(model)
+                card_tabs.NotesTab -> view_card_notes_section(model)
+                card_tabs.MetricsTab -> view_card_metrics_section(model)
+              },
+            ],
+          ),
         ]),
       ],
     ),
@@ -805,6 +838,177 @@ fn view_task_item(task: Task) -> Element(Msg) {
     span([attribute.class("card-task-title")], [text(task.title)]),
     span([attribute.class("card-task-info")], [text(claimed_text)]),
   ])
+}
+
+fn view_card_metrics_section(model: Model) -> Element(Msg) {
+  case model.metrics {
+    NotAsked | Loading ->
+      div([attribute.class("card-metrics-loading")], [
+        text(t(model.locale, i18n_text.LoadingMetrics)),
+      ])
+
+    Failed(_err) ->
+      div([attribute.class("card-metrics-error")], [
+        text(t(model.locale, i18n_text.MetricsLoadError)),
+      ])
+
+    Loaded(metrics) ->
+      case metrics.tasks_total == 0 {
+        True ->
+          div([attribute.class("card-metrics-empty")], [
+            text(t(model.locale, i18n_text.MetricsEmptyState)),
+          ])
+        False ->
+          div([attribute.class("card-metrics-grid")], [
+            div([attribute.class("card-detail-progress-bar")], [
+              div(
+                [
+                  attribute.class("card-detail-progress-fill"),
+                  attribute.attribute(
+                    "style",
+                    "width: " <> int.to_string(metrics.tasks_percent) <> "%",
+                  ),
+                ],
+                [],
+              ),
+            ]),
+            view_metrics_row(
+              t(model.locale, i18n_text.MetricsTasksTotal),
+              int.to_string(metrics.tasks_total),
+            ),
+            view_metrics_row(
+              t(model.locale, i18n_text.MetricsTasksCompleted),
+              int.to_string(metrics.tasks_completed),
+            ),
+            view_metrics_row(
+              t(model.locale, i18n_text.MetricsProgress),
+              int.to_string(metrics.tasks_percent) <> "%",
+            ),
+            view_metrics_row(
+              t(model.locale, i18n_text.MetricsAvailable),
+              int.to_string(metrics.tasks_available),
+            ),
+            view_metrics_row(
+              t(model.locale, i18n_text.MetricsClaimed),
+              int.to_string(metrics.tasks_claimed),
+            ),
+            view_metrics_row(
+              t(model.locale, i18n_text.MetricsOngoing),
+              int.to_string(metrics.tasks_ongoing),
+            ),
+            div([attribute.class("assignments-metrics")], [
+              badge.quick(
+                t(model.locale, i18n_text.MetricsAvailable)
+                  <> ": "
+                  <> int.to_string(metrics.tasks_available),
+                badge.Neutral,
+              ),
+              badge.quick(
+                t(model.locale, i18n_text.MetricsClaimed)
+                  <> ": "
+                  <> int.to_string(metrics.tasks_claimed),
+                badge.Primary,
+              ),
+              badge.quick(
+                t(model.locale, i18n_text.MetricsOngoing)
+                  <> ": "
+                  <> int.to_string(metrics.tasks_ongoing),
+                badge.Warning,
+              ),
+              badge.quick(
+                t(model.locale, i18n_text.MetricsTasksCompleted)
+                  <> ": "
+                  <> int.to_string(metrics.tasks_completed),
+                badge.Success,
+              ),
+            ]),
+            view_metrics_row(
+              t(model.locale, i18n_text.MetricsRebotesAvg),
+              int.to_string(metrics.health.avg_rebotes),
+            ),
+            view_metrics_row(
+              t(model.locale, i18n_text.MetricsPoolLifetimeAvg),
+              format_duration_s(metrics.health.avg_pool_lifetime_s),
+            ),
+            view_metrics_row(
+              t(model.locale, i18n_text.MetricsAvgExecutors),
+              int.to_string(metrics.health.avg_executors),
+            ),
+            view_metrics_row(
+              t(model.locale, i18n_text.MetricsMostActivated),
+              metrics.most_activated
+                |> option.unwrap(t(model.locale, i18n_text.MetricsNotAvailable)),
+            ),
+            div([attribute.class("milestone-workflows")], [
+              span([attribute.class("detail-label")], [
+                text(t(model.locale, i18n_text.MetricsWorkflows)),
+              ]),
+              div([attribute.class("metrics-workflow-list")], [
+                case metrics.workflows {
+                  [] ->
+                    div([attribute.class("metrics-workflow-empty")], [
+                      text(t(model.locale, i18n_text.MetricsNotAvailable)),
+                    ])
+                  _ ->
+                    div(
+                      [attribute.class("metrics-workflow-items")],
+                      list.map(metrics.workflows, fn(item) {
+                        div([attribute.class("metrics-workflow-item")], [
+                          span([attribute.class("metrics-workflow-name")], [
+                            text(item.name),
+                          ]),
+                          badge.quick(int.to_string(item.count), badge.Primary),
+                        ])
+                      }),
+                    )
+                },
+              ]),
+            ]),
+          ])
+      }
+  }
+}
+
+fn format_duration_s(seconds: Int) -> String {
+  let total = case seconds < 0 {
+    True -> 0
+    False -> seconds
+  }
+  let hours = total / 3600
+  let rem_hour = total - hours * 3600
+  let mins = rem_hour / 60
+  let secs = rem_hour - mins * 60
+  case hours > 0 {
+    True -> int.to_string(hours) <> "h " <> int.to_string(mins) <> "m"
+    False ->
+      case mins > 0 {
+        True -> int.to_string(mins) <> "m " <> int.to_string(secs) <> "s"
+        False -> int.to_string(secs) <> "s"
+      }
+  }
+}
+
+fn view_metrics_row(label: String, value: String) -> Element(Msg) {
+  div([attribute.class("detail-row")], [
+    span([attribute.class("detail-label")], [text(label)]),
+    span([attribute.class("detail-value")], [text(value)]),
+  ])
+}
+
+fn card_tabpanel_id(tab: card_tabs.Tab) -> String {
+  case tab {
+    card_tabs.TasksTab -> "modal-tabpanel-0"
+    card_tabs.NotesTab -> "modal-tabpanel-1"
+    card_tabs.MetricsTab -> "modal-tabpanel-2"
+  }
+}
+
+fn card_tab_id(tab: card_tabs.Tab) -> String {
+  case tab {
+    card_tabs.TasksTab -> "modal-tab-0"
+    card_tabs.NotesTab -> "modal-tab-1"
+    card_tabs.MetricsTab -> "modal-tab-2"
+  }
 }
 
 // =============================================================================

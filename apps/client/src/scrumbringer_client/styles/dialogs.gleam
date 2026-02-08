@@ -9,7 +9,7 @@ pub fn css() -> List(String) {
     ".dialog-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 1000; animation: dialog-fade-in 0.2s ease; }",
     "@keyframes dialog-fade-in { from { opacity: 0; } to { opacity: 1; } }",
     // Dialog container
-    ".dialog { position: relative; background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 16px; padding: 0; max-height: calc(100vh - 32px); display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); animation: dialog-scale-in 0.2s ease; }",
+    ".dialog { position: relative; background: var(--sb-surface-1); border: 1px solid var(--sb-border); border-radius: 16px; padding: 0; max-height: calc(100vh - 32px); display: flex; flex-direction: column; box-shadow: var(--sb-shadow-modal); animation: dialog-scale-in 0.2s ease; }",
     "@keyframes dialog-scale-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }",
     // Dialog sizes
     ".dialog-sm { width: min(400px, 100%); }",
@@ -18,20 +18,20 @@ pub fn css() -> List(String) {
     ".dialog-lg-tight { width: min(620px, 100%); }",
     ".dialog-xl { width: min(860px, 100%); }",
     // Dialog header
-    ".dialog-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--sb-border); }",
+    ".dialog-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--sb-border); background: var(--sb-surface-2); }",
     ".dialog-title { display: flex; align-items: center; gap: 10px; }",
     ".dialog-title h3 { margin: 0; font-size: 18px; font-weight: 600; }",
     ".dialog-icon { font-size: 20px; }",
-    ".dialog-close { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: none; background: transparent; color: var(--sb-muted); cursor: pointer; border-radius: 8px; font-size: 18px; line-height: 1; }",
+    ".dialog-close { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: none; background: transparent; color: var(--sb-muted); cursor: pointer; border-radius: 10px; font-size: 18px; line-height: 1; }",
     ".dialog-close:hover { background: var(--sb-hover); color: var(--sb-text); }",
     // Dialog body
-    ".dialog-body { padding: 20px; overflow-y: auto; flex: 1; }",
+    ".dialog-body { padding: 20px; overflow-y: auto; flex: 1; background: var(--sb-surface-1); }",
     // Story 4.8 UX: Allow color picker dropdown to overflow dialog-body when open
     ".dialog-body:has(.color-picker.open) { overflow: visible; }",
     // Dialog error
     ".dialog-error { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: color-mix(in oklab, var(--sb-danger) 10%, var(--sb-surface)); border: 1px solid color-mix(in oklab, var(--sb-danger) 30%, var(--sb-border)); border-radius: 10px; margin: 0 20px 0 20px; margin-top: -4px; color: var(--sb-danger); font-size: 14px; }",
     // Dialog footer
-    ".dialog-footer { display: flex; justify-content: flex-end; gap: 12px; padding: 16px 20px; border-top: 1px solid var(--sb-border); }",
+    ".dialog-footer { display: flex; justify-content: flex-end; gap: 12px; padding: 16px 20px; border-top: 1px solid var(--sb-border); background: var(--sb-surface-2); }",
     ".dialog-footer .btn-compact { padding-left: 14px; padding-right: 14px; }",
     // Add button (for opening dialogs)
     ".btn-add { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; background: var(--sb-primary); color: var(--sb-inverse); border: none; border-radius: 10px; font-weight: 500; cursor: pointer; transition: background 0.2s, transform 0.1s; }",

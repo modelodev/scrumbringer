@@ -104,6 +104,7 @@ type BuildState {
     workflow_ids: List(Int),
     workflow_ids_by_project: List(#(Int, List(Int))),
     rule_ids: List(Int),
+    rule_ids_by_project: List(#(Int, List(Int))),
     task_ids: List(Int),
     task_seeds: List(TaskSeedInfo),
     template_ids: List(Int),
@@ -226,6 +227,7 @@ pub fn build_seed(
       workflow_ids: [],
       workflow_ids_by_project: [],
       rule_ids: [],
+      rule_ids_by_project: [],
       task_ids: [],
       task_seeds: [],
       template_ids: [],
@@ -648,15 +650,15 @@ fn build_rules(
   state: BuildState,
   config: SeedConfig,
 ) -> Result(BuildState, String) {
-  use rule_ids_nested <- result.try(
+  use rule_ids_by_project <- result.try(
     list.try_map(state.workflow_ids_by_project, fn(pair) {
       let #(project_id, wf_ids) = pair
       let task_types = task_types_for_project(state.task_type_ids, project_id)
       let wf_ids = list.drop(wf_ids, config.empty_workflow_count)
 
       case wf_ids, task_types {
-        [], _ -> Ok([])
-        _, None -> Ok([])
+        [], _ -> Ok(#(project_id, []))
+        _, None -> Ok(#(project_id, []))
         [active_wf, inactive_wf], Some(#(bug_id, feature_id, _task_id)) -> {
           use active_rule <- result.try(seed_db.insert_rule(
             db,
@@ -686,7 +688,7 @@ fn build_rules(
             ),
           ))
 
-          Ok([active_rule, inactive_rule])
+          Ok(#(project_id, [active_rule, inactive_rule]))
         }
         [single_wf], Some(#(bug_id, _feature_id, _task_id)) ->
           seed_db.insert_rule(
@@ -702,13 +704,27 @@ fn build_rules(
               created_at: None,
             ),
           )
-          |> result.map(fn(id) { [id] })
-        _, _ -> Ok([])
+          |> result.map(fn(id) { #(project_id, [id]) })
+        _, _ -> Ok(#(project_id, []))
       }
     }),
   )
 
-  Ok(BuildState(..state, rule_ids: list.flatten(rule_ids_nested)))
+  let rule_ids =
+    rule_ids_by_project
+    |> list.map(fn(pair) {
+      let #(_project_id, ids) = pair
+      ids
+    })
+    |> list.flatten
+
+  Ok(
+    BuildState(
+      ..state,
+      rule_ids: rule_ids,
+      rule_ids_by_project: rule_ids_by_project,
+    ),
+  )
 }
 
 fn build_tasks(
@@ -750,6 +766,8 @@ fn build_tasks(
       let creator_id = list_at_int(state.user_ids, proj_idx, state.admin_id)
       let claimed_user_id = claimed_member_id(state, project_id, creator_id)
       let members = members_for_project(state.project_member_ids, project_id)
+      let project_rule_ids =
+        rule_ids_for_project(state.rule_ids_by_project, project_id)
       let base_days = int.max(1, config.date_range_days - { proj_idx * 3 })
 
       let tasks = [
@@ -818,6 +836,11 @@ fn build_tasks(
         let priority = list_at_int(priorities, idx % list.length(priorities), 3)
         let creator_for = list_at_int(state.user_ids, idx, state.admin_id)
         let claimed_user_for = member_for_index(members, idx, claimed_user_id)
+        let created_from_rule_id =
+          seeded_rule_for_task(project_rule_ids, idx, proj_idx)
+        let pool_lifetime_s = seeded_pool_lifetime_s(status, idx, proj_idx)
+        let last_entered_pool_at =
+          seeded_last_entered_pool_at(status, pool_lifetime_s, base_days, idx)
         let #(claimed_by, claimed_at, completed_at) = case status {
           "claimed" -> #(
             Some(claimed_user_for),
@@ -847,9 +870,12 @@ fn build_tasks(
             created_by: creator_for,
             claimed_by: claimed_by,
             card_id: card_id,
+            created_from_rule_id: created_from_rule_id,
+            pool_lifetime_s: pool_lifetime_s,
             created_at: Some(created_at),
             claimed_at: claimed_at,
             completed_at: completed_at,
+            last_entered_pool_at: last_entered_pool_at,
           ),
         )
         |> result.map(fn(task_id) {
@@ -1537,4 +1563,76 @@ fn task_types_for_active_projects(
     let #(project_id, _, _, _) = entry
     !list.contains(state.empty_project_ids, project_id)
   })
+}
+
+fn rule_ids_for_project(
+  rule_ids_by_project: List(#(Int, List(Int))),
+  project_id: Int,
+) -> List(Int) {
+  case
+    list.find(rule_ids_by_project, fn(pair) {
+      let #(pid, _rule_ids) = pair
+      pid == project_id
+    })
+  {
+    Ok(#(_pid, rule_ids)) -> rule_ids
+    Error(_) -> []
+  }
+}
+
+fn seeded_rule_for_task(
+  project_rule_ids: List(Int),
+  task_idx: Int,
+  _project_idx: Int,
+) -> Option(Int) {
+  case project_rule_ids {
+    [] -> None
+    _ ->
+      case task_idx % 5 == 0 {
+        // Keep a stable "sin workflow" bucket for metrics tabs.
+        True -> None
+        False -> {
+          let rule_idx = task_idx % list.length(project_rule_ids)
+          Some(list_at_int(project_rule_ids, rule_idx, 0))
+        }
+      }
+  }
+}
+
+fn seeded_pool_lifetime_s(
+  status: String,
+  task_idx: Int,
+  project_idx: Int,
+) -> Int {
+  let base_idx = task_idx + project_idx
+  let base = case base_idx % 4 {
+    0 -> 0
+    1 -> 900
+    2 -> 3600
+    _ -> 14_400
+  }
+
+  case status {
+    "available" -> base
+    "claimed" -> int.max(300, base)
+    "completed" -> int.max(900, base)
+    _ -> base
+  }
+}
+
+fn seeded_last_entered_pool_at(
+  status: String,
+  pool_lifetime_s: Int,
+  base_days: Int,
+  task_idx: Int,
+) -> Option(String) {
+  case status {
+    "available" ->
+      case pool_lifetime_s > 0 {
+        True ->
+          Some(days_ago_timestamp(int.max(1, base_days - { task_idx % 5 })))
+        False -> None
+      }
+    _ -> None
+  }
 }

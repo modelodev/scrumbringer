@@ -12,7 +12,11 @@ pub fn renders_tabs_with_correct_labels_test() {
       active_tab: card_tabs.TasksTab,
       notes_count: 3,
       has_new_notes: False,
-      labels: card_tabs.Labels(tasks: "TAREAS", notes: "NOTAS"),
+      labels: card_tabs.Labels(
+        tasks: "TAREAS",
+        notes: "NOTAS",
+        metrics: "METRICAS",
+      ),
       on_tab_click: fn(tab) { tab },
     )
 
@@ -29,7 +33,11 @@ pub fn tareas_tab_active_by_default_test() {
       active_tab: card_tabs.TasksTab,
       notes_count: 0,
       has_new_notes: False,
-      labels: card_tabs.Labels(tasks: "TAREAS", notes: "NOTAS"),
+      labels: card_tabs.Labels(
+        tasks: "TAREAS",
+        notes: "NOTAS",
+        metrics: "METRICAS",
+      ),
       on_tab_click: fn(tab) { tab },
     )
 
@@ -45,7 +53,11 @@ pub fn notes_tab_shows_badge_for_new_notes_test() {
       active_tab: card_tabs.TasksTab,
       notes_count: 2,
       has_new_notes: True,
-      labels: card_tabs.Labels(tasks: "TAREAS", notes: "NOTAS"),
+      labels: card_tabs.Labels(
+        tasks: "TAREAS",
+        notes: "NOTAS",
+        metrics: "METRICAS",
+      ),
       on_tab_click: fn(tab) { tab },
     )
 

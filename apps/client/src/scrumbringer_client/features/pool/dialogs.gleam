@@ -401,23 +401,15 @@ fn view_task_tabs(model: Model) -> Element(Msg) {
     Failed(_) -> 0
   }
 
-  let dependencies_count = case model.member.dependencies.member_dependencies {
-    Loaded(deps) -> list.length(deps)
-    NotAsked -> 0
-    Loading -> 0
-    Failed(_) -> 0
-  }
-
   task_tabs.view(
     task_tabs.Config(
       active_tab: model.member.pool.member_task_detail_tab,
-      dependencies_count: dependencies_count,
       notes_count: notes_count,
       has_new_notes: False,
       labels: task_tabs.Labels(
-        details: helpers_i18n.i18n_t(model, i18n_text.TabDetails),
-        dependencies: helpers_i18n.i18n_t(model, i18n_text.TabDependencies),
+        tasks: helpers_i18n.i18n_t(model, i18n_text.TabTasks),
         notes: helpers_i18n.i18n_t(model, i18n_text.TabNotes),
+        metrics: helpers_i18n.i18n_t(model, i18n_text.TabMetrics),
       ),
       on_tab_click: fn(tab) {
         pool_msg(pool_messages.MemberTaskDetailTabClicked(tab))
@@ -432,11 +424,154 @@ fn view_task_tab_content(
   task_id: Int,
   task: opt.Option(task.Task),
 ) -> Element(Msg) {
-  case model.member.pool.member_task_detail_tab {
-    task_tabs.DetailsTab -> view_task_details_tab(model, task)
-    task_tabs.DependenciesTab -> view_dependencies(model, task_id, task)
+  let panel = case model.member.pool.member_task_detail_tab {
+    task_tabs.TasksTab ->
+      div([attribute.class("task-detail-grid")], [
+        view_task_details_tab(model, task),
+        view_dependencies(model, task_id, task),
+      ])
     task_tabs.NotesTab -> view_notes(model, task_id)
+    task_tabs.MetricsTab -> view_task_metrics(model)
   }
+
+  div(
+    [
+      attribute.attribute("role", "tabpanel"),
+      attribute.id(task_tabpanel_id(model.member.pool.member_task_detail_tab)),
+      attribute.attribute(
+        "aria-labelledby",
+        task_tab_id(model.member.pool.member_task_detail_tab),
+      ),
+    ],
+    [panel],
+  )
+}
+
+fn task_tabpanel_id(tab: task_tabs.Tab) -> String {
+  case tab {
+    task_tabs.TasksTab -> "modal-tabpanel-0"
+    task_tabs.NotesTab -> "modal-tabpanel-1"
+    task_tabs.MetricsTab -> "modal-tabpanel-2"
+  }
+}
+
+fn task_tab_id(tab: task_tabs.Tab) -> String {
+  case tab {
+    task_tabs.TasksTab -> "modal-tab-0"
+    task_tabs.NotesTab -> "modal-tab-1"
+    task_tabs.MetricsTab -> "modal-tab-2"
+  }
+}
+
+fn view_task_metrics(model: Model) -> Element(Msg) {
+  case model.member.pool.member_task_detail_metrics {
+    NotAsked | Loading ->
+      div([attribute.class("task-metrics-empty")], [
+        text(helpers_i18n.i18n_t(model, i18n_text.LoadingMetrics)),
+      ])
+    Failed(_err) ->
+      div([attribute.class("task-metrics-empty")], [
+        text(helpers_i18n.i18n_t(model, i18n_text.MetricsLoadError)),
+      ])
+    Loaded(metrics) -> {
+      let is_empty =
+        metrics.claim_count
+        + metrics.release_count
+        + metrics.unique_executors
+        + metrics.current_state_duration_s
+        + metrics.pool_lifetime_s
+        + metrics.session_count
+        + metrics.total_work_time_s
+        == 0
+        && metrics.first_claim_at == opt.None
+
+      case is_empty {
+        True ->
+          div([attribute.class("task-metrics-empty")], [
+            text(helpers_i18n.i18n_t(model, i18n_text.MetricsEmptyState)),
+          ])
+        False ->
+          div([attribute.class("task-metrics-grid")], [
+            view_detail_row(
+              model,
+              i18n_text.MetricsClaimCount,
+              int.to_string(metrics.claim_count),
+            ),
+            view_detail_row(
+              model,
+              i18n_text.MetricsReleaseCount,
+              int.to_string(metrics.release_count),
+            ),
+            view_detail_row(
+              model,
+              i18n_text.MetricsUniqueExecutors,
+              int.to_string(metrics.unique_executors),
+            ),
+            view_detail_row(
+              model,
+              i18n_text.MetricsFirstClaimAt,
+              metrics.first_claim_at
+                |> opt.unwrap(helpers_i18n.i18n_t(
+                  model,
+                  i18n_text.MetricsNotAvailable,
+                )),
+            ),
+            view_detail_row(
+              model,
+              i18n_text.MetricsCurrentStateTime,
+              format_duration_s(metrics.current_state_duration_s),
+            ),
+            view_detail_row(
+              model,
+              i18n_text.MetricsPoolLifetime,
+              format_duration_s(metrics.pool_lifetime_s),
+            ),
+            view_detail_row(
+              model,
+              i18n_text.MetricsSessionCount,
+              int.to_string(metrics.session_count),
+            ),
+            view_detail_row(
+              model,
+              i18n_text.MetricsTotalWorkTime,
+              format_duration_s(metrics.total_work_time_s),
+            ),
+          ])
+      }
+    }
+  }
+}
+
+fn format_duration_s(seconds: Int) -> String {
+  let total = case seconds < 0 {
+    True -> 0
+    False -> seconds
+  }
+  let hours = total / 3600
+  let rem_hour = total - hours * 3600
+  let mins = rem_hour / 60
+  let secs = rem_hour - mins * 60
+  case hours > 0 {
+    True -> int.to_string(hours) <> "h " <> int.to_string(mins) <> "m"
+    False ->
+      case mins > 0 {
+        True -> int.to_string(mins) <> "m " <> int.to_string(secs) <> "s"
+        False -> int.to_string(secs) <> "s"
+      }
+  }
+}
+
+fn view_detail_row(
+  model: Model,
+  label: i18n_text.Text,
+  value: String,
+) -> Element(Msg) {
+  div([attribute.class("detail-row")], [
+    span([attribute.class("detail-label")], [
+      text(helpers_i18n.i18n_t(model, label)),
+    ]),
+    span([attribute.class("detail-value")], [text(value)]),
+  ])
 }
 
 /// Renders the dependencies section for a task.

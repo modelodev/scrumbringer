@@ -1126,15 +1126,15 @@ fn view_details_dialog(model: client_state.Model) -> Element(client_state.Msg) {
         tabs.config(
           tabs: [
             tabs.TabItem(
-              id: milestone_details_tab.MilestoneOverviewTab,
-              label: helpers_i18n.i18n_t(model, i18n_text.MilestoneTabOverview),
-              count: option.None,
-              has_indicator: False,
-            ),
-            tabs.TabItem(
               id: milestone_details_tab.MilestoneContentTab,
               label: helpers_i18n.i18n_t(model, i18n_text.MilestoneTabContent),
               count: option.Some(progress.cards_total + progress.tasks_total),
+              has_indicator: False,
+            ),
+            tabs.TabItem(
+              id: milestone_details_tab.MilestoneMetricsTab,
+              label: helpers_i18n.i18n_t(model, i18n_text.TabMetrics),
+              count: option.None,
               has_indicator: False,
             ),
           ],
@@ -1149,33 +1149,32 @@ fn view_details_dialog(model: client_state.Model) -> Element(client_state.Msg) {
         )
 
       let tab_content = case model.member.pool.member_milestone_details_tab {
-        milestone_details_tab.MilestoneOverviewTab ->
-          div([attribute.class("milestone-details-overview")], [
-            case progress.milestone.description {
-              option.Some(description) if description != "" ->
-                p([], [text(description)])
-              _ -> none()
-            },
-            p([attribute.class("milestone-item-description")], [
-              text(
-                helpers_i18n.i18n_t(model, i18n_text.MilestoneCardsLabel)
-                <> ": "
-                <> int.to_string(progress.cards_total)
-                <> " · "
-                <> helpers_i18n.i18n_t(model, i18n_text.MilestoneTasksLabel)
-                <> ": "
-                <> int.to_string(progress.tasks_total),
-              ),
-            ]),
-          ])
-
-        milestone_details_tab.MilestoneContentTab ->
+        milestone_details_tab.MilestoneOverviewTab
+        | milestone_details_tab.MilestoneContentTab ->
           div([attribute.class("milestone-details-content")], [
             create_actions,
             view_cards_section(model, milestone_id),
             view_loose_tasks_section(model, milestone_id),
           ])
+
+        milestone_details_tab.MilestoneMetricsTab ->
+          view_milestone_metrics_tab(model)
       }
+
+      let tab_content =
+        div(
+          [
+            attribute.attribute("role", "tabpanel"),
+            attribute.id(milestone_tabpanel_id(
+              model.member.pool.member_milestone_details_tab,
+            )),
+            attribute.attribute(
+              "aria-labelledby",
+              milestone_tab_id(model.member.pool.member_milestone_details_tab),
+            ),
+          ],
+          [tab_content],
+        )
 
       dialog.view(
         dialog.DialogConfig(
@@ -1328,6 +1327,201 @@ fn view_activate_dialog(model: client_state.Model) -> Element(client_state.Msg) 
       )
     option.None -> none()
   }
+}
+
+fn milestone_tabpanel_id(
+  tab: milestone_details_tab.MilestoneDetailsTab,
+) -> String {
+  case tab {
+    milestone_details_tab.MilestoneOverviewTab
+    | milestone_details_tab.MilestoneContentTab -> "modal-tabpanel-0"
+    milestone_details_tab.MilestoneMetricsTab -> "modal-tabpanel-1"
+  }
+}
+
+fn milestone_tab_id(tab: milestone_details_tab.MilestoneDetailsTab) -> String {
+  case tab {
+    milestone_details_tab.MilestoneOverviewTab
+    | milestone_details_tab.MilestoneContentTab -> "modal-tab-0"
+    milestone_details_tab.MilestoneMetricsTab -> "modal-tab-1"
+  }
+}
+
+fn view_milestone_metrics_tab(
+  model: client_state.Model,
+) -> Element(client_state.Msg) {
+  case model.member.pool.member_milestone_metrics {
+    NotAsked | Loading ->
+      div([attribute.class("milestone-metrics-loading")], [
+        text(helpers_i18n.i18n_t(model, i18n_text.LoadingMetrics)),
+      ])
+
+    Failed(_err) ->
+      div([attribute.class("milestone-metrics-error")], [
+        text(helpers_i18n.i18n_t(model, i18n_text.MetricsLoadError)),
+      ])
+
+    Loaded(metrics) ->
+      case metrics.cards_total + metrics.tasks_total == 0 {
+        True ->
+          div([attribute.class("milestone-metrics-empty")], [
+            text(helpers_i18n.i18n_t(model, i18n_text.MetricsEmptyState)),
+          ])
+        False ->
+          div([attribute.class("milestone-metrics-grid")], [
+            view_metric_row(
+              model,
+              i18n_text.MilestoneCardsLabel,
+              int.to_string(metrics.cards_completed)
+                <> "/"
+                <> int.to_string(metrics.cards_total)
+                <> " ("
+                <> int.to_string(metrics.cards_percent)
+                <> "%)",
+            ),
+            view_metric_row(
+              model,
+              i18n_text.MilestoneTasksLabel,
+              int.to_string(metrics.tasks_completed)
+                <> "/"
+                <> int.to_string(metrics.tasks_total)
+                <> " ("
+                <> int.to_string(metrics.tasks_percent)
+                <> "%)",
+            ),
+            view_metric_row(
+              model,
+              i18n_text.MilestoneTaskStatusAvailable,
+              int.to_string(metrics.tasks_available),
+            ),
+            view_metric_row(
+              model,
+              i18n_text.MilestoneTaskStatusClaimed,
+              int.to_string(metrics.tasks_claimed),
+            ),
+            view_metric_row(
+              model,
+              i18n_text.MetricsOngoing,
+              int.to_string(metrics.tasks_ongoing),
+            ),
+            view_metric_row(
+              model,
+              i18n_text.MilestoneTaskStatusCompleted,
+              int.to_string(metrics.tasks_completed),
+            ),
+            div([attribute.class("assignments-metrics")], [
+              badge.quick(
+                helpers_i18n.i18n_t(model, i18n_text.MetricsAvailable)
+                  <> ": "
+                  <> int.to_string(metrics.tasks_available),
+                badge.Neutral,
+              ),
+              badge.quick(
+                helpers_i18n.i18n_t(model, i18n_text.MetricsClaimed)
+                  <> ": "
+                  <> int.to_string(metrics.tasks_claimed),
+                badge.Primary,
+              ),
+              badge.quick(
+                helpers_i18n.i18n_t(model, i18n_text.MetricsOngoing)
+                  <> ": "
+                  <> int.to_string(metrics.tasks_ongoing),
+                badge.Warning,
+              ),
+              badge.quick(
+                helpers_i18n.i18n_t(model, i18n_text.MetricsTasksCompleted)
+                  <> ": "
+                  <> int.to_string(metrics.tasks_completed),
+                badge.Success,
+              ),
+            ]),
+            view_metric_row(
+              model,
+              i18n_text.MetricsRebotesAvg,
+              int.to_string(metrics.health.avg_rebotes),
+            ),
+            view_metric_row(
+              model,
+              i18n_text.MetricsPoolLifetimeAvg,
+              format_duration_s(metrics.health.avg_pool_lifetime_s),
+            ),
+            view_metric_row(
+              model,
+              i18n_text.MetricsAvgExecutors,
+              int.to_string(metrics.health.avg_executors),
+            ),
+            view_metric_row(
+              model,
+              i18n_text.MetricsMostActivated,
+              metrics.most_activated
+                |> option.unwrap(helpers_i18n.i18n_t(
+                  model,
+                  i18n_text.MetricsNotAvailable,
+                )),
+            ),
+            div([attribute.class("milestone-workflows")], [
+              span([attribute.class("detail-label")], [
+                text(helpers_i18n.i18n_t(model, i18n_text.MetricsWorkflows)),
+              ]),
+              div([attribute.class("metrics-workflow-list")], [
+                case metrics.workflows {
+                  [] ->
+                    div([attribute.class("metrics-workflow-empty")], [
+                      text(helpers_i18n.i18n_t(
+                        model,
+                        i18n_text.MetricsNotAvailable,
+                      )),
+                    ])
+                  _ ->
+                    div(
+                      [attribute.class("metrics-workflow-items")],
+                      list.map(metrics.workflows, fn(item) {
+                        div([attribute.class("metrics-workflow-item")], [
+                          span([attribute.class("metrics-workflow-name")], [
+                            text(item.name),
+                          ]),
+                          badge.quick(int.to_string(item.count), badge.Primary),
+                        ])
+                      }),
+                    )
+                },
+              ]),
+            ]),
+          ])
+      }
+  }
+}
+
+fn format_duration_s(seconds: Int) -> String {
+  let total = case seconds < 0 {
+    True -> 0
+    False -> seconds
+  }
+  let hours = total / 3600
+  let rem_hour = total - hours * 3600
+  let mins = rem_hour / 60
+  let secs = rem_hour - mins * 60
+  case hours > 0 {
+    True -> int.to_string(hours) <> "h " <> int.to_string(mins) <> "m"
+    False ->
+      case mins > 0 {
+        True -> int.to_string(mins) <> "m " <> int.to_string(secs) <> "s"
+        False -> int.to_string(secs) <> "s"
+      }
+  }
+}
+
+fn view_metric_row(
+  model: client_state.Model,
+  label: i18n_text.Text,
+  value: String,
+) -> Element(client_state.Msg) {
+  div([attribute.class("detail-row")], [
+    span([attribute.class("detail-label")], [
+      text(helpers_i18n.i18n_t(model, label)),
+    ]),
+    span([attribute.class("detail-value")], [text(value)]),
+  ])
 }
 
 fn view_edit_dialog(model: client_state.Model) -> Element(client_state.Msg) {

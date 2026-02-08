@@ -4,6 +4,9 @@ import gleam/dict.{type Dict}
 import gleam/option.{type Option}
 
 import domain/card.{type Card}
+import domain/metrics.{
+  type CardModalMetrics, type MilestoneModalMetrics, type TaskModalMetrics,
+}
 import domain/milestone.{type MilestoneProgress}
 import domain/project.{type ProjectMember}
 import domain/remote.{type Remote, NotAsked}
@@ -71,6 +74,7 @@ pub type Model {
     member_milestone_dialog_in_flight: Bool,
     member_milestone_dialog_error: Option(String),
     member_milestone_details_tab: milestone_details_tab.MilestoneDetailsTab,
+    member_milestone_metrics: Remote(MilestoneModalMetrics),
     member_milestone_drag_item: Option(MilestoneDragItem),
     member_task_mutation_in_flight: Bool,
     member_task_mutation_task_id: Option(Int),
@@ -102,7 +106,9 @@ pub type Model {
     member_pool_touch_client_y: Int,
     member_pool_preview_task_id: Option(Int),
     card_detail_open: Option(Int),
+    card_detail_metrics: Remote(CardModalMetrics),
     member_task_detail_tab: task_tabs.Tab,
+    member_task_detail_metrics: Remote(TaskModalMetrics),
     member_blocked_claim_task: Option(#(Int, Int)),
     member_highlight_state: HighlightState,
     people_roster: Remote(List(ProjectMember)),
@@ -132,7 +138,8 @@ pub fn default_model() -> Model {
     member_milestone_dialog: MilestoneDialogClosed,
     member_milestone_dialog_in_flight: False,
     member_milestone_dialog_error: option.None,
-    member_milestone_details_tab: milestone_details_tab.MilestoneOverviewTab,
+    member_milestone_details_tab: milestone_details_tab.MilestoneContentTab,
+    member_milestone_metrics: NotAsked,
     member_milestone_drag_item: option.None,
     member_task_mutation_in_flight: False,
     member_task_mutation_task_id: option.None,
@@ -164,7 +171,9 @@ pub fn default_model() -> Model {
     member_pool_touch_client_y: 0,
     member_pool_preview_task_id: option.None,
     card_detail_open: option.None,
-    member_task_detail_tab: task_tabs.DetailsTab,
+    card_detail_metrics: NotAsked,
+    member_task_detail_tab: task_tabs.TasksTab,
+    member_task_detail_metrics: NotAsked,
     member_blocked_claim_task: option.None,
     member_highlight_state: NoHighlight,
     people_roster: NotAsked,

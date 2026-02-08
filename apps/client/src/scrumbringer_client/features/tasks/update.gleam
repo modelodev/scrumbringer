@@ -50,6 +50,7 @@ import scrumbringer_client/app/effects as app_effects
 
 // Domain types
 import domain/api_error.{type ApiError}
+import domain/metrics.{type TaskModalMetrics}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import domain/task.{
   type Task, type TaskDependency, type TaskNote, Task, TaskFilters, with_state,
@@ -925,9 +926,15 @@ pub fn handle_task_details_opened(
     update_member(model, fn(member) {
       let notes = member.notes
       let dependencies = member.dependencies
+      let pool = member.pool
 
       MemberModel(
         ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_task_detail_tab: task_tabs.TasksTab,
+          member_task_detail_metrics: Loading,
+        ),
         notes: member_notes.Model(
           ..notes,
           member_notes_task_id: opt.Some(task_id),
@@ -953,7 +960,12 @@ pub fn handle_task_details_opened(
       pool_msg(pool_messages.MemberDependenciesFetched(result))
     })
 
-  #(next_model, effect.batch([notes_fx, deps_fx]))
+  let metrics_fx =
+    api_tasks.get_task_metrics(task_id, fn(result) {
+      pool_msg(pool_messages.MemberTaskMetricsFetched(result))
+    })
+
+  #(next_model, effect.batch([notes_fx, deps_fx, metrics_fx]))
 }
 
 /// Close task details dialog.
@@ -964,6 +976,11 @@ pub fn handle_task_details_closed(model: Model) -> #(Model, Effect(Msg)) {
 
       MemberModel(
         ..member,
+        pool: member_pool.Model(
+          ..member.pool,
+          member_task_detail_tab: task_tabs.TasksTab,
+          member_task_detail_metrics: NotAsked,
+        ),
         notes: member_notes.Model(
           ..notes,
           member_notes_task_id: opt.None,
@@ -996,6 +1013,30 @@ pub fn handle_task_detail_tab_clicked(
   #(
     update_member_pool(model, fn(pool) {
       member_pool.Model(..pool, member_task_detail_tab: tab)
+    }),
+    effect.none(),
+  )
+}
+
+pub fn handle_task_metrics_fetched_ok(
+  model: Model,
+  metrics: TaskModalMetrics,
+) -> #(Model, Effect(Msg)) {
+  #(
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(..pool, member_task_detail_metrics: Loaded(metrics))
+    }),
+    effect.none(),
+  )
+}
+
+pub fn handle_task_metrics_fetched_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  #(
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(..pool, member_task_detail_metrics: Failed(err))
     }),
     effect.none(),
   )

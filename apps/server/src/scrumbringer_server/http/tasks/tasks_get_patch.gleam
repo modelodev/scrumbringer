@@ -26,6 +26,7 @@ import gleam/dynamic/decode
 import gleam/http
 import gleam/int
 import gleam/json
+import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import pog
@@ -34,6 +35,7 @@ import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
 import scrumbringer_server/http/tasks/conflict_handlers
 import scrumbringer_server/http/tasks/presenters
+import scrumbringer_server/services/metrics_db
 import scrumbringer_server/services/store_state.{type StoredUser}
 import scrumbringer_server/services/workflows/handlers as workflow
 import scrumbringer_server/services/workflows/types as workflow_types
@@ -46,9 +48,11 @@ pub fn handle_task_get(
   ctx: auth.Ctx,
   task_id: String,
 ) -> wisp.Response {
+  let include_metrics = wants_metrics(req)
+
   use <- wisp.require_method(req, http.Get)
 
-  case get_task(req, ctx, task_id) {
+  case get_task(req, ctx, task_id, include_metrics) {
     Ok(resp) -> resp
     Error(resp) -> resp
   }
@@ -75,12 +79,56 @@ fn get_task(
   req: wisp.Request,
   ctx: auth.Ctx,
   task_id_str: String,
+  include_metrics: Bool,
 ) -> Result(wisp.Response, wisp.Response) {
   use user <- result.try(require_current_user(req, ctx))
   use task_id <- result.try(parse_task_id(task_id_str))
   let auth.Ctx(db: db, ..) = ctx
-  use response <- result.try(fetch_task(db, task_id, user.id))
-  Ok(response)
+
+  case include_metrics {
+    True -> {
+      use _ <- result.try(check_task_access(db, task_id, user.id))
+      case metrics_db.get_task_metrics(db, task_id) {
+        Ok(metrics) ->
+          Ok(
+            api.ok(
+              json.object([
+                #("id", json.string(int.to_string(task_id))),
+                #("metrics", task_metrics_json(metrics)),
+              ]),
+            ),
+          )
+        Error(metrics_db.NotFound) ->
+          Error(api.error(404, "not_found", "Not found"))
+        Error(metrics_db.MetricsUnavailable) ->
+          Error(api.error(409, "metrics_unavailable", "Metrics unavailable"))
+        Error(metrics_db.DbError(_)) ->
+          Error(api.error(500, "internal", "Database error"))
+      }
+    }
+    False -> {
+      use response <- result.try(fetch_task(db, task_id, user.id))
+      Ok(response)
+    }
+  }
+}
+
+fn check_task_access(
+  db: pog.Connection,
+  task_id: Int,
+  user_id: Int,
+) -> Result(Nil, wisp.Response) {
+  case workflow.handle(db, workflow_types.GetTask(task_id, user_id)) {
+    Ok(workflow_types.TaskResult(_)) -> Ok(Nil)
+    Ok(_) -> Error(api.error(500, "internal", "Unexpected response"))
+    Error(workflow_types.NotFound) ->
+      Error(api.error(404, "not_found", "Not found"))
+    Error(workflow_types.NotAuthorized) ->
+      Error(api.error(403, "forbidden", "Forbidden"))
+    Error(workflow_types.DbError(_)) ->
+      Error(api.error(500, "internal", "Database error"))
+    Error(_) -> Error(api.error(500, "internal", "Unexpected error"))
+  }
 }
 
 fn update_task(
@@ -263,5 +311,41 @@ fn parse_task_id(value: String) -> Result(Int, wisp.Response) {
   case int.parse(value) {
     Ok(id) -> Ok(id)
     Error(_) -> Error(api.error(404, "NOT_FOUND", "Not found"))
+  }
+}
+
+fn wants_metrics(req: wisp.Request) -> Bool {
+  wisp.get_query(req)
+  |> list.any(fn(pair) { pair.0 == "include" && pair.1 == "metrics" })
+}
+
+fn task_metrics_json(metrics: metrics_db.TaskMetrics) -> json.Json {
+  let metrics_db.TaskMetrics(
+    claim_count: claim_count,
+    release_count: release_count,
+    unique_executors: unique_executors,
+    first_claim_at: first_claim_at,
+    current_state_duration_s: current_state_duration_s,
+    pool_lifetime_s: pool_lifetime_s,
+    session_count: session_count,
+    total_work_time_s: total_work_time_s,
+  ) = metrics
+
+  json.object([
+    #("claim_count", json.int(claim_count)),
+    #("release_count", json.int(release_count)),
+    #("unique_executors", json.int(unique_executors)),
+    #("first_claim_at", option_string_json(first_claim_at)),
+    #("current_state_duration_s", json.int(current_state_duration_s)),
+    #("pool_lifetime_s", json.int(pool_lifetime_s)),
+    #("session_count", json.int(session_count)),
+    #("total_work_time_s", json.int(total_work_time_s)),
+  ])
+}
+
+fn option_string_json(value: Option(String)) -> json.Json {
+  case value {
+    None -> json.null()
+    Some(v) -> json.string(v)
   }
 }

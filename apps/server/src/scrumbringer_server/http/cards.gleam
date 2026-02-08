@@ -34,6 +34,7 @@ import scrumbringer_server/http/auth
 import scrumbringer_server/http/csrf
 import scrumbringer_server/services/authorization
 import scrumbringer_server/services/cards_db
+import scrumbringer_server/services/metrics_db
 import wisp
 
 // =============================================================================
@@ -288,21 +289,33 @@ pub fn handle_card(
 }
 
 fn handle_get(req: wisp.Request, ctx: auth.Ctx, card_id: Int) -> wisp.Response {
+  let include_metrics = wants_metrics(req)
+
   case auth.require_current_user(req, ctx) {
     Error(_) -> api.error(401, "AUTH_REQUIRED", "Authentication required")
-    Ok(user) -> get_card_for_user(ctx, card_id, user.id)
+    Ok(user) -> get_card_for_user(req, ctx, card_id, user.id, include_metrics)
   }
 }
 
-fn get_card_for_user(ctx: auth.Ctx, card_id: Int, user_id: Int) -> wisp.Response {
+fn get_card_for_user(
+  req: wisp.Request,
+  ctx: auth.Ctx,
+  card_id: Int,
+  user_id: Int,
+  include_metrics: Bool,
+) -> wisp.Response {
+  let _ = req
   let auth.Ctx(db: db, ..) = ctx
 
   case cards_db.get_card(db, card_id, user_id) {
     Error(cards_db.CardNotFound) ->
-      api.error(404, "NOT_FOUND", "Card not found")
+      case include_metrics {
+        True -> api.error(404, "not_found", "Card not found")
+        False -> api.error(404, "NOT_FOUND", "Card not found")
+      }
     Error(cards_db.DbError(_)) -> api.error(500, "INTERNAL", "Database error")
     Error(_) -> api.error(500, "INTERNAL", "Unexpected error")
-    Ok(card) -> respond_with_card_if_member(db, user_id, card)
+    Ok(card) -> respond_with_card_if_member(db, user_id, card, include_metrics)
   }
 }
 
@@ -310,11 +323,41 @@ fn respond_with_card_if_member(
   db: pog.Connection,
   user_id: Int,
   card: cards_db.Card,
+  include_metrics: Bool,
 ) -> wisp.Response {
   case authorization.is_project_member(db, user_id, card.project_id) {
-    False -> api.error(403, "FORBIDDEN", "Not a member of this project")
-    True -> api.ok(json.object([#("card", card_to_json(card))]))
+    False ->
+      case include_metrics {
+        True -> api.error(403, "forbidden", "Not a member of this project")
+        False -> api.error(403, "FORBIDDEN", "Not a member of this project")
+      }
+    True -> {
+      case include_metrics {
+        True ->
+          case metrics_db.get_card_metrics(db, card.id) {
+            Ok(metrics) ->
+              api.ok(
+                json.object([
+                  #("id", json.string(int.to_string(card.id))),
+                  #("metrics", card_metrics_json(metrics)),
+                ]),
+              )
+            Error(metrics_db.NotFound) ->
+              api.error(404, "not_found", "Card not found")
+            Error(metrics_db.MetricsUnavailable) ->
+              api.error(409, "metrics_unavailable", "Metrics unavailable")
+            Error(metrics_db.DbError(_)) ->
+              api.error(500, "internal", "Database error")
+          }
+        False -> api.ok(json.object([#("card", card_to_json(card))]))
+      }
+    }
   }
+}
+
+fn wants_metrics(req: wisp.Request) -> Bool {
+  wisp.get_query(req)
+  |> list.any(fn(pair) { pair.0 == "include" && pair.1 == "metrics" })
 }
 
 fn handle_update(
@@ -525,5 +568,77 @@ fn option_int_json(value: Option(Int)) -> json.Json {
   case value {
     None -> json.null()
     Some(v) -> json.int(v)
+  }
+}
+
+fn card_metrics_json(metrics: metrics_db.CardMetrics) -> json.Json {
+  let metrics_db.CardMetrics(
+    tasks_total: tasks_total,
+    tasks_completed: tasks_completed,
+    tasks_available: tasks_available,
+    tasks_claimed: tasks_claimed,
+    tasks_ongoing: tasks_ongoing,
+    health: health,
+    workflows: workflows,
+    most_activated: most_activated,
+  ) = metrics
+
+  let metrics_db.ExecutionHealth(
+    avg_rebotes: avg_rebotes,
+    avg_pool_lifetime_s: avg_pool_lifetime_s,
+    avg_executors: avg_executors,
+  ) = health
+
+  json.object([
+    #(
+      "progress",
+      json.object([
+        #("tasks_total", json.int(tasks_total)),
+        #("tasks_completed", json.int(tasks_completed)),
+        #(
+          "tasks_percent",
+          json.int(metrics_db.percent(tasks_completed, tasks_total)),
+        ),
+      ]),
+    ),
+    #(
+      "states",
+      json.object([
+        #("available", json.int(tasks_available)),
+        #("claimed", json.int(tasks_claimed)),
+        #("ongoing", json.int(tasks_ongoing)),
+        #("completed", json.int(tasks_completed)),
+      ]),
+    ),
+    #(
+      "health",
+      json.object([
+        #("avg_rebotes", json.int(avg_rebotes)),
+        #("avg_pool_lifetime_s", json.int(avg_pool_lifetime_s)),
+        #("avg_executors", json.int(avg_executors)),
+      ]),
+    ),
+    #(
+      "workflows",
+      json.object([
+        #("items", json.array(workflows, of: workflow_count_json)),
+        #("most_activated", option_string_json(most_activated)),
+      ]),
+    ),
+  ])
+}
+
+fn workflow_count_json(value: metrics_db.WorkflowCount) -> json.Json {
+  let metrics_db.WorkflowCount(name: name, count: count) = value
+  json.object([
+    #("name", json.string(metrics_db.workflow_name_or_default(name))),
+    #("count", json.int(count)),
+  ])
+}
+
+fn option_string_json(value: Option(String)) -> json.Json {
+  case value {
+    None -> json.null()
+    Some(v) -> json.string(v)
   }
 }

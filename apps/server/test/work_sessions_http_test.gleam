@@ -87,9 +87,12 @@ pub fn start_rejects_completed_task_test() {
         created_by: user_id,
         claimed_by: opt.Some(user_id),
         card_id: opt.None,
+        created_from_rule_id: opt.None,
+        pool_lifetime_s: 0,
         created_at: opt.None,
         claimed_at: opt.None,
         completed_at: opt.None,
+        last_entered_pool_at: opt.None,
       ),
     )
 

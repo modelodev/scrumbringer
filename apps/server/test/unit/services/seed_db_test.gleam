@@ -76,9 +76,12 @@ pub fn insert_task_accepts_sql_timestamp_test() {
         created_by: user_id,
         claimed_by: None,
         card_id: None,
+        created_from_rule_id: None,
+        pool_lifetime_s: 0,
         created_at: Some("NOW()"),
         claimed_at: None,
         completed_at: None,
+        last_entered_pool_at: None,
       ),
     )
 

@@ -53,13 +53,19 @@ fn indexed_buttons(
     [item, ..rest] -> {
       let previous_id = previous_tab_id(all_tabs, index)
       let next_id = next_tab_id(all_tabs, index)
+      let first_id = first_tab_id(all_tabs, item.id)
+      let last_id = last_tab_id(all_tabs, item.id)
 
       [
         tab_button(
           item,
+          index,
+          list.length(all_tabs),
           item.id == active,
           tab_class,
           on_click,
+          first_id,
+          last_id,
           previous_id,
           next_id,
         ),
@@ -78,9 +84,13 @@ fn indexed_buttons(
 
 fn tab_button(
   item: TabItem(id),
+  index: Int,
+  total: Int,
   is_active: Bool,
   base_class: String,
   on_click: fn(id) -> msg,
+  first_id: id,
+  last_id: id,
   previous_id: Option(id),
   next_id: Option(id),
 ) -> Element(msg) {
@@ -93,8 +103,23 @@ fn tab_button(
     [
       attribute.class(active_class),
       attribute.role("tab"),
+      attribute.id(tab_dom_id(index)),
+      attribute.attribute("aria-controls", tab_panel_dom_id(index)),
       attribute.attribute("aria-selected", bool_to_string(is_active)),
-      on_arrow_navigation(item.id, previous_id, next_id, on_click),
+      attribute.attribute("aria-setsize", int.to_string(total)),
+      attribute.attribute("aria-posinset", int.to_string(index + 1)),
+      attribute.attribute("tabindex", case is_active {
+        True -> "0"
+        False -> "-1"
+      }),
+      on_arrow_navigation(
+        item.id,
+        previous_id,
+        next_id,
+        first_id,
+        last_id,
+        on_click,
+      ),
       event.on_click(on_click(item.id)),
     ],
     [
@@ -109,6 +134,8 @@ fn on_arrow_navigation(
   current_id: id,
   previous_id: Option(id),
   next_id: Option(id),
+  first_id: id,
+  last_id: id,
   on_click: fn(id) -> msg,
 ) -> attribute.Attribute(msg) {
   event.advanced("keydown", {
@@ -153,6 +180,20 @@ fn on_arrow_navigation(
             )
         }
 
+      "Home" ->
+        decode.success(event.handler(
+          on_click(first_id),
+          prevent_default: True,
+          stop_propagation: True,
+        ))
+
+      "End" ->
+        decode.success(event.handler(
+          on_click(last_id),
+          prevent_default: True,
+          stop_propagation: True,
+        ))
+
       _ ->
         decode.failure(
           event.handler(
@@ -164,6 +205,28 @@ fn on_arrow_navigation(
         )
     }
   })
+}
+
+fn first_tab_id(tabs: List(TabItem(id)), current_id: id) -> id {
+  case tab_id_at(tabs, 0) {
+    Some(id) -> id
+    None -> current_id
+  }
+}
+
+fn last_tab_id(tabs: List(TabItem(id)), current_id: id) -> id {
+  case tab_id_at(tabs, list.length(tabs) - 1) {
+    Some(id) -> id
+    None -> current_id
+  }
+}
+
+fn tab_dom_id(index: Int) -> String {
+  "modal-tab-" <> int.to_string(index)
+}
+
+fn tab_panel_dom_id(index: Int) -> String {
+  "modal-tabpanel-" <> int.to_string(index)
 }
 
 fn previous_tab_id(tabs: List(TabItem(id)), index: Int) -> Option(id) {

@@ -733,6 +733,31 @@ pub type Text {
   // 5.4.1: Task detail modal
   TabDetails
   TabDependencies
+  TabMetrics
+  MetricsTasksTotal
+  MetricsTasksCompleted
+  MetricsProgress
+  MetricsRebotesAvg
+  MetricsPoolLifetimeAvg
+  MetricsAvailable
+  MetricsClaimed
+  MetricsOngoing
+  MetricsExecutors
+  MetricsTotal
+  MetricsClaimCount
+  MetricsReleaseCount
+  MetricsUniqueExecutors
+  MetricsFirstClaimAt
+  MetricsCurrentStateTime
+  MetricsPoolLifetime
+  MetricsSessionCount
+  MetricsTotalWorkTime
+  MetricsAvgExecutors
+  MetricsWorkflows
+  MetricsMostActivated
+  MetricsNotAvailable
+  MetricsEmptyState
+  MetricsLoadError
   Unassigned
   Assigned
   ClaimTask

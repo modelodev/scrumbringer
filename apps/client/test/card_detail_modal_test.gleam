@@ -34,6 +34,7 @@ fn make_model() -> Model {
     note_in_flight: False,
     note_error: option.None,
     tasks: NotAsked,
+    metrics: NotAsked,
   )
 }
 
@@ -75,6 +76,7 @@ pub fn initial_model_has_correct_defaults_test() {
   model.note_in_flight |> should.equal(False)
   model.note_error |> should.equal(option.None)
   model.tasks |> should.equal(NotAsked)
+  model.metrics |> should.equal(NotAsked)
   // AC21: Default tab is Tasks
   model.active_tab |> should.equal(card_tabs.TasksTab)
 }

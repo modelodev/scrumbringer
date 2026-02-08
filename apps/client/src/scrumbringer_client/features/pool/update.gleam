@@ -35,7 +35,7 @@ import lustre/effect
 
 import domain/api_error.{type ApiError, type ApiResult}
 import domain/card
-import domain/remote.{Failed, Loaded}
+import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import domain/task
 import domain/task_status
 import scrumbringer_client/api/cards as api_cards
@@ -1851,6 +1851,10 @@ fn update_without_milestones(
 
     pool_messages.MemberTaskDetailTabClicked(tab) ->
       tasks_workflow.handle_task_detail_tab_clicked(model, tab)
+    pool_messages.MemberTaskMetricsFetched(Ok(metrics)) ->
+      tasks_workflow.handle_task_metrics_fetched_ok(model, metrics)
+    pool_messages.MemberTaskMetricsFetched(Error(err)) ->
+      tasks_workflow.handle_task_metrics_fetched_error(model, err)
 
     pool_messages.MemberDependenciesFetched(Ok(deps)) ->
       tasks_workflow.handle_dependencies_fetched_ok(model, deps)
@@ -2066,25 +2070,52 @@ fn update_without_milestones(
           let pool = member.pool
           member_state.MemberModel(
             ..member,
-            pool: member_pool.Model(..pool, card_detail_open: opt.Some(card_id)),
+            pool: member_pool.Model(
+              ..pool,
+              card_detail_open: opt.Some(card_id),
+              card_detail_metrics: Loading,
+            ),
           )
         })
         |> clear_card_new_notes(card_id)
 
       let fx = api_cards.mark_card_view(card_id, fn(_res) { client_state.NoOp })
+      let metrics_fx =
+        api_cards.get_card_metrics(card_id, fn(result) {
+          client_state.pool_msg(pool_messages.CardMetricsFetched(result))
+        })
 
-      #(model, fx)
+      #(model, effect.batch([fx, metrics_fx]))
     }
     pool_messages.CloseCardDetail -> #(
       client_state.update_member(model, fn(member) {
         let pool = member.pool
         member_state.MemberModel(
           ..member,
-          pool: member_pool.Model(..pool, card_detail_open: opt.None),
+          pool: member_pool.Model(
+            ..pool,
+            card_detail_open: opt.None,
+            card_detail_metrics: NotAsked,
+          ),
         )
       }),
       effect.none(),
     )
+    pool_messages.CardMetricsFetched(Ok(metrics)) -> #(
+      update_member_pool(model, fn(pool) {
+        member_pool.Model(..pool, card_detail_metrics: Loaded(metrics))
+      }),
+      effect.none(),
+    )
+    pool_messages.CardMetricsFetched(Error(err)) -> #(
+      update_member_pool(model, fn(pool) {
+        member_pool.Model(..pool, card_detail_metrics: Failed(err))
+      }),
+      effect.none(),
+    )
+
+    // Handled by milestones workflow before this dispatch.
+    pool_messages.MemberMilestoneMetricsFetched(_) -> #(model, effect.none())
 
     // Workflows handlers
     pool_messages.WorkflowsProjectFetched(Ok(workflows)) ->

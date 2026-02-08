@@ -24,6 +24,7 @@ import gleam/string
 
 import lustre/effect.{type Effect}
 
+import domain/metrics.{type TaskModalMetrics, TaskModalMetrics}
 import domain/task.{type Task, type TaskFilters, TaskFilters}
 import domain/task_status
 import scrumbringer_client/api/core
@@ -253,6 +254,35 @@ pub fn complete_task(
   )
 }
 
+/// Get a single task by ID.
+pub fn get_task(
+  task_id: Int,
+  to_msg: fn(core.ApiResult(Task)) -> msg,
+) -> Effect(msg) {
+  let decoder = decode.field("task", decoders.task_decoder(), decode.success)
+  core.request(
+    "GET",
+    "/api/v1/tasks/" <> int.to_string(task_id),
+    option.None,
+    decoder,
+    to_msg,
+  )
+}
+
+/// Get modal metrics payload for a task.
+pub fn get_task_metrics(
+  task_id: Int,
+  to_msg: fn(core.ApiResult(TaskModalMetrics)) -> msg,
+) -> Effect(msg) {
+  core.request(
+    "GET",
+    "/api/v1/tasks/" <> int.to_string(task_id) <> "?include=metrics",
+    option.None,
+    decode.field("metrics", task_metrics_decoder(), decode.success),
+    to_msg,
+  )
+}
+
 /// Update milestone assignment for a task.
 pub fn update_task_milestone(
   task_id: Int,
@@ -272,4 +302,32 @@ pub fn update_task_milestone(
     decoder,
     to_msg,
   )
+}
+
+fn task_metrics_decoder() -> decode.Decoder(TaskModalMetrics) {
+  use claim_count <- decode.field("claim_count", decode.int)
+  use release_count <- decode.field("release_count", decode.int)
+  use unique_executors <- decode.field("unique_executors", decode.int)
+  use first_claim_at <- decode.field(
+    "first_claim_at",
+    decode.optional(decode.string),
+  )
+  use current_state_duration_s <- decode.field(
+    "current_state_duration_s",
+    decode.int,
+  )
+  use pool_lifetime_s <- decode.field("pool_lifetime_s", decode.int)
+  use session_count <- decode.field("session_count", decode.int)
+  use total_work_time_s <- decode.field("total_work_time_s", decode.int)
+
+  decode.success(TaskModalMetrics(
+    claim_count: claim_count,
+    release_count: release_count,
+    unique_executors: unique_executors,
+    first_claim_at: first_claim_at,
+    current_state_duration_s: current_state_duration_s,
+    pool_lifetime_s: pool_lifetime_s,
+    session_count: session_count,
+    total_work_time_s: total_work_time_s,
+  ))
 }

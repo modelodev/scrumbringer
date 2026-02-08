@@ -129,6 +129,10 @@ pub const release_task = operations.release_task
 
 pub const complete_task = operations.complete_task
 
+pub const get_task = operations.get_task
+
+pub const get_task_metrics = operations.get_task_metrics
+
 pub const update_task_milestone = operations.update_task_milestone
 
 // =============================================================================

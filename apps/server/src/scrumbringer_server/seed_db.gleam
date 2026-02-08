@@ -52,9 +52,12 @@ pub type TaskInsertOptions {
     created_by: Int,
     claimed_by: Option(Int),
     card_id: Option(Int),
+    created_from_rule_id: Option(Int),
+    pool_lifetime_s: Int,
     created_at: Option(String),
     claimed_at: Option(String),
     completed_at: Option(String),
+    last_entered_pool_at: Option(String),
   )
 }
 
@@ -471,9 +474,9 @@ pub fn insert_task(
   opts: TaskInsertOptions,
 ) -> Result(Int, String) {
   let base_cols =
-    "project_id, type_id, title, description, priority, status, created_by, claimed_by, card_id"
-  let base_vals = "$1, $2, $3, $4, $5, $6, $7, $8, $9"
-  let base_idx = 10
+    "project_id, type_id, title, description, priority, status, created_by, claimed_by, card_id, created_from_rule_id, pool_lifetime_s"
+  let base_vals = "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11"
+  let base_idx = 12
 
   let #(cols, vals, idx, params) =
     append_optional_timestamp(
@@ -495,13 +498,23 @@ pub fn insert_task(
       params,
     )
 
-  let #(cols, vals, _, params) =
+  let #(cols, vals, idx, params) =
     append_optional_timestamp(
       cols,
       vals,
       idx,
       "completed_at",
       opts.completed_at,
+      params,
+    )
+
+  let #(cols, vals, _, params) =
+    append_optional_timestamp(
+      cols,
+      vals,
+      idx,
+      "last_entered_pool_at",
+      opts.last_entered_pool_at,
       params,
     )
 
@@ -519,6 +532,8 @@ pub fn insert_task(
     |> pog.parameter(pog.int(opts.created_by))
     |> pog.parameter(pog.nullable(pog.int, opts.claimed_by))
     |> pog.parameter(pog.nullable(pog.int, opts.card_id))
+    |> pog.parameter(pog.nullable(pog.int, opts.created_from_rule_id))
+    |> pog.parameter(pog.int(opts.pool_lifetime_s))
 
   apply_timestamp_params(base_query, params)
   |> pog.returning(int_decoder())
@@ -553,9 +568,12 @@ pub fn insert_task_simple(
       created_by: created_by,
       claimed_by: None,
       card_id: card_id,
+      created_from_rule_id: None,
+      pool_lifetime_s: 0,
       created_at: None,
       claimed_at: None,
       completed_at: None,
+      last_entered_pool_at: None,
     ),
   )
 }

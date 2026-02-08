@@ -5,7 +5,7 @@ import gleeunit/should
 import lustre/element
 
 import scrumbringer_client/ui/task_tabs.{
-  type Config, Config, DetailsTab, Labels, NotesTab,
+  type Config, Config, Labels, NotesTab, TasksTab,
 }
 
 // =============================================================================
@@ -20,19 +20,14 @@ fn render_to_string(config: Config(msg)) -> String {
 // Tests
 // =============================================================================
 
-pub fn renders_details_and_notes_tabs_test() {
-  // Given: Config with DetailsTab active
+pub fn renders_tasks_notes_and_metrics_tabs_test() {
+  // Given: Config with TasksTab active
   let config =
     Config(
-      active_tab: DetailsTab,
-      dependencies_count: 2,
+      active_tab: TasksTab,
       notes_count: 3,
       has_new_notes: True,
-      labels: Labels(
-        details: "Detalles",
-        dependencies: "Dependencias",
-        notes: "Notas",
-      ),
+      labels: Labels(tasks: "Tareas", notes: "Notas", metrics: "Metricas"),
       on_tab_click: fn(_) { Nil },
     )
 
@@ -40,11 +35,10 @@ pub fn renders_details_and_notes_tabs_test() {
   let html = render_to_string(config)
 
   // Then: Contains both tab labels
-  html |> string.contains("Detalles") |> should.be_true()
-  html |> string.contains("Dependencias") |> should.be_true()
+  html |> string.contains("Tareas") |> should.be_true()
   html |> string.contains("Notas") |> should.be_true()
+  html |> string.contains("Metricas") |> should.be_true()
   html |> string.contains("(3)") |> should.be_true()
-  html |> string.contains("(2)") |> should.be_true()
 }
 
 pub fn active_tab_has_active_class_test() {
@@ -52,14 +46,9 @@ pub fn active_tab_has_active_class_test() {
   let config =
     Config(
       active_tab: NotesTab,
-      dependencies_count: 0,
       notes_count: 0,
       has_new_notes: False,
-      labels: Labels(
-        details: "Details",
-        dependencies: "Dependencies",
-        notes: "Notes",
-      ),
+      labels: Labels(tasks: "Tasks", notes: "Notes", metrics: "Metrics"),
       on_tab_click: fn(_) { Nil },
     )
 
@@ -74,15 +63,10 @@ pub fn shows_new_notes_indicator_test() {
   // Given: has_new_notes = True
   let config =
     Config(
-      active_tab: DetailsTab,
-      dependencies_count: 1,
+      active_tab: TasksTab,
       notes_count: 5,
       has_new_notes: True,
-      labels: Labels(
-        details: "Details",
-        dependencies: "Dependencies",
-        notes: "Notes",
-      ),
+      labels: Labels(tasks: "Tasks", notes: "Notes", metrics: "Metrics"),
       on_tab_click: fn(_) { Nil },
     )
 
@@ -97,11 +81,10 @@ pub fn uses_task_tabs_class_test() {
   // Given: any config
   let config =
     Config(
-      active_tab: DetailsTab,
-      dependencies_count: 0,
+      active_tab: TasksTab,
       notes_count: 0,
       has_new_notes: False,
-      labels: Labels(details: "D", dependencies: "Dep", notes: "N"),
+      labels: Labels(tasks: "T", notes: "N", metrics: "M"),
       on_tab_click: fn(_) { Nil },
     )
 

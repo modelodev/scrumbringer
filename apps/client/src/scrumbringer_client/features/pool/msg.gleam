@@ -4,8 +4,9 @@ import domain/api_error.{type ApiError, type ApiResult}
 import domain/capability.{type Capability}
 import domain/card.{type Card}
 import domain/metrics.{
-  type MyMetrics, type OrgMetricsOverview, type OrgMetricsProjectTasksPayload,
-  type OrgMetricsUserOverview,
+  type CardModalMetrics, type MilestoneModalMetrics, type MyMetrics,
+  type OrgMetricsOverview, type OrgMetricsProjectTasksPayload,
+  type OrgMetricsUserOverview, type TaskModalMetrics,
 }
 import domain/milestone.{type Milestone, type MilestoneProgress}
 import domain/project.{type ProjectMember}
@@ -97,6 +98,7 @@ pub type Msg {
   MemberMilestoneRowToggled(Int)
   MemberMilestoneDetailsClicked(Int)
   MemberMilestoneDetailsTabSelected(milestone_details_tab.MilestoneDetailsTab)
+  MemberMilestoneMetricsFetched(ApiResult(MilestoneModalMetrics))
   MemberMilestoneCreateTaskClicked(Int)
   MemberMilestoneCreateCardClicked(Int)
   MemberMilestoneCardDragStarted(Int, Int)
@@ -129,6 +131,7 @@ pub type Msg {
   MemberTaskDetailsOpened(Int)
   MemberTaskDetailsClosed
   MemberTaskDetailTabClicked(task_tabs.Tab)
+  MemberTaskMetricsFetched(ApiResult(TaskModalMetrics))
   MemberDependenciesFetched(ApiResult(List(TaskDependency)))
   MemberDependencyDialogOpened
   MemberDependencyDialogClosed
@@ -184,6 +187,7 @@ pub type Msg {
   CardsSearchChanged(String)
   OpenCardDetail(Int)
   CloseCardDetail
+  CardMetricsFetched(ApiResult(CardModalMetrics))
   WorkflowsProjectFetched(ApiResult(List(Workflow)))
   OpenWorkflowDialog(state_types.WorkflowDialogMode)
   CloseWorkflowDialog

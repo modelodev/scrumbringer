@@ -4,7 +4,8 @@
 
 import lustre/element.{type Element}
 
-import scrumbringer_client/ui/notes_tabs
+import gleam/option as opt
+import scrumbringer_client/ui/tabs
 
 // =============================================================================
 // Types (Public API preserved)
@@ -13,10 +14,11 @@ import scrumbringer_client/ui/notes_tabs
 pub type Tab {
   TasksTab
   NotesTab
+  MetricsTab
 }
 
 pub type Labels {
-  Labels(tasks: String, notes: String)
+  Labels(tasks: String, notes: String, metrics: String)
 }
 
 pub type Config(msg) {
@@ -38,15 +40,33 @@ pub fn view(config: Config(msg)) -> Element(msg) {
   let Config(active_tab:, notes_count:, has_new_notes:, labels:, on_tab_click:) =
     config
 
-  notes_tabs.view(notes_tabs.Config(
-    primary_tab: TasksTab,
-    notes_tab: NotesTab,
-    active_tab: active_tab,
-    notes_count: notes_count,
-    has_new_notes: has_new_notes,
-    labels: notes_tabs.Labels(primary: labels.tasks, notes: labels.notes),
+  tabs.view(tabs.config(
+    tabs: [
+      tabs.TabItem(
+        id: TasksTab,
+        label: labels.tasks,
+        count: opt.None,
+        has_indicator: False,
+      ),
+      tabs.TabItem(
+        id: NotesTab,
+        label: labels.notes,
+        count: case notes_count > 0 {
+          True -> opt.Some(notes_count)
+          False -> opt.None
+        },
+        has_indicator: has_new_notes,
+      ),
+      tabs.TabItem(
+        id: MetricsTab,
+        label: labels.metrics,
+        count: opt.None,
+        has_indicator: False,
+      ),
+    ],
+    active: active_tab,
     container_class: "card-tabs modal-tabs",
     tab_class: "card-tab modal-tab",
-    on_tab_click: on_tab_click,
+    on_click: on_tab_click,
   ))
 }

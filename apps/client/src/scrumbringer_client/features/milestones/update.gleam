@@ -6,7 +6,7 @@ import lustre/effect
 
 import domain/api_error.{type ApiError, ApiError}
 import domain/milestone
-import domain/remote.{Failed, Loaded}
+import domain/remote.{Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/api/milestones as api_milestones
 import scrumbringer_client/api/tasks as api_tasks
@@ -141,16 +141,37 @@ pub fn try_update(
             ),
             member_milestone_dialog_in_flight: False,
             member_milestone_dialog_error: opt.None,
-            member_milestone_details_tab: milestone_details_tab.MilestoneOverviewTab,
+            member_milestone_details_tab: milestone_details_tab.MilestoneContentTab,
+            member_milestone_metrics: Loading,
           )
         }),
-        effect.none(),
+        api_milestones.get_milestone_metrics(milestone_id, fn(result) {
+          client_state.pool_msg(pool_messages.MemberMilestoneMetricsFetched(
+            result,
+          ))
+        }),
       ))
 
     pool_messages.MemberMilestoneDetailsTabSelected(tab) ->
       opt.Some(#(
         update_member_pool(model, fn(pool) {
           member_pool.Model(..pool, member_milestone_details_tab: tab)
+        }),
+        effect.none(),
+      ))
+
+    pool_messages.MemberMilestoneMetricsFetched(Ok(metrics)) ->
+      opt.Some(#(
+        update_member_pool(model, fn(pool) {
+          member_pool.Model(..pool, member_milestone_metrics: Loaded(metrics))
+        }),
+        effect.none(),
+      ))
+
+    pool_messages.MemberMilestoneMetricsFetched(Error(err)) ->
+      opt.Some(#(
+        update_member_pool(model, fn(pool) {
+          member_pool.Model(..pool, member_milestone_metrics: Failed(err))
         }),
         effect.none(),
       ))
@@ -550,7 +571,8 @@ pub fn try_update(
               member_milestone_dialog: member_pool.MilestoneDialogClosed,
               member_milestone_dialog_in_flight: False,
               member_milestone_dialog_error: opt.None,
-              member_milestone_details_tab: milestone_details_tab.MilestoneOverviewTab,
+              member_milestone_details_tab: milestone_details_tab.MilestoneContentTab,
+              member_milestone_metrics: NotAsked,
             )
           }),
           case focus_target {
