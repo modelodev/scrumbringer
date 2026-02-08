@@ -1982,6 +1982,7 @@ fn update_without_milestones(
     | pool_messages.MemberMilestoneTaskMoveClicked(_, _, _)
     | pool_messages.MemberMilestoneCardMoved(_)
     | pool_messages.MemberMilestoneTaskMoved(_)
+    | pool_messages.MemberMilestoneCreateClicked
     | pool_messages.MemberMilestoneActivatePromptClicked(_)
     | pool_messages.MemberMilestoneActivateClicked(_)
     | pool_messages.MemberMilestoneActivated(_, _)
@@ -1990,6 +1991,8 @@ fn update_without_milestones(
     | pool_messages.MemberMilestoneDialogClosed
     | pool_messages.MemberMilestoneNameChanged(_)
     | pool_messages.MemberMilestoneDescriptionChanged(_)
+    | pool_messages.MemberMilestoneCreateSubmitted
+    | pool_messages.MemberMilestoneCreated(_)
     | pool_messages.MemberMilestoneEditSubmitted(_)
     | pool_messages.MemberMilestoneDeleteSubmitted(_)
     | pool_messages.MemberMilestoneUpdated(_)
@@ -1997,8 +2000,21 @@ fn update_without_milestones(
 
     pool_messages.OpenCardDialog(mode) ->
       cards_workflow.handle_open_card_dialog(model, mode)
-    pool_messages.CloseCardDialog ->
-      cards_workflow.handle_close_card_dialog(model)
+    pool_messages.CloseCardDialog -> {
+      let focus_target = close_card_dialog_focus_target(model)
+      let #(next, close_fx) = cards_workflow.handle_close_card_dialog(model)
+
+      let fx = case focus_target {
+        opt.Some(element_id) ->
+          effect.batch([
+            close_fx,
+            app_effects.focus_element_after_timeout(element_id, 0),
+          ])
+        opt.None -> close_fx
+      }
+
+      #(next, fx)
+    }
     // Cards (Fichas) - component events
     pool_messages.CardCrudCreated(card) ->
       cards_workflow.handle_card_crud_created(model, card)
@@ -2250,6 +2266,26 @@ fn update_without_milestones(
     pool_messages.TaskTemplateCrudDeleted(template_id) ->
       workflows_workflow.handle_task_template_crud_deleted(model, template_id)
   }
+}
+
+fn close_card_dialog_focus_target(
+  model: client_state.Model,
+) -> opt.Option(String) {
+  case
+    model.member.pool.member_section,
+    model.admin.cards.cards_create_milestone_id
+  {
+    member_section.Pool, opt.Some(milestone_id) ->
+      opt.Some(milestone_ids.quick_create_card_button_id(milestone_id))
+    _, _ -> opt.None
+  }
+}
+
+/// Test helper: exposes close-card-dialog focus target resolution.
+pub fn close_card_dialog_focus_target_for_test(
+  model: client_state.Model,
+) -> opt.Option(String) {
+  close_card_dialog_focus_target(model)
 }
 
 fn clear_card_new_notes(

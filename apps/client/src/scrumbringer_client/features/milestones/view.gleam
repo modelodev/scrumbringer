@@ -30,6 +30,7 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/confirm_dialog
+import scrumbringer_client/ui/detail_metrics
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/expand_toggle
 import scrumbringer_client/ui/form_field
@@ -53,6 +54,7 @@ pub fn view(model: client_state.Model) -> Element(client_state.Msg) {
 
   div([], [
     content,
+    view_create_dialog(model),
     view_details_dialog(model),
     view_activate_dialog(model),
     view_edit_dialog(model),
@@ -79,62 +81,100 @@ fn view_loaded(
 ) -> Element(client_state.Msg) {
   let filtered = apply_filters(model, items)
 
-  case items {
-    [] ->
-      div([attribute.class("milestones-state milestones-empty")], [
-        text(helpers_i18n.i18n_t(model, i18n_text.MilestonesEmpty)),
+  let ready_items = by_state(filtered, Ready)
+  let active_items = by_state(filtered, Active)
+  let completed_items = by_state(filtered, Completed)
+
+  let list_content = case items, filtered {
+    [], _ -> view_empty_state(model, i18n_text.MilestonesEmpty)
+    _, [] -> view_empty_state(model, i18n_text.MilestonesNoResults)
+    _, _ ->
+      div([], [
+        view_section_if_has_items(model, i18n_text.MilestonesReady, ready_items),
+        view_section_if_has_items(
+          model,
+          i18n_text.MilestonesActive,
+          active_items,
+        ),
+        case model.member.pool.member_milestones_show_completed {
+          True ->
+            view_section_if_has_items(
+              model,
+              i18n_text.MilestonesCompleted,
+              completed_items,
+            )
+          False -> none()
+        },
       ])
+  }
 
-    _ -> {
-      let ready_items = by_state(filtered, Ready)
-      let active_items = by_state(filtered, Active)
-      let completed_items = by_state(filtered, Completed)
-
-      let list_content = case filtered {
-        [] ->
-          div([attribute.class("milestones-state milestones-empty")], [
-            text(helpers_i18n.i18n_t(model, i18n_text.MilestonesNoResults)),
-          ])
-        _ ->
-          div([], [
-            view_section_if_has_items(
-              model,
-              i18n_text.MilestonesReady,
-              ready_items,
-            ),
-            view_section_if_has_items(
-              model,
-              i18n_text.MilestonesActive,
-              active_items,
-            ),
-            case model.member.pool.member_milestones_show_completed {
-              True ->
-                view_section_if_has_items(
-                  model,
-                  i18n_text.MilestonesCompleted,
-                  completed_items,
-                )
-              False -> none()
-            },
-          ])
-      }
-
-      div(
-        [
-          attribute.class("milestones-view"),
-          attribute.attribute("data-testid", "milestones-view"),
-        ],
-        [
-          div([attribute.class("milestones-toolbar")], [
-            h3([attribute.class("milestones-title")], [
-              text(helpers_i18n.i18n_t(model, i18n_text.Milestones)),
-            ]),
-            view_filters(model),
+  div(
+    [
+      attribute.class("milestones-view"),
+      attribute.attribute("data-testid", "milestones-view"),
+    ],
+    [
+      div([attribute.class("milestones-header")], [
+        div([attribute.class("milestones-header-main")], [
+          h3([attribute.class("milestones-title")], [
+            text(helpers_i18n.i18n_t(model, i18n_text.Milestones)),
           ]),
-          list_content,
+          div([attribute.class("milestones-toolbar-actions")], [
+            view_create_button(model),
+          ]),
+        ]),
+        div([attribute.class("milestones-header-filters")], [
+          view_filters(model),
+        ]),
+      ]),
+      list_content,
+    ],
+  )
+}
+
+fn view_empty_state(
+  model: client_state.Model,
+  message: i18n_text.Text,
+) -> Element(client_state.Msg) {
+  div([attribute.class("milestones-state milestones-empty")], [
+    text(helpers_i18n.i18n_t(model, message)),
+    case can_manage_milestones(model) {
+      True ->
+        div([attribute.class("milestones-empty-actions")], [
+          button(
+            [
+              attribute.class("btn btn-sm btn-primary"),
+              attribute.attribute("type", "button"),
+              attribute.attribute("data-testid", "milestones-create-empty"),
+              attribute.id(milestone_ids.create_empty_button_id()),
+              event.on_click(client_state.pool_msg(
+                pool_messages.MemberMilestoneCreateClicked,
+              )),
+            ],
+            [text(helpers_i18n.i18n_t(model, i18n_text.CreateFirstMilestone))],
+          ),
+        ])
+      False -> none()
+    },
+  ])
+}
+
+fn view_create_button(model: client_state.Model) -> Element(client_state.Msg) {
+  case can_manage_milestones(model) {
+    True ->
+      button(
+        [
+          attribute.class("btn btn-sm btn-primary"),
+          attribute.attribute("type", "button"),
+          attribute.attribute("data-testid", "milestones-create-button"),
+          attribute.id(milestone_ids.create_button_id()),
+          event.on_click(client_state.pool_msg(
+            pool_messages.MemberMilestoneCreateClicked,
+          )),
         ],
+        [text("+ " <> helpers_i18n.i18n_t(model, i18n_text.CreateMilestone))],
       )
-    }
+    False -> none()
   }
 }
 
@@ -325,6 +365,28 @@ fn view_item(
       [text(helpers_i18n.i18n_t(model, i18n_text.MilestoneOpenDetails))],
     )
 
+  let quick_create_card_button = case can_manage {
+    True ->
+      button(
+        [
+          attribute.class("btn btn-sm milestone-create-card-btn"),
+          attribute.attribute("type", "button"),
+          attribute.attribute(
+            "data-testid",
+            "milestone-quick-new-card:" <> int.to_string(milestone_id),
+          ),
+          attribute.id(milestone_ids.quick_create_card_button_id(milestone_id)),
+          event.on_click(
+            client_state.pool_msg(
+              pool_messages.MemberMilestoneCreateCardClicked(milestone_id),
+            ),
+          ),
+        ],
+        [text("+ " <> helpers_i18n.i18n_t(model, i18n_text.QuickCard))],
+      )
+    False -> none()
+  }
+
   let edit_button = case can_manage {
     True ->
       button(
@@ -497,6 +559,7 @@ fn view_item(
             attribute.class("milestone-item-actions milestone-item-actions-row"),
           ],
           [
+            quick_create_card_button,
             details_button,
             activate_button,
             edit_button,
@@ -1046,7 +1109,7 @@ fn view_details_dialog(model: client_state.Model) -> Element(client_state.Msg) {
         True, Ready, False ->
           button(
             [
-              attribute.class("btn btn-danger"),
+              attribute.class("btn btn-sm milestone-activate-btn"),
               attribute.attribute("type", "button"),
               attribute.attribute(
                 "data-testid",
@@ -1077,14 +1140,17 @@ fn view_details_dialog(model: client_state.Model) -> Element(client_state.Msg) {
           div(
             [
               attribute.class(
-                "milestone-item-actions milestone-item-actions-row",
+                "milestone-item-actions milestone-item-actions-row milestone-create-actions",
               ),
             ],
             [
               button(
                 [
-                  attribute.class("btn btn-sm btn-secondary"),
+                  attribute.class(
+                    "btn btn-sm btn-primary milestone-create-card-btn",
+                  ),
                   attribute.attribute("type", "button"),
+                  attribute.id(milestone_ids.create_card_button_id(milestone_id)),
                   attribute.attribute(
                     "data-testid",
                     "milestone-details-new-card:" <> int.to_string(milestone_id),
@@ -1097,11 +1163,19 @@ fn view_details_dialog(model: client_state.Model) -> Element(client_state.Msg) {
                     ),
                   ),
                 ],
-                [text("+ " <> helpers_i18n.i18n_t(model, i18n_text.NewCard))],
+                [
+                  text(
+                    "+ "
+                    <> helpers_i18n.i18n_t(
+                      model,
+                      i18n_text.NewCardInThisMilestone,
+                    ),
+                  ),
+                ],
               ),
               button(
                 [
-                  attribute.class("btn btn-sm btn-secondary"),
+                  attribute.class("btn btn-sm milestone-create-task-btn"),
                   attribute.attribute("type", "button"),
                   attribute.attribute(
                     "data-testid",
@@ -1149,8 +1223,7 @@ fn view_details_dialog(model: client_state.Model) -> Element(client_state.Msg) {
         )
 
       let tab_content = case model.member.pool.member_milestone_details_tab {
-        milestone_details_tab.MilestoneOverviewTab
-        | milestone_details_tab.MilestoneContentTab ->
+        milestone_details_tab.MilestoneContentTab ->
           div([attribute.class("milestone-details-content")], [
             create_actions,
             view_cards_section(model, milestone_id),
@@ -1164,6 +1237,7 @@ fn view_details_dialog(model: client_state.Model) -> Element(client_state.Msg) {
       let tab_content =
         div(
           [
+            attribute.class("milestone-details-tabpanel"),
             attribute.attribute("role", "tabpanel"),
             attribute.id(milestone_tabpanel_id(
               model.member.pool.member_milestone_details_tab,
@@ -1178,7 +1252,7 @@ fn view_details_dialog(model: client_state.Model) -> Element(client_state.Msg) {
 
       dialog.view(
         dialog.DialogConfig(
-          title: helpers_i18n.i18n_t(model, i18n_text.MilestoneDetails),
+          title: progress.milestone.name,
           icon: option.None,
           size: dialog.DialogLg,
           on_close: client_state.pool_msg(
@@ -1189,7 +1263,6 @@ fn view_details_dialog(model: client_state.Model) -> Element(client_state.Msg) {
         model.member.pool.member_milestone_dialog_error,
         [
           div([attribute.attribute("data-testid", "milestone-details-dialog")], [
-            h4([], [text(progress.milestone.name)]),
             div([attribute.class("milestone-item-meta")], [
               state_badge,
               div([attribute.class("milestone-progress-bar")], [
@@ -1237,12 +1310,7 @@ fn view_details_dialog(model: client_state.Model) -> Element(client_state.Msg) {
             tab_content,
           ]),
         ],
-        [
-          dialog.cancel_button(
-            model,
-            client_state.pool_msg(pool_messages.MemberMilestoneDialogClosed),
-          ),
-        ],
+        [],
       )
     }
     option.None -> none()
@@ -1333,16 +1401,14 @@ fn milestone_tabpanel_id(
   tab: milestone_details_tab.MilestoneDetailsTab,
 ) -> String {
   case tab {
-    milestone_details_tab.MilestoneOverviewTab
-    | milestone_details_tab.MilestoneContentTab -> "modal-tabpanel-0"
+    milestone_details_tab.MilestoneContentTab -> "modal-tabpanel-0"
     milestone_details_tab.MilestoneMetricsTab -> "modal-tabpanel-1"
   }
 }
 
 fn milestone_tab_id(tab: milestone_details_tab.MilestoneDetailsTab) -> String {
   case tab {
-    milestone_details_tab.MilestoneOverviewTab
-    | milestone_details_tab.MilestoneContentTab -> "modal-tab-0"
+    milestone_details_tab.MilestoneContentTab -> "modal-tab-0"
     milestone_details_tab.MilestoneMetricsTab -> "modal-tab-1"
   }
 }
@@ -1443,7 +1509,9 @@ fn view_milestone_metrics_tab(
             view_metric_row(
               model,
               i18n_text.MetricsPoolLifetimeAvg,
-              format_duration_s(metrics.health.avg_pool_lifetime_s),
+              detail_metrics.format_duration_s(
+                metrics.health.avg_pool_lifetime_s,
+              ),
             ),
             view_metric_row(
               model,
@@ -1459,54 +1527,12 @@ fn view_milestone_metrics_tab(
                   i18n_text.MetricsNotAvailable,
                 )),
             ),
-            div([attribute.class("milestone-workflows")], [
-              span([attribute.class("detail-label")], [
-                text(helpers_i18n.i18n_t(model, i18n_text.MetricsWorkflows)),
-              ]),
-              div([attribute.class("metrics-workflow-list")], [
-                case metrics.workflows {
-                  [] ->
-                    div([attribute.class("metrics-workflow-empty")], [
-                      text(helpers_i18n.i18n_t(
-                        model,
-                        i18n_text.MetricsNotAvailable,
-                      )),
-                    ])
-                  _ ->
-                    div(
-                      [attribute.class("metrics-workflow-items")],
-                      list.map(metrics.workflows, fn(item) {
-                        div([attribute.class("metrics-workflow-item")], [
-                          span([attribute.class("metrics-workflow-name")], [
-                            text(item.name),
-                          ]),
-                          badge.quick(int.to_string(item.count), badge.Primary),
-                        ])
-                      }),
-                    )
-                },
-              ]),
-            ]),
+            detail_metrics.view_workflows(
+              helpers_i18n.i18n_t(model, i18n_text.MetricsWorkflows),
+              helpers_i18n.i18n_t(model, i18n_text.MetricsNotAvailable),
+              metrics.workflows,
+            ),
           ])
-      }
-  }
-}
-
-fn format_duration_s(seconds: Int) -> String {
-  let total = case seconds < 0 {
-    True -> 0
-    False -> seconds
-  }
-  let hours = total / 3600
-  let rem_hour = total - hours * 3600
-  let mins = rem_hour / 60
-  let secs = rem_hour - mins * 60
-  case hours > 0 {
-    True -> int.to_string(hours) <> "h " <> int.to_string(mins) <> "m"
-    False ->
-      case mins > 0 {
-        True -> int.to_string(mins) <> "m " <> int.to_string(secs) <> "s"
-        False -> int.to_string(secs) <> "s"
       }
   }
 }
@@ -1516,12 +1542,92 @@ fn view_metric_row(
   label: i18n_text.Text,
   value: String,
 ) -> Element(client_state.Msg) {
-  div([attribute.class("detail-row")], [
-    span([attribute.class("detail-label")], [
-      text(helpers_i18n.i18n_t(model, label)),
-    ]),
-    span([attribute.class("detail-value")], [text(value)]),
-  ])
+  detail_metrics.view_row(helpers_i18n.i18n_t(model, label), value)
+}
+
+fn view_create_dialog(model: client_state.Model) -> Element(client_state.Msg) {
+  let #(is_open, name, description) = case
+    model.member.pool.member_milestone_dialog
+  {
+    member_pool.MilestoneDialogCreate(name: name, description: description) -> #(
+      True,
+      name,
+      description,
+    )
+    _ -> #(False, "", "")
+  }
+
+  dialog.view(
+    dialog.DialogConfig(
+      title: helpers_i18n.i18n_t(model, i18n_text.CreateMilestone),
+      icon: option.None,
+      size: dialog.DialogSm,
+      on_close: client_state.pool_msg(pool_messages.MemberMilestoneDialogClosed),
+    ),
+    is_open,
+    model.member.pool.member_milestone_dialog_error,
+    [
+      form(
+        [
+          event.on_submit(fn(_) {
+            client_state.pool_msg(pool_messages.MemberMilestoneCreateSubmitted)
+          }),
+          attribute.id("milestone-create-form"),
+        ],
+        [
+          form_field.view_required(
+            helpers_i18n.i18n_t(model, i18n_text.Name),
+            input([
+              attribute.type_("text"),
+              attribute.value(name),
+              attribute.required(True),
+              event.on_input(fn(value) {
+                client_state.pool_msg(pool_messages.MemberMilestoneNameChanged(
+                  value,
+                ))
+              }),
+            ]),
+          ),
+          form_field.view(
+            helpers_i18n.i18n_t(model, i18n_text.Description),
+            textarea(
+              [
+                attribute.rows(4),
+                attribute.value(description),
+                event.on_input(fn(value) {
+                  client_state.pool_msg(
+                    pool_messages.MemberMilestoneDescriptionChanged(value),
+                  )
+                }),
+              ],
+              description,
+            ),
+          ),
+        ],
+      ),
+    ],
+    [
+      dialog.cancel_button(
+        model,
+        client_state.pool_msg(pool_messages.MemberMilestoneDialogClosed),
+      ),
+      button(
+        [
+          attribute.type_("submit"),
+          attribute.form("milestone-create-form"),
+          attribute.disabled(
+            model.member.pool.member_milestone_dialog_in_flight,
+          ),
+        ],
+        [
+          text(case model.member.pool.member_milestone_dialog_in_flight {
+            True -> helpers_i18n.i18n_t(model, i18n_text.Creating)
+            False -> helpers_i18n.i18n_t(model, i18n_text.Create)
+          }),
+        ],
+      ),
+    ],
+  )
 }
 
 fn view_edit_dialog(model: client_state.Model) -> Element(client_state.Msg) {

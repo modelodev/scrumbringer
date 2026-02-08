@@ -23,3 +23,19 @@ pub fn edit_button_id(milestone_id: Int) -> String {
 pub fn delete_button_id(milestone_id: Int) -> String {
   "milestone-delete-button-" <> int.to_string(milestone_id)
 }
+
+pub fn create_card_button_id(milestone_id: Int) -> String {
+  "milestone-create-card-button-" <> int.to_string(milestone_id)
+}
+
+pub fn quick_create_card_button_id(milestone_id: Int) -> String {
+  "milestone-quick-create-card-button-" <> int.to_string(milestone_id)
+}
+
+pub fn create_button_id() -> String {
+  "milestone-create-button"
+}
+
+pub fn create_empty_button_id() -> String {
+  "milestone-create-empty-button"
+}

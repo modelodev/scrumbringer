@@ -200,6 +200,10 @@ pub type Text {
   MilestonesEmpty
   MilestonesNoResults
   MilestonesLoadError
+  CreateMilestone
+  CreateFirstMilestone
+  MilestoneCreated
+  MilestoneCreateFailed
   ShowCompletedMilestones
   ShowEmptyMilestones
   MilestonesReady
@@ -688,6 +692,9 @@ pub type Text {
   // Left panel sections
   Work
   NewCard
+  QuickCard
+  NewCardInThisMilestone
+  MilestoneTarget
   Configuration
   Team
   // Note: Capabilities is already defined in the Capabilities section above

@@ -4,8 +4,7 @@
 
 import lustre/element.{type Element}
 
-import gleam/option as opt
-import scrumbringer_client/ui/tabs
+import scrumbringer_client/ui/detail_tabs
 
 // =============================================================================
 // Types (Public API preserved)
@@ -40,33 +39,20 @@ pub fn view(config: Config(msg)) -> Element(msg) {
   let Config(active_tab:, notes_count:, has_new_notes:, labels:, on_tab_click:) =
     config
 
-  tabs.view(tabs.config(
-    tabs: [
-      tabs.TabItem(
-        id: TasksTab,
-        label: labels.tasks,
-        count: opt.None,
-        has_indicator: False,
-      ),
-      tabs.TabItem(
-        id: NotesTab,
-        label: labels.notes,
-        count: case notes_count > 0 {
-          True -> opt.Some(notes_count)
-          False -> opt.None
-        },
-        has_indicator: has_new_notes,
-      ),
-      tabs.TabItem(
-        id: MetricsTab,
-        label: labels.metrics,
-        count: opt.None,
-        has_indicator: False,
-      ),
-    ],
-    active: active_tab,
+  detail_tabs.view(detail_tabs.Config(
+    active_tab: active_tab,
+    notes_count: notes_count,
+    has_new_notes: has_new_notes,
+    labels: detail_tabs.Labels(
+      tasks: labels.tasks,
+      notes: labels.notes,
+      metrics: labels.metrics,
+    ),
+    tasks_id: TasksTab,
+    notes_id: NotesTab,
+    metrics_id: MetricsTab,
     container_class: "card-tabs modal-tabs",
     tab_class: "card-tab modal-tab",
-    on_click: on_tab_click,
+    on_tab_click: on_tab_click,
   ))
 }

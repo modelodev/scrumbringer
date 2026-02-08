@@ -55,10 +55,11 @@ import scrumbringer_client/ui/card_section_header
 import scrumbringer_client/ui/card_state
 import scrumbringer_client/ui/card_state_badge
 import scrumbringer_client/ui/card_tabs
-import scrumbringer_client/ui/color_picker
+import scrumbringer_client/ui/detail_metrics
 import scrumbringer_client/ui/modal_header
 import scrumbringer_client/ui/note_dialog
 import scrumbringer_client/ui/notes_list
+import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/tooltips/types as notes_list_types
 
 // =============================================================================
@@ -467,7 +468,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     )
 
     // Actions that emit events to parent
-    CreateTaskClicked -> #(model, emit_create_task_requested())
+    CreateTaskClicked -> #(model, emit_create_task_requested(model.card_id))
 
     CloseClicked -> #(model, emit_close_requested())
   }
@@ -545,9 +546,14 @@ fn remove_note(notes: Remote(List(CardNote)), note_id: Int) -> List(CardNote) {
 
 /// Emit create-task-requested custom event to parent.
 /// The parent will open the main task creation dialog pre-filled with card_id.
-fn emit_create_task_requested() -> Effect(Msg) {
+fn emit_create_task_requested(card_id: option.Option(Int)) -> Effect(Msg) {
+  let detail = case card_id {
+    option.Some(id) -> json.object([#("card_id", json.int(id))])
+    option.None -> json.null()
+  }
+
   effect.from(fn(_dispatch) {
-    emit_custom_event("create-task-requested", json.null())
+    emit_custom_event("create-task-requested", detail)
   })
 }
 
@@ -575,8 +581,7 @@ fn view(model: Model) -> Element(Msg) {
 }
 
 fn view_modal(model: Model, card: Card) -> Element(Msg) {
-  let color_opt = color_from_string(card.color)
-  let border_class = color_picker.border_class(color_opt)
+  let border_class = task_color.card_border_class(card.color)
 
   // AC21: Calculate notes count for tab display
   let notes_count = case model.notes {
@@ -928,7 +933,9 @@ fn view_card_metrics_section(model: Model) -> Element(Msg) {
             ),
             view_metrics_row(
               t(model.locale, i18n_text.MetricsPoolLifetimeAvg),
-              format_duration_s(metrics.health.avg_pool_lifetime_s),
+              detail_metrics.format_duration_s(
+                metrics.health.avg_pool_lifetime_s,
+              ),
             ),
             view_metrics_row(
               t(model.locale, i18n_text.MetricsAvgExecutors),
@@ -939,60 +946,18 @@ fn view_card_metrics_section(model: Model) -> Element(Msg) {
               metrics.most_activated
                 |> option.unwrap(t(model.locale, i18n_text.MetricsNotAvailable)),
             ),
-            div([attribute.class("milestone-workflows")], [
-              span([attribute.class("detail-label")], [
-                text(t(model.locale, i18n_text.MetricsWorkflows)),
-              ]),
-              div([attribute.class("metrics-workflow-list")], [
-                case metrics.workflows {
-                  [] ->
-                    div([attribute.class("metrics-workflow-empty")], [
-                      text(t(model.locale, i18n_text.MetricsNotAvailable)),
-                    ])
-                  _ ->
-                    div(
-                      [attribute.class("metrics-workflow-items")],
-                      list.map(metrics.workflows, fn(item) {
-                        div([attribute.class("metrics-workflow-item")], [
-                          span([attribute.class("metrics-workflow-name")], [
-                            text(item.name),
-                          ]),
-                          badge.quick(int.to_string(item.count), badge.Primary),
-                        ])
-                      }),
-                    )
-                },
-              ]),
-            ]),
+            detail_metrics.view_workflows(
+              t(model.locale, i18n_text.MetricsWorkflows),
+              t(model.locale, i18n_text.MetricsNotAvailable),
+              metrics.workflows,
+            ),
           ])
       }
   }
 }
 
-fn format_duration_s(seconds: Int) -> String {
-  let total = case seconds < 0 {
-    True -> 0
-    False -> seconds
-  }
-  let hours = total / 3600
-  let rem_hour = total - hours * 3600
-  let mins = rem_hour / 60
-  let secs = rem_hour - mins * 60
-  case hours > 0 {
-    True -> int.to_string(hours) <> "h " <> int.to_string(mins) <> "m"
-    False ->
-      case mins > 0 {
-        True -> int.to_string(mins) <> "m " <> int.to_string(secs) <> "s"
-        False -> int.to_string(secs) <> "s"
-      }
-  }
-}
-
 fn view_metrics_row(label: String, value: String) -> Element(Msg) {
-  div([attribute.class("detail-row")], [
-    span([attribute.class("detail-label")], [text(label)]),
-    span([attribute.class("detail-value")], [text(value)]),
-  ])
+  detail_metrics.view_row(label, value)
 }
 
 fn card_tabpanel_id(tab: card_tabs.Tab) -> String {
@@ -1014,16 +979,6 @@ fn card_tab_id(tab: card_tabs.Tab) -> String {
 // =============================================================================
 // Helper Functions
 // =============================================================================
-
-/// Convert string color from Card to color_picker.CardColor option.
-fn color_from_string(
-  color: option.Option(String),
-) -> option.Option(color_picker.CardColor) {
-  case color {
-    option.None -> option.None
-    option.Some(c) -> color_picker.string_to_color(c)
-  }
-}
 
 /// Internal i18n helper - maps locale + key to translated text.
 fn t(loc: Locale, key: i18n_text.Text) -> String {

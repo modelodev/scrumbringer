@@ -109,6 +109,7 @@ pub type Msg {
   MemberMilestoneTaskMoveClicked(Int, Int, Int)
   MemberMilestoneCardMoved(ApiResult(Card))
   MemberMilestoneTaskMoved(ApiResult(Task))
+  MemberMilestoneCreateClicked
   MemberMilestoneActivatePromptClicked(Int)
   MemberMilestoneActivateClicked(Int)
   MemberMilestoneActivated(Int, ApiResult(Nil))
@@ -117,6 +118,8 @@ pub type Msg {
   MemberMilestoneDialogClosed
   MemberMilestoneNameChanged(String)
   MemberMilestoneDescriptionChanged(String)
+  MemberMilestoneCreateSubmitted
+  MemberMilestoneCreated(ApiResult(Milestone))
   MemberMilestoneEditSubmitted(Int)
   MemberMilestoneDeleteSubmitted(Int)
   MemberMilestoneUpdated(ApiResult(Milestone))

@@ -36,6 +36,31 @@ pub fn list_milestones(
   )
 }
 
+pub fn create_milestone(
+  project_id: Int,
+  name: String,
+  description: String,
+  to_msg: fn(ApiResult(Milestone)) -> msg,
+) -> Effect(msg) {
+  let body =
+    json.object([
+      #("name", json.string(name)),
+      #("description", json.string(description)),
+    ])
+
+  core.request(
+    "POST",
+    "/api/v1/projects/" <> int.to_string(project_id) <> "/milestones",
+    option.Some(body),
+    decode.field(
+      "milestone",
+      milestone_codec.milestone_decoder(),
+      decode.success,
+    ),
+    to_msg,
+  )
+}
+
 pub fn activate_milestone(
   milestone_id: Int,
   to_msg: fn(ApiResult(Nil)) -> msg,

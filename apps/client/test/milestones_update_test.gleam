@@ -15,11 +15,14 @@ import domain/task_state
 import domain/task_type.{TaskTypeInline}
 
 import scrumbringer_client/client_state
+import scrumbringer_client/client_state/admin as admin_state
+import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member as member_state
 import scrumbringer_client/client_state/member/milestone_details_tab
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/types as state_types
+import scrumbringer_client/features/milestones/ids as milestone_ids
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/pool/update as pool_update
 import scrumbringer_client/helpers/i18n as helpers_i18n
@@ -194,6 +197,242 @@ pub fn milestone_dialog_closed_resets_dialog_state_test() {
   |> should.equal(member_pool.MilestoneDialogClosed)
   next.member.pool.member_milestone_dialog_in_flight |> should.equal(False)
   next.member.pool.member_milestone_dialog_error |> should.equal(None)
+}
+
+pub fn milestone_create_clicked_opens_create_dialog_test() {
+  let model = client_state.default_model()
+
+  let #(next, _fx) =
+    pool_update.update(
+      model,
+      pool_messages.MemberMilestoneCreateClicked,
+      test_context(),
+    )
+
+  next.member.pool.member_milestone_dialog
+  |> should.equal(member_pool.MilestoneDialogCreate(name: "", description: ""))
+}
+
+pub fn milestone_name_changed_updates_create_dialog_test() {
+  let model =
+    client_state.default_model()
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_milestone_dialog: member_pool.MilestoneDialogCreate(
+            name: "old",
+            description: "desc",
+          ),
+        ),
+      )
+    })
+
+  let #(next, _fx) =
+    pool_update.update(
+      model,
+      pool_messages.MemberMilestoneNameChanged("Release 2"),
+      test_context(),
+    )
+
+  next.member.pool.member_milestone_dialog
+  |> should.equal(member_pool.MilestoneDialogCreate(
+    name: "Release 2",
+    description: "desc",
+  ))
+}
+
+pub fn milestone_create_submitted_validates_required_name_test() {
+  let model =
+    client_state.default_model()
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_milestone_dialog: member_pool.MilestoneDialogCreate(
+            name: "",
+            description: "",
+          ),
+        ),
+      )
+    })
+
+  let #(next, _fx) =
+    pool_update.update(
+      model,
+      pool_messages.MemberMilestoneCreateSubmitted,
+      test_context(),
+    )
+
+  next.member.pool.member_milestone_dialog_error
+  |> should.equal(Some(helpers_i18n.i18n_t(next, i18n_text.NameRequired)))
+}
+
+pub fn milestone_create_submitted_validates_required_name_when_trimmed_test() {
+  let model =
+    client_state.default_model()
+    |> client_state.update_core(fn(core) {
+      client_state.CoreModel(..core, selected_project_id: Some(8))
+    })
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_milestone_dialog: member_pool.MilestoneDialogCreate(
+            name: "   ",
+            description: "",
+          ),
+        ),
+      )
+    })
+
+  let #(next, _fx) =
+    pool_update.update(
+      model,
+      pool_messages.MemberMilestoneCreateSubmitted,
+      test_context(),
+    )
+
+  next.member.pool.member_milestone_dialog_error
+  |> should.equal(Some(helpers_i18n.i18n_t(next, i18n_text.NameRequired)))
+}
+
+pub fn milestone_create_submitted_requires_selected_project_test() {
+  let model =
+    client_state.default_model()
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_milestone_dialog: member_pool.MilestoneDialogCreate(
+            name: "Release 2",
+            description: "desc",
+          ),
+        ),
+      )
+    })
+
+  let #(next, _fx) =
+    pool_update.update(
+      model,
+      pool_messages.MemberMilestoneCreateSubmitted,
+      test_context(),
+    )
+
+  next.member.pool.member_milestone_dialog_error
+  |> should.equal(Some(helpers_i18n.i18n_t(next, i18n_text.SelectProjectFirst)))
+}
+
+pub fn milestone_created_ok_opens_details_for_new_milestone_test() {
+  let created = sample_progress(33).milestone
+
+  let model =
+    client_state.default_model()
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_milestone_dialog: member_pool.MilestoneDialogCreate(
+            name: "Release 33",
+            description: "desc",
+          ),
+          member_milestone_dialog_in_flight: True,
+        ),
+      )
+    })
+
+  let #(next, _fx) =
+    pool_update.update(
+      model,
+      pool_messages.MemberMilestoneCreated(Ok(created)),
+      test_context(),
+    )
+
+  next.member.pool.member_milestone_dialog
+  |> should.equal(member_pool.MilestoneDialogView(33))
+}
+
+pub fn milestone_create_then_create_card_from_details_sets_context_test() {
+  let created = sample_progress(44).milestone
+
+  let model =
+    client_state.default_model()
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_milestone_dialog: member_pool.MilestoneDialogCreate(
+            name: "Release 44",
+            description: "desc",
+          ),
+          member_milestone_dialog_in_flight: True,
+        ),
+      )
+    })
+
+  let #(after_create, _fx_create) =
+    pool_update.update(
+      model,
+      pool_messages.MemberMilestoneCreated(Ok(created)),
+      test_context(),
+    )
+
+  let #(after_card_click, _fx_card) =
+    pool_update.update(
+      after_create,
+      pool_messages.MemberMilestoneCreateCardClicked(44),
+      test_context(),
+    )
+
+  after_card_click.member.pool.member_milestone_dialog
+  |> should.equal(member_pool.MilestoneDialogClosed)
+  after_card_click.admin.cards.cards_dialog_mode
+  |> should.equal(Some(state_types.CardDialogCreate))
+  after_card_click.admin.cards.cards_create_milestone_id
+  |> should.equal(Some(44))
+}
+
+pub fn milestone_created_error_sets_dialog_error_test() {
+  let model =
+    client_state.default_model()
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_milestone_dialog: member_pool.MilestoneDialogCreate(
+            name: "Release",
+            description: "desc",
+          ),
+          member_milestone_dialog_in_flight: True,
+        ),
+      )
+    })
+
+  let #(next, _fx) =
+    pool_update.update(
+      model,
+      pool_messages.MemberMilestoneCreated(
+        Error(ApiError(status: 500, code: "INTERNAL", message: "boom")),
+      ),
+      test_context(),
+    )
+
+  next.member.pool.member_milestone_dialog_in_flight |> should.equal(False)
+  next.member.pool.member_milestone_dialog_error |> should.equal(Some("boom"))
 }
 
 pub fn milestone_activated_ok_clears_in_flight_and_refreshes_test() {
@@ -519,6 +758,77 @@ pub fn milestone_create_card_click_opens_card_dialog_with_milestone_test() {
   next.admin.cards.cards_dialog_mode
   |> should.equal(Some(state_types.CardDialogCreate))
   next.admin.cards.cards_create_milestone_id |> should.equal(Some(89))
+}
+
+pub fn milestone_create_card_close_dialog_preserves_milestones_context_test() {
+  let model =
+    client_state.default_model()
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_section: member_section.Pool,
+          member_milestone_dialog: member_pool.MilestoneDialogView(89),
+          member_milestone_details_tab: milestone_details_tab.MilestoneContentTab,
+        ),
+      )
+    })
+
+  let #(after_open, _fx_open) =
+    pool_update.update(
+      model,
+      pool_messages.MemberMilestoneCreateCardClicked(89),
+      test_context(),
+    )
+
+  let #(after_close, fx_close) =
+    pool_update.update(
+      after_open,
+      pool_messages.CloseCardDialog,
+      test_context(),
+    )
+
+  after_close.admin.cards.cards_dialog_mode |> should.equal(None)
+  after_close.admin.cards.cards_create_milestone_id |> should.equal(None)
+  after_close.member.pool.member_section |> should.equal(member_section.Pool)
+  after_close.member.pool.member_milestone_dialog
+  |> should.equal(member_pool.MilestoneDialogClosed)
+  fx_close |> should.not_equal(effect.none())
+}
+
+pub fn close_card_dialog_without_milestone_context_has_no_focus_effect_test() {
+  let model = client_state.default_model()
+
+  let #(opened, _fx_open) =
+    pool_update.update(
+      model,
+      pool_messages.OpenCardDialog(state_types.CardDialogCreate),
+      test_context(),
+    )
+
+  let #(closed, fx_close) =
+    pool_update.update(opened, pool_messages.CloseCardDialog, test_context())
+
+  closed.admin.cards.cards_dialog_mode |> should.equal(None)
+  closed.admin.cards.cards_create_milestone_id |> should.equal(None)
+  fx_close |> should.equal(effect.none())
+}
+
+pub fn close_card_dialog_focus_target_resolves_to_quick_create_button_test() {
+  let model =
+    client_state.default_model()
+    |> client_state.update_admin(fn(admin) {
+      let cards = admin.cards
+      admin_state.AdminModel(
+        ..admin,
+        cards: admin_cards.Model(..cards, cards_create_milestone_id: Some(89)),
+      )
+    })
+
+  pool_update.close_card_dialog_focus_target_for_test(model)
+  |> should.equal(Some(milestone_ids.quick_create_card_button_id(89)))
 }
 
 pub fn global_create_task_from_milestones_opens_pool_create_without_milestone_test() {

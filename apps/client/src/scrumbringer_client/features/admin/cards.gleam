@@ -82,10 +82,11 @@ pub fn handle_open_card_dialog(
   model: client_state.Model,
   mode: client_state.CardDialogMode,
 ) -> #(client_state.Model, Effect(client_state.Msg)) {
-  let create_milestone_id = case mode {
-    state_types.CardDialogCreate -> opt.None
-    _ -> model.admin.cards.cards_create_milestone_id
-  }
+  let create_milestone_id =
+    resolve_create_milestone_for_mode(
+      mode,
+      model.admin.cards.cards_create_milestone_id,
+    )
 
   #(
     client_state.update_admin(model, fn(admin) {
@@ -99,6 +100,16 @@ pub fn handle_open_card_dialog(
     }),
     effect.none(),
   )
+}
+
+fn resolve_create_milestone_for_mode(
+  mode: client_state.CardDialogMode,
+  current: opt.Option(Int),
+) -> opt.Option(Int) {
+  case mode {
+    state_types.CardDialogCreate -> opt.None
+    _ -> current
+  }
 }
 
 pub fn handle_open_card_dialog_for_milestone(

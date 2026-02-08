@@ -28,26 +28,24 @@ import lustre/element/html.{div, span, text}
 import lustre/event
 
 import domain/card.{type Card}
-import domain/remote.{Loaded}
-import domain/task as domain_task
 import scrumbringer_client/client_state.{type Model, type Msg, pool_msg}
+import scrumbringer_client/features/cards/detail_modal_entry
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/helpers/selection as helpers_selection
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/state/normalized_store
-import scrumbringer_client/ui/card_detail_host
 import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/card_state
 import scrumbringer_client/ui/card_state_badge
 import scrumbringer_client/ui/card_title_meta
-import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/event_decoders
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/loading
 import scrumbringer_client/ui/section_header
+import scrumbringer_client/ui/task_color
 import scrumbringer_client/utils/card_queries
 
 // =============================================================================
@@ -106,8 +104,7 @@ fn view_cards_list(model: Model, cards: List(Card)) -> Element(Msg) {
 }
 
 fn view_card_item(model: Model, card: Card) -> Element(Msg) {
-  let color_opt = color_from_string(card.color)
-  let border_class = color_picker.border_class(color_opt)
+  let border_class = task_color.card_border_class(card.color)
   let state_label = card_state.label(model.ui.locale, card.state)
 
   let header_title_elements =
@@ -149,16 +146,6 @@ fn view_card_item(model: Model, card: Card) -> Element(Msg) {
   )
 }
 
-/// Convert string color from Card to color_picker.CardColor option.
-fn color_from_string(
-  color: option.Option(String),
-) -> option.Option(color_picker.CardColor) {
-  case color {
-    option.None -> option.None
-    option.Some(c) -> color_picker.string_to_color(c)
-  }
-}
-
 // =============================================================================
 // Card Detail Modal Component Integration
 // =============================================================================
@@ -167,70 +154,39 @@ fn color_from_string(
 /// Render the card-detail-modal custom element when a card is open.
 /// Made public for use in client_view.gleam (Story 5.3: Pool/Kanban card detail)
 pub fn view_card_detail_modal(model: Model) -> Element(Msg) {
-  case model.member.pool.card_detail_open {
-    option.None -> element.none()
-    option.Some(card_id) -> {
-      // Find the card data
-      let card_opt = card_queries.find_card(model, card_id)
-
-      case card_opt {
-        option.None -> element.none()
-        option.Some(card) -> {
-          // Get tasks for this card (filter from member_tasks if available)
-          let tasks = get_card_tasks(model, card_id)
-          let current_user_id = case model.core.user {
-            option.Some(user) -> user.id
-            option.None -> 0
-          }
-          let is_org_admin = case model.core.user {
-            option.Some(user) -> permissions.is_org_admin(user.org_role)
-            option.None -> False
-          }
-          let is_manager = case helpers_selection.selected_project(model) {
-            option.Some(project) -> permissions.is_project_manager(project)
-            option.None -> False
-          }
-          let can_manage_notes = is_org_admin || is_manager
-
-          card_detail_host.view(card_detail_host.Config(
-            card: card,
-            tasks: tasks,
-            locale: model.ui.locale,
-            current_user_id: current_user_id,
-            can_manage_notes: can_manage_notes,
-            on_create_task: decode_create_task_event(card_id),
-            on_close: decode_close_detail_event(),
-          ))
-        }
-      }
-    }
+  let is_org_admin = case model.core.user {
+    option.Some(user) -> permissions.is_org_admin(user.org_role)
+    option.None -> False
   }
+  let is_manager = case helpers_selection.selected_project(model) {
+    option.Some(project) -> permissions.is_project_manager(project)
+    option.None -> False
+  }
+
+  detail_modal_entry.view(
+    model,
+    detail_modal_entry.Config(
+      can_manage_notes: is_org_admin || is_manager,
+      on_create_task: decode_create_task_event(),
+      on_close: decode_close_detail_event(),
+    ),
+  )
 }
 
 /// Decoder for create-task-requested event.
 /// Opens the main task creation dialog with card_id pre-filled.
-fn decode_create_task_event(card_id: Int) -> decode.Decoder(Msg) {
-  event_decoders.message(
-    pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(card_id)),
+fn decode_create_task_event() -> decode.Decoder(Msg) {
+  event_decoders.custom_detail(
+    decode.field("card_id", decode.int, decode.success),
+    fn(card_id) {
+      decode.success(
+        pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(card_id)),
+      )
+    },
   )
 }
 
 /// Decoder for close-requested event.
 fn decode_close_detail_event() -> decode.Decoder(Msg) {
   event_decoders.message(pool_msg(pool_messages.CloseCardDetail))
-}
-
-// Justification: nested case improves clarity for branching logic.
-fn get_card_tasks(model: Model, card_id: Int) -> List(domain_task.Task) {
-  // Filter tasks from member_tasks that belong to this card
-  case model.member.pool.member_tasks {
-    Loaded(tasks) ->
-      list.filter(tasks, fn(t) {
-        case t.card_id {
-          option.Some(cid) -> cid == card_id
-          option.None -> False
-        }
-      })
-    _ -> []
-  }
 }

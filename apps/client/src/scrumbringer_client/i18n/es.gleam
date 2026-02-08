@@ -229,6 +229,10 @@ pub fn translate(text: Text) -> String {
     text.MilestonesEmpty -> "Aun no hay hitos"
     text.MilestonesNoResults -> "No hay hitos que coincidan con los filtros"
     text.MilestonesLoadError -> "No se pudieron cargar los hitos"
+    text.CreateMilestone -> "Crear hito"
+    text.CreateFirstMilestone -> "Crear primer hito"
+    text.MilestoneCreated -> "Hito creado"
+    text.MilestoneCreateFailed -> "No se pudo crear el hito"
     text.ShowCompletedMilestones -> "Ver completados"
     text.ShowEmptyMilestones -> "Ver vacios"
     text.MilestonesReady -> "Listos"
@@ -810,6 +814,9 @@ pub fn translate(text: Text) -> String {
     // Secciones del panel izquierdo
     text.Work -> "Trabajo"
     text.NewCard -> "Nueva tarjeta"
+    text.QuickCard -> "Tarjeta"
+    text.NewCardInThisMilestone -> "Nueva tarjeta en este hito"
+    text.MilestoneTarget -> "Hito destino"
     text.Configuration -> "Configuración"
     text.Team -> "Equipo"
     // Note: text.Capabilities already translated in Capabilities section

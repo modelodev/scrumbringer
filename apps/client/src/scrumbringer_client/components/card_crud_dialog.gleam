@@ -63,6 +63,7 @@ pub type Model {
     locale: Locale,
     project_id: Option(Int),
     create_milestone_id: Option(Int),
+    create_milestone_name: Option(String),
     mode: Option(DialogMode),
     // Create dialog fields
     create_title: String,
@@ -106,6 +107,8 @@ pub type Msg {
   ProjectIdReceived(Int)
   MilestoneIdReceived(Int)
   MilestoneIdCleared
+  MilestoneNameReceived(String)
+  MilestoneNameCleared
   ModeReceived(DialogMode)
   // Create form
   CreateTitleChanged(String)
@@ -147,6 +150,7 @@ fn on_attribute_change() -> List(component.Option(Msg)) {
     component.on_attribute_change("locale", decode_locale),
     component.on_attribute_change("project-id", decode_project_id),
     component.on_attribute_change("milestone-id", decode_milestone_id),
+    component.on_attribute_change("milestone-name", decode_milestone_name),
     component.on_attribute_change("mode", decode_mode),
     component.on_attribute_change("card-id", decode_card_id),
     component.on_property_change("card", card_property_decoder()),
@@ -166,6 +170,13 @@ fn decode_milestone_id(value: String) -> Result(Msg, Nil) {
   case int.parse(value) {
     Ok(id) -> Ok(MilestoneIdReceived(id))
     Error(_) -> Ok(MilestoneIdCleared)
+  }
+}
+
+fn decode_milestone_name(value: String) -> Result(Msg, Nil) {
+  case value {
+    "" -> Ok(MilestoneNameCleared)
+    name -> Ok(MilestoneNameReceived(name))
   }
 }
 
@@ -236,6 +247,7 @@ fn default_model() -> Model {
     locale: En,
     project_id: option.None,
     create_milestone_id: option.None,
+    create_milestone_name: option.None,
     mode: option.None,
     create_title: "",
     create_description: "",
@@ -274,6 +286,16 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     MilestoneIdCleared -> #(
       Model(..model, create_milestone_id: option.None),
+      effect.none(),
+    )
+
+    MilestoneNameReceived(name) -> #(
+      Model(..model, create_milestone_name: option.Some(name)),
+      effect.none(),
+    )
+
+    MilestoneNameCleared -> #(
+      Model(..model, create_milestone_name: option.None),
       effect.none(),
     )
 
@@ -360,6 +382,11 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     CloseRequested -> #(model, emit_close_requested())
   }
+}
+
+/// Test helper: exposes update transitions for deterministic unit tests.
+pub fn update_for_test(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+  update(model, msg)
 }
 
 fn handle_mode_received(model: Model, mode: DialogMode) -> #(Model, Effect(Msg)) {
@@ -666,6 +693,7 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
               attribute.id("card-create-form"),
             ],
             [
+              view_create_milestone_context(model),
               // Title field
               form_field.view_required(
                 t(model.locale, i18n_text.CardTitle),
@@ -674,6 +702,7 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
                   attribute.value(model.create_title),
                   event.on_input(CreateTitleChanged),
                   attribute.required(True),
+                  attribute.autofocus(True),
                   attribute.attribute("aria-label", "Card title"),
                 ]),
               ),
@@ -725,6 +754,34 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
       ],
     ),
   ])
+}
+
+fn view_create_milestone_context(model: Model) -> Element(Msg) {
+  case model.create_milestone_id {
+    option.Some(milestone_id) ->
+      form_field.view(
+        t(model.locale, i18n_text.MilestoneTarget),
+        div(
+          [
+            attribute.class("task-create-milestone-target"),
+            attribute.attribute("data-testid", "card-create-milestone-context"),
+            attribute.attribute(
+              "aria-label",
+              t(model.locale, i18n_text.MilestoneTarget),
+            ),
+          ],
+          [text(milestone_target_text(model, milestone_id))],
+        ),
+      )
+    option.None -> element.none()
+  }
+}
+
+fn milestone_target_text(model: Model, milestone_id: Int) -> String {
+  case model.create_milestone_name {
+    option.Some(name) -> name
+    option.None -> "#" <> int.to_string(milestone_id)
+  }
 }
 
 fn view_edit_dialog(model: Model) -> Element(Msg) {

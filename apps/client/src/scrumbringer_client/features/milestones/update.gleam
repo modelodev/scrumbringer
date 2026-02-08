@@ -1,6 +1,7 @@
 import gleam/dict
 import gleam/list
 import gleam/option as opt
+import gleam/string
 
 import lustre/effect
 
@@ -211,6 +212,22 @@ pub fn try_update(
         card_fx,
       ))
     }
+
+    pool_messages.MemberMilestoneCreateClicked ->
+      opt.Some(#(
+        update_member_pool(model, fn(pool) {
+          member_pool.Model(
+            ..pool,
+            member_milestone_dialog: member_pool.MilestoneDialogCreate(
+              name: "",
+              description: "",
+            ),
+            member_milestone_dialog_in_flight: False,
+            member_milestone_dialog_error: opt.None,
+          )
+        }),
+        effect.none(),
+      ))
 
     pool_messages.MemberMilestoneCardDragStarted(card_id, from_milestone_id) ->
       opt.Some(#(
@@ -588,6 +605,11 @@ pub fn try_update(
       opt.Some(#(
         update_member_pool(model, fn(pool) {
           let next_dialog = case pool.member_milestone_dialog {
+            member_pool.MilestoneDialogCreate(description: description, ..) ->
+              member_pool.MilestoneDialogCreate(
+                name: name,
+                description: description,
+              )
             member_pool.MilestoneDialogEdit(
               id: id,
               description: description,
@@ -613,6 +635,11 @@ pub fn try_update(
       opt.Some(#(
         update_member_pool(model, fn(pool) {
           let next_dialog = case pool.member_milestone_dialog {
+            member_pool.MilestoneDialogCreate(name: name, ..) ->
+              member_pool.MilestoneDialogCreate(
+                name: name,
+                description: description,
+              )
             member_pool.MilestoneDialogEdit(id: id, name: name, ..) ->
               member_pool.MilestoneDialogEdit(
                 id: id,
@@ -629,6 +656,146 @@ pub fn try_update(
         }),
         effect.none(),
       ))
+
+    pool_messages.MemberMilestoneCreateSubmitted -> {
+      let payload = case model.member.pool.member_milestone_dialog {
+        member_pool.MilestoneDialogCreate(name: name, description: description) ->
+          opt.Some(#(name, description))
+        _ -> opt.None
+      }
+
+      case payload {
+        opt.None -> opt.Some(#(model, effect.none()))
+
+        opt.Some(#("", _)) ->
+          opt.Some(#(
+            update_member_pool(model, fn(pool) {
+              member_pool.Model(
+                ..pool,
+                member_milestone_dialog_error: opt.Some(helpers_i18n.i18n_t(
+                  model,
+                  i18n_text.NameRequired,
+                )),
+              )
+            }),
+            effect.none(),
+          ))
+
+        opt.Some(#(name, description)) -> {
+          let normalized_name = string.trim(name)
+
+          case model.core.selected_project_id {
+            opt.None ->
+              opt.Some(#(
+                update_member_pool(model, fn(pool) {
+                  member_pool.Model(
+                    ..pool,
+                    member_milestone_dialog_error: opt.Some(helpers_i18n.i18n_t(
+                      model,
+                      i18n_text.SelectProjectFirst,
+                    )),
+                  )
+                }),
+                effect.none(),
+              ))
+
+            opt.Some(_) if normalized_name == "" ->
+              opt.Some(#(
+                update_member_pool(model, fn(pool) {
+                  member_pool.Model(
+                    ..pool,
+                    member_milestone_dialog_error: opt.Some(helpers_i18n.i18n_t(
+                      model,
+                      i18n_text.NameRequired,
+                    )),
+                  )
+                }),
+                effect.none(),
+              ))
+
+            opt.Some(project_id) -> {
+              let next_model =
+                update_member_pool(model, fn(pool) {
+                  member_pool.Model(
+                    ..pool,
+                    member_milestone_dialog_in_flight: True,
+                    member_milestone_dialog_error: opt.None,
+                  )
+                })
+
+              opt.Some(#(
+                next_model,
+                api_milestones.create_milestone(
+                  project_id,
+                  normalized_name,
+                  description,
+                  fn(result) {
+                    client_state.pool_msg(pool_messages.MemberMilestoneCreated(
+                      result,
+                    ))
+                  },
+                ),
+              ))
+            }
+          }
+        }
+      }
+    }
+
+    pool_messages.MemberMilestoneCreated(Ok(milestone)) -> {
+      let model =
+        update_member_pool(model, fn(pool) {
+          member_pool.Model(
+            ..pool,
+            member_milestone_dialog: member_pool.MilestoneDialogView(
+              milestone.id,
+            ),
+            member_milestone_dialog_in_flight: False,
+            member_milestone_dialog_error: opt.None,
+            member_milestone_details_tab: milestone_details_tab.MilestoneContentTab,
+            member_milestone_metrics: Loading,
+            member_milestones_expanded: dict.insert(
+              pool.member_milestones_expanded,
+              milestone.id,
+              True,
+            ),
+          )
+        })
+
+      let #(next, refresh_fx) = member_refresh(model)
+
+      opt.Some(#(
+        next,
+        effect.batch([
+          helpers_toast.toast_success(helpers_i18n.i18n_t(
+            next,
+            i18n_text.MilestoneCreated,
+          )),
+          refresh_fx,
+          api_milestones.get_milestone_metrics(milestone.id, fn(result) {
+            client_state.pool_msg(pool_messages.MemberMilestoneMetricsFetched(
+              result,
+            ))
+          }),
+        ]),
+      ))
+    }
+
+    pool_messages.MemberMilestoneCreated(Error(err)) -> {
+      let message =
+        milestone_error_message(model, err, i18n_text.MilestoneCreateFailed)
+
+      opt.Some(#(
+        update_member_pool(model, fn(pool) {
+          member_pool.Model(
+            ..pool,
+            member_milestone_dialog_in_flight: False,
+            member_milestone_dialog_error: opt.Some(message),
+          )
+        }),
+        helpers_toast.toast_error(message),
+      ))
+    }
 
     pool_messages.MemberMilestoneEditSubmitted(milestone_id) -> {
       let payload = case model.member.pool.member_milestone_dialog {
@@ -827,6 +994,8 @@ fn dialog_focus_target(
       opt.Some(milestone_ids.delete_button_id(id))
     member_pool.MilestoneDialogView(id: id) ->
       opt.Some(milestone_ids.details_button_id(id))
+    member_pool.MilestoneDialogCreate(..) ->
+      opt.Some(milestone_ids.create_button_id())
     member_pool.MilestoneDialogClosed -> opt.None
   }
 }

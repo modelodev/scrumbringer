@@ -37,6 +37,7 @@ pub type HighlightState {
 
 pub type MilestoneDialog {
   MilestoneDialogClosed
+  MilestoneDialogCreate(name: String, description: String)
   MilestoneDialogView(id: Int)
   MilestoneDialogActivate(id: Int)
   MilestoneDialogEdit(id: Int, name: String, description: String)

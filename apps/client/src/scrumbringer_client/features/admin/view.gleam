@@ -45,7 +45,6 @@ import domain/org.{type OrgUser}
 import domain/org_role
 import domain/project.{type Project}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
-import domain/task.{type Task}
 import domain/task_type.{type TaskType}
 
 import scrumbringer_client/client_state.{
@@ -57,6 +56,7 @@ import scrumbringer_client/decoders
 import scrumbringer_client/features/admin/msg as admin_messages
 import scrumbringer_client/features/admin/views/members as members_view
 import scrumbringer_client/features/admin/views/workflows as workflows_view
+import scrumbringer_client/features/cards/detail_modal_entry
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/i18n/locale
 import scrumbringer_client/utils/card_queries
@@ -74,7 +74,6 @@ import scrumbringer_client/permissions
 import scrumbringer_client/theme
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/badge
-import scrumbringer_client/ui/card_detail_host
 import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/card_state
 import scrumbringer_client/ui/card_state_badge
@@ -1021,6 +1020,10 @@ pub fn view_card_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
   case model.admin.cards.cards_dialog_mode {
     opt.None -> element.none()
     opt.Some(mode) -> {
+      let milestone_name =
+        resolve_create_milestone_name(model)
+        |> opt.unwrap("")
+
       let #(mode_str, card_json) = case mode {
         state_types.CardDialogCreate -> #("create", attribute.none())
         state_types.CardDialogEdit(card_id) ->
@@ -1054,6 +1057,7 @@ pub fn view_card_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
               opt.None -> ""
             },
           ),
+          attribute.attribute("milestone-name", milestone_name),
           attribute.attribute("mode", mode_str),
           // Property for card data (edit/delete modes)
           card_json,
@@ -1066,6 +1070,23 @@ pub fn view_card_crud_dialog(model: Model, project_id: Int) -> Element(Msg) {
         [],
       )
     }
+  }
+}
+
+fn resolve_create_milestone_name(model: Model) -> opt.Option(String) {
+  case
+    model.admin.cards.cards_create_milestone_id,
+    model.member.pool.member_milestones
+  {
+    opt.Some(milestone_id), Loaded(items) ->
+      list.find_map(items, fn(progress) {
+        case progress.milestone.id == milestone_id {
+          True -> Ok(progress.milestone.name)
+          False -> Error(Nil)
+        }
+      })
+      |> opt.from_result
+    _, _ -> opt.None
   }
 }
 
@@ -1426,67 +1447,36 @@ fn view_cards_list(model: Model, cards: Remote(List(Card))) -> Element(Msg) {
 // =============================================================================
 
 fn view_card_detail_modal(model: Model, project: Project) -> Element(Msg) {
-  case model.member.pool.card_detail_open {
-    opt.None -> element.none()
-    opt.Some(card_id) -> {
-      let card_opt = card_queries.find_card(model, card_id)
-
-      case card_opt {
-        opt.None -> element.none()
-        opt.Some(card) -> {
-          let tasks = admin_get_card_tasks(model, card_id)
-
-          let current_user_id = case model.core.user {
-            opt.Some(user) -> user.id
-            opt.None -> 0
-          }
-
-          let is_org_admin = case model.core.user {
-            opt.Some(user) -> permissions.is_org_admin(user.org_role)
-            opt.None -> False
-          }
-
-          let can_manage_notes =
-            is_org_admin || permissions.is_project_manager(project)
-
-          card_detail_host.view(card_detail_host.Config(
-            card: card,
-            tasks: tasks,
-            locale: model.ui.locale,
-            current_user_id: current_user_id,
-            can_manage_notes: can_manage_notes,
-            on_create_task: decode_create_task_event(card_id),
-            on_close: decode_card_detail_close_event(),
-          ))
-        }
-      }
-    }
+  let is_org_admin = case model.core.user {
+    opt.Some(user) -> permissions.is_org_admin(user.org_role)
+    opt.None -> False
   }
+
+  detail_modal_entry.view(
+    model,
+    detail_modal_entry.Config(
+      can_manage_notes: is_org_admin || permissions.is_project_manager(project),
+      on_create_task: decode_create_task_event(),
+      on_close: decode_card_detail_close_event(),
+    ),
+  )
 }
 
 /// Decoder for create-task-requested event.
-fn decode_create_task_event(card_id: Int) -> decode.Decoder(Msg) {
-  decode.success(
-    pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(card_id)),
+fn decode_create_task_event() -> decode.Decoder(Msg) {
+  event_decoders.custom_detail(
+    decode.field("card_id", decode.int, decode.success),
+    fn(card_id) {
+      decode.success(
+        pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(card_id)),
+      )
+    },
   )
 }
 
 /// Decoder for close-requested event.
 fn decode_card_detail_close_event() -> decode.Decoder(Msg) {
   decode.success(pool_msg(pool_messages.CloseCardDetail))
-}
-
-fn admin_get_card_tasks(model: Model, card_id: Int) -> List(Task) {
-  case model.member.pool.member_tasks {
-    Loaded(tasks) ->
-      list.filter(tasks, fn(t) {
-        case t.card_id {
-          opt.Some(cid) -> cid == card_id
-          opt.None -> False
-        }
-      })
-    _ -> []
-  }
 }
 
 // =============================================================================

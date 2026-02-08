@@ -9,15 +9,7 @@ import scrumbringer_client/features/pool/update as pool_update
 import scrumbringer_client/ui/task_tabs
 
 fn test_context() -> pool_update.Context {
-  pool_update.Context(member_refresh: fn(model) {
-    #(
-      client_state.update_member(model, fn(member) {
-        let pool = member.pool
-        member_state.MemberModel(..member, pool: member_pool.Model(..pool))
-      }),
-      effect.none(),
-    )
-  })
+  pool_update.Context(member_refresh: fn(model) { #(model, effect.none()) })
 }
 
 pub fn task_details_open_sets_default_tasks_tab_test() {

@@ -44,6 +44,7 @@ import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/card_section_header
 import scrumbringer_client/ui/color_picker
+import scrumbringer_client/ui/detail_metrics
 import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/error_notice
 import scrumbringer_client/ui/form_field
@@ -519,12 +520,12 @@ fn view_task_metrics(model: Model) -> Element(Msg) {
             view_detail_row(
               model,
               i18n_text.MetricsCurrentStateTime,
-              format_duration_s(metrics.current_state_duration_s),
+              detail_metrics.format_duration_s(metrics.current_state_duration_s),
             ),
             view_detail_row(
               model,
               i18n_text.MetricsPoolLifetime,
-              format_duration_s(metrics.pool_lifetime_s),
+              detail_metrics.format_duration_s(metrics.pool_lifetime_s),
             ),
             view_detail_row(
               model,
@@ -534,30 +535,11 @@ fn view_task_metrics(model: Model) -> Element(Msg) {
             view_detail_row(
               model,
               i18n_text.MetricsTotalWorkTime,
-              format_duration_s(metrics.total_work_time_s),
+              detail_metrics.format_duration_s(metrics.total_work_time_s),
             ),
           ])
       }
     }
-  }
-}
-
-fn format_duration_s(seconds: Int) -> String {
-  let total = case seconds < 0 {
-    True -> 0
-    False -> seconds
-  }
-  let hours = total / 3600
-  let rem_hour = total - hours * 3600
-  let mins = rem_hour / 60
-  let secs = rem_hour - mins * 60
-  case hours > 0 {
-    True -> int.to_string(hours) <> "h " <> int.to_string(mins) <> "m"
-    False ->
-      case mins > 0 {
-        True -> int.to_string(mins) <> "m " <> int.to_string(secs) <> "s"
-        False -> int.to_string(secs) <> "s"
-      }
   }
 }
 
@@ -566,12 +548,7 @@ fn view_detail_row(
   label: i18n_text.Text,
   value: String,
 ) -> Element(Msg) {
-  div([attribute.class("detail-row")], [
-    span([attribute.class("detail-label")], [
-      text(helpers_i18n.i18n_t(model, label)),
-    ]),
-    span([attribute.class("detail-value")], [text(value)]),
-  ])
+  detail_metrics.view_row(helpers_i18n.i18n_t(model, label), value)
 }
 
 /// Renders the dependencies section for a task.

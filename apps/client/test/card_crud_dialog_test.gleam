@@ -3,14 +3,17 @@
 //// Tests Model construction, Msg type constructors, and DialogMode type.
 
 import gleeunit/should
+import lustre/effect
 
+import domain/api_error.{ApiError}
 import gleam/option
 import scrumbringer_client/components/card_crud_dialog.{
   type CardColor, Blue, CreateColorChanged, CreateColorToggle,
-  CreateDescriptionChanged, CreateSubmitted, CreateTitleChanged, DeleteCancelled,
-  DeleteConfirmed, EditCancelled, EditTitleChanged, Gray, Green, LocaleReceived,
-  MilestoneIdReceived, ModeCreate, ModeDelete, ModeEdit, ModeReceived, Model,
-  Orange, Pink, ProjectIdReceived, Purple, Red, Yellow,
+  CreateDescriptionChanged, CreateResult, CreateSubmitted, CreateTitleChanged,
+  DeleteCancelled, DeleteConfirmed, EditCancelled, EditTitleChanged, Gray, Green,
+  LocaleReceived, MilestoneIdReceived, MilestoneNameCleared,
+  MilestoneNameReceived, ModeCreate, ModeDelete, ModeEdit, ModeReceived, Model,
+  Orange, Pink, ProjectIdReceived, Purple, Red, Yellow, update_for_test,
 }
 import scrumbringer_client/i18n/locale.{En, Es}
 
@@ -24,6 +27,7 @@ pub fn model_default_values_test() {
       locale: En,
       project_id: option.None,
       create_milestone_id: option.None,
+      create_milestone_name: option.None,
       mode: option.None,
       create_title: "",
       create_description: "",
@@ -54,6 +58,7 @@ pub fn model_with_spanish_locale_test() {
       locale: Es,
       project_id: option.Some(42),
       create_milestone_id: option.Some(7),
+      create_milestone_name: option.Some("Milestone 7"),
       mode: option.Some(ModeCreate),
       create_title: "Mi Ficha",
       create_description: "Descripción",
@@ -131,6 +136,18 @@ pub fn msg_milestone_id_received_test() {
   }
 }
 
+pub fn msg_milestone_name_received_test() {
+  let msg = MilestoneNameReceived("Milestone 77")
+  case msg {
+    MilestoneNameReceived(name) -> name |> should.equal("Milestone 77")
+  }
+}
+
+pub fn msg_milestone_name_cleared_test() {
+  let msg = MilestoneNameCleared
+  should.equal(msg, MilestoneNameCleared)
+}
+
 pub fn msg_create_title_changed_test() {
   let msg = CreateTitleChanged("New Title")
   case msg {
@@ -182,6 +199,50 @@ pub fn msg_delete_confirmed_test() {
 pub fn msg_delete_cancelled_test() {
   let msg = DeleteCancelled
   should.equal(msg, DeleteCancelled)
+}
+
+pub fn contextual_create_error_keeps_dialog_open_and_milestone_for_retry_test() {
+  let model =
+    Model(
+      locale: En,
+      project_id: option.Some(10),
+      create_milestone_id: option.Some(89),
+      create_milestone_name: option.Some("Milestone 89"),
+      mode: option.Some(ModeCreate),
+      create_title: "Card with context",
+      create_description: "desc",
+      create_color: option.None,
+      create_color_open: False,
+      create_in_flight: True,
+      create_error: option.None,
+      edit_title: "",
+      edit_description: "",
+      edit_color: option.None,
+      edit_color_open: False,
+      edit_in_flight: False,
+      edit_error: option.None,
+      delete_in_flight: False,
+      delete_error: option.None,
+    )
+
+  let #(next, fx) =
+    update_for_test(
+      model,
+      CreateResult(
+        Error(ApiError(
+          status: 422,
+          code: "VALIDATION_ERROR",
+          message: "validation failed",
+        )),
+      ),
+    )
+
+  next.mode |> should.equal(option.Some(ModeCreate))
+  next.create_milestone_id |> should.equal(option.Some(89))
+  next.create_milestone_name |> should.equal(option.Some("Milestone 89"))
+  next.create_in_flight |> should.equal(False)
+  next.create_error |> should.equal(option.Some("validation failed"))
+  fx |> should.equal(effect.none())
 }
 
 // =============================================================================

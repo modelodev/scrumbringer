@@ -236,6 +236,67 @@ pub fn milestones_view_empty_state_test() {
   string.contains(html, "No milestones yet") |> should.be_true
 }
 
+pub fn milestones_view_shows_create_button_for_managers_test() {
+  let html =
+    base_model()
+    |> with_admin_user
+    |> with_milestones(remote.Loaded([sample_progress(12, Ready)]))
+    |> milestones_view.view
+    |> element.to_document_string
+
+  string.contains(html, "data-testid=\"milestones-create-button\"")
+  |> should.be_true
+  string.contains(html, "+ Create milestone") |> should.be_true
+}
+
+pub fn milestones_view_hides_create_button_for_non_managers_test() {
+  let html =
+    base_model()
+    |> with_milestones(remote.Loaded([sample_progress(12, Ready)]))
+    |> milestones_view.view
+    |> element.to_document_string
+
+  string.contains(html, "data-testid=\"milestones-create-button\"")
+  |> should.be_false
+}
+
+pub fn milestones_view_empty_state_shows_create_first_cta_for_manager_test() {
+  let html =
+    base_model()
+    |> with_admin_user
+    |> with_milestones(remote.Loaded([]))
+    |> milestones_view.view
+    |> element.to_document_string
+
+  string.contains(html, "data-testid=\"milestones-create-empty\"")
+  |> should.be_true
+}
+
+pub fn milestones_view_renders_create_dialog_test() {
+  let html =
+    base_model()
+    |> with_admin_user
+    |> with_milestones(remote.Loaded([sample_progress(12, Ready)]))
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_milestone_dialog: member_pool.MilestoneDialogCreate(
+            name: "",
+            description: "",
+          ),
+        ),
+      )
+    })
+    |> milestones_view.view
+    |> element.to_document_string
+
+  string.contains(html, "milestone-create-form") |> should.be_true
+  string.contains(html, "Create milestone") |> should.be_true
+}
+
 pub fn milestones_view_rows_include_stable_testids_test() {
   let html =
     base_model()
@@ -518,6 +579,54 @@ pub fn milestones_view_expanded_row_renders_loose_tasks_test() {
   |> should.be_true
 }
 
+pub fn milestones_view_expanded_row_renders_quick_new_card_cta_test() {
+  let html =
+    base_model()
+    |> with_admin_user
+    |> with_milestones(remote.Loaded([sample_progress(92, Ready)]))
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_milestones_expanded: dict.insert(dict.new(), 92, True),
+        ),
+      )
+    })
+    |> milestones_view.view
+    |> element.to_document_string
+
+  string.contains(html, "data-testid=\"milestone-quick-new-card:92\"")
+  |> should.be_true
+  string.contains(html, "id=\"milestone-quick-create-card-button-92\"")
+  |> should.be_true
+  string.contains(html, "+ Card") |> should.be_true
+}
+
+pub fn milestones_view_keeps_quick_new_card_entrypoint_available_for_mobile_strategy_test() {
+  let html =
+    base_model()
+    |> with_admin_user
+    |> with_milestones(remote.Loaded([sample_progress(99, Ready)]))
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_milestones_expanded: dict.insert(dict.new(), 99, True),
+        ),
+      )
+    })
+    |> milestones_view.view
+    |> element.to_document_string
+
+  // AC5: entrypoint should remain available even when layout adapts on small screens.
+  string.contains(html, "data-testid=\"milestone-quick-new-card:99\"")
+  |> should.be_true
+}
+
 pub fn milestones_view_details_dialog_renders_progress_and_content_test() {
   let html =
     base_model()
@@ -548,6 +657,9 @@ pub fn milestones_view_details_dialog_renders_progress_and_content_test() {
   |> should.be_true
   string.contains(html, "data-testid=\"milestone-details-new-card:93\"")
   |> should.be_true
+  string.contains(html, "id=\"milestone-create-card-button-93\"")
+  |> should.be_true
+  string.contains(html, "+ New card in this milestone") |> should.be_true
   string.contains(html, "data-testid=\"milestone-details-new-task:93\"")
   |> should.be_true
   string.contains(html, "data-testid=\"milestone-card-row:93:701\"")

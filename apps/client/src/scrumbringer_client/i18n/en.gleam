@@ -227,6 +227,10 @@ pub fn translate(text: Text) -> String {
     text.MilestonesEmpty -> "No milestones yet"
     text.MilestonesNoResults -> "No milestones match current filters"
     text.MilestonesLoadError -> "Could not load milestones"
+    text.CreateMilestone -> "Create milestone"
+    text.CreateFirstMilestone -> "Create first milestone"
+    text.MilestoneCreated -> "Milestone created"
+    text.MilestoneCreateFailed -> "Could not create milestone"
     text.ShowCompletedMilestones -> "Show completed"
     text.ShowEmptyMilestones -> "Show empty"
     text.MilestonesReady -> "Ready"
@@ -794,6 +798,9 @@ pub fn translate(text: Text) -> String {
     // Left panel sections
     text.Work -> "Work"
     text.NewCard -> "New Card"
+    text.QuickCard -> "Card"
+    text.NewCardInThisMilestone -> "New card in this milestone"
+    text.MilestoneTarget -> "Destination milestone"
     text.Configuration -> "Configuration"
     text.Team -> "Team"
     // Note: text.Capabilities already translated in Capabilities section
