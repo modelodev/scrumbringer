@@ -314,9 +314,6 @@ pub fn milestones_view_rows_include_stable_testids_test() {
   |> should.be_true
   string.contains(html, "id=\"milestone-activate-button-12\"")
   |> should.be_true
-  string.contains(html, "id=\"milestone-edit-button-12\"") |> should.be_true
-  string.contains(html, "id=\"milestone-delete-button-12\"")
-  |> should.be_true
 }
 
 pub fn milestones_view_hides_actions_for_non_managers_test() {
@@ -604,6 +601,31 @@ pub fn milestones_view_expanded_row_renders_quick_new_card_cta_test() {
   string.contains(html, "+ Card") |> should.be_true
 }
 
+pub fn milestones_view_expanded_row_renders_quick_new_task_cta_test() {
+  let html =
+    base_model()
+    |> with_admin_user
+    |> with_milestones(remote.Loaded([sample_progress(98, Ready)]))
+    |> client_state.update_member(fn(member) {
+      let pool = member.pool
+      member_state.MemberModel(
+        ..member,
+        pool: member_pool.Model(
+          ..pool,
+          member_milestones_expanded: dict.insert(dict.new(), 98, True),
+        ),
+      )
+    })
+    |> milestones_view.view
+    |> element.to_document_string
+
+  string.contains(html, "data-testid=\"milestone-quick-new-task:98\"")
+  |> should.be_true
+  string.contains(html, "id=\"milestone-quick-create-task-button-98\"")
+  |> should.be_true
+  string.contains(html, "+ Task") |> should.be_true
+}
+
 pub fn milestones_view_keeps_quick_new_card_entrypoint_available_for_mobile_strategy_test() {
   let html =
     base_model()
@@ -654,14 +676,11 @@ pub fn milestones_view_details_dialog_renders_progress_and_content_test() {
   |> should.be_true
   string.contains(html, "role=\"tablist\"") |> should.be_true
   string.contains(html, "data-testid=\"milestone-details-activate:93\"")
-  |> should.be_true
+  |> should.be_false
   string.contains(html, "data-testid=\"milestone-details-new-card:93\"")
-  |> should.be_true
-  string.contains(html, "id=\"milestone-create-card-button-93\"")
-  |> should.be_true
-  string.contains(html, "+ New card in this milestone") |> should.be_true
+  |> should.be_false
   string.contains(html, "data-testid=\"milestone-details-new-task:93\"")
-  |> should.be_true
+  |> should.be_false
   string.contains(html, "data-testid=\"milestone-card-row:93:701\"")
   |> should.be_true
   string.contains(html, "data-testid=\"milestone-task-row:93:801\"")

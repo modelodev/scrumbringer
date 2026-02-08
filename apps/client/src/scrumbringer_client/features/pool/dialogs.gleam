@@ -297,12 +297,17 @@ pub fn view_task_details(model: Model, task_id: Int) -> Element(Msg) {
         attribute.attribute("aria-labelledby", "task-detail-title"),
       ],
       [
-        div([attribute.class("modal-header-block task-detail-header-block")], [
-          // AC1, AC8: Header with task info and close button
-          view_task_header(model, task),
-          // AC2: Tab system
-          view_task_tabs(model),
-        ]),
+        div(
+          [
+            attribute.class("modal-header-block detail-header-block"),
+          ],
+          [
+            // AC1, AC8: Header with task info and close button
+            view_task_header(model, task),
+            // AC2: Tab system
+            view_task_tabs(model),
+          ],
+        ),
         div([attribute.class("modal-body task-detail-body")], [
           // Content based on active tab
           view_task_tab_content(model, task_id, task),
@@ -336,7 +341,7 @@ fn view_task_header(model: Model, task: opt.Option(task.Task)) -> Element(Msg) {
         icon: opt.None,
         badges: [],
         meta: opt.Some(
-          div([attribute.class("task-detail-meta")], [
+          div([attribute.class("detail-meta")], [
             span([attribute.class("task-meta-chip task-meta-type")], [
               icons.nav_icon(icons.TaskTypes, icons.Small),
               text(t.task_type.name),
@@ -353,9 +358,9 @@ fn view_task_header(model: Model, task: opt.Option(task.Task)) -> Element(Msg) {
         ),
         progress: opt.None,
         on_close: pool_msg(pool_messages.MemberTaskDetailsClosed),
-        header_class: "task-detail-header",
-        title_row_class: "task-detail-title-row",
-        title_class: "task-detail-title",
+        header_class: "detail-header",
+        title_row_class: "detail-title-row",
+        title_class: "detail-title",
         title_id: "task-detail-title",
         close_button_class: "modal-close btn-icon",
       ))
@@ -369,9 +374,9 @@ fn view_task_header(model: Model, task: opt.Option(task.Task)) -> Element(Msg) {
         meta: opt.None,
         progress: opt.None,
         on_close: pool_msg(pool_messages.MemberTaskDetailsClosed),
-        header_class: "task-detail-header",
-        title_row_class: "task-detail-title-row",
-        title_class: "task-detail-title",
+        header_class: "detail-header",
+        title_row_class: "detail-title-row",
+        title_class: "detail-title",
         title_id: "task-detail-title",
         close_button_class: "modal-close btn-icon",
       ))
@@ -427,7 +432,7 @@ fn view_task_tab_content(
 ) -> Element(Msg) {
   let panel = case model.member.pool.member_task_detail_tab {
     task_tabs.TasksTab ->
-      div([attribute.class("task-detail-grid")], [
+      div([attribute.class("task-detail-grid detail-grid")], [
         view_task_details_tab(model, task),
         view_dependencies(model, task_id, task),
       ])
@@ -437,6 +442,7 @@ fn view_task_tab_content(
 
   div(
     [
+      attribute.class("detail-tabpanel"),
       attribute.attribute("role", "tabpanel"),
       attribute.id(task_tabpanel_id(model.member.pool.member_task_detail_tab)),
       attribute.attribute(
@@ -574,7 +580,7 @@ fn view_dependencies(
     False -> helpers_i18n.i18n_t(model, i18n_text.Dependencies)
   }
 
-  div([attribute.class("task-dependencies-section")], [
+  div([attribute.class("task-dependencies-section detail-section")], [
     card_section_header.view_with_class(
       "task-dependencies-header",
       card_section_header.Config(
@@ -597,7 +603,7 @@ fn view_dependencies(
       Loaded(deps) ->
         case deps {
           [] ->
-            div([attribute.class("task-empty-state")], [
+            div([attribute.class("task-empty-state detail-empty-state")], [
               div([attribute.class("task-empty-title")], [
                 text(helpers_i18n.i18n_t(model, i18n_text.NoDependencies)),
               ]),
@@ -658,7 +664,7 @@ fn view_dependency_row(
     model.member.dependencies.member_dependency_remove_in_flight
     == opt.Some(depends_on_task_id)
 
-  div([attribute.class("task-dependency-row")], [
+  div([attribute.class("task-dependency-row detail-item-row")], [
     div([attribute.class("task-dependency-main")], [
       span([attribute.class("task-dependency-icon")], [icon]),
       div([attribute.class("task-dependency-text")], [
@@ -812,7 +818,7 @@ fn view_task_details_tab(
   model: Model,
   task: opt.Option(task.Task),
 ) -> Element(Msg) {
-  div([attribute.class("task-details-section")], [
+  div([attribute.class("task-details-section detail-section")], [
     case task {
       opt.Some(t) -> {
         let #(resolved_card_title, _resolved_card_color) =
@@ -828,7 +834,7 @@ fn view_task_details_tab(
           opt.None -> "—"
         }
         let desc_empty = desc == "—"
-        div([attribute.class("task-detail-grid")], [
+        div([attribute.class("task-detail-grid detail-grid")], [
           div([attribute.class("detail-row")], [
             span([attribute.class("detail-label")], [
               text(helpers_i18n.i18n_t(model, i18n_text.ParentCardLabel)),
@@ -875,7 +881,7 @@ fn view_notes(model: Model, _task_id: Int) -> Element(Msg) {
     opt.None -> 0
   }
 
-  div([attribute.class("task-notes-section")], [
+  div([attribute.class("task-notes-section detail-section")], [
     // Header with button (using shared component)
     card_section_header.view_with_class(
       "task-notes-header",
@@ -899,7 +905,7 @@ fn view_notes(model: Model, _task_id: Int) -> Element(Msg) {
       Loaded(notes) ->
         case notes {
           [] ->
-            div([attribute.class("task-empty-state")], [
+            div([attribute.class("task-empty-state detail-empty-state")], [
               div([attribute.class("task-empty-title")], [
                 text(helpers_i18n.i18n_t(model, i18n_text.NoNotesYet)),
               ]),

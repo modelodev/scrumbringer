@@ -815,6 +815,7 @@ pub fn translate(text: Text) -> String {
     text.Work -> "Trabajo"
     text.NewCard -> "Nueva tarjeta"
     text.QuickCard -> "Tarjeta"
+    text.QuickTask -> "Tarea"
     text.NewCardInThisMilestone -> "Nueva tarjeta en este hito"
     text.MilestoneTarget -> "Hito destino"
     text.Configuration -> "Configuración"

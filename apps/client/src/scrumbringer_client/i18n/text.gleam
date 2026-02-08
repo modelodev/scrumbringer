@@ -693,6 +693,7 @@ pub type Text {
   Work
   NewCard
   QuickCard
+  QuickTask
   NewCardInThisMilestone
   MilestoneTarget
   Configuration

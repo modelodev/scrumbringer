@@ -51,8 +51,8 @@ pub fn view(config: Config(msg)) -> Element(msg) {
     tasks_id: TasksTab,
     notes_id: NotesTab,
     metrics_id: MetricsTab,
-    container_class: "card-tabs modal-tabs",
-    tab_class: "card-tab modal-tab",
+    container_class: "card-tabs modal-tabs detail-tabs",
+    tab_class: "card-tab modal-tab detail-tab",
     on_tab_click: on_tab_click,
   ))
 }

@@ -607,25 +607,31 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
         attribute.attribute("aria-labelledby", "card-detail-title"),
       ],
       [
-        div([attribute.class("modal-header-block card-detail-header-block")], [
-          view_card_header(model, card),
-          // AC21: Tab navigation
-          card_tabs.view(card_tabs.Config(
-            active_tab: model.active_tab,
-            notes_count: notes_count,
-            has_new_notes: card.has_new_notes,
-            labels: card_tabs.Labels(
-              tasks: t(model.locale, i18n_text.TabTasks),
-              notes: t(model.locale, i18n_text.TabNotes),
-              metrics: t(model.locale, i18n_text.TabMetrics),
-            ),
-            on_tab_click: TabClicked,
-          )),
-        ]),
+        div(
+          [
+            attribute.class("modal-header-block detail-header-block"),
+          ],
+          [
+            view_card_header(model, card),
+            // AC21: Tab navigation
+            card_tabs.view(card_tabs.Config(
+              active_tab: model.active_tab,
+              notes_count: notes_count,
+              has_new_notes: card.has_new_notes,
+              labels: card_tabs.Labels(
+                tasks: t(model.locale, i18n_text.TabTasks),
+                notes: t(model.locale, i18n_text.TabNotes),
+                metrics: t(model.locale, i18n_text.TabMetrics),
+              ),
+              on_tab_click: TabClicked,
+            )),
+          ],
+        ),
         div([attribute.class("modal-body card-detail-body")], [
           // AC21: Conditional section rendering based on active tab
           div(
             [
+              attribute.class("detail-tabpanel"),
               attribute.attribute("role", "tabpanel"),
               attribute.id(card_tabpanel_id(model.active_tab)),
               attribute.attribute(
@@ -655,7 +661,7 @@ fn view_modal(model: Model, card: Card) -> Element(Msg) {
 fn view_card_header(model: Model, card: Card) -> Element(Msg) {
   let state_label = card_state.label(model.locale, card.state)
   let meta =
-    div([attribute.class("card-detail-meta")], [
+    div([attribute.class("detail-meta")], [
       card_state_badge.view(card.state, state_label, card_state_badge.Detail),
       card_progress.view(
         card.completed_count,
@@ -664,7 +670,7 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
       ),
     ])
 
-  div([attribute.class("card-detail-header")], [
+  div([attribute.class("detail-header")], [
     modal_header.view_extended(modal_header.ExtendedConfig(
       title: card.title,
       title_element: modal_header.TitleSpan,
@@ -674,9 +680,9 @@ fn view_card_header(model: Model, card: Card) -> Element(Msg) {
       meta: option.Some(meta),
       progress: option.None,
       on_close: CloseClicked,
-      header_class: "card-detail-header-inner",
-      title_row_class: "card-detail-title-row",
-      title_class: "card-detail-title",
+      header_class: "detail-header",
+      title_row_class: "detail-title-row",
+      title_class: "detail-title",
       title_id: "card-detail-title",
       close_button_class: "modal-close btn-icon",
     )),
@@ -698,7 +704,7 @@ fn view_card_notes_section(model: Model) -> Element(Msg) {
     <> int.to_string(list.length(notes))
     <> ")"
 
-  div([attribute.class("card-detail-notes-section")], [
+  div([attribute.class("card-detail-notes-section detail-section")], [
     // Shared section header component (consistent with Tasks tab)
     // Button opens dialog instead of submitting directly
     card_section_header.view(card_section_header.Config(
@@ -784,7 +790,7 @@ fn view_card_tasks_section(model: Model) -> Element(Msg) {
     _ -> []
   }
 
-  div([attribute.class("card-detail-tasks-section")], [
+  div([attribute.class("card-detail-tasks-section detail-section")], [
     // Shared section header component (same as Notes tab)
     card_section_header.view(card_section_header.Config(
       title: t(model.locale, i18n_text.CardTasks),
@@ -838,7 +844,7 @@ fn view_task_item(task: Task) -> Element(Msg) {
     option.None -> ""
   }
 
-  div([attribute.class("card-task-item")], [
+  div([attribute.class("card-task-item detail-item-row")], [
     span([attribute.class("card-task-status")], [text(status_icon)]),
     span([attribute.class("card-task-title")], [text(task.title)]),
     span([attribute.class("card-task-info")], [text(claimed_text)]),

@@ -32,6 +32,10 @@ pub fn quick_create_card_button_id(milestone_id: Int) -> String {
   "milestone-quick-create-card-button-" <> int.to_string(milestone_id)
 }
 
+pub fn quick_create_task_button_id(milestone_id: Int) -> String {
+  "milestone-quick-create-task-button-" <> int.to_string(milestone_id)
+}
+
 pub fn create_button_id() -> String {
   "milestone-create-button"
 }
