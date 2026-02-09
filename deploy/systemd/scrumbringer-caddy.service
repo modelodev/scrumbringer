@@ -1,0 +1,17 @@
+[Unit]
+Description=Scrumbringer Caddy Reverse Proxy
+After=network.target scrumbringer-server.service
+Requires=scrumbringer-server.service
+
+[Service]
+Type=simple
+User=caddy
+Group=caddy
+EnvironmentFile=/etc/scrumbringer/caddy.env
+ExecStart=/usr/bin/caddy run --config /opt/scrumbringer/Caddyfile.prod --adapter caddyfile
+ExecReload=/usr/bin/caddy reload --config /opt/scrumbringer/Caddyfile.prod --adapter caddyfile
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

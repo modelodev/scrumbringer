@@ -1,4 +1,4 @@
-.PHONY: help deps migrate squirrel test verify fmt format
+.PHONY: help deps build build-prod ci smoke-staging pre-go-live release-check migrate squirrel test verify fmt format
 
 # Default local DB URL. CI should override `DATABASE_URL`.
 # Note: `dbmate migrate` does NOT create the database.
@@ -14,6 +14,12 @@ GLEAN_BIN := $(shell if [ -x "$(ROOT)/.tools/gleam-1.14.0/gleam" ]; then echo "$
 help:
 	@echo "Targets:"
 	@echo "  make deps       # download Gleam deps"
+	@echo "  make build      # build all Gleam packages/apps"
+	@echo "  make build-prod # build all + client dist bundle"
+	@echo "  make ci         # deps + build + test"
+	@echo "  make smoke-staging # run smoke checks against STAGING_BASE_URL"
+	@echo "  make pre-go-live   # release-check + optional staging smoke"
+	@echo "  make release-check # ci (+ optional smoke when RUN_SMOKE=1)"
 	@echo "  make migrate    # apply dbmate migrations (DATABASE_URL=...)"
 	@echo "  make squirrel   # regenerate Squirrel sql.gleam (DATABASE_URL=...)"
 	@echo "  make test       # run tests (DATABASE_URL=... for server)"
@@ -31,6 +37,47 @@ deps:
 	@cd packages/birl && $(GLEAN_BIN) deps download
 
 # ---- Database ----
+
+build:
+	@echo "Using gleam: $(GLEAN_BIN)"
+	@cd apps/server && $(GLEAN_BIN) build
+	@cd apps/client && $(GLEAN_BIN) build
+	@cd shared && $(GLEAN_BIN) build
+	@cd packages/birl && $(GLEAN_BIN) build
+
+build-prod:
+	@ROOT_DIR="$(ROOT)" GLEAM_BIN="$(GLEAN_BIN)" bash scripts/build-prod.sh
+
+ci: deps build test
+
+release-check: ci
+	@if [ "$(RUN_SMOKE)" = "1" ]; then \
+		echo "Running smoke checks..."; \
+		bash scripts/smoke-active-task.sh; \
+	else \
+		echo "Skipping smoke checks (set RUN_SMOKE=1 to enable)"; \
+	fi
+
+smoke-staging:
+	@STAGING_BASE_URL="$(STAGING_BASE_URL)" \
+	STAGING_API_URL="$(STAGING_API_URL)" \
+	SMOKE_EMAIL="$(SMOKE_EMAIL)" \
+	SMOKE_PASSWORD="$(SMOKE_PASSWORD)" \
+	SMOKE_TASK_ID="$(SMOKE_TASK_ID)" \
+	bash scripts/smoke-staging.sh
+
+pre-go-live: release-check
+	@if [ -n "$(STAGING_BASE_URL)" ]; then \
+		echo "Running staging smoke against $(STAGING_BASE_URL)..."; \
+		$(MAKE) smoke-staging \
+			STAGING_BASE_URL="$(STAGING_BASE_URL)" \
+			STAGING_API_URL="$(STAGING_API_URL)" \
+			SMOKE_EMAIL="$(SMOKE_EMAIL)" \
+			SMOKE_PASSWORD="$(SMOKE_PASSWORD)" \
+			SMOKE_TASK_ID="$(SMOKE_TASK_ID)"; \
+	else \
+		echo "Skipping staging smoke (set STAGING_BASE_URL to enable)"; \
+	fi
 
 migrate:
 	@command -v dbmate >/dev/null 2>&1 || (echo "dbmate is required (install it)" && exit 1)

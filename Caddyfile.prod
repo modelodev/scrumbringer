@@ -1,0 +1,25 @@
+{
+  email {$ACME_EMAIL}
+}
+
+{$APP_DOMAIN} {
+  encode zstd gzip
+
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "SAMEORIGIN"
+    Referrer-Policy "strict-origin-when-cross-origin"
+  }
+
+  @api path /api/v1/*
+  handle @api {
+    reverse_proxy 127.0.0.1:{$SB_PORT}
+  }
+
+  root * {$CLIENT_DIST_ROOT}
+  handle {
+    try_files {path} {path}/ /index.html
+    file_server
+  }
+}

@@ -1,0 +1,17 @@
+[Unit]
+Description=Scrumbringer Gleam API Server
+After=network.target
+
+[Service]
+Type=simple
+User=scrumbringer
+Group=scrumbringer
+WorkingDirectory=/opt/scrumbringer
+EnvironmentFile=/etc/scrumbringer/server.env
+ExecStart=/opt/scrumbringer/scripts/start-server-prod.sh
+Restart=always
+RestartSec=3
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target

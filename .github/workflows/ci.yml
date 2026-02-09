@@ -34,10 +34,6 @@ jobs:
         uses: erlef/setup-beam@v1
         with:
           otp-version: "27"
-
-      - name: Setup Gleam
-        uses: gleam-lang/setup-gleam@v1
-        with:
           gleam-version: "1.14.0"
 
       - name: Install dbmate
@@ -47,20 +43,5 @@ jobs:
           chmod +x /usr/local/bin/dbmate
           dbmate --version
 
-      - name: Apply migrations
-        run: DBMATE_DATABASE_URL="$DATABASE_URL" dbmate up
-
-      - name: Test (apps/server)
-        run: |
-          cd apps/server
-          gleam test
-
-      - name: Test (packages/domain)
-        run: |
-          cd packages/domain
-          gleam test
-
-      - name: Test (packages/birl)
-        run: |
-          cd packages/birl
-          gleam test
+      - name: CI (deps + build + test)
+        run: make ci
