@@ -6,7 +6,7 @@ Runbook for deploying Scrumbringer to a Linux host using:
 
 - Gleam server (`apps/server`)
 - Lustre client static assets (`apps/client/dist`)
-- Caddy reverse proxy + TLS
+- Nginx reverse proxy + TLS
 - systemd services
 
 ## Prerequisites
@@ -16,11 +16,10 @@ Runbook for deploying Scrumbringer to a Linux host using:
    - `erlang`
    - `postgresql-client`
    - `dbmate`
-   - `caddy`
+   - `nginx`
 2. Application code deployed to `/opt/scrumbringer`.
 3. Dedicated OS users:
    - `scrumbringer`
-   - `caddy`
 4. PostgreSQL production database available.
 
 ## Environment Files
@@ -28,16 +27,31 @@ Runbook for deploying Scrumbringer to a Linux host using:
 Copy and edit these files:
 
 - `/etc/scrumbringer/server.env` from `deploy/server.env.example`
-- `/etc/scrumbringer/caddy.env` from `deploy/caddy.env.example`
-
-These two files in `deploy/` are the canonical production templates.
 
 Critical variables:
 
 - `DATABASE_URL`
 - `SB_SECRET_KEY_BASE`
-- `APP_DOMAIN`
-- `ACME_EMAIL`
+
+## Nginx Site Config
+
+1. Copy site template:
+
+```bash
+sudo cp deploy/nginx/scrumbringer.conf.example /etc/nginx/conf.d/scrumbringer.conf
+```
+
+2. Replace placeholders in `/etc/nginx/conf.d/scrumbringer.conf`:
+
+- `__APP_DOMAIN__`
+- `__SSL_CERT__`
+- `__SSL_KEY__`
+
+3. Validate config:
+
+```bash
+sudo nginx -t
+```
 
 ## Build + Test Gate
 
@@ -99,10 +113,9 @@ DATABASE_URL="postgres://..." make migrate
 
 ```bash
 sudo cp deploy/systemd/scrumbringer-server.service /etc/systemd/system/
-sudo cp deploy/systemd/scrumbringer-caddy.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable scrumbringer-server
-sudo systemctl enable scrumbringer-caddy
+sudo systemctl enable nginx
 ```
 
 ## Deploy Procedure
@@ -117,10 +130,10 @@ sudo systemctl enable scrumbringer-caddy
    sudo systemctl restart scrumbringer-server
    ```
 
-6. Restart caddy:
+6. Restart nginx:
 
    ```bash
-   sudo systemctl restart scrumbringer-caddy
+   sudo systemctl restart nginx
    ```
 
 7. Verify service health:
@@ -140,7 +153,7 @@ sudo systemctl enable scrumbringer-caddy
 
 ```bash
 sudo journalctl -u scrumbringer-server -n 200 --no-pager
-sudo journalctl -u scrumbringer-caddy -n 200 --no-pager
+sudo journalctl -u nginx -n 200 --no-pager
 ```
 
 ## Rollback
@@ -155,3 +168,4 @@ sudo journalctl -u scrumbringer-caddy -n 200 --no-pager
 - Keep `SB_COOKIE_SECURE=true` in production.
 - Never commit production secrets to git.
 - Prefer deploying through staging first.
+- If you keep Caddy for dev/staging, do not run it in production with Nginx unless you have a deliberate double-proxy design.
