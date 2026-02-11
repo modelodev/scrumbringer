@@ -7,7 +7,7 @@
 
 ## Project Structure
 
-Because ScrumBringer is **client/server** (Lustre TEA client + Gleam API server), the recommended repository layout is a small monorepo with two Gleam apps and a shared domain package.
+Because ScrumBringer is **client/server** (Lustre TEA client + Gleam API server), the repository is organized as a monorepo with two Gleam apps and one shared package.
 
 ```
 scrumbringer/
@@ -24,25 +24,35 @@ scrumbringer/
 │   ├── client/                  # Lustre app (Gleam → JavaScript)
 │   │   ├── gleam.toml           # target = "javascript"
 │   │   ├── src/
-│   │   │   ├── main.gleam
-│   │   │   ├── pages/
-│   │   │   └── components/
+│   │   │   ├── scrumbringer_client.gleam
+│   │   │   └── scrumbringer_client/
+│   │   │       ├── features/
+│   │   │       ├── client_state/
+│   │   │       ├── components/
+│   │   │       ├── ui/
+│   │   │       ├── styles/
+│   │   │       ├── i18n/
+│   │   │       └── helpers/
 │   │   └── test/
 │   │
 │   └── server/                  # HTTP API (Gleam → Erlang/BEAM)
 │       ├── gleam.toml           # target = "erlang"
 │       ├── src/
 │       │   ├── main.gleam
-│       │   ├── http/
-│       │   ├── services/
-│       │   ├── queries/
-│       │   └── types/
+│       │   ├── scrumbringer_server.gleam
+│       │   └── scrumbringer_server/
+│       │       ├── web/
+│       │       ├── http/
+│       │       ├── services/
+│       │       └── persistence/
 │       └── test/
 │
-├── packages/
-│   └── domain/                  # Shared types/validation (compiles to both targets)
-│       ├── gleam.toml
-│       └── src/
+├── shared/                      # Shared domain types/helpers (reused by client and server)
+│   ├── gleam.toml
+│   ├── src/
+│   │   ├── domain/
+│   │   └── helpers/
+│   └── test/
 │
 ├── db/
 │   └── migrations/              # dbmate migrations
@@ -58,7 +68,7 @@ scrumbringer/
 ### `apps/client/`
 
 Lustre UI application (Gleam → JavaScript). Recommended responsibilities:
-- UI composition (`pages/`, `components/`)
+- UI composition (`features/`, `components/`, `ui/`)
 - Client-side state (filters, drag interactions, optimistic transitions)
 - API client and decoding of server responses
 
@@ -84,9 +94,9 @@ Gleam HTTP API (Gleam → Erlang/BEAM). Recommended responsibilities:
 - Command validation and optimistic concurrency (`version`)
 - Data access layer via Squirrel + Postgres driver
 
-### `packages/domain/`
+### `shared/`
 
-Shared domain types and validation rules that can be reused by both targets.
+Shared domain types and helper functions reused by both targets.
 
 ### `db/migrations/`
 
@@ -103,19 +113,19 @@ Database migrations managed by dbmate:
            apps/client (Lustre TEA)
                     │
                     ▼
-            packages/domain
+                 shared
 
            apps/server (HTTP API)
                     │
         ┌───────────┴───────────┐
         ▼                       ▼
-packages/domain           apps/server/queries (Squirrel)
+      shared         apps/server/persistence + services
 ```
 
 **Rules (recommended):**
-- Client imports `packages/domain` types (and its own UI modules)
-- Server imports `packages/domain` types, and owns persistence/query code
-- `packages/domain` must not depend on client/server modules
+- Client imports `shared` types (and its own UI modules)
+- Server imports `shared` types and owns persistence/query code
+- `shared` must not depend on client/server modules
 - No circular dependencies allowed
 
 ---
@@ -130,13 +140,17 @@ version = "0.1.0"
 target = "javascript"
 
 [dependencies]
-gleam_stdlib = "~> 0.34"
-lustre = "~> 4.0"
-gleam_json = "~> 1.0"
+gleam_stdlib = "~> 0.68"
+gleam_javascript = "~> 1.0"
+gleam_json = "~> 3.0"
+gleam_http = "~> 4.3"
+lustre = "~> 5.0"
+lustre_http = { path = "../../packages/lustre_http" }
+shared = { path = "../../shared" }
 
 [dev-dependencies]
 gleeunit = "~> 1.0"
-lustre_dev_tools = "~> 1.0"
+lustre_dev_tools = "~> 2.0"
 ```
 
 ### `apps/server/gleam.toml`
@@ -147,17 +161,18 @@ version = "0.1.0"
 target = "erlang"
 
 [dependencies]
-gleam_stdlib = "~> 0.34"
-wisp = "~> 0.14"
-mist = "~> 1.0"
-squirrel = "~> 1.0"
-gleam_pgo = "~> 0.11"
-gleam_http = "~> 3.0"
-gleam_json = "~> 1.0"
+gleam_stdlib = "0.68.1"
+wisp = "2.1.1"
+mist = "5.0.4"
+pog = "~> 4.0"
+gleam_http = "4.3.0"
+gleam_json = "3.1.0"
 gleam_crypto = "~> 1.0"
+shared = { path = "../../shared" }
 
 [dev-dependencies]
 gleeunit = "~> 1.0"
+squirrel = "~> 4.0"
 ```
 
 ### `docker-compose.yml`

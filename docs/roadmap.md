@@ -75,10 +75,31 @@ This document captures the planned product backlog across sprints.
 
 ---
 
+## Sprint 7 — Closed
+
+**Goal:** UX convergence for Pool/Hitos, milestone operations, and detail consistency across Hito/Card/Task.
+
+**Closure artifact:**
+- `docs/sprint-7-closure.md`
+
+**Stories completed:**
+- `docs/stories/7.1.pool-highlight-blockers.md`
+- `docs/stories/7.2.task-create-feedback.md`
+- `docs/stories/7.3.people-view-availability.md`
+- `docs/stories/7.4.milestones.md`
+- `docs/stories/7.5.metrics-tabs.md`
+- `docs/stories/7.6.milestone-contextual-card-create.md`
+- `docs/stories/7.7.milestone-create.md`
+- `docs/stories/7.8.quick-create-card-from-milestone-list.md`
+- `docs/stories/7.9.hitos-ui-consistency-and-non-stacked-create.md`
+
+---
+
 ## Change Log
 
 | Date | Version | Description |
 |------|---------|-------------|
+| 2026-02-11 | 1.3 | Added Sprint 7 closure and completed story references |
 | 2025-01-21 | 1.2 | Added 4.2 Permissions Refactor story |
 | 2025-01-21 | 1.1 | Sprint 4 reset: removed obsolete stories 4.1-4.5, added 4.1 Project Admin UX |
 | 2026-01-14 | 1.0 | Initial roadmap from Sprint 1 close + Sprint 2 planning |

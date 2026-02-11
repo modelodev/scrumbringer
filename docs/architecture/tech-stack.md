@@ -9,12 +9,12 @@
 
 | Layer | Technology | Version | Purpose |
 |-------|------------|---------|---------|
-| Language | Gleam | 1.x | Type-safe functional programming |
-| Client UI | Lustre | 4.x | TEA UI compiled to JavaScript |
-| Server API | Gleam (BEAM) + Wisp/Mist | OTP 26+ | HTTP API + business rules |
-| Database | PostgreSQL | 16.x | Persistent storage |
-| SQL | Squirrel | 1.x | Type-safe SQL queries (server-side) |
-| DB Access | gleam_pgo | 0.11+ | PostgreSQL driver (server-side) |
+| Language | Gleam | 1.14.x | Type-safe functional programming |
+| Client UI | Lustre | 5.x | TEA UI compiled to JavaScript |
+| Server API | Gleam (BEAM) + Wisp/Mist | OTP 27+ | HTTP API + business rules |
+| Database | PostgreSQL | 16+ | Persistent storage |
+| Query generation | Squirrel | 4.x (dev) | Generate typed query modules |
+| DB Access | pog | 4.x | PostgreSQL access at runtime |
 | Migrations | dbmate | latest | Database schema migrations |
 
 ---
@@ -30,24 +30,31 @@
 
 **Key Libraries (indicative):**
 
-**Client (Gleam → JS)**
+**Client (Gleam -> JS)**
 ```toml
 [dependencies]
-lustre = "~> 4.0"
-lustre_dev_tools = "~> 1.0"
-gleam_json = "~> 1.0"  # decode API responses
+gleam_stdlib = "~> 0.68"
+gleam_javascript = "~> 1.0"
+gleam_json = "~> 3.0"
+gleam_http = "~> 4.3"
+lustre = "~> 5.0"
+lustre_http = { path = "../../packages/lustre_http" }
+shared = { path = "../../shared" }
 ```
 
 **Server (Gleam → Erlang/BEAM)**
 ```toml
 [dependencies]
-wisp = "~> 0.14"        # HTTP server
-mist = "~> 1.0"         # routing/middleware patterns
-squirrel = "~> 1.0"      # typed SQL generation
-gleam_pgo = "~> 0.11"    # Postgres driver
-gleam_http = "~> 3.0"    # HTTP types
-gleam_json = "~> 1.0"    # JSON encoding/decoding
-gleam_crypto = "~> 1.0"  # password hashing primitives
+wisp = "2.1.1"
+mist = "5.0.4"
+pog = "~> 4.0"
+gleam_http = "4.3.0"
+gleam_json = "3.1.0"
+gleam_crypto = "~> 1.0"
+shared = { path = "../../shared" }
+
+[dev-dependencies]
+squirrel = "~> 4.0"
 ```
 
 ---
@@ -77,30 +84,21 @@ The UI is a Lustre app that:
 
 ---
 
-## Squirrel (SQL)
+## Squirrel (SQL Generation)
 
-**Pattern:** Type-safe SQL at compile time
+**Pattern:** SQL-to-Gleam code generation at build/dev time.
 
-```gleam
-// queries/tasks.sql
--- name: get_pool_tasks
-SELECT id, title, priority, status, created_at
-FROM tasks
-WHERE status = 'available'
-  AND project_id = $1;
-
-// Generated Gleam code provides type-safe function
-pub fn get_pool_tasks(db, project_id: Int) -> Result(List(Task), Error)
-```
+Squirrel is used through `make squirrel` to regenerate typed query modules.
+Runtime query execution is handled by `pog`.
 
 **Benefits:**
 - SQL written in SQL (not DSL)
 - Compile-time type checking
-- No runtime query building overhead
+- Deterministic generated query modules
 
 **Limitations:**
-- No migrations (use dbmate)
-- Learning curve for setup
+- Requires regenerate step when SQL changes
+- Needs DB URL available for generation workflow
 
 ---
 

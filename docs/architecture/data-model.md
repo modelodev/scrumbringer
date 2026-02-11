@@ -7,24 +7,26 @@
 
 ## Entity Relationship Diagram
 
+> Note: canonical schema lives in `db/schema.sql`. This document reflects the current project-scoped capabilities model.
+
 ```
 ┌──────────────┐       ┌──────────────┐
 │ Organization │       │  Capability  │
 │──────────────│       │──────────────│
 │ id           │       │ id           │
 │ name         │◄──────│ name         │
-│ created_at   │       │ org_id (FK)  │
+│ created_at   │       │ project_id(FK)│
 └──────────────┘       └──────────────┘
        │                      │
        │                      │
        ▼                      ▼
 ┌──────────────┐       ┌────────────────┐
-│     User     │       │ UserCapability │
+│     User     │       │ MemberCapability│
 │──────────────│       │────────────────│
-│ id           │◄──────│ user_id (FK)   │
-│ email        │       │ cap_id (FK)    │
-│ password_hash│       └────────────────┘
-│ org_id (FK)  │
+│ id           │◄──────│ project_id (FK)│
+│ email        │       │ user_id (FK)   │
+│ password_hash│       │ cap_id (FK)    │
+│ org_id (FK)  │       └────────────────┘
 │ created_at   │
 └──────────────┘
        │
@@ -135,18 +137,20 @@ CREATE TABLE users (
 CREATE TABLE capabilities (
     id BIGSERIAL PRIMARY KEY,
     name TEXT NOT NULL,
-    org_id BIGINT NOT NULL REFERENCES organizations(id),
+    project_id BIGINT NOT NULL REFERENCES projects(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(name, org_id)
+    UNIQUE(name, project_id)
 );
 ```
 
-### UserCapability
+### ProjectMemberCapability
 ```sql
-CREATE TABLE user_capabilities (
+CREATE TABLE project_member_capabilities (
+    project_id BIGINT NOT NULL REFERENCES projects(id),
     user_id BIGINT NOT NULL REFERENCES users(id),
     capability_id BIGINT NOT NULL REFERENCES capabilities(id),
-    PRIMARY KEY (user_id, capability_id)
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (project_id, user_id, capability_id)
 );
 ```
 
@@ -163,13 +167,13 @@ CREATE TABLE projects (
 ### ProjectMember
 Users can participate in multiple projects within their organization.
 
-In the MVP, **project membership is managed by admins** (no self-join).
+In the MVP, **project membership is managed by org admins/project managers** (no self-join).
 
 ```sql
 CREATE TABLE project_members (
     project_id BIGINT NOT NULL REFERENCES projects(id),
     user_id BIGINT NOT NULL REFERENCES users(id),
-    role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('member', 'admin')),
+    role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('member', 'manager')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (project_id, user_id)
 );

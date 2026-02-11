@@ -2,6 +2,10 @@
 
 ## Sprint Closures
 
+### [Sprint 7 Closure Report](./sprint-7-closure.md)
+
+Closure report for Sprint 7 with completed stories and follow-ups.
+
 ### [Sprint 6 Closure Report](./sprint-6-closure.md)
 
 Closure report for Sprint 6 with story gates and follow-ups.
