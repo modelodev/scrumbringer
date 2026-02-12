@@ -11,7 +11,6 @@ pub fn css() -> List(String) {
     ".modal-header h3 { margin: 0; font-size: 18px; font-weight: 600; }",
     ".btn-close { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: var(--sb-surface); border: 1px solid var(--sb-border); cursor: pointer; font-size: 14px; color: var(--sb-muted); transition: all 0.15s ease; }",
     ".btn-close:hover { background: var(--sb-elevated); border-color: var(--sb-text); color: var(--sb-text); }",
-    ".modal-body { }",
     // Drilldown modal styles
     ".drilldown-modal { z-index: 100; }",
     ".drilldown-details h3 { font-size: 16px; font-weight: 600; margin: 0 0 12px 0; }",
@@ -25,8 +24,6 @@ pub fn css() -> List(String) {
     ".metrics-overview-stat { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--sb-border); background: var(--sb-surface); min-width: 160px; }",
     ".metrics-overview-label { font-size: 12px; color: var(--sb-muted); }",
     ".metrics-overview-value { font-size: 16px; font-weight: 600; }",
-    ".assignments-metrics { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }",
-    ".assignments-metrics-item { font-size: 12px; color: var(--sb-muted); background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 999px; padding: 4px 8px; }",
     ".metric-box { padding: 12px 16px; background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 10px; min-width: 100px; }",
     ".metric-box .metric-label { display: block; font-size: 12px; color: var(--sb-muted); margin-bottom: 4px; }",
     ".metric-box .metric-value { display: block; font-size: 20px; font-weight: 700; }",

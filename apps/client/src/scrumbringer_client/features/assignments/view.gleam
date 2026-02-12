@@ -10,7 +10,9 @@ import gleam/string
 
 import lustre/attribute
 import lustre/element
-import lustre/element/html.{button, div, input, text}
+import lustre/element/html.{
+  button, div, input, table, tbody, text, th, thead, tr,
+}
 import lustre/event
 
 import domain/org.{type OrgUser, OrgUser}
@@ -57,59 +59,69 @@ fn view_toolbar(model: client_state.Model) -> element.Element(client_state.Msg) 
   let is_projects = assignments.view_mode == assignments_view_mode.ByProject
   let is_users = assignments.view_mode == assignments_view_mode.ByUser
 
-  div([attribute.class("assignments-toolbar")], [
-    div([attribute.class("assignments-toggle")], [
-      button(
-        [
-          attribute.class(
-            "btn-xs"
-            <> case is_projects {
-              True -> " btn-active"
-              False -> ""
-            },
+  div([attribute.class("admin-card assignments-toolbar-card")], [
+    div([attribute.class("filters-row assignments-toolbar")], [
+      div([attribute.class("field assignments-toggle-field")], [
+        div([attribute.class("view-mode-toggle assignments-toggle")], [
+          button(
+            [
+              attribute.class(
+                "view-mode-btn"
+                <> case is_projects {
+                  True -> " active"
+                  False -> ""
+                },
+              ),
+              event.on_click(
+                client_state.admin_msg(
+                  admin_messages.AssignmentsViewModeChanged(
+                    assignments_view_mode.ByProject,
+                  ),
+                ),
+              ),
+            ],
+            [text(t(i18n_text.AssignmentsByProject))],
           ),
-          event.on_click(
-            client_state.admin_msg(admin_messages.AssignmentsViewModeChanged(
-              assignments_view_mode.ByProject,
-            )),
+          button(
+            [
+              attribute.class(
+                "view-mode-btn"
+                <> case is_users {
+                  True -> " active"
+                  False -> ""
+                },
+              ),
+              event.on_click(
+                client_state.admin_msg(
+                  admin_messages.AssignmentsViewModeChanged(
+                    assignments_view_mode.ByUser,
+                  ),
+                ),
+              ),
+            ],
+            [text(t(i18n_text.AssignmentsByUser))],
           ),
-        ],
-        [text(t(i18n_text.AssignmentsByProject))],
-      ),
-      button(
-        [
-          attribute.class(
-            "btn-xs"
-            <> case is_users {
-              True -> " btn-active"
-              False -> ""
-            },
-          ),
-          event.on_click(
-            client_state.admin_msg(admin_messages.AssignmentsViewModeChanged(
-              assignments_view_mode.ByUser,
-            )),
-          ),
-        ],
-        [text(t(i18n_text.AssignmentsByUser))],
-      ),
-    ]),
-    div([attribute.class("assignments-search")], [
-      input([
-        attribute.type_("text"),
-        attribute.value(assignments.search_input),
-        attribute.placeholder(t(i18n_text.AssignmentsSearchPlaceholder)),
-        event.on_input(fn(value) {
-          client_state.admin_msg(admin_messages.AssignmentsSearchChanged(value))
-        }),
-        event.debounce(
+        ]),
+      ]),
+      div([attribute.class("field filter-q assignments-search")], [
+        input([
+          attribute.type_("text"),
+          attribute.value(assignments.search_input),
+          attribute.placeholder(t(i18n_text.AssignmentsSearchPlaceholder)),
           event.on_input(fn(value) {
-            client_state.admin_msg(admin_messages.AssignmentsSearchDebounced(
+            client_state.admin_msg(admin_messages.AssignmentsSearchChanged(
               value,
             ))
           }),
-          350,
-        ),
+          event.debounce(
+            event.on_input(fn(value) {
+              client_state.admin_msg(admin_messages.AssignmentsSearchDebounced(
+                value,
+              ))
+            }),
+            350,
+          ),
+        ]),
       ]),
     ]),
   ])
@@ -139,23 +151,31 @@ fn view_by_project(
           |> empty_state.view
 
         False ->
-          div([attribute.class("assignments-cards")], [
-            filter_projects(model, projects_list)
-            |> list.map(fn(project) {
-              let members_state = case
-                dict.get(model.admin.assignments.project_members, project.id)
-              {
-                Ok(state) -> state
-                Error(_) -> NotAsked
-              }
-              let expanded =
-                set.contains(
-                  model.admin.assignments.expanded_projects,
-                  project.id,
-                )
-              project_card.view(model, project, members_state, expanded)
-            })
-            |> element.fragment,
+          table([attribute.class("table assignments-table")], [
+            thead([], [
+              tr([], [
+                th([], [text(t(i18n_text.AssignmentsByProject))]),
+                th([], [text(t(i18n_text.MembersCount))]),
+              ]),
+            ]),
+            tbody([], [
+              filter_projects(model, projects_list)
+              |> list.flat_map(fn(project) {
+                let members_state = case
+                  dict.get(model.admin.assignments.project_members, project.id)
+                {
+                  Ok(state) -> state
+                  Error(_) -> NotAsked
+                }
+                let expanded =
+                  set.contains(
+                    model.admin.assignments.expanded_projects,
+                    project.id,
+                  )
+                project_card.view_rows(model, project, members_state, expanded)
+              })
+              |> element.fragment,
+            ]),
           ])
       }
   }
@@ -190,20 +210,28 @@ fn view_by_user(model: client_state.Model) -> element.Element(client_state.Msg) 
           |> empty_state.view
 
         False ->
-          div([attribute.class("assignments-cards")], [
-            filter_users(model, users_list)
-            |> list.map(fn(user) {
-              let projects_state = case
-                dict.get(model.admin.assignments.user_projects, user.id)
-              {
-                Ok(state) -> state
-                Error(_) -> NotAsked
-              }
-              let expanded =
-                set.contains(model.admin.assignments.expanded_users, user.id)
-              user_card.view(model, user, projects_state, expanded)
-            })
-            |> element.fragment,
+          table([attribute.class("table assignments-table")], [
+            thead([], [
+              tr([], [
+                th([], [text(t(i18n_text.AssignmentsByUser))]),
+                th([], [text(t(i18n_text.Projects))]),
+              ]),
+            ]),
+            tbody([], [
+              filter_users(model, users_list)
+              |> list.flat_map(fn(user) {
+                let projects_state = case
+                  dict.get(model.admin.assignments.user_projects, user.id)
+                {
+                  Ok(state) -> state
+                  Error(_) -> NotAsked
+                }
+                let expanded =
+                  set.contains(model.admin.assignments.expanded_users, user.id)
+                user_card.view_rows(model, user, projects_state, expanded)
+              })
+              |> element.fragment,
+            ]),
           ])
       }
     }

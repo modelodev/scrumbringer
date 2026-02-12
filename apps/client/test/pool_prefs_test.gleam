@@ -99,3 +99,35 @@ pub fn shortcut_action_maps_core_shortcuts_test() {
   ))
   |> should.equal(pool_prefs.CloseDialog)
 }
+
+pub fn shortcut_action_ignores_keys_with_modifiers_test() {
+  pool_prefs.shortcut_action(pool_prefs.KeyEvent(
+    "n",
+    True,
+    False,
+    False,
+    False,
+    False,
+  ))
+  |> should.equal(pool_prefs.NoAction)
+
+  pool_prefs.shortcut_action(pool_prefs.KeyEvent(
+    "f",
+    False,
+    True,
+    False,
+    False,
+    False,
+  ))
+  |> should.equal(pool_prefs.NoAction)
+
+  pool_prefs.shortcut_action(pool_prefs.KeyEvent(
+    "/",
+    False,
+    False,
+    True,
+    False,
+    False,
+  ))
+  |> should.equal(pool_prefs.NoAction)
+}

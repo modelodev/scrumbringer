@@ -14,6 +14,36 @@ import wisp/simulate
 
 const secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
+fn create_user_via_invite(
+  handler: fn(wisp.Request) -> wisp.Response,
+  db: pog.Connection,
+  email: String,
+  invite_token: String,
+) {
+  insert_invite_link_active(db, invite_token, email)
+
+  let req =
+    simulate.request(http.Post, "/api/v1/auth/register")
+    |> simulate.json_body(
+      json.object([
+        #("password", json.string("passwordpassword")),
+        #("invite_token", json.string(invite_token)),
+      ]),
+    )
+
+  let res = handler(req)
+  res.status |> should.equal(200)
+}
+
+fn promote_user_to_org_admin(db: pog.Connection, email: String) {
+  let assert Ok(_) =
+    pog.query("update users set org_role = 'admin' where email = $1")
+    |> pog.parameter(pog.text(email))
+    |> pog.execute(db)
+
+  Nil
+}
+
 pub fn non_org_admin_cannot_create_project_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -122,7 +152,7 @@ pub fn projects_list_is_membership_scoped_sorted_and_includes_my_role_test() {
   |> should.equal([#("Alpha", "manager"), #("Zulu", "member")])
 }
 
-pub fn non_project_admin_cannot_list_add_or_remove_members_test() {
+pub fn non_manager_non_org_admin_cannot_list_add_or_remove_members_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)
@@ -200,6 +230,273 @@ pub fn non_project_admin_cannot_list_add_or_remove_members_test() {
   del_res.status |> should.equal(403)
 }
 
+pub fn org_admin_non_project_manager_can_list_members_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "CoreList")
+  let project_id =
+    single_int(db, "select id from projects where name = 'CoreList'", [])
+
+  create_user_via_invite(handler, db, "orgadmin2@example.com", "il_orgadmin2")
+  promote_user_to_org_admin(db, "orgadmin2@example.com")
+
+  let org_admin_login_res =
+    login_as(handler, "orgadmin2@example.com", "passwordpassword")
+  let org_admin_session =
+    find_cookie_value(org_admin_login_res.headers, "sb_session")
+  let org_admin_csrf = find_cookie_value(org_admin_login_res.headers, "sb_csrf")
+
+  let list_req =
+    simulate.request(
+      http.Get,
+      "/api/v1/projects/" <> int_to_string(project_id) <> "/members",
+    )
+    |> request.set_cookie("sb_session", org_admin_session)
+    |> request.set_cookie("sb_csrf", org_admin_csrf)
+
+  let list_res = handler(list_req)
+  list_res.status |> should.equal(200)
+}
+
+pub fn org_admin_non_project_manager_can_add_member_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "CoreAdd")
+  let project_id =
+    single_int(db, "select id from projects where name = 'CoreAdd'", [])
+
+  create_user_via_invite(handler, db, "orgadmin3@example.com", "il_orgadmin3")
+  promote_user_to_org_admin(db, "orgadmin3@example.com")
+
+  create_user_via_invite(handler, db, "candidate1@example.com", "il_candidate1")
+  let candidate_id =
+    single_int(
+      db,
+      "select id from users where email = 'candidate1@example.com'",
+      [],
+    )
+
+  let org_admin_login_res =
+    login_as(handler, "orgadmin3@example.com", "passwordpassword")
+  let org_admin_session =
+    find_cookie_value(org_admin_login_res.headers, "sb_session")
+  let org_admin_csrf = find_cookie_value(org_admin_login_res.headers, "sb_csrf")
+
+  let add_req =
+    simulate.request(
+      http.Post,
+      "/api/v1/projects/" <> int_to_string(project_id) <> "/members",
+    )
+    |> request.set_cookie("sb_session", org_admin_session)
+    |> request.set_cookie("sb_csrf", org_admin_csrf)
+    |> request.set_header("X-CSRF", org_admin_csrf)
+    |> simulate.json_body(
+      json.object([
+        #("user_id", json.int(candidate_id)),
+        #("role", json.string("member")),
+      ]),
+    )
+
+  let add_res = handler(add_req)
+  add_res.status |> should.equal(200)
+
+  let count =
+    single_int(
+      db,
+      "select count(*) from project_members where project_id = $1 and user_id = $2",
+      [pog.int(project_id), pog.int(candidate_id)],
+    )
+  count |> should.equal(1)
+}
+
+pub fn org_admin_non_project_manager_can_remove_member_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "CoreRemove")
+  let project_id =
+    single_int(db, "select id from projects where name = 'CoreRemove'", [])
+
+  create_user_via_invite(handler, db, "orgadmin4@example.com", "il_orgadmin4")
+  promote_user_to_org_admin(db, "orgadmin4@example.com")
+
+  create_user_via_invite(handler, db, "candidate2@example.com", "il_candidate2")
+  let candidate_id =
+    single_int(
+      db,
+      "select id from users where email = 'candidate2@example.com'",
+      [],
+    )
+
+  add_member(
+    handler,
+    admin_session,
+    admin_csrf,
+    project_id,
+    candidate_id,
+    "member",
+  )
+
+  let org_admin_login_res =
+    login_as(handler, "orgadmin4@example.com", "passwordpassword")
+  let org_admin_session =
+    find_cookie_value(org_admin_login_res.headers, "sb_session")
+  let org_admin_csrf = find_cookie_value(org_admin_login_res.headers, "sb_csrf")
+
+  let del_req =
+    simulate.request(
+      http.Delete,
+      "/api/v1/projects/"
+        <> int_to_string(project_id)
+        <> "/members/"
+        <> int_to_string(candidate_id),
+    )
+    |> request.set_cookie("sb_session", org_admin_session)
+    |> request.set_cookie("sb_csrf", org_admin_csrf)
+    |> request.set_header("X-CSRF", org_admin_csrf)
+
+  let del_res = handler(del_req)
+  del_res.status |> should.equal(204)
+
+  let count =
+    single_int(
+      db,
+      "select count(*) from project_members where project_id = $1 and user_id = $2",
+      [pog.int(project_id), pog.int(candidate_id)],
+    )
+  count |> should.equal(0)
+}
+
+pub fn org_admin_non_project_manager_can_release_all_tasks_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "CoreRelease")
+  let project_id =
+    single_int(db, "select id from projects where name = 'CoreRelease'", [])
+
+  create_user_via_invite(handler, db, "orgadmin5@example.com", "il_orgadmin5")
+  promote_user_to_org_admin(db, "orgadmin5@example.com")
+
+  create_user_via_invite(handler, db, "candidate3@example.com", "il_candidate3")
+  let candidate_id =
+    single_int(
+      db,
+      "select id from users where email = 'candidate3@example.com'",
+      [],
+    )
+
+  add_member(
+    handler,
+    admin_session,
+    admin_csrf,
+    project_id,
+    candidate_id,
+    "member",
+  )
+
+  let org_admin_login_res =
+    login_as(handler, "orgadmin5@example.com", "passwordpassword")
+  let org_admin_session =
+    find_cookie_value(org_admin_login_res.headers, "sb_session")
+  let org_admin_csrf = find_cookie_value(org_admin_login_res.headers, "sb_csrf")
+
+  let release_req =
+    simulate.request(
+      http.Post,
+      "/api/v1/projects/"
+        <> int_to_string(project_id)
+        <> "/members/"
+        <> int_to_string(candidate_id)
+        <> "/release-all-tasks",
+    )
+    |> request.set_cookie("sb_session", org_admin_session)
+    |> request.set_cookie("sb_csrf", org_admin_csrf)
+    |> request.set_header("X-CSRF", org_admin_csrf)
+
+  let release_res = handler(release_req)
+  release_res.status |> should.equal(200)
+  string.contains(simulate.read_body(release_res), "released_count")
+  |> should.be_true
+}
+
+pub fn project_manager_can_still_add_member_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let admin_login_res =
+    login_as(handler, "admin@example.com", "passwordpassword")
+  let admin_session = find_cookie_value(admin_login_res.headers, "sb_session")
+  let admin_csrf = find_cookie_value(admin_login_res.headers, "sb_csrf")
+
+  create_project(handler, admin_session, admin_csrf, "CorePM")
+  let project_id =
+    single_int(db, "select id from projects where name = 'CorePM'", [])
+
+  create_user_via_invite(handler, db, "pm@example.com", "il_pm")
+  let pm_id =
+    single_int(db, "select id from users where email = 'pm@example.com'", [])
+
+  add_member(handler, admin_session, admin_csrf, project_id, pm_id, "manager")
+
+  create_user_via_invite(handler, db, "candidate4@example.com", "il_candidate4")
+  let candidate_id =
+    single_int(
+      db,
+      "select id from users where email = 'candidate4@example.com'",
+      [],
+    )
+
+  let pm_login_res = login_as(handler, "pm@example.com", "passwordpassword")
+  let pm_session = find_cookie_value(pm_login_res.headers, "sb_session")
+  let pm_csrf = find_cookie_value(pm_login_res.headers, "sb_csrf")
+
+  let add_req =
+    simulate.request(
+      http.Post,
+      "/api/v1/projects/" <> int_to_string(project_id) <> "/members",
+    )
+    |> request.set_cookie("sb_session", pm_session)
+    |> request.set_cookie("sb_csrf", pm_csrf)
+    |> request.set_header("X-CSRF", pm_csrf)
+    |> simulate.json_body(
+      json.object([
+        #("user_id", json.int(candidate_id)),
+        #("role", json.string("member")),
+      ]),
+    )
+
+  let add_res = handler(add_req)
+  add_res.status |> should.equal(200)
+}
+
 pub fn adding_member_from_different_org_is_rejected_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -243,7 +540,7 @@ pub fn adding_member_from_different_org_is_rejected_test() {
   count |> should.equal(0)
 }
 
-pub fn cannot_remove_last_project_admin_test() {
+pub fn cannot_remove_last_project_manager_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
   let handler = scrumbringer_server.handler(app)

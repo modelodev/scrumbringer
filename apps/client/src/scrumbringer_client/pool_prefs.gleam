@@ -145,9 +145,9 @@ pub type ShortcutAction {
 pub fn shortcut_action(event: KeyEvent) -> ShortcutAction {
   let KeyEvent(
     key: key,
-    ctrl: _ctrl,
-    meta: _meta,
-    shift: _shift,
+    ctrl: ctrl,
+    meta: meta,
+    shift: shift,
     is_editing: editing,
     modal_open: modal_open,
   ) = event
@@ -157,16 +157,19 @@ pub fn shortcut_action(event: KeyEvent) -> ShortcutAction {
   // Esc always works to close dialogs
   case key {
     "escape" -> CloseDialog
-    _ -> shortcut_action_for_key(key, editing, modal_open)
+    _ -> shortcut_action_for_key(key, ctrl, meta, shift, editing, modal_open)
   }
 }
 
 fn shortcut_action_for_key(
   key: String,
+  ctrl: Bool,
+  meta: Bool,
+  shift: Bool,
   editing: Bool,
   modal_open: Bool,
 ) -> ShortcutAction {
-  case editing || modal_open {
+  case editing || modal_open || ctrl || meta || shift {
     True -> NoAction
     False -> shortcut_action_for_unlocked_key(key)
   }

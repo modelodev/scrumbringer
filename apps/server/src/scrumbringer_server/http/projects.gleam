@@ -8,7 +8,7 @@
 ////
 //// - List projects for authenticated user
 //// - Create projects (org admin only)
-//// - List, add, and remove project members (project admin only)
+//// - List, add, and remove project members (org admin or project manager)
 ////
 //// ## Non-responsibilities
 ////
@@ -28,9 +28,9 @@ import gleam/http
 import gleam/int
 import gleam/json
 import gleam/result
-import pog
 import scrumbringer_server/http/api
 import scrumbringer_server/http/auth
+import scrumbringer_server/http/authorization as http_authorization
 import scrumbringer_server/http/csrf
 import scrumbringer_server/persistence/tasks/queries as tasks_queries
 import scrumbringer_server/services/projects_db
@@ -275,7 +275,7 @@ fn remove_member(
   use project_id <- result.try(parse_project_id(project_id))
   use target_user_id <- result.try(parse_user_id(user_id))
   let auth.Ctx(db: db, ..) = ctx
-  use _ <- result.try(require_project_admin(db, project_id, user.id))
+  use _ <- result.try(require_members_management_access(db, user, project_id))
   case projects_db.remove_member(db, project_id, target_user_id) {
     Ok(Nil) -> Ok(Nil)
     Error(projects_db.MembershipNotFound) ->
@@ -284,7 +284,7 @@ fn remove_member(
       Error(api.error(
         422,
         "VALIDATION_ERROR",
-        "Cannot remove last project admin",
+        "Cannot remove last project manager",
       ))
     Error(projects_db.RemoveDbError(_)) ->
       Error(api.error(500, "INTERNAL", "Database error"))
@@ -350,7 +350,7 @@ fn list_members(
   use user <- result.try(require_current_user(req, ctx))
   use project_id <- result.try(parse_project_id(project_id))
   let auth.Ctx(db: db, ..) = ctx
-  use _ <- result.try(require_project_admin(db, project_id, user.id))
+  use _ <- result.try(require_members_management_access(db, user, project_id))
   case projects_db.list_members(db, project_id) {
     Ok(members) ->
       Ok(
@@ -383,7 +383,11 @@ fn release_all_tasks(
           case projects_db.user_exists(db, target_user_id) {
             Ok(False) -> Error(api.error(404, "NOT_FOUND", "User not found"))
             Ok(True) -> {
-              use _ <- result.try(require_project_admin(db, project_id, user.id))
+              use _ <- result.try(require_members_management_access(
+                db,
+                user,
+                project_id,
+              ))
               case
                 projects_db.is_project_member(db, project_id, target_user_id)
               {
@@ -437,7 +441,7 @@ fn add_member(
   use _ <- result.try(csrf.require_csrf(req))
   use project_id <- result.try(parse_project_id(project_id))
   let auth.Ctx(db: db, ..) = ctx
-  use _ <- result.try(require_project_admin(db, project_id, user.id))
+  use _ <- result.try(require_members_management_access(db, user, project_id))
   use #(target_user_id, role_value) <- result.try(decode_member_payload(data))
   use role <- result.try(parse_project_role(role_value))
   case projects_db.add_member(db, project_id, target_user_id, role) {
@@ -478,6 +482,18 @@ fn require_org_admin(user: StoredUser) -> Result(Nil, wisp.Response) {
     _ ->
       Error(api.error(403, "FORBIDDEN", "Only org admins can manage projects"))
   }
+}
+
+fn require_members_management_access(
+  db,
+  user: StoredUser,
+  project_id: Int,
+) -> Result(Nil, wisp.Response) {
+  http_authorization.require_project_manager_with_org_bypass(
+    db,
+    user,
+    project_id,
+  )
 }
 
 fn parse_project_id(value: String) -> Result(Int, wisp.Response) {
@@ -533,18 +549,6 @@ fn parse_project_role(
   case project_role.parse(value) {
     Ok(role) -> Ok(role)
     Error(_) -> Error(api.error(400, "VALIDATION_ERROR", "Invalid role"))
-  }
-}
-
-fn require_project_admin(
-  db: pog.Connection,
-  project_id: Int,
-  user_id: Int,
-) -> Result(Nil, wisp.Response) {
-  case projects_db.is_project_manager(db, project_id, user_id) {
-    Ok(True) -> Ok(Nil)
-    Ok(False) -> Error(api.error(403, "FORBIDDEN", "Forbidden"))
-    Error(_) -> Error(api.error(500, "INTERNAL", "Database error"))
   }
 }
 

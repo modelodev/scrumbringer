@@ -8,7 +8,7 @@ import gleam/option as opt
 
 import lustre/attribute
 import lustre/element
-import lustre/element/html.{button, div, option, p, select, text}
+import lustre/element/html.{button, div, option, p, select, td, text, tr}
 import lustre/event
 
 import domain/metrics.{type OrgMetricsUserOverview, OrgMetricsUserOverview}
@@ -20,21 +20,21 @@ import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/admin/msg as admin_messages
-import scrumbringer_client/features/assignments/components/assignments_card
 import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/error_notice
+import scrumbringer_client/ui/expand_toggle
 import scrumbringer_client/ui/icon_actions
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/loading
 
-pub fn view(
+pub fn view_rows(
   model: client_state.Model,
   user: OrgUser,
   projects_state: Remote(List(Project)),
   expanded: Bool,
-) -> element.Element(client_state.Msg) {
+) -> List(element.Element(client_state.Msg)) {
   let t = fn(key) { helpers_i18n.i18n_t(model, key) }
   let assignments = model.admin.assignments
 
@@ -101,7 +101,7 @@ pub fn view(
                 text(t(i18n_text.UserProjectsEmpty)),
               ])
             False ->
-              div([], [
+              div([attribute.class("assignments-rows")], [
                 list.map(projects_list, fn(project) {
                   view_project_row(model, user.id, project, inline_confirm)
                 })
@@ -114,7 +114,7 @@ pub fn view(
         False ->
           button(
             [
-              attribute.class("btn-sm"),
+              attribute.class("btn-sm btn-secondary"),
               event.on_click(
                 client_state.admin_msg(
                   admin_messages.AssignmentsInlineAddStarted(
@@ -128,18 +128,54 @@ pub fn view(
       },
     ])
 
-  assignments_card.view(assignments_card.Config(
-    title: user.email,
-    icon: icons.Team,
-    badge: warning_badge,
-    meta: projects_label,
-    expanded: is_expanded,
-    toggle_label: toggle_label,
-    on_toggle: client_state.admin_msg(admin_messages.AssignmentsUserToggled(
-      user.id,
-    )),
-    body: body,
-  ))
+  let summary_row =
+    tr([attribute.class("assignments-table-row")], [
+      td([attribute.class("assignments-primary-cell")], [
+        div([attribute.class("assignments-card-title")], [
+          button(
+            [
+              attribute.class("btn-expand"),
+              attribute.attribute("aria-label", toggle_label),
+              attribute.attribute("aria-expanded", bool_to_string(is_expanded)),
+              event.on_click(
+                client_state.admin_msg(admin_messages.AssignmentsUserToggled(
+                  user.id,
+                )),
+              ),
+            ],
+            [expand_toggle.view(is_expanded)],
+          ),
+          div([attribute.class("assignments-card-icon")], [
+            icons.nav_icon(icons.Team, icons.Small),
+          ]),
+          text(user.email),
+          warning_badge,
+        ]),
+      ]),
+      td([attribute.class("assignments-meta-cell")], [text(projects_label)]),
+    ])
+
+  let expansion_rows = case is_expanded {
+    True -> [
+      tr([attribute.class("expansion-row")], [
+        td([attribute.attribute("colspan", "2")], [
+          div([attribute.class("assignments-card-body expansion-content")], [
+            body,
+          ]),
+        ]),
+      ]),
+    ]
+    False -> []
+  }
+
+  [summary_row, ..expansion_rows]
+}
+
+fn bool_to_string(value: Bool) -> String {
+  case value {
+    True -> "true"
+    False -> "false"
+  }
 }
 
 fn view_user_metrics_summary(
@@ -262,7 +298,7 @@ fn view_project_row(
           ),
           button(
             [
-              attribute.class("btn-xs"),
+              attribute.class("btn-xs btn-secondary"),
               event.on_click(client_state.admin_msg(
                 admin_messages.AssignmentsRemoveCancelled,
               )),
@@ -345,7 +381,7 @@ fn view_inline_add(
       div([attribute.class("assignments-inline-add-actions")], [
         button(
           [
-            attribute.class("btn-xs"),
+            attribute.class("btn-xs btn-secondary"),
             attribute.disabled(is_disabled),
             event.on_click(client_state.admin_msg(
               admin_messages.AssignmentsInlineAddCancelled,

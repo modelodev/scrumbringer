@@ -1732,7 +1732,7 @@ fn view_workflow_rule_metrics_row(
       td([], [
         button(
           [
-            attribute.class("btn-small"),
+            attribute.class("btn-xs btn-secondary"),
             event.on_click(
               pool_msg(pool_messages.AdminRuleMetricsDrilldownClicked(
                 rule_metrics.rule_id,
@@ -1992,7 +1992,7 @@ fn view_executions_pagination(
       div([attribute.class("pagination")], [
         button(
           [
-            attribute.class("btn-small"),
+            attribute.class("btn-xs btn-secondary"),
             attribute.disabled(pagination.offset == 0),
             event.on_click(
               pool_msg(pool_messages.AdminRuleMetricsExecPageChanged(0)),
@@ -2002,7 +2002,7 @@ fn view_executions_pagination(
         ),
         button(
           [
-            attribute.class("btn-small"),
+            attribute.class("btn-xs btn-secondary"),
             attribute.disabled(pagination.offset == 0),
             event.on_click(
               pool_msg(
@@ -2022,7 +2022,7 @@ fn view_executions_pagination(
         ]),
         button(
           [
-            attribute.class("btn-small"),
+            attribute.class("btn-xs btn-secondary"),
             attribute.disabled(
               pagination.offset + pagination.limit >= pagination.total,
             ),
@@ -2036,7 +2036,7 @@ fn view_executions_pagination(
         ),
         button(
           [
-            attribute.class("btn-small"),
+            attribute.class("btn-xs btn-secondary"),
             attribute.disabled(
               pagination.offset + pagination.limit >= pagination.total,
             ),

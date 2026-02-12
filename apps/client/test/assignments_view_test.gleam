@@ -472,3 +472,92 @@ pub fn filter_users_by_email_test() {
   string.contains(html, "admin@example.com") |> should.be_true
   string.contains(html, "member@example.com") |> should.be_false
 }
+
+pub fn assignments_renders_table_layout_project_mode_test() {
+  let model =
+    base_model()
+    |> client_state.update_core(fn(core) {
+      client_state.CoreModel(
+        ..core,
+        projects: Loaded([
+          sample_project(1, "Project Alpha"),
+        ]),
+      )
+    })
+    |> client_state.update_admin(fn(admin) {
+      admin_state.AdminModel(
+        ..admin,
+        assignments: state_types.AssignmentsModel(
+          ..admin.assignments,
+          view_mode: assignments_view_mode.ByProject,
+        ),
+      )
+    })
+
+  let html =
+    assignments_view.view_assignments(model) |> element.to_document_string
+
+  string.contains(html, "assignments-toolbar-card") |> should.be_true
+  string.contains(html, "table assignments-table") |> should.be_true
+}
+
+pub fn assignments_expansion_row_toggles_test() {
+  let project = sample_project(1, "Project Alpha")
+  let member =
+    ProjectMember(
+      user_id: 2,
+      role: Manager,
+      created_at: "2026-01-01",
+      claimed_count: 0,
+    )
+  let org_user =
+    OrgUser(
+      id: 2,
+      email: "member@example.com",
+      org_role: Member,
+      created_at: "2026-01-01",
+    )
+
+  let collapsed_model =
+    base_model()
+    |> client_state.update_core(fn(core) {
+      client_state.CoreModel(..core, projects: Loaded([project]))
+    })
+    |> client_state.update_admin(fn(admin) {
+      admin_state.AdminModel(
+        ..admin,
+        members: admin_members.Model(
+          ..admin.members,
+          org_users_cache: Loaded([org_user]),
+        ),
+        assignments: state_types.AssignmentsModel(
+          ..admin.assignments,
+          project_members: dict.from_list([
+            #(project.id, Loaded([member])),
+          ]),
+        ),
+      )
+    })
+
+  let expanded_model =
+    collapsed_model
+    |> client_state.update_admin(fn(admin) {
+      admin_state.AdminModel(
+        ..admin,
+        assignments: state_types.AssignmentsModel(
+          ..admin.assignments,
+          expanded_projects: set.insert(admin.assignments.expanded_projects, 1),
+        ),
+      )
+    })
+
+  let collapsed_html =
+    assignments_view.view_assignments(collapsed_model)
+    |> element.to_document_string
+  let expanded_html =
+    assignments_view.view_assignments(expanded_model)
+    |> element.to_document_string
+
+  string.contains(collapsed_html, "expansion-row") |> should.be_false
+  string.contains(expanded_html, "expansion-row") |> should.be_true
+}

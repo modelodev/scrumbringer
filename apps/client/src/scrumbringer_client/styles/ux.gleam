@@ -9,6 +9,17 @@ pub fn css() -> List(String) {
     ".admin-card { background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }",
     ".admin-card-header { font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--sb-muted); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--sb-border); }",
     ".admin-card-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }",
+    ".admin-center-panel { display: flex; flex-direction: column; min-height: 0; }",
+    ".panel { min-height: 0; }",
+    ".form { display: flex; flex-direction: column; gap: 12px; }",
+    ".forbidden { color: var(--sb-danger); }",
+    ".dropzone-hint { font-size: 12px; color: var(--sb-muted); }",
+    ".invite-result { margin-top: 12px; }",
+    ".loading-indicator { display: inline-flex; align-items: center; gap: 8px; color: var(--sb-muted); }",
+    ".not-permitted { padding: 16px; border: 1px solid var(--sb-border); border-radius: 12px; background: color-mix(in oklab, var(--sb-warning) 8%, var(--sb-surface)); }",
+    ".not-permitted h2 { margin: 0 0 8px 0; font-size: 16px; }",
+    ".not-permitted p { margin: 0; color: var(--sb-muted); line-height: 1.5; }",
+    ".section-description { display: flex; align-items: center; gap: 8px; margin: 0 0 12px 0; color: var(--sb-muted); font-size: 13px; line-height: 1.5; }",
     ".admin-section-gap { height: 24px; }",
     // =====================================================
     // UX IMPROVEMENTS - Sidebar Groups (SA01-SA05)
@@ -60,6 +71,7 @@ pub fn css() -> List(String) {
     ".info-callout-content { flex: 1; display: flex; flex-direction: column; gap: 6px; }",
     ".info-callout-title { font-weight: 600; margin-bottom: 4px; }",
     ".info-callout-text { font-size: 14px; color: var(--sb-muted); line-height: 1.5; }",
+    ".info-callout-link { color: var(--sb-primary); text-decoration: underline; text-underline-offset: 2px; }",
     ".info-callout-variables { font-size: 12px; color: var(--sb-muted); font-family: var(--sb-font-mono, monospace); opacity: 0.85; }",
     ".error-banner { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: color-mix(in oklab, var(--sb-danger) 10%, var(--sb-surface)); border: 1px solid color-mix(in oklab, var(--sb-danger) 30%, var(--sb-border)); border-radius: 10px; margin-bottom: 12px; }",
     ".error-banner-icon { width: 20px; height: 20px; flex-shrink: 0; color: var(--sb-danger); }",
@@ -74,6 +86,8 @@ pub fn css() -> List(String) {
     ".table-actions button { padding: 12px; min-width: 44px; min-height: 44px; }",
     ".cell-actions .btn-icon, .actions-row .btn-icon, .btn-group .btn-icon { padding: 12px; min-width: 44px; min-height: 44px; }",
     ".table td.actions-cell { text-align: right; }",
+    ".pagination { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 12px; }",
+    ".page-info { min-width: 68px; text-align: center; font-size: 12px; color: var(--sb-muted); }",
     // DataTable component (extends .table)
     ".data-table { width: 100%; border-collapse: collapse; }",
     ".data-table th { text-align: left; color: var(--sb-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 12px; border-bottom: 2px solid var(--sb-border); background: var(--sb-surface); }",
@@ -163,8 +177,13 @@ pub fn css() -> List(String) {
     // UX IMPROVEMENTS - Responsive Mobile (RM01-RM04)
     // AC38: All interactive elements must have min 44px touch targets on mobile
     // =====================================================
-    "@media (max-width: 768px) { button, a.btn, .clickable, select, input[type='checkbox'], input[type='radio'], .btn-xs, .btn-icon, .nav-item { min-height: 44px; } button, a.btn, .clickable, .btn-icon { min-width: 44px; } select { padding: 10px 12px; font-size: 16px; } input { min-height: 44px; padding: 10px 12px; font-size: 16px; } .btn-xs { min-height: 44px; padding: 10px 16px; } .filters-row select, .filters-row input, .filters-row button { min-height: 44px; height: 44px; } .topbar { flex-wrap: wrap; gap: 8px; padding: 10px; } .topbar-actions { width: 100%; justify-content: space-between; } .user { display: none; } .user-avatar { display: flex; width: 32px; height: 32px; border-radius: 50%; background: var(--sb-primary); color: var(--sb-inverse); align-items: center; justify-content: center; font-weight: 600; } }",
+    "@media (max-width: 768px) { button, a.btn, .clickable, select, input[type='checkbox'], input[type='radio'], .btn-xs, .btn-icon, .nav-item { min-height: 44px; } button, a.btn, .clickable, .btn-icon { min-width: 44px; } select { padding: 10px 12px; font-size: 16px; } input { min-height: 44px; padding: 10px 12px; font-size: 16px; } .btn-xs { min-height: 44px; padding: 10px 16px; } .filters-row select, .filters-row input, .filters-row button { min-height: 44px; height: 44px; } .topbar { flex-wrap: wrap; gap: 8px; padding: 10px; } .topbar-actions { width: 100%; justify-content: space-between; } .user { display: none; } .user-avatar { display: flex; width: 32px; height: 32px; border-radius: 50%; background: var(--sb-primary); color: var(--sb-inverse); align-items: center; justify-content: center; font-weight: 600; } .pagination { justify-content: center; } }",
     ".hamburger-menu { display: none; }",
+    ".member-mobile { min-height: 100dvh; background: var(--sb-bg); }",
+    ".member-content-mobile { min-height: calc(100dvh - 56px); }",
+    ".mobile-topbar { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 8px; min-height: 56px; padding: 8px 12px; border-bottom: 1px solid var(--sb-border); background: var(--sb-surface); }",
+    ".mobile-menu-btn, .mobile-user-btn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--sb-border); background: var(--sb-elevated); color: var(--sb-text); }",
+    ".topbar-title-mobile { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; font-size: 13px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--sb-muted); }",
     "@media (max-width: 768px) { .hamburger-menu { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; } .admin .nav { position: fixed; left: -280px; top: 0; bottom: 0; width: 280px; z-index: 100; transition: left 0.3s ease; background: var(--sb-surface); border-right: 1px solid var(--sb-border); border-radius: 0; padding-top: 60px; } .admin .nav.open { left: 0; } .admin .nav-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; } .admin .nav.open + .nav-overlay { display: block; } }",
     // =====================================================
     // MOBILE - Mini-Bar & Panel Sheet
@@ -454,7 +473,6 @@ pub fn css() -> List(String) {
     ".metrics-workflow-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--sb-border); border-radius: 10px; background: var(--sb-surface-3); }",
     ".metrics-workflow-name { color: var(--sb-text); font-weight: 500; }",
     ".metrics-workflow-empty { color: color-mix(in oklab, var(--sb-text) 64%, var(--sb-muted)); font-size: 13px; padding: 10px 12px; border: 1px dashed var(--sb-border); border-radius: 10px; background: var(--sb-surface-2); }",
-    ".assignments-metrics { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 0; }",
     ".task-dependencies-section { padding: 0; }",
     ".task-dependencies-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }",
     ".task-dependencies-list { display: flex; flex-direction: column; gap: 8px; }",
@@ -529,14 +547,7 @@ pub fn css() -> List(String) {
     // Quick ranges container
     ".quick-ranges { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }",
     ".quick-ranges-label { font-size: 13px; color: var(--sb-muted); }",
-    // Loading state
-    ".loading-state { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 32px; color: var(--sb-muted); }",
-    ".loading-spinner { width: 24px; height: 24px; border: 3px solid var(--sb-border); border-top-color: var(--sb-primary); border-radius: 50%; animation: btn-spin 0.8s linear infinite; }",
-    // Skeleton loading
-    ".skeleton { background: var(--sb-muted); border-radius: 4px; animation: pulse 1.5s ease-in-out infinite; }",
-    "@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }",
-    // Error state
-    ".error-state { display: flex; align-items: center; gap: 12px; padding: 16px; background: color-mix(in oklab, var(--sb-danger) 10%, var(--sb-surface)); border: 1px solid color-mix(in oklab, var(--sb-danger) 30%, var(--sb-border)); border-radius: 10px; color: var(--sb-danger); }",
+    // Error icon helper
     ".error-icon { font-size: 1.2em; }",
     // My bar card groups
     ".my-bar-card-groups { display: flex; flex-direction: column; gap: 16px; }",
