@@ -870,6 +870,7 @@ fn view_task_details_tab(
         }
         let desc_empty = desc == "—"
         div([attribute.class("task-details-stack")], [
+          view_task_details_intro(model),
           div([attribute.class("task-detail-field")], [
             div([attribute.class("task-detail-field-label")], [
               text(helpers_i18n.i18n_t(model, i18n_text.ParentCardLabel)),
@@ -905,6 +906,15 @@ fn view_task_details_tab(
           text(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)),
         ])
     },
+  ])
+}
+
+fn view_task_details_intro(model: Model) -> Element(Msg) {
+  div([attribute.class("task-details-intro")], [
+    div([attribute.class("task-details-title")], [
+      text(helpers_i18n.i18n_t(model, i18n_text.TabDetails)),
+    ]),
+    div([attribute.class("task-details-rule")], []),
   ])
 }
 

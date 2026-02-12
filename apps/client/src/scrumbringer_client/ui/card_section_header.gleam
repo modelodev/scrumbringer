@@ -16,7 +16,7 @@
 ////
 //// // With custom CSS class
 //// card_section_header.view_with_class(
-////   "task-notes-header",
+////   "card-section-header",
 ////   card_section_header.Config(
 ////     title: "Notas",
 ////     button_label: "+ Añadir nota",
