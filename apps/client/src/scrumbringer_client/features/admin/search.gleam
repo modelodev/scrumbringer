@@ -29,6 +29,8 @@ import lustre/effect.{type Effect}
 
 import domain/api_error.{type ApiError}
 import domain/org.{type OrgUser}
+import domain/project.{ProjectMember}
+import domain/remote.{Loaded}
 import scrumbringer_client/client_state.{
   type Model, type Msg, admin_msg, update_admin,
 }
@@ -143,6 +145,7 @@ pub fn handle_org_users_search_results_ok(
           case
             list.find(users, fn(user) {
               string.lowercase(user.email) == normalized_query
+              && !is_already_project_member(model, user.id)
             })
           {
             Ok(user) -> opt.Some(user)
@@ -168,6 +171,17 @@ pub fn handle_org_users_search_results_ok(
       )
     }
     _ -> #(model, effect.none())
+  }
+}
+
+fn is_already_project_member(model: Model, user_id: Int) -> Bool {
+  case model.admin.members.members {
+    Loaded(members) ->
+      list.any(members, fn(member) {
+        let ProjectMember(user_id: member_user_id, ..) = member
+        member_user_id == user_id
+      })
+    _ -> False
   }
 }
 

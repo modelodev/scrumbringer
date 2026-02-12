@@ -10,6 +10,8 @@ pub fn css() -> List(String) {
     "@keyframes dialog-fade-in { from { opacity: 0; } to { opacity: 1; } }",
     // Dialog container
     ".dialog { position: relative; background: var(--sb-surface-1); border: 1px solid var(--sb-border); border-radius: 18px; overflow: hidden; padding: 0; max-height: calc(100vh - 32px); display: flex; flex-direction: column; box-shadow: var(--sb-shadow-modal); animation: dialog-scale-in 0.2s ease; }",
+    // Keep dropdowns visible when a picker is open inside dialog
+    ".dialog.dialog-color-picker-open { overflow: visible; }",
     "@keyframes dialog-scale-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }",
     // Dialog sizes
     ".dialog-sm { width: min(400px, 100%); }",

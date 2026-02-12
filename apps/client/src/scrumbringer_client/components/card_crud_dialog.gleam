@@ -669,10 +669,15 @@ fn view(model: Model) -> Element(Msg) {
 }
 
 fn view_create_dialog(model: Model) -> Element(Msg) {
+  let dialog_class = case model.create_color_open {
+    True -> "dialog dialog-md dialog-color-picker-open"
+    False -> "dialog dialog-md"
+  }
+
   div([attribute.class("dialog-overlay")], [
     div(
       [
-        attribute.class("dialog dialog-md"),
+        attribute.class(dialog_class),
         attribute.attribute("role", "dialog"),
         attribute.attribute("aria-modal", "true"),
       ],
@@ -785,10 +790,15 @@ fn milestone_target_text(model: Model, milestone_id: Int) -> String {
 }
 
 fn view_edit_dialog(model: Model) -> Element(Msg) {
+  let dialog_class = case model.edit_color_open {
+    True -> "dialog dialog-md dialog-color-picker-open"
+    False -> "dialog dialog-md"
+  }
+
   div([attribute.class("dialog-overlay")], [
     div(
       [
-        attribute.class("dialog dialog-md"),
+        attribute.class(dialog_class),
         attribute.attribute("role", "dialog"),
         attribute.attribute("aria-modal", "true"),
       ],

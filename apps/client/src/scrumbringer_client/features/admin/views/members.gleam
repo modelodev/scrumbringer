@@ -31,7 +31,7 @@ import lustre/event
 import domain/capability.{type Capability}
 import domain/org.{type OrgUser}
 import domain/org_role
-import domain/project.{type Project, type ProjectMember}
+import domain/project.{type Project, type ProjectMember, ProjectMember}
 import domain/project_role.{Manager, Member}
 import domain/remote.{type Remote, Failed, Loaded, Loading, NotAsked}
 
@@ -302,14 +302,18 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
   let search_results = case model.admin.members.org_users_search {
     state_types.OrgUsersSearchIdle(_, _) -> NotAsked
     state_types.OrgUsersSearchLoading(_, _) -> Loading
-    state_types.OrgUsersSearchLoaded(_, _, users) -> Loaded(users)
+    state_types.OrgUsersSearchLoaded(_, _, users) ->
+      Loaded(
+        list.filter(users, fn(user) {
+          !is_already_project_member(model, user.id)
+        }),
+      )
     state_types.OrgUsersSearchFailed(_, _, err) -> Failed(err)
   }
 
-  let empty_label = case model.admin.members.org_users_search {
-    state_types.OrgUsersSearchLoaded(query, _, users)
-      if query != "" && users == []
-    -> helpers_i18n.i18n_t(model, i18n_text.NoResults)
+  let empty_label = case #(search_query, search_results) {
+    #(query, Loaded(users)) if query != "" && users == [] ->
+      helpers_i18n.i18n_t(model, i18n_text.NoResults)
     _ -> helpers_i18n.i18n_t(model, i18n_text.TypeAnEmailToSearch)
   }
 
@@ -461,6 +465,17 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
       ),
     ],
   )
+}
+
+fn is_already_project_member(model: Model, user_id: Int) -> Bool {
+  case model.admin.members.members {
+    Loaded(members) ->
+      list.any(members, fn(member) {
+        let ProjectMember(user_id: member_user_id, ..) = member
+        member_user_id == user_id
+      })
+    _ -> False
+  }
 }
 
 fn view_remove_member_dialog(

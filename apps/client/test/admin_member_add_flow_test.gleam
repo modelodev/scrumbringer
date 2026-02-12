@@ -1,7 +1,8 @@
 import domain/org.{type OrgUser, OrgUser}
 import domain/org_role
-import domain/project.{type Project, Project}
+import domain/project.{type Project, type ProjectMember, Project, ProjectMember}
 import domain/project_role
+import domain/remote.{Loaded}
 import gleam/option as opt
 import gleam/string
 import gleeunit/should
@@ -33,6 +34,15 @@ fn sample_project() -> Project {
     my_role: project_role.Manager,
     created_at: "2026-01-01T00:00:00Z",
     members_count: 1,
+  )
+}
+
+fn sample_member(user_id: Int) -> ProjectMember {
+  ProjectMember(
+    user_id: user_id,
+    role: project_role.Member,
+    created_at: "2026-01-01T00:00:00Z",
+    claimed_count: 0,
   )
 }
 
@@ -153,4 +163,29 @@ pub fn members_dialog_shows_no_results_feedback_for_full_email_test() {
     || string.contains(html, "No results")
 
   has_no_results |> should.be_true
+}
+
+pub fn members_dialog_filters_out_existing_project_members_from_search_results_test() {
+  let model =
+    base_model()
+    |> with_members_state(fn(members_state) {
+      admin_members.Model(
+        ..members_state,
+        members_add_dialog_mode: dialog_mode.DialogCreate,
+        members: Loaded([sample_member(9)]),
+        org_users_search: state_types.OrgUsersSearchLoaded("qa@example.com", 5, [
+          sample_user(9, "qa@example.com"),
+        ]),
+      )
+    })
+
+  let rendered = members.view_members(model, opt.Some(sample_project()))
+  let html = element.to_document_string(rendered)
+
+  let has_no_results =
+    string.contains(html, "Sin resultados")
+    || string.contains(html, "No results")
+
+  has_no_results |> should.be_true
+  string.contains(html, "Seleccionar") |> should.be_false
 }

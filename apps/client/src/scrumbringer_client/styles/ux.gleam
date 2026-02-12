@@ -325,7 +325,7 @@ pub fn css() -> List(String) {
     ".color-picker-swatch-none { border: 2px dashed var(--sb-muted); background: transparent; }",
     ".color-picker-label { flex: 1; }",
     ".color-picker-arrow { margin-left: auto; color: var(--sb-muted); }",
-    ".color-picker-dropdown { position: absolute; top: 100%; left: 0; margin-top: 4px; min-width: 180px; background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 10px; padding: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 50; display: none; }",
+    ".color-picker-dropdown { position: absolute; top: 100%; left: 0; margin-top: 4px; min-width: 180px; max-height: min(280px, 50vh); overflow-y: auto; background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 10px; padding: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 50; display: none; }",
     ".color-picker.open .color-picker-dropdown { display: block; }",
     // Story 4.8 UX: Color picker inside dialogs needs higher z-index
     ".dialog .color-picker-dropdown { z-index: 1010; }",
