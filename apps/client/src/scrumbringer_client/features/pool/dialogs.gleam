@@ -614,7 +614,7 @@ fn view_dependencies(
 
   div([attribute.class("task-dependencies-section detail-section")], [
     card_section_header.view_with_class(
-      "task-dependencies-header",
+      "card-section-header",
       card_section_header.Config(
         title: header_title,
         button_label: "+ "
@@ -628,8 +628,13 @@ fn view_dependencies(
     ]),
     case model.member.dependencies.member_dependencies {
       NotAsked | Loading ->
-        div([attribute.class("empty")], [
-          text(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)),
+        div([attribute.class("task-empty-state detail-empty-state")], [
+          div([attribute.class("task-empty-title")], [
+            text(helpers_i18n.i18n_t(model, i18n_text.Loading)),
+          ]),
+          div([attribute.class("task-empty-body")], [
+            text(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)),
+          ]),
         ])
       Failed(err) -> error_notice.view(err.message)
       Loaded(deps) ->
@@ -914,7 +919,7 @@ fn view_notes(model: Model, _task_id: Int) -> Element(Msg) {
   div([attribute.class("task-notes-section detail-section")], [
     // Header with button (using shared component)
     card_section_header.view_with_class(
-      "task-notes-header",
+      "card-section-header",
       card_section_header.Config(
         title: helpers_i18n.i18n_t(model, i18n_text.Notes),
         button_label: "+ " <> helpers_i18n.i18n_t(model, i18n_text.AddNote),
@@ -928,8 +933,13 @@ fn view_notes(model: Model, _task_id: Int) -> Element(Msg) {
     // Notes list
     case model.member.notes.member_notes {
       NotAsked | Loading ->
-        div([attribute.class("empty")], [
-          text(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)),
+        div([attribute.class("task-empty-state detail-empty-state")], [
+          div([attribute.class("task-empty-title")], [
+            text(helpers_i18n.i18n_t(model, i18n_text.Loading)),
+          ]),
+          div([attribute.class("task-empty-body")], [
+            text(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)),
+          ]),
         ])
       Failed(err) -> error_notice.view(err.message)
       Loaded(notes) ->
