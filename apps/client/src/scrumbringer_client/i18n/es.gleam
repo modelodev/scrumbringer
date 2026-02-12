@@ -122,6 +122,7 @@ pub fn translate(text: Text) -> String {
     text.LoggingIn -> "Iniciando sesión…"
     text.Loading -> "Cargando"
     text.LoadingEllipsis -> "Cargando…"
+    text.Retry -> "Reintentar"
 
     // Settings controls
     text.Preferences -> "Preferencias"

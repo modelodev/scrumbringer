@@ -68,6 +68,7 @@ pub type Msg {
   MemberCreatePriorityChanged(String)
   MemberCreateTypeIdChanged(String)
   MemberCreateCardIdChanged(String)
+  MemberCreateTypeOptionsRetryClicked
   MemberCreateSubmitted
   MemberTaskCreated(ApiResult(Task))
   MemberTaskCreatedFeedback(Int)

@@ -117,31 +117,62 @@ pub fn view_create_dialog(model: Model) -> Element(Msg) {
           ),
           form_field.view(
             helpers_i18n.i18n_t(model, i18n_text.TypeLabel),
-            select(
-              [
-                attribute.value(model.member.pool.member_create_type_id),
-                event.on_input(fn(value) {
-                  pool_msg(pool_messages.MemberCreateTypeIdChanged(value))
-                }),
-              ],
+            div([], [
+              select(
+                [
+                  attribute.value(model.member.pool.member_create_type_id),
+                  event.on_input(fn(value) {
+                    pool_msg(pool_messages.MemberCreateTypeIdChanged(value))
+                  }),
+                  attribute.disabled(case model.member.pool.member_task_types {
+                    Loaded(_) -> False
+                    _ -> True
+                  }),
+                ],
+                case model.member.pool.member_task_types {
+                  Loaded(task_types) -> [
+                    option(
+                      [attribute.value("")],
+                      helpers_i18n.i18n_t(model, i18n_text.SelectType),
+                    ),
+                    ..list.map(task_types, fn(tt) {
+                      option([attribute.value(int.to_string(tt.id))], tt.name)
+                    })
+                  ]
+                  Loading -> [
+                    option(
+                      [attribute.value("")],
+                      helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis),
+                    ),
+                  ]
+                  NotAsked -> [
+                    option(
+                      [attribute.value("")],
+                      helpers_i18n.i18n_t(model, i18n_text.SelectProjectFirst),
+                    ),
+                  ]
+                  Failed(_err) -> [
+                    option(
+                      [attribute.value("")],
+                      helpers_i18n.i18n_t(model, i18n_text.ErrorLoadingTasks),
+                    ),
+                  ]
+                },
+              ),
               case model.member.pool.member_task_types {
-                Loaded(task_types) -> [
-                  option(
-                    [attribute.value("")],
-                    helpers_i18n.i18n_t(model, i18n_text.SelectType),
-                  ),
-                  ..list.map(task_types, fn(tt) {
-                    option([attribute.value(int.to_string(tt.id))], tt.name)
-                  })
-                ]
-                _ -> [
-                  option(
-                    [attribute.value("")],
-                    helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis),
-                  ),
-                ]
+                Failed(_err) ->
+                  button(
+                    [
+                      attribute.type_("button"),
+                      event.on_click(pool_msg(
+                        pool_messages.MemberCreateTypeOptionsRetryClicked,
+                      )),
+                    ],
+                    [text(helpers_i18n.i18n_t(model, i18n_text.Retry))],
+                  )
+                _ -> element.none()
               },
-            ),
+            ]),
           ),
           case model.member.pool.member_create_milestone_id {
             opt.Some(milestone_id) ->

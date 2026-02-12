@@ -1631,6 +1631,8 @@ fn update_without_milestones(
       tasks_workflow.handle_create_type_id_changed(model, v)
     pool_messages.MemberCreateCardIdChanged(v) ->
       tasks_workflow.handle_create_card_id_changed(model, v)
+    pool_messages.MemberCreateTypeOptionsRetryClicked ->
+      tasks_workflow.handle_create_type_options_retry_clicked(model)
 
     pool_messages.MemberCreateSubmitted ->
       tasks_workflow.handle_create_submitted(model, member_refresh)

@@ -83,7 +83,7 @@ const created_highlight_ms = 4000
 
 /// Open the create task dialog.
 pub fn handle_create_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
-  #(
+  let next =
     update_member_pool(model, fn(pool) {
       member_pool.Model(
         ..pool,
@@ -92,9 +92,9 @@ pub fn handle_create_dialog_opened(model: Model) -> #(Model, Effect(Msg)) {
         member_create_card_id: opt.None,
         member_create_milestone_id: opt.None,
       )
-    }),
-    effect.none(),
-  )
+    })
+
+  #(next, fetch_task_types_if_needed(next))
 }
 
 /// Open the create task dialog with a pre-selected card (Story 4.12 AC7, AC9).
@@ -102,7 +102,7 @@ pub fn handle_create_dialog_opened_with_card(
   model: Model,
   card_id: Int,
 ) -> #(Model, Effect(Msg)) {
-  #(
+  let next =
     update_member_pool(model, fn(pool) {
       member_pool.Model(
         ..pool,
@@ -111,9 +111,33 @@ pub fn handle_create_dialog_opened_with_card(
         member_create_card_id: opt.Some(card_id),
         member_create_milestone_id: opt.None,
       )
-    }),
-    effect.none(),
-  )
+    })
+
+  #(next, fetch_task_types_if_needed(next))
+}
+
+/// Retry loading task type options used by create task dialog.
+pub fn handle_create_type_options_retry_clicked(
+  model: Model,
+) -> #(Model, Effect(Msg)) {
+  #(model, fetch_task_types(model))
+}
+
+fn fetch_task_types_if_needed(model: Model) -> Effect(Msg) {
+  case model.member.pool.member_task_types {
+    NotAsked | Failed(_) -> fetch_task_types(model)
+    _ -> effect.none()
+  }
+}
+
+fn fetch_task_types(model: Model) -> Effect(Msg) {
+  case model.core.selected_project_id {
+    opt.Some(project_id) ->
+      api_tasks.list_task_types(project_id, fn(result) {
+        pool_msg(pool_messages.MemberTaskTypesFetched(project_id, result))
+      })
+    opt.None -> effect.none()
+  }
 }
 
 /// Close the create task dialog.

@@ -108,6 +108,7 @@ pub type Text {
   LoggingIn
   Loading
   LoadingEllipsis
+  Retry
 
   // Settings controls
   Preferences
