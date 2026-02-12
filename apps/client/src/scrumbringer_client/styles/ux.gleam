@@ -459,8 +459,8 @@ pub fn css() -> List(String) {
     ".task-tab .new-notes-indicator { color: var(--sb-accent); font-size: 0.7em; margin-left: 4px; animation: pulse 2s infinite; }",
     // Task detail tab content
     ".task-details-section { padding: 0; }",
-    ".task-detail-grid { display: grid; gap: 14px; }",
-    ".detail-row { display: grid; grid-template-columns: 140px minmax(0, 1fr); align-items: center; gap: 12px; }",
+    ".task-detail-grid { display: grid; gap: 10px; }",
+    ".detail-row { display: grid; grid-template-columns: 140px minmax(0, 1fr); align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid color-mix(in oklab, var(--sb-border) 78%, transparent); border-radius: 10px; background: color-mix(in oklab, var(--sb-surface) 86%, var(--sb-elevated)); }",
     ".detail-label { font-weight: 500; color: var(--sb-muted-strong); }",
     ".detail-value { color: var(--sb-text-strong); }",
     ".detail-value.muted { color: var(--sb-muted); }",
@@ -512,7 +512,8 @@ pub fn css() -> List(String) {
     // Modal footer
     ".task-detail-modal .modal-footer { padding: 16px 20px; border-top: 1px solid var(--sb-border); display: flex; justify-content: flex-end; gap: 10px; background: var(--sb-surface); }",
     ".task-detail-footer { align-items: center; }",
-    ".task-section-hint { font-size: 13px; color: var(--sb-muted); margin-bottom: 8px; }",
+    ".task-section-hint { font-size: 13px; color: var(--sb-muted); margin-bottom: 8px; padding-inline: 2px; line-height: 1.45; }",
+    ".card-section-header .btn.btn-sm { padding: 8px 14px; border-radius: 10px; }",
     ".task-empty-state { display: flex; flex-direction: column; gap: 6px; padding: 14px; border: 1px dashed var(--sb-border); border-radius: 10px; background: color-mix(in oklab, var(--sb-elevated) 94%, var(--sb-bg)); }",
     ".task-empty-title { font-weight: 600; color: var(--sb-text); }",
     ".task-empty-body { color: var(--sb-muted); font-size: 13px; }",

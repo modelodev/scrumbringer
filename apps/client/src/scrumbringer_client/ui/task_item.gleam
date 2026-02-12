@@ -65,11 +65,18 @@ pub fn view(config: Config(msg), wrapper: Wrapper) -> lelement.Element(msg) {
 
   let content = case on_click {
     Some(msg) ->
-      button([attribute.class(content_class), event.on_click(msg)], [
-        icon_el,
-        span([attribute.class(title_css)], [text(title)]),
-        secondary,
-      ])
+      button(
+        [
+          attribute.class(content_class),
+          attribute.type_("button"),
+          event.on_click(msg),
+        ],
+        [
+          icon_el,
+          span([attribute.class(title_css)], [text(title)]),
+          secondary,
+        ],
+      )
     None ->
       div([attribute.class(content_class)], [
         icon_el,
