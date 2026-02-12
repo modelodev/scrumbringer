@@ -336,21 +336,52 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
         input_attributes: [],
         results: search_results,
         render_item: fn(u: OrgUser) {
-          div([attribute.class("search-select-item")], [
-            span([attribute.class("search-select-primary")], [text(u.email)]),
-            span([attribute.class("search-select-secondary")], [
-              text(org_role.to_string(u.org_role)),
-            ]),
-            button(
-              [
-                attribute.class("btn btn-secondary btn-xs"),
-                event.on_click(
-                  admin_msg(admin_messages.MemberAddUserSelected(u.id)),
-                ),
-              ],
-              [text(helpers_i18n.i18n_t(model, i18n_text.Select))],
-            ),
-          ])
+          let is_selected = case model.admin.members.members_add_selected_user {
+            opt.Some(user) -> user.id == u.id
+            opt.None -> False
+          }
+
+          div(
+            [
+              attribute.class(
+                "search-select-item"
+                <> case is_selected {
+                  True -> " selected"
+                  False -> ""
+                },
+              ),
+            ],
+            [
+              div([attribute.class("search-select-main")], [
+                span([attribute.class("search-select-primary")], [text(u.email)]),
+                badge.new_unchecked(
+                  org_role.to_string(u.org_role),
+                  badge.Neutral,
+                )
+                  |> badge.view_with_class("search-select-role"),
+              ]),
+              button(
+                [
+                  attribute.class(case is_selected {
+                    True -> "btn btn-primary btn-xs"
+                    False -> "btn btn-secondary btn-xs"
+                  }),
+                  attribute.disabled(is_selected),
+                  event.on_click(
+                    admin_msg(admin_messages.MemberAddUserSelected(u.id)),
+                  ),
+                ],
+                [
+                  text(
+                    helpers_i18n.i18n_t(model, case is_selected {
+                      True -> i18n_text.Selected
+                      False -> i18n_text.Select
+                    }),
+                  ),
+                ],
+              ),
+            ],
+          )
         },
         empty_label: empty_label,
         loading_label: helpers_i18n.i18n_t(model, i18n_text.Searching),
@@ -361,13 +392,21 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
         opt.Some(user) ->
           div(
             [
-              attribute.class("helper-text"),
+              attribute.class("field-hint icon-row member-selected-hint"),
               attribute.attribute("data-testid", "member-add-selected-user"),
             ],
             [
+              span([attribute.class("member-selected-hint-icon")], [
+                icons.nav_icon(icons.CheckCircle, icons.Small),
+              ]),
               text(
                 helpers_i18n.i18n_t(model, i18n_text.User) <> ": " <> user.email,
               ),
+              badge.new_unchecked(
+                helpers_i18n.i18n_t(model, i18n_text.Selected),
+                badge.Primary,
+              )
+                |> badge.view_with_class("member-selected-badge"),
             ],
           )
         opt.None -> element.none()

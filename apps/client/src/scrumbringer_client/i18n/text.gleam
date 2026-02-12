@@ -365,6 +365,7 @@ pub type Text {
   TypeAnEmailToSearch
   NoResults
   Select
+  Selected
   OrgRole
 
   // Invite links

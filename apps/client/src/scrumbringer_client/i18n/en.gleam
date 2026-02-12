@@ -419,6 +419,7 @@ pub fn translate(text: Text) -> String {
     text.TypeAnEmailToSearch -> "Type an email to search"
     text.NoResults -> "No results"
     text.Select -> "Select"
+    text.Selected -> "Selected"
     text.OrgRole -> "Org Role"
 
     // Invite links
