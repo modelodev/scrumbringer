@@ -869,30 +869,30 @@ fn view_task_details_tab(
           opt.None -> "—"
         }
         let desc_empty = desc == "—"
-        div([attribute.class("task-detail-grid detail-grid")], [
-          div([attribute.class("detail-row")], [
-            span([attribute.class("detail-label")], [
+        div([attribute.class("task-details-stack")], [
+          div([attribute.class("task-detail-field")], [
+            div([attribute.class("task-detail-field-label")], [
               text(helpers_i18n.i18n_t(model, i18n_text.ParentCardLabel)),
             ]),
-            span(
+            div(
               [
                 attribute.class(case card_empty {
-                  True -> "detail-value muted"
-                  False -> "detail-value"
+                  True -> "task-detail-field-value muted"
+                  False -> "task-detail-field-value"
                 }),
               ],
               [text(card_title)],
             ),
           ]),
-          div([attribute.class("detail-row")], [
-            span([attribute.class("detail-label")], [
+          div([attribute.class("task-detail-field")], [
+            div([attribute.class("task-detail-field-label")], [
               text(helpers_i18n.i18n_t(model, i18n_text.Description)),
             ]),
-            span(
+            div(
               [
                 attribute.class(case desc_empty {
-                  True -> "detail-value muted"
-                  False -> "detail-value"
+                  True -> "task-detail-field-value muted"
+                  False -> "task-detail-field-value"
                 }),
               ],
               [text(desc)],
