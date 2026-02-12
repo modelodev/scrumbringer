@@ -311,8 +311,8 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
     state_types.OrgUsersSearchFailed(_, _, err) -> Failed(err)
   }
 
-  let empty_label = case #(search_query, search_results) {
-    #(query, Loaded(users)) if query != "" && users == [] ->
+  let empty_label = case search_results {
+    Loaded(users) if search_query != "" && users == [] ->
       helpers_i18n.i18n_t(model, i18n_text.NoResults)
     _ -> helpers_i18n.i18n_t(model, i18n_text.TypeAnEmailToSearch)
   }
