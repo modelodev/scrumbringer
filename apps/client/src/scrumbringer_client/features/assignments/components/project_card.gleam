@@ -268,6 +268,8 @@ fn view_member_row(
     _ -> False
   }
 
+  let remove_label = t(i18n_text.Remove) <> ": " <> email
+
   div([attribute.class("assignments-row")], [
     div([attribute.class("assignments-row-title")], [text(email)]),
     select(
@@ -309,6 +311,8 @@ fn view_member_row(
           button(
             [
               attribute.class("btn-xs btn-danger"),
+              attribute.attribute("title", remove_label),
+              attribute.attribute("aria-label", remove_label),
               event.on_click(client_state.admin_msg(
                 admin_messages.AssignmentsRemoveConfirmed,
               )),
@@ -317,7 +321,7 @@ fn view_member_row(
           ),
           button(
             [
-              attribute.class("btn-xs"),
+              attribute.class("btn-xs btn-secondary"),
               event.on_click(client_state.admin_msg(
                 admin_messages.AssignmentsRemoveCancelled,
               )),
@@ -327,7 +331,7 @@ fn view_member_row(
         ])
       False ->
         icon_actions.delete(
-          t(i18n_text.Remove),
+          remove_label,
           client_state.admin_msg(admin_messages.AssignmentsRemoveClicked(
             project_id,
             member.user_id,

@@ -306,6 +306,13 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
     state_types.OrgUsersSearchFailed(_, _, err) -> Failed(err)
   }
 
+  let empty_label = case model.admin.members.org_users_search {
+    state_types.OrgUsersSearchLoaded(query, _, users)
+      if query != "" && users == []
+    -> helpers_i18n.i18n_t(model, i18n_text.NoResults)
+    _ -> helpers_i18n.i18n_t(model, i18n_text.TypeAnEmailToSearch)
+  }
+
   dialog.view(
     dialog.DialogConfig(
       title: helpers_i18n.i18n_t(model, i18n_text.AddMember),
@@ -324,16 +331,9 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
         ),
         value: search_query,
         on_change: fn(value) {
-          admin_msg(admin_messages.OrgUsersSearchChanged(value))
+          admin_msg(admin_messages.OrgUsersSearchDebounced(value))
         },
-        input_attributes: [
-          event.debounce(
-            event.on_input(fn(value) {
-              admin_msg(admin_messages.OrgUsersSearchDebounced(value))
-            }),
-            350,
-          ),
-        ],
+        input_attributes: [],
         results: search_results,
         render_item: fn(u: OrgUser) {
           div([attribute.class("search-select-item")], [
@@ -352,11 +352,26 @@ fn view_add_member_dialog(model: Model) -> Element(Msg) {
             ),
           ])
         },
-        empty_label: helpers_i18n.i18n_t(model, i18n_text.TypeAnEmailToSearch),
+        empty_label: empty_label,
         loading_label: helpers_i18n.i18n_t(model, i18n_text.Searching),
         error_label: fn(message) { message },
         class: "org-users-search",
       )),
+      case model.admin.members.members_add_selected_user {
+        opt.Some(user) ->
+          div(
+            [
+              attribute.class("helper-text"),
+              attribute.attribute("data-testid", "member-add-selected-user"),
+            ],
+            [
+              text(
+                helpers_i18n.i18n_t(model, i18n_text.User) <> ": " <> user.email,
+              ),
+            ],
+          )
+        opt.None -> element.none()
+      },
       form_field.view(
         helpers_i18n.i18n_t(model, i18n_text.Role),
         select(

@@ -249,6 +249,8 @@ fn view_project_row(
     _ -> False
   }
 
+  let remove_label = t(i18n_text.Remove) <> ": " <> project.name
+
   div([attribute.class("assignments-row")], [
     div([attribute.class("assignments-row-title")], [text(project.name)]),
     select(
@@ -290,6 +292,8 @@ fn view_project_row(
           button(
             [
               attribute.class("btn-xs btn-danger"),
+              attribute.attribute("title", remove_label),
+              attribute.attribute("aria-label", remove_label),
               event.on_click(client_state.admin_msg(
                 admin_messages.AssignmentsRemoveConfirmed,
               )),
@@ -308,7 +312,7 @@ fn view_project_row(
         ])
       False ->
         icon_actions.delete(
-          t(i18n_text.Remove),
+          remove_label,
           client_state.admin_msg(admin_messages.AssignmentsRemoveClicked(
             project.id,
             user_id,

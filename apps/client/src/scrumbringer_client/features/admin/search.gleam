@@ -21,6 +21,8 @@
 //// - **update.gleam**: Main update module that delegates to handlers here
 //// - **member_add.gleam**: Uses search results for user selection
 
+import gleam/list
+import gleam/option as opt
 import gleam/string
 
 import lustre/effect.{type Effect}
@@ -133,21 +135,38 @@ pub fn handle_org_users_search_results_ok(
   case model.admin.members.org_users_search {
     state_types.OrgUsersSearchLoading(query, current_token)
       if token == current_token
-    -> #(
-      update_admin(model, fn(admin) {
-        update_members(admin, fn(members_state) {
-          admin_members.Model(
-            ..members_state,
-            org_users_search: state_types.OrgUsersSearchLoaded(
-              query,
-              current_token,
-              users,
-            ),
-          )
-        })
-      }),
-      effect.none(),
-    )
+    -> {
+      let normalized_query = string.lowercase(string.trim(query))
+      let selected_user = case normalized_query == "" {
+        True -> opt.None
+        False ->
+          case
+            list.find(users, fn(user) {
+              string.lowercase(user.email) == normalized_query
+            })
+          {
+            Ok(user) -> opt.Some(user)
+            Error(_) -> opt.None
+          }
+      }
+
+      #(
+        update_admin(model, fn(admin) {
+          update_members(admin, fn(members_state) {
+            admin_members.Model(
+              ..members_state,
+              org_users_search: state_types.OrgUsersSearchLoaded(
+                query,
+                current_token,
+                users,
+              ),
+              members_add_selected_user: selected_user,
+            )
+          })
+        }),
+        effect.none(),
+      )
+    }
     _ -> #(model, effect.none())
   }
 }
