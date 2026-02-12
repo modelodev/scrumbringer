@@ -988,6 +988,9 @@ fn build_right_panel(
         _ -> client_state.NoOp
       }
     },
+    on_task_click: fn(task_id) {
+      client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
+    },
     on_card_click: fn(card_id) {
       client_state.pool_msg(pool_messages.OpenCardDetail(card_id))
     },

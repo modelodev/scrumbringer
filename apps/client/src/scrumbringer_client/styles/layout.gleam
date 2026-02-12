@@ -75,6 +75,8 @@ pub fn css() -> List(String) {
     ".task-item.card-border-purple { border-left-color: var(--sb-card-purple); }",
     ".task-item.card-border-pink { border-left-color: var(--sb-card-pink); }",
     ".task-title-row { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }",
+    ".task-title-button { display: inline-flex; align-items: center; gap: 6px; min-width: 0; flex: 1; background: transparent; border: none; padding: 0; text-align: left; color: inherit; cursor: pointer; }",
+    ".task-title-button:hover .task-title { color: var(--sb-primary); }",
     ".task-type-icon { flex-shrink: 0; display: flex; align-items: center; justify-content: center; }",
     ".task-item .task-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }",
     ".task-item .task-actions { display: flex; gap: 4px; flex-shrink: 0; }",

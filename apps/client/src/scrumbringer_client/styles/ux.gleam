@@ -460,7 +460,7 @@ pub fn css() -> List(String) {
     // Task detail tab content
     ".task-details-section { padding: 0; }",
     ".task-detail-grid { display: grid; gap: 10px; }",
-    ".detail-row { display: grid; grid-template-columns: 140px minmax(0, 1fr); align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid color-mix(in oklab, var(--sb-border) 78%, transparent); border-radius: 10px; background: color-mix(in oklab, var(--sb-surface) 86%, var(--sb-elevated)); }",
+    ".detail-row { display: grid; grid-template-columns: 140px minmax(0, 1fr); align-items: center; gap: 12px; padding: 2px 0; }",
     ".detail-label { font-weight: 500; color: var(--sb-muted-strong); }",
     ".detail-value { color: var(--sb-text-strong); }",
     ".detail-value.muted { color: var(--sb-muted); }",
@@ -476,6 +476,7 @@ pub fn css() -> List(String) {
     ".task-dependencies-section { padding: 0; }",
     ".task-dependencies-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }",
     ".task-dependencies-list { display: flex; flex-direction: column; gap: 8px; }",
+    ".task-dependencies-section .task-dependencies-list, .task-dependencies-section .task-empty-state, .task-notes-section .task-empty-state, .task-notes-section .notes-list { margin-top: 10px; }",
     ".task-dependency-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border: 1px solid var(--sb-border); border-radius: 10px; background: var(--sb-elevated); }",
     ".task-dependency-main { display: flex; align-items: center; gap: 10px; }",
     ".task-dependency-icon { color: var(--sb-warning); }",

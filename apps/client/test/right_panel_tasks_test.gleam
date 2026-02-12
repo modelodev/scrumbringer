@@ -28,6 +28,7 @@ fn base_config(
     on_task_pause: fn(id) { id },
     on_task_complete: fn(id) { id },
     on_task_release: fn(id) { id },
+    on_task_click: fn(id) { id },
     on_card_click: fn(id) { id },
     on_logout: 0,
     drag_armed: False,

@@ -79,6 +79,7 @@ pub type RightPanelConfig(msg) {
     on_task_pause: fn(Int) -> msg,
     on_task_complete: fn(Int) -> msg,
     on_task_release: fn(Int) -> msg,
+    on_task_click: fn(Int) -> msg,
     on_card_click: fn(Int) -> msg,
     on_logout: msg,
     // Drag-to-claim state for Pool view (Story 4.7)
@@ -314,11 +315,20 @@ fn view_my_task_item(config: RightPanelConfig(msg), task: Task) -> Element(msg) 
 
   div([attribute.class("task-item " <> border_class)], [
     div([attribute.class("task-title-row")], [
-      // Task type icon
-      span([attribute.class("task-type-icon")], [
-        task_type_icon.view(task.task_type.icon, 14, config.current_theme),
-      ]),
-      span([attribute.class("task-title")], [text(task.title)]),
+      button(
+        [
+          attribute.class("task-title-button"),
+          attribute.type_("button"),
+          event.on_click(config.on_task_click(task.id)),
+        ],
+        [
+          // Task type icon
+          span([attribute.class("task-type-icon")], [
+            task_type_icon.view(task.task_type.icon, 14, config.current_theme),
+          ]),
+          span([attribute.class("task-title")], [text(task.title)]),
+        ],
+      ),
     ]),
     div([attribute.class("task-actions")], [
       task_actions.icon_action(
