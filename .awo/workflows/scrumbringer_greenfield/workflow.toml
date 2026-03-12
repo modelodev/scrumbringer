@@ -1,0 +1,59 @@
+id = "scrumbringer_greenfield"
+version = "0.2.0-design"
+
+[metadata]
+namespace = "bmad"
+principal_asset = "bmad.greenfield_fullstack"
+
+[budget]
+tokens_hint = 32000
+
+[[steps]]
+id = "project_brief"
+kind = "llm-subagent"
+depends_on = []
+inputs = []
+outputs = ["project_brief_contract"]
+skill_refs = ["bmad-po"]
+context_mode = "isolated"
+done_criteria = ["project brief contract emitted"]
+verification_steps = []
+
+[[steps]]
+id = "story_design"
+kind = "llm-subagent"
+depends_on = ["project_brief"]
+inputs = ["project_brief_contract"]
+outputs = ["story_design_contract"]
+skill_refs = ["bmad-po"]
+context_mode = "shared"
+done_criteria = ["story design contract emitted"]
+verification_steps = []
+
+[[steps]]
+id = "story_implementation"
+kind = "llm-subagent"
+depends_on = ["story_design"]
+inputs = ["story_design_contract"]
+outputs = ["implementation_contract"]
+skill_refs = ["bmad-dev"]
+context_mode = "isolated"
+done_criteria = ["implementation contract emitted"]
+verification_steps = []
+
+[[steps]]
+id = "story_qa"
+kind = "llm-subagent"
+depends_on = ["story_implementation"]
+inputs = ["implementation_contract"]
+outputs = ["qa_contract"]
+skill_refs = ["bmad-qa"]
+context_mode = "isolated"
+done_criteria = ["qa contract emitted"]
+verification_steps = []
+
+[[extension_points]]
+id = "post_story_qa_validation"
+after_step = "story_qa"
+allowed_kinds = ["technical-validation"]
+notes = "Attach tests review and Lustre architecture/design checks as optional validators."

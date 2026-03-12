@@ -1,0 +1,21 @@
+schema: awo.config/v1
+version: 1
+workflows:
+  enabled: [scrumbringer_greenfield]
+sources: []
+targets:
+  default: opencode
+  items:
+    opencode:
+      enabled: true
+      class: coding_ide
+      adapter_kind: opencode
+      runtime_root: "."
+      commands_dir: ".opencode/commands"
+      skills_dir: ".opencode/skills"
+budgets:
+  default_run:
+    tokens_hint: 24000
+  default_step:
+    tokens_hint: 8000
+  enforce: warn
