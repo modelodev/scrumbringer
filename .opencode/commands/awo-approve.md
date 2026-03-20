@@ -1,10 +1,29 @@
 ---
 description: "Register minimal HITL approval/rejection and reflect it in run evidence. Usage: /awo-approve <workflow_id> <entity_id> approved|rejected [--run <run_id|latest>] [comment]"
+agent: "awo-runtime"
+subtask: true
+execution_mode: "isolated-runtime"
+runtime_command: true
+mutates_state: true
+requires_context: false
 ---
 
 # /awo-approve
 
 Record a HITL decision for a gate/entity in runtime evidence.
+
+## Command surface
+
+- Signature: `/awo-approve <workflow_id> <entity_id> approved|rejected [--run <run_id|latest>] [comment]`
+- Raw arguments: `$ARGUMENTS`
+- Required `$1`: workflow id
+- Required `$2`: entity id
+- Required `$3`: decision (`approved|rejected`)
+- Optional `--run <run_id|latest>` and optional trailing comment are parsed from `$ARGUMENTS`
+
+## Runtime executor contract
+
+Run this command as an isolated runtime subtask with agent `awo-runtime`. Do not inherit the parent session mode.
 
 ## Required steps
 
@@ -33,9 +52,14 @@ $5
 {"schema_version":"awo.approval_envelope/v1","status":"failed","error_code":"INVALID_INPUT","message":"Usage: /awo-approve <workflow_id> <entity_id> approved|rejected [--run <run_id|latest>] [comment]"}
 ```
 
+```json
+{"schema_version":"awo.approval_envelope/v1","status":"failed","workflow_id":"$1","entity_id":"$2","error_code":"RUNTIME_COMMAND_UNAVAILABLE_IN_SESSION","message":"The isolated runtime subtask could not be started for /awo-approve"}
+```
+
 ## Rules
 
 - Stay inside the current repo.
+- Prefer execution over planning; this is a runtime entrypoint, not a planning prompt.
 - Do not call the `awo` CLI from this slash command.
 - Do not modify source workflow files.
 - Emit envelope keys in the same order as shown in examples.

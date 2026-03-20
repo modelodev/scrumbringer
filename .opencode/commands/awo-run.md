@@ -1,24 +1,43 @@
 ---
 description: "Execute an AWO workflow and emit H0 runtime evidence. Usage: /awo-run <workflow_id> [context]"
+agent: "awo-runtime"
+subtask: true
+execution_mode: "isolated-runtime"
+runtime_command: true
+mutates_state: true
+requires_context: false
 ---
 
 # /awo-run
 
 Execute workflow `$1` from compiled runtime assets and write evidence under `.awo/runs/`.
 
+## Command surface
+
+- Signature: `/awo-run <workflow_id> [context]`
+- Raw arguments: `$ARGUMENTS`
+- Required `$1`: workflow id
+- Optional context: any remaining free text after `<workflow_id>`
+- Missing context is valid and must not trigger a usage error
+
+## Runtime executor contract
+
+Run this command as an isolated runtime subtask with agent `awo-runtime`. Do not inherit plan-only behavior from the parent session.
+
 ## Required steps
 
-1. Read `.awo/generated/opencode/manifest.json` and `.awo/generated/opencode/workflows/$1/compiled_workflow.json`.
-2. Create a new run id using the format `run_<unix_seconds>`.
-3. Execute compiled steps in dependency order.
-4. For each executed step, write `.awo/runs/<run_id>/steps/<step_id>.step-report.json` with contractual core fields: `schema_version`, `run_id`, `workflow_id`, `workflow_version`, `target`, `step_id`, `status`, `policy_outcome`, `executive_summary`, `artifacts_in`, `artifacts_out`, `next_recommended`, `risks`, `started_at`, `ended_at`, and `budget_used` (`tokens` int >= 0, `cost_usd` number >= 0).
-5. After the run completes, write `.awo/runs/<run_id>/run-envelope.json` with contractual core fields: `schema_version`, `run_id`, `workflow_id`, `workflow_version`, `target`, `status`, `started_at`, `ended_at`, `step_reports`, `next_step`, and run-level budget telemetry `budget_run_level` (`tokens_total`, `cost_usd_total`, `quality`=`target_native|adapter_estimated`).
-6. Write `.awo/runs/index/opencode/$1.breadcrumbs.json` with JSON containing at least `latest_run` set to the new run id.
-7. Use RFC3339 UTC timestamps and coherent envelopes: success => run `status=ok`, failure/block => run `status=failed|blocked` with actionable `next_step`.
+1. Validate arguments from `$ARGUMENTS`: `$1` is required, context is optional, and missing context is never `INVALID_INPUT`.
+2. Read `.awo/generated/opencode/manifest.json` and `.awo/generated/opencode/workflows/$1/compiled_workflow.json`.
+3. Create a new run id using the format `run_<unix_seconds>`.
+4. Execute compiled steps in dependency order.
+5. For each executed step, write `.awo/runs/<run_id>/steps/<step_id>.step-report.json` with contractual core fields: `schema_version`, `run_id`, `workflow_id`, `workflow_version`, `target`, `step_id`, `status`, `policy_outcome`, `executive_summary`, `artifacts_in`, `artifacts_out`, `next_recommended`, `risks`, `started_at`, `ended_at`, and `budget_used` (`tokens` int >= 0, `cost_usd` number >= 0).
+6. After the run completes, write `.awo/runs/<run_id>/run-envelope.json` with contractual core fields: `schema_version`, `run_id`, `workflow_id`, `workflow_version`, `target`, `status`, `started_at`, `ended_at`, `step_reports`, `next_step`, and run-level budget telemetry `budget_run_level` (`tokens_total`, `cost_usd_total`, `quality`=`target_native|adapter_estimated`).
+7. Write `.awo/runs/index/opencode/$1.breadcrumbs.json` with JSON containing at least `latest_run` set to the new run id.
+8. Use RFC3339 UTC timestamps and coherent envelopes: success => run `status=ok`, failure/block => run `status=failed|blocked` with actionable `next_step`.
 
 ## Context
 
-$2
+Use `$2` only when it is present. Treat an empty `$2` as valid no-context execution.
 
 ## JSON examples
 
@@ -34,9 +53,14 @@ $2
 {"schema_version":"awo.run_envelope/v1","run_id":"run_20260306_100000","workflow_id":"$1","workflow_version":"1.0.0","target":"opencode","status":"failed","started_at":"2026-03-06T10:00:00Z","ended_at":"2026-03-06T10:01:00Z","step_reports":[".awo/runs/run_20260306_100000/steps/draft.step-report.json"],"next_step":"Inspect failed step-report and re-run /awo-run $1"}
 ```
 
+```json
+{"schema_version":"awo.run_envelope/v1","workflow_id":"$1","target":"opencode","status":"failed","error_code":"RUNTIME_COMMAND_UNAVAILABLE_IN_SESSION","message":"The isolated runtime subtask could not be started for /awo-run","next_step":"Apply generated runtime assets and retry /awo-run $1"}
+```
+
 ## Rules
 
 - Stay inside the current repo.
+- Prefer execution over planning; this is a runtime entrypoint, not a planning prompt.
 - Do not call the `awo` CLI from this slash command.
 - Do not modify source workflow files.
 - Always emit the evidence files before finishing.
