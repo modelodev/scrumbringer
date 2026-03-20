@@ -16,6 +16,7 @@ Propósito: definir las reglas no negociables del workflow propio para Scrumbrin
 10. **Workflow versionado**: cualquier cambio del propio workflow se registra en `CHANGELOG.md`.
 11. **Modo debug disponible**: cuando esté activo, se amplía el nivel de trazabilidad.
 12. **Evolución controlada**: cambios al workflow solo mediante meta-flujo de cambio.
+13. **Interaction-risk explicitness**: cuando un cambio afecte una interacción visible al usuario, el workflow debe hacer explícitos discoverability, feedback/error handling, teclado/a11y y tests mínimos antes de implementación.
 
 ## Gate de calidad mínimo
 

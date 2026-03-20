@@ -43,3 +43,21 @@ Registro de decisiones clave del workflow y su evolución.
   - tag git `workflow-pre-bmad-removal`
 - **Seguimiento**:
   - posibilidad de comparar/mejorar sin pérdida de conocimiento
+
+## WFD-005
+- **Fecha**: 2026-03-20
+- **Estado**: accepted
+- **Decisión**: sustituir el experimento `scrumbringer_greenfield` por `scrumbringer_change_loop@0.3.0` añadiendo un step estructural `interaction_review`.
+- **Contexto**: el baseline manual produjo una UI funcional pero con mala discoverability; además, el workflow previo no era una buena base de comparación semver para el CLI actual de AWO.
+- **Alternativas consideradas**:
+  - solo editar `done_criteria` dentro de steps existentes
+  - mantener `scrumbringer_greenfield`
+  - introducir una división más agresiva de technical/interaction review
+- **Impacto**:
+  - AWO tendrá un cambio estructural observable (`delta_steps`, grafo, runtime compilado)
+  - el workflow gana un checkpoint generalista de interacción sin acoplarse al modal concreto
+  - el mismo cambio de producto se repetirá para comparar baseline manual vs AWO rerun
+- **Seguimiento**:
+  - rebuild/apply
+  - rerun del mismo cambio en OpenCode
+  - comparación before/after

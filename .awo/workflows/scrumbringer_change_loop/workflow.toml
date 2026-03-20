@@ -1,0 +1,75 @@
+id = "scrumbringer_change_loop"
+version = "0.3.0"
+
+[metadata]
+namespace = "scrumbringer"
+principal_asset = "scrumbringer.change_loop"
+
+[budget]
+tokens_hint = 20000
+
+[[steps]]
+id = "change_brief"
+kind = "llm-subagent"
+depends_on = []
+inputs = []
+outputs = ["change_brief_contract"]
+skill_refs = ["bmad-po"]
+context_mode = "shared"
+done_criteria = ["change scope, constraints, acceptance criteria and success signal are explicit"]
+verification_steps = []
+
+[[steps]]
+id = "impact_scan"
+kind = "llm-subagent"
+depends_on = ["change_brief"]
+inputs = ["change_brief_contract"]
+outputs = ["impact_scan_contract"]
+skill_refs = ["bmad-po"]
+context_mode = "shared"
+done_criteria = ["files, technical risks, regressions and test surface are explicit"]
+verification_steps = []
+
+[[steps]]
+id = "interaction_review"
+kind = "llm-subagent"
+depends_on = ["impact_scan"]
+inputs = ["impact_scan_contract"]
+outputs = ["interaction_review_contract"]
+skill_refs = ["bmad-po"]
+context_mode = "shared"
+done_criteria = ["for user-facing interaction changes, discoverability, interaction pattern, feedback/error handling, keyboard-a11y expectations and minimum interaction tests are explicit"]
+verification_steps = []
+
+[[steps]]
+id = "implement_change"
+kind = "llm-subagent"
+depends_on = ["interaction_review"]
+inputs = ["interaction_review_contract"]
+outputs = ["implementation_contract"]
+skill_refs = ["bmad-dev"]
+context_mode = "isolated"
+done_criteria = ["minimal code change and tests are implemented against the agreed interaction contract"]
+verification_steps = []
+
+[[steps]]
+id = "verify_change"
+kind = "llm-subagent"
+depends_on = ["implement_change"]
+inputs = ["implementation_contract"]
+outputs = ["verification_contract"]
+skill_refs = ["bmad-qa"]
+context_mode = "isolated"
+done_criteria = ["tests, regressions and user-facing interaction clarity are reviewed"]
+verification_steps = []
+
+[[steps]]
+id = "workflow_retro"
+kind = "llm-subagent"
+depends_on = ["verify_change"]
+inputs = ["verification_contract"]
+outputs = ["workflow_delta_contract"]
+skill_refs = ["bmad-po"]
+context_mode = "shared"
+done_criteria = ["workflow improvement signal, keep/simplify/kill recommendation and any missed interaction risk are explicit"]
+verification_steps = []
