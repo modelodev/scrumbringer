@@ -41,52 +41,6 @@ import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/icon_catalog
 
 // =============================================================================
-// Emoji Icons (Type-Safe)
-// =============================================================================
-
-/// Emoji icons used in UI components.
-pub type EmojiIcon {
-  Target
-  Search
-  Hand
-  Checkmark
-  Drag
-  Release
-  Lightbulb
-  Wave
-  Backpack
-  Clock
-  Inbox
-  // Empty state icons
-  Clipboard
-  FolderEmoji
-  UsersEmoji
-  Sparkles
-}
-
-/// Converts an emoji icon to its string representation.
-pub fn emoji_to_string(icon: EmojiIcon) -> String {
-  case icon {
-    Target -> "🎯"
-    Search -> "🔍"
-    Hand -> "✋"
-    Checkmark -> "☑"
-    Drag -> "⠿"
-    Release -> "⟲"
-    Lightbulb -> "💡"
-    Wave -> "👋"
-    Backpack -> "🎒"
-    Clock -> "⏱"
-    Inbox -> "📥"
-    // Empty state icons
-    Clipboard -> "📋"
-    FolderEmoji -> "📁"
-    UsersEmoji -> "👥"
-    Sparkles -> "✨"
-  }
-}
-
-// =============================================================================
 // Heroicons (Type-Safe)
 // =============================================================================
 

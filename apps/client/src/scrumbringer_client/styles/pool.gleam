@@ -44,7 +44,7 @@ pub fn css() -> List(String) {
     ".task-preview-note-content { font-size: 12px; color: var(--sb-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }",
     ".task-preview-actions { margin-top: 10px; display: flex; justify-content: flex-end; }",
     ".task-preview-btn { font-size: 12px; }",
-    ".task-preview-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--sb-border); background: color-mix(in oklab, var(--sb-elevated) 70%, transparent); font-weight: 600; }",
+    ".task-preview-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: var(--sb-radius-pill); border: 1px solid var(--sb-border); background: color-mix(in oklab, var(--sb-elevated) 70%, transparent); font-weight: 600; font-size: var(--sb-font-sm); }",
     ".task-preview-badge-available { border-color: color-mix(in oklab, var(--sb-primary) 60%, var(--sb-border)); background: color-mix(in oklab, var(--sb-primary) 12%, var(--sb-elevated)); }",
     ".task-preview-badge-claimed { border-color: color-mix(in oklab, var(--sb-info) 60%, var(--sb-border)); background: color-mix(in oklab, var(--sb-info) 12%, var(--sb-elevated)); }",
     ".task-preview-badge-ongoing { border-color: color-mix(in oklab, var(--sb-warning) 60%, var(--sb-border)); background: color-mix(in oklab, var(--sb-warning) 14%, var(--sb-elevated)); }",

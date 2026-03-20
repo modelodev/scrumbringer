@@ -513,10 +513,10 @@ fn view_rule_row_expandable(
           case template_count {
             0 ->
               badge.new_unchecked("0", badge.Neutral)
-              |> badge.view_with_class("badge-empty")
+              |> badge.view_with_class("table-badge table-badge-empty")
             n ->
               badge.new_unchecked(int.to_string(n), badge.Neutral)
-              |> badge.view_with_class("badge-count")
+              |> badge.view_with_class("table-badge table-badge-count")
           },
         ]),
         // Applied metrics

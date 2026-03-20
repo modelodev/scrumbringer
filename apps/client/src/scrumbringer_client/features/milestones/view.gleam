@@ -38,7 +38,6 @@ import scrumbringer_client/ui/dialog
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/expand_toggle
 import scrumbringer_client/ui/form_field
-import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/modal_header
 import scrumbringer_client/ui/move_menu
 import scrumbringer_client/ui/tabs

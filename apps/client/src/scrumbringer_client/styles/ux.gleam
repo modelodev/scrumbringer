@@ -272,8 +272,8 @@ pub fn css() -> List(String) {
     // STORY 4.8 - Badge Component & Toast Variants
     // =====================================================
     // Badge base styles
-    ".badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }",
-    ".badge-inline { padding: 1px 6px; font-size: 11px; vertical-align: middle; }",
+    ".badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: var(--sb-radius-pill); font-size: var(--sb-font-sm); font-weight: 600; white-space: nowrap; }",
+    ".badge-inline { padding: 1px 6px; font-size: var(--sb-font-xs); vertical-align: middle; }",
     // Badge variants
     ".badge-primary { background: color-mix(in oklab, var(--sb-primary) 15%, var(--sb-elevated)); border: 1px solid color-mix(in oklab, var(--sb-primary) 40%, var(--sb-border)); color: var(--sb-primary); }",
     ".badge-success { background: color-mix(in oklab, var(--sb-success) 15%, var(--sb-elevated)); border: 1px solid color-mix(in oklab, var(--sb-success) 40%, var(--sb-border)); color: var(--sb-success); }",
@@ -357,7 +357,7 @@ pub fn css() -> List(String) {
     ".ficha-card.card-border-gray, .ficha-card.card-border-red, .ficha-card.card-border-orange, .ficha-card.card-border-yellow, .ficha-card.card-border-green, .ficha-card.card-border-blue, .ficha-card.card-border-purple, .ficha-card.card-border-pink { border-left-width: 4px; }",
     ".ficha-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }",
     ".ficha-title { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }",
-    ".ficha-state-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }",
+    ".ficha-state-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: var(--sb-radius-pill); font-size: var(--sb-font-xs); font-weight: 600; }",
     ".ficha-state-pendiente { background: color-mix(in oklab, var(--sb-muted) 15%, var(--sb-surface)); color: var(--sb-muted); }",
     ".ficha-state-en_curso { background: color-mix(in oklab, var(--sb-warning) 15%, var(--sb-surface)); color: var(--sb-warning); }",
     ".ficha-state-cerrada { background: color-mix(in oklab, var(--sb-success) 15%, var(--sb-surface)); color: var(--sb-success); }",
@@ -408,7 +408,7 @@ pub fn css() -> List(String) {
     ".detail-empty-state { display: flex; flex-direction: column; gap: 6px; padding: 14px; border: 1px dashed var(--sb-border); border-radius: 10px; background: color-mix(in oklab, var(--sb-elevated) 94%, var(--sb-bg)); }",
     ".detail-section .card-section-title { font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--sb-muted); }",
     ".modal-body { padding: 16px 20px 20px; overflow-y: auto; flex: 1; background: var(--sb-surface-1); }",
-    ".card-state-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }",
+    ".card-state-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: var(--sb-radius-pill); font-size: var(--sb-font-sm); font-weight: 600; }",
     ".card-state-pendiente { background: color-mix(in oklab, var(--sb-muted) 15%, var(--sb-surface)); color: var(--sb-muted); }",
     ".card-state-en_curso { background: color-mix(in oklab, var(--sb-warning) 15%, var(--sb-surface)); color: var(--sb-warning); }",
     ".card-state-cerrada { background: color-mix(in oklab, var(--sb-success) 15%, var(--sb-surface)); color: var(--sb-success); }",
@@ -521,7 +521,7 @@ pub fn css() -> List(String) {
     ".member-selected-hint-icon { color: var(--sb-primary); display: inline-flex; align-items: center; }",
     ".member-selected-badge { margin-left: auto; }",
     ".task-blocked { opacity: 0.6; }",
-    ".task-blocked-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 999px; border: 1px solid color-mix(in oklab, var(--sb-warning) 40%, var(--sb-border)); background: color-mix(in oklab, var(--sb-warning) 12%, var(--sb-surface)); color: var(--sb-warning); font-size: 11px; font-weight: 600; line-height: 1; }",
+    ".task-blocked-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: var(--sb-radius-pill); border: 1px solid color-mix(in oklab, var(--sb-warning) 40%, var(--sb-border)); background: color-mix(in oklab, var(--sb-warning) 12%, var(--sb-surface)); color: var(--sb-warning); font-size: var(--sb-font-xs); font-weight: 600; line-height: 1; }",
     ".task-blocked-count { font-size: 11px; font-weight: 600; }",
     ".task-blocked-inline { margin-left: 6px; }",
     ".task-blocked-card { font-size: 10px; }",

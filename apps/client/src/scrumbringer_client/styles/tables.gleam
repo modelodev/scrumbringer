@@ -28,9 +28,9 @@ pub fn css() -> List(String) {
     ".btn-expand:hover { background: var(--sb-elevated); color: var(--sb-text); }",
     ".rules-expandable-table { width: 100%; }",
     ".cell-templates { text-align: center; }",
-    ".badge { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 20px; padding: 0 6px; border-radius: 10px; font-size: 12px; font-weight: 600; }",
-    ".badge-empty { background: var(--sb-surface); color: var(--sb-muted); border: 1px solid var(--sb-border); }",
-    ".badge-count { background: color-mix(in oklab, var(--sb-primary) 15%, var(--sb-elevated)); color: var(--sb-primary); border: 1px solid color-mix(in oklab, var(--sb-primary) 40%, var(--sb-border)); }",
+    ".table-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 20px; padding: 0 6px; border-radius: var(--sb-radius-lg); font-size: var(--sb-font-sm); font-weight: 600; }",
+    ".table-badge-empty { background: var(--sb-surface); color: var(--sb-muted); border: 1px solid var(--sb-border); }",
+    ".table-badge-count { background: color-mix(in oklab, var(--sb-primary) 15%, var(--sb-elevated)); color: var(--sb-primary); border: 1px solid color-mix(in oklab, var(--sb-primary) 40%, var(--sb-border)); }",
     // Templates expansion panel
     ".templates-expansion { padding: 12px 16px; background: var(--sb-surface); border-radius: 8px; margin: 4px 8px 4px 40px; border-left: 3px solid var(--sb-primary); }",
     ".templates-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }",
