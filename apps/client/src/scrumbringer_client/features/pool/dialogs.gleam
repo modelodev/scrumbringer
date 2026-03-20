@@ -378,18 +378,22 @@ fn view_task_header(model: Model, task: opt.Option(task.Task)) -> Element(Msg) {
         badges: [],
         meta: opt.Some(
           div([attribute.class("detail-meta")], [
-            span([attribute.class("task-meta-chip task-meta-type")], [
-              icons.nav_icon(icons.TaskTypes, icons.Small),
-              text(t.task_type.name),
+            div([attribute.class("detail-meta-group")], [
+              span([attribute.class("task-meta-chip task-meta-type")], [
+                icons.nav_icon(icons.TaskTypes, icons.Small),
+                text(t.task_type.name),
+              ]),
+              span([attribute.class("task-meta-chip task-meta-priority")], [
+                icons.nav_icon(icons.Automation, icons.Small),
+                text("P" <> int.to_string(t.priority)),
+              ]),
             ]),
-            span([attribute.class("task-meta-chip task-meta-priority")], [
-              icons.nav_icon(icons.Automation, icons.Small),
-              text("P" <> int.to_string(t.priority)),
+            div([attribute.class("detail-meta-group")], [
+              span([attribute.class("task-meta-chip task-meta-status")], [
+                text(task_state.label(model.ui.locale, t.status)),
+              ]),
+              view_assignee(model, t),
             ]),
-            span([attribute.class("task-meta-chip task-meta-status")], [
-              text(task_state.label(model.ui.locale, t.status)),
-            ]),
-            view_assignee(model, t),
           ]),
         ),
         progress: opt.None,

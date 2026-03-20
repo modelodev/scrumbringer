@@ -394,6 +394,7 @@ pub fn css() -> List(String) {
     ".detail-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }",
     ".detail-title { font-size: 20px; font-weight: 700; line-height: 1.25; }",
     ".detail-meta { display: flex; align-items: center; gap: var(--sb-space-md); flex-wrap: wrap; }",
+    ".detail-meta-group { display: inline-flex; align-items: center; gap: var(--sb-space-sm); }",
     ".detail-summary { padding: 14px 16px; border: 1px solid color-mix(in oklab, var(--sb-border) 75%, transparent); border-radius: 12px; background: color-mix(in oklab, var(--sb-elevated) 88%, transparent); }",
     ".detail-tabs { margin-top: 2px; padding: 8px; border: 1px solid color-mix(in oklab, var(--sb-border) 82%, transparent); border-radius: 12px; background: color-mix(in oklab, var(--sb-surface) 85%, var(--sb-elevated)); }",
     ".modal-tabs.detail-tabs { display: flex; align-items: stretch; justify-content: center; align-self: stretch; width: 100%; gap: 8px; padding: 8px; border-bottom: 0; }",

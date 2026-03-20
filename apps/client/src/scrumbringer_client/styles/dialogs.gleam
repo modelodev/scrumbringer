@@ -36,7 +36,7 @@ pub fn css() -> List(String) {
     ".dialog-footer { display: flex; justify-content: flex-end; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--sb-border); background: var(--sb-surface-2); }",
     ".dialog-footer .btn-compact { padding-left: 14px; padding-right: 14px; }",
     // Add button (for opening dialogs)
-    ".btn-add { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; background: var(--sb-primary); color: var(--sb-inverse); border: none; border-radius: 10px; font-weight: 500; cursor: pointer; transition: background 0.2s, transform 0.1s; }",
+    ".btn-add { display: inline-flex; align-items: center; gap: var(--sb-space-md); padding: 10px 16px; background: var(--sb-primary); color: var(--sb-inverse); border: none; border-radius: var(--sb-radius-lg); font-weight: 500; cursor: pointer; transition: background var(--sb-transition-normal), transform 0.1s; }",
     ".btn-add:hover { background: var(--sb-primary-hover); }",
     ".btn-add:active { transform: scale(0.98); }",
     ".btn-add::before { content: '+'; font-weight: 700; font-size: 1.1em; }",

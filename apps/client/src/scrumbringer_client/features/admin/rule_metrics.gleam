@@ -234,17 +234,22 @@ pub fn init_tab(model: Model) -> #(Model, Effect(Msg)) {
     True -> {
       let to = client_ffi.date_today()
       let from = client_ffi.date_days_ago(30)
-      #(
+      let model =
         update_admin(model, fn(admin) {
           update_metrics(admin, fn(metrics_state) {
             admin_metrics.Model(
               ..metrics_state,
               admin_rule_metrics_from: from,
               admin_rule_metrics_to: to,
+              admin_rule_metrics: Loading,
             )
           })
+        })
+      #(
+        model,
+        api_workflows.get_org_rule_metrics(from, to, fn(result) {
+          pool_msg(pool_messages.AdminRuleMetricsFetched(result))
         }),
-        effect.none(),
       )
     }
     False -> #(model, effect.none())

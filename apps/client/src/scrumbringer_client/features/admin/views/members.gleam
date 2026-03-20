@@ -53,6 +53,7 @@ import scrumbringer_client/ui/icon_actions
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/search_select
 import scrumbringer_client/ui/section_header
+import scrumbringer_client/ui/skeleton
 
 // =============================================================================
 // Members View
@@ -588,10 +589,7 @@ fn view_member_capabilities_dialog(
     model.admin.capabilities.member_capabilities_error,
     [
       case model.admin.capabilities.member_capabilities_loading {
-        True ->
-          div([attribute.class("loading")], [
-            text(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)),
-          ])
+        True -> skeleton.skeleton_list(4)
         False ->
           // Capabilities checkbox list (AC12)
           case capabilities {
