@@ -106,15 +106,18 @@ pub fn view_create_dialog(model: Model) -> Element(Msg) {
               }),
             ]),
           ),
-          form_field.view(
+          form_field.with_hint(
             helpers_i18n.i18n_t(model, i18n_text.Priority),
             input([
               attribute.type_("number"),
+              attribute.attribute("min", "1"),
+              attribute.attribute("max", "5"),
               attribute.value(model.member.pool.member_create_priority),
               event.on_input(fn(value) {
                 pool_msg(pool_messages.MemberCreatePriorityChanged(value))
               }),
             ]),
+            "1 = " <> helpers_i18n.i18n_t(model, i18n_text.PriorityHighest) <> ", 5 = " <> helpers_i18n.i18n_t(model, i18n_text.PriorityLowest),
           ),
           form_field.view(
             helpers_i18n.i18n_t(model, i18n_text.TypeLabel),

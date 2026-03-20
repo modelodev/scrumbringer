@@ -412,10 +412,12 @@ fn view_config_section(config: LeftPanelConfig(msg)) -> Element(msg) {
           ]),
         ],
       ),
-      case config.config_collapsed {
-        True -> element.none()
-        False ->
-          div([attribute.class("section-items")], [
+      {
+        let items_class = case config.config_collapsed {
+          True -> "section-items section-items-collapsed"
+          False -> "section-items"
+        }
+        div([attribute.class(items_class)], [
             view_config_nav_link(
               config,
               permissions.Members,
@@ -541,10 +543,12 @@ fn view_org_section(config: LeftPanelConfig(msg)) -> Element(msg) {
           ]),
         ],
       ),
-      case config.org_collapsed {
-        True -> element.none()
-        False ->
-          div([attribute.class("section-items")], [
+      {
+        let items_class = case config.org_collapsed {
+          True -> "section-items section-items-collapsed"
+          False -> "section-items"
+        }
+        div([attribute.class(items_class)], [
             view_org_nav_link(
               config,
               permissions.Invites,

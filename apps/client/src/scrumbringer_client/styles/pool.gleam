@@ -3,6 +3,7 @@
 /// Provides pool CSS chunk.
 pub fn css() -> List(String) {
   [
+    "#member-canvas { background-image: radial-gradient(circle, color-mix(in oklab, var(--sb-border) 40%, transparent) 1px, transparent 1px); background-size: 24px 24px; border-radius: var(--sb-radius-lg); }",
     ".task-card { background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 12px; overflow: hidden; position: relative; }",
     ".task-card:hover, .task-card:focus-within { z-index: 10; overflow: visible; box-shadow: 0 10px 30px rgba(0,0,0,0.18); }",
     ".task-card-top { position: absolute; top: 8px; left: 8px; right: 8px; display: flex; justify-content: space-between; gap: 6px; align-items: center; z-index: 2; }",

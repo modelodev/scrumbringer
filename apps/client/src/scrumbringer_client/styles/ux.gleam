@@ -148,6 +148,9 @@ pub fn css() -> List(String) {
     ".skeleton-text { height: 16px; margin-bottom: 8px; }",
     ".skeleton-title { height: 24px; width: 60%; margin-bottom: 12px; }",
     ".skeleton-button { height: 36px; width: 100px; }",
+    ".skeleton-table { display: flex; flex-direction: column; gap: var(--sb-space-lg); padding: var(--sb-space-xl) 0; }",
+    ".skeleton-row { display: flex; gap: var(--sb-space-xl); }",
+    ".skeleton-list { display: flex; flex-direction: column; gap: var(--sb-space-md); }",
     // =====================================================
     // UX IMPROVEMENTS - Accessibility (A01-A06)
     // =====================================================

@@ -87,6 +87,7 @@ import scrumbringer_client/ui/icon_actions
 import scrumbringer_client/ui/icon_catalog
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/section_header
+import scrumbringer_client/ui/skeleton
 
 // =============================================================================
 // =============================================================================
@@ -119,10 +120,7 @@ fn view_org_settings_table(model: Model) -> Element(Msg) {
         text(t(i18n_text.OpenThisSectionToLoadUsers)),
       ])
 
-    Loading ->
-      div([attribute.class("empty")], [
-        text(t(i18n_text.LoadingUsers)),
-      ])
+    Loading -> skeleton.skeleton_table(5)
 
     Failed(err) -> error_notice.view(err.message)
 

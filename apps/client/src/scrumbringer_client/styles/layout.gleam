@@ -25,6 +25,8 @@ pub fn css() -> List(String) {
     ".project-selector-section { margin-bottom: 8px; }",
     ".project-selector-dropdown { width: 100%; padding: 10px 12px; border-radius: var(--sb-radius-lg); border: 1px solid var(--sb-border); background: var(--sb-elevated); font-weight: 600; font-size: var(--sb-font-md); color: var(--sb-text-strong); }",
     ".panel-section { display: flex; flex-direction: column; gap: 8px; }",
+    ".section-items { display: flex; flex-direction: column; gap: 2px; overflow: hidden; max-height: 500px; opacity: 1; transition: max-height var(--sb-transition-slow), opacity var(--sb-transition-normal); }",
+    ".section-items-collapsed { max-height: 0; opacity: 0; margin: 0; }",
     ".section-title { font-size: var(--sb-font-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--sb-muted-strong); margin: 0 0 var(--sb-space-sm) 0; }",
     ".btn-action { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: var(--sb-text); }",
     ".btn-action:hover { background: var(--sb-elevated); }",

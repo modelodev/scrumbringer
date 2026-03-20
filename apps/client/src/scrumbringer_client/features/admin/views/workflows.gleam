@@ -1501,8 +1501,7 @@ fn view_quick_range_button(
 fn view_rule_metrics_results(model: Model) -> Element(Msg) {
   case model.admin.metrics.admin_rule_metrics {
     NotAsked ->
-      empty_state.simple(
-        icons.Lightbulb,
+      info_callout.simple(
         "Selecciona un rango de fechas o usa los botones de rango rápido para ver las métricas de tus automatizaciones.",
       )
 

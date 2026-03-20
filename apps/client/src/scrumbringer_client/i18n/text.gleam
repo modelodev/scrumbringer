@@ -165,6 +165,8 @@ pub type Text {
   NewTask
   Description
   Priority
+  PriorityHighest
+  PriorityLowest
   NewTaskShortcut
   AllOption
   SelectType
