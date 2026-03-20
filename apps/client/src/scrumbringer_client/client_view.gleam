@@ -597,10 +597,15 @@ fn build_left_panel(
     url_state.with_view(state, mode)
   }
 
+  let member_section_for_current = case model.member.pool.member_section {
+    member_section.MyBar -> member_section.Pool
+    section -> section
+  }
+
   let current_route = case model.core.page {
     client_state.Member ->
       opt.Some(router.Member(
-        member_section.Pool,
+        member_section_for_current,
         member_state_for(model.member.pool.view_mode),
       ))
     client_state.Admin ->
