@@ -5,10 +5,10 @@ Use this skill only for workflow `scrumbringer_change_loop` step `verify_change`
 Execution contract:
 
 - Dependencies already satisfied: implement_change
-- Required inputs: implementation_contract, test_design_contract
+- Required inputs: implementation_contract, test_design_contract, test_materialization_contract
 - Required outputs: verification_contract
 - Context mode: `isolated`
-- Done criteria: tests, regressions and user-facing interaction clarity are reviewed against the expected test design
+- Done criteria: exact commands run, tests added or updated, covered vs uncovered P0 risks, auth-permissions coverage status and user-facing interaction clarity are reviewed against the expected test design
 - Source asset lineage: `scrumbringer.change_loop`
 
 Artifact contract details:

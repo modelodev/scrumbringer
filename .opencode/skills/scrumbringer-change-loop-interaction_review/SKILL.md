@@ -8,7 +8,7 @@ Execution contract:
 - Required inputs: impact_scan_contract
 - Required outputs: interaction_review_contract
 - Context mode: `shared`
-- Done criteria: for user-facing interaction changes, discoverability, interaction pattern, feedback/error handling, keyboard-a11y expectations and minimum interaction tests are explicit
+- Done criteria: for user-facing interaction changes, discoverability, interaction pattern, feedback/error handling, keyboard-a11y expectations, label/microcopy consistency across view-edit-save states, state-transition clarity and minimum interaction tests are explicit
 - Source asset lineage: `scrumbringer.change_loop`
 
 Artifact contract details:

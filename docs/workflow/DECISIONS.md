@@ -79,3 +79,41 @@ Registro de decisiones clave del workflow y su evolución.
   - rebuild/apply
   - rerun limpio desde repo sin cambios de producto previos
   - comprobar si el nuevo flujo detecta el `Forbidden` antes de cerrar como válido
+
+## WFD-007
+- **Fecha**: 2026-03-20
+- **Estado**: accepted
+- **Decisión**: reconocer explícitamente que `test_design` por sí solo no cierra el gap diseño→test ejecutable y que el runtime actual sufre fricción operativa suficiente como para sesgar la medición.
+- **Contexto**: en `run_1774008174`, el workflow produjo un contrato de tests útil pero no garantizó que el test existiera en disco ni que la fase roja fuera visible. Además, la aceptación en navegador sufrió interrupciones por permisos al escribir fuera del repo y reconexiones ACP/OpenCode.
+- **Alternativas consideradas**:
+  - tratar el atasco como incidente puntual y no cambiar el workflow
+  - resolverlo solo con disciplina manual fuera del workflow
+  - cargar más responsabilidad sobre `implement_change` sin nuevo step puente
+- **Impacto**:
+  - el problema deja de interpretarse como mero fallo de ejecución aislado
+  - se justifica medir explícitamente handoffs, materialización de tests y fricción operativa como parte del valor real de AWO
+  - la siguiente evolución del workflow debe atacar el puente `test_design -> implement_change` y endurecer la aceptación operacional
+- **Seguimiento**:
+  - introducir step puente en la siguiente versión
+  - medir si disminuyen interrupciones e intervención manual
+  - comprobar si los tests P0 quedan materializados antes de implementar
+
+## WFD-008
+- **Fecha**: 2026-03-20
+- **Estado**: accepted
+- **Decisión**: evolucionar `scrumbringer_change_loop` a `0.5.0` añadiendo `test_materialization` y endureciendo `interaction_review`, `verify_change` y `browser_acceptance`.
+- **Contexto**: el workflow `0.4.0` ya demostró valor al empujar mejor el diseño de tests y la aceptación real, pero siguió dejando demasiados huecos: TDD declarativo sin enforcement, cobertura insuficiente de permisos/auth, mala observabilidad de riesgos no cubiertos e inconsistencias de copy/estado que pasaron a producción experimental.
+- **Alternativas consideradas**:
+  - mantener `0.4.0` y confiar en más disciplina humana
+  - añadir solo texto a `done_criteria` sin nuevo step estructural
+  - mover toda la responsabilidad de calidad a `browser_acceptance`
+- **Impacto**:
+  - `test_materialization` fuerza a bajar el diseño de tests a archivos reales y a explicitar estado red/green antes de programar
+  - `interaction_review` pasa a revisar también consistencia semántica y claridad entre view/edit/save
+  - `verify_change` exige evidencia más concreta sobre cobertura real de riesgos P0
+  - `browser_acceptance` incorpora disciplina operativa (artefactos dentro del repo) y observaciones UX además de fallos funcionales
+- **Seguimiento**:
+  - validate/build/apply
+  - commit del workflow sin mezclarlo con código de producto
+  - reset del cambio de producto y rerun limpio para comparar `0.4.0` vs `0.5.0`
+  - reevaluar valor de AWO antes de escalar nuevos desarrollos en OpenCode

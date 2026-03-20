@@ -8,7 +8,7 @@ Execution contract:
 - Required inputs: verification_contract, browser_acceptance_contract
 - Required outputs: workflow_delta_contract
 - Context mode: `shared`
-- Done criteria: workflow improvement signal, keep-simplify-kill recommendation and any missed interaction or acceptance risk are explicit
+- Done criteria: workflow improvement signal, interruption causes, keep-simplify-kill recommendation and any missed interaction or acceptance risk are explicit
 - Source asset lineage: `scrumbringer.change_loop`
 
 Artifact contract details:

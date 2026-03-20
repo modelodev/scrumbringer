@@ -5,10 +5,10 @@ Use this skill only for workflow `scrumbringer_change_loop` step `browser_accept
 Execution contract:
 
 - Dependencies already satisfied: verify_change
-- Required inputs: verification_contract, test_design_contract
+- Required inputs: verification_contract, test_design_contract, interaction_review_contract
 - Required outputs: browser_acceptance_contract
 - Context mode: `isolated`
-- Done criteria: for browser-reachable user-facing changes, navigate the real app at https://localhost:8443 using seeded data, execute the critical acceptance path end-to-end and capture functional failures with concrete evidence
+- Done criteria: for browser-reachable user-facing changes, navigate the real app at https://localhost:8443 using seeded data, keep helper artifacts inside the repo, execute the critical acceptance path end-to-end and capture both functional failures and UX consistency observations with concrete evidence
 - Source asset lineage: `scrumbringer.change_loop`
 
 Artifact contract details:
