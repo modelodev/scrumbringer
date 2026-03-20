@@ -11,6 +11,11 @@ Formato recomendado por entrada:
 
 ---
 
+## 2026-03-20
+
+### Changed
+- El baseline manual del piloto 002 se revierte para repetir exactamente la misma petición tras cambiar estructuralmente el workflow y poder comparar evidencia before/after.
+
 ## 2026-02-23
 
 ### Added
