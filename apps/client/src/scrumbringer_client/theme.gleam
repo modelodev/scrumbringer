@@ -206,3 +206,47 @@ pub fn icon_filter(theme: Theme) -> String {
     Dark -> "invert(0.9) hue-rotate(180deg)"
   }
 }
+
+/// Theme-independent design tokens injected into :root.
+/// These do not change between light/dark themes.
+pub fn design_tokens() -> String {
+  let vars =
+    [
+      // Typography scale
+      #("--sb-font-xs", "11px"),
+      #("--sb-font-sm", "12px"),
+      #("--sb-font-base", "13px"),
+      #("--sb-font-md", "14px"),
+      #("--sb-font-lg", "16px"),
+      #("--sb-font-xl", "18px"),
+      #("--sb-font-2xl", "20px"),
+      #("--sb-font-3xl", "24px"),
+      // Spacing scale (4px base)
+      #("--sb-space-xs", "4px"),
+      #("--sb-space-sm", "6px"),
+      #("--sb-space-md", "8px"),
+      #("--sb-space-lg", "12px"),
+      #("--sb-space-xl", "16px"),
+      #("--sb-space-2xl", "20px"),
+      #("--sb-space-3xl", "24px"),
+      #("--sb-space-4xl", "32px"),
+      // Border radius
+      #("--sb-radius-sm", "6px"),
+      #("--sb-radius-md", "8px"),
+      #("--sb-radius-lg", "10px"),
+      #("--sb-radius-xl", "12px"),
+      #("--sb-radius-2xl", "16px"),
+      #("--sb-radius-pill", "999px"),
+      // Transitions
+      #("--sb-transition-fast", "0.12s ease"),
+      #("--sb-transition-normal", "0.15s ease"),
+      #("--sb-transition-slow", "0.3s ease"),
+    ]
+    |> list.map(fn(pair) {
+      let #(name, value) = pair
+      name <> ": " <> value
+    })
+    |> string.join("; ")
+
+  ":root { " <> vars <> "; }"
+}

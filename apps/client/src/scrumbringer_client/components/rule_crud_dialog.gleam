@@ -770,7 +770,7 @@ fn view_create_dialog(model: Model) -> Element(Msg) {
                 ),
               ),
               // Active checkbox
-              form_field.view(
+              form_field.view_checkbox(
                 t(model.locale, i18n_text.RuleActive),
                 input([
                   attribute.type_("checkbox"),
@@ -879,7 +879,7 @@ fn view_edit_dialog(model: Model) -> Element(Msg) {
                 ),
               ),
               // Active checkbox
-              form_field.view(
+              form_field.view_checkbox(
                 t(model.locale, i18n_text.RuleActive),
                 input([
                   attribute.type_("checkbox"),

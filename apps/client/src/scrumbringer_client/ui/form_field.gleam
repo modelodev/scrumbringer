@@ -72,6 +72,18 @@ pub fn with_hint(
   ])
 }
 
+pub fn view_checkbox(
+  label_text: String,
+  control: lelement.Element(msg),
+) -> lelement.Element(msg) {
+  div([attribute.class("field field-checkbox")], [
+    label([attribute.class("checkbox-label")], [
+      control,
+      text(label_text),
+    ]),
+  ])
+}
+
 pub fn hint(hint: String) -> lelement.Element(msg) {
   div([attribute.class("hint")], [text(hint)])
 }

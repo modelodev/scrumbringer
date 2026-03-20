@@ -241,8 +241,8 @@ pub fn css() -> List(String) {
     // =====================================================
     // UX IMPROVEMENTS - Progress Bar (AF04)
     // =====================================================
-    ".progress-bar { height: 6px; background: var(--sb-border); border-radius: 3px; overflow: hidden; }",
-    ".progress-bar-fill { height: 100%; background: var(--sb-primary); border-radius: 3px; transition: width 0.3s ease; }",
+    ".progress-bar { height: 8px; background: var(--sb-border); border-radius: var(--sb-radius-sm); overflow: hidden; }",
+    ".progress-bar-fill { height: 100%; background: var(--sb-primary); border-radius: var(--sb-radius-sm); transition: width var(--sb-transition-slow); }",
     ".progress-text { font-size: 12px; color: var(--sb-muted); margin-top: 4px; }",
     // =====================================================
     // UX IMPROVEMENTS - Card Task List (AF02)
@@ -386,11 +386,11 @@ pub fn css() -> List(String) {
     ".modal-content.card-detail { border-left-width: 4px; z-index: 2; position: relative; height: min(84vh, 760px); min-height: 60vh; max-height: 84vh; padding: 0; overflow: hidden; display: flex; flex-direction: column; }",
     ".modal-header-block { border-bottom: 1px solid var(--sb-border); background: var(--sb-surface-2); }",
     // Shared detail header primitives (milestone/card/task)
-    ".detail-header-block { padding: 20px 20px 12px; }",
+    ".detail-header-block { padding: 20px 20px 14px; }",
     ".detail-header { display: flex; flex-direction: column; gap: 12px; }",
     ".detail-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }",
     ".detail-title { font-size: 20px; font-weight: 700; line-height: 1.25; }",
-    ".detail-meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }",
+    ".detail-meta { display: flex; align-items: center; gap: var(--sb-space-md); flex-wrap: wrap; }",
     ".detail-summary { padding: 14px 16px; border: 1px solid color-mix(in oklab, var(--sb-border) 75%, transparent); border-radius: 12px; background: color-mix(in oklab, var(--sb-elevated) 88%, transparent); }",
     ".detail-tabs { margin-top: 2px; padding: 8px; border: 1px solid color-mix(in oklab, var(--sb-border) 82%, transparent); border-radius: 12px; background: color-mix(in oklab, var(--sb-surface) 85%, var(--sb-elevated)); }",
     ".modal-tabs.detail-tabs { display: flex; align-items: stretch; justify-content: center; align-self: stretch; width: 100%; gap: 8px; padding: 8px; border-bottom: 0; }",
@@ -480,7 +480,7 @@ pub fn css() -> List(String) {
     ".detail-label { font-weight: 500; color: var(--sb-muted-strong); }",
     ".detail-value { color: var(--sb-text-strong); }",
     ".detail-value.muted { color: var(--sb-muted); }",
-    ".task-metrics-grid, .card-metrics-grid, .milestone-metrics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; padding: 10px; border: 1px solid var(--sb-border); border-radius: 12px; background: var(--sb-surface-2); }",
+    ".task-metrics-grid, .card-metrics-grid, .milestone-metrics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; padding: var(--sb-space-lg) 14px; border: 1px solid color-mix(in oklab, var(--sb-border) 70%, transparent); border-radius: var(--sb-radius-lg); background: color-mix(in oklab, var(--sb-elevated) 92%, transparent); }",
     "@media (max-width: 640px) { .task-metrics-grid, .card-metrics-grid, .milestone-metrics-grid { grid-template-columns: 1fr; } .detail-row { grid-template-columns: 1fr; gap: 6px; } }",
     ".task-metrics-empty, .card-metrics-loading, .milestone-metrics-loading, .card-metrics-empty, .milestone-metrics-empty { color: color-mix(in oklab, var(--sb-text) 64%, var(--sb-muted)); padding: 10px 12px; border: 1px dashed var(--sb-border); border-radius: 10px; background: var(--sb-surface-2); }",
     ".card-metrics-error, .milestone-metrics-error { color: var(--sb-danger); padding: 8px 0; }",

@@ -8,6 +8,7 @@ pub fn css() -> List(String) {
     ".table-header { font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }",
     ".table td { padding: 10px 12px; border-bottom: 1px solid var(--sb-border); vertical-align: middle; }",
     ".table tbody tr:nth-child(even) { background: color-mix(in oklab, var(--sb-surface) 50%, var(--sb-bg)); }",
+    ".table tbody tr { transition: background var(--sb-transition-fast); }",
     ".table tbody tr:hover { background: var(--sb-elevated); }",
     ".table tbody tr.clickable { cursor: pointer; }",
     ".table tbody tr.clickable:hover { background: color-mix(in oklab, var(--sb-primary) 6%, var(--sb-elevated)); }",

@@ -515,15 +515,18 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     _ -> card_classes
   }
 
+  let size_str = int.to_string(size)
   let style =
-    "position:absolute; left:"
+    "position:absolute; left:clamp(0px,"
     <> int.to_string(x)
-    <> "px; top:"
+    <> "px,calc(100% - "
+    <> size_str
+    <> "px)); top:max(0px,"
     <> int.to_string(y)
-    <> "px; width:"
-    <> int.to_string(size)
+    <> "px); width:"
+    <> size_str
     <> "px; height:"
-    <> int.to_string(size)
+    <> size_str
     <> "px;"
 
   let disable_actions = model.member.pool.member_task_mutation_in_flight
