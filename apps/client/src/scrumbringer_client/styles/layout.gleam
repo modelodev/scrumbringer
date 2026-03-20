@@ -42,7 +42,7 @@ pub fn css() -> List(String) {
     ".nav-link { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: var(--sb-text); }",
     ".nav-link:hover { background: var(--sb-elevated); }",
     ".nav-link:disabled { opacity: 0.5; cursor: not-allowed; }",
-    ".nav-link.active { background: #F0FDFA; border-left: 3px solid #0D9488; padding-left: 9px; }",
+    ".nav-link.active { background: var(--sb-primary-subtle-bg); border-left: 3px solid var(--sb-primary); padding-left: 9px; color: var(--sb-text-strong); }",
     ".nav-icon { font-size: 14px; }",
     ".nav-label { flex: 1; }",
     ".active-indicator { color: var(--sb-primary); font-size: 8px; }",
