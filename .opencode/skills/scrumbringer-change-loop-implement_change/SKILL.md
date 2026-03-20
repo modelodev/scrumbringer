@@ -4,11 +4,11 @@ Use this skill only for workflow `scrumbringer_change_loop` step `implement_chan
 
 Execution contract:
 
-- Dependencies already satisfied: interaction_review
-- Required inputs: interaction_review_contract
+- Dependencies already satisfied: test_design
+- Required inputs: interaction_review_contract, test_design_contract
 - Required outputs: implementation_contract
 - Context mode: `isolated`
-- Done criteria: minimal code change and tests are implemented against the agreed interaction contract
+- Done criteria: minimal code change and tests are implemented against the agreed interaction contract and test design
 - Source asset lineage: `scrumbringer.change_loop`
 
 Artifact contract details:

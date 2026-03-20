@@ -15,6 +15,7 @@ Formato recomendado por entrada:
 
 ### Changed
 - El baseline manual del piloto 002 se revierte para repetir exactamente la misma petición tras cambiar estructuralmente el workflow y poder comparar evidencia before/after.
+- `scrumbringer_change_loop` evoluciona de `0.3.0` a `0.4.0` añadiendo `test_design` y `browser_acceptance` para cerrar mejor el gap entre diseño de tests, verificación interna y aceptación funcional real.
 
 ## 2026-02-23
 

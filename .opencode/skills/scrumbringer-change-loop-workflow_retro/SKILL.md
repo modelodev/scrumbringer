@@ -4,11 +4,11 @@ Use this skill only for workflow `scrumbringer_change_loop` step `workflow_retro
 
 Execution contract:
 
-- Dependencies already satisfied: verify_change
-- Required inputs: verification_contract
+- Dependencies already satisfied: browser_acceptance
+- Required inputs: verification_contract, browser_acceptance_contract
 - Required outputs: workflow_delta_contract
 - Context mode: `shared`
-- Done criteria: workflow improvement signal, keep/simplify/kill recommendation and any missed interaction risk are explicit
+- Done criteria: workflow improvement signal, keep-simplify-kill recommendation and any missed interaction or acceptance risk are explicit
 - Source asset lineage: `scrumbringer.change_loop`
 
 Artifact contract details:

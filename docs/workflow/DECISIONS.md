@@ -61,3 +61,21 @@ Registro de decisiones clave del workflow y su evolución.
   - rebuild/apply
   - rerun del mismo cambio en OpenCode
   - comparación before/after
+
+## WFD-006
+- **Fecha**: 2026-03-20
+- **Estado**: accepted
+- **Decisión**: evolucionar `scrumbringer_change_loop` a `0.4.0` añadiendo dos steps estructurales nuevos: `test_design` antes de implementar y `browser_acceptance` antes de cerrar el workflow.
+- **Contexto**: el rerun con `interaction_review` mejoró la anticipación UX, pero una prueba manual real reveló un fallo funcional (`Forbidden` al guardar) que sobrevivió a `verify_change`. Eso demuestra que el flujo aún valida demasiado bien lo estático y demasiado mal la aceptación funcional real.
+- **Alternativas consideradas**:
+  - mantener el flujo actual y confiar en `verify_change`
+  - añadir solo más `done_criteria` a steps existentes
+  - hacer browser acceptance manual fuera del workflow
+- **Impacto**:
+  - `test_design` obliga a explicitar una batería red-green-refactor antes de desarrollar
+  - `browser_acceptance` obliga a ejecutar el flujo real en `https://localhost:8443` con datos seed cuando el cambio sea user-facing y browser-reachable
+  - AWO vuelve a ganar un delta estructural observable y el workflow cierra mejor el gap entre tests internos y funcionalidad real
+- **Seguimiento**:
+  - rebuild/apply
+  - rerun limpio desde repo sin cambios de producto previos
+  - comprobar si el nuevo flujo detecta el `Forbidden` antes de cerrar como válido

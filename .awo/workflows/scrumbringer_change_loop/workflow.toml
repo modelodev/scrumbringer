@@ -1,12 +1,12 @@
 id = "scrumbringer_change_loop"
-version = "0.3.0"
+version = "0.4.0"
 
 [metadata]
 namespace = "scrumbringer"
 principal_asset = "scrumbringer.change_loop"
 
 [budget]
-tokens_hint = 20000
+tokens_hint = 28000
 
 [[steps]]
 id = "change_brief"
@@ -42,34 +42,56 @@ done_criteria = ["for user-facing interaction changes, discoverability, interact
 verification_steps = []
 
 [[steps]]
-id = "implement_change"
+id = "test_design"
 kind = "llm-subagent"
 depends_on = ["interaction_review"]
 inputs = ["interaction_review_contract"]
+outputs = ["test_design_contract"]
+skill_refs = ["bmad-qa"]
+context_mode = "shared"
+done_criteria = ["a concrete red-green-refactor test plan is explicit before implementation, covering happy path, validation, auth-permissions, error paths, keyboard interactions, regressions and relevant edge cases"]
+verification_steps = []
+
+[[steps]]
+id = "implement_change"
+kind = "llm-subagent"
+depends_on = ["test_design"]
+inputs = ["interaction_review_contract", "test_design_contract"]
 outputs = ["implementation_contract"]
 skill_refs = ["bmad-dev"]
 context_mode = "isolated"
-done_criteria = ["minimal code change and tests are implemented against the agreed interaction contract"]
+done_criteria = ["minimal code change and tests are implemented against the agreed interaction contract and test design"]
 verification_steps = []
 
 [[steps]]
 id = "verify_change"
 kind = "llm-subagent"
 depends_on = ["implement_change"]
-inputs = ["implementation_contract"]
+inputs = ["implementation_contract", "test_design_contract"]
 outputs = ["verification_contract"]
 skill_refs = ["bmad-qa"]
 context_mode = "isolated"
-done_criteria = ["tests, regressions and user-facing interaction clarity are reviewed"]
+done_criteria = ["tests, regressions and user-facing interaction clarity are reviewed against the expected test design"]
+verification_steps = []
+
+[[steps]]
+id = "browser_acceptance"
+kind = "llm-subagent"
+depends_on = ["verify_change"]
+inputs = ["verification_contract", "test_design_contract"]
+outputs = ["browser_acceptance_contract"]
+skill_refs = ["agent-browser", "bmad-qa"]
+context_mode = "isolated"
+done_criteria = ["for browser-reachable user-facing changes, navigate the real app at https://localhost:8443 using seeded data, execute the critical acceptance path end-to-end and capture functional failures with concrete evidence"]
 verification_steps = []
 
 [[steps]]
 id = "workflow_retro"
 kind = "llm-subagent"
-depends_on = ["verify_change"]
-inputs = ["verification_contract"]
+depends_on = ["browser_acceptance"]
+inputs = ["verification_contract", "browser_acceptance_contract"]
 outputs = ["workflow_delta_contract"]
 skill_refs = ["bmad-po"]
 context_mode = "shared"
-done_criteria = ["workflow improvement signal, keep/simplify/kill recommendation and any missed interaction risk are explicit"]
+done_criteria = ["workflow improvement signal, keep-simplify-kill recommendation and any missed interaction or acceptance risk are explicit"]
 verification_steps = []
