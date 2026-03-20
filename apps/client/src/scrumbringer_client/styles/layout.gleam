@@ -327,6 +327,8 @@ pub fn css() -> List(String) {
     // Kanban Task Items (Story 4.8 UX - Homogeneous with Lista view)
     // =============================================================================
     ".kanban-card-footer { display: flex; justify-content: flex-end; margin-top: var(--sb-space-md); padding-top: var(--sb-space-md); border-top: 1px solid var(--sb-border); }",
+    ".kanban-card-footer .btn-add-task { border-color: color-mix(in oklab, var(--sb-primary) 40%, var(--sb-border)); color: var(--sb-primary); }",
+    ".kanban-card-footer .btn-add-task:hover { background: color-mix(in oklab, var(--sb-primary) 10%, var(--sb-elevated)); border-color: var(--sb-primary); }",
     ".kanban-card-tasks { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--sb-border); display: flex; flex-direction: column; gap: 4px; }",
     ".kanban-task-item { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 6px; font-size: 12px; transition: background 0.15s; }",
     ".kanban-task-item.card-border-gray, .kanban-task-item.card-border-red, .kanban-task-item.card-border-orange, .kanban-task-item.card-border-yellow, .kanban-task-item.card-border-green, .kanban-task-item.card-border-blue, .kanban-task-item.card-border-purple, .kanban-task-item.card-border-pink { border-left-width: 4px; border-left-style: solid; }",

@@ -316,7 +316,10 @@ fn view_workflows_table(
           "cell-actions",
         ),
       ])
-      |> data_table.with_key(fn(w: Workflow) { int.to_string(w.id) }),
+      |> data_table.with_key(fn(w: Workflow) { int.to_string(w.id) })
+      |> data_table.with_empty_state(
+        empty_state.simple("cog-6-tooth", t(i18n_text.NoWorkflowsYet)),
+      ),
   )
 }
 
