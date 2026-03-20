@@ -1,0 +1,18 @@
+{
+  "schema_version": "awo.step_report/v1",
+  "run_id": "run_1742460000",
+  "workflow_id": "scrumbringer_change_loop",
+  "workflow_version": "0.3.0",
+  "target": "opencode",
+  "step_id": "workflow_retro",
+  "status": "ok",
+  "policy_outcome": "pass",
+  "executive_summary": "workflow_retro: RECOMMEND SIMPLIFY. The 6-step pipeline was excessive for this small feature; 2-3 steps would suffice. Staggered contract artifacts helped, but discovering task_id must be stored in pool state mid-implementation added friction.",
+  "artifacts_in": [".awo/runs/run_1742460000/verification_contract.md"],
+  "artifacts_out": [".awo/runs/run_1742460000/workflow_delta_contract.md"],
+  "next_recommended": [],
+  "risks": ["discoverability_tab_blindspot"],
+  "budget_used": { "tokens": 800, "cost_usd": 0.024 },
+  "started_at": "2026-03-20T10:08:00Z",
+  "ended_at": "2026-03-20T10:08:30Z"
+}

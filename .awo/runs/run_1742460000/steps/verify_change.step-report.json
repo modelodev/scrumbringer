@@ -1,0 +1,18 @@
+{
+  "schema_version": "awo.step_report/v1",
+  "run_id": "run_1742460000",
+  "workflow_id": "scrumbringer_change_loop",
+  "workflow_version": "0.3.0",
+  "target": "opencode",
+  "step_id": "verify_change",
+  "status": "ok",
+  "policy_outcome": "pass",
+  "executive_summary": "verify_change completed: gleam check passes, all 753 tests pass, interaction_review findings addressed",
+  "artifacts_in": [".awo/runs/run_1742460000/implementation_contract.md"],
+  "artifacts_out": [".awo/runs/run_1742460000/verification_contract.md"],
+  "next_recommended": ["workflow_retro"],
+  "risks": [],
+  "budget_used": { "tokens": 1500, "cost_usd": 0.045 },
+  "started_at": "2026-03-20T10:07:00Z",
+  "ended_at": "2026-03-20T10:08:00Z"
+}

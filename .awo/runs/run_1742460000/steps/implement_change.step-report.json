@@ -1,0 +1,18 @@
+{
+  "schema_version": "awo.step_report/v1",
+  "run_id": "run_1742460000",
+  "workflow_id": "scrumbringer_change_loop",
+  "workflow_version": "0.3.0",
+  "target": "opencode",
+  "step_id": "implement_change",
+  "status": "ok",
+  "policy_outcome": "pass",
+  "executive_summary": "implement_change completed: API fn, state fields, update handlers, view UI, i18n, CSS added; gleam check passes; 753 tests pass",
+  "artifacts_in": [".awo/runs/run_1742460000/interaction_review_contract.md"],
+  "artifacts_out": [".awo/runs/run_1742460000/implementation_contract.md"],
+  "next_recommended": ["verify_change"],
+  "risks": [],
+  "budget_used": { "tokens": 6000, "cost_usd": 0.18 },
+  "started_at": "2026-03-20T10:02:00Z",
+  "ended_at": "2026-03-20T10:07:00Z"
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": "awo.step_report/v1",
+  "run_id": "run_1742460000",
+  "workflow_id": "scrumbringer_change_loop",
+  "workflow_version": "0.3.0",
+  "target": "opencode",
+  "step_id": "impact_scan",
+  "status": "ok",
+  "policy_outcome": "pass",
+  "executive_summary": "impact_scan completed: 8 files to modify identified, 5 technical risks catalogued, regression surface defined, test surface mapped",
+  "artifacts_in": [".awo/runs/run_1742460000/change_brief_contract.md"],
+  "artifacts_out": [".awo/runs/run_1742460000/impact_scan_contract.md"],
+  "next_recommended": ["interaction_review"],
+  "risks": ["version_conflict", "edit_state_leak", "store_not_updated"],
+  "budget_used": { "tokens": 1200, "cost_usd": 0.036 },
+  "started_at": "2026-03-20T10:00:30Z",
+  "ended_at": "2026-03-20T10:01:00Z"
+}

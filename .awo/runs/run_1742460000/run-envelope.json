@@ -1,0 +1,24 @@
+{
+  "schema_version": "awo.run_envelope/v1",
+  "run_id": "run_1742460000",
+  "workflow_id": "scrumbringer_change_loop",
+  "workflow_version": "0.3.0",
+  "target": "opencode",
+  "status": "ok",
+  "started_at": "2026-03-20T10:00:00Z",
+  "ended_at": "2026-03-20T10:08:30Z",
+  "step_reports": [
+    ".awo/runs/run_1742460000/steps/change_brief.step-report.json",
+    ".awo/runs/run_1742460000/steps/impact_scan.step-report.json",
+    ".awo/runs/run_1742460000/steps/interaction_review.step-report.json",
+    ".awo/runs/run_1742460000/steps/implement_change.step-report.json",
+    ".awo/runs/run_1742460000/steps/verify_change.step-report.json",
+    ".awo/runs/run_1742460000/steps/workflow_retro.step-report.json"
+  ],
+  "next_step": "Done: feature implemented. Playwright E2E test recommended for full AC validation.",
+  "budget_run_level": {
+    "tokens_total": 11000,
+    "cost_usd_total": 0.33,
+    "quality": "target_native"
+  }
+}
