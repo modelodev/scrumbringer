@@ -144,7 +144,7 @@ fn view_empty_state(
   message: i18n_text.Text,
 ) -> Element(client_state.Msg) {
   div([attribute.class("milestones-state milestones-empty")], [
-    empty_state.simple(icons.Clipboard, helpers_i18n.i18n_t(model, message)),
+    empty_state.simple("clipboard-document-list", helpers_i18n.i18n_t(model, message)),
     case can_manage_milestones(model) {
       True ->
         div([attribute.class("milestones-empty-actions")], [

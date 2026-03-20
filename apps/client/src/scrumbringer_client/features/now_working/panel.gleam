@@ -42,7 +42,7 @@ import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_notice
-import scrumbringer_client/ui/icons
+
 import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_item
 
@@ -79,7 +79,7 @@ pub fn view(model: Model) -> Element(Msg) {
         div([attribute.class("now-working-section")], [
           div([attribute.class("now-working-empty")], [
             empty_state.simple(
-              icons.Clock,
+              "clock",
               helpers_i18n.i18n_t(model, i18n_text.NowWorkingNone),
             ),
           ]),

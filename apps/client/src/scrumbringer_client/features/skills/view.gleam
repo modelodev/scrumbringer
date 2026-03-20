@@ -77,7 +77,7 @@ fn view_skills_list(model: Model) -> Element(Msg) {
       case list.is_empty(capabilities) {
         True ->
           empty_state.simple(
-            icons.UsersEmoji,
+            "user-group",
             helpers_i18n.i18n_t(model, i18n_text.NoCapabilitiesYet),
           )
         False ->

@@ -226,7 +226,7 @@ pub fn view_right_panel(model: Model, user: User) -> Element(Msg) {
           // P03: Improved empty state for claimed tasks
           [] ->
             empty_state.simple(
-              icons.Hand,
+              "hand-raised",
               helpers_i18n.i18n_t(model, i18n_text.NoClaimedTasks),
             )
           _ ->
@@ -317,7 +317,7 @@ fn view_tasks_error(message: String) -> Element(Msg) {
 /// No matches for current filters.
 fn view_tasks_no_matches(model: Model) -> Element(Msg) {
   empty_state.simple(
-    icons.Search,
+    "magnifying-glass",
     helpers_i18n.i18n_t(model, i18n_text.NoTasksMatchYourFilters),
   )
 }
@@ -325,7 +325,7 @@ fn view_tasks_no_matches(model: Model) -> Element(Msg) {
 /// Onboarding empty state with CTA.
 fn view_tasks_onboarding(model: Model) -> Element(Msg) {
   empty_state.new(
-    icons.Target,
+    "star",
     helpers_i18n.i18n_t(model, i18n_text.NoAvailableTasksRightNow),
     helpers_i18n.i18n_t(model, i18n_text.CreateFirstTaskToStartUsingPool),
   )

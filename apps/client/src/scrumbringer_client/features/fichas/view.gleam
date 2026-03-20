@@ -89,7 +89,7 @@ fn view_fichas_content(model: Model) -> Element(Msg) {
 
 fn view_empty_state(model: Model) -> Element(Msg) {
   empty_state.new(
-    icons.Clipboard,
+    "clipboard-document-list",
     helpers_i18n.i18n_t(model, i18n_text.MemberFichasEmpty),
     helpers_i18n.i18n_t(model, i18n_text.MemberFichasEmptyHint),
   )

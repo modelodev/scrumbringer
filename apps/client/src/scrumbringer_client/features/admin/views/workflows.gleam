@@ -417,7 +417,7 @@ fn view_rules_table(
     },
     loaded: fn(rs) {
       case rs {
-        [] -> empty_state.simple(icons.Inbox, t(i18n_text.NoRulesYet))
+        [] -> empty_state.simple("inbox", t(i18n_text.NoRulesYet))
         _ ->
           div([attribute.class("rules-expandable-table")], [
             table([attribute.class("table data-table")], [
@@ -1520,7 +1520,7 @@ fn view_rule_metrics_loaded(
   case workflows {
     [] ->
       empty_state.simple(
-        icons.Inbox,
+        "inbox",
         helpers_i18n.i18n_t(model, i18n_text.RuleMetricsNoExecutions),
       )
     _ ->
