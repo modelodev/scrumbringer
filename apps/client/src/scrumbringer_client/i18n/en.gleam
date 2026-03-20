@@ -856,6 +856,11 @@ pub fn translate(text: Text) -> String {
     text.TabDetails -> "Details"
     text.TabDependencies -> "Dependencies"
     text.TabMetrics -> "Metrics"
+    text.EditTask -> "Edit task"
+    text.TaskUpdated -> "Task updated"
+    text.TaskEditKeyboardHint -> "Ctrl/Cmd+Enter saves. Esc cancels."
+    text.TaskEditRequiresClaim ->
+      "You can edit unclaimed tasks, or claim the task to keep editing it while in progress."
     text.MetricsTasksTotal -> "Tasks total"
     text.MetricsTasksCompleted -> "Tasks completed"
     text.MetricsProgress -> "Progress"

@@ -721,6 +721,52 @@ pub fn task_events_persist_for_lifecycle_actions_test() {
   count_task_events(db, task_id, "task_completed") |> should.equal(1)
 }
 
+pub fn task_patch_allows_unclaimed_task_for_project_member_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Editable Available")
+  let project_id =
+    single_int(
+      db,
+      "select id from projects where name = 'Editable Available'",
+      [],
+    )
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  let task_id =
+    create_task(handler, session, csrf, project_id, "Editable", "", 3, type_id)
+
+  let patch_req =
+    simulate.request(http.Patch, "/api/v1/tasks/" <> int_to_string(task_id))
+    |> request.set_cookie("sb_session", session)
+    |> request.set_cookie("sb_csrf", csrf)
+    |> request.set_header("X-CSRF", csrf)
+    |> simulate.json_body(
+      json.object([
+        #("version", json.int(1)),
+        #("title", json.string("Editable updated")),
+      ]),
+    )
+
+  let patch_res = handler(patch_req)
+  patch_res.status |> should.equal(200)
+  string.contains(simulate.read_body(patch_res), "Editable updated")
+  |> should.be_true
+}
+
 pub fn release_all_tasks_for_member_success_test() {
   let app = bootstrap_app()
   let scrumbringer_server.App(db: db, ..) = app
@@ -1882,6 +1928,51 @@ pub fn patch_ignores_claimed_by_and_non_claimer_forbidden_test() {
     )
 
   complete_other_res.status |> should.equal(403)
+}
+
+pub fn patch_rejects_blank_title_test() {
+  let app = bootstrap_app()
+  let scrumbringer_server.App(db: db, ..) = app
+  let handler = scrumbringer_server.handler(app)
+
+  let login_res = login_as(handler, "admin@example.com", "passwordpassword")
+  let session = find_cookie_value(login_res.headers, "sb_session")
+  let csrf = find_cookie_value(login_res.headers, "sb_csrf")
+
+  create_project(handler, session, csrf, "Core")
+  let project_id =
+    single_int(db, "select id from projects where name = 'Core'", [])
+
+  create_task_type(handler, session, csrf, project_id, "Bug", "bug-ant", 0)
+  let type_id =
+    single_int(
+      db,
+      "select id from task_types where project_id = $1 and name = 'Bug'",
+      [pog.int(project_id)],
+    )
+
+  let task_id =
+    create_task(handler, session, csrf, project_id, "Core", "", 3, type_id)
+
+  claim_task(handler, session, csrf, task_id, 1) |> should.equal(200)
+
+  let res =
+    handler(
+      simulate.request(http.Patch, "/api/v1/tasks/" <> int_to_string(task_id))
+      |> request.set_cookie("sb_session", session)
+      |> request.set_cookie("sb_csrf", csrf)
+      |> request.set_header("X-CSRF", csrf)
+      |> simulate.json_body(
+        json.object([
+          #("version", json.int(2)),
+          #("title", json.string("   ")),
+        ]),
+      ),
+    )
+
+  res.status |> should.equal(422)
+  string.contains(simulate.read_body(res), "Title is required")
+  |> should.be_true
 }
 
 pub fn me_active_task_start_pause_and_persist_test() {

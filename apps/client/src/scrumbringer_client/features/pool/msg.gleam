@@ -135,6 +135,12 @@ pub type Msg {
   MemberTaskDetailsOpened(Int)
   MemberTaskDetailsClosed
   MemberTaskDetailTabClicked(task_tabs.Tab)
+  MemberTaskDetailEditStarted
+  MemberTaskDetailEditCancelled
+  MemberTaskDetailEditTitleChanged(String)
+  MemberTaskDetailEditDescriptionChanged(String)
+  MemberTaskDetailEditSubmitted
+  MemberTaskUpdated(ApiResult(Task))
   MemberTaskMetricsFetched(ApiResult(TaskModalMetrics))
   MemberDependenciesFetched(ApiResult(List(TaskDependency)))
   MemberDependencyDialogOpened

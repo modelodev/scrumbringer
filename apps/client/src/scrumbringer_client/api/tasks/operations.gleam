@@ -283,6 +283,30 @@ pub fn get_task_metrics(
   )
 }
 
+/// Update editable task fields from the task detail modal.
+pub fn update_task(
+  task_id: Int,
+  version: Int,
+  title: String,
+  description: String,
+  to_msg: fn(core.ApiResult(Task)) -> msg,
+) -> Effect(msg) {
+  let body =
+    json.object([
+      #("version", json.int(version)),
+      #("title", json.string(title)),
+      #("description", json.string(description)),
+    ])
+  let decoder = decode.field("task", decoders.task_decoder(), decode.success)
+  core.request(
+    "PATCH",
+    "/api/v1/tasks/" <> int.to_string(task_id),
+    option.Some(body),
+    decoder,
+    to_msg,
+  )
+}
+
 /// Update milestone assignment for a task.
 pub fn update_task_milestone(
   task_id: Int,

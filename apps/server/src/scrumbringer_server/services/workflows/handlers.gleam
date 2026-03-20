@@ -367,6 +367,7 @@ fn handle_update_task(
   version: Int,
   updates: TaskUpdates,
 ) -> Result(Response, Error) {
+  use _ <- validation.validate_optional_title(updates.title)
   use _ <- validation.validate_optional_priority(updates.priority)
 
   case tasks_queries.get_task_for_user(db, task_id, user_id) {
@@ -394,7 +395,9 @@ fn update_task_for_current(
   current: task_mappers.Task,
 ) -> Result(Response, Error) {
   case current.status {
-    Available | Completed -> Error(NotAuthorized)
+    Available ->
+      update_task_for_owner(db, task_id, user_id, version, updates, current)
+    Completed -> Error(NotAuthorized)
     Claimed(_) ->
       update_task_for_claimed(db, task_id, user_id, version, updates, current)
   }

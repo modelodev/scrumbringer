@@ -75,6 +75,23 @@ pub fn validate_optional_priority(
   }
 }
 
+/// Validate optional title (Unchanged means no update).
+pub fn validate_optional_title(
+  title: FieldUpdate(String),
+  next: fn(Nil) -> Result(Response, Error),
+) -> Result(Response, Error) {
+  case title {
+    Unchanged -> next(Nil)
+    Set(value) ->
+      case validation_core.validate_task_title_value(value) {
+        Ok(_) -> next(Nil)
+        Error(validation_core.ValidationError(msg)) ->
+          Error(ValidationError(msg))
+        Error(validation_core.DbError(e)) -> Error(DbError(e))
+      }
+  }
+}
+
 /// Validate task type belongs to project.
 pub fn validate_task_type_in_project(
   db: pog.Connection,

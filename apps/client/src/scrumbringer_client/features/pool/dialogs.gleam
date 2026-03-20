@@ -40,6 +40,7 @@ import domain/task_status
 import scrumbringer_client/client_state.{type Model, type Msg, pool_msg}
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/features/tasks/detail_editor
 import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/action_buttons
@@ -870,7 +871,11 @@ fn view_task_details_tab(
         }
         let desc_empty = desc == "—"
         div([attribute.class("task-details-stack")], [
-          view_task_details_intro(model),
+          view_task_details_intro(model, t),
+          case model.member.pool.member_task_detail_editing {
+            True -> detail_editor.view_form(model, t)
+            False -> element.none()
+          },
           div([attribute.class("task-detail-field")], [
             div([attribute.class("task-detail-field-label")], [
               text(helpers_i18n.i18n_t(model, i18n_text.ParentCardLabel)),
@@ -885,20 +890,24 @@ fn view_task_details_tab(
               [text(card_title)],
             ),
           ]),
-          div([attribute.class("task-detail-field")], [
-            div([attribute.class("task-detail-field-label")], [
-              text(helpers_i18n.i18n_t(model, i18n_text.Description)),
-            ]),
-            div(
-              [
-                attribute.class(case desc_empty {
-                  True -> "task-detail-field-value muted"
-                  False -> "task-detail-field-value"
-                }),
-              ],
-              [text(desc)],
-            ),
-          ]),
+          case model.member.pool.member_task_detail_editing {
+            True -> element.none()
+            False ->
+              div([attribute.class("task-detail-field")], [
+                div([attribute.class("task-detail-field-label")], [
+                  text(helpers_i18n.i18n_t(model, i18n_text.Description)),
+                ]),
+                div(
+                  [
+                    attribute.class(case desc_empty {
+                      True -> "task-detail-field-value muted"
+                      False -> "task-detail-field-value"
+                    }),
+                  ],
+                  [text(desc)],
+                ),
+              ])
+          },
         ])
       }
       opt.None ->
@@ -909,11 +918,51 @@ fn view_task_details_tab(
   ])
 }
 
-fn view_task_details_intro(model: Model) -> Element(Msg) {
+fn view_task_details_intro(
+  model: Model,
+  current_task: task.Task,
+) -> Element(Msg) {
+  let can_edit = detail_editor.can_edit_task(model, current_task)
+  let is_editing = model.member.pool.member_task_detail_editing
+
   div([attribute.class("task-details-intro")], [
-    div([attribute.class("task-details-title")], [
-      text(helpers_i18n.i18n_t(model, i18n_text.TabDetails)),
+    div([attribute.class("task-details-intro-row")], [
+      div([attribute.class("task-details-title")], [
+        text(helpers_i18n.i18n_t(model, i18n_text.TabDetails)),
+      ]),
+      case is_editing {
+        True -> element.none()
+        False ->
+          case can_edit {
+            True ->
+              button(
+                [
+                  attribute.type_("button"),
+                  attribute.class(
+                    "btn btn-sm btn-secondary task-detail-edit-toggle",
+                  ),
+                  event.on_click(pool_msg(
+                    pool_messages.MemberTaskDetailEditStarted,
+                  )),
+                ],
+                [text(helpers_i18n.i18n_t(model, i18n_text.EditTask))],
+              )
+            False -> element.none()
+          }
+      },
     ]),
+    case is_editing {
+      True -> element.none()
+      False ->
+        case detail_editor.permission_hint(model, current_task) {
+          opt.Some(hint) ->
+            div(
+              [attribute.class("task-section-hint task-edit-permission-hint")],
+              [text(hint)],
+            )
+          opt.None -> element.none()
+        }
+    },
     div([attribute.class("task-details-rule")], []),
   ])
 }
@@ -1002,7 +1051,10 @@ fn view_task_footer(model: Model, task: opt.Option(task.Task)) -> Element(Msg) {
         opt.None -> 0
       }
       let is_mine = task.claimed_by(t) == opt.Some(current_user_id)
-      let disable_actions = model.member.pool.member_task_mutation_in_flight
+      let disable_actions =
+        model.member.pool.member_task_mutation_in_flight
+        || model.member.pool.member_task_detail_editing
+        || model.member.pool.member_task_detail_edit_in_flight
 
       let work_state = task_state_domain.to_work_state(t.state)
       let actions = case work_state {

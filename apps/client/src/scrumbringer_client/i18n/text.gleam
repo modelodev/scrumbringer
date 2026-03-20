@@ -744,6 +744,10 @@ pub type Text {
   TabDetails
   TabDependencies
   TabMetrics
+  EditTask
+  TaskUpdated
+  TaskEditKeyboardHint
+  TaskEditRequiresClaim
   MetricsTasksTotal
   MetricsTasksCompleted
   MetricsProgress

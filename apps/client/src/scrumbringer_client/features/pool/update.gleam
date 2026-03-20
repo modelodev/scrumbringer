@@ -1853,6 +1853,20 @@ fn update_without_milestones(
 
     pool_messages.MemberTaskDetailTabClicked(tab) ->
       tasks_workflow.handle_task_detail_tab_clicked(model, tab)
+    pool_messages.MemberTaskDetailEditStarted ->
+      tasks_workflow.handle_task_detail_edit_started(model)
+    pool_messages.MemberTaskDetailEditCancelled ->
+      tasks_workflow.handle_task_detail_edit_cancelled(model)
+    pool_messages.MemberTaskDetailEditTitleChanged(value) ->
+      tasks_workflow.handle_task_detail_edit_title_changed(model, value)
+    pool_messages.MemberTaskDetailEditDescriptionChanged(value) ->
+      tasks_workflow.handle_task_detail_edit_description_changed(model, value)
+    pool_messages.MemberTaskDetailEditSubmitted ->
+      tasks_workflow.handle_task_detail_edit_submitted(model)
+    pool_messages.MemberTaskUpdated(Ok(task)) ->
+      tasks_workflow.handle_task_updated_ok(model, task)
+    pool_messages.MemberTaskUpdated(Error(err)) ->
+      tasks_workflow.handle_task_updated_error(model, err)
     pool_messages.MemberTaskMetricsFetched(Ok(metrics)) ->
       tasks_workflow.handle_task_metrics_fetched_ok(model, metrics)
     pool_messages.MemberTaskMetricsFetched(Error(err)) ->

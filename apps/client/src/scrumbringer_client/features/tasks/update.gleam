@@ -67,6 +67,7 @@ import scrumbringer_client/client_state/member/dependencies as member_dependenci
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/features/tasks/detail_editor
 import scrumbringer_client/helpers/auth as helpers_auth
 import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/helpers/lookup as helpers_lookup
@@ -805,6 +806,150 @@ fn restore_from_snapshot(model: Model) -> Model {
   }
 }
 
+fn current_task_detail(model: Model) -> opt.Option(Task) {
+  case model.member.notes.member_notes_task_id {
+    opt.Some(task_id) ->
+      helpers_lookup.find_task_by_id(model.member.pool.member_tasks, task_id)
+    opt.None -> opt.None
+  }
+}
+
+fn task_detail_edit_values(model: Model, task_id: Int) -> #(String, String) {
+  case helpers_lookup.find_task_by_id(model.member.pool.member_tasks, task_id) {
+    opt.Some(current_task) -> #(
+      current_task.title,
+      detail_editor.task_description_text(current_task),
+    )
+    opt.None -> #("", "")
+  }
+}
+
+fn task_description_text(current_task: Task) -> String {
+  detail_editor.task_description_text(current_task)
+}
+
+fn normalize_task_detail_description(description: String) -> String {
+  case string.trim(description) {
+    "" -> ""
+    _ -> description
+  }
+}
+
+fn validate_task_detail_title(
+  model: Model,
+  title: String,
+) -> Result(String, String) {
+  case title == "" {
+    True -> Error(helpers_i18n.i18n_t(model, i18n_text.TitleRequired))
+    False ->
+      case string.length(title) > 56 {
+        True -> Error(helpers_i18n.i18n_t(model, i18n_text.TitleTooLongMax56))
+        False -> Ok(title)
+      }
+  }
+}
+
+fn task_detail_is_dirty(
+  current_task: Task,
+  next_title: String,
+  next_description: String,
+) -> Bool {
+  next_title != current_task.title
+  || next_description != task_description_text(current_task)
+}
+
+fn replace_task(
+  tasks_remote: Remote(List(Task)),
+  updated_task: Task,
+) -> Remote(List(Task)) {
+  case tasks_remote {
+    Loaded(tasks) ->
+      Loaded(
+        list.map(tasks, fn(existing_task) {
+          case existing_task.id == updated_task.id {
+            True -> updated_task
+            False -> existing_task
+          }
+        }),
+      )
+    _ -> tasks_remote
+  }
+}
+
+fn submit_task_detail_edit(model: Model) -> #(Model, Effect(Msg)) {
+  case current_task_detail(model) {
+    opt.Some(current_task) ->
+      case detail_editor.can_edit_task(model, current_task) {
+        False -> #(model, effect.none())
+        True -> {
+          let trimmed_title =
+            string.trim(model.member.pool.member_task_detail_edit_title)
+          case validate_task_detail_title(model, trimmed_title) {
+            Error(message) -> #(
+              update_member_pool(model, fn(pool) {
+                member_pool.Model(
+                  ..pool,
+                  member_task_detail_edit_error: opt.Some(message),
+                )
+              }),
+              effect.none(),
+            )
+            Ok(title) -> {
+              let description =
+                normalize_task_detail_description(
+                  model.member.pool.member_task_detail_edit_description,
+                )
+
+              case task_detail_is_dirty(current_task, title, description) {
+                False -> #(
+                  update_member_pool(model, fn(pool) {
+                    member_pool.Model(
+                      ..pool,
+                      member_task_detail_editing: False,
+                      member_task_detail_edit_title: current_task.title,
+                      member_task_detail_edit_description: task_description_text(
+                        current_task,
+                      ),
+                      member_task_detail_edit_in_flight: False,
+                      member_task_detail_edit_error: opt.None,
+                    )
+                  }),
+                  effect.none(),
+                )
+                True -> {
+                  let next =
+                    update_member_pool(model, fn(pool) {
+                      member_pool.Model(
+                        ..pool,
+                        member_task_detail_edit_title: title,
+                        member_task_detail_edit_description: description,
+                        member_task_detail_edit_in_flight: True,
+                        member_task_detail_edit_error: opt.None,
+                      )
+                    })
+
+                  #(
+                    next,
+                    api_tasks.update_task(
+                      current_task.id,
+                      current_task.version,
+                      title,
+                      description,
+                      fn(result) {
+                        pool_msg(pool_messages.MemberTaskUpdated(result))
+                      },
+                    ),
+                  )
+                }
+              }
+            }
+          }
+        }
+      }
+    opt.None -> #(model, effect.none())
+  }
+}
+
 // =============================================================================
 // Mutation Response Handlers
 // =============================================================================
@@ -937,15 +1082,12 @@ pub fn handle_mutation_error(
   })
 }
 
-// =============================================================================
-// Task Details / Notes Handlers
-// =============================================================================
-
 /// Open task details dialog and fetch notes.
 pub fn handle_task_details_opened(
   model: Model,
   task_id: Int,
 ) -> #(Model, Effect(Msg)) {
+  let #(edit_title, edit_description) = task_detail_edit_values(model, task_id)
   let next_model =
     update_member(model, fn(member) {
       let notes = member.notes
@@ -958,6 +1100,11 @@ pub fn handle_task_details_opened(
           ..pool,
           member_task_detail_tab: task_tabs.TasksTab,
           member_task_detail_metrics: Loading,
+          member_task_detail_editing: False,
+          member_task_detail_edit_title: edit_title,
+          member_task_detail_edit_description: edit_description,
+          member_task_detail_edit_in_flight: False,
+          member_task_detail_edit_error: opt.None,
         ),
         notes: member_notes.Model(
           ..notes,
@@ -1004,6 +1151,11 @@ pub fn handle_task_details_closed(model: Model) -> #(Model, Effect(Msg)) {
           ..member.pool,
           member_task_detail_tab: task_tabs.TasksTab,
           member_task_detail_metrics: NotAsked,
+          member_task_detail_editing: False,
+          member_task_detail_edit_title: "",
+          member_task_detail_edit_description: "",
+          member_task_detail_edit_in_flight: False,
+          member_task_detail_edit_error: opt.None,
         ),
         notes: member_notes.Model(
           ..notes,
@@ -1042,6 +1194,92 @@ pub fn handle_task_detail_tab_clicked(
   )
 }
 
+pub fn handle_task_detail_edit_started(model: Model) -> #(Model, Effect(Msg)) {
+  case current_task_detail(model) {
+    opt.Some(task) ->
+      case detail_editor.can_edit_task(model, task) {
+        True -> #(
+          update_member_pool(model, fn(pool) {
+            member_pool.Model(
+              ..pool,
+              member_task_detail_editing: True,
+              member_task_detail_edit_title: task.title,
+              member_task_detail_edit_description: detail_editor.task_description_text(
+                task,
+              ),
+              member_task_detail_edit_in_flight: False,
+              member_task_detail_edit_error: opt.None,
+            )
+          }),
+          effect.none(),
+        )
+        False -> #(model, effect.none())
+      }
+    _ -> #(model, effect.none())
+  }
+}
+
+pub fn handle_task_detail_edit_cancelled(model: Model) -> #(Model, Effect(Msg)) {
+  case model.member.notes.member_notes_task_id {
+    opt.Some(task_id) -> {
+      let #(title, description) = task_detail_edit_values(model, task_id)
+      #(
+        update_member_pool(model, fn(pool) {
+          member_pool.Model(
+            ..pool,
+            member_task_detail_editing: False,
+            member_task_detail_edit_title: title,
+            member_task_detail_edit_description: description,
+            member_task_detail_edit_in_flight: False,
+            member_task_detail_edit_error: opt.None,
+          )
+        }),
+        effect.none(),
+      )
+    }
+    opt.None -> #(model, effect.none())
+  }
+}
+
+pub fn handle_task_detail_edit_title_changed(
+  model: Model,
+  value: String,
+) -> #(Model, Effect(Msg)) {
+  #(
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(
+        ..pool,
+        member_task_detail_edit_title: value,
+        member_task_detail_edit_error: opt.None,
+      )
+    }),
+    effect.none(),
+  )
+}
+
+pub fn handle_task_detail_edit_description_changed(
+  model: Model,
+  value: String,
+) -> #(Model, Effect(Msg)) {
+  #(
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(
+        ..pool,
+        member_task_detail_edit_description: value,
+        member_task_detail_edit_error: opt.None,
+      )
+    }),
+    effect.none(),
+  )
+}
+
+pub fn handle_task_detail_edit_submitted(model: Model) -> #(Model, Effect(Msg)) {
+  case model.member.pool.member_task_detail_edit_in_flight {
+    True -> #(model, effect.none())
+    False -> submit_task_detail_edit(model)
+  }
+}
+
 pub fn handle_task_metrics_fetched_ok(
   model: Model,
   metrics: TaskModalMetrics,
@@ -1064,6 +1302,56 @@ pub fn handle_task_metrics_fetched_error(
     }),
     effect.none(),
   )
+}
+
+pub fn handle_task_updated_ok(
+  model: Model,
+  updated_task: Task,
+) -> #(Model, Effect(Msg)) {
+  let model =
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(
+        ..pool,
+        member_tasks: replace_task(model.member.pool.member_tasks, updated_task),
+        member_task_detail_editing: False,
+        member_task_detail_edit_title: updated_task.title,
+        member_task_detail_edit_description: detail_editor.task_description_text(
+          updated_task,
+        ),
+        member_task_detail_edit_in_flight: False,
+        member_task_detail_edit_error: opt.None,
+      )
+    })
+
+  #(
+    model,
+    helpers_toast.toast_success(helpers_i18n.i18n_t(
+      model,
+      i18n_text.TaskUpdated,
+    )),
+  )
+}
+
+pub fn handle_task_updated_error(
+  model: Model,
+  err: ApiError,
+) -> #(Model, Effect(Msg)) {
+  let next =
+    update_member_pool(model, fn(pool) {
+      member_pool.Model(
+        ..pool,
+        member_task_detail_edit_in_flight: False,
+        member_task_detail_edit_error: opt.Some(err.message),
+      )
+    })
+
+  helpers_auth.handle_401_or(next, err, fn() {
+    let warning = case err.status {
+      403 | 409 | 422 -> helpers_toast.toast_warning(err.message)
+      _ -> helpers_toast.toast_error(err.message)
+    }
+    #(next, warning)
+  })
 }
 
 /// Handle notes fetched response (success).

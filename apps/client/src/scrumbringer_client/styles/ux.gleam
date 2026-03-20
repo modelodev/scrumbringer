@@ -461,12 +461,20 @@ pub fn css() -> List(String) {
     ".task-details-section { padding: 12px 14px; }",
     ".task-details-stack { display: flex; flex-direction: column; gap: 14px; }",
     ".task-details-intro { display: flex; flex-direction: column; gap: 6px; }",
+    ".task-details-intro-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }",
     ".task-details-title { font-size: 13px; letter-spacing: 0.02em; color: var(--sb-muted); font-weight: 600; }",
     ".task-details-rule { border-top: 1px solid color-mix(in oklab, var(--sb-border) 70%, transparent); }",
     ".task-detail-field { padding: 0; border: none; border-radius: 0; background: transparent; }",
     ".task-detail-field-label { font-size: 14px; font-weight: 600; letter-spacing: 0.01em; color: var(--sb-muted-strong); margin-bottom: 4px; }",
     ".task-detail-field-value { font-size: 13px; font-weight: 500; color: color-mix(in oklab, var(--sb-text) 88%, var(--sb-muted)); line-height: 1.45; }",
     ".task-detail-field-value.muted { color: var(--sb-muted); }",
+    ".task-detail-edit-form { display: flex; flex-direction: column; gap: 14px; padding: 14px; border: 1px solid color-mix(in oklab, var(--sb-primary) 24%, var(--sb-border)); border-radius: 12px; background: color-mix(in oklab, var(--sb-primary) 5%, var(--sb-surface)); }",
+    ".task-detail-edit-input, .task-detail-edit-textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--sb-border); border-radius: 10px; background: var(--sb-elevated); color: var(--sb-text); font: inherit; }",
+    ".task-detail-edit-textarea { min-height: 120px; resize: vertical; line-height: 1.45; }",
+    ".task-detail-edit-input:focus, .task-detail-edit-textarea:focus { outline: 2px solid color-mix(in oklab, var(--sb-primary) 32%, transparent); outline-offset: 1px; border-color: var(--sb-primary); }",
+    ".task-detail-edit-actions { display: flex; justify-content: flex-end; gap: 8px; }",
+    ".task-detail-edit-error { margin-top: -4px; }",
+    ".task-edit-hint, .task-edit-permission-hint { margin-bottom: 0; }",
     ".task-detail-grid { display: grid; gap: 10px; }",
     ".detail-row { display: grid; grid-template-columns: 140px minmax(0, 1fr); align-items: center; gap: 12px; padding: 2px 0; }",
     ".detail-label { font-weight: 500; color: var(--sb-muted-strong); }",
@@ -576,7 +584,7 @@ pub fn css() -> List(String) {
     // Mobile adaptations
     "@media (max-width: 640px) { .my-bar-card-groups { gap: 12px; } .my-bar-card-header { padding: 8px 10px; gap: 8px; } .my-bar-card-title { font-size: 13px; } .my-bar-card-progress { font-size: 12px; } }",
     "@media (max-width: 640px) { .fichas-list { gap: 8px; } .ficha-card { padding: 10px 12px; } .ficha-header { gap: 8px; } .ficha-title { font-size: 14px; } .ficha-state-badge { font-size: 10px; padding: 2px 6px; } }",
-    "@media (max-width: 640px) { .card-detail-modal { padding: 8px; } .modal-content.card-detail { padding: 0; } .detail-header-block { padding: 16px 16px 10px; } .modal-body { padding: 12px 16px 16px; } .detail-title { font-size: 18px; } .card-detail-tasks-section { } .card-add-task-form { padding: 12px; } .detail-modal-overlay .modal-content.detail-modal-content { width: calc(100% - 16px); max-height: 88vh; } .milestone-detail-body { padding: 12px 16px 16px; } }",
+    "@media (max-width: 640px) { .card-detail-modal { padding: 8px; } .modal-content.card-detail { padding: 0; } .detail-header-block { padding: 16px 16px 10px; } .modal-body { padding: 12px 16px 16px; } .detail-title { font-size: 18px; } .card-detail-tasks-section { } .card-add-task-form { padding: 12px; } .detail-modal-overlay .modal-content.detail-modal-content { width: calc(100% - 16px); max-height: 88vh; } .milestone-detail-body { padding: 12px 16px 16px; } .task-details-intro-row { align-items: stretch; flex-direction: column; } .task-detail-edit-actions { flex-direction: column-reverse; } .task-detail-edit-actions .btn { width: 100%; } }",
     // =====================================================
   ]
 }

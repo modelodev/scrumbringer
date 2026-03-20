@@ -133,6 +133,8 @@ pub const get_task = operations.get_task
 
 pub const get_task_metrics = operations.get_task_metrics
 
+pub const update_task = operations.update_task
+
 pub const update_task_milestone = operations.update_task_milestone
 
 // =============================================================================
