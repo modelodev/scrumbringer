@@ -1,0 +1,126 @@
+id = "user_story_authoring"
+version = "0.1.0"
+
+[budget]
+tokens_hint = 36000
+
+[[steps]]
+id = "story_brief"
+kind = "llm-subagent"
+depends_on = []
+inputs = []
+outputs = ["story_brief"]
+agent_ref = "story_author_agent"
+context_mode = "isolated"
+done_criteria = [
+  "Story id or target doc path proposed under docs/stories/",
+  "Actor, need, expected outcome, scope, and non-goals stated",
+  "The change is framed as one delivery slice, not a roadmap bundle",
+  "Open questions or missing context captured explicitly when needed",
+]
+verification_steps = []
+
+[steps.budget]
+tokens_hint = 4000
+
+[[steps]]
+id = "repo_context_scan"
+kind = "llm-subagent"
+depends_on = ["story_brief"]
+inputs = ["story_brief"]
+outputs = ["repo_context_scan"]
+agent_ref = "story_author_agent"
+context_mode = "isolated"
+done_criteria = [
+  "Relevant precedents in docs/stories/, docs/architecture/, and code are named concretely",
+  "Affected client, server, shared, db, and docs areas are listed when applicable",
+  "Validation commands are chosen from the real repo workflow, including make build, make test, and persistence-related commands when needed",
+  "Delivery risks, dependencies, and likely touch points are recorded without inventing architecture",
+]
+verification_steps = []
+
+[steps.budget]
+tokens_hint = 6000
+
+[[steps]]
+id = "brief_alignment_check"
+kind = "llm-subagent"
+depends_on = ["repo_context_scan"]
+inputs = ["repo_context_scan"]
+outputs = ["brief_alignment_check"]
+agent_ref = "story_author_agent"
+context_mode = "isolated"
+done_criteria = [
+  "docs/brief.md reviewed and the relevant product guardrails extracted",
+  "The proposal is checked against pull workflow, no direct assignment, minimalismo documental, and other applicable constraints",
+  "Any conflict with the brief is converted into scope cuts, blockers, or explicit open questions before drafting",
+]
+verification_steps = []
+
+[steps.budget]
+tokens_hint = 4000
+
+[[steps]]
+id = "story_draft"
+kind = "llm-subagent"
+depends_on = ["brief_alignment_check"]
+inputs = ["repo_context_scan", "brief_alignment_check"]
+outputs = ["story_draft"]
+agent_ref = "story_author_agent"
+context_mode = "full"
+done_criteria = [
+  "Markdown story draft created or updated under docs/stories/",
+  "Acceptance criteria are observable and testable",
+  "Tasks or subtasks map back to acceptance criteria",
+  "Expected code, docs, UI, and persistence touch points are named concretely",
+]
+verification_steps = []
+
+[steps.budget]
+tokens_hint = 10000
+
+[[steps]]
+id = "story_solution_fit"
+kind = "llm-subagent"
+depends_on = ["story_draft"]
+inputs = ["story_draft"]
+outputs = ["story_solution_fit"]
+agent_ref = "story_author_agent"
+context_mode = "full"
+done_criteria = [
+  "The same story file under docs/stories/ is updated with explicit encaje notes for views, routes, components, reusable UI, layout, architecture, and visual structure",
+  "Relevant Lustre surfaces, Gleam modules, shared contracts, and persistence concerns are mapped from the repo instead of guessed",
+  "The story includes explicit test design for critical paths, additional relevant flows, and meaningful edge cases",
+  "If the proposal does not fit the current brief, UX structure, or architecture, the mismatch is narrowed, rebounded, or marked as blocker instead of hidden",
+]
+verification_steps = []
+skill_refs = ["gleam-lustre-development", "gleam-web-development", "gleam-type-system", "gleam-testing"]
+
+[steps.budget]
+tokens_hint = 7000
+
+[[steps]]
+id = "ready_check"
+kind = "llm-subagent"
+depends_on = ["story_solution_fit"]
+inputs = ["story_solution_fit"]
+outputs = ["ready_check"]
+agent_ref = "story_author_agent"
+context_mode = "isolated"
+done_criteria = [
+  "Story is small enough for one implementation slice",
+  "Blocking ambiguities are called out explicitly or declared absent",
+  "Validation plan is reproducible from the repo and names the commands that matter",
+  "Brief alignment and solution fit notes remain reflected in the final story",
+  "Final verdict is recorded as READY or BLOCKED",
+]
+verification_steps = []
+
+[steps.budget]
+tokens_hint = 5000
+
+[[agents]]
+id = "story_author_agent"
+instructions_ref = "agents/story_author_agent.md"
+report_contract = "awo.step_report/v1"
+skills = []
