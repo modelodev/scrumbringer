@@ -1,0 +1,38 @@
+{
+  "schema_version": "awo.step_report/v1",
+  "run_id": "run_1774450904",
+  "workflow_id": "user_story_authoring",
+  "workflow_version": "0.1.0",
+  "target": "opencode",
+  "step_id": "story_brief",
+  "status": "ok",
+  "policy_outcome": "pass",
+  "executive_summary": "Se fijó una sola entrega: una vista kanban de tareas por capacidad, con alcance acotado a lectura operativa.",
+  "artifacts_in": [
+    ".awo/generated/opencode/manifest.json",
+    ".awo/generated/opencode/workflows/user_story_authoring/compiled_workflow.json"
+  ],
+  "artifacts_out": [
+    ".awo/runs/run_1774450904/steps/story_brief.step-report.json"
+  ],
+  "next_recommended": ["repo_context_scan"],
+  "risks": [
+    "La definición de entrypoint podía expandirse a una ruta nueva o a un toggle interno; se mantuvo como una subvista de Kanban para limitar alcance."
+  ],
+  "started_at": "2026-03-25T15:01:44Z",
+  "ended_at": "2026-03-25T15:02:05Z",
+  "budget_used": { "tokens": 250, "cost_usd": 0.0075 },
+  "declared_skill_refs": [".opencode/skills/user-story-authoring-story_brief/SKILL.md"],
+  "observed_skill_refs": [
+    ".awo/generated/opencode/manifest.json",
+    ".awo/generated/opencode/workflows/user_story_authoring/compiled_workflow.json",
+    ".awo/generated/opencode/runtime/.opencode/skills/user-story-authoring-story_brief/SKILL.md"
+  ],
+  "commands_run": [
+    { "cmd": "date -u +%s", "workdir": ".", "result": "ok" }
+  ],
+  "artifacts_materialized": [
+    ".awo/runs/run_1774450904/steps/story_brief.step-report.json"
+  ],
+  "interruption_events": []
+}

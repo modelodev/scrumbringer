@@ -1,0 +1,23 @@
+{
+  "schema_version": "awo.step_report/v1",
+  "run_id": "run_1774454550",
+  "workflow_id": "user_story_authoring",
+  "workflow_version": "0.1.0",
+  "target": "opencode",
+  "step_id": "ready_check",
+  "status": "ok",
+  "policy_outcome": "pass",
+  "executive_summary": "Final story is ready for implementation planning.",
+  "artifacts_in": [".awo/runs/run_1774454550/artifacts/story_solution_fit.json"],
+  "artifacts_out": [".awo/runs/run_1774454550/artifacts/ready_check.json"],
+  "next_recommended": ["implementation"],
+  "risks": [],
+  "started_at": "2026-03-25T16:18:40Z",
+  "ended_at": "2026-03-25T16:19:10Z",
+  "budget_used": {"tokens": 300, "cost_usd": 0.009},
+  "declared_skill_refs": [".opencode/skills/user-story-authoring-ready_check/SKILL.md"],
+  "observed_skill_refs": ["docs/stories/7.10.task-capability-kanban.md", "docs/brief.md", ".opencode/skills/user-story-authoring-ready_check/SKILL.md"],
+  "commands_run": [],
+  "artifacts_materialized": [".awo/runs/run_1774454550/artifacts/ready_check.json"],
+  "interruption_events": []
+}

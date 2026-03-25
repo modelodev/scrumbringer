@@ -1,0 +1,37 @@
+{
+  "schema_version": "awo.step_report/v1",
+  "run_id": "run_1774450904",
+  "workflow_id": "user_story_authoring",
+  "workflow_version": "0.1.0",
+  "target": "opencode",
+  "step_id": "ready_check",
+  "status": "ok",
+  "policy_outcome": "pass",
+  "executive_summary": "La historia quedó en estado Ready for Dev: pequeña, verificable y alineada con el brief.",
+  "artifacts_in": [
+    "docs/stories/8.2.tasks-by-capability-kanban.md"
+  ],
+  "artifacts_out": [
+    ".awo/runs/run_1774450904/steps/ready_check.step-report.json"
+  ],
+  "next_recommended": ["Implement the story from docs/stories/8.2.tasks-by-capability-kanban.md"],
+  "risks": [
+    "La única decisión abierta es si el entrypoint se implementa como toggle interno del Kanban o como subvista explícita; el documento ya deja preferencia por una subvista de cliente.",
+    "Si se decide elevarla a ViewMode, el slice crecerá y habrá que revisar navegación compartida."
+  ],
+  "started_at": "2026-03-25T15:03:45Z",
+  "ended_at": "2026-03-25T15:03:59Z",
+  "budget_used": { "tokens": 200, "cost_usd": 0.006 },
+  "declared_skill_refs": [".opencode/skills/user-story-authoring-ready_check/SKILL.md"],
+  "observed_skill_refs": [
+    ".awo/generated/opencode/runtime/.opencode/skills/user-story-authoring-ready_check/SKILL.md",
+    "docs/stories/8.2.tasks-by-capability-kanban.md"
+  ],
+  "commands_run": [
+    { "cmd": "date -u +%Y-%m-%dT%H:%M:%SZ", "workdir": ".", "result": "ok" }
+  ],
+  "artifacts_materialized": [
+    ".awo/runs/run_1774450904/steps/ready_check.step-report.json"
+  ],
+  "interruption_events": []
+}

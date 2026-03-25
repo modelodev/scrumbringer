@@ -1,0 +1,10 @@
+{
+  "status": "ok",
+  "summary": "Defined a single-slice UI story for a capability-grouped task kanban.",
+  "story_path": "docs/stories/7.10.task-capability-kanban.md",
+  "scope": [
+    "new member view mode",
+    "group active tasks by capability",
+    "reuse existing task item/color semantics"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "schema_version": "awo.run_envelope/v1",
+  "run_id": "run_1774450904",
+  "workflow_id": "user_story_authoring",
+  "workflow_version": "0.1.0",
+  "target": "opencode",
+  "status": "ok",
+  "started_at": "2026-03-25T15:01:44Z",
+  "ended_at": "2026-03-25T15:03:59Z",
+  "step_reports": [
+    ".awo/runs/run_1774450904/steps/story_brief.step-report.json",
+    ".awo/runs/run_1774450904/steps/repo_context_scan.step-report.json",
+    ".awo/runs/run_1774450904/steps/brief_alignment_check.step-report.json",
+    ".awo/runs/run_1774450904/steps/story_draft.step-report.json",
+    ".awo/runs/run_1774450904/steps/story_solution_fit.step-report.json",
+    ".awo/runs/run_1774450904/steps/ready_check.step-report.json"
+  ],
+  "next_step": "Implement the story from docs/stories/8.2.tasks-by-capability-kanban.md",
+  "execution_mode": "native_slash_command",
+  "budget_run_level": {
+    "tokens_total": 2200,
+    "cost_usd_total": 0.066,
+    "quality": "target_native"
+  }
+}

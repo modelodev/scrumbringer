@@ -1,0 +1,40 @@
+{
+  "schema_version": "awo.step_report/v1",
+  "run_id": "run_1774450904",
+  "workflow_id": "user_story_authoring",
+  "workflow_version": "0.1.0",
+  "target": "opencode",
+  "step_id": "story_draft",
+  "status": "ok",
+  "policy_outcome": "pass",
+  "executive_summary": "Se redactó la historia 8.2 con alcance, ACs, tareas y notas técnicas concretas para el nuevo board.",
+  "artifacts_in": [
+    ".awo/runs/run_1774450904/steps/brief_alignment_check.step-report.json"
+  ],
+  "artifacts_out": [
+    "docs/stories/8.2.tasks-by-capability-kanban.md",
+    ".awo/runs/run_1774450904/steps/story_draft.step-report.json"
+  ],
+  "next_recommended": ["story_solution_fit"],
+  "risks": [
+    "La historia depende de que el equipo acepte el tratamiento explícito de tareas sin capacidad como fila separada."
+  ],
+  "started_at": "2026-03-25T15:02:55Z",
+  "ended_at": "2026-03-25T15:03:15Z",
+  "budget_used": { "tokens": 400, "cost_usd": 0.012 },
+  "declared_skill_refs": [".opencode/skills/user-story-authoring-story_draft/SKILL.md"],
+  "observed_skill_refs": [
+    ".awo/generated/opencode/runtime/.opencode/skills/user-story-authoring-story_brief/SKILL.md",
+    ".awo/generated/opencode/runtime/.opencode/skills/user-story-authoring-repo_context_scan/SKILL.md",
+    ".awo/generated/opencode/runtime/.opencode/skills/user-story-authoring-brief_alignment_check/SKILL.md",
+    "docs/stories/8.1.milestone-action-row-mobile-wrap.md",
+    "docs/stories/7.5.metrics-tabs.md",
+    "docs/stories/7.8.quick-create-card-from-milestone-list.md"
+  ],
+  "commands_run": [],
+  "artifacts_materialized": [
+    "docs/stories/8.2.tasks-by-capability-kanban.md",
+    ".awo/runs/run_1774450904/steps/story_draft.step-report.json"
+  ],
+  "interruption_events": []
+}

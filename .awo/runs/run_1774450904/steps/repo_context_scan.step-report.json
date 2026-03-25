@@ -1,0 +1,54 @@
+{
+  "schema_version": "awo.step_report/v1",
+  "run_id": "run_1774450904",
+  "workflow_id": "user_story_authoring",
+  "workflow_version": "0.1.0",
+  "target": "opencode",
+  "step_id": "repo_context_scan",
+  "status": "ok",
+  "policy_outcome": "pass",
+  "executive_summary": "Se identificaron precedentes de Kanban, filtros de capacidad y el componente de tarea reutilizable para el nuevo board.",
+  "artifacts_in": [
+    ".awo/runs/run_1774450904/steps/story_brief.step-report.json",
+    ".awo/generated/opencode/runtime/.opencode/skills/user-story-authoring-repo_context_scan/SKILL.md"
+  ],
+  "artifacts_out": [
+    ".awo/runs/run_1774450904/steps/repo_context_scan.step-report.json"
+  ],
+  "next_recommended": ["brief_alignment_check"],
+  "risks": [
+    "Si la vista se expone como modo principal, podría tocar shared/router; se dejó preferente como subvista del área Kanban para mantener el slice pequeño."
+  ],
+  "started_at": "2026-03-25T15:02:05Z",
+  "ended_at": "2026-03-25T15:02:35Z",
+  "budget_used": { "tokens": 650, "cost_usd": 0.0195 },
+  "declared_skill_refs": [".opencode/skills/user-story-authoring-repo_context_scan/SKILL.md"],
+  "observed_skill_refs": [
+    ".awo/generated/opencode/runtime/.opencode/skills/user-story-authoring-repo_context_scan/SKILL.md",
+    ".awo/generated/opencode/runtime/.opencode/skills/user-story-authoring-story_brief/SKILL.md",
+    "docs/brief.md",
+    "docs/stories/4.11.task-type-capability-ui.md",
+    "docs/stories/5.1.task-views-unification-ux.md",
+    "docs/stories/5.7.dual-view-assignments.md",
+    "docs/stories/7.4.milestones.md",
+    "docs/stories/7.5.metrics-tabs.md",
+    "docs/stories/7.8.quick-create-card-from-milestone-list.md",
+    "apps/client/src/scrumbringer_client/features/layout/center_panel.gleam",
+    "apps/client/src/scrumbringer_client/features/views/kanban_board.gleam",
+    "apps/client/src/scrumbringer_client/features/tasks/view.gleam",
+    "apps/client/src/scrumbringer_client/ui/task_item.gleam",
+    "apps/client/src/scrumbringer_client/ui/task_color.gleam",
+    "apps/client/src/scrumbringer_client/ui/task_type_icon.gleam",
+    "apps/client/src/scrumbringer_client/features/pool/view.gleam",
+    "shared/src/domain/view_mode.gleam"
+  ],
+  "commands_run": [
+    { "cmd": "ls .awo", "workdir": ".", "result": "ok" },
+    { "cmd": "ls .awo/runs", "workdir": ".", "result": "error" },
+    { "cmd": "mkdir -p .awo/runs/run_1774450904/steps .awo/runs/run_1774450904/artifacts .awo/runs/index/opencode", "workdir": ".", "result": "ok" }
+  ],
+  "artifacts_materialized": [
+    ".awo/runs/run_1774450904/steps/repo_context_scan.step-report.json"
+  ],
+  "interruption_events": []
+}
