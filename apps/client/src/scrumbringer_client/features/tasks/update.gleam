@@ -57,7 +57,6 @@ import domain/task.{
 }
 import domain/task_state
 import domain/task_status.{Completed, Taken}
-import domain/task_type.{type TaskType, TaskType}
 import scrumbringer_client/client_state.{
   type Model, type Msg, pool_msg, update_member,
 }
@@ -67,6 +66,7 @@ import scrumbringer_client/client_state/member/dependencies as member_dependenci
 import scrumbringer_client/client_state/member/notes as member_notes
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/features/work_filters
 import scrumbringer_client/helpers/auth as helpers_auth
 import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/helpers/lookup as helpers_lookup
@@ -485,33 +485,27 @@ fn is_task_visible_under_active_filters(model: Model, task: Task) -> Bool {
     opt.None -> True
   }
 
-  let type_ok = case model.member.pool.member_filters_type_id {
-    opt.Some(type_id) -> task.type_id == type_id
-    opt.None -> True
+  let task_types = case model.member.pool.member_task_types {
+    Loaded(task_types) -> task_types
+    _ -> []
+  }
+  let my_capability_ids = case model.member.skills.member_my_capability_ids {
+    Loaded(ids) -> ids
+    _ -> []
   }
 
-  let capability_ok =
-    matches_capability_filter(
-      model.member.pool.member_filters_capability_id,
-      model.member.pool.member_task_types,
-      task.type_id,
-    )
-
-  let query_ok = case string.trim(model.member.pool.member_filters_q) {
-    "" -> True
-    q -> {
-      let q_lower = string.lowercase(q)
-      let in_title = string.contains(string.lowercase(task.title), q_lower)
-      let in_description = case task.description {
-        opt.Some(description) ->
-          string.contains(string.lowercase(description), q_lower)
-        opt.None -> False
-      }
-      in_title || in_description
-    }
-  }
-
-  status_ok && type_ok && capability_ok && query_ok
+  status_ok
+  && work_filters.matches(
+    work_filters.Filters(
+      type_filter: model.member.pool.member_filters_type_id,
+      capability_filter: model.member.pool.member_filters_capability_id,
+      search_query: model.member.pool.member_filters_q,
+      capability_scope: model.member.pool.member_capability_scope,
+      my_capability_ids: my_capability_ids,
+      task_types: task_types,
+    ),
+    task,
+  )
 }
 
 pub fn is_task_visible_under_active_filters_for_test(
@@ -519,26 +513,6 @@ pub fn is_task_visible_under_active_filters_for_test(
   task: Task,
 ) -> Bool {
   is_task_visible_under_active_filters(model, task)
-}
-
-fn matches_capability_filter(
-  selected_capability_id: opt.Option(Int),
-  task_types_remote: Remote(List(TaskType)),
-  task_type_id: Int,
-) -> Bool {
-  case selected_capability_id {
-    opt.None -> True
-    opt.Some(capability_id) ->
-      case task_types_remote {
-        Loaded(task_types) ->
-          case list.find(task_types, fn(t) { t.id == task_type_id }) {
-            Ok(TaskType(capability_id: opt.Some(task_capability_id), ..)) ->
-              task_capability_id == capability_id
-            _ -> False
-          }
-        _ -> False
-      }
-  }
 }
 
 /// Handle failed task creation.

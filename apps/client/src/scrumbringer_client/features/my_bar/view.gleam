@@ -488,6 +488,8 @@ pub fn view_member_bar_task_row(
         text(type_label),
       ]),
       actions: [div([attribute.class("task-row-actions")], actions)],
+      reserve_actions_slot: False,
+      action_slot_class: opt.None,
       testid: opt.None,
     ),
     task_item.Div,

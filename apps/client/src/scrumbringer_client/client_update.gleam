@@ -131,6 +131,26 @@ fn current_route(model: client_state.Model) -> router.Route {
         opt.None -> url_state.empty()
       }
       let state = url_state.with_view(state, model.member.pool.view_mode)
+      let state =
+        url_state.with_capability_scope(
+          state,
+          model.member.pool.member_capability_scope,
+        )
+      let state =
+        url_state.with_type_filter(
+          state,
+          model.member.pool.member_filters_type_id,
+        )
+      let state =
+        url_state.with_capability_filter(
+          state,
+          model.member.pool.member_filters_capability_id,
+        )
+      let state =
+        url_state.with_search(
+          state,
+          helpers_options.empty_to_opt(model.member.pool.member_filters_q),
+        )
       router.Member(model.member.pool.member_section, state)
     }
   }
@@ -412,6 +432,10 @@ fn apply_route_fields(
                 ..pool,
                 member_section: section,
                 view_mode: new_view,
+                member_capability_scope: url_state.capability_scope(state),
+                member_filters_type_id: url_state.type_filter(state),
+                member_filters_capability_id: url_state.capability_filter(state),
+                member_filters_q: url_state.search(state) |> opt.unwrap(""),
                 member_drag: state_types.DragIdle,
                 member_pool_drag: state_types.PoolDragIdle,
               ),

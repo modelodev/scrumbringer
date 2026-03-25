@@ -4,7 +4,7 @@
 //// de la aplicación. Usado para URL routing y UI state.
 ////
 //// Responsibilities:
-//// - Definir el ADT ViewMode (Pool | Cards | People | Milestones)
+//// - Definir el ADT ViewMode (Pool | Cards | Capabilities | People | Milestones)
 //// - Conversión desde/hacia strings para URLs
 //// - Determinar capacidades por modo (ej: drag & drop)
 ////
@@ -18,6 +18,8 @@ pub type ViewMode {
   Pool
   /// Kanban de fichas (Pendiente -> En Curso -> Cerrada)
   Cards
+  /// Tareas activas agrupadas por capacidad
+  Capabilities
   /// Disponibilidad por personas del proyecto
   People
   /// Planificacion por hitos
@@ -29,6 +31,7 @@ pub type ViewMode {
 pub fn from_string(s: String) -> ViewMode {
   case s {
     "cards" -> Cards
+    "capabilities" -> Capabilities
     "people" -> People
     "milestones" -> Milestones
     _ -> Pool
@@ -40,6 +43,7 @@ pub fn to_string(mode: ViewMode) -> String {
   case mode {
     Pool -> "pool"
     Cards -> "cards"
+    Capabilities -> "capabilities"
     People -> "people"
     Milestones -> "milestones"
   }
@@ -50,6 +54,7 @@ pub fn supports_drag_drop(mode: ViewMode) -> Bool {
   case mode {
     Pool -> True
     Cards -> True
+    Capabilities -> False
     People -> False
     Milestones -> False
   }
@@ -60,6 +65,7 @@ pub fn label_key(mode: ViewMode) -> String {
   case mode {
     Pool -> "ViewModePool"
     Cards -> "ViewModeCards"
+    Capabilities -> "ViewModeCapabilities"
     People -> "ViewModePeople"
     Milestones -> "ViewModeMilestones"
   }

@@ -33,9 +33,9 @@ pub type Msg {
   MemberPoolStatusChanged(String)
   MemberPoolTypeChanged(String)
   MemberPoolCapabilityChanged(String)
+  MemberPoolCapabilityScopeChanged(String)
   MemberPoolSearchChanged(String)
   MemberPoolSearchDebounced(String)
-  MemberToggleMyCapabilitiesQuick
   MemberPoolFiltersToggled
   MemberClearFilters
   MemberPoolViewModeSet(pool_prefs.ViewMode)

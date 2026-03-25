@@ -15,7 +15,7 @@
 
 import gleam/int
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/string
 import lustre/attribute
 import lustre/element.{type Element}
@@ -27,6 +27,9 @@ import domain/card.{type Card, type CardState, Cerrada, EnCurso, Pendiente}
 import domain/org.{type OrgUser}
 import domain/task.{type Task, claimed_by}
 import domain/task_status.{Available, Claimed, Completed}
+import domain/task_type.{type TaskType}
+import scrumbringer_client/capability_scope.{type CapabilityScope}
+import scrumbringer_client/features/work_filters
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -55,6 +58,12 @@ pub type KanbanConfig(msg) {
     theme: Theme,
     cards: List(Card),
     tasks: List(Task),
+    task_types: List(TaskType),
+    type_filter: Option(Int),
+    capability_filter: Option(Int),
+    search_query: String,
+    capability_scope: CapabilityScope,
+    my_capability_ids: List(Int),
     // Story 4.8 UX: Added org_users for task claimed_by display
     org_users: List(OrgUser),
     is_pm_or_admin: Bool,
@@ -81,7 +90,22 @@ type CardWithProgress {
 
 /// Renders the kanban board with 3 columns
 pub fn view(config: KanbanConfig(msg)) -> Element(msg) {
-  let cards_with_progress = compute_progress(config.cards, config.tasks)
+  let filtered_tasks =
+    list.filter(config.tasks, fn(task) {
+      work_filters.matches(
+        work_filters.Filters(
+          type_filter: config.type_filter,
+          capability_filter: config.capability_filter,
+          search_query: config.search_query,
+          capability_scope: config.capability_scope,
+          my_capability_ids: config.my_capability_ids,
+          task_types: config.task_types,
+        ),
+        task,
+      )
+    })
+
+  let cards_with_progress = compute_progress(config.cards, filtered_tasks)
 
   // AC42: Filter out empty cards (cards with 0 tasks)
   // Empty cards are only visible in /config/cards management view
@@ -325,6 +349,8 @@ fn view_task_item(config: KanbanConfig(msg), task: Task) -> Element(msg) {
       title_class: None,
       secondary: secondary,
       actions: actions,
+      reserve_actions_slot: True,
+      action_slot_class: Some("task-item-action-slot-compact"),
       testid: Some("kanban-task-item"),
     ),
     task_item.Div,

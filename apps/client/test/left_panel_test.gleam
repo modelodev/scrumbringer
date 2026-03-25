@@ -33,6 +33,7 @@ fn base_config(
     on_new_card: "msg",
     on_navigate_pool: "msg",
     on_navigate_cards: "msg",
+    on_navigate_capabilities: "msg",
     on_navigate_people: "msg",
     on_navigate_milestones: "msg",
     on_navigate_config_team: "msg",
@@ -90,6 +91,7 @@ pub fn left_panel_all_view_modes_can_be_active_test() {
   [
     view_mode_module.Pool,
     view_mode_module.Cards,
+    view_mode_module.Capabilities,
     view_mode_module.People,
     view_mode_module.Milestones,
   ]
@@ -130,7 +132,7 @@ pub fn left_panel_org_section_active_test() {
   string.contains(html, "nav-link active") |> should.be_true
 }
 
-pub fn left_panel_work_nav_order_is_pool_kanban_people_milestones_en_test() {
+pub fn left_panel_work_nav_order_is_pool_kanban_capabilities_people_milestones_en_test() {
   let html =
     left_panel.view(base_config(opt.Some(member_route(view_mode_module.Pool))))
     |> element.to_document_string
@@ -140,6 +142,12 @@ pub fn left_panel_work_nav_order_is_pool_kanban_people_milestones_en_test() {
   appears_before(
     html,
     "data-testid=\"nav-cards\"",
+    "data-testid=\"nav-capabilities-board\"",
+  )
+  |> should.be_true
+  appears_before(
+    html,
+    "data-testid=\"nav-capabilities-board\"",
     "data-testid=\"nav-people\"",
   )
   |> should.be_true
@@ -154,6 +162,8 @@ pub fn left_panel_work_nav_order_is_pool_kanban_people_milestones_en_test() {
   |> should.be_true
   string.contains(html, "<span class=\"nav-label\">Kanban</span>")
   |> should.be_true
+  string.contains(html, "<span class=\"nav-label\">Capabilities</span>")
+  |> should.be_true
   string.contains(html, "<span class=\"nav-label\">People</span>")
   |> should.be_true
   string.contains(html, "<span class=\"nav-label\">Milestones</span>")
@@ -161,7 +171,7 @@ pub fn left_panel_work_nav_order_is_pool_kanban_people_milestones_en_test() {
   string.contains(html, ">List<") |> should.be_false
 }
 
-pub fn left_panel_work_nav_order_is_pool_kanban_personas_hitos_es_test() {
+pub fn left_panel_work_nav_order_is_pool_kanban_capacidades_personas_hitos_es_test() {
   let config =
     left_panel.LeftPanelConfig(
       ..base_config(opt.Some(member_route(view_mode_module.Pool))),
@@ -175,6 +185,12 @@ pub fn left_panel_work_nav_order_is_pool_kanban_personas_hitos_es_test() {
   appears_before(
     html,
     "data-testid=\"nav-cards\"",
+    "data-testid=\"nav-capabilities-board\"",
+  )
+  |> should.be_true
+  appears_before(
+    html,
+    "data-testid=\"nav-capabilities-board\"",
     "data-testid=\"nav-people\"",
   )
   |> should.be_true
@@ -188,6 +204,8 @@ pub fn left_panel_work_nav_order_is_pool_kanban_personas_hitos_es_test() {
   string.contains(html, "<span class=\"nav-label\">Pool</span>")
   |> should.be_true
   string.contains(html, "<span class=\"nav-label\">Kanban</span>")
+  |> should.be_true
+  string.contains(html, "<span class=\"nav-label\">Capacidades</span>")
   |> should.be_true
   string.contains(html, "<span class=\"nav-label\">Personas</span>")
   |> should.be_true

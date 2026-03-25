@@ -211,6 +211,8 @@ fn view_task_item(model: Model, task: Task) -> Element(Msg) {
       title_class: None,
       secondary: task_item.empty_secondary(),
       actions: task_item.no_actions(),
+      reserve_actions_slot: True,
+      action_slot_class: None,
       testid: None,
     ),
     task_item.Div,

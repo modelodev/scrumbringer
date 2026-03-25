@@ -20,6 +20,7 @@ import gleam/result
 import gleam/string
 import gleam/uri.{type Uri}
 import scrumbringer_client/assignments_view_mode
+import scrumbringer_client/capability_scope
 
 /// Contexto de parsing/format de query params.
 pub type QueryContext {
@@ -40,6 +41,7 @@ pub opaque type UrlState {
   UrlState(
     project: option.Option(Int),
     view: option.Option(ViewParam),
+    capability_scope: capability_scope.CapabilityScope,
     type_filter: option.Option(Int),
     capability_filter: option.Option(Int),
     search: option.Option(String),
@@ -57,6 +59,7 @@ type UrlQueryParams {
   UrlQueryParams(
     project: option.Option(Int),
     view: option.Option(ViewParam),
+    capability_scope: capability_scope.CapabilityScope,
     type_filter: option.Option(Int),
     capability_filter: option.Option(Int),
     search: option.Option(String),
@@ -86,6 +89,7 @@ pub fn empty() -> UrlState {
   UrlState(
     project: option.None,
     view: option.None,
+    capability_scope: capability_scope.default(),
     type_filter: option.None,
     capability_filter: option.None,
     search: option.None,
@@ -153,6 +157,13 @@ pub fn with_type_filter(
   UrlState(..state, type_filter: type_id)
 }
 
+pub fn with_capability_scope(
+  state: UrlState,
+  scope: capability_scope.CapabilityScope,
+) -> UrlState {
+  UrlState(..state, capability_scope: scope)
+}
+
 /// Builder: actualiza el filtro de capacidad.
 pub fn with_capability_filter(
   state: UrlState,
@@ -178,6 +189,7 @@ pub fn with_expanded_card(
 pub fn clear_filters(state: UrlState) -> UrlState {
   UrlState(
     ..state,
+    capability_scope: capability_scope.default(),
     type_filter: option.None,
     capability_filter: option.None,
     search: option.None,
@@ -240,6 +252,10 @@ pub fn type_filter(state: UrlState) -> option.Option(Int) {
   state.type_filter
 }
 
+pub fn capability_scope(state: UrlState) -> capability_scope.CapabilityScope {
+  state.capability_scope
+}
+
 /// Provides capability filter.
 ///
 /// Example:
@@ -280,6 +296,13 @@ pub fn to_query_string_for(context: QueryContext, state: UrlState) -> String {
       state.project |> option.map(fn(p) { "project=" <> int.to_string(p) }),
       view_param(state)
         |> option.map(fn(v) { "view=" <> view_mode.to_string(v) }),
+      case capability_scope.is_default(state.capability_scope) {
+        True -> option.None
+        False ->
+          option.Some(
+            "scope=" <> capability_scope.to_string(state.capability_scope),
+          )
+      },
       state.type_filter |> option.map(fn(t) { "type=" <> int.to_string(t) }),
       state.capability_filter
         |> option.map(fn(c) { "cap=" <> int.to_string(c) }),
@@ -321,6 +344,7 @@ fn to_state(params: UrlQueryParams) -> UrlState {
   UrlState(
     project: params.project,
     view: params.view,
+    capability_scope: params.capability_scope,
     type_filter: params.type_filter,
     capability_filter: params.capability_filter,
     search: params.search,
@@ -354,6 +378,10 @@ fn context_errors(
       list.filter_map(
         [
           #(has("view"), "view"),
+          #(
+            has("scope") && capability_scope.is_default(params.capability_scope),
+            "scope",
+          ),
           #(has("type"), "type"),
           #(has("cap"), "cap"),
           #(has("search"), "search"),
@@ -371,6 +399,7 @@ fn context_errors(
       list.filter_map(
         [
           #(has("project"), "project"),
+          #(has("scope"), "scope"),
           #(has("type"), "type"),
           #(has("cap"), "cap"),
           #(has("search"), "search"),
@@ -390,6 +419,7 @@ fn context_errors(
         [
           #(has("project"), "project"),
           #(has("view"), "view"),
+          #(has("scope"), "scope"),
           #(has("type"), "type"),
           #(has("cap"), "cap"),
           #(has("search"), "search"),
@@ -412,6 +442,8 @@ fn parse_query_params(query: String) -> ParsedParams {
   let #(project, project_error) =
     parse_optional_int_param(params, "project", InvalidProject)
   let #(view, view_error) = parse_optional_view_param(params, "view")
+  let #(capability_scope, scope_error) =
+    parse_optional_capability_scope(params, "scope")
   let #(type_filter, type_error) =
     parse_optional_int_param(params, "type", InvalidType)
   let #(capability_filter, cap_error) =
@@ -420,7 +452,15 @@ fn parse_query_params(query: String) -> ParsedParams {
   let #(expanded_card, card_error) =
     parse_optional_int_param(params, "card", InvalidCard)
 
-  let known_keys = ["project", "view", "type", "cap", "search", "card"]
+  let known_keys = [
+    "project",
+    "view",
+    "scope",
+    "type",
+    "cap",
+    "search",
+    "card",
+  ]
   let unknown_keys =
     present_keys
     |> list.filter(fn(key) { !list.contains(known_keys, key) })
@@ -430,6 +470,7 @@ fn parse_query_params(query: String) -> ParsedParams {
     UrlQueryParams(
       project: project,
       view: view,
+      capability_scope: capability_scope,
       type_filter: type_filter,
       capability_filter: capability_filter,
       search: search,
@@ -437,7 +478,7 @@ fn parse_query_params(query: String) -> ParsedParams {
     )
 
   let errors =
-    [project_error, view_error, type_error, cap_error, card_error]
+    [project_error, view_error, scope_error, type_error, cap_error, card_error]
     |> list.filter_map(fn(err) { option.to_result(err, Nil) })
 
   ParsedParams(query_params, present_keys, list.append(errors, unknown_keys))
@@ -486,10 +527,28 @@ fn parse_optional_view_param(
   }
 }
 
+fn parse_optional_capability_scope(
+  params: List(#(String, String)),
+  key: String,
+) -> #(capability_scope.CapabilityScope, option.Option(QueryError)) {
+  case get_string(params, key) {
+    option.None -> #(capability_scope.default(), option.None)
+    option.Some(raw) ->
+      case capability_scope.from_string_option(raw) {
+        option.Some(scope) -> #(scope, option.None)
+        option.None -> #(
+          capability_scope.default(),
+          option.Some(UnexpectedParam(key)),
+        )
+      }
+  }
+}
+
 fn view_param_from_raw(raw: String) -> option.Option(ViewParam) {
   case raw {
     "pool" -> option.Some(MemberView(view_mode.Pool))
     "cards" -> option.Some(MemberView(view_mode.Cards))
+    "capabilities" -> option.Some(MemberView(view_mode.Capabilities))
     "people" -> option.Some(MemberView(view_mode.People))
     "milestones" -> option.Some(MemberView(view_mode.Milestones))
     _ ->

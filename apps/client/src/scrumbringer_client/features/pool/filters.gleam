@@ -34,6 +34,7 @@ import lustre/element/html.{
 import lustre/event
 
 import domain/remote.{Loaded}
+import scrumbringer_client/capability_scope.{AllCapabilities, MyCapabilities}
 import scrumbringer_client/client_state.{type Model, type Msg, pool_msg}
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/helpers/i18n as helpers_i18n
@@ -54,9 +55,9 @@ fn count_active_filters(model: Model) -> Int {
     True -> 0
     False -> 1
   }
-  let my_caps_active = case model.member.pool.member_quick_my_caps {
-    True -> 1
-    False -> 0
+  let my_caps_active = case model.member.pool.member_capability_scope {
+    MyCapabilities -> 1
+    AllCapabilities -> 0
   }
   type_active + cap_active + search_active + my_caps_active
 }
@@ -101,7 +102,8 @@ pub fn view(model: Model) -> Element(Msg) {
     ]
   }
 
-  let my_caps_active = model.member.pool.member_quick_my_caps
+  let my_caps_active =
+    model.member.pool.member_capability_scope == MyCapabilities
 
   let my_caps_class = case my_caps_active {
     True -> "btn-xs btn-icon"
@@ -283,7 +285,14 @@ fn view_my_capabilities_toggle(
             False -> helpers_i18n.i18n_t(model, i18n_text.MyCapabilitiesOff)
           },
         ),
-        event.on_click(pool_msg(pool_messages.MemberToggleMyCapabilitiesQuick)),
+        event.on_click(
+          pool_msg(
+            pool_messages.MemberPoolCapabilityScopeChanged(case is_active {
+              True -> "all"
+              False -> "mine"
+            }),
+          ),
+        ),
       ],
       [
         case is_active {

@@ -158,6 +158,7 @@ pub type Text {
   Canvas
   List
   Kanban
+  CapabilitiesBoard
   People
   Milestones
   ShowFilters
@@ -174,6 +175,8 @@ pub type Text {
   MyCapabilitiesHint
   MyCapabilitiesOn
   MyCapabilitiesOff
+  ScopeAll
+  ScopeMine
   SearchLabel
   SearchPlaceholder
   ClearFilters
@@ -198,6 +201,14 @@ pub type Text {
   PeopleNoResults
   PeopleLoading
   PeopleLoadError
+  CapabilityBoardLoading
+  CapabilityBoardEmpty
+  CapabilityBoardNoResults
+  CapabilityBoardLoadError
+  CapabilityBoardEmptyPending
+  CapabilityBoardEmptyClaimed
+  CapabilityBoardEmptyOngoing
+  NoCapability
   MilestonesEmpty
   MilestonesNoResults
   MilestonesLoadError

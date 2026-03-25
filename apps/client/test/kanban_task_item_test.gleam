@@ -4,13 +4,14 @@ import domain/org_role.{Admin}
 import domain/task.{type Task, Task}
 import domain/task_state
 import domain/task_status
-import domain/task_type.{TaskTypeInline}
+import domain/task_type.{TaskType, TaskTypeInline}
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
 import gleeunit/should
 import lustre/element
 
+import scrumbringer_client/capability_scope
 import scrumbringer_client/features/views/kanban_board
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/theme
@@ -37,6 +38,20 @@ fn base_config(tasks: List(Task)) -> kanban_board.KanbanConfig(Int) {
     theme: theme.Default,
     cards: [card],
     tasks: tasks,
+    task_types: [
+      TaskType(
+        id: 1,
+        name: "Bug",
+        icon: "bug-ant",
+        capability_id: Some(2),
+        tasks_count: list.length(tasks),
+      ),
+    ],
+    type_filter: None,
+    capability_filter: None,
+    search_query: "",
+    capability_scope: capability_scope.AllCapabilities,
+    my_capability_ids: [],
     org_users: [
       OrgUser(
         id: 1,
@@ -151,4 +166,17 @@ pub fn kanban_card_shows_notes_indicator_test() {
     |> element.to_document_string
 
   string.contains(html, "card-notes-indicator") |> should.be_true
+}
+
+pub fn kanban_scope_mine_filters_out_tasks_outside_my_capabilities_test() {
+  let html =
+    kanban_board.KanbanConfig(
+      ..base_config([available_task()]),
+      capability_scope: capability_scope.MyCapabilities,
+      my_capability_ids: [1],
+    )
+    |> kanban_board.view
+    |> element.to_document_string
+
+  string.contains(html, "Review copy") |> should.be_false
 }

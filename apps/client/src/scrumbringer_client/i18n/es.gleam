@@ -179,6 +179,7 @@ pub fn translate(text: Text) -> String {
     text.Canvas -> "Lienzo"
     text.List -> "Lista"
     text.Kanban -> "Kanban"
+    text.CapabilitiesBoard -> "Capacidades"
     text.People -> "Personas"
     text.Milestones -> "Hitos"
     text.ShowFilters -> "Mostrar filtros"
@@ -196,6 +197,8 @@ pub fn translate(text: Text) -> String {
     text.MyCapabilitiesLabel -> "Mis capacidades"
     text.MyCapabilitiesHint ->
       "Filtrar tareas que coinciden con mis capacidades"
+    text.ScopeAll -> "Todas"
+    text.ScopeMine -> "Mías"
     text.SearchLabel -> "Buscar"
     text.SearchPlaceholder -> "q"
     text.ClearFilters -> "Limpiar"
@@ -227,6 +230,16 @@ pub fn translate(text: Text) -> String {
     text.PeopleNoResults -> "No hay personas que coincidan con la busqueda"
     text.PeopleLoading -> "Cargando personas..."
     text.PeopleLoadError -> "No se pudieron cargar las personas"
+    text.CapabilityBoardLoading -> "Cargando capacidades..."
+    text.CapabilityBoardEmpty -> "No hay tareas activas por capacidad"
+    text.CapabilityBoardNoResults ->
+      "No hay tareas activas por capacidad que coincidan con los filtros"
+    text.CapabilityBoardLoadError ->
+      "No se pudo cargar la vista por capacidades"
+    text.CapabilityBoardEmptyPending -> "Sin tareas pendientes"
+    text.CapabilityBoardEmptyClaimed -> "Sin tareas reclamadas"
+    text.CapabilityBoardEmptyOngoing -> "Sin tareas en curso"
+    text.NoCapability -> "Sin capacidad"
     text.MilestonesEmpty -> "Aun no hay hitos"
     text.MilestonesNoResults -> "No hay hitos que coincidan con los filtros"
     text.MilestonesLoadError -> "No se pudieron cargar los hitos"

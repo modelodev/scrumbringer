@@ -14,6 +14,7 @@ import domain/task.{type Task}
 import domain/task_status
 import domain/task_type.{type TaskType}
 import domain/view_mode
+import scrumbringer_client/capability_scope
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member/milestone_details_tab
 import scrumbringer_client/client_state/types as state_types
@@ -84,7 +85,7 @@ pub type Model {
     member_filters_type_id: Option(Int),
     member_filters_capability_id: Option(Int),
     member_filters_q: String,
-    member_quick_my_caps: Bool,
+    member_capability_scope: capability_scope.CapabilityScope,
     member_pool_filters_visible: Bool,
     member_pool_view_mode: pool_prefs.ViewMode,
     member_list_hide_completed: Bool,
@@ -149,7 +150,7 @@ pub fn default_model() -> Model {
     member_filters_type_id: option.None,
     member_filters_capability_id: option.None,
     member_filters_q: "",
-    member_quick_my_caps: True,
+    member_capability_scope: capability_scope.default(),
     member_pool_filters_visible: False,
     member_pool_view_mode: pool_prefs.Canvas,
     member_list_hide_completed: True,

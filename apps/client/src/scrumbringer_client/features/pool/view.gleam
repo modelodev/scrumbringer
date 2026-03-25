@@ -25,7 +25,6 @@ import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option as opt
-import gleam/string
 
 import lustre/attribute
 import lustre/element.{type Element}
@@ -49,6 +48,7 @@ import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/panel as now_working_panel
 import scrumbringer_client/features/pool/filters as pool_filters
 import scrumbringer_client/features/pool/msg as pool_messages
+import scrumbringer_client/features/work_filters
 import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/helpers/selection as helpers_selection
 import scrumbringer_client/i18n/text as i18n_text
@@ -87,10 +87,29 @@ fn get_available_tasks_state(model: Model) -> AvailableTasksState {
     NotAsked | Loading -> TasksLoading
     Failed(err) -> TasksError(err.message)
     Loaded(tasks) -> {
+      let task_types = case model.member.pool.member_task_types {
+        Loaded(task_types) -> task_types
+        _ -> []
+      }
+      let my_capability_ids = case
+        model.member.skills.member_my_capability_ids
+      {
+        Loaded(ids) -> ids
+        _ -> []
+      }
+      let filters =
+        work_filters.Filters(
+          type_filter: model.member.pool.member_filters_type_id,
+          capability_filter: model.member.pool.member_filters_capability_id,
+          search_query: model.member.pool.member_filters_q,
+          capability_scope: model.member.pool.member_capability_scope,
+          my_capability_ids: my_capability_ids,
+          task_types: task_types,
+        )
       let available =
         list.filter(tasks, fn(t) {
           let Task(status: status, ..) = t
-          status == Available
+          status == Available && work_filters.matches(filters, t)
         })
       case available {
         [] -> TasksEmpty(has_filters: has_active_filters(model))
@@ -102,9 +121,23 @@ fn get_available_tasks_state(model: Model) -> AvailableTasksState {
 
 /// Checks if any filters are active.
 fn has_active_filters(model: Model) -> Bool {
-  model.member.pool.member_filters_type_id != opt.None
-  || model.member.pool.member_filters_capability_id != opt.None
-  || string.trim(model.member.pool.member_filters_q) != ""
+  let task_types = case model.member.pool.member_task_types {
+    Loaded(task_types) -> task_types
+    _ -> []
+  }
+  let my_capability_ids = case model.member.skills.member_my_capability_ids {
+    Loaded(ids) -> ids
+    _ -> []
+  }
+
+  work_filters.has_active_filters(work_filters.Filters(
+    type_filter: model.member.pool.member_filters_type_id,
+    capability_filter: model.member.pool.member_filters_capability_id,
+    search_query: model.member.pool.member_filters_q,
+    capability_scope: model.member.pool.member_capability_scope,
+    my_capability_ids: my_capability_ids,
+    task_types: task_types,
+  ))
 }
 
 fn task_highlight_classes(model: Model, task_id: Int) -> String {
@@ -426,6 +459,8 @@ pub fn view_pool_task_row(model: Model, task: Task) -> Element(Msg) {
         task_blocked_badge.view(model.ui.locale, task, "task-blocked-inline"),
       ]),
       actions: [div([attribute.class("task-row-actions")], claim_actions)],
+      reserve_actions_slot: False,
+      action_slot_class: opt.None,
       testid: opt.None,
     ),
     task_item.Div,

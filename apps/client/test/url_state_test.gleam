@@ -2,6 +2,7 @@ import domain/view_mode
 import gleam/option.{Some}
 import gleam/uri
 import gleeunit/should
+import scrumbringer_client/capability_scope
 import scrumbringer_client/url_state
 
 // =============================================================================
@@ -14,6 +15,9 @@ pub fn parse_empty_url_test() {
 
   state |> url_state.project |> should.be_none
   state |> url_state.view |> should.equal(view_mode.Pool)
+  state
+  |> url_state.capability_scope
+  |> should.equal(capability_scope.AllCapabilities)
   state |> url_state.type_filter |> should.be_none
   state |> url_state.capability_filter |> should.be_none
   state |> url_state.search |> should.be_none
@@ -42,6 +46,13 @@ pub fn parse_view_mode_cards_test() {
   state |> url_state.view |> should.equal(view_mode.Cards)
 }
 
+pub fn parse_view_mode_capabilities_test() {
+  let assert Ok(uri) = uri.parse("/app?view=capabilities")
+  let state = unwrap_parse(url_state.parse(uri, url_state.Member))
+
+  state |> url_state.view |> should.equal(view_mode.Capabilities)
+}
+
 pub fn parse_view_mode_people_test() {
   let assert Ok(uri) = uri.parse("/app?view=people")
   let state = unwrap_parse(url_state.parse(uri, url_state.Member))
@@ -51,11 +62,16 @@ pub fn parse_view_mode_people_test() {
 
 pub fn parse_full_url_test() {
   let assert Ok(uri) =
-    uri.parse("/app?project=8&view=milestones&type=2&cap=3&search=bug&card=15")
+    uri.parse(
+      "/app?project=8&view=milestones&scope=mine&type=2&cap=3&search=bug&card=15",
+    )
   let state = unwrap_parse(url_state.parse(uri, url_state.Member))
 
   state |> url_state.project |> should.equal(Some(8))
   state |> url_state.view |> should.equal(view_mode.Milestones)
+  state
+  |> url_state.capability_scope
+  |> should.equal(capability_scope.MyCapabilities)
   state |> url_state.type_filter |> should.equal(Some(2))
   state |> url_state.capability_filter |> should.equal(Some(3))
   state |> url_state.search |> should.equal(Some("bug"))
@@ -138,6 +154,16 @@ pub fn with_type_filter_test() {
   state |> url_state.type_filter |> should.equal(Some(2))
 }
 
+pub fn with_capability_scope_test() {
+  let state =
+    url_state.empty()
+    |> url_state.with_capability_scope(capability_scope.MyCapabilities)
+
+  state
+  |> url_state.capability_scope
+  |> should.equal(capability_scope.MyCapabilities)
+}
+
 pub fn with_capability_filter_test() {
   let state =
     url_state.empty()
@@ -166,12 +192,16 @@ pub fn builder_chain_test() {
   let state =
     url_state.empty()
     |> url_state.with_project(8)
+    |> url_state.with_capability_scope(capability_scope.MyCapabilities)
     |> url_state.with_view(view_mode.Cards)
     |> url_state.with_type_filter(Some(2))
     |> url_state.with_search(Some("bug"))
 
   state |> url_state.project |> should.equal(Some(8))
   state |> url_state.view |> should.equal(view_mode.Cards)
+  state
+  |> url_state.capability_scope
+  |> should.equal(capability_scope.MyCapabilities)
   state |> url_state.type_filter |> should.equal(Some(2))
   state |> url_state.search |> should.equal(Some("bug"))
 }
@@ -180,6 +210,7 @@ pub fn clear_filters_test() {
   let state =
     url_state.empty()
     |> url_state.with_project(8)
+    |> url_state.with_capability_scope(capability_scope.MyCapabilities)
     |> url_state.with_type_filter(Some(2))
     |> url_state.with_capability_filter(Some(3))
     |> url_state.with_search(Some("test"))
@@ -190,6 +221,9 @@ pub fn clear_filters_test() {
   state |> url_state.project |> should.equal(Some(8))
   // View should remain at default
   state |> url_state.view |> should.equal(view_mode.Pool)
+  state
+  |> url_state.capability_scope
+  |> should.equal(capability_scope.AllCapabilities)
   // Filters should be cleared
   state |> url_state.type_filter |> should.be_none
   state |> url_state.capability_filter |> should.be_none
@@ -218,6 +252,15 @@ pub fn to_query_string_with_project_test() {
   query |> should.equal("project=8")
 }
 
+pub fn to_query_string_with_scope_test() {
+  let query =
+    url_state.empty()
+    |> url_state.with_capability_scope(capability_scope.MyCapabilities)
+    |> url_state.to_query_string
+
+  query |> should.equal("scope=mine")
+}
+
 pub fn to_query_string_full_test() {
   let query =
     url_state.empty()
@@ -241,6 +284,16 @@ pub fn to_query_string_people_test() {
     |> url_state.to_query_string
 
   query |> should.equal("project=8&view=people")
+}
+
+pub fn to_query_string_capabilities_test() {
+  let query =
+    url_state.empty()
+    |> url_state.with_project(8)
+    |> url_state.with_view(view_mode.Capabilities)
+    |> url_state.to_query_string
+
+  query |> should.equal("project=8&view=capabilities")
 }
 
 // =============================================================================

@@ -80,6 +80,14 @@ pub fn css() -> List(String) {
     ".task-type-icon { flex-shrink: 0; display: flex; align-items: center; justify-content: center; }",
     ".task-item .task-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }",
     ".task-item .task-actions { display: flex; gap: 4px; flex-shrink: 0; }",
+    ".task-item-action-slot { display: flex; align-items: center; justify-content: flex-end; min-width: 28px; min-height: 28px; flex-shrink: 0; }",
+    ".task-item-action-slot-placeholder { display: block; width: 28px; height: 28px; visibility: hidden; }",
+    ".task-item-action-slot-compact { min-width: 20px; min-height: 20px; }",
+    ".task-item-action-slot-compact .task-item-action-slot-placeholder { width: 20px; height: 20px; }",
+    ".scope-toggle { display: inline-flex; border: 1px solid var(--sb-border); border-radius: 8px; overflow: hidden; background: var(--sb-surface); }",
+    ".scope-toggle-btn { border: none; background: transparent; color: var(--sb-muted); padding: 6px 10px; font-size: 12px; cursor: pointer; }",
+    ".scope-toggle-btn + .scope-toggle-btn { border-left: 1px solid var(--sb-border); }",
+    ".scope-toggle-btn.is-active { background: var(--sb-primary); color: white; }",
     ".active-task-card .task-title-row { justify-content: center; }",
     ".active-task-card .task-title { text-align: center; font-weight: 500; }",
     // My cards list (right panel)
@@ -295,6 +303,7 @@ pub fn css() -> List(String) {
     "@media (max-width: 1024px) { .kanban-board { grid-template-columns: 1fr; } }",
     ".kanban-column { background: var(--sb-bg); border: 1px solid var(--sb-border); border-radius: 12px; display: flex; flex-direction: column; min-height: 200px; }",
     ".kanban-column.pendiente { border-top: 3px solid var(--sb-muted); }",
+    ".kanban-column.claimed { border-top: 3px solid var(--sb-warning); }",
     ".kanban-column.en-curso { border-top: 3px solid var(--sb-primary); }",
     ".kanban-column.cerrada { border-top: 3px solid var(--sb-success); }",
     ".kanban-column-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--sb-border); }",
@@ -347,6 +356,13 @@ pub fn css() -> List(String) {
     ".btn-claim-mini { background: transparent; border: none; cursor: pointer; padding: 2px; border-radius: 4px; color: var(--sb-muted); opacity: 0; transition: opacity 0.15s, color 0.15s; display: flex; align-items: center; justify-content: center; }",
     ".kanban-task-item:hover .btn-claim-mini { opacity: 1; }",
     ".btn-claim-mini:hover { color: var(--sb-primary); background: var(--sb-surface); }",
+    ".capability-board { display: flex; flex-direction: column; gap: 12px; min-height: 100%; }",
+    ".capability-board-rows { display: flex; flex-direction: column; gap: 16px; }",
+    ".capability-board-row { display: flex; flex-direction: column; gap: 10px; }",
+    ".capability-board-row-title { margin: 0; font-size: 14px; font-weight: 700; }",
+    ".capability-board-row-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }",
+    ".capability-board-column-content { min-height: 120px; list-style: none; margin: 0; }",
+    "@media (max-width: 1024px) { .capability-board-row-grid { grid-template-columns: 1fr; } }",
     // =============================================================================
     // Responsive Drawers (Story 4.4 - Phase 6)
     // =============================================================================

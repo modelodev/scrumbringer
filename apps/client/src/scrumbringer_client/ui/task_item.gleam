@@ -22,6 +22,8 @@ pub type Config(msg) {
     title_class: Option(String),
     secondary: lelement.Element(msg),
     actions: List(lelement.Element(msg)),
+    reserve_actions_slot: Bool,
+    action_slot_class: Option(String),
     testid: Option(String),
   )
 }
@@ -37,6 +39,8 @@ pub fn view(config: Config(msg), wrapper: Wrapper) -> lelement.Element(msg) {
     title_class: title_class,
     secondary: secondary,
     actions: actions,
+    reserve_actions_slot: reserve_actions_slot,
+    action_slot_class: action_slot_class,
     testid: testid,
   ) = config
 
@@ -85,7 +89,21 @@ pub fn view(config: Config(msg), wrapper: Wrapper) -> lelement.Element(msg) {
       ])
   }
 
-  let children = [content, ..actions]
+  let slot_class = case action_slot_class {
+    Some(value) -> "task-item-action-slot " <> value
+    None -> "task-item-action-slot"
+  }
+
+  let actions_slot = case actions, reserve_actions_slot {
+    [], False -> lelement.none()
+    [], True ->
+      div([attribute.class(slot_class)], [
+        span([attribute.class("task-item-action-slot-placeholder")], []),
+      ])
+    _, _ -> div([attribute.class(slot_class)], actions)
+  }
+
+  let children = [content, actions_slot]
 
   case wrapper {
     Div -> div(container_attrs, children)
