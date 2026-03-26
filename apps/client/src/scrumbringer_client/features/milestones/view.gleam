@@ -21,6 +21,7 @@ import lustre/event
 
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member/pool as member_pool
+import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/milestones/content_pane
 import scrumbringer_client/features/milestones/ids as milestone_ids
 import scrumbringer_client/features/milestones/list_pane
@@ -30,7 +31,6 @@ import scrumbringer_client/helpers/selection as helpers_selection
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/permissions
 import scrumbringer_client/ui/action_buttons
-import scrumbringer_client/ui/action_row
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/card_with_tasks_preview
 import scrumbringer_client/ui/confirm_dialog
@@ -40,6 +40,9 @@ import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/form_field
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/move_menu
+import scrumbringer_client/ui/task_blocked_badge
+import scrumbringer_client/ui/task_item
+import scrumbringer_client/ui/task_type_icon
 
 pub fn view(model: client_state.Model) -> Element(client_state.Msg) {
   let content = case model.member.pool.member_milestones {
@@ -199,17 +202,7 @@ fn view_selected_milestone_detail(
         empty_cards: empty_cards,
         cards_section: view_cards_section(model, milestone_id),
         loose_tasks_panel: view_loose_tasks_panel(model, milestone_id),
-        actions: action_row.view(
-          [
-            view_quick_create_card_button(model, milestone_id),
-            view_quick_create_task_button(model, milestone_id),
-          ],
-          [view_activate_button(model, progress)],
-          [
-            view_edit_button(model, progress),
-            view_delete_button(model, progress),
-          ],
-        ),
+        actions: detail_header_actions(model, progress, milestone_id),
         metrics_summary: view_milestone_metrics_summary(model),
         summary_expanded: model.member.pool.member_milestone_summary_expanded,
         on_summary_toggle: client_state.pool_msg(
@@ -346,21 +339,15 @@ fn view_quick_create_card_button(
 ) -> Element(client_state.Msg) {
   case can_manage_milestones(model) {
     True ->
-      button(
-        [
-          attribute.class("btn btn-sm btn-primary"),
-          attribute.attribute("type", "button"),
-          attribute.attribute(
-            "data-testid",
-            "milestone-quick-new-card:" <> int.to_string(milestone_id),
-          ),
-          event.on_click(
-            client_state.pool_msg(
-              pool_messages.MemberMilestoneCreateCardClicked(milestone_id),
-            ),
-          ),
-        ],
-        [text("+ " <> helpers_i18n.i18n_t(model, i18n_text.QuickCard))],
+      action_buttons.add_icon_button_with_size_and_testid(
+        helpers_i18n.i18n_t(model, i18n_text.QuickCard),
+        client_state.pool_msg(pool_messages.MemberMilestoneCreateCardClicked(
+          milestone_id,
+        )),
+        action_buttons.SizeXs,
+        icons.Cards,
+        option.Some("milestone-quick-new-card:" <> int.to_string(milestone_id)),
+        option.Some("btn-create-card"),
       )
     False -> none()
   }
@@ -372,24 +359,32 @@ fn view_quick_create_task_button(
 ) -> Element(client_state.Msg) {
   case can_manage_milestones(model) {
     True ->
-      button(
-        [
-          attribute.class("btn btn-sm btn-secondary"),
-          attribute.attribute("type", "button"),
-          attribute.attribute(
-            "data-testid",
-            "milestone-quick-new-task:" <> int.to_string(milestone_id),
-          ),
-          event.on_click(
-            client_state.pool_msg(
-              pool_messages.MemberMilestoneCreateTaskClicked(milestone_id),
-            ),
-          ),
-        ],
-        [text("+ " <> helpers_i18n.i18n_t(model, i18n_text.QuickTask))],
+      action_buttons.add_icon_button_with_size_and_testid(
+        helpers_i18n.i18n_t(model, i18n_text.QuickTask),
+        client_state.pool_msg(pool_messages.MemberMilestoneCreateTaskClicked(
+          milestone_id,
+        )),
+        action_buttons.SizeXs,
+        icons.ClipboardDoc,
+        option.Some("milestone-quick-new-task:" <> int.to_string(milestone_id)),
+        option.Some("btn-create-task"),
       )
     False -> none()
   }
+}
+
+fn detail_header_actions(
+  model: client_state.Model,
+  progress: MilestoneProgress,
+  milestone_id: Int,
+) -> List(Element(client_state.Msg)) {
+  [
+    view_quick_create_card_button(model, milestone_id),
+    view_quick_create_task_button(model, milestone_id),
+    view_activate_button(model, progress),
+    view_edit_button(model, progress),
+    view_delete_button(model, progress),
+  ]
 }
 
 fn view_activate_button(
@@ -554,6 +549,11 @@ fn view_cards_section(
                       version,
                     ))
                   },
+                  header_actions: card_header_actions(
+                    model,
+                    card_id,
+                    card.title,
+                  ),
                   footer_actions: case can_move {
                     True -> [
                       view_move_card_actions(
@@ -654,7 +654,7 @@ fn view_loose_tasks_section(
 
             #(int.to_string(task_id), {
               let attrs = [
-                attribute.class("milestone-card-row detail-item-row"),
+                attribute.class("milestone-task-row detail-item-row"),
                 attribute.attribute(
                   "data-testid",
                   "milestone-task-row:"
@@ -690,23 +690,56 @@ fn view_loose_tasks_section(
                 False -> attrs
               }
 
-              div(attrs, [
-                p([attribute.class("milestone-card-title")], [text(title)]),
-                div([attribute.class("milestone-card-actions")], [
-                  span([attribute.class("milestone-card-progress")], [
+              let secondary =
+                div([attribute.class("task-item-meta milestone-task-meta")], [
+                  span([attribute.class("milestone-task-status")], [
                     text(task_status_to_short(model, status)),
                   ]),
-                  case can_move {
-                    True ->
-                      view_move_task_actions(
-                        model,
-                        task_id,
-                        milestone_id,
-                        destinations,
-                      )
-                    False -> none()
-                  },
-                ]),
+                  task_blocked_badge.view(
+                    model.ui.locale,
+                    task,
+                    "task-blocked-inline",
+                  ),
+                ])
+
+              let actions = case can_move {
+                True -> [
+                  view_move_task_actions(
+                    model,
+                    task_id,
+                    milestone_id,
+                    destinations,
+                  ),
+                ]
+                False -> task_item.no_actions()
+              }
+
+              div(attrs, [
+                task_item.view(
+                  task_item.Config(
+                    container_class: "task-item milestone-task-item",
+                    content_class: "task-item-content milestone-task-content",
+                    on_click: option.Some(
+                      client_state.pool_msg(
+                        pool_messages.MemberTaskDetailsOpened(task_id),
+                      ),
+                    ),
+                    icon: option.Some(task_type_icon.view(
+                      task.task_type.icon,
+                      14,
+                      model.ui.theme,
+                    )),
+                    icon_class: option.None,
+                    title: title,
+                    title_class: option.Some("milestone-card-title"),
+                    secondary: secondary,
+                    actions: actions,
+                    reserve_actions_slot: can_move,
+                    action_slot_class: option.Some("milestone-task-action-slot"),
+                    testid: option.None,
+                  ),
+                  task_item.Div,
+                ),
               ])
             })
           }),
@@ -862,6 +895,41 @@ fn view_move_card_actions(
       )
     }),
   )
+}
+
+fn card_header_actions(
+  model: client_state.Model,
+  card_id: Int,
+  card_title: String,
+) -> List(Element(client_state.Msg)) {
+  let create_task_action =
+    action_buttons.create_task_in_card_button(
+      helpers_i18n.i18n_t(model, i18n_text.NewTaskInCard(card_title)),
+      client_state.pool_msg(pool_messages.MemberCreateDialogOpenedWithCard(
+        card_id,
+      )),
+    )
+
+  case can_manage_milestones(model) {
+    True -> [
+      create_task_action,
+      action_buttons.edit_button_with_size(
+        helpers_i18n.i18n_t(model, i18n_text.EditCardTooltip),
+        client_state.pool_msg(
+          pool_messages.OpenCardDialog(state_types.CardDialogEdit(card_id)),
+        ),
+        action_buttons.SizeXs,
+      ),
+      action_buttons.delete_button_with_size(
+        helpers_i18n.i18n_t(model, i18n_text.DeleteCardTooltip),
+        client_state.pool_msg(
+          pool_messages.OpenCardDialog(state_types.CardDialogDelete(card_id)),
+        ),
+        action_buttons.SizeXs,
+      ),
+    ]
+    False -> [create_task_action]
+  }
 }
 
 fn view_move_task_actions(

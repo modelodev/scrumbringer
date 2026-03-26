@@ -26,7 +26,6 @@ pub fn kanban_board_renders_empty_column_texts_test() {
       on_card_click: fn(id) { id },
       on_card_edit: fn(id) { id },
       on_card_delete: fn(id) { id },
-      on_new_card: 0,
       on_task_click: fn(id) { id },
       on_task_claim: fn(a, b) { a + b },
       on_create_task_in_card: fn(id) { id },

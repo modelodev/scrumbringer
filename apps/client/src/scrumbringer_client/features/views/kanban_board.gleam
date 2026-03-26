@@ -15,18 +15,16 @@
 
 import gleam/int
 import gleam/list
-import gleam/option.{type Option, None, Some}
-import gleam/string
+import gleam/option
 import lustre/attribute
 import lustre/element.{type Element}
-import lustre/element/html.{button, div, h4, span, text}
+import lustre/element/html.{div, h4, span, text}
 import lustre/element/keyed
-import lustre/event
 
 import domain/card.{type Card, type CardState, Cerrada, EnCurso, Pendiente}
 import domain/org.{type OrgUser}
-import domain/task.{type Task, claimed_by}
-import domain/task_status.{Available, Claimed, Completed}
+import domain/task.{type Task}
+import domain/task_status.{Completed}
 import domain/task_type.{type TaskType}
 import scrumbringer_client/capability_scope.{type CapabilityScope}
 import scrumbringer_client/features/work_filters
@@ -35,17 +33,8 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
-import scrumbringer_client/ui/action_menu
-import scrumbringer_client/ui/card_progress
-import scrumbringer_client/ui/card_title_meta
+import scrumbringer_client/ui/card_with_tasks_surface
 import scrumbringer_client/ui/icons
-import scrumbringer_client/ui/task_actions
-import scrumbringer_client/ui/task_blocked_badge
-import scrumbringer_client/ui/task_color
-import scrumbringer_client/ui/task_item
-import scrumbringer_client/ui/task_type_icon
-import scrumbringer_client/utils/card_queries
-import scrumbringer_client/utils/text as text_utils
 
 // =============================================================================
 // Types
@@ -59,8 +48,8 @@ pub type KanbanConfig(msg) {
     cards: List(Card),
     tasks: List(Task),
     task_types: List(TaskType),
-    type_filter: Option(Int),
-    capability_filter: Option(Int),
+    type_filter: option.Option(Int),
+    capability_filter: option.Option(Int),
     search_query: String,
     capability_scope: CapabilityScope,
     my_capability_ids: List(Int),
@@ -70,7 +59,6 @@ pub type KanbanConfig(msg) {
     on_card_click: fn(Int) -> msg,
     on_card_edit: fn(Int) -> msg,
     on_card_delete: fn(Int) -> msg,
-    on_new_card: msg,
     // Story 4.8 UX: Task interaction handlers for consistency with Lista view
     on_task_click: fn(Int) -> msg,
     on_task_claim: fn(Int, Int) -> msg,
@@ -218,164 +206,58 @@ fn view_empty_column(
 }
 
 fn view_card(config: KanbanConfig(msg), cwp: CardWithProgress) -> Element(msg) {
-  div(
-    [
-      attribute.class("kanban-card"),
+  card_with_tasks_surface.view(card_with_tasks_surface.Config(
+    locale: config.locale,
+    theme: config.theme,
+    card: cwp.card,
+    tasks: cwp.tasks,
+    org_users: config.org_users,
+    preview_limit: 5,
+    surface_variant: card_with_tasks_surface.Kanban,
+    task_density: card_with_tasks_surface.Compact,
+    progress_completed: cwp.completed,
+    progress_total: cwp.total,
+    description: option.Some(cwp.card.description),
+    on_card_click: option.Some(config.on_card_click(cwp.card.id)),
+    on_task_click: config.on_task_click,
+    on_task_claim: config.on_task_claim,
+    header_actions: header_actions(config, cwp.card.id, cwp.card.title),
+    footer_actions: [],
+    root_attributes: [
       attribute.attribute("data-testid", "card-item"),
       attribute.attribute("data-card-id", int.to_string(cwp.card.id)),
     ],
-    [
-      // Card header with title and context menu
-      div([attribute.class("kanban-card-header")], [
-        button(
-          [
-            attribute.class("kanban-card-title"),
-            attribute.attribute("data-testid", "card-title"),
-            event.on_click(config.on_card_click(cwp.card.id)),
-          ],
-          card_title_meta.elements(
-            text(cwp.card.title),
-            cwp.card.color,
-            None,
-            cwp.card.has_new_notes,
-            i18n.t(config.locale, i18n_text.NewNotesTooltip),
-            card_title_meta.ColorTitleNotes,
-          ),
-        ),
-        // Context menu for PM/Admin
-        case config.is_pm_or_admin {
-          True -> view_context_menu(config, cwp.card.id)
-          False -> element.none()
-        },
-      ]),
-      // Description (truncated)
-      case cwp.card.description {
-        "" -> element.none()
-        desc ->
-          div([attribute.class("kanban-card-desc")], [
-            text(text_utils.truncate(desc, 80)),
-          ])
-      },
-      // Progress bar
-      div([attribute.class("kanban-card-progress")], [
-        card_progress.view(cwp.completed, cwp.total, card_progress.Default),
-      ]),
-      // Task list (Story 4.5 AC29, Story 4.8 UX: improved styling)
-      view_task_list(config, cwp.tasks),
-      // Story 4.12 AC8-AC9: [+] Nueva tarea button
-      div([attribute.class("kanban-card-footer")], [
-        action_buttons.create_task_in_card_button(
-          i18n.t(config.locale, i18n_text.NewTaskInCard(cwp.card.title)),
-          config.on_create_task_in_card(cwp.card.id),
-        ),
-      ]),
-    ],
-  )
+    task_item_testid: option.Some("kanban-task-item"),
+  ))
 }
 
-/// Renders a compact list of tasks within the card (AC29, Story 4.8 UX)
-/// Now uses consistent styling with Vista Lista: status icons, claimed info, claim button
-fn view_task_list(config: KanbanConfig(msg), tasks: List(Task)) -> Element(msg) {
-  case list.length(tasks) {
-    0 -> element.none()
-    _ ->
-      keyed.div(
-        [
-          attribute.class("kanban-card-tasks"),
-          attribute.attribute("data-testid", "card-tasks"),
-        ],
-        list.map(list.take(tasks, 5), fn(t) {
-          #(int.to_string(t.id), view_task_item(config, t))
-        }),
-      )
+fn header_actions(
+  config: KanbanConfig(msg),
+  card_id: Int,
+  card_title: String,
+) -> List(Element(msg)) {
+  let create_task_action =
+    action_buttons.create_task_in_card_button(
+      i18n.t(config.locale, i18n_text.NewTaskInCard(card_title)),
+      config.on_create_task_in_card(card_id),
+    )
+
+  case config.is_pm_or_admin {
+    True -> [
+      create_task_action,
+      action_buttons.edit_button_with_size(
+        i18n.t(config.locale, i18n_text.EditCardTooltip),
+        config.on_card_edit(card_id),
+        action_buttons.SizeXs,
+      ),
+      action_buttons.delete_button_with_size(
+        i18n.t(config.locale, i18n_text.DeleteCardTooltip),
+        config.on_card_delete(card_id),
+        action_buttons.SizeXs,
+      ),
+    ]
+    False -> [create_task_action]
   }
-}
-
-/// Renders a single task item with status icon, title, and actions
-/// Story 4.8 UX: Consistent with grouped_list task rendering
-fn view_task_item(config: KanbanConfig(msg), task: Task) -> Element(msg) {
-  // Secondary info: claimed by for taken/ongoing tasks
-  let secondary_info = case task.status {
-    Claimed(_) -> {
-      let claimed_name = case claimed_by(task) {
-        Some(user_id) ->
-          list.find(config.org_users, fn(u) { u.id == user_id })
-          |> option.from_result
-          |> option.map(fn(u) { truncate_email(u.email) })
-          |> option.unwrap("?")
-        None -> "?"
-      }
-      span([attribute.class("task-claimed-by")], [text(claimed_name)])
-    }
-    _ -> element.none()
-  }
-
-  let type_icon = task.task_type.icon
-  let #(_card_title_opt, resolved_color) =
-    card_queries.resolve_task_card_info_from_cards(config.cards, task)
-  let border_class = task_color.card_border_class(resolved_color)
-  let blocked_class = case task.blocked_count > 0 {
-    True -> " task-blocked"
-    False -> ""
-  }
-  let secondary =
-    div([attribute.class("task-item-meta")], [
-      secondary_info,
-      task_blocked_badge.view(config.locale, task, "task-blocked-inline"),
-    ])
-
-  let actions = case task.status {
-    Available ->
-      task_item.single_action(task_actions.claim_icon_with_class(
-        i18n.t(config.locale, i18n_text.Claim),
-        config.on_task_claim(task.id, task.version),
-        icons.XSmall,
-        False,
-        "btn-claim-mini",
-        None,
-        None,
-      ))
-    _ -> task_item.no_actions()
-  }
-
-  task_item.view(
-    task_item.Config(
-      container_class: "kanban-task-item " <> border_class <> blocked_class,
-      content_class: "kanban-task-content",
-      on_click: Some(config.on_task_click(task.id)),
-      icon: Some(task_type_icon.view(type_icon, 14, config.theme)),
-      icon_class: None,
-      title: text_utils.truncate(task.title, 25),
-      title_class: None,
-      secondary: secondary,
-      actions: actions,
-      reserve_actions_slot: True,
-      action_slot_class: Some("task-item-action-slot-compact"),
-      testid: Some("kanban-task-item"),
-    ),
-    task_item.Div,
-  )
-}
-
-/// Truncates email to show only the local part (before @)
-fn truncate_email(email: String) -> String {
-  case string.split(email, "@") {
-    [local, ..] -> text_utils.truncate(local, 10)
-    _ -> text_utils.truncate(email, 10)
-  }
-}
-
-fn view_context_menu(config: KanbanConfig(msg), card_id: Int) -> Element(msg) {
-  action_menu.view(
-    "⋯",
-    "card-context-menu",
-    Some("Card actions"),
-    "kanban-card-menu",
-    "btn btn-xs btn-ghost kanban-card-menu-trigger",
-    "kanban-card-menu-actions",
-    "btn btn-xs btn-ghost kanban-card-menu-option",
-    [action_menu.item("Editar", "card-edit-btn", config.on_card_edit(card_id))],
-  )
 }
 
 // =============================================================================
@@ -387,7 +269,8 @@ fn compute_progress(
   tasks: List(Task),
 ) -> List(CardWithProgress) {
   list.map(cards, fn(card) {
-    let card_tasks = list.filter(tasks, fn(t) { t.card_id == Some(card.id) })
+    let card_tasks =
+      list.filter(tasks, fn(t) { t.card_id == option.Some(card.id) })
     let completed = list.count(card_tasks, fn(t) { t.status == Completed })
     let total = list.length(card_tasks)
     CardWithProgress(

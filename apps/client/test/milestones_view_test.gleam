@@ -614,7 +614,7 @@ pub fn milestones_view_detail_renders_quick_new_card_cta_test() {
 
   string.contains(html, "data-testid=\"milestone-quick-new-card:92\"")
   |> should.be_true
-  string.contains(html, "+ Card") |> should.be_true
+  string.contains(html, "aria-label=\"Card\"") |> should.be_true
 }
 
 pub fn milestones_view_detail_renders_quick_new_task_cta_test() {
@@ -628,7 +628,7 @@ pub fn milestones_view_detail_renders_quick_new_task_cta_test() {
 
   string.contains(html, "data-testid=\"milestone-quick-new-task:98\"")
   |> should.be_true
-  string.contains(html, "+ Task") |> should.be_true
+  string.contains(html, "aria-label=\"Task\"") |> should.be_true
 }
 
 pub fn milestones_view_keeps_quick_new_card_entrypoint_available_for_mobile_strategy_test() {
@@ -730,7 +730,7 @@ pub fn milestones_view_detail_shows_move_actions_only_for_ready_destinations_tes
   |> should.be_true
 }
 
-pub fn milestones_view_uses_shared_action_row_layout_test() {
+pub fn milestones_view_uses_header_action_cluster_layout_test() {
   let html =
     base_model()
     |> with_admin_user
@@ -739,7 +739,7 @@ pub fn milestones_view_uses_shared_action_row_layout_test() {
     |> milestones_view.view
     |> element.to_document_string
 
-  string.contains(html, "class=\"action-row\"")
+  string.contains(html, "class=\"milestone-detail-actions\"")
   |> should.be_true
 }
 

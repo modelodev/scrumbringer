@@ -807,9 +807,6 @@ fn build_center_panel(
           pool_messages.OpenCardDialog(state_types.CardDialogDelete(card_id)),
         )
       },
-      on_new_card: client_state.pool_msg(pool_messages.OpenCardDialog(
-        state_types.CardDialogCreate,
-      )),
       // Story 4.8 UX: Task interaction handlers for consistency with Lista view
       on_task_click: fn(task_id) {
         client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))

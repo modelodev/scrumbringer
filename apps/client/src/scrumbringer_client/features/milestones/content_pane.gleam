@@ -23,7 +23,7 @@ pub type Config(msg) {
     empty_cards: Int,
     cards_section: Element(msg),
     loose_tasks_panel: Element(msg),
-    actions: Element(msg),
+    actions: List(Element(msg)),
     metrics_summary: Element(msg),
     summary_expanded: Bool,
     on_summary_toggle: msg,
@@ -99,7 +99,7 @@ fn stat_pill(model: client_state.Model, label: i18n_text.Text) -> Element(msg) {
 }
 
 fn view_header_actions(config: Config(msg)) -> Element(msg) {
-  div([attribute.class("milestone-detail-actions")], [config.actions])
+  div([attribute.class("milestone-detail-actions")], config.actions)
 }
 
 fn view_summary_block(config: Config(msg)) -> Element(msg) {
