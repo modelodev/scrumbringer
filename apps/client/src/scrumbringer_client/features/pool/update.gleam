@@ -1957,6 +1957,7 @@ fn update_without_milestones(
     | pool_messages.MemberMilestonesShowCompletedToggled
     | pool_messages.MemberMilestonesShowEmptyToggled
     | pool_messages.MemberMilestoneSearchChanged(_)
+    | pool_messages.MemberMilestoneSummaryToggled
     | pool_messages.MemberMilestoneDetailsClicked(_)
     | pool_messages.MemberMilestoneCreateTaskClicked(_)
     | pool_messages.MemberMilestoneCreateCardClicked(_)

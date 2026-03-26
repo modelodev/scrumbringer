@@ -96,6 +96,7 @@ pub type Msg {
   MemberMilestonesShowCompletedToggled
   MemberMilestonesShowEmptyToggled
   MemberMilestoneSearchChanged(String)
+  MemberMilestoneSummaryToggled
   MemberMilestoneDetailsClicked(Int)
   MemberMilestoneMetricsFetched(ApiResult(MilestoneModalMetrics))
   MemberMilestoneCreateTaskClicked(Int)

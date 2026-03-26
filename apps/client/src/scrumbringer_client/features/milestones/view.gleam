@@ -191,15 +191,15 @@ fn view_selected_milestone_detail(
     ],
     [
       content_pane.view(content_pane.Config(
-        model,
-        progress,
-        tasks_in_cards,
-        loose_tasks,
-        blocked_tasks,
-        empty_cards,
-        view_cards_section(model, milestone_id),
-        view_loose_tasks_panel(model, milestone_id),
-        action_row.view(
+        model: model,
+        progress: progress,
+        tasks_in_cards: tasks_in_cards,
+        loose_tasks: loose_tasks,
+        blocked_tasks: blocked_tasks,
+        empty_cards: empty_cards,
+        cards_section: view_cards_section(model, milestone_id),
+        loose_tasks_panel: view_loose_tasks_panel(model, milestone_id),
+        actions: action_row.view(
           [
             view_quick_create_card_button(model, milestone_id),
             view_quick_create_task_button(model, milestone_id),
@@ -210,10 +210,14 @@ fn view_selected_milestone_detail(
             view_delete_button(model, progress),
           ],
         ),
-        view_milestone_metrics_summary(model),
-        fn(state) { milestone_state_label(model, state) },
-        milestone_state_variant,
-        milestone_progress_percentage,
+        metrics_summary: view_milestone_metrics_summary(model),
+        summary_expanded: model.member.pool.member_milestone_summary_expanded,
+        on_summary_toggle: client_state.pool_msg(
+          pool_messages.MemberMilestoneSummaryToggled,
+        ),
+        milestone_state_label: fn(state) { milestone_state_label(model, state) },
+        milestone_state_variant: milestone_state_variant,
+        progress_percentage: milestone_progress_percentage,
       )),
     ],
   )

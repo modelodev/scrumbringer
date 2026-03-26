@@ -165,6 +165,22 @@ fn with_milestone_metrics(
   })
 }
 
+fn with_summary_expanded(
+  model: client_state.Model,
+  expanded: Bool,
+) -> client_state.Model {
+  client_state.update_member(model, fn(member) {
+    let pool = member.pool
+    member_state.MemberModel(
+      ..member,
+      pool: member_pool.Model(
+        ..pool,
+        member_milestone_summary_expanded: expanded,
+      ),
+    )
+  })
+}
+
 fn with_locale(
   model: client_state.Model,
   locale: i18n_locale.Locale,
@@ -428,6 +444,7 @@ pub fn milestones_view_renders_detail_progress_and_tabs_test() {
     base_model()
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(33, Ready)]))
+    |> with_summary_expanded(True)
     |> milestones_view.view
     |> element.to_document_string
 
@@ -555,7 +572,7 @@ pub fn milestones_view_open_dialog_does_not_expand_row_test() {
     |> element.to_document_string
 
   string.contains(html, "Activate milestone") |> should.be_true
-  string.contains(html, "aria-expanded=\"true\"") |> should.be_false
+  string.contains(html, "data-testid=\"milestone-row-toggle") |> should.be_false
 }
 
 pub fn milestones_view_expanded_row_renders_milestone_cards_test() {
@@ -662,6 +679,7 @@ pub fn milestones_view_planning_tab_surfaces_structure_actions_test() {
     |> with_cards([sample_card(950, 142)])
     |> with_tasks([sample_loose_task(951, 142)])
     |> with_selected_milestone(142)
+    |> with_summary_expanded(True)
     |> milestones_view.view
     |> element.to_document_string
 
@@ -846,6 +864,7 @@ pub fn milestone_metrics_error_copy_i18n_test() {
     |> with_locale(i18n_locale.Es)
     |> with_milestones(remote.Loaded([sample_progress(140, Ready)]))
     |> with_selected_milestone(140)
+    |> with_summary_expanded(True)
     |> with_milestone_metrics(
       remote.Failed(ApiError(
         status: 409,
@@ -866,6 +885,7 @@ pub fn milestone_metrics_empty_copy_i18n_test() {
     |> with_locale(i18n_locale.En)
     |> with_milestones(remote.Loaded([sample_progress(141, Ready)]))
     |> with_selected_milestone(141)
+    |> with_summary_expanded(True)
     |> with_milestone_metrics(
       remote.Loaded(MilestoneModalMetrics(
         cards_total: 0,

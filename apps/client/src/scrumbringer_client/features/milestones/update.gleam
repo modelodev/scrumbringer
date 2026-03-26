@@ -143,6 +143,17 @@ pub fn try_update(
         effect.none(),
       ))
 
+    pool_messages.MemberMilestoneSummaryToggled ->
+      opt.Some(#(
+        update_member_pool(model, fn(pool) {
+          member_pool.Model(
+            ..pool,
+            member_milestone_summary_expanded: !pool.member_milestone_summary_expanded,
+          )
+        }),
+        effect.none(),
+      ))
+
     pool_messages.MemberMilestoneDetailsClicked(milestone_id) ->
       opt.Some(#(
         update_member_pool(model, fn(pool) {
