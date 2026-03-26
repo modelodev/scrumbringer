@@ -221,6 +221,10 @@ pub type Text {
   MilestonesReady
   MilestonesActive
   MilestonesCompleted
+  MilestoneStateReady
+  MilestoneStateActive
+  MilestoneStateCompleted
+  MilestoneEmptyHint
   MilestoneDone
   MilestoneActivationTitle
   MilestoneActivationBody(cards_count: Int, tasks_count: Int)

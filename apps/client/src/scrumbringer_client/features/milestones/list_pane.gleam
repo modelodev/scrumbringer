@@ -203,7 +203,7 @@ fn health_hint(config: Config(msg), progress: MilestoneProgress) -> String {
     empty_cards
   {
     Ready, 0, 0, _ ->
-      helpers_i18n.i18n_t(config.model, i18n_text.ShowEmptyMilestones)
+      helpers_i18n.i18n_t(config.model, i18n_text.MilestoneEmptyHint)
     _, _, loose_count, _ if loose_count > 0 ->
       helpers_i18n.i18n_t(config.model, i18n_text.MilestoneLooseTasksHint)
     _, _, _, empty_count if empty_count > 0 ->
@@ -212,7 +212,7 @@ fn health_hint(config: Config(msg), progress: MilestoneProgress) -> String {
         i18n_text.MilestoneEmptyCardsCount(empty_count),
       )
     Active, _, _, _ ->
-      helpers_i18n.i18n_t(config.model, i18n_text.MilestonesActive)
+      helpers_i18n.i18n_t(config.model, i18n_text.MilestoneStateActive)
     Completed, _, _, _ ->
       helpers_i18n.i18n_t(config.model, i18n_text.MetricsTasksCompleted)
     _, _, _, _ ->

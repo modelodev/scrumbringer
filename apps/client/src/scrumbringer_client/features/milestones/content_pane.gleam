@@ -10,6 +10,7 @@ import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/ui/badge
 import scrumbringer_client/ui/card_progress
+import scrumbringer_client/ui/detail_metrics
 
 pub type Config(msg) {
   Config(
@@ -17,8 +18,12 @@ pub type Config(msg) {
     progress: MilestoneProgress,
     tasks_in_cards: Int,
     loose_tasks: Int,
+    blocked_tasks: Int,
+    empty_cards: Int,
     cards_section: Element(msg),
     loose_tasks_panel: Element(msg),
+    actions: Element(msg),
+    metrics_summary: Element(msg),
     milestone_state_label: fn(MilestoneState) -> String,
     milestone_state_variant: fn(MilestoneState) -> badge.BadgeVariant,
     progress_percentage: fn(MilestoneProgress) -> Int,
@@ -28,10 +33,13 @@ pub type Config(msg) {
 pub fn view(config: Config(msg)) -> Element(msg) {
   div([attribute.class("milestone-detail-main")], [
     view_header(config),
+    view_actions(config),
+    view_health_summary(config),
     div([attribute.class("milestone-detail-content")], [
       config.cards_section,
       config.loose_tasks_panel,
     ]),
+    view_metrics(config),
   ])
 }
 
@@ -83,5 +91,72 @@ fn view_header(config: Config(msg)) -> Element(msg) {
 fn stat_pill(model: client_state.Model, label: i18n_text.Text) -> Element(msg) {
   span([attribute.class("milestone-stat-pill")], [
     text(helpers_i18n.i18n_t(model, label)),
+  ])
+}
+
+fn view_actions(config: Config(msg)) -> Element(msg) {
+  div([attribute.class("milestone-subsection milestone-inline-section")], [
+    p([attribute.class("milestone-subsection-title")], [
+      text(helpers_i18n.i18n_t(config.model, i18n_text.MilestoneActions)),
+    ]),
+    config.actions,
+  ])
+}
+
+fn view_health_summary(config: Config(msg)) -> Element(msg) {
+  div([attribute.class("milestone-subsection milestone-inline-section")], [
+    p([attribute.class("milestone-subsection-title")], [
+      text(helpers_i18n.i18n_t(config.model, i18n_text.MilestoneHealthSummary)),
+    ]),
+    div([attribute.class("milestone-planning-summary")], [
+      detail_metrics.view_row(
+        helpers_i18n.i18n_t(config.model, i18n_text.MilestoneLifecycle),
+        config.milestone_state_label(config.progress.milestone.state),
+      ),
+      detail_metrics.view_row(
+        helpers_i18n.i18n_t(config.model, i18n_text.MilestoneCardsLabel),
+        helpers_i18n.i18n_t(
+          config.model,
+          i18n_text.MilestoneCardsCount(config.progress.cards_total),
+        ),
+      ),
+      detail_metrics.view_row(
+        helpers_i18n.i18n_t(config.model, i18n_text.MilestoneTasksLabel),
+        helpers_i18n.i18n_t(
+          config.model,
+          i18n_text.MilestoneTasksInCardsCount(config.tasks_in_cards),
+        ),
+      ),
+      detail_metrics.view_row(
+        helpers_i18n.i18n_t(config.model, i18n_text.MilestoneLooseTasksNotice),
+        helpers_i18n.i18n_t(
+          config.model,
+          i18n_text.MilestoneLooseTasksCount(config.loose_tasks),
+        ),
+      ),
+      detail_metrics.view_row(
+        helpers_i18n.i18n_t(config.model, i18n_text.Blocked),
+        helpers_i18n.i18n_t(
+          config.model,
+          i18n_text.MilestoneBlockedTasksCount(config.blocked_tasks),
+        ),
+      ),
+      detail_metrics.view_row(
+        helpers_i18n.i18n_t(config.model, i18n_text.MilestoneEmptyCardsLabel),
+        helpers_i18n.i18n_t(
+          config.model,
+          i18n_text.MilestoneEmptyCardsCount(config.empty_cards),
+        ),
+      ),
+    ]),
+  ])
+}
+
+fn view_metrics(config: Config(msg)) -> Element(msg) {
+  div([attribute.class("milestone-subsection milestone-inline-section")], [
+    p([attribute.class("milestone-subsection-title")], [
+      text(helpers_i18n.i18n_t(config.model, i18n_text.MilestoneMetricsSummary)),
+    ]),
+    config.metrics_summary,
   ])
 }

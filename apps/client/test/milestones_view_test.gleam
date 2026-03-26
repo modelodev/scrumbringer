@@ -432,7 +432,8 @@ pub fn milestones_view_renders_detail_progress_and_tabs_test() {
     |> element.to_document_string
 
   string.contains(html, "milestone-detail-pane") |> should.be_true
-  string.contains(html, "milestone-context-pane") |> should.be_true
+  string.contains(html, "Health") |> should.be_true
+  string.contains(html, "Metrics") |> should.be_true
 }
 
 pub fn milestones_view_marks_selected_row_with_aria_pressed_test() {

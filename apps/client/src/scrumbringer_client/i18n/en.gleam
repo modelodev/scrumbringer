@@ -249,6 +249,10 @@ pub fn translate(text: Text) -> String {
     text.MilestonesReady -> "Ready"
     text.MilestonesActive -> "Active"
     text.MilestonesCompleted -> "Completed"
+    text.MilestoneStateReady -> "Ready"
+    text.MilestoneStateActive -> "Active"
+    text.MilestoneStateCompleted -> "Completed"
+    text.MilestoneEmptyHint -> "No work assigned yet"
     text.MilestoneDone -> "Done"
     text.MilestoneActivationTitle -> "Activate milestone"
     text.MilestoneActivationBody(cards_count, tasks_count) ->

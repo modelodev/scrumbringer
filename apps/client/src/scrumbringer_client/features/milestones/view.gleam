@@ -22,7 +22,6 @@ import lustre/event
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/milestones/content_pane
-import scrumbringer_client/features/milestones/context_pane
 import scrumbringer_client/features/milestones/ids as milestone_ids
 import scrumbringer_client/features/milestones/list_pane
 import scrumbringer_client/features/pool/msg as pool_messages
@@ -192,24 +191,15 @@ fn view_selected_milestone_detail(
     ],
     [
       content_pane.view(content_pane.Config(
-        model: model,
-        progress: progress,
-        tasks_in_cards: tasks_in_cards,
-        loose_tasks: loose_tasks,
-        cards_section: view_cards_section(model, milestone_id),
-        loose_tasks_panel: view_loose_tasks_panel(model, milestone_id),
-        milestone_state_label: fn(state) { milestone_state_label(model, state) },
-        milestone_state_variant: milestone_state_variant,
-        progress_percentage: milestone_progress_percentage,
-      )),
-      context_pane.view(context_pane.Config(
-        model: model,
-        progress: progress,
-        tasks_in_cards: tasks_in_cards,
-        loose_tasks: loose_tasks,
-        blocked_tasks: blocked_tasks,
-        empty_cards: empty_cards,
-        actions: action_row.view(
+        model,
+        progress,
+        tasks_in_cards,
+        loose_tasks,
+        blocked_tasks,
+        empty_cards,
+        view_cards_section(model, milestone_id),
+        view_loose_tasks_panel(model, milestone_id),
+        action_row.view(
           [
             view_quick_create_card_button(model, milestone_id),
             view_quick_create_task_button(model, milestone_id),
@@ -220,11 +210,10 @@ fn view_selected_milestone_detail(
             view_delete_button(model, progress),
           ],
         ),
-        milestone_state_label: milestone_state_label(
-          model,
-          progress.milestone.state,
-        ),
-        metrics_summary: view_milestone_metrics_summary(model),
+        view_milestone_metrics_summary(model),
+        fn(state) { milestone_state_label(model, state) },
+        milestone_state_variant,
+        milestone_progress_percentage,
       )),
     ],
   )
@@ -931,9 +920,9 @@ fn milestone_state_label(
   state: MilestoneState,
 ) -> String {
   helpers_i18n.i18n_t(model, case state {
-    Ready -> i18n_text.MilestonesReady
-    Active -> i18n_text.MilestonesActive
-    Completed -> i18n_text.MilestonesCompleted
+    Ready -> i18n_text.MilestoneStateReady
+    Active -> i18n_text.MilestoneStateActive
+    Completed -> i18n_text.MilestoneStateCompleted
   })
 }
 
