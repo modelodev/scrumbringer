@@ -46,7 +46,6 @@ import scrumbringer_client/client_state/types.{
 }
 import scrumbringer_client/features/my_bar/view as my_bar_view
 import scrumbringer_client/features/now_working/panel as now_working_panel
-import scrumbringer_client/features/pool/filters as pool_filters
 import scrumbringer_client/features/pool/msg as pool_messages
 import scrumbringer_client/features/work_filters
 import scrumbringer_client/helpers/i18n as helpers_i18n
@@ -193,11 +192,22 @@ pub fn view_pool_main(model: Model, _user: User) -> Element(Msg) {
 
     _ -> {
       div([attribute.class("section pool-view")], [
-        h3([attribute.class("pool-title")], [
-          text(helpers_i18n.i18n_t(model, i18n_text.Pool)),
+        div([attribute.class("pool-header")], [
+          h3([attribute.class("pool-title")], [
+            text(helpers_i18n.i18n_t(model, i18n_text.Pool)),
+          ]),
+          button(
+            [
+              attribute.class("btn-sm btn-secondary"),
+              attribute.attribute("data-testid", "btn-new-task-pool-header"),
+              event.on_click(pool_msg(pool_messages.MemberCreateDialogOpened)),
+            ],
+            [
+              text("+ "),
+              text(helpers_i18n.i18n_t(model, i18n_text.NewTask)),
+            ],
+          ),
         ]),
-        // Unified toolbar: view mode, filters toggle, and new task - all in one row
-        pool_filters.view_unified_toolbar(model),
         view_tasks(model),
       ])
     }

@@ -850,7 +850,7 @@ pub fn translate(text: Text) -> String {
 
     // Story 4.12 - Selector de tarjeta para nueva tarea
     text.NoCard -> "Sin tarjeta"
-    text.NewTaskInCard(card_title) -> "Nueva tarea en " <> card_title
+    text.NewTaskInCard(card_title) -> "Añadir tarea a " <> card_title
 
     // Story 4.4 - Layout de 3 paneles
     // Etiquetas de accesibilidad
@@ -860,8 +860,8 @@ pub fn translate(text: Text) -> String {
     // Secciones del panel izquierdo
     text.Work -> "Trabajo"
     text.NewCard -> "Nueva tarjeta"
-    text.QuickCard -> "Tarjeta"
-    text.QuickTask -> "Tarea"
+    text.QuickCard -> "Nueva tarjeta"
+    text.QuickTask -> "Nueva tarea"
     text.NoTasksYet -> "Sin tareas todavía"
     text.CardTasksMore(hidden_count) ->
       "+" <> int.to_string(hidden_count) <> " tareas más"

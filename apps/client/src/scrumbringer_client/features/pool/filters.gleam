@@ -358,32 +358,3 @@ fn option_int_value(value: opt.Option(Int)) -> String {
     opt.None -> ""
   }
 }
-
-// =============================================================================
-// Unified Toolbar (Story 4.8: Single collapsible bar)
-// =============================================================================
-
-/// Renders a minimal toolbar with just the new task button.
-///
-/// Story 4.8 AC40-42: Pool is always canvas mode. Lista is accessible only
-/// from main navigation (sidebar). Filters are shown in center_panel header.
-pub fn view_unified_toolbar(model: Model) -> Element(Msg) {
-  // Simple toolbar: only "Nueva tarea" button
-  // Filters are handled by center_panel (top right: Tipo, Capacidad, Buscar)
-  div([attribute.class("pool-toolbar pool-toolbar-minimal")], [
-    div([attribute.class("pool-toolbar-spacer")], []),
-    div([attribute.class("pool-toolbar-right")], [
-      button(
-        [
-          attribute.class("btn-sm btn-primary"),
-          attribute.attribute("data-testid", "btn-new-task-pool"),
-          event.on_click(pool_msg(pool_messages.MemberCreateDialogOpened)),
-        ],
-        [
-          span([attribute.class("btn-icon-left")], [text("+")]),
-          text(helpers_i18n.i18n_t(model, i18n_text.NewTask)),
-        ],
-      ),
-    ]),
-  ])
-}

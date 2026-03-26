@@ -833,7 +833,7 @@ pub fn translate(text: Text) -> String {
 
     // Story 4.12 - Card selector for new task
     text.NoCard -> "No card"
-    text.NewTaskInCard(card_title) -> "New task in " <> card_title
+    text.NewTaskInCard(card_title) -> "Add task to " <> card_title
 
     // Story 4.4 - Three-panel layout
     // Accessibility labels
@@ -843,8 +843,8 @@ pub fn translate(text: Text) -> String {
     // Left panel sections
     text.Work -> "Work"
     text.NewCard -> "New Card"
-    text.QuickCard -> "Card"
-    text.QuickTask -> "Task"
+    text.QuickCard -> "New card"
+    text.QuickTask -> "New task"
     text.NoTasksYet -> "No tasks yet"
     text.CardTasksMore(hidden_count) ->
       "+" <> int.to_string(hidden_count) <> " more tasks"

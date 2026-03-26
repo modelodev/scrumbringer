@@ -325,9 +325,9 @@ pub fn css() -> List(String) {
     ".milestone-details-dialog .milestone-card-title { font-size: 14px; line-height: 1.4; }",
     ".milestone-details-dialog .milestone-task-status { font-size: 12px; padding: 2px 9px; }",
     ".pool-view { display: flex; flex-direction: column; gap: 10px; }",
+    ".pool-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }",
     ".pool-title { margin: 0; font-size: 15px; font-weight: 600; }",
-    ".pool-toolbar { background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 12px; padding: 8px 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }",
-    ".pool-toolbar-right { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }",
+    "@media (max-width: 768px) { .pool-header { flex-wrap: wrap; align-items: flex-start; } }",
     // =============================================================================
     // Grouped List View (Story 4.4)
     // =============================================================================

@@ -360,12 +360,12 @@ fn view_quick_create_task_button(
   case can_manage_milestones(model) {
     True ->
       action_buttons.add_icon_button_with_size_and_testid(
-        helpers_i18n.i18n_t(model, i18n_text.QuickTask),
+        helpers_i18n.i18n_t(model, i18n_text.NewTask),
         client_state.pool_msg(pool_messages.MemberMilestoneCreateTaskClicked(
           milestone_id,
         )),
         action_buttons.SizeXs,
-        icons.ClipboardDoc,
+        icons.Plus,
         option.Some("milestone-quick-new-task:" <> int.to_string(milestone_id)),
         option.Some("btn-create-task"),
       )
