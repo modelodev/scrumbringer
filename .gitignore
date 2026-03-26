@@ -13,6 +13,7 @@ web-bundles/
 # Local dev / build artifacts
 .ai/
 .tools/
+.tmp/
 erl_crash.dump
 
 # Local env files
