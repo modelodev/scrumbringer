@@ -1,4 +1,5 @@
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import lustre/attribute
 import lustre/element.{type Element, none}
 import lustre/element/html.{button, div, text}
@@ -15,6 +16,7 @@ pub fn item(label: String, testid: String, on_click: msg) -> Item(msg) {
 pub fn view(
   trigger_label: String,
   trigger_testid: String,
+  trigger_aria_label: Option(String),
   menu_class: String,
   trigger_class: String,
   items_class: String,
@@ -30,6 +32,10 @@ pub fn view(
             attribute.class(trigger_class),
             attribute.attribute("type", "button"),
             attribute.attribute("data-testid", trigger_testid),
+            attribute.attribute("aria-label", case trigger_aria_label {
+              Some(value) -> value
+              None -> trigger_label
+            }),
             attribute.attribute("aria-haspopup", "menu"),
             attribute.attribute("aria-expanded", "false"),
           ],

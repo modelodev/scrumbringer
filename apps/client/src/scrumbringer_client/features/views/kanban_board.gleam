@@ -367,8 +367,9 @@ fn truncate_email(email: String) -> String {
 
 fn view_context_menu(config: KanbanConfig(msg), card_id: Int) -> Element(msg) {
   action_menu.view(
-    "Acciones",
+    "⋯",
     "card-context-menu",
+    Some("Card actions"),
     "kanban-card-menu",
     "btn btn-xs btn-ghost kanban-card-menu-trigger",
     "kanban-card-menu-actions",

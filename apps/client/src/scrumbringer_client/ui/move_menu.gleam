@@ -1,4 +1,5 @@
 import gleam/list
+import gleam/option
 import lustre/element.{type Element}
 
 import scrumbringer_client/ui/action_menu
@@ -19,6 +20,7 @@ pub fn view(
   action_menu.view(
     trigger_label,
     trigger_testid,
+    option.None,
     "move-menu",
     "move-menu-trigger",
     "move-menu-actions",
