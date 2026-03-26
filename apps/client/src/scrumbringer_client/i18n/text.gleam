@@ -228,6 +228,7 @@ pub type Text {
   MilestoneDetails
   MilestoneTabOverview
   MilestoneTabContent
+  MilestoneTabPlanning
   ActivateMilestone
   ActivatingMilestone
   MilestoneActivated
@@ -250,6 +251,24 @@ pub type Text {
   MilestoneTasksLabel
   MilestoneCardsProgress(completed: Int, total: Int)
   MilestoneTasksProgress(completed: Int, total: Int)
+  MilestoneStructureSummary
+  MilestoneActions
+  MilestoneHealthSummary
+  MilestoneMetricsSummary
+  MilestoneSearchPlaceholder
+  MilestoneLooseTasksNotice
+  MilestoneLooseTasksHint
+  MilestoneNoSelection
+  MilestoneNoSelectionHint
+  MilestonePlanningSummary
+  MilestoneLifecycle
+  MilestoneCardsCount(cards_count: Int)
+  MilestoneLooseTasksCount(tasks_count: Int)
+  MilestoneTasksInCardsCount(tasks_count: Int)
+  MilestoneBlockedTasksCount(tasks_count: Int)
+  MilestoneEmptyCardsCount(cards_count: Int)
+  MilestoneEmptyCardsLabel
+  MilestoneTotalTasksCount(tasks_count: Int)
   MilestoneTaskStatusAvailable
   MilestoneTaskStatusClaimed
   MilestoneTaskStatusCompleted
@@ -707,6 +726,8 @@ pub type Text {
   NewCard
   QuickCard
   QuickTask
+  NoTasksYet
+  CardTasksMore(hidden_count: Int)
   NewCardInThisMilestone
   MilestoneTarget
   Configuration

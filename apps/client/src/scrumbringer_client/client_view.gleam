@@ -896,6 +896,16 @@ fn build_right_panel(
   model: client_state.Model,
   user: User,
 ) -> Element(client_state.Msg) {
+  case model.member.pool.view_mode == view_mode.Milestones {
+    True -> element.none()
+    False -> build_default_right_panel(model, user)
+  }
+}
+
+fn build_default_right_panel(
+  model: client_state.Model,
+  user: User,
+) -> Element(client_state.Msg) {
   // Get claimed tasks for "my tasks" section
   let my_tasks = case model.member.pool.member_tasks {
     Loaded(tasks) ->

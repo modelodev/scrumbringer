@@ -398,20 +398,6 @@ fn close_dialog_shortcut(
         0,
       ),
     )
-    _, member_pool.MilestoneDialogView(id: id), _, _ -> #(
-      update_member_pool(model, fn(pool) {
-        member_pool.Model(
-          ..pool,
-          member_milestone_dialog: member_pool.MilestoneDialogClosed,
-          member_milestone_dialog_in_flight: False,
-          member_milestone_dialog_error: opt.None,
-        )
-      }),
-      app_effects.focus_element_after_timeout(
-        milestone_ids.details_button_id(id),
-        0,
-      ),
-    )
     _, _, True, _ -> #(
       update_member_notes(model, fn(notes) {
         member_notes.Model(..notes, member_notes_task_id: opt.None)
@@ -1970,9 +1956,8 @@ fn update_without_milestones(
     pool_messages.MemberProjectMilestonesFetched(_, _)
     | pool_messages.MemberMilestonesShowCompletedToggled
     | pool_messages.MemberMilestonesShowEmptyToggled
-    | pool_messages.MemberMilestoneRowToggled(_)
+    | pool_messages.MemberMilestoneSearchChanged(_)
     | pool_messages.MemberMilestoneDetailsClicked(_)
-    | pool_messages.MemberMilestoneDetailsTabSelected(_)
     | pool_messages.MemberMilestoneCreateTaskClicked(_)
     | pool_messages.MemberMilestoneCreateCardClicked(_)
     | pool_messages.MemberMilestoneCardDragStarted(_, _)

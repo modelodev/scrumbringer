@@ -16,7 +16,6 @@ import domain/task_type.{type TaskType}
 import domain/view_mode
 import scrumbringer_client/capability_scope
 import scrumbringer_client/client_state/dialog_mode
-import scrumbringer_client/client_state/member/milestone_details_tab
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/member_section
 import scrumbringer_client/pool_prefs
@@ -39,7 +38,6 @@ pub type HighlightState {
 pub type MilestoneDialog {
   MilestoneDialogClosed
   MilestoneDialogCreate(name: String, description: String)
-  MilestoneDialogView(id: Int)
   MilestoneDialogActivate(id: Int)
   MilestoneDialogEdit(id: Int, name: String, description: String)
   MilestoneDialogDelete(id: Int, name: String)
@@ -70,12 +68,12 @@ pub type Model {
     member_milestones: Remote(List(MilestoneProgress)),
     member_milestones_show_completed: Bool,
     member_milestones_show_empty: Bool,
-    member_milestones_expanded: Dict(Int, Bool),
+    member_milestones_search_query: String,
+    member_selected_milestone_id: Option(Int),
     member_milestone_activate_in_flight_id: Option(Int),
     member_milestone_dialog: MilestoneDialog,
     member_milestone_dialog_in_flight: Bool,
     member_milestone_dialog_error: Option(String),
-    member_milestone_details_tab: milestone_details_tab.MilestoneDetailsTab,
     member_milestone_metrics: Remote(MilestoneModalMetrics),
     member_milestone_drag_item: Option(MilestoneDragItem),
     member_task_mutation_in_flight: Bool,
@@ -135,12 +133,12 @@ pub fn default_model() -> Model {
     member_milestones: NotAsked,
     member_milestones_show_completed: False,
     member_milestones_show_empty: False,
-    member_milestones_expanded: dict.new(),
+    member_milestones_search_query: "",
+    member_selected_milestone_id: option.None,
     member_milestone_activate_in_flight_id: option.None,
     member_milestone_dialog: MilestoneDialogClosed,
     member_milestone_dialog_in_flight: False,
     member_milestone_dialog_error: option.None,
-    member_milestone_details_tab: milestone_details_tab.MilestoneContentTab,
     member_milestone_metrics: NotAsked,
     member_milestone_drag_item: option.None,
     member_task_mutation_in_flight: False,
