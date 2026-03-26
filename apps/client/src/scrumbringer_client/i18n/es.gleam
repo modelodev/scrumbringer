@@ -284,7 +284,7 @@ pub fn translate(text: Text) -> String {
       "El hito no se puede activar en su estado actual"
     text.MilestoneOpenDetails -> "Ver detalle"
     text.MilestoneMoreActions -> "Acciones"
-    text.MilestoneMoveTo -> "Mover a hito..."
+    text.MilestoneMoveTo -> "Mover"
     text.MilestoneCardsLabel -> "Tarjetas"
     text.MilestoneTasksLabel -> "Tareas"
     text.MilestoneCardsProgress(completed, total) ->

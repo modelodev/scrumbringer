@@ -35,9 +35,9 @@ import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/theme.{type Theme}
 import scrumbringer_client/ui/action_buttons
+import scrumbringer_client/ui/action_menu
 import scrumbringer_client/ui/card_progress
 import scrumbringer_client/ui/card_title_meta
-import scrumbringer_client/ui/icon_actions
 import scrumbringer_client/ui/icons
 import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_blocked_badge
@@ -366,19 +366,14 @@ fn truncate_email(email: String) -> String {
 }
 
 fn view_context_menu(config: KanbanConfig(msg), card_id: Int) -> Element(msg) {
-  // Story 4.8 UX: Only edit button in Kanban view (delete via card detail)
-  div(
-    [
-      attribute.class("kanban-card-menu"),
-      attribute.attribute("data-testid", "card-context-menu"),
-    ],
-    [
-      icon_actions.edit_with_testid(
-        "Edit card",
-        config.on_card_edit(card_id),
-        "card-edit-btn",
-      ),
-    ],
+  action_menu.view(
+    "Acciones",
+    "card-context-menu",
+    "kanban-card-menu",
+    "btn btn-xs btn-ghost kanban-card-menu-trigger",
+    "kanban-card-menu-actions",
+    "btn btn-xs btn-ghost kanban-card-menu-option",
+    [action_menu.item("Editar", "card-edit-btn", config.on_card_edit(card_id))],
   )
 }
 

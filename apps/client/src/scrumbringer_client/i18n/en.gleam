@@ -282,7 +282,7 @@ pub fn translate(text: Text) -> String {
       "Milestone cannot be activated in its current state"
     text.MilestoneOpenDetails -> "Open details"
     text.MilestoneMoreActions -> "More actions"
-    text.MilestoneMoveTo -> "Move to milestone..."
+    text.MilestoneMoveTo -> "Move"
     text.MilestoneCardsLabel -> "Cards"
     text.MilestoneTasksLabel -> "Tasks"
     text.MilestoneCardsProgress(completed, total) ->
