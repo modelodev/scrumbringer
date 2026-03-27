@@ -179,6 +179,7 @@ pub fn translate(text: Text) -> String {
     text.Canvas -> "Lienzo"
     text.List -> "Lista"
     text.Kanban -> "Kanban"
+    text.CapabilitiesBoard -> "Capacidades"
     text.People -> "Personas"
     text.Milestones -> "Hitos"
     text.ShowFilters -> "Mostrar filtros"
@@ -196,6 +197,8 @@ pub fn translate(text: Text) -> String {
     text.MyCapabilitiesLabel -> "Mis capacidades"
     text.MyCapabilitiesHint ->
       "Filtrar tareas que coinciden con mis capacidades"
+    text.ScopeAll -> "Todas"
+    text.ScopeMine -> "Mías"
     text.SearchLabel -> "Buscar"
     text.SearchPlaceholder -> "q"
     text.ClearFilters -> "Limpiar"
@@ -227,6 +230,16 @@ pub fn translate(text: Text) -> String {
     text.PeopleNoResults -> "No hay personas que coincidan con la busqueda"
     text.PeopleLoading -> "Cargando personas..."
     text.PeopleLoadError -> "No se pudieron cargar las personas"
+    text.CapabilityBoardLoading -> "Cargando capacidades..."
+    text.CapabilityBoardEmpty -> "No hay tareas activas por capacidad"
+    text.CapabilityBoardNoResults ->
+      "No hay tareas activas por capacidad que coincidan con los filtros"
+    text.CapabilityBoardLoadError ->
+      "No se pudo cargar la vista por capacidades"
+    text.CapabilityBoardEmptyPending -> "Sin tareas pendientes"
+    text.CapabilityBoardEmptyClaimed -> "Sin tareas reclamadas"
+    text.CapabilityBoardEmptyOngoing -> "Sin tareas en curso"
+    text.NoCapability -> "Sin capacidad"
     text.MilestonesEmpty -> "Aun no hay hitos"
     text.MilestonesNoResults -> "No hay hitos que coincidan con los filtros"
     text.MilestonesLoadError -> "No se pudieron cargar los hitos"
@@ -235,22 +248,27 @@ pub fn translate(text: Text) -> String {
     text.MilestoneCreated -> "Hito creado"
     text.MilestoneCreateFailed -> "No se pudo crear el hito"
     text.ShowCompletedMilestones -> "Ver completados"
-    text.ShowEmptyMilestones -> "Ver vacios"
+    text.ShowEmptyMilestones -> "Ver vacíos"
     text.MilestonesReady -> "Listos"
     text.MilestonesActive -> "Activos"
     text.MilestonesCompleted -> "Completados"
+    text.MilestoneStateReady -> "Listo"
+    text.MilestoneStateActive -> "Activo"
+    text.MilestoneStateCompleted -> "Completado"
+    text.MilestoneEmptyHint -> "Sin trabajo asignado"
     text.MilestoneDone -> "Hecho"
     text.MilestoneActivationTitle -> "Activar hito"
     text.MilestoneActivationBody(cards_count, tasks_count) ->
-      "Esta accion es irreversible. Activara todo el contenido del hito ("
+      "Esta acción es irreversible. Activará todo el contenido del hito ("
       <> int.to_string(cards_count)
       <> " fichas, "
       <> int.to_string(tasks_count)
       <> " tareas)."
-    text.MilestoneActivationWarning -> "No podras deshacer esta accion"
+    text.MilestoneActivationWarning -> "No podrás deshacer esta acción"
     text.MilestoneDetails -> "Detalle"
     text.MilestoneTabOverview -> "Resumen"
     text.MilestoneTabContent -> "Contenido"
+    text.MilestoneTabPlanning -> "Planificación"
     text.ActivateMilestone -> "Activar"
     text.ActivatingMilestone -> "Activando..."
     text.MilestoneActivated -> "Hito activado"
@@ -270,13 +288,39 @@ pub fn translate(text: Text) -> String {
       "El hito no se puede activar en su estado actual"
     text.MilestoneOpenDetails -> "Ver detalle"
     text.MilestoneMoreActions -> "Acciones"
-    text.MilestoneMoveTo -> "Mover a hito..."
+    text.MilestoneMoveTo -> "Mover"
     text.MilestoneCardsLabel -> "Tarjetas"
     text.MilestoneTasksLabel -> "Tareas"
     text.MilestoneCardsProgress(completed, total) ->
       "Tarjetas " <> int.to_string(completed) <> "/" <> int.to_string(total)
     text.MilestoneTasksProgress(completed, total) ->
       "Tareas " <> int.to_string(completed) <> "/" <> int.to_string(total)
+    text.MilestoneStructureSummary -> "Resumen estructural"
+    text.MilestoneActions -> "Acciones"
+    text.MilestoneHealthSummary -> "Salud"
+    text.MilestoneMetricsSummary -> "Métricas"
+    text.MilestoneSearchPlaceholder -> "Buscar hitos"
+    text.MilestoneLooseTasksNotice -> "Trabajo suelto"
+    text.MilestoneLooseTasksHint ->
+      "Estas tareas todavía no están agrupadas dentro de una tarjeta"
+    text.MilestoneNoSelection -> "Selecciona un hito"
+    text.MilestoneNoSelectionHint ->
+      "Elige un hito de la lista para inspeccionar su contenido"
+    text.MilestonePlanningSummary -> "Resumen de planificación"
+    text.MilestoneLifecycle -> "Ciclo de vida"
+    text.MilestoneCardsCount(cards_count) ->
+      int.to_string(cards_count) <> " tarjetas"
+    text.MilestoneLooseTasksCount(tasks_count) ->
+      int.to_string(tasks_count) <> " tareas sueltas"
+    text.MilestoneTasksInCardsCount(tasks_count) ->
+      int.to_string(tasks_count) <> " tareas en tarjetas"
+    text.MilestoneBlockedTasksCount(tasks_count) ->
+      int.to_string(tasks_count) <> " tareas bloqueadas"
+    text.MilestoneEmptyCardsCount(cards_count) ->
+      int.to_string(cards_count) <> " tarjetas vacías"
+    text.MilestoneEmptyCardsLabel -> "Tarjetas vacías"
+    text.MilestoneTotalTasksCount(tasks_count) ->
+      int.to_string(tasks_count) <> " tareas totales"
     text.MilestoneTaskStatusAvailable -> "disponible"
     text.MilestoneTaskStatusClaimed -> "reclamada"
     text.MilestoneTaskStatusCompleted -> "completada"
@@ -806,7 +850,7 @@ pub fn translate(text: Text) -> String {
 
     // Story 4.12 - Selector de tarjeta para nueva tarea
     text.NoCard -> "Sin tarjeta"
-    text.NewTaskInCard(card_title) -> "Nueva tarea en " <> card_title
+    text.NewTaskInCard(card_title) -> "Añadir tarea a " <> card_title
 
     // Story 4.4 - Layout de 3 paneles
     // Etiquetas de accesibilidad
@@ -816,8 +860,11 @@ pub fn translate(text: Text) -> String {
     // Secciones del panel izquierdo
     text.Work -> "Trabajo"
     text.NewCard -> "Nueva tarjeta"
-    text.QuickCard -> "Tarjeta"
-    text.QuickTask -> "Tarea"
+    text.QuickCard -> "Nueva tarjeta"
+    text.QuickTask -> "Nueva tarea"
+    text.NoTasksYet -> "Sin tareas todavía"
+    text.CardTasksMore(hidden_count) ->
+      "+" <> int.to_string(hidden_count) <> " tareas más"
     text.NewCardInThisMilestone -> "Nueva tarjeta en este hito"
     text.MilestoneTarget -> "Hito destino"
     text.Configuration -> "Configuración"

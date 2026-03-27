@@ -24,6 +24,7 @@
 import domain/org_role
 import domain/project.{type Project}
 import domain/remote.{Failed, Loaded, Loading, NotAsked}
+import domain/view_mode
 import gleam/dict
 import gleam/int
 import gleam/list
@@ -131,6 +132,26 @@ fn current_route(model: client_state.Model) -> router.Route {
         opt.None -> url_state.empty()
       }
       let state = url_state.with_view(state, model.member.pool.view_mode)
+      let state =
+        url_state.with_capability_scope(
+          state,
+          model.member.pool.member_capability_scope,
+        )
+      let state =
+        url_state.with_type_filter(
+          state,
+          model.member.pool.member_filters_type_id,
+        )
+      let state =
+        url_state.with_capability_filter(
+          state,
+          model.member.pool.member_filters_capability_id,
+        )
+      let state =
+        url_state.with_search(
+          state,
+          helpers_options.empty_to_opt(model.member.pool.member_filters_q),
+        )
       router.Member(model.member.pool.member_section, state)
     }
   }
@@ -395,7 +416,7 @@ fn apply_route_fields(
       let new_view =
         opt.unwrap(url_state.view_param(state), model.member.pool.view_mode)
 
-      #(
+      let next_model =
         client_state.update_member(
           client_state.update_core(model, fn(core) {
             client_state.CoreModel(
@@ -412,14 +433,33 @@ fn apply_route_fields(
                 ..pool,
                 member_section: section,
                 view_mode: new_view,
+                member_capability_scope: url_state.capability_scope(state),
+                member_filters_type_id: url_state.type_filter(state),
+                member_filters_capability_id: url_state.capability_filter(state),
+                member_filters_q: url_state.search(state) |> opt.unwrap(""),
                 member_drag: state_types.DragIdle,
                 member_pool_drag: state_types.PoolDragIdle,
               ),
             )
           },
-        ),
-        capabilities_fx,
-      )
+        )
+      let metrics_fx = case
+        new_view,
+        next_model.member.pool.member_selected_milestone_id,
+        next_model.member.pool.member_milestone_metrics
+      {
+        view_mode.Milestones, opt.Some(_milestone_id), Loaded(_) ->
+          effect.none()
+        view_mode.Milestones, opt.Some(milestone_id), _ ->
+          api_milestones.get_milestone_metrics(milestone_id, fn(result) {
+            client_state.pool_msg(pool_messages.MemberMilestoneMetricsFetched(
+              result,
+            ))
+          })
+        _, _, _ -> effect.none()
+      }
+
+      #(next_model, effect.batch([capabilities_fx, metrics_fx]))
     }
   }
 }

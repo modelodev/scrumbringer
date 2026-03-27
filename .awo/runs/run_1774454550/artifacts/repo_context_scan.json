@@ -1,0 +1,10 @@
+{
+  "status": "ok",
+  "summary": "Mapped relevant client, shared, and docs surfaces for the story.",
+  "signals": [
+    "existing kanban/task views",
+    "task_type capability metadata",
+    "shared view_mode routing",
+    "existing i18n and testing architecture"
+  ]
+}

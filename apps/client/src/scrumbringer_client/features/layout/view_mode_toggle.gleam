@@ -14,7 +14,9 @@
 //// - Managing view state (handled by parent)
 //// - Rendering view content (handled by center panel)
 
-import domain/view_mode.{type ViewMode, Cards, Milestones, People, Pool}
+import domain/view_mode.{
+  type ViewMode, Capabilities, Cards, Milestones, People, Pool,
+}
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html.{button, div, span, text}
@@ -41,7 +43,7 @@ pub type ToggleConfig(msg) {
 // View
 // =============================================================================
 
-/// Renders the view mode toggle with 4 buttons
+/// Renders the view mode toggle with 5 buttons
 pub fn view(config: ToggleConfig(msg)) -> Element(msg) {
   div(
     [
@@ -52,6 +54,12 @@ pub fn view(config: ToggleConfig(msg)) -> Element(msg) {
     [
       view_mode_button(config, Pool, "view-mode-pool", i18n_text.Pool),
       view_mode_button(config, Cards, "view-mode-cards", i18n_text.Kanban),
+      view_mode_button(
+        config,
+        Capabilities,
+        "view-mode-capabilities",
+        i18n_text.CapabilitiesBoard,
+      ),
       view_mode_button(config, People, "view-mode-people", i18n_text.People),
       view_mode_button(
         config,
@@ -100,6 +108,7 @@ fn mode_icon(mode: ViewMode) -> String {
   case mode {
     Pool -> "🎯"
     Cards -> "🎴"
+    Capabilities -> "🧩"
     People -> "👥"
     Milestones -> "🏁"
   }

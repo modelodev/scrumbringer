@@ -1,0 +1,89 @@
+id = "feature_delivery"
+version = "0.1.0"
+
+[budget]
+tokens_hint = 32000
+
+[[steps]]
+id = "change_plan"
+kind = "llm-subagent"
+depends_on = []
+inputs = []
+outputs = ["change_plan"]
+agent_ref = "feature_delivery_agent"
+context_mode = "isolated"
+done_criteria = [
+  "Source story or brief path identified, normally under docs/stories/ or docs/brief.md",
+  "Target client, server, shared, db, and docs files are listed concretely when applicable",
+  "Smallest useful validation command set is chosen from make build, make test, and persistence-related commands when needed",
+  "Blocking ambiguities are called out with explicit fallback to user_story_authoring when definition is not good enough",
+]
+verification_steps = []
+
+[steps.budget]
+tokens_hint = 5000
+
+[[steps]]
+id = "implementation"
+kind = "llm-subagent"
+depends_on = ["change_plan"]
+inputs = ["change_plan"]
+outputs = ["implementation"]
+agent_ref = "feature_delivery_agent"
+context_mode = "full"
+done_criteria = [
+  "Code or docs changes are applied only in the planned areas",
+  "Existing Gleam, Lustre, shared, SQL, and UI patterns are reused where possible",
+  "Relevant contracts, i18n, authz, migrations, Squirrel regeneration, or db impacts are updated or explicitly declared untouched",
+  "Scope stays aligned with the source story and does not silently expand",
+]
+verification_steps = []
+skill_refs = ["gleam-lustre-development", "gleam-web-development", "gleam-type-system", "gleam-testing"]
+
+[steps.budget]
+tokens_hint = 17000
+
+[[steps]]
+id = "verification"
+kind = "llm-subagent"
+depends_on = ["implementation"]
+inputs = ["implementation"]
+outputs = ["verification"]
+agent_ref = "feature_delivery_agent"
+context_mode = "isolated"
+done_criteria = [
+  "Build result recorded",
+  "Test result recorded or environment blocker explained clearly",
+  "If persistence or SQL changed, dbmate-backed checks and Squirrel impact are covered or the blocker is stated",
+  "Acceptance criteria coverage and residual regression risks are summarized honestly",
+]
+verification_steps = ["make build", "make test"]
+skill_refs = ["gleam-testing"]
+
+[steps.budget]
+tokens_hint = 7000
+
+[[steps]]
+id = "delivery_note"
+kind = "llm-subagent"
+depends_on = ["verification"]
+inputs = ["verification"]
+outputs = ["delivery_note"]
+agent_ref = "feature_delivery_agent"
+context_mode = "isolated"
+done_criteria = [
+  "Files changed are summarized by area",
+  "Validation summary is concise and honest",
+  "Story or docs status updates are recorded only when they were actually made",
+  "Follow-up debt, blockers, or residual risks are listed, or explicitly stated as none",
+]
+verification_steps = []
+
+[steps.budget]
+tokens_hint = 3000
+
+[[agents]]
+id = "feature_delivery_agent"
+instructions_ref = "agents/feature_delivery_agent.md"
+report_contract = "awo.step_report/v1"
+skills = []

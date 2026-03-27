@@ -260,6 +260,66 @@ pub fn delete_button_with_testid(
   )
 }
 
+/// Creates an add button with plus icon.
+pub fn add_button_with_size(
+  title: String,
+  on_click: msg,
+  size: ButtonSize,
+) -> Element(msg) {
+  add_button_with_size_and_testid(title, on_click, size, None)
+}
+
+pub fn add_button_with_size_and_testid(
+  title: String,
+  on_click: msg,
+  size: ButtonSize,
+  testid: Option(String),
+) -> Element(msg) {
+  add_icon_button_with_size_and_testid(
+    title,
+    on_click,
+    size,
+    icons.Plus,
+    testid,
+    None,
+  )
+}
+
+pub fn add_icon_button_with_size_and_testid(
+  title: String,
+  on_click: msg,
+  size: ButtonSize,
+  icon: icons.NavIcon,
+  testid: Option(String),
+  extra_class: Option(String),
+) -> Element(msg) {
+  let size_class = case size {
+    SizeXs -> "btn-xs"
+    SizeSm -> "btn-sm"
+  }
+
+  let testid_attr = case testid {
+    Some(value) -> [attribute.attribute("data-testid", value)]
+    None -> []
+  }
+
+  let class_name = case extra_class {
+    Some(value) -> "btn-icon " <> size_class <> " " <> value
+    None -> "btn-icon " <> size_class
+  }
+
+  let attrs = [
+    attribute.class(class_name),
+    attribute.attribute("title", title),
+    attribute.attribute("aria-label", title),
+    event.on_click(on_click),
+  ]
+
+  button(list.append(attrs, testid_attr), [
+    icons.nav_icon(icon, icons.Small),
+  ])
+}
+
 // =============================================================================
 // Settings/Config Button
 // =============================================================================
@@ -375,18 +435,5 @@ pub fn create_task_in_card_button_with_size(
   on_click: msg,
   size: ButtonSize,
 ) -> Element(msg) {
-  let size_class = case size {
-    SizeXs -> "btn-xs"
-    SizeSm -> "btn-sm"
-  }
-
-  button(
-    [
-      attribute.class("btn-icon " <> size_class <> " btn-add-task"),
-      attribute.attribute("title", title),
-      attribute.attribute("aria-label", title),
-      event.on_click(on_click),
-    ],
-    [icons.nav_icon(icons.Plus, icons.Small)],
-  )
+  add_button_with_size(title, on_click, size)
 }

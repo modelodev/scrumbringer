@@ -1,0 +1,23 @@
+{
+  "schema_version": "awo.step_report/v1",
+  "run_id": "run_1774454550",
+  "workflow_id": "user_story_authoring",
+  "workflow_version": "0.1.0",
+  "target": "opencode",
+  "step_id": "story_brief",
+  "status": "ok",
+  "policy_outcome": "pass",
+  "executive_summary": "Defined the story slice and target documentation path.",
+  "artifacts_in": [],
+  "artifacts_out": [".awo/runs/run_1774454550/artifacts/story_brief.json"],
+  "next_recommended": ["repo_context_scan"],
+  "risks": [],
+  "started_at": "2026-03-25T16:02:30Z",
+  "ended_at": "2026-03-25T16:05:20Z",
+  "budget_used": {"tokens": 900, "cost_usd": 0.027},
+  "declared_skill_refs": [".opencode/skills/user-story-authoring-story_brief/SKILL.md"],
+  "observed_skill_refs": [".opencode/skills/user-story-authoring-story_brief/SKILL.md"],
+  "commands_run": [],
+  "artifacts_materialized": [".awo/runs/run_1774454550/artifacts/story_brief.json"],
+  "interruption_events": []
+}

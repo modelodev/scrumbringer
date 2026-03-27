@@ -61,6 +61,7 @@ import scrumbringer_client/features/admin/view as admin_view
 import scrumbringer_client/features/assignments/view as assignments_view
 import scrumbringer_client/features/auth/view as auth_view
 import scrumbringer_client/features/capabilities/view as capabilities_view
+import scrumbringer_client/features/capability_board/view as capability_board_view
 import scrumbringer_client/features/cards/view as cards_view
 import scrumbringer_client/features/fichas/view as fichas_view
 import scrumbringer_client/features/invites/view as invites_view
@@ -108,6 +109,7 @@ import scrumbringer_client/features/layout/view as layout_view
 import scrumbringer_client/features/views/kanban_board
 import scrumbringer_client/helpers/i18n as helpers_i18n
 import scrumbringer_client/helpers/lookup as helpers_lookup
+import scrumbringer_client/helpers/options as helpers_options
 import scrumbringer_client/helpers/selection as helpers_selection
 import scrumbringer_client/helpers/time as helpers_time
 
@@ -594,7 +596,18 @@ fn build_left_panel(
         url_state.with_project(url_state.empty(), project_id)
       opt.None -> url_state.empty()
     }
-    url_state.with_view(state, mode)
+    state
+    |> url_state.with_view(mode)
+    |> url_state.with_capability_scope(
+      model.member.pool.member_capability_scope,
+    )
+    |> url_state.with_type_filter(model.member.pool.member_filters_type_id)
+    |> url_state.with_capability_filter(
+      model.member.pool.member_filters_capability_id,
+    )
+    |> url_state.with_search(helpers_options.empty_to_opt(
+      model.member.pool.member_filters_q,
+    ))
   }
 
   let member_section_for_current = case model.member.pool.member_section {
@@ -656,6 +669,13 @@ fn build_left_panel(
     ),
     on_navigate_cards: client_state.NavigateTo(
       router.Member(member_section.Pool, member_state_for(view_mode.Cards)),
+      client_state.Push,
+    ),
+    on_navigate_capabilities: client_state.NavigateTo(
+      router.Member(
+        member_section.Pool,
+        member_state_for(view_mode.Capabilities),
+      ),
       client_state.Push,
     ),
     on_navigate_people: client_state.NavigateTo(
@@ -744,6 +764,10 @@ fn build_center_panel(
     Loaded(caps) -> caps
     _ -> []
   }
+  let my_capability_ids = case model.member.skills.member_my_capability_ids {
+    Loaded(ids) -> ids
+    _ -> []
+  }
   let cards = card_queries.get_project_cards(model)
 
   // Build view-specific content
@@ -760,6 +784,12 @@ fn build_center_panel(
       theme: model.ui.theme,
       cards: cards,
       tasks: tasks,
+      task_types: task_types,
+      type_filter: model.member.pool.member_filters_type_id,
+      capability_filter: model.member.pool.member_filters_capability_id,
+      search_query: model.member.pool.member_filters_q,
+      capability_scope: model.member.pool.member_capability_scope,
+      my_capability_ids: my_capability_ids,
       // Story 4.8 UX: Added org_users for claimed_by display in task items
       org_users: org_users,
       is_pm_or_admin: {
@@ -782,9 +812,6 @@ fn build_center_panel(
           pool_messages.OpenCardDialog(state_types.CardDialogDelete(card_id)),
         )
       },
-      on_new_card: client_state.pool_msg(pool_messages.OpenCardDialog(
-        state_types.CardDialogCreate,
-      )),
       // Story 4.8 UX: Task interaction handlers for consistency with Lista view
       on_task_click: fn(task_id) {
         client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
@@ -800,6 +827,31 @@ fn build_center_panel(
       },
     ))
   let people_content = people_view.view(model)
+  let capabilities_content =
+    capability_board_view.view(
+      capability_board_view.Config(
+        locale: model.ui.locale,
+        theme: model.ui.theme,
+        tasks: model.member.pool.member_tasks,
+        task_types: model.member.pool.member_task_types,
+        capabilities: model.admin.capabilities.capabilities,
+        cards: cards,
+        org_users: org_users,
+        capability_scope: model.member.pool.member_capability_scope,
+        my_capability_ids: my_capability_ids,
+        type_filter: model.member.pool.member_filters_type_id,
+        search_query: model.member.pool.member_filters_q,
+        on_task_click: fn(task_id) {
+          client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
+        },
+        on_task_claim: fn(task_id, version) {
+          client_state.pool_msg(pool_messages.MemberClaimClicked(
+            task_id,
+            version,
+          ))
+        },
+      ),
+    )
 
   center_panel.view(center_panel.CenterPanelConfig(
     locale: model.ui.locale,
@@ -809,9 +861,15 @@ fn build_center_panel(
     },
     task_types: task_types,
     capabilities: capabilities,
+    capability_scope: model.member.pool.member_capability_scope,
     type_filter: model.member.pool.member_filters_type_id,
     capability_filter: model.member.pool.member_filters_capability_id,
     search_query: model.member.pool.member_filters_q,
+    on_capability_scope_change: fn(value) {
+      client_state.pool_msg(pool_messages.MemberPoolCapabilityScopeChanged(
+        value,
+      ))
+    },
     on_type_filter_change: fn(value) {
       client_state.pool_msg(pool_messages.MemberPoolTypeChanged(value))
     },
@@ -823,6 +881,7 @@ fn build_center_panel(
     },
     pool_content: pool_content,
     cards_content: cards_content,
+    capabilities_content: capabilities_content,
     people_content: people_content,
     milestones_content: milestones_content,
     // Drag handlers for pool (Story 4.7 fix)

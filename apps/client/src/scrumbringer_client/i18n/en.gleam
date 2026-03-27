@@ -178,6 +178,7 @@ pub fn translate(text: Text) -> String {
     text.Canvas -> "Canvas"
     text.List -> "List"
     text.Kanban -> "Kanban"
+    text.CapabilitiesBoard -> "Capabilities"
     text.People -> "People"
     text.Milestones -> "Milestones"
     text.ShowFilters -> "Show filters"
@@ -194,6 +195,8 @@ pub fn translate(text: Text) -> String {
     text.CapabilityLabel -> "Capability"
     text.MyCapabilitiesLabel -> "My capabilities"
     text.MyCapabilitiesHint -> "Filter tasks matching my capabilities"
+    text.ScopeAll -> "All"
+    text.ScopeMine -> "Mine"
     text.SearchLabel -> "Search"
     text.SearchPlaceholder -> "q"
     text.ClearFilters -> "Clear"
@@ -225,6 +228,15 @@ pub fn translate(text: Text) -> String {
     text.PeopleNoResults -> "No people match your search"
     text.PeopleLoading -> "Loading people..."
     text.PeopleLoadError -> "Could not load people"
+    text.CapabilityBoardLoading -> "Loading capabilities..."
+    text.CapabilityBoardEmpty -> "No active tasks grouped by capability"
+    text.CapabilityBoardNoResults ->
+      "No active tasks grouped by capability match the current filters"
+    text.CapabilityBoardLoadError -> "Could not load the capability board"
+    text.CapabilityBoardEmptyPending -> "No pending tasks"
+    text.CapabilityBoardEmptyClaimed -> "No claimed tasks"
+    text.CapabilityBoardEmptyOngoing -> "No ongoing tasks"
+    text.NoCapability -> "No capability"
     text.MilestonesEmpty -> "No milestones yet"
     text.MilestonesNoResults -> "No milestones match current filters"
     text.MilestonesLoadError -> "Could not load milestones"
@@ -237,6 +249,10 @@ pub fn translate(text: Text) -> String {
     text.MilestonesReady -> "Ready"
     text.MilestonesActive -> "Active"
     text.MilestonesCompleted -> "Completed"
+    text.MilestoneStateReady -> "Ready"
+    text.MilestoneStateActive -> "Active"
+    text.MilestoneStateCompleted -> "Completed"
+    text.MilestoneEmptyHint -> "No work assigned yet"
     text.MilestoneDone -> "Done"
     text.MilestoneActivationTitle -> "Activate milestone"
     text.MilestoneActivationBody(cards_count, tasks_count) ->
@@ -250,6 +266,7 @@ pub fn translate(text: Text) -> String {
     text.MilestoneDetails -> "Details"
     text.MilestoneTabOverview -> "Overview"
     text.MilestoneTabContent -> "Content"
+    text.MilestoneTabPlanning -> "Planning"
     text.ActivateMilestone -> "Activate"
     text.ActivatingMilestone -> "Activating..."
     text.MilestoneActivated -> "Milestone activated"
@@ -269,13 +286,39 @@ pub fn translate(text: Text) -> String {
       "Milestone cannot be activated in its current state"
     text.MilestoneOpenDetails -> "Open details"
     text.MilestoneMoreActions -> "More actions"
-    text.MilestoneMoveTo -> "Move to milestone..."
+    text.MilestoneMoveTo -> "Move"
     text.MilestoneCardsLabel -> "Cards"
     text.MilestoneTasksLabel -> "Tasks"
     text.MilestoneCardsProgress(completed, total) ->
       "Cards " <> int.to_string(completed) <> "/" <> int.to_string(total)
     text.MilestoneTasksProgress(completed, total) ->
       "Tasks " <> int.to_string(completed) <> "/" <> int.to_string(total)
+    text.MilestoneStructureSummary -> "Structure summary"
+    text.MilestoneActions -> "Actions"
+    text.MilestoneHealthSummary -> "Health"
+    text.MilestoneMetricsSummary -> "Metrics"
+    text.MilestoneSearchPlaceholder -> "Search milestones"
+    text.MilestoneLooseTasksNotice -> "Loose tasks"
+    text.MilestoneLooseTasksHint ->
+      "These tasks are not grouped inside a card yet"
+    text.MilestoneNoSelection -> "Select a milestone"
+    text.MilestoneNoSelectionHint ->
+      "Choose a milestone from the list to inspect its content"
+    text.MilestonePlanningSummary -> "Planning summary"
+    text.MilestoneLifecycle -> "Lifecycle"
+    text.MilestoneCardsCount(cards_count) ->
+      int.to_string(cards_count) <> " cards"
+    text.MilestoneLooseTasksCount(tasks_count) ->
+      int.to_string(tasks_count) <> " loose tasks"
+    text.MilestoneTasksInCardsCount(tasks_count) ->
+      int.to_string(tasks_count) <> " tasks in cards"
+    text.MilestoneBlockedTasksCount(tasks_count) ->
+      int.to_string(tasks_count) <> " blocked tasks"
+    text.MilestoneEmptyCardsCount(cards_count) ->
+      int.to_string(cards_count) <> " empty cards"
+    text.MilestoneEmptyCardsLabel -> "Empty cards"
+    text.MilestoneTotalTasksCount(tasks_count) ->
+      int.to_string(tasks_count) <> " total tasks"
     text.MilestoneTaskStatusAvailable -> "available"
     text.MilestoneTaskStatusClaimed -> "claimed"
     text.MilestoneTaskStatusCompleted -> "completed"
@@ -790,7 +833,7 @@ pub fn translate(text: Text) -> String {
 
     // Story 4.12 - Card selector for new task
     text.NoCard -> "No card"
-    text.NewTaskInCard(card_title) -> "New task in " <> card_title
+    text.NewTaskInCard(card_title) -> "Add task to " <> card_title
 
     // Story 4.4 - Three-panel layout
     // Accessibility labels
@@ -800,8 +843,11 @@ pub fn translate(text: Text) -> String {
     // Left panel sections
     text.Work -> "Work"
     text.NewCard -> "New Card"
-    text.QuickCard -> "Card"
-    text.QuickTask -> "Task"
+    text.QuickCard -> "New card"
+    text.QuickTask -> "New task"
+    text.NoTasksYet -> "No tasks yet"
+    text.CardTasksMore(hidden_count) ->
+      "+" <> int.to_string(hidden_count) <> " more tasks"
     text.NewCardInThisMilestone -> "New card in this milestone"
     text.MilestoneTarget -> "Destination milestone"
     text.Configuration -> "Configuration"

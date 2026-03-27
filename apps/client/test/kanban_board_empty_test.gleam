@@ -1,7 +1,9 @@
+import gleam/option.{None}
 import gleam/string
 import gleeunit/should
 import lustre/element
 
+import scrumbringer_client/capability_scope
 import scrumbringer_client/features/views/kanban_board
 import scrumbringer_client/i18n/locale as i18n_locale
 import scrumbringer_client/theme
@@ -13,12 +15,17 @@ pub fn kanban_board_renders_empty_column_texts_test() {
       theme: theme.Default,
       cards: [],
       tasks: [],
+      task_types: [],
+      type_filter: None,
+      capability_filter: None,
+      search_query: "",
+      capability_scope: capability_scope.AllCapabilities,
+      my_capability_ids: [],
       org_users: [],
       is_pm_or_admin: False,
       on_card_click: fn(id) { id },
       on_card_edit: fn(id) { id },
       on_card_delete: fn(id) { id },
-      on_new_card: 0,
       on_task_click: fn(id) { id },
       on_task_claim: fn(a, b) { a + b },
       on_create_task_in_card: fn(id) { id },

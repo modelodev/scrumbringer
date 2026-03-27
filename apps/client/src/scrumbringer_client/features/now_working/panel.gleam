@@ -152,6 +152,8 @@ fn view_session(model: Model, session: WorkSession) -> Element(Msg) {
       title_class: opt.Some("now-working-task-title"),
       secondary: div([attribute.class("now-working-timer")], [text(elapsed)]),
       actions: [div([attribute.class("now-working-actions")], actions)],
+      reserve_actions_slot: False,
+      action_slot_class: opt.None,
       testid: opt.None,
     ),
     task_item.Div,

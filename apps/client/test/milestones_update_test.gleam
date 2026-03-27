@@ -19,7 +19,6 @@ import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/cards as admin_cards
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member as member_state
-import scrumbringer_client/client_state/member/milestone_details_tab
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/features/milestones/ids as milestone_ids
@@ -359,7 +358,8 @@ pub fn milestone_created_ok_opens_details_for_new_milestone_test() {
     )
 
   next.member.pool.member_milestone_dialog
-  |> should.equal(member_pool.MilestoneDialogView(33))
+  |> should.equal(member_pool.MilestoneDialogClosed)
+  next.member.pool.member_selected_milestone_id |> should.equal(Some(33))
 }
 
 pub fn milestone_create_then_create_card_from_details_sets_context_test() {
@@ -687,7 +687,7 @@ pub fn milestone_filters_toggle_flags_test() {
   next_b.member.pool.member_milestones_show_empty |> should.equal(True)
 }
 
-pub fn milestone_details_click_opens_view_dialog_test() {
+pub fn milestone_details_click_selects_milestone_test() {
   let model = client_state.default_model()
 
   let #(next, _fx) =
@@ -698,9 +698,8 @@ pub fn milestone_details_click_opens_view_dialog_test() {
     )
 
   next.member.pool.member_milestone_dialog
-  |> should.equal(member_pool.MilestoneDialogView(77))
-  next.member.pool.member_milestone_details_tab
-  |> should.equal(milestone_details_tab.MilestoneContentTab)
+  |> should.equal(member_pool.MilestoneDialogClosed)
+  next.member.pool.member_selected_milestone_id |> should.equal(Some(77))
 }
 
 pub fn milestone_create_task_click_opens_task_dialog_with_milestone_test() {
@@ -710,10 +709,7 @@ pub fn milestone_create_task_click_opens_task_dialog_with_milestone_test() {
       let pool = member.pool
       member_state.MemberModel(
         ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_milestone_dialog: member_pool.MilestoneDialogView(88),
-        ),
+        pool: member_pool.Model(..pool, member_selected_milestone_id: Some(88)),
       )
     })
 
@@ -739,10 +735,7 @@ pub fn milestone_create_card_click_opens_card_dialog_with_milestone_test() {
       let pool = member.pool
       member_state.MemberModel(
         ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_milestone_dialog: member_pool.MilestoneDialogView(89),
-        ),
+        pool: member_pool.Model(..pool, member_selected_milestone_id: Some(89)),
       )
     })
 
@@ -770,8 +763,7 @@ pub fn milestone_create_card_close_dialog_preserves_milestones_context_test() {
         pool: member_pool.Model(
           ..pool,
           member_section: member_section.Pool,
-          member_milestone_dialog: member_pool.MilestoneDialogView(89),
-          member_milestone_details_tab: milestone_details_tab.MilestoneContentTab,
+          member_selected_milestone_id: Some(89),
         ),
       )
     })

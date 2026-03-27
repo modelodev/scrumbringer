@@ -1,4 +1,4 @@
-import domain/view_mode.{Cards, Milestones, People, Pool}
+import domain/view_mode.{Capabilities, Cards, Milestones, People, Pool}
 import gleam/list
 import gleeunit/should
 
@@ -19,6 +19,11 @@ pub fn from_string_milestones_test() {
 pub fn from_string_cards_test() {
   view_mode.from_string("cards")
   |> should.equal(Cards)
+}
+
+pub fn from_string_capabilities_test() {
+  view_mode.from_string("capabilities")
+  |> should.equal(Capabilities)
 }
 
 pub fn from_string_people_test() {
@@ -60,13 +65,18 @@ pub fn to_string_cards_test() {
   |> should.equal("cards")
 }
 
+pub fn to_string_capabilities_test() {
+  view_mode.to_string(Capabilities)
+  |> should.equal("capabilities")
+}
+
 pub fn to_string_people_test() {
   view_mode.to_string(People)
   |> should.equal("people")
 }
 
 pub fn to_string_never_emits_list_test() {
-  [Pool, Cards, People, Milestones]
+  [Pool, Cards, Capabilities, People, Milestones]
   |> list.each(fn(mode) {
     view_mode.to_string(mode)
     |> should.not_equal("list")
@@ -96,6 +106,13 @@ pub fn roundtrip_cards_test() {
   |> view_mode.to_string
   |> view_mode.from_string
   |> should.equal(Cards)
+}
+
+pub fn roundtrip_capabilities_test() {
+  Capabilities
+  |> view_mode.to_string
+  |> view_mode.from_string
+  |> should.equal(Capabilities)
 }
 
 pub fn roundtrip_people_test() {
@@ -129,6 +146,11 @@ pub fn people_does_not_support_drag_drop_test() {
   |> should.be_false
 }
 
+pub fn capabilities_does_not_support_drag_drop_test() {
+  view_mode.supports_drag_drop(Capabilities)
+  |> should.be_false
+}
+
 // =============================================================================
 // label_key tests
 // =============================================================================
@@ -146,6 +168,11 @@ pub fn label_key_milestones_test() {
 pub fn label_key_cards_test() {
   view_mode.label_key(Cards)
   |> should.equal("ViewModeCards")
+}
+
+pub fn label_key_capabilities_test() {
+  view_mode.label_key(Capabilities)
+  |> should.equal("ViewModeCapabilities")
 }
 
 pub fn label_key_people_test() {

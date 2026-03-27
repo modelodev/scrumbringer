@@ -1,0 +1,4 @@
+{
+  "target": "opencode",
+  "workflows": [{"workflow_id": "user_story_authoring", "runtime_workflow": "user-story-authoring", "steps": [{"step_id": "story_brief", "runtime_step": "story-brief"},{"step_id": "repo_context_scan", "runtime_step": "repo-context-scan"},{"step_id": "brief_alignment_check", "runtime_step": "brief-alignment-check"},{"step_id": "story_draft", "runtime_step": "story-draft"},{"step_id": "story_solution_fit", "runtime_step": "story-solution-fit"},{"step_id": "ready_check", "runtime_step": "ready-check"}]},{"workflow_id": "feature_delivery", "runtime_workflow": "feature-delivery", "steps": [{"step_id": "change_plan", "runtime_step": "change-plan"},{"step_id": "implementation", "runtime_step": "implementation"},{"step_id": "verification", "runtime_step": "verification"},{"step_id": "delivery_note", "runtime_step": "delivery-note"}]}]
+}

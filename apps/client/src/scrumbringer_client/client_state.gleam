@@ -544,7 +544,7 @@ pub fn remote_to_resource_state(remote: Remote(a)) -> hydration.ResourceState {
 ///
 /// - All `Remote` fields start as `NotAsked`
 /// - All `Option` fields start as `None`
-/// - All `Bool` flags start as `False` (except `member_quick_my_caps`)
+/// - All `Bool` flags start as `False`
 /// - All `String` fields start as `""`
 /// - All `Int` counters start as `0`
 /// - All `Dict` fields start empty

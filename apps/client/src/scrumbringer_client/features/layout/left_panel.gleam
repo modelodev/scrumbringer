@@ -27,7 +27,9 @@ import lustre/event
 
 import domain/project.{type Project}
 import domain/user.{type User}
-import domain/view_mode.{type ViewMode, Cards, Milestones, People, Pool}
+import domain/view_mode.{
+  type ViewMode, Capabilities, Cards, Milestones, People, Pool,
+}
 import scrumbringer_client/i18n/i18n
 import scrumbringer_client/i18n/locale.{type Locale}
 import scrumbringer_client/i18n/text as i18n_text
@@ -65,6 +67,7 @@ pub type LeftPanelConfig(msg) {
     // Navigation to work views (AC2)
     on_navigate_pool: msg,
     on_navigate_cards: msg,
+    on_navigate_capabilities: msg,
     on_navigate_people: msg,
     on_navigate_milestones: msg,
     // Config navigation
@@ -316,6 +319,14 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
         ),
         view_work_nav_link(
           config,
+          Capabilities,
+          "nav-capabilities-board",
+          icons.Crosshairs,
+          i18n_text.CapabilitiesBoard,
+          config.on_navigate_capabilities,
+        ),
+        view_work_nav_link(
+          config,
           People,
           "nav-people",
           icons.Team,
@@ -335,7 +346,7 @@ fn view_work_section(config: LeftPanelConfig(msg)) -> Element(msg) {
   )
 }
 
-/// Renders a work section navigation link (Pool/Kanban/People/Milestones)
+/// Renders a work section navigation link (Pool/Kanban/Capabilities/People/Milestones)
 fn view_work_nav_link(
   config: LeftPanelConfig(msg),
   mode: ViewMode,

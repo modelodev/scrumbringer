@@ -1,0 +1,23 @@
+{
+  "schema_version": "awo.step_report/v1",
+  "run_id": "run_1774454550",
+  "workflow_id": "user_story_authoring",
+  "workflow_version": "0.1.0",
+  "target": "opencode",
+  "step_id": "brief_alignment_check",
+  "status": "ok",
+  "policy_outcome": "pass",
+  "executive_summary": "Confirmed the story fits the pull-based brief and avoids direct assignment semantics.",
+  "artifacts_in": [".awo/runs/run_1774454550/artifacts/repo_context_scan.json"],
+  "artifacts_out": [".awo/runs/run_1774454550/artifacts/brief_alignment_check.json"],
+  "next_recommended": ["story_draft"],
+  "risks": [],
+  "started_at": "2026-03-25T16:09:40Z",
+  "ended_at": "2026-03-25T16:11:05Z",
+  "budget_used": {"tokens": 1000, "cost_usd": 0.03},
+  "declared_skill_refs": [".opencode/skills/user-story-authoring-brief_alignment_check/SKILL.md"],
+  "observed_skill_refs": ["docs/brief.md", ".opencode/skills/user-story-authoring-brief_alignment_check/SKILL.md"],
+  "commands_run": [],
+  "artifacts_materialized": [".awo/runs/run_1774454550/artifacts/brief_alignment_check.json"],
+  "interruption_events": []
+}

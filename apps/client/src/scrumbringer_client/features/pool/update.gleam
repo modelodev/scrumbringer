@@ -41,6 +41,7 @@ import domain/task_status
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/api/tasks as api_tasks
 import scrumbringer_client/app/effects as app_effects
+import scrumbringer_client/capability_scope
 import scrumbringer_client/client_ffi
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
@@ -179,7 +180,7 @@ pub fn handle_clear_filters(
         member_filters_type_id: opt.None,
         member_filters_capability_id: opt.None,
         member_filters_q: "",
-        member_quick_my_caps: False,
+        member_capability_scope: capability_scope.default(),
       )
     })
   member_refresh(model)
@@ -189,19 +190,18 @@ pub fn handle_clear_filters(
 // View Mode and Filter Visibility
 // =============================================================================
 
-/// Toggle the "my capabilities" quick filter.
-pub fn handle_toggle_my_capabilities_quick(
+pub fn handle_pool_capability_scope_changed(
   model: client_state.Model,
+  value: String,
+  member_refresh: fn(client_state.Model) ->
+    #(client_state.Model, effect.Effect(client_state.Msg)),
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  #(
+  let next_scope = capability_scope.from_string(value)
+  let model =
     update_member_pool(model, fn(pool) {
-      member_pool.Model(
-        ..pool,
-        member_quick_my_caps: !model.member.pool.member_quick_my_caps,
-      )
-    }),
-    effect.none(),
-  )
+      member_pool.Model(..pool, member_capability_scope: next_scope)
+    })
+  member_refresh(model)
 }
 
 /// Toggle pool filters visibility.
@@ -395,20 +395,6 @@ fn close_dialog_shortcut(
       }),
       app_effects.focus_element_after_timeout(
         milestone_ids.delete_button_id(id),
-        0,
-      ),
-    )
-    _, member_pool.MilestoneDialogView(id: id), _, _ -> #(
-      update_member_pool(model, fn(pool) {
-        member_pool.Model(
-          ..pool,
-          member_milestone_dialog: member_pool.MilestoneDialogClosed,
-          member_milestone_dialog_in_flight: False,
-          member_milestone_dialog_error: opt.None,
-        )
-      }),
-      app_effects.focus_element_after_timeout(
-        milestone_ids.details_button_id(id),
         0,
       ),
     )
@@ -1338,9 +1324,8 @@ fn update_without_milestones(
       handle_pool_type_changed(model, v, member_refresh)
     pool_messages.MemberPoolCapabilityChanged(v) ->
       handle_pool_capability_changed(model, v, member_refresh)
-
-    pool_messages.MemberToggleMyCapabilitiesQuick ->
-      handle_toggle_my_capabilities_quick(model)
+    pool_messages.MemberPoolCapabilityScopeChanged(v) ->
+      handle_pool_capability_scope_changed(model, v, member_refresh)
     pool_messages.MemberPoolFiltersToggled -> handle_pool_filters_toggled(model)
     pool_messages.MemberClearFilters ->
       handle_clear_filters(model, member_refresh)
@@ -1985,9 +1970,9 @@ fn update_without_milestones(
     pool_messages.MemberProjectMilestonesFetched(_, _)
     | pool_messages.MemberMilestonesShowCompletedToggled
     | pool_messages.MemberMilestonesShowEmptyToggled
-    | pool_messages.MemberMilestoneRowToggled(_)
+    | pool_messages.MemberMilestoneSearchChanged(_)
+    | pool_messages.MemberMilestoneSummaryToggled
     | pool_messages.MemberMilestoneDetailsClicked(_)
-    | pool_messages.MemberMilestoneDetailsTabSelected(_)
     | pool_messages.MemberMilestoneCreateTaskClicked(_)
     | pool_messages.MemberMilestoneCreateCardClicked(_)
     | pool_messages.MemberMilestoneCardDragStarted(_, _)

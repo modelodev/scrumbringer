@@ -1,7 +1,7 @@
 schema: awo.config/v1
 version: 1
 workflows:
-  enabled: [scrumbringer_change_loop]
+  enabled: [user_story_authoring, feature_delivery]
 sources: []
 targets:
   default: opencode
@@ -15,7 +15,7 @@ targets:
       skills_dir: ".opencode/skills"
 budgets:
   default_run:
-    tokens_hint: 24000
+    tokens_hint: 28000
   default_step:
     tokens_hint: 8000
   enforce: warn

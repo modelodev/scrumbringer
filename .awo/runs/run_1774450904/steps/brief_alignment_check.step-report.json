@@ -1,0 +1,34 @@
+{
+  "schema_version": "awo.step_report/v1",
+  "run_id": "run_1774450904",
+  "workflow_id": "user_story_authoring",
+  "workflow_version": "0.1.0",
+  "target": "opencode",
+  "step_id": "brief_alignment_check",
+  "status": "ok",
+  "policy_outcome": "pass",
+  "executive_summary": "La historia respeta el brief: visibiliza trabajo real por capacidad y evita introducir asignación directa o backlog completado.",
+  "artifacts_in": [
+    "docs/brief.md"
+  ],
+  "artifacts_out": [
+    ".awo/runs/run_1774450904/steps/brief_alignment_check.step-report.json"
+  ],
+  "next_recommended": ["story_draft"],
+  "risks": [
+    "La vista no debe confundirse con planificación; se mantuvo enfocada en tareas activas para alinearse con el pool y la filosofía pull."
+  ],
+  "started_at": "2026-03-25T15:02:35Z",
+  "ended_at": "2026-03-25T15:02:55Z",
+  "budget_used": { "tokens": 150, "cost_usd": 0.0045 },
+  "declared_skill_refs": [".opencode/skills/user-story-authoring-brief_alignment_check/SKILL.md"],
+  "observed_skill_refs": [
+    ".awo/generated/opencode/runtime/.opencode/skills/user-story-authoring-brief_alignment_check/SKILL.md",
+    "docs/brief.md"
+  ],
+  "commands_run": [],
+  "artifacts_materialized": [
+    ".awo/runs/run_1774450904/steps/brief_alignment_check.step-report.json"
+  ],
+  "interruption_events": []
+}

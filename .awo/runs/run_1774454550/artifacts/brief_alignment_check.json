@@ -1,0 +1,10 @@
+{
+  "status": "ok",
+  "summary": "Story aligns with pull-based brief and adds no direct assignment semantics.",
+  "guardrails": [
+    "no assignee model",
+    "no new backend contract",
+    "single delivery slice",
+    "card color remains visual only"
+  ]
+}

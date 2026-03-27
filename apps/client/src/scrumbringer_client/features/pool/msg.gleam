@@ -21,7 +21,6 @@ import domain/workflow.{
 }
 
 import scrumbringer_client/api/workflows as api_workflows
-import scrumbringer_client/client_state/member/milestone_details_tab
 import scrumbringer_client/client_state/types as state_types
 import scrumbringer_client/pool_prefs
 import scrumbringer_client/ui/task_tabs
@@ -33,9 +32,9 @@ pub type Msg {
   MemberPoolStatusChanged(String)
   MemberPoolTypeChanged(String)
   MemberPoolCapabilityChanged(String)
+  MemberPoolCapabilityScopeChanged(String)
   MemberPoolSearchChanged(String)
   MemberPoolSearchDebounced(String)
-  MemberToggleMyCapabilitiesQuick
   MemberPoolFiltersToggled
   MemberClearFilters
   MemberPoolViewModeSet(pool_prefs.ViewMode)
@@ -96,9 +95,9 @@ pub type Msg {
   MemberProjectMilestonesFetched(Int, ApiResult(List(MilestoneProgress)))
   MemberMilestonesShowCompletedToggled
   MemberMilestonesShowEmptyToggled
-  MemberMilestoneRowToggled(Int)
+  MemberMilestoneSearchChanged(String)
+  MemberMilestoneSummaryToggled
   MemberMilestoneDetailsClicked(Int)
-  MemberMilestoneDetailsTabSelected(milestone_details_tab.MilestoneDetailsTab)
   MemberMilestoneMetricsFetched(ApiResult(MilestoneModalMetrics))
   MemberMilestoneCreateTaskClicked(Int)
   MemberMilestoneCreateCardClicked(Int)

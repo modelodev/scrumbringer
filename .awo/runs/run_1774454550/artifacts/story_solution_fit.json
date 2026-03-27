@@ -1,0 +1,11 @@
+{
+  "status": "ok",
+  "summary": "Mapped the UI to existing view-mode, task-type, and task-item surfaces.",
+  "likely_touch_points": [
+    "shared/src/domain/view_mode.gleam",
+    "apps/client/src/scrumbringer_client/router.gleam",
+    "apps/client/src/scrumbringer_client/features/layout/view_mode_toggle.gleam",
+    "apps/client/src/scrumbringer_client/features/views/kanban_board.gleam",
+    "apps/client/src/scrumbringer_client/ui/task_item.gleam"
+  ]
+}

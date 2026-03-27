@@ -266,6 +266,8 @@ fn view_task_item(
       title_class: None,
       secondary: secondary,
       actions: actions,
+      reserve_actions_slot: True,
+      action_slot_class: None,
       testid: Some("task-card"),
     ),
     task_item.ListItem,

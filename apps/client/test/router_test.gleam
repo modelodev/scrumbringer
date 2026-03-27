@@ -6,6 +6,7 @@ import gleam/uri
 import gleeunit/should
 
 import domain/view_mode
+import scrumbringer_client/capability_scope
 import scrumbringer_client/member_section
 import scrumbringer_client/permissions
 import scrumbringer_client/router
@@ -148,6 +149,26 @@ pub fn format_member_people_with_project_test() {
   |> should.equal("/app/pool?project=2&view=people")
 }
 
+pub fn format_member_capabilities_with_project_test() {
+  router.format(member_route(
+    member_section.Pool,
+    Some(2),
+    Some(view_mode.Capabilities),
+  ))
+  |> should.equal("/app/pool?project=2&view=capabilities")
+}
+
+pub fn format_member_cards_with_scope_test() {
+  let state =
+    url_state.empty()
+    |> url_state.with_project(2)
+    |> url_state.with_view(view_mode.Cards)
+    |> url_state.with_capability_scope(capability_scope.MyCapabilities)
+
+  router.format(router.Member(member_section.Pool, state))
+  |> should.equal("/app/pool?project=2&view=cards&scope=mine")
+}
+
 // Story 4.5: Config routes roundtrip correctly
 pub fn roundtrip_config_members_test() {
   let route = router.Config(permissions.Members, Some(2))
@@ -191,6 +212,23 @@ pub fn roundtrip_member_milestones_with_project_test() {
 
 pub fn roundtrip_member_people_with_project_test() {
   let route = member_route(member_section.Pool, Some(2), Some(view_mode.People))
+  router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
+}
+
+pub fn roundtrip_member_capabilities_with_project_test() {
+  let route =
+    member_route(member_section.Pool, Some(2), Some(view_mode.Capabilities))
+  router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
+}
+
+pub fn roundtrip_member_cards_with_scope_test() {
+  let state =
+    url_state.empty()
+    |> url_state.with_project(2)
+    |> url_state.with_view(view_mode.Cards)
+    |> url_state.with_capability_scope(capability_scope.MyCapabilities)
+
+  let route = router.Member(member_section.Pool, state)
   router.format(route) |> parse_formatted |> should.equal(router.Parsed(route))
 }
 

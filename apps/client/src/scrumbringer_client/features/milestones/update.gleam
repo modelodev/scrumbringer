@@ -1,4 +1,3 @@
-import gleam/dict
 import gleam/list
 import gleam/option as opt
 import gleam/string
@@ -7,7 +6,7 @@ import lustre/effect
 
 import domain/api_error.{type ApiError, ApiError}
 import domain/milestone
-import domain/remote.{Failed, Loaded, Loading, NotAsked}
+import domain/remote.{type Remote, Failed, Loaded, Loading}
 import scrumbringer_client/api/cards as api_cards
 import scrumbringer_client/api/milestones as api_milestones
 import scrumbringer_client/api/tasks as api_tasks
@@ -15,7 +14,6 @@ import scrumbringer_client/app/effects as app_effects
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/dialog_mode
 import scrumbringer_client/client_state/member as member_state
-import scrumbringer_client/client_state/member/milestone_details_tab
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/features/admin/cards as cards_workflow
 import scrumbringer_client/features/milestones/dialog_helpers
@@ -54,6 +52,27 @@ pub fn try_update(
         True -> Loaded(normalized_store.to_list(next_store))
         False -> model.member.pool.member_milestones
       }
+      let next_selected =
+        keep_selected_milestone(
+          next_milestones,
+          model.member.pool.member_selected_milestone_id,
+        )
+      let metrics_missing = case model.member.pool.member_milestone_metrics {
+        Loaded(_) -> False
+        _ -> True
+      }
+      let should_fetch_metrics =
+        next_selected != model.member.pool.member_selected_milestone_id
+        || metrics_missing
+      let metrics_fx = case next_selected, should_fetch_metrics {
+        opt.Some(milestone_id), True ->
+          api_milestones.get_milestone_metrics(milestone_id, fn(result) {
+            client_state.pool_msg(pool_messages.MemberMilestoneMetricsFetched(
+              result,
+            ))
+          })
+        _, _ -> effect.none()
+      }
 
       opt.Some(#(
         update_member_pool(model, fn(pool) {
@@ -61,9 +80,14 @@ pub fn try_update(
             ..pool,
             member_milestones_store: next_store,
             member_milestones: next_milestones,
+            member_selected_milestone_id: next_selected,
+            member_milestone_metrics: case should_fetch_metrics {
+              True -> Loading
+              False -> pool.member_milestone_metrics
+            },
           )
         }),
-        effect.none(),
+        metrics_fx,
       ))
     }
 
@@ -111,38 +135,33 @@ pub fn try_update(
         effect.none(),
       ))
 
-    pool_messages.MemberMilestoneRowToggled(milestone_id) -> {
-      let expanded =
-        dict.get(model.member.pool.member_milestones_expanded, milestone_id)
-        |> opt.from_result
-        |> opt.unwrap(False)
-
-      let next =
-        dict.insert(
-          model.member.pool.member_milestones_expanded,
-          milestone_id,
-          !expanded,
-        )
-
+    pool_messages.MemberMilestoneSearchChanged(query) ->
       opt.Some(#(
         update_member_pool(model, fn(pool) {
-          member_pool.Model(..pool, member_milestones_expanded: next)
+          member_pool.Model(..pool, member_milestones_search_query: query)
         }),
         effect.none(),
       ))
-    }
+
+    pool_messages.MemberMilestoneSummaryToggled ->
+      opt.Some(#(
+        update_member_pool(model, fn(pool) {
+          member_pool.Model(
+            ..pool,
+            member_milestone_summary_expanded: !pool.member_milestone_summary_expanded,
+          )
+        }),
+        effect.none(),
+      ))
 
     pool_messages.MemberMilestoneDetailsClicked(milestone_id) ->
       opt.Some(#(
         update_member_pool(model, fn(pool) {
           member_pool.Model(
             ..pool,
-            member_milestone_dialog: member_pool.MilestoneDialogView(
-              milestone_id,
-            ),
+            member_selected_milestone_id: opt.Some(milestone_id),
             member_milestone_dialog_in_flight: False,
             member_milestone_dialog_error: opt.None,
-            member_milestone_details_tab: milestone_details_tab.MilestoneContentTab,
             member_milestone_metrics: Loading,
           )
         }),
@@ -151,14 +170,6 @@ pub fn try_update(
             result,
           ))
         }),
-      ))
-
-    pool_messages.MemberMilestoneDetailsTabSelected(tab) ->
-      opt.Some(#(
-        update_member_pool(model, fn(pool) {
-          member_pool.Model(..pool, member_milestone_details_tab: tab)
-        }),
-        effect.none(),
       ))
 
     pool_messages.MemberMilestoneMetricsFetched(Ok(metrics)) ->
@@ -588,8 +599,6 @@ pub fn try_update(
               member_milestone_dialog: member_pool.MilestoneDialogClosed,
               member_milestone_dialog_in_flight: False,
               member_milestone_dialog_error: opt.None,
-              member_milestone_details_tab: milestone_details_tab.MilestoneContentTab,
-              member_milestone_metrics: NotAsked,
             )
           }),
           case focus_target {
@@ -747,18 +756,11 @@ pub fn try_update(
         update_member_pool(model, fn(pool) {
           member_pool.Model(
             ..pool,
-            member_milestone_dialog: member_pool.MilestoneDialogView(
-              milestone.id,
-            ),
+            member_milestone_dialog: member_pool.MilestoneDialogClosed,
             member_milestone_dialog_in_flight: False,
             member_milestone_dialog_error: opt.None,
-            member_milestone_details_tab: milestone_details_tab.MilestoneContentTab,
+            member_selected_milestone_id: opt.Some(milestone.id),
             member_milestone_metrics: Loading,
-            member_milestones_expanded: dict.insert(
-              pool.member_milestones_expanded,
-              milestone.id,
-              True,
-            ),
           )
         })
 
@@ -897,7 +899,7 @@ pub fn try_update(
       ))
     }
 
-    pool_messages.MemberMilestoneDeleted(_milestone_id, Ok(_)) -> {
+    pool_messages.MemberMilestoneDeleted(milestone_id, Ok(_)) -> {
       let model =
         update_member_pool(model, fn(pool) {
           member_pool.Model(
@@ -905,6 +907,12 @@ pub fn try_update(
             member_milestone_dialog: member_pool.MilestoneDialogClosed,
             member_milestone_dialog_in_flight: False,
             member_milestone_dialog_error: opt.None,
+            member_selected_milestone_id: case
+              pool.member_selected_milestone_id
+            {
+              opt.Some(selected_id) if selected_id == milestone_id -> opt.None
+              other -> other
+            },
           )
         })
 
@@ -992,10 +1000,49 @@ fn dialog_focus_target(
       opt.Some(milestone_ids.edit_button_id(id))
     member_pool.MilestoneDialogDelete(id: id, ..) ->
       opt.Some(milestone_ids.delete_button_id(id))
-    member_pool.MilestoneDialogView(id: id) ->
-      opt.Some(milestone_ids.details_button_id(id))
     member_pool.MilestoneDialogCreate(..) ->
       opt.Some(milestone_ids.create_button_id())
     member_pool.MilestoneDialogClosed -> opt.None
+  }
+}
+
+fn keep_selected_milestone(
+  milestones: Remote(List(milestone.MilestoneProgress)),
+  selected: opt.Option(Int),
+) -> opt.Option(Int) {
+  case milestones, selected {
+    Loaded(items), opt.Some(selected_id) ->
+      case
+        list.any(items, fn(progress) { progress.milestone.id == selected_id })
+      {
+        True -> selected
+        False -> default_selected_milestone(items)
+      }
+    Loaded(items), opt.None -> default_selected_milestone(items)
+    _, _ -> selected
+  }
+}
+
+fn default_selected_milestone(
+  items: List(milestone.MilestoneProgress),
+) -> opt.Option(Int) {
+  case
+    list.find(items, fn(progress) {
+      progress.milestone.state == milestone.Active
+    })
+  {
+    Ok(progress) -> opt.Some(progress.milestone.id)
+    Error(_) ->
+      case
+        list.find(items, fn(progress) {
+          progress.milestone.state == milestone.Ready
+        })
+      {
+        Ok(progress) -> opt.Some(progress.milestone.id)
+        Error(_) ->
+          list.first(items)
+          |> opt.from_result
+          |> opt.map(fn(progress) { progress.milestone.id })
+      }
   }
 }

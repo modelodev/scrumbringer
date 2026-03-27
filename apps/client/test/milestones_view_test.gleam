@@ -1,4 +1,3 @@
-import gleam/dict
 import gleam/int
 import gleam/option.{None, Some}
 import gleam/string
@@ -22,7 +21,6 @@ import domain/task_type.{TaskTypeInline}
 import domain/user.{User}
 import scrumbringer_client/client_state
 import scrumbringer_client/client_state/member as member_state
-import scrumbringer_client/client_state/member/milestone_details_tab
 import scrumbringer_client/client_state/member/pool as member_pool
 import scrumbringer_client/client_state/ui as ui_state
 import scrumbringer_client/features/milestones/view as milestones_view
@@ -115,6 +113,22 @@ fn with_show_completed(
   })
 }
 
+fn with_selected_milestone(
+  model: client_state.Model,
+  milestone_id: Int,
+) -> client_state.Model {
+  client_state.update_member(model, fn(member) {
+    let pool = member.pool
+    member_state.MemberModel(
+      ..member,
+      pool: member_pool.Model(
+        ..pool,
+        member_selected_milestone_id: Some(milestone_id),
+      ),
+    )
+  })
+}
+
 fn with_cards(model: client_state.Model, cards) -> client_state.Model {
   client_state.update_member(model, fn(member) {
     let pool = member.pool
@@ -147,6 +161,22 @@ fn with_milestone_metrics(
     member_state.MemberModel(
       ..member,
       pool: member_pool.Model(..pool, member_milestone_metrics: metrics),
+    )
+  })
+}
+
+fn with_summary_expanded(
+  model: client_state.Model,
+  expanded: Bool,
+) -> client_state.Model {
+  client_state.update_member(model, fn(member) {
+    let pool = member.pool
+    member_state.MemberModel(
+      ..member,
+      pool: member_pool.Model(
+        ..pool,
+        member_milestone_summary_expanded: expanded,
+      ),
     )
   })
 }
@@ -197,6 +227,33 @@ fn sample_loose_task(id: Int, milestone_id: Int) -> Task {
     milestone_id: Some(milestone_id),
     card_id: None,
     card_title: None,
+    card_color: None,
+    has_new_notes: False,
+    blocked_count: 0,
+    dependencies: [],
+  )
+}
+
+fn sample_card_task(id: Int, _milestone_id: Int, card_id: Int) -> Task {
+  let state = task_state.Available
+  Task(
+    id: id,
+    project_id: 1,
+    type_id: 1,
+    task_type: TaskTypeInline(id: 1, name: "Task", icon: "check"),
+    ongoing_by: None,
+    title: "Card task " <> int.to_string(id),
+    description: None,
+    priority: 1,
+    state: state,
+    status: task_state.to_status(state),
+    work_state: task_state.to_work_state(state),
+    created_by: 1,
+    created_at: "2026-02-06T00:00:00Z",
+    version: 1,
+    milestone_id: None,
+    card_id: Some(card_id),
+    card_title: Some("Card " <> int.to_string(card_id)),
     card_color: None,
     has_new_notes: False,
     blocked_count: 0,
@@ -307,13 +364,9 @@ pub fn milestones_view_rows_include_stable_testids_test() {
     |> element.to_document_string
 
   string.contains(html, "data-testid=\"milestone-row:12\"") |> should.be_true
-  string.contains(html, "data-testid=\"milestone-activate-button:12\"")
+  string.contains(html, "data-testid=\"milestone-detail-pane\"")
   |> should.be_true
-  string.contains(html, "data-testid=\"milestone-edit-button:12\"")
-  |> should.be_true
-  string.contains(html, "data-testid=\"milestone-delete-button:12\"")
-  |> should.be_true
-  string.contains(html, "id=\"milestone-activate-button-12\"")
+  string.contains(html, "data-testid=\"milestones-search\"")
   |> should.be_true
 }
 
@@ -340,6 +393,7 @@ pub fn milestones_view_delete_button_only_for_ready_test() {
         sample_progress(3, Completed),
       ]),
     )
+    |> with_selected_milestone(1)
     |> milestones_view.view
     |> element.to_document_string
 
@@ -366,6 +420,7 @@ pub fn milestones_view_disables_activate_button_while_in_flight_test() {
     base_model()
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(22, Ready)]))
+    |> with_selected_milestone(22)
     |> client_state.update_member(fn(member) {
       let pool = member.pool
       member_state.MemberModel(
@@ -379,25 +434,26 @@ pub fn milestones_view_disables_activate_button_while_in_flight_test() {
     |> milestones_view.view
     |> element.to_document_string
 
-  string.contains(html, "data-testid=\"milestone-activate-button:22\" disabled")
+  string.contains(html, "data-testid=\"milestone-activate-button:22\"")
   |> should.be_true
+  string.contains(html, "disabled") |> should.be_true
 }
 
-pub fn milestones_view_renders_toggle_and_progress_testids_test() {
+pub fn milestones_view_renders_detail_progress_and_tabs_test() {
   let html =
     base_model()
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(33, Ready)]))
+    |> with_summary_expanded(True)
     |> milestones_view.view
     |> element.to_document_string
 
-  string.contains(html, "data-testid=\"milestone-toggle:33\"")
-  |> should.be_true
-  string.contains(html, "data-testid=\"milestone-progress:33\"")
-  |> should.be_true
+  string.contains(html, "milestone-detail-pane") |> should.be_true
+  string.contains(html, "Health") |> should.be_true
+  string.contains(html, "Metrics") |> should.be_true
 }
 
-pub fn milestones_view_renders_accessibility_controls_test() {
+pub fn milestones_view_marks_selected_row_with_aria_pressed_test() {
   let html =
     base_model()
     |> with_admin_user
@@ -405,11 +461,7 @@ pub fn milestones_view_renders_accessibility_controls_test() {
     |> milestones_view.view
     |> element.to_document_string
 
-  string.contains(html, "aria-controls=\"milestone-details-44\"")
-  |> should.be_true
-  string.contains(html, "aria-labelledby=\"milestone-details-button-44\"")
-  |> should.be_true
-  string.contains(html, "aria-expanded=\"false\"") |> should.be_true
+  string.contains(html, "aria-pressed=\"true\"") |> should.be_true
 }
 
 pub fn milestones_view_filter_toggles_present_and_default_unchecked_test() {
@@ -496,26 +548,18 @@ pub fn milestones_view_activate_button_opens_prompt_dialog_contract_test() {
   string.contains(html, "autofocus") |> should.be_true
 }
 
-pub fn milestones_view_expand_state_does_not_open_dialog_test() {
+pub fn milestones_view_legacy_expand_state_does_not_change_selection_test() {
   let html =
     base_model()
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(77, Ready)]))
-    |> client_state.update_member(fn(member) {
-      let pool = member.pool
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_milestones_expanded: dict.insert(dict.new(), 77, True),
-        ),
-      )
-    })
+    |> with_selected_milestone(77)
     |> milestones_view.view
     |> element.to_document_string
 
-  string.contains(html, "aria-expanded=\"true\"") |> should.be_true
-  string.contains(html, "Activate milestone") |> should.be_false
+  string.contains(html, "milestone-detail-pane") |> should.be_true
+  string.contains(html, "data-testid=\"milestone-activate-button:77\"")
+  |> should.be_true
 }
 
 pub fn milestones_view_open_dialog_does_not_expand_row_test() {
@@ -528,7 +572,7 @@ pub fn milestones_view_open_dialog_does_not_expand_row_test() {
     |> element.to_document_string
 
   string.contains(html, "Activate milestone") |> should.be_true
-  string.contains(html, "aria-expanded=\"true\"") |> should.be_false
+  string.contains(html, "data-testid=\"milestone-row-toggle") |> should.be_false
 }
 
 pub fn milestones_view_expanded_row_renders_milestone_cards_test() {
@@ -537,16 +581,7 @@ pub fn milestones_view_expanded_row_renders_milestone_cards_test() {
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(90, Ready)]))
     |> with_cards([sample_card(501, 90)])
-    |> client_state.update_member(fn(member) {
-      let pool = member.pool
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_milestones_expanded: dict.insert(dict.new(), 90, True),
-        ),
-      )
-    })
+    |> with_selected_milestone(90)
     |> milestones_view.view
     |> element.to_document_string
 
@@ -560,16 +595,7 @@ pub fn milestones_view_expanded_row_renders_loose_tasks_test() {
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(91, Ready)]))
     |> with_tasks([sample_loose_task(601, 91)])
-    |> client_state.update_member(fn(member) {
-      let pool = member.pool
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_milestones_expanded: dict.insert(dict.new(), 91, True),
-        ),
-      )
-    })
+    |> with_selected_milestone(91)
     |> milestones_view.view
     |> element.to_document_string
 
@@ -577,54 +603,32 @@ pub fn milestones_view_expanded_row_renders_loose_tasks_test() {
   |> should.be_true
 }
 
-pub fn milestones_view_expanded_row_renders_quick_new_card_cta_test() {
+pub fn milestones_view_detail_renders_quick_new_card_cta_test() {
   let html =
     base_model()
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(92, Ready)]))
-    |> client_state.update_member(fn(member) {
-      let pool = member.pool
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_milestones_expanded: dict.insert(dict.new(), 92, True),
-        ),
-      )
-    })
+    |> with_selected_milestone(92)
     |> milestones_view.view
     |> element.to_document_string
 
   string.contains(html, "data-testid=\"milestone-quick-new-card:92\"")
   |> should.be_true
-  string.contains(html, "id=\"milestone-quick-create-card-button-92\"")
-  |> should.be_true
-  string.contains(html, "+ Card") |> should.be_true
+  string.contains(html, "aria-label=\"Card\"") |> should.be_true
 }
 
-pub fn milestones_view_expanded_row_renders_quick_new_task_cta_test() {
+pub fn milestones_view_detail_renders_quick_new_task_cta_test() {
   let html =
     base_model()
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(98, Ready)]))
-    |> client_state.update_member(fn(member) {
-      let pool = member.pool
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_milestones_expanded: dict.insert(dict.new(), 98, True),
-        ),
-      )
-    })
+    |> with_selected_milestone(98)
     |> milestones_view.view
     |> element.to_document_string
 
   string.contains(html, "data-testid=\"milestone-quick-new-task:98\"")
   |> should.be_true
-  string.contains(html, "id=\"milestone-quick-create-task-button-98\"")
-  |> should.be_true
-  string.contains(html, "+ Task") |> should.be_true
+  string.contains(html, "aria-label=\"Task\"") |> should.be_true
 }
 
 pub fn milestones_view_keeps_quick_new_card_entrypoint_available_for_mobile_strategy_test() {
@@ -632,16 +636,7 @@ pub fn milestones_view_keeps_quick_new_card_entrypoint_available_for_mobile_stra
     base_model()
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(99, Ready)]))
-    |> client_state.update_member(fn(member) {
-      let pool = member.pool
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_milestones_expanded: dict.insert(dict.new(), 99, True),
-        ),
-      )
-    })
+    |> with_selected_milestone(99)
     |> milestones_view.view
     |> element.to_document_string
 
@@ -650,45 +645,55 @@ pub fn milestones_view_keeps_quick_new_card_entrypoint_available_for_mobile_stra
   |> should.be_true
 }
 
-pub fn milestones_view_details_dialog_renders_progress_and_content_test() {
+pub fn milestones_view_detail_pane_renders_progress_and_content_test() {
   let html =
     base_model()
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(93, Ready)]))
     |> with_cards([sample_card(701, 93)])
-    |> with_tasks([sample_loose_task(801, 93)])
-    |> client_state.update_member(fn(member) {
-      let pool = member.pool
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_milestone_dialog: member_pool.MilestoneDialogView(id: 93),
-          member_milestone_details_tab: milestone_details_tab.MilestoneContentTab,
-        ),
-      )
-    })
+    |> with_tasks([sample_loose_task(801, 93), sample_card_task(802, 93, 701)])
+    |> with_selected_milestone(93)
     |> milestones_view.view
     |> element.to_document_string
 
-  string.contains(html, "data-testid=\"milestone-details-dialog\"")
+  string.contains(html, "data-testid=\"milestone-detail-pane\"")
   |> should.be_true
-  string.contains(html, "data-testid=\"milestone-details-progress:93\"")
-  |> should.be_true
-  string.contains(html, "role=\"tablist\"") |> should.be_true
-  string.contains(html, "data-testid=\"milestone-details-activate:93\"")
-  |> should.be_false
-  string.contains(html, "data-testid=\"milestone-details-new-card:93\"")
-  |> should.be_false
-  string.contains(html, "data-testid=\"milestone-details-new-task:93\"")
-  |> should.be_false
   string.contains(html, "data-testid=\"milestone-card-row:93:701\"")
   |> should.be_true
+  string.contains(html, "Card task 802") |> should.be_true
   string.contains(html, "data-testid=\"milestone-task-row:93:801\"")
+  |> should.be_true
+  string.contains(html, "tasks in cards") |> should.be_true
+}
+
+pub fn milestones_view_planning_tab_surfaces_structure_actions_test() {
+  let html =
+    base_model()
+    |> with_admin_user
+    |> with_milestones(
+      remote.Loaded([
+        sample_progress(142, Ready),
+        sample_progress(143, Ready),
+      ]),
+    )
+    |> with_cards([sample_card(950, 142)])
+    |> with_tasks([sample_loose_task(951, 142)])
+    |> with_selected_milestone(142)
+    |> with_summary_expanded(True)
+    |> milestones_view.view
+    |> element.to_document_string
+
+  string.contains(html, "Health") |> should.be_true
+  string.contains(html, "data-testid=\"milestone-quick-new-card:142\"")
+  |> should.be_true
+  string.contains(html, "data-testid=\"milestone-move-card:142:950:143\"")
+  |> should.be_true
+  string.contains(html, "Loose tasks") |> should.be_true
+  string.contains(html, "data-testid=\"milestone-task-row:142:951\"")
   |> should.be_true
 }
 
-pub fn milestones_view_ready_rows_show_move_actions_only_for_ready_destinations_test() {
+pub fn milestones_view_detail_shows_move_actions_only_for_ready_destinations_test() {
   let html =
     base_model()
     |> with_admin_user
@@ -701,16 +706,7 @@ pub fn milestones_view_ready_rows_show_move_actions_only_for_ready_destinations_
     )
     |> with_cards([sample_card(901, 94)])
     |> with_tasks([sample_loose_task(902, 94)])
-    |> client_state.update_member(fn(member) {
-      let pool = member.pool
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_milestones_expanded: dict.insert(dict.new(), 94, True),
-        ),
-      )
-    })
+    |> with_selected_milestone(94)
     |> milestones_view.view
     |> element.to_document_string
 
@@ -734,25 +730,16 @@ pub fn milestones_view_ready_rows_show_move_actions_only_for_ready_destinations_
   |> should.be_true
 }
 
-pub fn milestones_view_uses_shared_action_row_layout_test() {
+pub fn milestones_view_uses_header_action_cluster_layout_test() {
   let html =
     base_model()
     |> with_admin_user
     |> with_milestones(remote.Loaded([sample_progress(122, Ready)]))
-    |> client_state.update_member(fn(member) {
-      let pool = member.pool
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_milestones_expanded: dict.insert(dict.new(), 122, True),
-        ),
-      )
-    })
+    |> with_selected_milestone(122)
     |> milestones_view.view
     |> element.to_document_string
 
-  string.contains(html, "class=\"action-row\"")
+  string.contains(html, "class=\"milestone-detail-actions\"")
   |> should.be_true
 }
 
@@ -764,16 +751,7 @@ pub fn milestones_view_hides_move_actions_for_non_managers_test() {
     )
     |> with_cards([sample_card(903, 97)])
     |> with_tasks([sample_loose_task(904, 97)])
-    |> client_state.update_member(fn(member) {
-      let pool = member.pool
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_milestones_expanded: dict.insert(dict.new(), 97, True),
-        ),
-      )
-    })
+    |> with_selected_milestone(97)
     |> milestones_view.view
     |> element.to_document_string
 
@@ -796,16 +774,7 @@ pub fn milestones_view_hides_move_actions_when_source_is_not_ready_test() {
     )
     |> with_cards([sample_card(905, 99)])
     |> with_tasks([sample_loose_task(906, 99)])
-    |> client_state.update_member(fn(member) {
-      let pool = member.pool
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_milestones_expanded: dict.insert(dict.new(), 99, True),
-        ),
-      )
-    })
+    |> with_selected_milestone(99)
     |> milestones_view.view
     |> element.to_document_string
 
@@ -815,7 +784,7 @@ pub fn milestones_view_hides_move_actions_when_source_is_not_ready_test() {
   |> should.be_false
 }
 
-pub fn milestones_view_ready_rows_render_drop_targets_test() {
+pub fn milestones_view_ready_rows_render_as_selectable_master_items_test() {
   let html =
     base_model()
     |> with_admin_user
@@ -825,10 +794,8 @@ pub fn milestones_view_ready_rows_render_drop_targets_test() {
     |> milestones_view.view
     |> element.to_document_string
 
-  string.contains(html, "data-drop-target=\"101\"")
-  |> should.be_true
-  string.contains(html, "data-drop-target=\"102\"")
-  |> should.be_false
+  string.contains(html, "data-testid=\"milestone-row:101\"") |> should.be_true
+  string.contains(html, "data-testid=\"milestone-row:102\"") |> should.be_true
 }
 
 pub fn milestones_view_rows_are_draggable_only_when_move_is_possible_test() {
@@ -840,16 +807,7 @@ pub fn milestones_view_rows_are_draggable_only_when_move_is_possible_test() {
     )
     |> with_cards([sample_card(907, 103)])
     |> with_tasks([sample_loose_task(908, 103)])
-    |> client_state.update_member(fn(member) {
-      let pool = member.pool
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_milestones_expanded: dict.insert(dict.new(), 103, True),
-        ),
-      )
-    })
+    |> with_selected_milestone(103)
     |> milestones_view.view
     |> element.to_document_string
 
@@ -873,16 +831,7 @@ pub fn milestones_view_uses_es_i18n_labels_and_statuses_test() {
     |> with_milestones(remote.Loaded([sample_progress(120, Ready)]))
     |> with_cards([sample_card(920, 120)])
     |> with_tasks([sample_loose_task(921, 120)])
-    |> client_state.update_member(fn(member) {
-      let pool = member.pool
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_milestones_expanded: dict.insert(dict.new(), 120, True),
-        ),
-      )
-    })
+    |> with_selected_milestone(120)
     |> milestones_view.view
     |> element.to_document_string
 
@@ -899,16 +848,7 @@ pub fn milestones_view_uses_en_i18n_labels_and_statuses_test() {
     |> with_milestones(remote.Loaded([sample_progress(121, Ready)]))
     |> with_cards([sample_card(930, 121)])
     |> with_tasks([sample_loose_task(931, 121)])
-    |> client_state.update_member(fn(member) {
-      let pool = member.pool
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_milestones_expanded: dict.insert(dict.new(), 121, True),
-        ),
-      )
-    })
+    |> with_selected_milestone(121)
     |> milestones_view.view
     |> element.to_document_string
 
@@ -923,17 +863,8 @@ pub fn milestone_metrics_error_copy_i18n_test() {
     |> with_admin_user
     |> with_locale(i18n_locale.Es)
     |> with_milestones(remote.Loaded([sample_progress(140, Ready)]))
-    |> client_state.update_member(fn(member) {
-      let pool = member.pool
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_milestone_dialog: member_pool.MilestoneDialogView(140),
-          member_milestone_details_tab: milestone_details_tab.MilestoneMetricsTab,
-        ),
-      )
-    })
+    |> with_selected_milestone(140)
+    |> with_summary_expanded(True)
     |> with_milestone_metrics(
       remote.Failed(ApiError(
         status: 409,
@@ -953,17 +884,8 @@ pub fn milestone_metrics_empty_copy_i18n_test() {
     |> with_admin_user
     |> with_locale(i18n_locale.En)
     |> with_milestones(remote.Loaded([sample_progress(141, Ready)]))
-    |> client_state.update_member(fn(member) {
-      let pool = member.pool
-      member_state.MemberModel(
-        ..member,
-        pool: member_pool.Model(
-          ..pool,
-          member_milestone_dialog: member_pool.MilestoneDialogView(141),
-          member_milestone_details_tab: milestone_details_tab.MilestoneMetricsTab,
-        ),
-      )
-    })
+    |> with_selected_milestone(141)
+    |> with_summary_expanded(True)
     |> with_milestone_metrics(
       remote.Loaded(MilestoneModalMetrics(
         cards_total: 0,
@@ -987,5 +909,6 @@ pub fn milestone_metrics_empty_copy_i18n_test() {
     |> milestones_view.view
     |> element.to_document_string
 
-  string.contains(html, "Not enough data for metrics") |> should.be_true
+  string.contains(html, "Metrics") |> should.be_true
+  string.contains(html, "0/0") |> should.be_true
 }
