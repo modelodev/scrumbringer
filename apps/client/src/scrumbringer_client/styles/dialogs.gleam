@@ -36,7 +36,7 @@ pub fn css() -> List(String) {
     ".dialog-footer { display: flex; justify-content: flex-end; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--sb-border); background: var(--sb-surface-2); }",
     ".dialog-footer .btn-compact { padding-left: 14px; padding-right: 14px; }",
     // Add button (for opening dialogs)
-    ".btn-add { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; background: var(--sb-primary); color: var(--sb-inverse); border: none; border-radius: 10px; font-weight: 500; cursor: pointer; transition: background 0.2s, transform 0.1s; }",
+    ".btn-add { display: inline-flex; align-items: center; gap: var(--sb-space-md); padding: 10px 16px; background: var(--sb-primary); color: var(--sb-inverse); border: none; border-radius: var(--sb-radius-lg); font-weight: 500; cursor: pointer; transition: background var(--sb-transition-normal), transform 0.1s; }",
     ".btn-add:hover { background: var(--sb-primary-hover); }",
     ".btn-add:active { transform: scale(0.98); }",
     ".btn-add::before { content: '+'; font-weight: 700; font-size: 1.1em; }",
@@ -60,7 +60,7 @@ pub fn css() -> List(String) {
     ".cell-actions .btn-icon { margin-left: 8px; }",
     ".cell-actions .btn-icon:first-child { margin-left: 0; }",
     ".count-badge { display: inline-block; min-width: 28px; height: 24px; line-height: 22px; padding: 0 8px; background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--sb-muted); text-align: center; vertical-align: middle; box-sizing: border-box; }",
-    ".claimed-badge { min-width: 28px; padding: 2px 8px; border-radius: 999px; font-weight: 600; font-size: 12px; line-height: 1; text-align: center; background: #eaf1ff; color: #1e3a8a; }",
+    ".claimed-badge { min-width: 28px; padding: 2px 8px; border-radius: var(--sb-radius-pill); font-weight: 600; font-size: var(--sb-font-sm); line-height: 1; text-align: center; background: color-mix(in oklab, var(--sb-info) 15%, var(--sb-elevated)); color: var(--sb-info); }",
     ".release-btn { width: 28px; height: 28px; }",
     ".btn-danger-icon { color: var(--sb-danger); }",
     ".btn-danger-icon:hover { background: color-mix(in oklab, var(--sb-danger) 15%, transparent); }",

@@ -4,33 +4,33 @@
 pub fn css() -> List(String) {
   [
     // Three-panel layout (Story 4.4)
-    // =============================================================================
-    // Base layout - desktop 3 columns
+    // ======================================================================    // Base layout - desktop 3 columns
     ".three-panel-layout { display: grid; grid-template-columns: 240px 1fr 300px; gap: 12px; min-height: calc(100vh - 48px); }",
     // Left panel (navigation)
     ".panel-left { background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; position: sticky; top: 12px; max-height: calc(100vh - 48px); overflow-y: auto; }",
     // Center panel (main content)
-    ".panel-center { background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 12px; padding: 12px; min-width: 0; }",
+    ".panel-center { background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: var(--sb-radius-xl); padding: var(--sb-space-lg); min-width: 0; animation: view-fade-in 0.15s ease; }",
+    "@keyframes view-fade-in { from { opacity: 0.6; } to { opacity: 1; } }",
     // Right panel (activity/profile)
     ".panel-right { background: var(--sb-surface); border: 1px solid var(--sb-border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; position: sticky; top: 12px; max-height: calc(100vh - 48px); overflow-y: auto; }",
     // Tablet: 2 columns (left + center, right as drawer)
     "@media (max-width: 1024px) { .three-panel-layout { grid-template-columns: 220px 1fr; } .panel-right { display: none; } }",
     // Mobile: 1 column (center only, both panels as drawers)
     "@media (max-width: 768px) { .three-panel-layout { grid-template-columns: 1fr; } .panel-left { display: none; } .panel-right { display: none; } }",
-    // =============================================================================
-    // Left Panel Components (Story 4.4)
-    // =============================================================================
-    ".left-panel-content { display: flex; flex-direction: column; gap: 16px; }",
+    // ======================================================================    // Left Panel Components (Story 4.4)
+    // ======================================================================    ".left-panel-content { display: flex; flex-direction: column; gap: 16px; }",
     ".project-selector-section { margin-bottom: 8px; }",
-    ".project-selector-dropdown { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--sb-border); background: var(--sb-elevated); font-weight: 500; }",
+    ".project-selector-dropdown { width: 100%; padding: 10px 12px; border-radius: var(--sb-radius-lg); border: 1px solid var(--sb-border); background: var(--sb-elevated); font-weight: 600; font-size: var(--sb-font-md); color: var(--sb-text-strong); }",
     ".panel-section { display: flex; flex-direction: column; gap: 8px; }",
-    ".section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--sb-muted); margin: 0 0 4px 0; }",
-    ".btn-action { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: var(--sb-text); }",
+    ".section-items { display: flex; flex-direction: column; gap: 2px; overflow: hidden; max-height: 500px; opacity: 1; transition: max-height var(--sb-transition-slow), opacity var(--sb-transition-normal); }",
+    ".section-items-collapsed { max-height: 0; opacity: 0; margin: 0; }",
+    ".section-title { font-size: var(--sb-font-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--sb-muted-strong); margin: 0 0 var(--sb-space-sm) 0; }",
+    ".btn-action { display: flex; align-items: center; gap: var(--sb-space-md); width: 100%; padding: var(--sb-space-md) var(--sb-space-lg); text-align: left; background: transparent; border: 1px solid transparent; border-radius: var(--sb-radius-md); cursor: pointer; color: var(--sb-text); transition: background var(--sb-transition-normal); }",
     ".btn-action:hover { background: var(--sb-elevated); }",
     ".btn-action:disabled { opacity: 0.5; cursor: not-allowed; }",
     ".btn-icon-prefix { font-weight: 700; color: var(--sb-primary); }",
     // Primary action buttons (Story 4.8 UX: solid button for clear affordance)
-    ".btn-action-primary { background: var(--sb-primary); border: 1px solid var(--sb-primary); color: var(--sb-inverse); font-weight: 500; }",
+    ".btn-action-primary { background: var(--sb-primary); border: 1px solid var(--sb-primary); color: var(--sb-inverse); font-weight: 500; border-radius: var(--sb-radius-lg); }",
     ".btn-action-primary:hover { background: var(--sb-primary-hover); border-color: var(--sb-primary-hover); }",
     ".btn-action-primary .btn-icon-prefix { color: inherit; }",
     ".btn-primary .btn-icon-prefix { color: inherit; }",
@@ -39,14 +39,12 @@ pub fn css() -> List(String) {
     ".nav-link { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: var(--sb-text); }",
     ".nav-link:hover { background: var(--sb-elevated); }",
     ".nav-link:disabled { opacity: 0.5; cursor: not-allowed; }",
-    ".nav-link.active { background: #F0FDFA; border-left: 3px solid #0D9488; padding-left: 9px; }",
+    ".nav-link.active { background: var(--sb-primary-subtle-bg); border-left: 3px solid var(--sb-primary); padding-left: 9px; color: var(--sb-text-strong); }",
     ".nav-icon { font-size: 14px; }",
     ".nav-label { flex: 1; }",
     ".active-indicator { color: var(--sb-primary); font-size: 8px; }",
-    // =============================================================================
-    // Right Panel Components (Story 4.4)
-    // =============================================================================
-    ".right-panel-content { display: flex; flex-direction: column; gap: 16px; height: 100%; }",
+    // ======================================================================    // Right Panel Components (Story 4.4)
+    // ======================================================================    ".right-panel-content { display: flex; flex-direction: column; gap: 16px; height: 100%; }",
     ".active-task-section, .my-tasks-section, .my-cards-section { display: flex; flex-direction: column; gap: 8px; }",
     ".active-task-card { background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 10px; padding: 12px; position: relative; }",
     ".active-task-card.card-border-gray, .active-task-card.card-border-red, .active-task-card.card-border-orange, .active-task-card.card-border-yellow, .active-task-card.card-border-green, .active-task-card.card-border-blue, .active-task-card.card-border-purple, .active-task-card.card-border-pink { border-left-width: 4px; border-left-style: solid; }",
@@ -64,7 +62,8 @@ pub fn css() -> List(String) {
     ".task-timer { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: center; margin: 8px 0; }",
     ".task-actions { display: flex; gap: 8px; justify-content: center; }",
     ".task-list { display: flex; flex-direction: column; gap: 6px; }",
-    ".task-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 8px; gap: 8px; }",
+    ".task-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: var(--sb-radius-md); gap: var(--sb-space-md); animation: task-item-in 0.25s ease; }",
+    "@keyframes task-item-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }",
     ".task-item.card-border-gray, .task-item.card-border-red, .task-item.card-border-orange, .task-item.card-border-yellow, .task-item.card-border-green, .task-item.card-border-blue, .task-item.card-border-purple, .task-item.card-border-pink { border-left-width: 4px; border-left-style: solid; }",
     ".task-item.card-border-gray { border-left-color: var(--sb-card-gray); }",
     ".task-item.card-border-red { border-left-color: var(--sb-card-red); }",
@@ -127,7 +126,7 @@ pub fn css() -> List(String) {
     ".preference-select:hover { border-color: var(--sb-primary); }",
     // Empty section hints (right panel - inline contextual hints)
     // padding-left: 24px aligns with title text after icon (16px icon + 8px gap)
-    ".section-empty-hint { color: var(--sb-muted); font-size: 12px; font-style: italic; padding: 8px 4px 8px 24px; }",
+    ".section-empty-hint { color: var(--sb-link); font-size: var(--sb-font-sm); font-style: italic; padding: 10px 12px; margin: 4px 0; border: 1px dashed color-mix(in oklab, var(--sb-link) 40%, var(--sb-border)); border-radius: var(--sb-radius-md); background: color-mix(in oklab, var(--sb-link) 6%, var(--sb-surface)); text-align: center; }",
     // Inside dropzone (has 8px padding), reduce hint padding to maintain alignment
     ".pool-my-tasks-dropzone .section-empty-hint { padding-left: 16px; }",
     // Profile section (Story 4.8 UX: compact with icon buttons)
@@ -139,20 +138,16 @@ pub fn css() -> List(String) {
     ".btn-icon-only { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: var(--sb-muted); transition: all 0.15s ease; }",
     ".btn-icon-only:hover { background: var(--sb-elevated); color: var(--sb-text); border-color: var(--sb-border); }",
     ".btn-icon-only.btn-logout:hover { color: var(--sb-error); border-color: var(--sb-error); }",
-    // =============================================================================
-    // View Mode Toggle (Story 4.4)
-    // =============================================================================
-    ".view-mode-toggle { display: inline-flex; gap: 4px; padding: 4px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 12px; }",
+    // ======================================================================    // View Mode Toggle (Story 4.4)
+    // ======================================================================    ".view-mode-toggle { display: inline-flex; gap: 4px; padding: 4px; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 12px; }",
     ".view-mode-btn { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: transparent; border: none; border-radius: 8px; cursor: pointer; color: var(--sb-text); transition: all 0.15s ease; }",
     ".view-mode-btn:hover { background: var(--sb-surface); }",
     ".view-mode-btn.active { background: var(--sb-primary); color: var(--sb-inverse); }",
     ".view-mode-icon { font-size: 16px; }",
     ".view-mode-label { font-size: 14px; font-weight: 500; }",
     "@media (max-width: 768px) { .view-mode-label { display: none; } }",
-    // =============================================================================
-    // Center Panel / Toolbar (Story 4.4)
-    // =============================================================================
-    ".center-panel-content { display: flex; flex-direction: column; gap: 12px; height: 100%; }",
+    // ======================================================================    // Center Panel / Toolbar (Story 4.4)
+    // ======================================================================    ".center-panel-content { display: flex; flex-direction: column; gap: 12px; height: 100%; }",
     ".center-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }",
     ".center-filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-left: auto; }",
     ".center-filters-work { margin-left: 0; background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 12px; padding: 10px 12px; width: 100%; }",
@@ -194,10 +189,8 @@ pub fn css() -> List(String) {
     "@media (max-width: 768px) { .center-filters-work { padding: 8px 10px; } }",
     "@media (max-width: 768px) { .people-row-header { grid-template-columns: 1fr; } }",
     "@media (max-width: 768px) { .people-status-chip { justify-self: start; } }",
-    // =============================================================================
-    // Milestones View
-    // =============================================================================
-    ".milestones-view { display: flex; flex-direction: column; gap: 14px; }",
+    // ======================================================================    // Milestones View
+    // ======================================================================    ".milestones-view { display: flex; flex-direction: column; gap: 14px; }",
     ".milestones-header { background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }",
     ".milestones-header-main { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; }",
     ".milestones-title { margin: 0; font-size: 15px; font-weight: 600; }",
@@ -328,10 +321,8 @@ pub fn css() -> List(String) {
     ".pool-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }",
     ".pool-title { margin: 0; font-size: 15px; font-weight: 600; }",
     "@media (max-width: 768px) { .pool-header { flex-wrap: wrap; align-items: flex-start; } }",
-    // =============================================================================
-    // Grouped List View (Story 4.4)
-    // =============================================================================
-    ".grouped-list { display: flex; flex-direction: column; gap: 12px; }",
+    // ======================================================================    // Grouped List View (Story 4.4)
+    // ======================================================================    ".grouped-list { display: flex; flex-direction: column; gap: 12px; }",
     ".grouped-list-empty { text-align: center; color: var(--sb-muted); padding: 40px 20px; }",
     ".card-group { background: var(--sb-elevated); border: 1px solid var(--sb-border); border-radius: 12px; overflow: hidden; }",
     ".card-group-header { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 16px; background: transparent; border: none; cursor: pointer; text-align: left; }",
@@ -352,16 +343,14 @@ pub fn css() -> List(String) {
     ".btn-claim { background: var(--sb-success); color: white; border-color: var(--sb-success); }",
     ".btn-claim.btn-icon { padding: 6px; border-radius: 6px; display: flex; align-items: center; justify-content: center; min-width: 28px; min-height: 28px; }",
     ".btn-claim.btn-icon:hover { background: var(--sb-success-hover, #059669); }",
-    // =============================================================================
-    // Kanban Board View (Story 4.4)
-    // =============================================================================
-    ".kanban-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; height: 100%; min-height: 400px; }",
+    // ======================================================================    // Kanban Board View (Story 4.4)
+    // ======================================================================    ".kanban-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; height: 100%; min-height: 400px; }",
     "@media (max-width: 1024px) { .kanban-board { grid-template-columns: 1fr; } }",
     ".kanban-column { background: var(--sb-bg); border: 1px solid var(--sb-border); border-radius: 12px; display: flex; flex-direction: column; min-height: 200px; }",
-    ".kanban-column.pendiente { border-top: 3px solid var(--sb-muted); }",
-    ".kanban-column.claimed { border-top: 3px solid var(--sb-warning); }",
-    ".kanban-column.en-curso { border-top: 3px solid var(--sb-primary); }",
-    ".kanban-column.cerrada { border-top: 3px solid var(--sb-success); }",
+    ".kanban-column.pendiente { border-top: 3px solid var(--sb-muted); background: color-mix(in oklab, var(--sb-bg) 92%, var(--sb-muted)); }",
+    ".kanban-column.claimed { border-top: 3px solid var(--sb-warning); background: color-mix(in oklab, var(--sb-bg) 92%, var(--sb-warning)); }",
+    ".kanban-column.en-curso { border-top: 3px solid var(--sb-primary); background: color-mix(in oklab, var(--sb-bg) 92%, var(--sb-primary)); }",
+    ".kanban-column.cerrada { border-top: 3px solid var(--sb-success); background: color-mix(in oklab, var(--sb-bg) 92%, var(--sb-success)); }",
     ".kanban-column-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--sb-border); }",
     ".kanban-column-title { display: flex; align-items: center; gap: 8px; }",
     ".kanban-column-icon { display: inline-flex; align-items: center; justify-content: center; color: var(--sb-muted); }",
@@ -382,10 +371,11 @@ pub fn css() -> List(String) {
     ".kanban-card-progress .progress-bar { flex: 1; }",
     ".progress-fill { height: 100%; background: var(--sb-success); transition: width 0.3s ease; }",
     ".progress-text { font-size: 12px; color: var(--sb-muted); min-width: 40px; text-align: right; }",
-    // =============================================================================
-    // Kanban Task Items (Story 4.8 UX - Homogeneous with Lista view)
-    // =============================================================================
-    ".kanban-card-tasks { margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--sb-border); gap: 4px; }",
+    // ======================================================================    // Kanban Task Items (Story 4.8 UX - Homogeneous with Lista view)
+    // ======================================================================    ".kanban-card-footer { display: flex; justify-content: flex-end; margin-top: var(--sb-space-md); padding-top: var(--sb-space-md); border-top: 1px solid var(--sb-border); }",
+    ".kanban-card-footer .btn-add-task { border-color: color-mix(in oklab, var(--sb-primary) 40%, var(--sb-border)); color: var(--sb-primary); }",
+    ".kanban-card-footer .btn-add-task:hover { background: color-mix(in oklab, var(--sb-primary) 10%, var(--sb-elevated)); border-color: var(--sb-primary); }",
+    ".kanban-card-tasks { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--sb-border); display: flex; flex-direction: column; gap: 4px; }",
     ".kanban-task-item, .card-surface-task-compact { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 6px; font-size: 12px; transition: background 0.15s; }",
     ".kanban-task-item.card-border-gray, .kanban-task-item.card-border-red, .kanban-task-item.card-border-orange, .kanban-task-item.card-border-yellow, .kanban-task-item.card-border-green, .kanban-task-item.card-border-blue, .kanban-task-item.card-border-purple, .kanban-task-item.card-border-pink { border-left-width: 4px; border-left-style: solid; }",
     ".kanban-task-item.card-border-gray { border-left-color: var(--sb-card-gray); }",

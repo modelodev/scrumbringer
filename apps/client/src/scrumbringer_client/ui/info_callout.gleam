@@ -10,7 +10,7 @@ import lustre/element.{type Element}
 import lustre/element/html.{div, text}
 
 import scrumbringer_client/ui/css_class as css
-import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/icon_catalog
 
 /// Info callout configuration.
 pub type InfoCalloutConfig {
@@ -51,7 +51,7 @@ pub fn view_with_content(
 ) -> Element(msg) {
   div([attribute.class(css.to_string(css.info_callout()))], [
     div([attribute.class(css.to_string(css.info_callout_icon()))], [
-      text(icons.emoji_to_string(icons.Lightbulb)),
+      icon_catalog.render("light-bulb", 24),
     ]),
     div([attribute.class(css.to_string(css.info_callout_content()))], [
       case title {

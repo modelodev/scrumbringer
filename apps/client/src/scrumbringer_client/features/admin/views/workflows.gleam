@@ -62,6 +62,7 @@ import scrumbringer_client/ui/loading
 import scrumbringer_client/ui/modal_header
 import scrumbringer_client/ui/remote as ui_remote
 import scrumbringer_client/ui/section_header
+import scrumbringer_client/ui/skeleton
 
 // =============================================================================
 // Workflows Views
@@ -315,7 +316,10 @@ fn view_workflows_table(
           "cell-actions",
         ),
       ])
-      |> data_table.with_key(fn(w: Workflow) { int.to_string(w.id) }),
+      |> data_table.with_key(fn(w: Workflow) { int.to_string(w.id) })
+      |> data_table.with_empty_state(
+        empty_state.simple("cog-6-tooth", t(i18n_text.NoWorkflowsYet)),
+      ),
   )
 }
 
@@ -417,7 +421,7 @@ fn view_rules_table(
     },
     loaded: fn(rs) {
       case rs {
-        [] -> empty_state.simple(icons.Inbox, t(i18n_text.NoRulesYet))
+        [] -> empty_state.simple("inbox", t(i18n_text.NoRulesYet))
         _ ->
           div([attribute.class("rules-expandable-table")], [
             table([attribute.class("table data-table")], [
@@ -513,10 +517,10 @@ fn view_rule_row_expandable(
           case template_count {
             0 ->
               badge.new_unchecked("0", badge.Neutral)
-              |> badge.view_with_class("badge-empty")
+              |> badge.view_with_class("table-badge table-badge-empty")
             n ->
               badge.new_unchecked(int.to_string(n), badge.Neutral)
-              |> badge.view_with_class("badge-count")
+              |> badge.view_with_class("table-badge table-badge-count")
           },
         ]),
         // Applied metrics
@@ -1501,12 +1505,11 @@ fn view_quick_range_button(
 fn view_rule_metrics_results(model: Model) -> Element(Msg) {
   case model.admin.metrics.admin_rule_metrics {
     NotAsked ->
-      empty_state.simple(
-        icons.Lightbulb,
+      info_callout.simple(
         "Selecciona un rango de fechas o usa los botones de rango rápido para ver las métricas de tus automatizaciones.",
       )
 
-    Loading -> loading.loading("Cargando métricas...")
+    Loading -> skeleton.skeleton_table(3)
 
     Failed(err) -> error_notice.view(err.message)
 
@@ -1521,7 +1524,7 @@ fn view_rule_metrics_loaded(
   case workflows {
     [] ->
       empty_state.simple(
-        icons.Inbox,
+        "inbox",
         helpers_i18n.i18n_t(model, i18n_text.RuleMetricsNoExecutions),
       )
     _ ->
@@ -1545,10 +1548,7 @@ fn view_rule_metrics_table(
         text(helpers_i18n.i18n_t(model, i18n_text.RuleMetricsSelectRange)),
       ])
 
-    Loading ->
-      div([attribute.class("loading")], [
-        text(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)),
-      ])
+    Loading -> skeleton.skeleton_table(3)
 
     Failed(err) -> error_notice.view(err.message)
 
@@ -1667,10 +1667,7 @@ fn view_workflow_rules_expansion_content(
   details: Remote(api_workflows.WorkflowMetrics),
 ) -> Element(Msg) {
   case details {
-    NotAsked | Loading ->
-      div([attribute.class("loading")], [
-        text(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)),
-      ])
+    NotAsked | Loading -> skeleton.skeleton_list(2)
     Failed(err) -> error_notice.view(err.message)
     Loaded(loaded) -> view_workflow_rules_expansion_loaded(model, loaded)
   }
@@ -1780,10 +1777,7 @@ fn view_rule_drilldown_modal(model: Model) -> Element(Msg) {
 /// Render the suppression breakdown in the drill-down modal.
 fn view_drilldown_details(model: Model) -> Element(Msg) {
   case model.admin.metrics.admin_rule_metrics_rule_details {
-    NotAsked | Loading ->
-      div([attribute.class("loading")], [
-        text(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)),
-      ])
+    NotAsked | Loading -> skeleton.skeleton_list(3)
 
     Failed(err) -> error_notice.view(err.message)
 
@@ -1866,10 +1860,7 @@ fn view_drilldown_details(model: Model) -> Element(Msg) {
 /// Render the executions list in the drill-down modal.
 fn view_drilldown_executions(model: Model) -> Element(Msg) {
   case model.admin.metrics.admin_rule_metrics_executions {
-    NotAsked | Loading ->
-      div([attribute.class("loading")], [
-        text(helpers_i18n.i18n_t(model, i18n_text.LoadingEllipsis)),
-      ])
+    NotAsked | Loading -> skeleton.skeleton_list(3)
 
     Failed(err) -> error_notice.view(err.message)
 

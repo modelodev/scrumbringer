@@ -148,6 +148,9 @@ pub fn css() -> List(String) {
     ".skeleton-text { height: 16px; margin-bottom: 8px; }",
     ".skeleton-title { height: 24px; width: 60%; margin-bottom: 12px; }",
     ".skeleton-button { height: 36px; width: 100px; }",
+    ".skeleton-table { display: flex; flex-direction: column; gap: var(--sb-space-lg); padding: var(--sb-space-xl) 0; }",
+    ".skeleton-row { display: flex; gap: var(--sb-space-xl); }",
+    ".skeleton-list { display: flex; flex-direction: column; gap: var(--sb-space-md); }",
     // =====================================================
     // UX IMPROVEMENTS - Accessibility (A01-A06)
     // =====================================================
@@ -241,8 +244,8 @@ pub fn css() -> List(String) {
     // =====================================================
     // UX IMPROVEMENTS - Progress Bar (AF04)
     // =====================================================
-    ".progress-bar { height: 6px; background: var(--sb-border); border-radius: 3px; overflow: hidden; }",
-    ".progress-bar-fill { height: 100%; background: var(--sb-primary); border-radius: 3px; transition: width 0.3s ease; }",
+    ".progress-bar { height: 8px; background: var(--sb-border); border-radius: var(--sb-radius-sm); overflow: hidden; }",
+    ".progress-bar-fill { height: 100%; background: var(--sb-primary); border-radius: var(--sb-radius-sm); transition: width var(--sb-transition-slow); }",
     ".progress-text { font-size: 12px; color: var(--sb-muted); margin-top: 4px; }",
     // =====================================================
     // UX IMPROVEMENTS - Card Task List (AF02)
@@ -269,8 +272,8 @@ pub fn css() -> List(String) {
     // STORY 4.8 - Badge Component & Toast Variants
     // =====================================================
     // Badge base styles
-    ".badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }",
-    ".badge-inline { padding: 1px 6px; font-size: 11px; vertical-align: middle; }",
+    ".badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: var(--sb-radius-pill); font-size: var(--sb-font-sm); font-weight: 600; white-space: nowrap; }",
+    ".badge-inline { padding: 1px 6px; font-size: var(--sb-font-xs); vertical-align: middle; }",
     // Badge variants
     ".badge-primary { background: color-mix(in oklab, var(--sb-primary) 15%, var(--sb-elevated)); border: 1px solid color-mix(in oklab, var(--sb-primary) 40%, var(--sb-border)); color: var(--sb-primary); }",
     ".badge-success { background: color-mix(in oklab, var(--sb-success) 15%, var(--sb-elevated)); border: 1px solid color-mix(in oklab, var(--sb-success) 40%, var(--sb-border)); color: var(--sb-success); }",
@@ -354,7 +357,7 @@ pub fn css() -> List(String) {
     ".ficha-card.card-border-gray, .ficha-card.card-border-red, .ficha-card.card-border-orange, .ficha-card.card-border-yellow, .ficha-card.card-border-green, .ficha-card.card-border-blue, .ficha-card.card-border-purple, .ficha-card.card-border-pink { border-left-width: 4px; }",
     ".ficha-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }",
     ".ficha-title { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }",
-    ".ficha-state-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }",
+    ".ficha-state-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: var(--sb-radius-pill); font-size: var(--sb-font-xs); font-weight: 600; }",
     ".ficha-state-pendiente { background: color-mix(in oklab, var(--sb-muted) 15%, var(--sb-surface)); color: var(--sb-muted); }",
     ".ficha-state-en_curso { background: color-mix(in oklab, var(--sb-warning) 15%, var(--sb-surface)); color: var(--sb-warning); }",
     ".ficha-state-cerrada { background: color-mix(in oklab, var(--sb-success) 15%, var(--sb-surface)); color: var(--sb-success); }",
@@ -386,11 +389,12 @@ pub fn css() -> List(String) {
     ".modal-content.card-detail { border-left-width: 4px; z-index: 2; position: relative; height: min(84vh, 760px); min-height: 60vh; max-height: 84vh; padding: 0; overflow: hidden; display: flex; flex-direction: column; }",
     ".modal-header-block { border-bottom: 1px solid var(--sb-border); background: var(--sb-surface-2); }",
     // Shared detail header primitives (milestone/card/task)
-    ".detail-header-block { padding: 20px 20px 12px; }",
+    ".detail-header-block { padding: 20px 20px 14px; }",
     ".detail-header { display: flex; flex-direction: column; gap: 12px; }",
     ".detail-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }",
     ".detail-title { font-size: 20px; font-weight: 700; line-height: 1.25; }",
-    ".detail-meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }",
+    ".detail-meta { display: flex; align-items: center; gap: var(--sb-space-md); flex-wrap: wrap; }",
+    ".detail-meta-group { display: inline-flex; align-items: center; gap: var(--sb-space-sm); }",
     ".detail-summary { padding: 14px 16px; border: 1px solid color-mix(in oklab, var(--sb-border) 75%, transparent); border-radius: 12px; background: color-mix(in oklab, var(--sb-elevated) 88%, transparent); }",
     ".detail-tabs { margin-top: 2px; padding: 8px; border: 1px solid color-mix(in oklab, var(--sb-border) 82%, transparent); border-radius: 12px; background: color-mix(in oklab, var(--sb-surface) 85%, var(--sb-elevated)); }",
     ".modal-tabs.detail-tabs { display: flex; align-items: stretch; justify-content: center; align-self: stretch; width: 100%; gap: 8px; padding: 8px; border-bottom: 0; }",
@@ -405,7 +409,7 @@ pub fn css() -> List(String) {
     ".detail-empty-state { display: flex; flex-direction: column; gap: 6px; padding: 14px; border: 1px dashed var(--sb-border); border-radius: 10px; background: color-mix(in oklab, var(--sb-elevated) 94%, var(--sb-bg)); }",
     ".detail-section .card-section-title { font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--sb-muted); }",
     ".modal-body { padding: 16px 20px 20px; overflow-y: auto; flex: 1; background: var(--sb-surface-1); }",
-    ".card-state-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }",
+    ".card-state-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: var(--sb-radius-pill); font-size: var(--sb-font-sm); font-weight: 600; }",
     ".card-state-pendiente { background: color-mix(in oklab, var(--sb-muted) 15%, var(--sb-surface)); color: var(--sb-muted); }",
     ".card-state-en_curso { background: color-mix(in oklab, var(--sb-warning) 15%, var(--sb-surface)); color: var(--sb-warning); }",
     ".card-state-cerrada { background: color-mix(in oklab, var(--sb-success) 15%, var(--sb-surface)); color: var(--sb-success); }",
@@ -480,7 +484,7 @@ pub fn css() -> List(String) {
     ".detail-label { font-weight: 500; color: var(--sb-muted-strong); }",
     ".detail-value { color: var(--sb-text-strong); }",
     ".detail-value.muted { color: var(--sb-muted); }",
-    ".task-metrics-grid, .card-metrics-grid, .milestone-metrics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; padding: 10px; border: 1px solid var(--sb-border); border-radius: 12px; background: var(--sb-surface-2); }",
+    ".task-metrics-grid, .card-metrics-grid, .milestone-metrics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; padding: var(--sb-space-lg) 14px; border: 1px solid color-mix(in oklab, var(--sb-border) 70%, transparent); border-radius: var(--sb-radius-lg); background: color-mix(in oklab, var(--sb-elevated) 92%, transparent); }",
     "@media (max-width: 640px) { .task-metrics-grid, .card-metrics-grid, .milestone-metrics-grid { grid-template-columns: 1fr; } .detail-row { grid-template-columns: 1fr; gap: 6px; } }",
     ".task-metrics-empty, .card-metrics-loading, .milestone-metrics-loading, .card-metrics-empty, .milestone-metrics-empty { color: color-mix(in oklab, var(--sb-text) 64%, var(--sb-muted)); padding: 10px 12px; border: 1px dashed var(--sb-border); border-radius: 10px; background: var(--sb-surface-2); }",
     ".card-metrics-error, .milestone-metrics-error { color: var(--sb-danger); padding: 8px 0; }",
@@ -518,7 +522,7 @@ pub fn css() -> List(String) {
     ".member-selected-hint-icon { color: var(--sb-primary); display: inline-flex; align-items: center; }",
     ".member-selected-badge { margin-left: auto; }",
     ".task-blocked { opacity: 0.6; }",
-    ".task-blocked-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 999px; border: 1px solid color-mix(in oklab, var(--sb-warning) 40%, var(--sb-border)); background: color-mix(in oklab, var(--sb-warning) 12%, var(--sb-surface)); color: var(--sb-warning); font-size: 11px; font-weight: 600; line-height: 1; }",
+    ".task-blocked-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: var(--sb-radius-pill); border: 1px solid color-mix(in oklab, var(--sb-warning) 40%, var(--sb-border)); background: color-mix(in oklab, var(--sb-warning) 12%, var(--sb-surface)); color: var(--sb-warning); font-size: var(--sb-font-xs); font-weight: 600; line-height: 1; }",
     ".task-blocked-count { font-size: 11px; font-weight: 600; }",
     ".task-blocked-inline { margin-left: 6px; }",
     ".task-blocked-card { font-size: 10px; }",

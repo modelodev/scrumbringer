@@ -269,7 +269,7 @@ pub fn view_right_panel(model: Model, user: User) -> Element(Msg) {
           // P03: Improved empty state for claimed tasks
           [] ->
             empty_state.simple(
-              icons.Hand,
+              "hand-raised",
               helpers_i18n.i18n_t(model, i18n_text.NoClaimedTasks),
             )
           _ ->
@@ -360,7 +360,7 @@ fn view_tasks_error(message: String) -> Element(Msg) {
 /// No matches for current filters.
 fn view_tasks_no_matches(model: Model) -> Element(Msg) {
   empty_state.simple(
-    icons.Search,
+    "magnifying-glass",
     helpers_i18n.i18n_t(model, i18n_text.NoTasksMatchYourFilters),
   )
 }
@@ -368,7 +368,7 @@ fn view_tasks_no_matches(model: Model) -> Element(Msg) {
 /// Onboarding empty state with CTA.
 fn view_tasks_onboarding(model: Model) -> Element(Msg) {
   empty_state.new(
-    icons.Target,
+    "star",
     helpers_i18n.i18n_t(model, i18n_text.NoAvailableTasksRightNow),
     helpers_i18n.i18n_t(model, i18n_text.CreateFirstTaskToStartUsingPool),
   )
@@ -560,15 +560,18 @@ pub fn view_task_card(model: Model, task: Task) -> Element(Msg) {
     _ -> card_classes
   }
 
+  let size_str = int.to_string(size)
   let style =
-    "position:absolute; left:"
+    "position:absolute; left:clamp(0px,"
     <> int.to_string(x)
-    <> "px; top:"
+    <> "px,calc(100% - "
+    <> size_str
+    <> "px)); top:max(0px,"
     <> int.to_string(y)
-    <> "px; width:"
-    <> int.to_string(size)
+    <> "px); width:"
+    <> size_str
     <> "px; height:"
-    <> int.to_string(size)
+    <> size_str
     <> "px;"
 
   let disable_actions = model.member.pool.member_task_mutation_in_flight

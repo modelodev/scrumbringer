@@ -62,7 +62,7 @@ import scrumbringer_client/ui/color_picker
 import scrumbringer_client/ui/data_table
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_notice
-import scrumbringer_client/ui/icons
+
 import scrumbringer_client/ui/task_actions
 import scrumbringer_client/ui/task_color
 import scrumbringer_client/ui/task_item
@@ -110,7 +110,7 @@ pub fn view_bar(model: Model, user: User) -> Element(Msg) {
               // MB02: Improved empty state using empty_state component
               [] ->
                 empty_state.new(
-                  icons.Backpack,
+                  "archive-box",
                   helpers_i18n.i18n_t(model, i18n_text.NoClaimedTasks),
                   helpers_i18n.i18n_t(model, i18n_text.GoToPoolToClaimTasks),
                 )

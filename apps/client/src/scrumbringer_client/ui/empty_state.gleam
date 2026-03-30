@@ -2,6 +2,7 @@
 ////
 //// Provides a reusable component for empty states across the application
 //// with optional icon, title, description, and action button.
+//// Uses SVG icons from the icon catalog for theme-aware rendering.
 
 import gleam/option as opt
 
@@ -11,12 +12,12 @@ import lustre/element/html.{button, div, h2, p, text}
 import lustre/event
 
 import scrumbringer_client/ui/css_class as css
-import scrumbringer_client/ui/icons
+import scrumbringer_client/ui/icon_catalog
 
 /// Configuration for an empty state display.
 pub type EmptyStateConfig(msg) {
   EmptyStateConfig(
-    icon: icons.EmojiIcon,
+    icon_id: String,
     title: String,
     description: String,
     action: opt.Option(EmptyStateAction(msg)),
@@ -30,11 +31,11 @@ pub type EmptyStateAction(msg) {
 
 /// Creates an empty state with required fields.
 pub fn new(
-  icon: icons.EmojiIcon,
+  icon_id: String,
   title: String,
   description: String,
 ) -> EmptyStateConfig(msg) {
-  EmptyStateConfig(icon:, title:, description:, action: opt.None)
+  EmptyStateConfig(icon_id:, title:, description:, action: opt.None)
 }
 
 /// Adds an action button to the empty state.
@@ -51,11 +52,11 @@ pub fn with_action(
 
 /// Renders the empty state component.
 pub fn view(state: EmptyStateConfig(msg)) -> Element(msg) {
-  let EmptyStateConfig(icon:, title:, description:, action:) = state
+  let EmptyStateConfig(icon_id:, title:, description:, action:) = state
 
   div([attribute.class(css.to_string(css.empty_state()))], [
     div([attribute.class(css.to_string(css.empty_state_icon()))], [
-      text(icons.emoji_to_string(icon)),
+      icon_catalog.render(icon_id, 40),
     ]),
     h2([attribute.class("empty-state-title")], [text(title)]),
     p([attribute.class("empty-state-description")], [
@@ -72,10 +73,10 @@ pub fn view(state: EmptyStateConfig(msg)) -> Element(msg) {
 }
 
 /// Simple empty state without title (just icon and text).
-pub fn simple(icon: icons.EmojiIcon, description: String) -> Element(msg) {
+pub fn simple(icon_id: String, description: String) -> Element(msg) {
   div([attribute.class(css.to_string(css.empty_state()))], [
     div([attribute.class(css.to_string(css.empty_state_icon()))], [
-      text(icons.emoji_to_string(icon)),
+      icon_catalog.render(icon_id, 40),
     ]),
     p([attribute.class(css.to_string(css.empty_state_text()))], [
       text(description),
@@ -88,43 +89,36 @@ pub fn simple(icon: icons.EmojiIcon, description: String) -> Element(msg) {
 // =============================================================================
 
 /// Empty state for no active tasks (member view).
-/// Icon: ✋
 pub fn no_tasks(title: String, description: String) -> EmptyStateConfig(msg) {
-  new(icons.Hand, title, description)
+  new("hand-raised", title, description)
 }
 
 /// Empty state for no cards/fichas.
-/// Icon: 📋
 pub fn no_cards(title: String, description: String) -> EmptyStateConfig(msg) {
-  new(icons.Clipboard, title, description)
+  new("clipboard-document-list", title, description)
 }
 
 /// Empty state for no projects.
-/// Icon: 📁
 pub fn no_projects(title: String, description: String) -> EmptyStateConfig(msg) {
-  new(icons.FolderEmoji, title, description)
+  new("folder", title, description)
 }
 
 /// Empty state for no team members.
-/// Icon: 👥
 pub fn no_members(title: String, description: String) -> EmptyStateConfig(msg) {
-  new(icons.UsersEmoji, title, description)
+  new("user-group", title, description)
 }
 
 /// Empty state for no search results.
-/// Icon: 🔍
 pub fn no_results(title: String, description: String) -> EmptyStateConfig(msg) {
-  new(icons.Search, title, description)
+  new("magnifying-glass", title, description)
 }
 
 /// Empty state for all tasks completed (celebration).
-/// Icon: ✨
 pub fn all_done(title: String, description: String) -> EmptyStateConfig(msg) {
-  new(icons.Sparkles, title, description)
+  new("sparkles", title, description)
 }
 
 /// Empty state for inbox/notifications.
-/// Icon: 📥
 pub fn empty_inbox(title: String, description: String) -> EmptyStateConfig(msg) {
-  new(icons.Inbox, title, description)
+  new("inbox", title, description)
 }

@@ -187,6 +187,8 @@ pub fn translate(text: Text) -> String {
     text.NewTask -> "Nueva tarea"
     text.Description -> "Descripción"
     text.Priority -> "Prioridad"
+    text.PriorityHighest -> "más alta"
+    text.PriorityLowest -> "más baja"
     text.NewTaskShortcut -> "Nueva tarea (n)"
     text.AllOption -> "Todas"
     text.SelectType -> "Selecciona tipo"

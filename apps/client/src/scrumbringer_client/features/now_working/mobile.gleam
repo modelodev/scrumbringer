@@ -123,7 +123,7 @@ pub fn view_panel_sheet(model: Model, user_id: Int) -> Element(Msg) {
           [] ->
             div([attribute.class("sheet-empty")], [
               empty_state.simple(
-                icons.Clock,
+                "clock",
                 helpers_i18n.i18n_t(model, i18n_text.NowWorkingNone),
               ),
             ])
@@ -145,7 +145,7 @@ pub fn view_panel_sheet(model: Model, user_id: Int) -> Element(Msg) {
           [] ->
             div([attribute.class("sheet-empty")], [
               empty_state.simple(
-                icons.Hand,
+                "hand-raised",
                 helpers_i18n.i18n_t(model, i18n_text.NoClaimedTasks),
               ),
             ])

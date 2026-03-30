@@ -8,6 +8,7 @@ import gleam/string
 
 import scrumbringer_client/styles/assignments as styles_assignments
 import scrumbringer_client/styles/base as styles_base
+import scrumbringer_client/theme
 import scrumbringer_client/styles/components as styles_components
 import scrumbringer_client/styles/dialogs as styles_dialogs
 import scrumbringer_client/styles/layout as styles_layout
@@ -23,6 +24,7 @@ import scrumbringer_client/styles/ux as styles_ux
 ///   base_css(...)
 ///
 /// Order of precedence (do not reorder without reviewing overrides):
+/// 0) design tokens (theme-independent)
 /// 1) base
 /// 2) tables
 /// 3) assignments
@@ -35,6 +37,7 @@ import scrumbringer_client/styles/ux as styles_ux
 /// 10) notes
 pub fn base_css() -> String {
   [
+    [theme.design_tokens()],
     styles_base.css(),
     styles_tables.css(),
     styles_assignments.css(),

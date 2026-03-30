@@ -1154,7 +1154,7 @@ fn view_claimed_tasks_section(
       case claimed_tasks {
         [] ->
           empty_state.simple(
-            icons.Hand,
+            "hand-raised",
             helpers_i18n.i18n_t(model, i18n_text.NoClaimedTasks),
           )
         _ ->

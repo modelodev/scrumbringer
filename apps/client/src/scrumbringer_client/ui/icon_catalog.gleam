@@ -210,6 +210,8 @@ fn icon_registry() -> Dict(String, fn() -> Element(a)) {
     #("arrow-up-tray", outline.arrow_up_tray),
     #("cog-6-tooth", outline.cog_6_tooth),
     #("adjustments-horizontal", outline.adjustments_horizontal),
+    #("hand-raised", outline.hand_raised),
+    #("user-group", outline.user_group),
     // Fallback
     #("question-mark-circle", outline.question_mark_circle),
   ])

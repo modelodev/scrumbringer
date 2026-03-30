@@ -62,26 +62,6 @@ pub fn css_join_with_conditional_false_test() {
 // icons Tests
 // =============================================================================
 
-pub fn emoji_target_test() {
-  icons.emoji_to_string(icons.Target)
-  |> should.equal("🎯")
-}
-
-pub fn emoji_search_test() {
-  icons.emoji_to_string(icons.Search)
-  |> should.equal("🔍")
-}
-
-pub fn emoji_hand_test() {
-  icons.emoji_to_string(icons.Hand)
-  |> should.equal("✋")
-}
-
-pub fn emoji_lightbulb_test() {
-  icons.emoji_to_string(icons.Lightbulb)
-  |> should.equal("💡")
-}
-
 pub fn heroicon_name_envelope_test() {
   icons.heroicon_name(icons.Envelope)
   |> should.equal("envelope")

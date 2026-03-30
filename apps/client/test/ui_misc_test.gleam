@@ -6,12 +6,12 @@ import scrumbringer_client/theme
 import scrumbringer_client/ui/empty_state
 import scrumbringer_client/ui/error_banner
 import scrumbringer_client/ui/error_notice
-import scrumbringer_client/ui/icons
+
 import scrumbringer_client/ui/layout
 
 pub fn empty_state_view_renders_title_description_and_action_test() {
   let state =
-    empty_state.new(icons.Search, "No results", "Try again")
+    empty_state.new("magnifying-glass", "No results", "Try again")
     |> empty_state.with_action("Retry", "msg")
 
   let html =
@@ -25,7 +25,7 @@ pub fn empty_state_view_renders_title_description_and_action_test() {
 
 pub fn empty_state_simple_renders_description_test() {
   let html =
-    empty_state.simple(icons.Hand, "Nothing here")
+    empty_state.simple("hand-raised", "Nothing here")
     |> element.to_document_string
 
   string.contains(html, "Nothing here") |> should.be_true
