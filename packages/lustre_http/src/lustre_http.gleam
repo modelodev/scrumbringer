@@ -179,7 +179,13 @@ pub type HttpError {
   Unauthorized
 }
 
-fn response_to_result(response: Response(String)) -> Result(String, HttpError) {
+/// Convert a raw text response into the standard `lustre_http` result shape.
+///
+/// This is useful when handling raw responses with `expect_text_response` while
+/// keeping the same status-code policy as `expect_text` and `expect_json`.
+pub fn response_to_result(
+  response: Response(String),
+) -> Result(String, HttpError) {
   case response {
     Response(status: status, headers: _, body: body)
       if 200 <= status && status <= 299

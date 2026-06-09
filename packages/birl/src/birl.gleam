@@ -946,18 +946,13 @@ const string_to_units = [
 pub fn parse_relative(origin: Time, legible_difference: String) {
   case string.split(legible_difference, " ") {
     ["in", amount_string, unit]
-    | [amount_string, unit, "from now"]
+    | [amount_string, unit, "from", "now"]
     | [amount_string, unit, "later"]
     | [amount_string, unit, "ahead"]
-    | [amount_string, unit, "in the future"]
+    | [amount_string, unit, "in", "the", "future"]
     | [amount_string, unit, "hence"] -> {
-      let unit = case string.ends_with(unit, "s") {
-        False -> unit
-        True -> string.drop_end(unit, 1)
-      }
-
       use amount <- result.try(int.parse(amount_string))
-      use unit <- result.try(list.key_find(string_to_units, unit))
+      use unit <- result.try(list.key_find(string_to_units, singular(unit)))
       Ok(add(origin, duration.new([#(amount, unit)])))
     }
 
@@ -965,18 +960,20 @@ pub fn parse_relative(origin: Time, legible_difference: String) {
     | [amount_string, unit, "before"]
     | [amount_string, unit, "earlier"]
     | [amount_string, unit, "since"]
-    | [amount_string, unit, "in the past"] -> {
-      let unit = case string.ends_with(unit, "s") {
-        False -> unit
-        True -> string.drop_end(unit, 1)
-      }
-
+    | [amount_string, unit, "in", "the", "past"] -> {
       use amount <- result.try(int.parse(amount_string))
-      use unit <- result.try(list.key_find(string_to_units, unit))
+      use unit <- result.try(list.key_find(string_to_units, singular(unit)))
       Ok(subtract(origin, duration.new([#(amount, unit)])))
     }
 
     _ -> Error(Nil)
+  }
+}
+
+fn singular(unit: String) -> String {
+  case string.ends_with(unit, "s") {
+    False -> unit
+    True -> string.drop_end(unit, 1)
   }
 }
 

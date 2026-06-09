@@ -11,7 +11,10 @@ pub fn user_payload_decoder_decodes_enveloped_user_test() {
 
   let result = json.parse(from: body, using: decoder)
 
-  let assert Ok(_) = result
+  let assert Ok(user) = result
+  let assert 1 = user.id
+  let assert "admin@acme.com" = user.email
+  let assert 1 = user.org_id
 }
 
 pub fn user_payload_decoder_rejects_missing_email_test() {

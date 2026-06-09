@@ -35,8 +35,7 @@ import gleam/option as opt
 import lustre/attribute
 import lustre/element.{type Element}
 
-import lustre/element/html.{a, button, div, h2, p, style, text}
-import lustre/event
+import lustre/element/html.{a, div, h2, p, style, text}
 
 import domain/card.{type Card}
 import domain/org.{type OrgUser}
@@ -94,8 +93,6 @@ import scrumbringer_client/router
 import scrumbringer_client/styles
 import scrumbringer_client/theme
 
-import scrumbringer_client/ui/icons
-
 import scrumbringer_client/client_ffi
 import scrumbringer_client/ui/toast as ui_toast
 import scrumbringer_client/utils/card_queries
@@ -107,7 +104,7 @@ import scrumbringer_client/features/layout/center_panel
 import scrumbringer_client/features/layout/center_panel_data
 import scrumbringer_client/features/layout/left_panel
 import scrumbringer_client/features/layout/left_panel_data
-import scrumbringer_client/features/layout/responsive_drawer
+import scrumbringer_client/features/layout/member_mobile_shell
 import scrumbringer_client/features/layout/right_panel
 import scrumbringer_client/features/layout/right_panel_data
 import scrumbringer_client/features/layout/three_panel_layout
@@ -937,76 +934,39 @@ fn view_member(model: client_state.Model) -> Element(client_state.Msg) {
   }
 }
 
-/// Mobile topbar with hamburger menu and user icon
-fn view_mobile_topbar(
-  model: client_state.Model,
-  _user: User,
-) -> Element(client_state.Msg) {
-  div([attribute.class("mobile-topbar")], [
-    button(
-      [
-        attribute.class("mobile-menu-btn"),
-        attribute.attribute("data-testid", "mobile-menu-btn"),
-        attribute.attribute("aria-label", "Open navigation menu"),
-        event.on_click(client_state.layout_msg(
-          layout_messages.MobileLeftDrawerToggled,
-        )),
-      ],
-      [icons.view_heroicon_inline("bars-3", 24, model.ui.theme)],
-    ),
-    div([attribute.class("topbar-title-mobile")], [
-      text(
-        i18n.t(model.ui.locale, case model.member.pool.member_section {
-          member_section.Pool -> i18n_text.Pool
-          member_section.MyBar -> i18n_text.MyBar
-          member_section.MySkills -> i18n_text.MySkills
-          member_section.Fichas -> i18n_text.MemberFichas
-        }),
-      ),
-    ]),
-    button(
-      [
-        attribute.class("mobile-user-btn"),
-        attribute.attribute("data-testid", "mobile-user-btn"),
-        attribute.attribute("aria-label", "Open activity panel"),
-        event.on_click(client_state.layout_msg(
-          layout_messages.MobileRightDrawerToggled,
-        )),
-      ],
-      [icons.view_heroicon_inline("user-circle", 24, model.ui.theme)],
-    ),
-  ])
-}
-
 fn view_mobile_shell(
   model: client_state.Model,
   user: User,
   main_content: Element(client_state.Msg),
 ) -> Element(client_state.Msg) {
-  let mobile_now_working = now_working_mobile_config(model, user)
-
-  div([attribute.class("member member-mobile")], [
-    view_mobile_topbar(model, user),
-    // A02: Skip link target - with padding for mini-bar
-    div(
-      [
-        attribute.class("content member-content-mobile"),
-        attribute.attribute("id", "main-content"),
-        attribute.attribute("tabindex", "-1"),
-      ],
-      [main_content],
+  member_mobile_shell.view(member_mobile_shell.Config(
+    title: member_mobile_title(model),
+    theme: model.ui.theme,
+    left_drawer_open: ui_state.mobile_drawer_left_open(model.ui.mobile_drawer),
+    right_drawer_open: ui_state.mobile_drawer_right_open(model.ui.mobile_drawer),
+    main_content: main_content,
+    left_content: build_left_panel(model, user),
+    right_content: build_right_panel(model, user),
+    now_working: now_working_mobile_config(model, user),
+    on_left_drawer_toggle: client_state.layout_msg(
+      layout_messages.MobileLeftDrawerToggled,
     ),
-    // Mobile mini-bar (sticky bottom)
-    now_working_mobile.view_mini_bar(mobile_now_working),
-    // Overlay when sheet is open
-    now_working_mobile.view_overlay(mobile_now_working),
-    // Bottom sheet
-    now_working_mobile.view_panel_sheet(mobile_now_working),
-    // Left drawer (navigation)
-    view_mobile_left_drawer(model, user),
-    // Right drawer (my activity)
-    view_mobile_right_drawer(model, user),
-  ])
+    on_right_drawer_toggle: client_state.layout_msg(
+      layout_messages.MobileRightDrawerToggled,
+    ),
+    on_drawers_close: client_state.layout_msg(
+      layout_messages.MobileDrawersClosed,
+    ),
+  ))
+}
+
+fn member_mobile_title(model: client_state.Model) -> String {
+  i18n.t(model.ui.locale, case model.member.pool.member_section {
+    member_section.Pool -> i18n_text.Pool
+    member_section.MyBar -> i18n_text.MyBar
+    member_section.MySkills -> i18n_text.MySkills
+    member_section.Fichas -> i18n_text.MemberFichas
+  })
 }
 
 fn now_working_mobile_config(
@@ -1039,36 +999,6 @@ fn now_working_mobile_config(
     on_release: fn(task_id, version) {
       client_state.pool_msg(pool_messages.MemberReleaseClicked(task_id, version))
     },
-  )
-}
-
-/// Left drawer containing navigation
-fn view_mobile_left_drawer(
-  model: client_state.Model,
-  user: User,
-) -> Element(client_state.Msg) {
-  let left_content = build_left_panel(model, user)
-
-  responsive_drawer.view(
-    ui_state.mobile_drawer_left_open(model.ui.mobile_drawer),
-    responsive_drawer.Left,
-    client_state.layout_msg(layout_messages.MobileDrawersClosed),
-    left_content,
-  )
-}
-
-/// Right drawer containing activity panel
-fn view_mobile_right_drawer(
-  model: client_state.Model,
-  user: User,
-) -> Element(client_state.Msg) {
-  let right_content = build_right_panel(model, user)
-
-  responsive_drawer.view(
-    ui_state.mobile_drawer_right_open(model.ui.mobile_drawer),
-    responsive_drawer.Right,
-    client_state.layout_msg(layout_messages.MobileDrawersClosed),
-    right_content,
   )
 }
 

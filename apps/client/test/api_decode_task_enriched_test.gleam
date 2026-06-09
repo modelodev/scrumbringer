@@ -2,10 +2,6 @@ import domain/task/codec as task_codec
 import gleam/dynamic/decode
 import gleam/json
 
-fn assert_ok(result: Result(a, b)) {
-  let assert Ok(_) = result
-}
-
 fn assert_error(result: Result(a, b)) {
   let assert Error(_) = result
 }
@@ -18,7 +14,12 @@ pub fn task_decoder_accepts_enriched_task_type_and_work_state_test() {
 
   let result = decode.run(dynamic, task_codec.task_decoder())
 
-  assert_ok(result)
+  let assert Ok(task) = result
+  let assert 1 = task.id
+  let assert 2 = task.type_id
+  let assert "Bug" = task.task_type.name
+  let assert "bug-ant" = task.task_type.icon
+  let assert "T" = task.title
 }
 
 pub fn task_decoder_rejects_invalid_status_and_work_state_test() {

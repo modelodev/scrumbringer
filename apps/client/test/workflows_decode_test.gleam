@@ -8,10 +8,6 @@ import gleam/json
 import gleam/option
 import scrumbringer_client/api/workflows as api_workflows
 
-fn assert_ok(result: Result(a, b)) {
-  let assert Ok(_) = result
-}
-
 fn assert_error(result: Result(a, b)) {
   let assert Error(_) = result
 }
@@ -27,9 +23,11 @@ pub fn workflow_payload_decoder_decodes_enveloped_workflow_test() {
       decode.success,
     )
 
-  let result = json.parse(from: body, using: decoder)
-
-  assert_ok(result)
+  let assert Ok(workflow) = json.parse(from: body, using: decoder)
+  let assert 1 = workflow.id
+  let assert "Auto QA" = workflow.name
+  let assert True = workflow.active
+  let assert 2 = workflow.rule_count
 }
 
 pub fn workflow_payload_decoder_decodes_with_project_id_test() {
@@ -43,9 +41,10 @@ pub fn workflow_payload_decoder_decodes_with_project_id_test() {
       decode.success,
     )
 
-  let result = json.parse(from: body, using: decoder)
-
-  assert_ok(result)
+  let assert Ok(workflow) = json.parse(from: body, using: decoder)
+  let assert 2 = workflow.id
+  let assert option.Some(5) = workflow.project_id
+  let assert False = workflow.active
 }
 
 pub fn workflows_payload_decoder_decodes_list_test() {
@@ -59,9 +58,10 @@ pub fn workflows_payload_decoder_decodes_list_test() {
       decode.success,
     )
 
-  let result = json.parse(from: body, using: decoder)
-
-  assert_ok(result)
+  let assert Ok(workflows) = json.parse(from: body, using: decoder)
+  let assert [workflow_a, workflow_b] = workflows
+  let assert "Workflow A" = workflow_a.name
+  let assert "Workflow B" = workflow_b.name
 }
 
 pub fn rule_payload_decoder_decodes_enveloped_rule_test() {
@@ -120,9 +120,13 @@ pub fn rules_payload_decoder_decodes_list_test() {
   let decoder =
     decode.field("data", api_workflows.rules_payload_decoder(), decode.success)
 
-  let result = json.parse(from: body, using: decoder)
-
-  assert_ok(result)
+  let assert Ok(rules) = json.parse(from: body, using: decoder)
+  let assert [rule_a, rule_b] = rules
+  let assert "Rule A" = rule_a.name
+  let assert workflow.TaskRule(task_status.Completed, option.Some(1)) =
+    rule_a.target
+  let assert "Rule B" = rule_b.name
+  let assert workflow.CardRule(card.Cerrada) = rule_b.target
 }
 
 pub fn rule_payload_decoder_rejects_invalid_task_state_test() {
@@ -172,9 +176,11 @@ pub fn template_payload_decoder_decodes_enveloped_template_test() {
       decode.success,
     )
 
-  let result = json.parse(from: body, using: decoder)
-
-  assert_ok(result)
+  let assert Ok(template) = json.parse(from: body, using: decoder)
+  let assert 1 = template.id
+  let assert "Review {{father}}" = template.name
+  let assert 2 = template.type_id
+  let assert 3 = template.priority
 }
 
 pub fn template_payload_decoder_decodes_with_project_id_test() {
@@ -188,9 +194,10 @@ pub fn template_payload_decoder_decodes_with_project_id_test() {
       decode.success,
     )
 
-  let result = json.parse(from: body, using: decoder)
-
-  assert_ok(result)
+  let assert Ok(template) = json.parse(from: body, using: decoder)
+  let assert 2 = template.id
+  let assert option.Some(5) = template.project_id
+  let assert "QA" = template.type_name
 }
 
 pub fn templates_payload_decoder_decodes_list_test() {
@@ -204,9 +211,11 @@ pub fn templates_payload_decoder_decodes_list_test() {
       decode.success,
     )
 
-  let result = json.parse(from: body, using: decoder)
-
-  assert_ok(result)
+  let assert Ok(templates) = json.parse(from: body, using: decoder)
+  let assert [template_a, template_b] = templates
+  let assert "Template A" = template_a.name
+  let assert "Template B" = template_b.name
+  let assert option.Some(3) = template_b.project_id
 }
 
 pub fn rule_templates_payload_decoder_decodes_list_test() {
@@ -220,9 +229,12 @@ pub fn rule_templates_payload_decoder_decodes_list_test() {
       decode.success,
     )
 
-  let result = json.parse(from: body, using: decoder)
-
-  assert_ok(result)
+  let assert Ok(templates) = json.parse(from: body, using: decoder)
+  let assert [template_a, template_b] = templates
+  let assert "Review {{father}}" = template_a.name
+  let assert 1 = template_a.execution_order
+  let assert "QA Check" = template_b.name
+  let assert 2 = template_b.execution_order
 }
 
 pub fn workflows_payload_decoder_decodes_empty_list_test() {
@@ -235,9 +247,7 @@ pub fn workflows_payload_decoder_decodes_empty_list_test() {
       decode.success,
     )
 
-  let result = json.parse(from: body, using: decoder)
-
-  assert_ok(result)
+  let assert Ok([]) = json.parse(from: body, using: decoder)
 }
 
 pub fn rules_payload_decoder_decodes_empty_list_test() {
@@ -246,9 +256,7 @@ pub fn rules_payload_decoder_decodes_empty_list_test() {
   let decoder =
     decode.field("data", api_workflows.rules_payload_decoder(), decode.success)
 
-  let result = json.parse(from: body, using: decoder)
-
-  assert_ok(result)
+  let assert Ok([]) = json.parse(from: body, using: decoder)
 }
 
 pub fn templates_payload_decoder_decodes_empty_list_test() {
@@ -261,9 +269,7 @@ pub fn templates_payload_decoder_decodes_empty_list_test() {
       decode.success,
     )
 
-  let result = json.parse(from: body, using: decoder)
-
-  assert_ok(result)
+  let assert Ok([]) = json.parse(from: body, using: decoder)
 }
 
 // =============================================================================
@@ -274,79 +280,88 @@ pub fn workflow_metrics_decoder_decodes_with_rules_test() {
   let body =
     "{\"workflow_id\":1,\"workflow_name\":\"Auto QA\",\"rules\":[{\"rule_id\":1,\"rule_name\":\"Task Completed\",\"evaluated_count\":100,\"applied_count\":80,\"suppressed_count\":20},{\"rule_id\":2,\"rule_name\":\"Card Closed\",\"evaluated_count\":50,\"applied_count\":45,\"suppressed_count\":5}]}"
 
-  let result =
+  let assert Ok(metrics) =
     json.parse(from: body, using: api_workflows.workflow_metrics_decoder())
-
-  assert_ok(result)
+  let assert 1 = metrics.workflow_id
+  let assert "Auto QA" = metrics.workflow_name
+  let assert [rule_a, rule_b] = metrics.rules
+  let assert 80 = rule_a.applied_count
+  let assert 5 = rule_b.suppressed_count
 }
 
 pub fn workflow_metrics_decoder_decodes_empty_rules_test() {
   let body =
     "{\"workflow_id\":1,\"workflow_name\":\"Empty Workflow\",\"rules\":[]}"
 
-  let result =
+  let assert Ok(metrics) =
     json.parse(from: body, using: api_workflows.workflow_metrics_decoder())
-
-  assert_ok(result)
+  let assert "Empty Workflow" = metrics.workflow_name
+  let assert [] = metrics.rules
 }
 
 pub fn org_workflow_metrics_summary_decoder_decodes_test() {
   let body =
     "{\"workflow_id\":1,\"workflow_name\":\"Auto QA\",\"project_id\":5,\"rule_count\":3,\"evaluated_count\":150,\"applied_count\":120,\"suppressed_count\":30}"
 
-  let result =
+  let assert Ok(summary) =
     json.parse(
       from: body,
       using: api_workflows.org_workflow_metrics_summary_decoder(),
     )
-
-  assert_ok(result)
+  let assert 1 = summary.workflow_id
+  let assert 5 = summary.project_id
+  let assert 120 = summary.applied_count
 }
 
 pub fn rule_metrics_detailed_decoder_decodes_with_breakdown_test() {
   let body =
     "{\"rule_id\":1,\"rule_name\":\"Task Completed\",\"evaluated_count\":100,\"applied_count\":80,\"suppressed_count\":20,\"suppression_breakdown\":{\"idempotent\":10,\"not_user_triggered\":5,\"not_matching\":3,\"inactive\":2}}"
 
-  let result =
+  let assert Ok(metrics) =
     json.parse(from: body, using: api_workflows.rule_metrics_detailed_decoder())
-
-  assert_ok(result)
+  let assert 1 = metrics.rule_id
+  let assert 20 = metrics.suppressed_count
+  let assert 10 = metrics.suppression_breakdown.idempotent
 }
 
 pub fn rule_metrics_detailed_decoder_decodes_zero_counts_test() {
   let body =
     "{\"rule_id\":2,\"rule_name\":\"New Rule\",\"evaluated_count\":0,\"applied_count\":0,\"suppressed_count\":0,\"suppression_breakdown\":{\"idempotent\":0,\"not_user_triggered\":0,\"not_matching\":0,\"inactive\":0}}"
 
-  let result =
+  let assert Ok(metrics) =
     json.parse(from: body, using: api_workflows.rule_metrics_detailed_decoder())
-
-  assert_ok(result)
+  let assert 2 = metrics.rule_id
+  let assert 0 = metrics.evaluated_count
+  let assert 0 = metrics.suppression_breakdown.inactive
 }
 
 pub fn rule_executions_response_decoder_decodes_with_executions_test() {
   let body =
     "{\"rule_id\":1,\"executions\":[{\"id\":1,\"origin_type\":\"task\",\"origin_id\":100,\"outcome\":\"applied\",\"user_id\":5,\"user_email\":\"user@example.com\",\"created_at\":\"2026-01-19T10:00:00Z\"},{\"id\":2,\"origin_type\":\"task\",\"origin_id\":101,\"outcome\":\"suppressed\",\"suppression_reason\":\"idempotent\",\"user_id\":6,\"user_email\":\"other@example.com\",\"created_at\":\"2026-01-19T11:00:00Z\"}],\"pagination\":{\"limit\":20,\"offset\":0,\"total\":2}}"
 
-  let result =
+  let assert Ok(response) =
     json.parse(
       from: body,
       using: api_workflows.rule_executions_response_decoder(),
     )
-
-  assert_ok(result)
+  let assert 1 = response.rule_id
+  let assert [execution_a, execution_b] = response.executions
+  let assert "applied" = execution_a.outcome
+  let assert "idempotent" = execution_b.suppression_reason
+  let assert 2 = response.pagination.total
 }
 
 pub fn rule_executions_response_decoder_decodes_empty_executions_test() {
   let body =
     "{\"rule_id\":1,\"executions\":[],\"pagination\":{\"limit\":20,\"offset\":0,\"total\":0}}"
 
-  let result =
+  let assert Ok(response) =
     json.parse(
       from: body,
       using: api_workflows.rule_executions_response_decoder(),
     )
-
-  assert_ok(result)
+  let assert [] = response.executions
+  let assert 0 = response.pagination.total
 }
 
 pub fn rule_executions_response_decoder_decodes_optional_fields_test() {
@@ -354,11 +369,14 @@ pub fn rule_executions_response_decoder_decodes_optional_fields_test() {
   let body =
     "{\"rule_id\":1,\"executions\":[{\"id\":1,\"origin_type\":\"card\",\"origin_id\":50,\"outcome\":\"applied\",\"created_at\":\"2026-01-19T12:00:00Z\"}],\"pagination\":{\"limit\":20,\"offset\":0,\"total\":1}}"
 
-  let result =
+  let assert Ok(response) =
     json.parse(
       from: body,
       using: api_workflows.rule_executions_response_decoder(),
     )
-
-  assert_ok(result)
+  let assert [execution] = response.executions
+  let assert "card" = execution.origin_type
+  let assert "" = execution.suppression_reason
+  let assert 0 = execution.user_id
+  let assert "" = execution.user_email
 }
