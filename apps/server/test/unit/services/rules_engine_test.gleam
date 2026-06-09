@@ -56,7 +56,7 @@ pub fn evaluate_rule_applies_matching_rule_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(type_id),
+      type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -108,7 +108,7 @@ pub fn evaluate_rule_skips_inactive_rule_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(type_id),
+      type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -155,7 +155,7 @@ pub fn evaluate_rule_handles_idempotent_suppression_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(type_id),
+      type_id,
     )
 
   // First evaluation - should apply
@@ -214,7 +214,7 @@ pub fn evaluate_rule_skips_when_workflow_inactive_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(type_id),
+      type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)

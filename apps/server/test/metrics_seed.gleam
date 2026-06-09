@@ -365,7 +365,7 @@ pub fn seed() -> Result(SeedResult, String) {
           admin_user_id,
           Some(task_status.Claimed(task_status.Ongoing)),
           task_status.Completed,
-          Some(alpha_bug_type),
+          alpha_bug_type,
         )
       rules_engine.evaluate_rules(db, event)
       |> result.map_error(fn(e) {
@@ -390,7 +390,7 @@ pub fn seed() -> Result(SeedResult, String) {
           admin_user_id,
           Some(task_status.Completed),
           task_status.Completed,
-          Some(alpha_bug_type),
+          alpha_bug_type,
         )
       rules_engine.evaluate_rules(db, event)
       |> result.map_error(fn(e) {
@@ -415,7 +415,7 @@ pub fn seed() -> Result(SeedResult, String) {
           dev_user_id,
           Some(task_status.Claimed(task_status.Ongoing)),
           task_status.Completed,
-          Some(alpha_feature_type),
+          alpha_feature_type,
         )
       rules_engine.evaluate_rules(db, event)
       |> result.map_error(fn(e) {
@@ -464,7 +464,7 @@ pub fn seed() -> Result(SeedResult, String) {
           admin_user_id,
           Some(task_status.Claimed(task_status.Ongoing)),
           task_status.Completed,
-          Some(beta_bug_type),
+          beta_bug_type,
         )
       rules_engine.evaluate_rules(db, event)
       |> result.map_error(fn(e) {
@@ -485,7 +485,7 @@ pub fn seed() -> Result(SeedResult, String) {
       admin_user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(alpha_bug_type),
+      alpha_bug_type,
     )
   use _ <- result.try(
     rules_engine.evaluate_rules(db, event_idem)

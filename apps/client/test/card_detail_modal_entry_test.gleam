@@ -88,6 +88,20 @@ pub fn card_detail_modal_entry_renders_without_root_model_test() {
   assert_contains(html, "can-manage-notes=\"true\"")
 }
 
+pub fn card_detail_modal_entry_omits_current_user_attribute_when_absent_test() {
+  let html =
+    detail_modal_entry.view(
+      detail_modal_entry.Config(
+        ..config(Some(sample_card())),
+        current_user_id: None,
+      ),
+    )
+    |> element.to_document_string
+
+  assert_contains(html, "card-detail-modal")
+  assert_not_contains(html, "current-user-id=")
+}
+
 pub fn card_detail_modal_entry_omits_missing_card_test() {
   let html =
     detail_modal_entry.view(config(None))

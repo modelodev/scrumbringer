@@ -29,7 +29,7 @@ pub fn task_hover_renders_pool_specific_metadata_test() {
         sample_note(1, 7, "I checked the deployment checklist."),
         sample_note(2, 9, "OAuth setup still blocks this."),
       ],
-      current_user_id: 7,
+      current_user_id: Some(7),
       on_open: "open",
     ))
     |> element.to_document_string
@@ -68,7 +68,7 @@ pub fn task_hover_hides_empty_optional_sections_test() {
       age_days: 0,
       hidden_blocked_count: Some(0),
       notes: [],
-      current_user_id: 7,
+      current_user_id: Some(7),
       on_open: "open",
     ))
     |> element.to_document_string

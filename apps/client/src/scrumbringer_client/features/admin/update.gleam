@@ -33,7 +33,6 @@ import scrumbringer_client/client_state
 import scrumbringer_client/client_state/admin as admin_state
 import scrumbringer_client/client_state/admin/capabilities as admin_capabilities
 import scrumbringer_client/client_state/admin/invites as admin_invites
-import scrumbringer_client/client_state/admin/members as admin_members
 import scrumbringer_client/client_state/admin/projects as admin_projects
 import scrumbringer_client/client_state/admin/task_types as admin_task_types
 import scrumbringer_client/client_state/types as state_types
@@ -47,13 +46,14 @@ import scrumbringer_client/features/task_types/update as task_types_workflow
 import scrumbringer_client/i18n/text as i18n_text
 import scrumbringer_client/router
 
-import scrumbringer_client/features/admin/member_add
-import scrumbringer_client/features/admin/member_list
-import scrumbringer_client/features/admin/member_release_all
-import scrumbringer_client/features/admin/member_remove
-import scrumbringer_client/features/admin/member_role
+import scrumbringer_client/features/admin/member_add_update
+import scrumbringer_client/features/admin/member_list_update
+import scrumbringer_client/features/admin/member_release_all_update
+import scrumbringer_client/features/admin/member_remove_update
+import scrumbringer_client/features/admin/member_role_update
+import scrumbringer_client/features/admin/member_root
 import scrumbringer_client/features/admin/org_settings
-import scrumbringer_client/features/admin/search
+import scrumbringer_client/features/admin/search_update
 import scrumbringer_client/features/auth/helpers as auth_helpers
 import scrumbringer_client/i18n/i18n
 
@@ -152,14 +152,8 @@ fn update_without_task_types(
   inner: admin_messages.Msg,
   ctx: Context,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case
-    member_list.try_update(
-      model.admin.members,
-      inner,
-      member_list_context(model),
-    )
-  {
-    opt.Some(update) -> apply_member_list_update(model, update)
+  case member_list_update.try_update(model, inner) {
+    opt.Some(result) -> result
     opt.None -> update_without_member_list(model, inner, ctx)
   }
 }
@@ -187,16 +181,9 @@ fn update_without_org_settings(
   inner: admin_messages.Msg,
   ctx: Context,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case
-    member_add.try_update(
-      model.admin.members,
-      inner,
-      member_add_context(model),
-      member_add_feedback_context(model),
-      member_add_error_feedback_context(model),
-    )
-  {
-    opt.Some(update) -> apply_member_add_update(model, update, ctx)
+  let Context(refresh_section_for_test: refresh_section_for_test) = ctx
+  case member_add_update.try_update(model, inner, refresh_section_for_test) {
+    opt.Some(result) -> result
     opt.None -> update_without_member_add(model, inner, ctx)
   }
 }
@@ -206,16 +193,9 @@ fn update_without_member_add(
   inner: admin_messages.Msg,
   ctx: Context,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case
-    member_remove.try_update(
-      model.admin.members,
-      inner,
-      member_remove_context(model),
-      member_remove_feedback_context(model),
-      member_remove_error_feedback_context(model),
-    )
-  {
-    opt.Some(update) -> apply_member_remove_update(model, update, ctx)
+  let Context(refresh_section_for_test: refresh_section_for_test) = ctx
+  case member_remove_update.try_update(model, inner, refresh_section_for_test) {
+    opt.Some(result) -> result
     opt.None -> update_without_member_remove(model, inner, ctx)
   }
 }
@@ -225,15 +205,8 @@ fn update_without_member_remove(
   inner: admin_messages.Msg,
   ctx: Context,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case
-    member_release_all.try_update(
-      model.admin.members,
-      inner,
-      member_release_all_context(model),
-      member_release_all_feedback_context(model),
-    )
-  {
-    opt.Some(update) -> apply_member_release_all_update(model, update)
+  case member_release_all_update.try_update(model, inner) {
+    opt.Some(result) -> result
     opt.None -> update_without_member_release_all(model, inner, ctx)
   }
 }
@@ -243,15 +216,8 @@ fn update_without_member_release_all(
   inner: admin_messages.Msg,
   ctx: Context,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case
-    member_role.try_update(
-      model.admin.members,
-      inner,
-      member_role_context(model),
-      member_role_feedback_context(model),
-    )
-  {
-    opt.Some(update) -> apply_member_role_update(model, update)
+  case member_role_update.try_update(model, inner) {
+    opt.Some(result) -> result
     opt.None -> update_without_member_role(model, inner, ctx)
   }
 }
@@ -261,10 +227,8 @@ fn update_without_member_role(
   inner: admin_messages.Msg,
   ctx: Context,
 ) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  case
-    search.try_update(model.admin.members, inner, org_users_search_context())
-  {
-    opt.Some(update) -> apply_org_users_search_update(model, update)
+  case search_update.try_update(model, inner) {
+    opt.Some(result) -> result
     opt.None -> update_without_org_users_search(model, inner, ctx)
   }
 }
@@ -452,30 +416,6 @@ fn update_without_assignments(
   }
 }
 
-fn update_members(
-  admin: admin_state.AdminModel,
-  f: fn(admin_members.Model) -> admin_members.Model,
-) -> admin_state.AdminModel {
-  admin_state.AdminModel(..admin, members: f(admin.members))
-}
-
-fn set_members(
-  model: client_state.Model,
-  members: admin_members.Model,
-) -> client_state.Model {
-  client_state.update_admin(model, fn(admin) {
-    update_members(admin, fn(_) { members })
-  })
-}
-
-fn apply_members_result(
-  model: client_state.Model,
-  members: admin_members.Model,
-  fx: effect.Effect(client_state.Msg),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  #(set_members(model, members), fx)
-}
-
 fn apply_auth_check_before(
   model: client_state.Model,
   auth_error: opt.Option(ApiError),
@@ -500,26 +440,6 @@ fn apply_auth_check_after(
   }
 }
 
-fn apply_member_list_update(
-  model: client_state.Model,
-  update: member_list.Update(client_state.Msg),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let member_list.Update(members, local_fx, auth_policy) = update
-
-  apply_auth_check_before(model, member_list_auth_error(auth_policy), fn() {
-    apply_members_result(model, members, local_fx)
-  })
-}
-
-fn member_list_auth_error(
-  policy: member_list.AuthPolicy,
-) -> opt.Option(ApiError) {
-  case policy {
-    member_list.NoAuthCheck -> opt.None
-    member_list.CheckAuth(err) -> opt.Some(err)
-  }
-}
-
 fn apply_org_settings_update(
   model: client_state.Model,
   update: org_settings.Update(client_state.Msg),
@@ -527,7 +447,7 @@ fn apply_org_settings_update(
   let org_settings.Update(members, local_fx, auth_policy, root_policy) = update
 
   apply_auth_check_before(model, org_settings_auth_error(auth_policy), fn() {
-    let model = set_members(model, members)
+    let model = member_root.set_members(model, members)
 
     case root_policy {
       org_settings.NoRootPolicy -> #(model, local_fx)
@@ -566,119 +486,6 @@ fn org_settings_auth_error(
   }
 }
 
-fn apply_member_add_update(
-  model: client_state.Model,
-  update: member_add.Update(client_state.Msg),
-  ctx: Context,
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let Context(refresh_section_for_test: refresh_section_for_test) = ctx
-  let member_add.Update(members, local_fx, auth_policy, refresh_policy) = update
-
-  apply_auth_check_before(model, member_add_auth_error(auth_policy), fn() {
-    let model = set_members(model, members)
-    let #(model, refresh_fx) = case refresh_policy {
-      member_add.NoRefresh -> #(model, effect.none())
-      member_add.RefreshSection -> refresh_section_for_test(model)
-    }
-    #(model, effect.batch([local_fx, refresh_fx]))
-  })
-}
-
-fn member_add_auth_error(policy: member_add.AuthPolicy) -> opt.Option(ApiError) {
-  case policy {
-    member_add.NoAuthCheck -> opt.None
-    member_add.CheckAuth(err) -> opt.Some(err)
-  }
-}
-
-fn apply_member_remove_update(
-  model: client_state.Model,
-  update: member_remove.Update(client_state.Msg),
-  ctx: Context,
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let Context(refresh_section_for_test: refresh_section_for_test) = ctx
-  let member_remove.Update(members, local_fx, auth_policy, refresh_policy) =
-    update
-
-  apply_auth_check_before(model, member_remove_auth_error(auth_policy), fn() {
-    let model = set_members(model, members)
-    let #(model, refresh_fx) = case refresh_policy {
-      member_remove.NoRefresh -> #(model, effect.none())
-      member_remove.RefreshSection -> refresh_section_for_test(model)
-    }
-    #(model, effect.batch([local_fx, refresh_fx]))
-  })
-}
-
-fn member_remove_auth_error(
-  policy: member_remove.AuthPolicy,
-) -> opt.Option(ApiError) {
-  case policy {
-    member_remove.NoAuthCheck -> opt.None
-    member_remove.CheckAuth(err) -> opt.Some(err)
-  }
-}
-
-fn apply_member_role_update(
-  model: client_state.Model,
-  update: member_role.Update(client_state.Msg),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let member_role.Update(members, local_fx, auth_policy) = update
-
-  apply_auth_check_before(model, member_role_auth_error(auth_policy), fn() {
-    apply_members_result(model, members, local_fx)
-  })
-}
-
-fn member_role_auth_error(
-  policy: member_role.AuthPolicy,
-) -> opt.Option(ApiError) {
-  case policy {
-    member_role.NoAuthCheck -> opt.None
-    member_role.CheckAuth(err) -> opt.Some(err)
-  }
-}
-
-fn apply_member_release_all_update(
-  model: client_state.Model,
-  update: member_release_all.Update(client_state.Msg),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let member_release_all.Update(members, local_fx, auth_policy) = update
-
-  apply_auth_check_before(
-    model,
-    member_release_all_auth_error(auth_policy),
-    fn() { apply_members_result(model, members, local_fx) },
-  )
-}
-
-fn member_release_all_auth_error(
-  policy: member_release_all.AuthPolicy,
-) -> opt.Option(ApiError) {
-  case policy {
-    member_release_all.NoAuthCheck -> opt.None
-    member_release_all.CheckAuth(err) -> opt.Some(err)
-  }
-}
-
-fn apply_org_users_search_update(
-  model: client_state.Model,
-  update: search.Update(client_state.Msg),
-) -> #(client_state.Model, effect.Effect(client_state.Msg)) {
-  let search.Update(members, local_fx, auth_policy) = update
-
-  apply_auth_check_before(model, search_auth_error(auth_policy), fn() {
-    apply_members_result(model, members, local_fx)
-  })
-}
-
-fn search_auth_error(policy: search.AuthPolicy) -> opt.Option(ApiError) {
-  case policy {
-    search.NoAuthCheck -> opt.None
-    search.CheckAuth(err) -> opt.Some(err)
-  }
-}
-
 fn update_assignments(
   admin: admin_state.AdminModel,
   f: fn(state_types.AssignmentsModel) -> state_types.AssignmentsModel,
@@ -707,9 +514,9 @@ fn apply_assignments_update(
       assignments_workflow.ReplaceAssignmentsView(view_mode) ->
         router.replace_assignments_view(view_mode)
       assignments_workflow.MemberRoleSuccessFeedback ->
-        member_role.success_effect(member_role_feedback_context(model))
+        member_role_update.success_effect(model)
       assignments_workflow.MemberRoleErrorFeedback(err) ->
-        member_role.error_effect(err, member_role_feedback_context(model))
+        member_role_update.error_effect(model, err)
     }
 
     #(model, effect.batch([local_fx, root_fx]))
@@ -828,145 +635,6 @@ fn org_settings_feedback_context(
     on_success_toast: app_effects.toast_success,
     on_warning_toast: app_effects.toast_warning,
   )
-}
-
-fn member_add_context(
-  model: client_state.Model,
-) -> member_add.Context(client_state.Msg) {
-  member_add.Context(
-    selected_project_id: model.core.selected_project_id,
-    select_user_first: i18n.t(model.ui.locale, i18n_text.SelectUserFirst),
-    on_member_added: fn(result) {
-      client_state.admin_msg(admin_messages.MemberAdded(result))
-    },
-  )
-}
-
-fn member_add_feedback_context(
-  model: client_state.Model,
-) -> member_add.FeedbackContext(client_state.Msg) {
-  member_add.FeedbackContext(
-    member_added: i18n.t(model.ui.locale, i18n_text.MemberAdded),
-    on_success_toast: app_effects.toast_success,
-  )
-}
-
-fn member_add_error_feedback_context(
-  model: client_state.Model,
-) -> member_add.ErrorFeedbackContext(client_state.Msg) {
-  member_add.ErrorFeedbackContext(
-    not_permitted: i18n.t(model.ui.locale, i18n_text.NotPermitted),
-    on_warning_toast: app_effects.toast_warning,
-  )
-}
-
-fn member_release_all_context(
-  model: client_state.Model,
-) -> member_release_all.Context(client_state.Msg) {
-  member_release_all.Context(
-    selected_project_id: model.core.selected_project_id,
-    on_member_release_all_result: fn(result) {
-      client_state.admin_msg(admin_messages.MemberReleaseAllResult(result))
-    },
-  )
-}
-
-fn member_release_all_feedback_context(
-  model: client_state.Model,
-) -> member_release_all.FeedbackContext(client_state.Msg) {
-  member_release_all.FeedbackContext(
-    not_permitted: i18n.t(model.ui.locale, i18n_text.NotPermitted),
-    release_all_self_error: i18n.t(
-      model.ui.locale,
-      i18n_text.ReleaseAllSelfError,
-    ),
-    release_all_none: fn(user_name) {
-      i18n.t(model.ui.locale, i18n_text.ReleaseAllNone(user_name))
-    },
-    release_all_success: fn(released_count, user_name) {
-      i18n.t(
-        model.ui.locale,
-        i18n_text.ReleaseAllSuccess(released_count, user_name),
-      )
-    },
-    release_all_error: fn(user_name) {
-      i18n.t(model.ui.locale, i18n_text.ReleaseAllError(user_name))
-    },
-    on_success_toast: app_effects.toast_success,
-    on_warning_toast: app_effects.toast_warning,
-  )
-}
-
-fn member_role_context(
-  model: client_state.Model,
-) -> member_role.Context(client_state.Msg) {
-  member_role.Context(
-    selected_project_id: model.core.selected_project_id,
-    on_member_role_changed: fn(result) {
-      client_state.admin_msg(admin_messages.MemberRoleChanged(result))
-    },
-  )
-}
-
-fn member_role_feedback_context(
-  model: client_state.Model,
-) -> member_role.FeedbackContext(client_state.Msg) {
-  member_role.FeedbackContext(
-    role_updated: i18n.t(model.ui.locale, i18n_text.RoleUpdated),
-    cannot_demote_last_manager: i18n.t(
-      model.ui.locale,
-      i18n_text.CannotDemoteLastManager,
-    ),
-    on_success_toast: app_effects.toast_success,
-    on_warning_toast: app_effects.toast_warning,
-    on_error_toast: app_effects.toast_error,
-  )
-}
-
-fn member_remove_context(
-  model: client_state.Model,
-) -> member_remove.Context(client_state.Msg) {
-  member_remove.Context(
-    selected_project_id: model.core.selected_project_id,
-    on_member_removed: fn(result) {
-      client_state.admin_msg(admin_messages.MemberRemoved(result))
-    },
-  )
-}
-
-fn member_remove_feedback_context(
-  model: client_state.Model,
-) -> member_remove.FeedbackContext(client_state.Msg) {
-  member_remove.FeedbackContext(
-    member_removed: i18n.t(model.ui.locale, i18n_text.MemberRemoved),
-    on_success_toast: app_effects.toast_success,
-  )
-}
-
-fn member_remove_error_feedback_context(
-  model: client_state.Model,
-) -> member_remove.ErrorFeedbackContext(client_state.Msg) {
-  member_remove.ErrorFeedbackContext(
-    not_permitted: i18n.t(model.ui.locale, i18n_text.NotPermitted),
-    on_warning_toast: app_effects.toast_warning,
-  )
-}
-
-fn member_list_context(
-  model: client_state.Model,
-) -> member_list.Context(client_state.Msg) {
-  member_list.Context(
-    selected_project_id: model.core.selected_project_id,
-    on_member_capabilities_fetched: fn(result) {
-      client_state.admin_msg(admin_messages.MemberCapabilitiesFetched(result))
-    },
-  )
-}
-
-fn org_users_search_context() -> search.Context(client_state.Msg) {
-  search.Context(on_search_results: fn(token, result) {
-    client_state.admin_msg(admin_messages.OrgUsersSearchResults(token, result))
-  })
 }
 
 fn update_capabilities(

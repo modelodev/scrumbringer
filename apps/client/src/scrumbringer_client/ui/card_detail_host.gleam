@@ -19,7 +19,7 @@ pub type Config(msg) {
     card: Card,
     tasks: List(task_domain.Task),
     locale: locale.Locale,
-    current_user_id: Int,
+    current_user_id: opt.Option(Int),
     can_manage_notes: Bool,
     on_create_task: decode.Decoder(msg),
     on_close: decode.Decoder(msg),
@@ -37,24 +37,28 @@ pub fn view(config: Config(msg)) -> element.Element(msg) {
     on_close: on_close,
   ) = config
 
-  element.element(
-    "card-detail-modal",
-    [
-      attribute.attribute("card-id", int.to_string(card.id)),
-      attribute.attribute("locale", locale.serialize(loc)),
-      attribute.attribute("current-user-id", int.to_string(current_user_id)),
-      attribute.attribute("project-id", int.to_string(card.project_id)),
-      attribute.attribute(
-        "can-manage-notes",
-        attribute_value.boolean(can_manage_notes),
-      ),
-      attribute.property("card", card_to_json(card)),
-      attribute.property("tasks", tasks_to_json(tasks)),
-      event.on("create-task-requested", on_create_task),
-      event.on("close-requested", on_close),
-    ],
-    [],
-  )
+  let attributes = [
+    attribute.attribute("card-id", int.to_string(card.id)),
+    attribute.attribute("locale", locale.serialize(loc)),
+    attribute.attribute("project-id", int.to_string(card.project_id)),
+    attribute.attribute(
+      "can-manage-notes",
+      attribute_value.boolean(can_manage_notes),
+    ),
+    attribute.property("card", card_to_json(card)),
+    attribute.property("tasks", tasks_to_json(tasks)),
+    event.on("create-task-requested", on_create_task),
+    event.on("close-requested", on_close),
+  ]
+  let attributes = case current_user_id {
+    opt.Some(user_id) -> [
+      attribute.attribute("current-user-id", int.to_string(user_id)),
+      ..attributes
+    ]
+    opt.None -> attributes
+  }
+
+  element.element("card-detail-modal", attributes, [])
 }
 
 fn card_to_json(card: Card) -> json.Json {

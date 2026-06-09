@@ -27,7 +27,7 @@ pub type Config(msg) {
     locale: Locale,
     theme: Theme,
     task: Task,
-    current_user_id: Int,
+    current_user_id: Option(Int),
     card_title: Option(String),
     card_color: Option(CardColor),
     x: Int,
@@ -63,8 +63,7 @@ pub fn view(config: Config(msg)) -> Element(msg) {
   ) = config.task
 
   let is_mine =
-    task_state.claimed_by(config.task.state)
-    == option.Some(config.current_user_id)
+    task_state.claimed_by(config.task.state) == config.current_user_id
   let card_classes =
     card_classes(
       config.card_color,

@@ -33,7 +33,7 @@ pub fn view(config: Config(msg)) -> el.Element(msg) {
         card: card,
         tasks: config.tasks,
         locale: config.locale,
-        current_user_id: current_user_id_or_default(config.current_user_id),
+        current_user_id: config.current_user_id,
         can_manage_notes: config.can_manage_notes,
         on_create_task: config.on_create_task,
         on_close: config.on_close,
@@ -55,12 +55,5 @@ pub fn tasks_for_card(
         }
       })
     _ -> []
-  }
-}
-
-fn current_user_id_or_default(current_user_id: Option(Int)) -> Int {
-  case current_user_id {
-    Some(id) -> id
-    None -> 0
   }
 }

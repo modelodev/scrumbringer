@@ -84,7 +84,7 @@ pub fn evaluate_rules_creates_tasks_from_templates_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(bug_type_id),
+      bug_type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -142,7 +142,7 @@ pub fn evaluate_rules_idempotency_suppresses_duplicate_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(type_id),
+      type_id,
     )
 
   // First evaluation
@@ -190,7 +190,7 @@ pub fn evaluate_rules_skips_non_user_triggered_events_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(type_id),
+      type_id,
       False,
       None,
     )
@@ -292,7 +292,7 @@ pub fn variable_father_task_resolves_to_link_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(bug_type_id),
+      bug_type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -435,7 +435,7 @@ pub fn variable_from_state_resolves_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(type_id),
+      type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -501,7 +501,7 @@ pub fn variable_from_state_null_shows_created_test() {
       user_id,
       None,
       task_status.Available,
-      Some(type_id),
+      type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -569,7 +569,7 @@ pub fn variable_project_resolves_to_name_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(type_id),
+      type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -629,7 +629,7 @@ pub fn variable_user_resolves_to_email_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(type_id),
+      type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -714,7 +714,7 @@ pub fn all_five_variables_combined_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(bug_type_id),
+      bug_type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -840,7 +840,7 @@ pub fn multiple_templates_create_multiple_tasks_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(bug_type_id),
+      bug_type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -895,7 +895,7 @@ pub fn rule_without_task_type_matches_all_types_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(bug_type_id),
+      bug_type_id,
     )
 
   let bug_result = rules_engine.evaluate_rules(db, bug_event)
@@ -919,7 +919,7 @@ pub fn rule_without_task_type_matches_all_types_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(feature_type_id),
+      feature_type_id,
     )
 
   let feature_result = rules_engine.evaluate_rules(db, feature_event)
@@ -967,7 +967,7 @@ pub fn inactive_workflow_does_not_fire_rules_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(type_id),
+      type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -1016,7 +1016,7 @@ pub fn inactive_rule_does_not_fire_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(type_id),
+      type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -1068,7 +1068,7 @@ pub fn wrong_task_type_does_not_match_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(feature_type_id),
+      feature_type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -1112,7 +1112,7 @@ pub fn wrong_to_state_does_not_match_test() {
       user_id,
       Some(task_status.Available),
       task_status.Claimed(task_status.Taken),
-      Some(type_id),
+      type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -1168,7 +1168,7 @@ pub fn project_scoped_workflow_does_not_apply_to_other_project_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(type2_id),
+      type2_id,
     )
 
   // Rule from Project One should not match task in Project Two
@@ -1276,7 +1276,7 @@ pub fn rule_execution_applied_is_persisted_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(type_id),
+      type_id,
     )
 
   let result = rules_engine.evaluate_rules(db, event)
@@ -1334,7 +1334,7 @@ pub fn rule_execution_idempotency_enforced_test() {
       user_id,
       Some(task_status.Claimed(task_status.Taken)),
       task_status.Completed,
-      Some(type_id),
+      type_id,
     )
 
   // First fire (applied)

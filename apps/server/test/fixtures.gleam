@@ -913,7 +913,7 @@ pub fn task_event_status(
   user_id: Int,
   from_state: Option(task_status.TaskStatus),
   to_state: task_status.TaskStatus,
-  task_type_id: Option(Int),
+  task_type_id: Int,
 ) -> rules_engine.StateChange {
   task_event_status_with_card(
     task_id,
@@ -935,7 +935,7 @@ pub fn task_event_status_with_card(
   user_id: Int,
   from_state: Option(task_status.TaskStatus),
   to_state: task_status.TaskStatus,
-  task_type_id: Option(Int),
+  task_type_id: Int,
   card_id: Option(Int),
 ) -> rules_engine.StateChange {
   task_event_status_full(
@@ -959,7 +959,7 @@ pub fn task_event_status_full(
   user_id: Int,
   from_state: Option(task_status.TaskStatus),
   to_state: task_status.TaskStatus,
-  task_type_id: Option(Int),
+  task_type_id: Int,
   user_triggered: Bool,
   card_id: Option(Int),
 ) -> rules_engine.StateChange {
@@ -968,7 +968,7 @@ pub fn task_event_status_full(
       task_id: task_id,
       project_id: project_id,
       org_id: org_id,
-      type_id: option.unwrap(task_type_id, 0),
+      type_id: task_type_id,
       card_id: card_id,
     )
 

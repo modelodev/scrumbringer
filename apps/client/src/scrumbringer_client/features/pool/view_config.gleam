@@ -58,7 +58,7 @@ pub type Context(msg) {
     locale: Locale,
     theme: Theme,
     has_active_projects: Bool,
-    current_user_id: Int,
+    current_user_id: opt.Option(Int),
     active_task_id: opt.Option(Int),
     now_working_sessions: List(WorkSession),
     cards: List(Card),

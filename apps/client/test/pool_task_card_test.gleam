@@ -93,7 +93,7 @@ fn config(
     locale: locale.En,
     theme: theme.Default,
     task: task,
-    current_user_id: 7,
+    current_user_id: Some(7),
     card_title: Some("Release card"),
     card_color: None,
     x: x,

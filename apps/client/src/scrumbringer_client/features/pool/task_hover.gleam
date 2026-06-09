@@ -18,7 +18,7 @@ pub type Config(msg) {
     age_days: Int,
     hidden_blocked_count: Option(Int),
     notes: List(TaskNote),
-    current_user_id: Int,
+    current_user_id: Option(Int),
     on_open: msg,
   )
 }
@@ -87,13 +87,13 @@ fn notes_label(locale: Locale, notes: List(TaskNote)) -> Option(String) {
 
 fn hover_notes(
   locale: Locale,
-  current_user_id: Int,
+  current_user_id: Option(Int),
   notes: List(TaskNote),
 ) -> List(task_hover_popup.HoverNote) {
   list.map(notes, fn(note) {
     let TaskNote(user_id: user_id, created_at: created_at, content: content, ..) =
       note
-    let author = case user_id == current_user_id {
+    let author = case current_user_id == Some(user_id) {
       True -> pool_labels.current_user(locale)
       False -> pool_labels.user_number(locale, user_id)
     }

@@ -83,6 +83,7 @@ import scrumbringer_client/features/pool/create_dialog_config
 import scrumbringer_client/features/pool/position_edit_dialog_config
 import scrumbringer_client/features/pool/task_details_dialog_config
 import scrumbringer_client/features/pool/view_config as pool_view
+import scrumbringer_client/features/pool/view_context as pool_view_context
 import scrumbringer_client/features/projects/view as projects_view
 import scrumbringer_client/features/skills/view as skills_view
 
@@ -1075,7 +1076,8 @@ fn view_member_section(
   model: client_state.Model,
   user: User,
 ) -> Element(client_state.Msg) {
-  let pool_context = pool_view_context(model)
+  let cards = project_cards(model)
+  let pool_context = pool_view_context.from_state(model, cards)
 
   case model.member.pool.member_section {
     member_section.Pool -> pool_view.view_pool_main(pool_context, user)
@@ -1367,7 +1369,7 @@ fn build_center_panel(
       model.member.skills.member_my_capability_ids,
     )
   let cards = project_cards(model)
-  let pool_context = pool_view_context(model)
+  let pool_context = pool_view_context.from_state(model, cards)
 
   // Build view-specific content
   let pool_content = pool_view.view_pool_main(pool_context, user)
@@ -1804,81 +1806,4 @@ fn project_cards(model: client_state.Model) -> List(Card) {
 
 fn resolve_task_card_info(model: client_state.Model, task: Task) {
   card_queries.resolve_task_card_info(project_cards(model), task)
-}
-
-fn pool_view_context(
-  model: client_state.Model,
-) -> pool_view.Context(client_state.Msg) {
-  pool_view.Context(
-    locale: model.ui.locale,
-    theme: model.ui.theme,
-    has_active_projects: !list.is_empty(state_selectors.active_projects(model)),
-    current_user_id: current_user_id_or_zero(model),
-    active_task_id: state_selectors.now_working_active_task_id(model),
-    now_working_sessions: state_selectors.now_working_all_sessions(model),
-    cards: project_cards(model),
-    pool: model.member.pool,
-    now_working: model.member.now_working,
-    skills: model.member.skills,
-    notes: model.member.notes,
-    positions: model.member.positions,
-    callbacks: pool_view_callbacks(),
-  )
-}
-
-fn pool_view_callbacks() -> pool_view.Callbacks(client_state.Msg) {
-  pool_view.Callbacks(
-    on_drag_moved: fn(x, y) {
-      client_state.pool_msg(pool_messages.MemberDragMoved(x, y))
-    },
-    on_drag_ended: client_state.pool_msg(pool_messages.MemberDragEnded),
-    on_create_opened: client_state.pool_msg(
-      pool_messages.MemberCreateDialogOpened,
-    ),
-    on_now_working_pause: client_state.pool_msg(
-      pool_messages.MemberNowWorkingPauseClicked,
-    ),
-    on_now_working_start: fn(task_id) {
-      client_state.pool_msg(pool_messages.MemberNowWorkingStartClicked(task_id))
-    },
-    on_claim: fn(task_id, version) {
-      client_state.pool_msg(pool_messages.MemberClaimClicked(task_id, version))
-    },
-    on_release: fn(task_id, version) {
-      client_state.pool_msg(pool_messages.MemberReleaseClicked(task_id, version))
-    },
-    on_complete: fn(task_id, version) {
-      client_state.pool_msg(pool_messages.MemberCompleteClicked(
-        task_id,
-        version,
-      ))
-    },
-    on_open: fn(task_id) {
-      client_state.pool_msg(pool_messages.MemberTaskDetailsOpened(task_id))
-    },
-    on_hover_opened: fn(task_id) {
-      client_state.pool_msg(pool_messages.MemberTaskHoverOpened(task_id))
-    },
-    on_hover_closed: client_state.pool_msg(pool_messages.MemberTaskHoverClosed),
-    on_focused: fn(task_id) {
-      client_state.pool_msg(pool_messages.MemberTaskFocused(task_id))
-    },
-    on_blurred: client_state.pool_msg(pool_messages.MemberTaskBlurred),
-    on_drag_started: fn(task_id, x, y) {
-      client_state.pool_msg(pool_messages.MemberDragStarted(task_id, x, y))
-    },
-    on_touch_started: fn(task_id, x, y) {
-      client_state.pool_msg(pool_messages.MemberPoolTouchStarted(task_id, x, y))
-    },
-    on_touch_ended: fn(task_id) {
-      client_state.pool_msg(pool_messages.MemberPoolTouchEnded(task_id))
-    },
-  )
-}
-
-fn current_user_id_or_zero(model: client_state.Model) -> Int {
-  case model.core.user {
-    opt.Some(user) -> user.id
-    opt.None -> 0
-  }
 }
